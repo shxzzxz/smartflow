@@ -254,15 +254,37 @@ class _CalendarContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
       bottomPadding: AppSpacing.space24,
       leading: [
-        _MonthlySummaryStrip(summary: month.summary),
-        const SizedBox(height: AppSpacing.space10),
-        const _WeekdayHeader(),
-        const SizedBox(height: AppSpacing.space8),
-        _CalendarGrid(
-          days: month.days,
-          showLunar: showLunar,
-          onDateSelected: onDateSelected,
-          onMonthSwipe: onMonthSwipe,
+        AppSurface(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space16,
+              vertical: AppSpacing.space8,
+            ),
+            child: _MonthlySummaryStrip(summary: month.summary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        AppSurface(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space8,
+              AppSpacing.space12,
+              AppSpacing.space8,
+              AppSpacing.space12,
+            ),
+            child: Column(
+              children: [
+                const _WeekdayHeader(),
+                const SizedBox(height: AppSpacing.space8),
+                _CalendarGrid(
+                  days: month.days,
+                  showLunar: showLunar,
+                  onDateSelected: onDateSelected,
+                  onMonthSwipe: onMonthSwipe,
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: AppSpacing.space10),
         if (day.dueBillItems.isNotEmpty) ...[
