@@ -10,7 +10,6 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -272,14 +271,6 @@ class _DetailBody extends ConsumerWidget {
         return;
       case DetailEditAllowed():
         break;
-    }
-    if (row.editPurpose == AccountSelectionPurpose.settlement &&
-        (state.detail.businessPurpose == BusinessPurpose.dailyExpense ||
-            state.detail.businessPurpose ==
-                BusinessPurpose.reimbursementAdvance) &&
-        state.behavior.editRoute != null) {
-      context.push(state.behavior.editRoute!);
-      return;
     }
     final viewModel = ref.read(
       transactionDetailViewModelProvider(state.transactionId).notifier,

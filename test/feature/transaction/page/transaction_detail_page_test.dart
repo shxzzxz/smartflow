@@ -72,6 +72,23 @@ void main() {
     expect(find.text('备注已更新'), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
+
+    await tester.tap(find.text('现金'));
+    await tester.pumpAndSettle();
+    expect(find.text('选择收支账户'), findsOneWidget);
+    expect(find.text('银行卡'), findsOneWidget);
+
+    await tester.tap(find.text('银行卡'));
+    await tester.pumpAndSettle();
+
+    final command = editService.expenseCommands.single;
+    expect(command.transactionId, 'tx-1');
+    expect(command.settlementAllocations!.single.accountId, 'bank');
+    expect(
+      command.settlementAllocations!.single.amount,
+      const Money(minorUnits: 10000),
+    );
+    expect(find.text('收支账户已更新'), findsOneWidget);
   });
 
   testWidgets('shows refund and reimbursement information together', (
