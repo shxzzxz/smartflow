@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
@@ -84,8 +85,8 @@ void main() {
         );
 
         final contract = fixture.installments.contracts[result.contractId]!;
-        expect(contract.firstRepaymentDate, DateTime(2026, 7, 25));
-        expect(contract.lastRepaymentDate, DateTime(2026, 8, 25));
+        expect(contract.stageTerms.firstDate, DateTime(2026, 7, 25));
+        expect(contract.stageTerms.lastDate, DateTime(2026, 8, 25));
         expect(
           fixture.installments
               .schedulesFor(result.contractId)
@@ -113,16 +114,21 @@ void main() {
         await fixture.service.updateContract(
           UpdateContractCommand(
             contractId: 'contract-1',
-            totalPeriods: 3,
-            firstRepaymentDate: DateTime(2026, 8, 10),
-            lastRepaymentDate: DateTime(2026, 10, 10),
-            totalFeeMinor: 900,
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: 'contract-1:stage:1',
+              totalPeriods: 2,
+              firstDate: DateTime(2026, 8, 10),
+              lastDate: DateTime(2026, 9, 10),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.monthly,
+              feeMinor: 900,
+            ),
           ),
         );
 
         final contract = fixture.installments.contracts['contract-1']!;
-        expect(contract.totalPeriods, 3);
-        expect(contract.firstRepaymentDate, DateTime(2026, 8, 10));
+        expect(contract.stageTerms.totalPeriods, 2);
+        expect(contract.stageTerms.firstDate, DateTime(2026, 8, 10));
         final schedule = fixture.installments.schedulesFor('contract-1').single;
         expect(schedule.expectedRepaymentDate, DateTime(2026, 7, 10));
         expect(schedule.expectedPrincipal, const Money(minorUnits: 5000));
@@ -138,7 +144,7 @@ void main() {
             id: 'contract-1',
             principal: const Money(minorUnits: 10000),
             totalFeeMinor: 300,
-            repaymentMethod: InstallmentRepaymentMethod.flatFee,
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
           ),
         );
         fixture.installments.putSchedules('contract-1', [
@@ -170,15 +176,16 @@ void main() {
 
         final command = RecalculateContractSchedulesCommand(
           contractId: 'contract-1',
-          terms: ContractRecalculationTerms(
+          stageTerms: InstallmentContractTerms.singleStage(
+            id: 'contract-1:stage:1',
             totalPeriods: 3,
-            firstRepaymentDate: DateTime(2026, 7, 10),
-            lastRepaymentDate: DateTime(2026, 10, 10),
-            repaymentMethod: InstallmentRepaymentMethod.flatFee,
-            interestRatePeriod: null,
-            interestRatePpm: null,
-            interestAccrualMethod: InterestAccrualMethod.monthly,
-            totalFeeMinor: 500,
+            firstDate: DateTime(2026, 7, 10),
+            lastDate: DateTime(2026, 10, 10),
+            method: InstallmentRepaymentMethod.equalPrincipal,
+            ratePeriod: null,
+            ratePpm: null,
+            accrual: InterestAccrualMethod.monthly,
+            feeMinor: 500,
           ),
         );
         final preview = await fixture.service.previewContractRecalculation(
@@ -187,20 +194,23 @@ void main() {
         await fixture.service.recalculateContractSchedules(command);
 
         // 锚点是被跳过的第 1 期；其后的待还尾部按合同条款重生日期并重新分配。
-        expect(preview.map((row) => row.expectedRepaymentDate), [
+        expect(preview.skip(1).map((row) => row.expectedRepaymentDate), [
           DateTime(2026, 8, 10),
           DateTime(2026, 10, 10),
         ]);
         final schedules = fixture.installments.schedulesFor('contract-1');
-        expect(preview.map((row) => row.expectedPrincipal.minorUnits), [
+        expect(preview.skip(1).map((row) => row.expectedPrincipal.minorUnits), [
           4951,
           4950,
         ]);
-        expect(preview.map((row) => row.expectedFee.minorUnits), [250, 250]);
+        expect(preview.skip(1).map((row) => row.expectedFee.minorUnits), [
+          250,
+          250,
+        ]);
         expect(schedules[0].expectedPrincipal, const Money(minorUnits: 99));
         expect(schedules[0].status, InstallmentScheduleStatus.skipped);
-        expect(schedules[1].expectedPrincipal, preview[0].expectedPrincipal);
-        expect(schedules[1].expectedFee, preview[0].expectedFee);
+        expect(schedules[1].expectedPrincipal, preview[1].expectedPrincipal);
+        expect(schedules[1].expectedFee, preview[1].expectedFee);
         expect(schedules[1].expectedRepaymentDate, DateTime(2026, 8, 10));
         expect(schedules[2].expectedRepaymentDate, DateTime(2026, 10, 10));
       },
@@ -258,25 +268,36 @@ void main() {
           CreateDisbursementContractCommand(
             liabilityAccountId: 'loan-liability',
             principal: const Money(minorUnits: 120000),
-            totalPeriods: 12,
             borrowingDate: DateTime(2026, 6, 14),
-            firstRepaymentDate: DateTime(2026, 7, 12),
-            repaymentMethod: InstallmentRepaymentMethod.interestFirst,
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: 'stage-1',
+              totalPeriods: 12,
+              firstDate: DateTime(2026, 7, 12),
+              method: InstallmentRepaymentMethod.interestFirst,
+              accrual: InterestAccrualMethod.daily,
+            ),
           ),
         );
 
         final preview = await fixture.service.previewContractRecalculation(
           RecalculateContractSchedulesCommand(
             contractId: result.contractId,
-            terms: ContractRecalculationTerms(
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: fixture
+                  .installments
+                  .contracts[result.contractId]!
+                  .stageTerms
+                  .stages
+                  .single
+                  .id,
               totalPeriods: 12,
-              firstRepaymentDate: DateTime(2026, 8, 12),
-              lastRepaymentDate: DateTime(2027, 7, 12),
-              repaymentMethod: InstallmentRepaymentMethod.interestFirst,
-              interestRatePeriod: null,
-              interestRatePpm: null,
-              interestAccrualMethod: InterestAccrualMethod.daily,
-              totalFeeMinor: 0,
+              firstDate: DateTime(2026, 8, 12),
+              lastDate: DateTime(2027, 7, 12),
+              method: InstallmentRepaymentMethod.interestFirst,
+              ratePeriod: null,
+              ratePpm: null,
+              accrual: InterestAccrualMethod.daily,
+              feeMinor: 0,
             ),
           ),
         );
@@ -1160,12 +1181,16 @@ CreateDisbursementContractCommand _createDisbursementCommand({
     liabilityAccountId: liabilityAccountId,
     disbursementAccountId: disbursementAccountId,
     principal: const Money(minorUnits: 120000),
-    totalPeriods: 2,
     borrowingDate: borrowingDate ?? DateTime(2026, 6, 1),
-    firstRepaymentDate: firstRepaymentDate ?? DateTime(2026, 7, 10),
-    lastRepaymentDate: lastRepaymentDate ?? DateTime(2026, 9, 10),
-    repaymentMethod: InstallmentRepaymentMethod.flatFee,
-    totalFeeMinor: 1200,
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'stage-1',
+      totalPeriods: 2,
+      firstDate: firstRepaymentDate ?? DateTime(2026, 7, 10),
+      lastDate: lastRepaymentDate ?? DateTime(2026, 9, 10),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      feeMinor: 1200,
+      accrual: InterestAccrualMethod.daily,
+    ),
   );
 }
 
@@ -1188,15 +1213,18 @@ InstallmentContract _contract({
         : 'asset-cash',
     disbursementTransactionId: disbursementTransactionId,
     principal: principal,
-    totalPeriods: totalPeriods,
     borrowingDate: DateTime(2026, 6, 1),
-    firstRepaymentDate: DateTime(2026, 7, 10),
-    lastRepaymentDate: DateTime(2026, 9, 10),
-    repaymentMethod: repaymentMethod,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    totalFeeMinor: totalFeeMinor,
     status: status,
     createdAt: DateTime(2026, 6, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: '$id:stage:1',
+      totalPeriods: totalPeriods,
+      firstDate: DateTime(2026, 7, 10),
+      lastDate: DateTime(2026, 9, 10),
+      method: repaymentMethod,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: totalFeeMinor,
+    ),
   );
 }
 

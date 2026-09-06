@@ -61,6 +61,14 @@ class DriftBackupGateway
         'bill_generation_suppressions':
             (await database.select(database.billGenerationSuppressions).get())
                 .map(_json),
+        'installment_products':
+            (await database.select(database.installmentProducts).get()).map(
+              _json,
+            ),
+        'installment_stage_configs':
+            (await database.select(database.installmentStageConfigs).get()).map(
+              _json,
+            ),
         'installment_contracts':
             (await database.select(database.installmentContracts).get()).map(
               _json,
@@ -122,7 +130,9 @@ class DriftBackupGateway
         'repayment_items',
         'repayments',
         'installment_schedules',
+        'installment_stage_configs',
         'installment_contracts',
+        'installment_products',
         'bill_items',
         'bills',
         'bill_generation_suppressions',
@@ -220,6 +230,23 @@ class DriftBackupGateway
                 (row) => BillGenerationSuppressionRow.fromJson(
                   row,
                 ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.installmentProducts,
+          snapshot
+              .rows('installment_products')
+              .map(
+                (row) => InstallmentProductRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.installmentStageConfigs,
+          snapshot
+              .rows('installment_stage_configs')
+              .map(
+                (row) =>
+                    InstallmentStageConfigRow.fromJson(row).toCompanion(true),
               ),
         );
         batch.insertAll(
@@ -328,6 +355,12 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is BillGenerationSuppressionRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentProductRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentStageConfigRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is InstallmentContractRow) {

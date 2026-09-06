@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
@@ -15,13 +16,16 @@ void main() {
       String nextScheduleId() => 'schedule-${++scheduleId}';
       final terms = InstallmentOriginationTerms(
         principal: const Money(minorUnits: 10000),
-        totalPeriods: 2,
         borrowingDate: _borrowingDate,
-        firstRepaymentDate: _firstDate,
-        lastRepaymentDate: _lastDate,
-        repaymentMethod: InstallmentRepaymentMethod.flatFee,
-        interestAccrualMethod: InterestAccrualMethod.monthly,
-        totalFeeMinor: 200,
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: 'stage-1',
+          totalPeriods: 2,
+          firstDate: _firstDate,
+          lastDate: _lastDate,
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          accrual: InterestAccrualMethod.monthly,
+          feeMinor: 200,
+        ),
       );
 
       final disbursement = service.originateDisbursement(
@@ -42,7 +46,7 @@ void main() {
         borrowingDate: _borrowingDate,
         firstRepaymentDate: _firstDate,
         lastRepaymentDate: _lastDate,
-        repaymentMethod: InstallmentRepaymentMethod.flatFee,
+        repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
         interestAccrualMethod: InterestAccrualMethod.monthly,
         totalFeeMinor: 200,
         createdAt: _createdAt,

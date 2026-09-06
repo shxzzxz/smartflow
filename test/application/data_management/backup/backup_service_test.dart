@@ -99,7 +99,7 @@ void main() {
         final diff = await service.restore(incomingDirectory);
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
-        expect(manifest.formatVersion, 1);
+        expect(manifest.formatVersion, 3);
       },
     );
   });

@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -481,15 +482,18 @@ InstallmentContract _contract(String accountId) {
     liabilityAccountId: accountId,
     sourceType: InstallmentSourceType.disbursement,
     principal: const Money(minorUnits: 1000),
-    totalPeriods: 1,
     borrowingDate: DateTime(2026, 7, 1),
-    firstRepaymentDate: DateTime(2026, 8, 1),
-    lastRepaymentDate: DateTime(2026, 8, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: InterestAccrualMethod.monthly,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 7, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: 1,
+      firstDate: DateTime(2026, 8, 1),
+      lastDate: DateTime(2026, 8, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
   );
 }
 

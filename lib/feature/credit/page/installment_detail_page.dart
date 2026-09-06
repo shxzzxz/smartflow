@@ -242,7 +242,7 @@ class _Header extends StatelessWidget {
       ),
     };
     return AppDetailSummaryCard(
-      title: '分期合同',
+      title: contract.productName ?? '分期合同',
       headerTrailing: AppStatusBadge(label: statusLabel, color: statusColor),
       mainItems: [
         AppDetailSummaryCardItem(
@@ -261,7 +261,15 @@ class _Header extends StatelessWidget {
       supportingItems: [
         AppDetailSummaryCardItem(
           label: '分期方式',
-          value: _methodLabel(contract.repaymentMethod),
+          value: contract.stageTerms.stages.length > 1
+              ? contract.stageTerms.stages
+                    .map(
+                      (s) => s.terms is DefermentStage
+                          ? '免还期'
+                          : _methodLabel((s.terms as AmortizingStage).method),
+                    )
+                    .join(' → ')
+              : _methodLabel(contract.stageTerms.repayments.first.method),
         ),
         AppDetailSummaryCardItem(
           label: '本金',
@@ -277,14 +285,20 @@ class _Header extends StatelessWidget {
         ),
         AppDetailSummaryCardItem(
           label: '计息方式',
-          value: _accrualMethodLabel(contract.interestAccrualMethod),
+          value: contract.stageTerms.stages.length > 1
+              ? '按各阶段条款'
+              : _accrualMethodLabel(
+                  contract.stageTerms.repayments.first.accrual,
+                ),
         ),
         AppDetailSummaryCardItem(
           label: '利率',
-          value: _formatRate(
-            contract.interestRatePeriod,
-            contract.interestRatePpm,
-          ),
+          value: contract.stageTerms.stages.length > 1
+              ? '按各阶段条款'
+              : _formatRate(
+                  contract.stageTerms.repayments.first.rate?.period,
+                  contract.stageTerms.repayments.first.rate?.ppm,
+                ),
         ),
       ],
     );

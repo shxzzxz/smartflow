@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -808,15 +809,18 @@ credit_query.InstallmentContractReadModel _contract() {
     disbursementAccountId: 'cash',
     sourceType: credit.InstallmentSourceType.disbursement,
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 10,
     borrowingDate: now,
-    firstRepaymentDate: now,
-    lastRepaymentDate: now,
-    repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: credit.InterestAccrualMethod.monthly,
-    totalFeeMinor: 0,
     status: credit.InstallmentContractStatus.active,
     createdAt: now,
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: 10,
+      firstDate: now,
+      lastDate: now,
+      method: credit.InstallmentRepaymentMethod.equalPrincipal,
+      accrual: credit.InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
   );
 }
 

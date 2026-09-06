@@ -108,7 +108,11 @@ AccountCreditSummaryPresentation installmentAccountCreditSummary(
       ),
       AccountCreditSummarySupportingItem(text: '${contract.totalPeriods} 期'),
       AccountCreditSummarySupportingItem(
-        text: _repaymentMethodLabel(contract.repaymentMethod),
+        text: contract.stageTerms.stages.length > 1
+            ? '${contract.stageTerms.stages.length} 个阶段'
+            : _repaymentMethodLabel(
+                contract.stageTerms.repayments.single.method,
+              ),
       ),
     ],
     status: switch (contract.status) {

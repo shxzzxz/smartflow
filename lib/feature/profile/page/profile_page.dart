@@ -89,6 +89,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         onTap: () => context.push('/tags'),
                       ),
                       _ProfileActionRow(
+                        icon: RemixIcons.file_list_3_line,
+                        label: '分期产品',
+                        description: '管理常用贷款的阶段和计算规则',
+                        onTap: () => context.push('/installment-products'),
+                      ),
+                      _ProfileActionRow(
                         icon: RemixIcons.calculator_line,
                         label: '贷款计算器',
                         description: '试算还款计划、利息与年化利率，不写入数据',

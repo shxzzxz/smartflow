@@ -1,5 +1,6 @@
 import '../../../../core/money/money.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 
 class InstallmentContractReadModel {
   const InstallmentContractReadModel({
@@ -7,21 +8,17 @@ class InstallmentContractReadModel {
     required this.liabilityAccountId,
     required this.sourceType,
     required this.principal,
-    required this.totalPeriods,
     required this.borrowingDate,
-    required this.firstRepaymentDate,
-    required this.lastRepaymentDate,
-    required this.repaymentMethod,
-    required this.interestAccrualMethod,
-    required this.totalFeeMinor,
     required this.status,
     required this.createdAt,
     this.disbursementAccountId,
     this.disbursementTransactionId,
     this.sourceRepaymentId,
-    this.interestRatePeriod,
-    this.interestRatePpm,
     this.note,
+    required this.stageTerms,
+    this.productId,
+    this.productName,
+    this.customRules = false,
   });
 
   final String id;
@@ -31,18 +28,18 @@ class InstallmentContractReadModel {
   final String? disbursementTransactionId;
   final String? sourceRepaymentId;
   final Money principal;
-  final int totalPeriods;
   final DateTime borrowingDate;
-  final DateTime firstRepaymentDate;
-  final DateTime lastRepaymentDate;
-  final InstallmentRepaymentMethod repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
-  final InterestAccrualMethod interestAccrualMethod;
-  final int totalFeeMinor;
   final InstallmentContractStatus status;
   final String? note;
   final DateTime createdAt;
+  final InstallmentContractTerms stageTerms;
+  final String? productId;
+  final String? productName;
+  final bool customRules;
+  int get totalPeriods => stageTerms.totalPeriods;
+  DateTime get firstRepaymentDate => stageTerms.firstDate;
+  DateTime get lastRepaymentDate => stageTerms.lastDate;
+  int get totalFeeMinor => stageTerms.totalFeeMinor;
 }
 
 class InstallmentScheduleReadModel {
@@ -57,10 +54,12 @@ class InstallmentScheduleReadModel {
     required this.status,
     required this.createdAt,
     this.note,
+    this.stageId,
   });
 
   final String id;
   final String contractId;
+  final String? stageId;
   final int periodNo;
   final DateTime expectedRepaymentDate;
   final Money expectedPrincipal;

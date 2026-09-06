@@ -184,7 +184,11 @@ class InstallmentPlanEngine {
     );
   }
 
-  InstallmentPlan plan(InstallmentPlanTerms terms, {int firstPeriodNo = 1}) {
+  InstallmentPlan plan(
+    InstallmentPlanTerms terms, {
+    int firstPeriodNo = 1,
+    bool capEndPrincipal = false,
+  }) {
     if (terms.principal.minorUnits < 0) {
       throw _invalid('Principal must not be negative.');
     }
@@ -214,6 +218,7 @@ class InstallmentPlanEngine {
             stage,
             policy: policy,
             rounding: terms.rounding,
+            capEndPrincipal: capEndPrincipal,
             openingPrincipal: openingPrincipal,
             timelineDate: timelineDate,
             isLastStage: isLastStage,
@@ -249,6 +254,7 @@ class InstallmentPlanEngine {
     AmortizingStage stage, {
     required InterestAccrualPolicy policy,
     required RoundingMode rounding,
+    required bool capEndPrincipal,
     required Money openingPrincipal,
     required DateTime timelineDate,
     required bool isLastStage,
@@ -284,12 +290,17 @@ class InstallmentPlanEngine {
         ? InstallmentRepaymentMethod.equalPrincipal
         : stage.method;
     final rate = isFlatFee ? null : stage.rate;
-    final endPrincipal = _endPrincipal(
+    final requestedEndPrincipal = _endPrincipal(
       stage,
       method,
       openingPrincipal,
       isLastStage,
     );
+    final endPrincipal =
+        capEndPrincipal &&
+            requestedEndPrincipal.minorUnits > openingPrincipal.minorUnits
+        ? openingPrincipal
+        : requestedEndPrincipal;
     if (endPrincipal.minorUnits < 0 ||
         endPrincipal.minorUnits > openingPrincipal.minorUnits) {
       throw _invalid(
@@ -304,7 +315,13 @@ class InstallmentPlanEngine {
     if (calculator == null) {
       throw StateError('No calculator for $method.');
     }
-    final calculation = calculator.calculate(
+    // 零本金分摊时按余额计息，指定固定额不能反推出额外本金。
+    final effectiveCalculator =
+        capEndPrincipal &&
+            endPrincipal.minorUnits == openingPrincipal.minorUnits
+        ? const InterestFirstCalculator()
+        : calculator;
+    final calculation = effectiveCalculator.calculate(
       RepaymentMethodCalculationInput(
         openingPrincipal: openingPrincipal,
         endPrincipal: endPrincipal,

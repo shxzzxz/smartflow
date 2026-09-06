@@ -1,11 +1,10 @@
+import 'installment_terms_draft.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
-import '../../../application/credit/credit_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../core/patch/patch.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -31,15 +30,8 @@ class InstallmentContractEditViewModel
     );
     return InstallmentContractEditState.loaded(
       contract: contract,
-      paidCount:
-          schedules
-              .where((s) => s.status == InstallmentScheduleStatus.paid)
-              .length,
-      firstRepaymentDate: contract.firstRepaymentDate,
-      lastRepaymentDate: contract.lastRepaymentDate,
-      method: contract.repaymentMethod,
-      ratePeriod: contract.interestRatePeriod ?? InterestRatePeriod.monthly,
-      accrualMethod: contract.interestAccrualMethod,
+      stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
+      customRules: contract.customRules,
       draft: [
         for (final schedule in schedules)
           InstallmentContractDraftRow(
@@ -55,103 +47,88 @@ class InstallmentContractEditViewModel
     );
   }
 
-  void setFirstRepaymentDate(DateTime value) {
-    _updateLoaded((loaded) => loaded.copyWith(firstRepaymentDate: value));
+  void setStageDraft(InstallmentTermsDraft value) => _updateLoaded(
+    (s) => s.copyWith(stageDraft: value, stagePlanPreviewed: false),
+  );
+  void setCustomRules(bool value) =>
+      _updateLoaded((s) => s.copyWith(customRules: value));
+
+  Future<UiActionOutcome<void>> _recalculateStages(
+    InstallmentContractEditLoaded loaded,
+  ) => guardUiAction(_logger, 'Preview staged contract', () async {
+    final terms = loaded.stageDraft.contractTerms();
+    final preview = await ref
+        .read(installmentAppServiceProvider)
+        .previewContractRecalculation(
+          RecalculateContractSchedulesCommand(
+            contractId: contractId,
+            stageTerms: terms,
+          ),
+        );
+    final previous = {for (final row in loaded.draft) row.scheduleId: row};
+    _setLoaded(
+      loaded.copyWith(
+        stagePlanPreviewed: true,
+        manualPatchedPeriodNos: {},
+        draft: [
+          for (final row in preview)
+            InstallmentContractDraftRow(
+              scheduleId: row.scheduleId,
+              periodNo: row.periodNo,
+              date: row.expectedRepaymentDate,
+              principal: row.expectedPrincipal,
+              interest: row.expectedInterest,
+              fee: row.expectedFee,
+              status:
+                  previous[row.scheduleId]?.status ??
+                  InstallmentScheduleStatus.pending,
+            ),
+        ],
+      ),
+    );
+  });
+
+  Future<SubmitOutcome> _submitStages(
+    InstallmentContractEditLoaded loaded,
+  ) async {
+    _setLoaded(loaded.copyWith(submitting: true));
+    try {
+      return await guardSubmit(_logger, 'Save staged contract', () async {
+        final terms = loaded.stageDraft.contractTerms();
+        await ref
+            .read(installmentAppServiceProvider)
+            .updateContract(
+              UpdateContractCommand(
+                contractId: contractId,
+                stageTerms: terms,
+                customRules: loaded.customRules,
+                regeneratePlan: loaded.stagePlanPreviewed,
+                schedulePatches: [
+                  for (final row in loaded.draft)
+                    if (loaded.manualPatchedPeriodNos.contains(row.periodNo))
+                      SchedulePendingPatch(
+                        periodNo: row.periodNo,
+                        expectedPrincipal: row.principal,
+                        expectedInterest: row.interest,
+                        expectedFee: row.fee,
+                        expectedRepaymentDate: row.date,
+                      ),
+                ],
+              ),
+            );
+        _setLoaded(loaded.copyWith(submitting: false));
+        _invalidateCreditContractProviders(loaded.contract.liabilityAccountId);
+      });
+    } finally {
+      final latest = _loadedOrNull();
+      if (latest != null) _setLoaded(latest.copyWith(submitting: false));
+    }
   }
 
-  void setLastRepaymentDate(DateTime value) {
-    _updateLoaded((loaded) => loaded.copyWith(lastRepaymentDate: value));
-  }
-
-  void setMethod(InstallmentRepaymentMethod value) {
-    _updateLoaded((loaded) => loaded.copyWith(method: value));
-  }
-
-  void setRatePeriod(InterestRatePeriod value) {
-    _updateLoaded((loaded) => loaded.copyWith(ratePeriod: value));
-  }
-
-  void setAccrualMethod(InterestAccrualMethod value) {
-    _updateLoaded((loaded) => loaded.copyWith(accrualMethod: value));
-  }
-
-  Future<UiActionOutcome<void>> recalculate({
-    required String totalPeriodsText,
-    required String rateText,
-    required String feeText,
-    required String overrideInstallmentText,
-  }) async {
+  Future<UiActionOutcome<void>> recalculate() async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
-
-    final totalPeriods = int.tryParse(totalPeriodsText.trim());
-    if (totalPeriods == null || totalPeriods <= 0) {
-      return _invalidAction('请输入有效期数');
-    }
-    if (totalPeriods < loaded.paidCount + 1) {
-      return _invalidAction('期数必须不小于已还期数 + 1');
-    }
-    if (totalPeriods > 1 &&
-        !loaded.lastRepaymentDate.isAfter(loaded.firstRepaymentDate)) {
-      return _invalidAction('末期还款日必须晚于首期还款日');
-    }
-
-    final ratePpm = _parseRatePpm(rateText);
-    final feeMinor = _parseOptionalMoney(feeText).minorUnits;
-    final overrideMinor =
-        loaded.method == InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(overrideInstallmentText)
-            : null;
-
-    if (!loaded.draft.any(
-      (row) => row.status == InstallmentScheduleStatus.pending,
-    )) {
-      return _invalidAction('没有可重算的待还期次');
-    }
-
-    return guardUiAction(_logger, 'Contract schedule recalculation', () async {
-      final preview = await ref
-          .read(installmentAppServiceProvider)
-          .previewContractRecalculation(
-            RecalculateContractSchedulesCommand(
-              contractId: contractId,
-              terms: ContractRecalculationTerms(
-                totalPeriods: totalPeriods,
-                firstRepaymentDate: loaded.firstRepaymentDate,
-                lastRepaymentDate: loaded.lastRepaymentDate,
-                repaymentMethod: loaded.method,
-                interestRatePeriod: ratePpm == null ? null : loaded.ratePeriod,
-                interestRatePpm: ratePpm,
-                interestAccrualMethod: loaded.accrualMethod,
-                totalFeeMinor: feeMinor,
-              ),
-              equalInstallmentOverrideMinor: overrideMinor,
-            ),
-          );
-      final previewByScheduleId = {
-        for (final row in preview) row.scheduleId: row,
-      };
-      _setLoaded(
-        loaded.copyWith(
-          draft: [
-            for (final row in loaded.draft)
-              if (previewByScheduleId[row.scheduleId] case final previewRow?)
-                row.copyWith(
-                  date: previewRow.expectedRepaymentDate,
-                  principal: previewRow.expectedPrincipal,
-                  interest: previewRow.expectedInterest,
-                  fee: previewRow.expectedFee,
-                )
-              else
-                row,
-          ],
-          manualPatchedPeriodNos: {
-            ...loaded.manualPatchedPeriodNos,
-            for (final row in preview) row.periodNo,
-          },
-        ),
-      );
-    });
+    return _recalculateStages(loaded);
   }
 
   void applyAmount(
@@ -200,84 +177,10 @@ class InstallmentContractEditViewModel
     );
   }
 
-  Future<SubmitOutcome> submit({
-    required String totalPeriodsText,
-    required String rateText,
-    required String feeText,
-    required String overrideInstallmentText,
-  }) async {
+  Future<SubmitOutcome> submit() async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidSubmit('合同尚未加载');
-
-    final totalPeriods = int.tryParse(totalPeriodsText.trim());
-    if (totalPeriods == null || totalPeriods <= 0) {
-      return _invalidSubmit('请输入有效期数');
-    }
-    if (totalPeriods < loaded.paidCount + 1) {
-      return _invalidSubmit('期数必须不小于已还期数 + 1');
-    }
-
-    final ratePpm = _parseRatePpm(rateText);
-    final feeMinor = _parseOptionalMoney(feeText).minorUnits;
-    final overrideMinor =
-        loaded.method == InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(overrideInstallmentText)
-            : null;
-    final patches = [
-      for (final periodNo in loaded.manualPatchedPeriodNos)
-        if (loaded.draft.any((row) => row.periodNo == periodNo))
-          () {
-            final row = loaded.draft.firstWhere(
-              (current) => current.periodNo == periodNo,
-            );
-            return SchedulePendingPatch(
-              periodNo: periodNo,
-              expectedPrincipal: row.principal,
-              expectedInterest: row.interest,
-              expectedFee: row.fee,
-              expectedRepaymentDate: row.date,
-            );
-          }(),
-    ];
-
-    _setLoaded(loaded.copyWith(submitting: true));
-    try {
-      return await guardSubmit(_logger, 'Contract edit submit', () async {
-        await ref
-            .read(installmentAppServiceProvider)
-            .updateContract(
-              UpdateContractCommand(
-                contractId: contractId,
-                totalPeriods: totalPeriods,
-                firstRepaymentDate: loaded.firstRepaymentDate,
-                lastRepaymentDate: loaded.lastRepaymentDate,
-                repaymentMethod: loaded.method,
-                interestRatePeriod:
-                    ratePpm == null
-                        ? const Patch<InterestRatePeriod>.clear()
-                        : Patch.set(loaded.ratePeriod),
-                interestRatePpm:
-                    ratePpm == null
-                        ? const Patch<int>.clear()
-                        : Patch.set(ratePpm),
-                interestAccrualMethod: loaded.accrualMethod,
-                totalFeeMinor: feeMinor,
-                equalInstallmentOverrideMinor: overrideMinor,
-                schedulePatches: patches,
-              ),
-            );
-        final current = _loadedOrNull();
-        if (current != null) {
-          _setLoaded(current.copyWith(submitting: false));
-        }
-        _invalidateCreditContractProviders(loaded.contract.liabilityAccountId);
-      });
-    } finally {
-      final current = _loadedOrNull();
-      if (current != null) {
-        _setLoaded(current.copyWith(submitting: false));
-      }
-    }
+    return _submitStages(loaded);
   }
 
   void _invalidateCreditContractProviders(String liabilityAccountId) {
@@ -322,53 +225,4 @@ class InstallmentContractEditViewModel
       message: message,
     );
   }
-}
-
-String installmentContractPeriodsText(InstallmentContractReadModel contract) {
-  return contract.totalPeriods.toString();
-}
-
-String installmentContractRateText(InstallmentContractReadModel contract) {
-  final ratePpm = contract.interestRatePpm;
-  if (ratePpm == null || ratePpm <= 0) return '';
-  return _trimTrailingZeros((ratePpm / 10000.0).toStringAsFixed(4));
-}
-
-String installmentContractFeeText(InstallmentContractReadModel contract) {
-  if (contract.totalFeeMinor <= 0) return '';
-  return Money(minorUnits: contract.totalFeeMinor).major.toString();
-}
-
-int? _parseRatePpm(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  final percent = double.tryParse(trimmed);
-  if (percent == null || percent <= 0) return null;
-  return (percent * 10000).round();
-}
-
-Money _parseOptionalMoney(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return Money.zero();
-  return Money.tryParse(trimmed) ?? Money.zero();
-}
-
-int? _parseOptionalOverride(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  final money = Money.tryParse(trimmed);
-  if (money == null || money.minorUnits <= 0) return null;
-  return money.minorUnits;
-}
-
-String _trimTrailingZeros(String text) {
-  if (!text.contains('.')) return text;
-  var out = text;
-  while (out.endsWith('0')) {
-    out = out.substring(0, out.length - 1);
-  }
-  if (out.endsWith('.')) {
-    out = out.substring(0, out.length - 1);
-  }
-  return out;
 }

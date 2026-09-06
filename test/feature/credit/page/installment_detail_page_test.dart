@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,9 +90,8 @@ void main() {
           contractStatusChanged: true,
           issues: [
             ContractStatusValidationIssue(
-              type:
-                  ContractStatusValidationIssueType
-                      .skippedScheduleHasAllocation,
+              type: ContractStatusValidationIssueType
+                  .skippedScheduleHasAllocation,
               message: '已跳过的还款计划存在还款分摊。',
             ),
           ],
@@ -195,15 +195,18 @@ InstallmentContractReadModel _contract({
     sourceType: InstallmentSourceType.disbursement,
     disbursementAccountId: 'cash',
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 1,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 2, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    totalFeeMinor: 0,
     status: status,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract-1:stage:1',
+      totalPeriods: 1,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 2, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: 0,
+    ),
   );
 }
 

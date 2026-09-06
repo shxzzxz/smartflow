@@ -21,6 +21,9 @@ import '../infrastructure/credit/repository/drift_bill_repository.dart';
 import '../infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
 import '../infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
+import '../infrastructure/credit/repository/drift_installment_product_repository.dart';
+import '../domain/credit/port/installment_product_repository.dart';
+import '../application/credit/product/installment_product_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
@@ -508,6 +511,18 @@ InstallmentRepository installmentRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+InstallmentProductRepository installmentProductRepository(Ref ref) =>
+    DriftInstallmentProductRepository(ref.watch(appDatabaseProvider));
+
+@Riverpod(keepAlive: true)
+InstallmentProductService installmentProductService(Ref ref) =>
+    InstallmentProductServiceImpl(
+      repository: ref.watch(installmentProductRepositoryProvider),
+      runner: ref.watch(transactionRunnerProvider),
+      ids: ref.watch(idGeneratorProvider),
+    );
+
+@Riverpod(keepAlive: true)
 RepaymentRepository repaymentRepository(Ref ref) {
   return DriftRepaymentRepository(ref.watch(appDatabaseProvider));
 }
@@ -547,6 +562,7 @@ RepaymentAppService repaymentAppService(Ref ref) {
 InstallmentAppService installmentAppService(Ref ref) {
   return InstallmentAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    products: ref.watch(installmentProductRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     creditAccounts: ref.watch(creditAccountRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),

@@ -18,6 +18,8 @@ class BackupTables {
     'bills',
     'bill_items',
     'bill_generation_suppressions',
+    'installment_products',
+    'installment_stage_configs',
     'installment_contracts',
     'installment_schedules',
     'repayments',
@@ -45,6 +47,8 @@ class BackupTables {
       'bills',
       'bill_items',
       'bill_generation_suppressions',
+      'installment_products',
+      'installment_stage_configs',
       'installment_contracts',
       'installment_schedules',
       'repayments',
@@ -180,7 +184,7 @@ class BackupManifest {
     this.encryption,
   });
 
-  static const currentFormatVersion = 1;
+  static const currentFormatVersion = 3;
 
   final int formatVersion;
   final String appVersion;
@@ -316,6 +320,8 @@ class BackupDiff {
         return '导入批次';
       }
       if (table == 'bills' || table == 'bill_items') return '账单';
+      if (table == 'installment_products') return '分期产品';
+      if (table == 'installment_stage_configs') return '分期阶段';
       if (table == 'installment_contracts' ||
           table == 'installment_schedules' ||
           table == 'repayments' ||

@@ -7076,6 +7076,79 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _productNameMeta = const VerificationMeta(
+    'productName',
+  );
+  @override
+  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
+    'product_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _customRulesMeta = const VerificationMeta(
+    'customRules',
+  );
+  @override
+  late final GeneratedColumn<bool> customRules = GeneratedColumn<bool>(
+    'custom_rules',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("custom_rules" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _dayCountMeta = const VerificationMeta(
+    'dayCount',
+  );
+  @override
+  late final GeneratedColumn<String> dayCount = GeneratedColumn<String>(
+    'day_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('thirty360'),
+  );
+  static const VerificationMeta _roundingMeta = const VerificationMeta(
+    'rounding',
+  );
+  @override
+  late final GeneratedColumn<String> rounding = GeneratedColumn<String>(
+    'rounding',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('halfUp'),
+  );
+  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
+    'tailDifference',
+  );
+  @override
+  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
+    'tail_difference',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('lastPeriod'),
+  );
   static const VerificationMeta _liabilityAccountIdMeta =
       const VerificationMeta('liabilityAccountId');
   @override
@@ -7144,17 +7217,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _totalPeriodsMeta = const VerificationMeta(
-    'totalPeriods',
-  );
-  @override
-  late final GeneratedColumn<int> totalPeriods = GeneratedColumn<int>(
-    'total_periods',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _borrowingDateMeta = const VerificationMeta(
     'borrowingDate',
   );
@@ -7167,92 +7229,6 @@ class $InstallmentContractsTable extends InstallmentContracts
         type: DriftSqlType.dateTime,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _firstRepaymentDateMeta =
-      const VerificationMeta('firstRepaymentDate');
-  @override
-  late final GeneratedColumn<DateTime> firstRepaymentDate =
-      GeneratedColumn<DateTime>(
-        'first_repayment_date',
-        aliasedName,
-        false,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: true,
-      );
-  static const VerificationMeta _lastRepaymentDateMeta = const VerificationMeta(
-    'lastRepaymentDate',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastRepaymentDate =
-      GeneratedColumn<DateTime>(
-        'last_repayment_date',
-        aliasedName,
-        false,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: true,
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<
-    InstallmentRepaymentMethod,
-    String
-  >
-  repaymentMethod =
-      GeneratedColumn<String>(
-        'repayment_method',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<InstallmentRepaymentMethod>(
-        $InstallmentContractsTable.$converterrepaymentMethod,
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<InterestRatePeriod?, String>
-  interestRatePeriod =
-      GeneratedColumn<String>(
-        'interest_rate_period',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      ).withConverter<InterestRatePeriod?>(
-        $InstallmentContractsTable.$converterinterestRatePeriodn,
-      );
-  static const VerificationMeta _interestRatePpmMeta = const VerificationMeta(
-    'interestRatePpm',
-  );
-  @override
-  late final GeneratedColumn<int> interestRatePpm = GeneratedColumn<int>(
-    'interest_rate_ppm',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<InterestAccrualMethod, String>
-  interestAccrualMethod =
-      GeneratedColumn<String>(
-        'interest_accrual_method',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-        defaultValue: const Constant('daily'),
-      ).withConverter<InterestAccrualMethod>(
-        $InstallmentContractsTable.$converterinterestAccrualMethod,
-      );
-  static const VerificationMeta _totalFeeMinorMeta = const VerificationMeta(
-    'totalFeeMinor',
-  );
-  @override
-  late final GeneratedColumn<int> totalFeeMinor = GeneratedColumn<int>(
-    'total_fee_minor',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   @override
   late final GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
   status =
@@ -7301,21 +7277,19 @@ class $InstallmentContractsTable extends InstallmentContracts
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    productId,
+    productName,
+    customRules,
+    dayCount,
+    rounding,
+    tailDifference,
     liabilityAccountId,
     sourceType,
     disbursementAccountId,
     disbursementTransactionId,
     sourceRepaymentId,
     principalMinor,
-    totalPeriods,
     borrowingDate,
-    firstRepaymentDate,
-    lastRepaymentDate,
-    repaymentMethod,
-    interestRatePeriod,
-    interestRatePpm,
-    interestAccrualMethod,
-    totalFeeMinor,
     status,
     note,
     createdAt,
@@ -7337,6 +7311,51 @@ class $InstallmentContractsTable extends InstallmentContracts
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    }
+    if (data.containsKey('product_name')) {
+      context.handle(
+        _productNameMeta,
+        productName.isAcceptableOrUnknown(
+          data['product_name']!,
+          _productNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('custom_rules')) {
+      context.handle(
+        _customRulesMeta,
+        customRules.isAcceptableOrUnknown(
+          data['custom_rules']!,
+          _customRulesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('day_count')) {
+      context.handle(
+        _dayCountMeta,
+        dayCount.isAcceptableOrUnknown(data['day_count']!, _dayCountMeta),
+      );
+    }
+    if (data.containsKey('rounding')) {
+      context.handle(
+        _roundingMeta,
+        rounding.isAcceptableOrUnknown(data['rounding']!, _roundingMeta),
+      );
+    }
+    if (data.containsKey('tail_difference')) {
+      context.handle(
+        _tailDifferenceMeta,
+        tailDifference.isAcceptableOrUnknown(
+          data['tail_difference']!,
+          _tailDifferenceMeta,
+        ),
+      );
     }
     if (data.containsKey('liability_account_id')) {
       context.handle(
@@ -7387,17 +7406,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     } else if (isInserting) {
       context.missing(_principalMinorMeta);
     }
-    if (data.containsKey('total_periods')) {
-      context.handle(
-        _totalPeriodsMeta,
-        totalPeriods.isAcceptableOrUnknown(
-          data['total_periods']!,
-          _totalPeriodsMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_totalPeriodsMeta);
-    }
     if (data.containsKey('start_date')) {
       context.handle(
         _borrowingDateMeta,
@@ -7408,46 +7416,6 @@ class $InstallmentContractsTable extends InstallmentContracts
       );
     } else if (isInserting) {
       context.missing(_borrowingDateMeta);
-    }
-    if (data.containsKey('first_repayment_date')) {
-      context.handle(
-        _firstRepaymentDateMeta,
-        firstRepaymentDate.isAcceptableOrUnknown(
-          data['first_repayment_date']!,
-          _firstRepaymentDateMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_firstRepaymentDateMeta);
-    }
-    if (data.containsKey('last_repayment_date')) {
-      context.handle(
-        _lastRepaymentDateMeta,
-        lastRepaymentDate.isAcceptableOrUnknown(
-          data['last_repayment_date']!,
-          _lastRepaymentDateMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_lastRepaymentDateMeta);
-    }
-    if (data.containsKey('interest_rate_ppm')) {
-      context.handle(
-        _interestRatePpmMeta,
-        interestRatePpm.isAcceptableOrUnknown(
-          data['interest_rate_ppm']!,
-          _interestRatePpmMeta,
-        ),
-      );
-    }
-    if (data.containsKey('total_fee_minor')) {
-      context.handle(
-        _totalFeeMinorMeta,
-        totalFeeMinor.isAcceptableOrUnknown(
-          data['total_fee_minor']!,
-          _totalFeeMinorMeta,
-        ),
-      );
     }
     if (data.containsKey('note')) {
       context.handle(
@@ -7480,6 +7448,30 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      ),
+      productName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_name'],
+      ),
+      customRules: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}custom_rules'],
+      )!,
+      dayCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_count'],
+      )!,
+      rounding: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rounding'],
+      )!,
+      tailDifference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tail_difference'],
+      )!,
       liabilityAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}liability_account_id'],
@@ -7506,52 +7498,9 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.int,
         data['${effectivePrefix}principal_minor'],
       )!,
-      totalPeriods: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}total_periods'],
-      )!,
       borrowingDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
-      )!,
-      firstRepaymentDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}first_repayment_date'],
-      )!,
-      lastRepaymentDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_repayment_date'],
-      )!,
-      repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}repayment_method'],
-            )!,
-          ),
-      interestRatePeriod: $InstallmentContractsTable
-          .$converterinterestRatePeriodn
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}interest_rate_period'],
-            ),
-          ),
-      interestRatePpm: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}interest_rate_ppm'],
-      ),
-      interestAccrualMethod: $InstallmentContractsTable
-          .$converterinterestAccrualMethod
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}interest_accrual_method'],
-            )!,
-          ),
-      totalFeeMinor: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}total_fee_minor'],
       )!,
       status: $InstallmentContractsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
@@ -7583,24 +7532,6 @@ class $InstallmentContractsTable extends InstallmentContracts
   $convertersourceType = const EnumNameConverter<InstallmentSourceType>(
     InstallmentSourceType.values,
   );
-  static JsonTypeConverter2<InstallmentRepaymentMethod, String, String>
-  $converterrepaymentMethod =
-      const EnumNameConverter<InstallmentRepaymentMethod>(
-        InstallmentRepaymentMethod.values,
-      );
-  static JsonTypeConverter2<InterestRatePeriod, String, String>
-  $converterinterestRatePeriod = const EnumNameConverter<InterestRatePeriod>(
-    InterestRatePeriod.values,
-  );
-  static JsonTypeConverter2<InterestRatePeriod?, String?, String?>
-  $converterinterestRatePeriodn = JsonTypeConverter2.asNullable(
-    $converterinterestRatePeriod,
-  );
-  static JsonTypeConverter2<InterestAccrualMethod, String, String>
-  $converterinterestAccrualMethod =
-      const EnumNameConverter<InterestAccrualMethod>(
-        InterestAccrualMethod.values,
-      );
   static JsonTypeConverter2<InstallmentContractStatus, String, String>
   $converterstatus = const EnumNameConverter<InstallmentContractStatus>(
     InstallmentContractStatus.values,
@@ -7610,52 +7541,40 @@ class $InstallmentContractsTable extends InstallmentContracts
 class InstallmentContractRow extends DataClass
     implements Insertable<InstallmentContractRow> {
   final String id;
+  final String? productId;
+  final String? productName;
+  final bool customRules;
+  final String dayCount;
+  final String rounding;
+  final String tailDifference;
   final String liabilityAccountId;
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;
   final String? disbursementTransactionId;
   final String? sourceRepaymentId;
   final int principalMinor;
-  final int totalPeriods;
 
-  /// 借款日期 / 合同起算日（旧字段 start_date 沿用，语义统一为借款日期）。
+  /// 借款日期 / 合同起算日。
   final DateTime borrowingDate;
-
-  /// 首期还款日。
-  final DateTime firstRepaymentDate;
-
-  /// 末期还款日。默认 = 首期 + (期数-1) 月，可独调。
-  final DateTime lastRepaymentDate;
-  final InstallmentRepaymentMethod repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
-
-  /// 计息方式（按日 / 按月）。drift 序列化为 enum.name，存量行默认 'daily' 保留旧行为。
-  final InterestAccrualMethod interestAccrualMethod;
-
-  /// 合同总手续费，用于编辑时按 method 重新分配。
-  final int totalFeeMinor;
   final InstallmentContractStatus status;
   final String? note;
   final DateTime createdAt;
   final DateTime updatedAt;
   const InstallmentContractRow({
     required this.id,
+    this.productId,
+    this.productName,
+    required this.customRules,
+    required this.dayCount,
+    required this.rounding,
+    required this.tailDifference,
     required this.liabilityAccountId,
     required this.sourceType,
     this.disbursementAccountId,
     this.disbursementTransactionId,
     this.sourceRepaymentId,
     required this.principalMinor,
-    required this.totalPeriods,
     required this.borrowingDate,
-    required this.firstRepaymentDate,
-    required this.lastRepaymentDate,
-    required this.repaymentMethod,
-    this.interestRatePeriod,
-    this.interestRatePpm,
-    required this.interestAccrualMethod,
-    required this.totalFeeMinor,
     required this.status,
     this.note,
     required this.createdAt,
@@ -7665,6 +7584,16 @@ class InstallmentContractRow extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    if (!nullToAbsent || productId != null) {
+      map['product_id'] = Variable<String>(productId);
+    }
+    if (!nullToAbsent || productName != null) {
+      map['product_name'] = Variable<String>(productName);
+    }
+    map['custom_rules'] = Variable<bool>(customRules);
+    map['day_count'] = Variable<String>(dayCount);
+    map['rounding'] = Variable<String>(rounding);
+    map['tail_difference'] = Variable<String>(tailDifference);
     map['liability_account_id'] = Variable<String>(liabilityAccountId);
     {
       map['source_type'] = Variable<String>(
@@ -7683,35 +7612,7 @@ class InstallmentContractRow extends DataClass
       map['source_repayment_id'] = Variable<String>(sourceRepaymentId);
     }
     map['principal_minor'] = Variable<int>(principalMinor);
-    map['total_periods'] = Variable<int>(totalPeriods);
     map['start_date'] = Variable<DateTime>(borrowingDate);
-    map['first_repayment_date'] = Variable<DateTime>(firstRepaymentDate);
-    map['last_repayment_date'] = Variable<DateTime>(lastRepaymentDate);
-    {
-      map['repayment_method'] = Variable<String>(
-        $InstallmentContractsTable.$converterrepaymentMethod.toSql(
-          repaymentMethod,
-        ),
-      );
-    }
-    if (!nullToAbsent || interestRatePeriod != null) {
-      map['interest_rate_period'] = Variable<String>(
-        $InstallmentContractsTable.$converterinterestRatePeriodn.toSql(
-          interestRatePeriod,
-        ),
-      );
-    }
-    if (!nullToAbsent || interestRatePpm != null) {
-      map['interest_rate_ppm'] = Variable<int>(interestRatePpm);
-    }
-    {
-      map['interest_accrual_method'] = Variable<String>(
-        $InstallmentContractsTable.$converterinterestAccrualMethod.toSql(
-          interestAccrualMethod,
-        ),
-      );
-    }
-    map['total_fee_minor'] = Variable<int>(totalFeeMinor);
     {
       map['status'] = Variable<String>(
         $InstallmentContractsTable.$converterstatus.toSql(status),
@@ -7728,6 +7629,16 @@ class InstallmentContractRow extends DataClass
   InstallmentContractsCompanion toCompanion(bool nullToAbsent) {
     return InstallmentContractsCompanion(
       id: Value(id),
+      productId: productId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(productId),
+      productName: productName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(productName),
+      customRules: Value(customRules),
+      dayCount: Value(dayCount),
+      rounding: Value(rounding),
+      tailDifference: Value(tailDifference),
       liabilityAccountId: Value(liabilityAccountId),
       sourceType: Value(sourceType),
       disbursementAccountId: disbursementAccountId == null && nullToAbsent
@@ -7741,19 +7652,7 @@ class InstallmentContractRow extends DataClass
           ? const Value.absent()
           : Value(sourceRepaymentId),
       principalMinor: Value(principalMinor),
-      totalPeriods: Value(totalPeriods),
       borrowingDate: Value(borrowingDate),
-      firstRepaymentDate: Value(firstRepaymentDate),
-      lastRepaymentDate: Value(lastRepaymentDate),
-      repaymentMethod: Value(repaymentMethod),
-      interestRatePeriod: interestRatePeriod == null && nullToAbsent
-          ? const Value.absent()
-          : Value(interestRatePeriod),
-      interestRatePpm: interestRatePpm == null && nullToAbsent
-          ? const Value.absent()
-          : Value(interestRatePpm),
-      interestAccrualMethod: Value(interestAccrualMethod),
-      totalFeeMinor: Value(totalFeeMinor),
       status: Value(status),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
@@ -7768,6 +7667,12 @@ class InstallmentContractRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentContractRow(
       id: serializer.fromJson<String>(json['id']),
+      productId: serializer.fromJson<String?>(json['productId']),
+      productName: serializer.fromJson<String?>(json['productName']),
+      customRules: serializer.fromJson<bool>(json['customRules']),
+      dayCount: serializer.fromJson<String>(json['dayCount']),
+      rounding: serializer.fromJson<String>(json['rounding']),
+      tailDifference: serializer.fromJson<String>(json['tailDifference']),
       liabilityAccountId: serializer.fromJson<String>(
         json['liabilityAccountId'],
       ),
@@ -7784,24 +7689,7 @@ class InstallmentContractRow extends DataClass
         json['sourceRepaymentId'],
       ),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
-      totalPeriods: serializer.fromJson<int>(json['totalPeriods']),
       borrowingDate: serializer.fromJson<DateTime>(json['borrowingDate']),
-      firstRepaymentDate: serializer.fromJson<DateTime>(
-        json['firstRepaymentDate'],
-      ),
-      lastRepaymentDate: serializer.fromJson<DateTime>(
-        json['lastRepaymentDate'],
-      ),
-      repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
-          .fromJson(serializer.fromJson<String>(json['repaymentMethod'])),
-      interestRatePeriod: $InstallmentContractsTable
-          .$converterinterestRatePeriodn
-          .fromJson(serializer.fromJson<String?>(json['interestRatePeriod'])),
-      interestRatePpm: serializer.fromJson<int?>(json['interestRatePpm']),
-      interestAccrualMethod: $InstallmentContractsTable
-          .$converterinterestAccrualMethod
-          .fromJson(serializer.fromJson<String>(json['interestAccrualMethod'])),
-      totalFeeMinor: serializer.fromJson<int>(json['totalFeeMinor']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
         serializer.fromJson<String>(json['status']),
       ),
@@ -7815,6 +7703,12 @@ class InstallmentContractRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'productId': serializer.toJson<String?>(productId),
+      'productName': serializer.toJson<String?>(productName),
+      'customRules': serializer.toJson<bool>(customRules),
+      'dayCount': serializer.toJson<String>(dayCount),
+      'rounding': serializer.toJson<String>(rounding),
+      'tailDifference': serializer.toJson<String>(tailDifference),
       'liabilityAccountId': serializer.toJson<String>(liabilityAccountId),
       'sourceType': serializer.toJson<String>(
         $InstallmentContractsTable.$convertersourceType.toJson(sourceType),
@@ -7827,27 +7721,7 @@ class InstallmentContractRow extends DataClass
       ),
       'sourceRepaymentId': serializer.toJson<String?>(sourceRepaymentId),
       'principalMinor': serializer.toJson<int>(principalMinor),
-      'totalPeriods': serializer.toJson<int>(totalPeriods),
       'borrowingDate': serializer.toJson<DateTime>(borrowingDate),
-      'firstRepaymentDate': serializer.toJson<DateTime>(firstRepaymentDate),
-      'lastRepaymentDate': serializer.toJson<DateTime>(lastRepaymentDate),
-      'repaymentMethod': serializer.toJson<String>(
-        $InstallmentContractsTable.$converterrepaymentMethod.toJson(
-          repaymentMethod,
-        ),
-      ),
-      'interestRatePeriod': serializer.toJson<String?>(
-        $InstallmentContractsTable.$converterinterestRatePeriodn.toJson(
-          interestRatePeriod,
-        ),
-      ),
-      'interestRatePpm': serializer.toJson<int?>(interestRatePpm),
-      'interestAccrualMethod': serializer.toJson<String>(
-        $InstallmentContractsTable.$converterinterestAccrualMethod.toJson(
-          interestAccrualMethod,
-        ),
-      ),
-      'totalFeeMinor': serializer.toJson<int>(totalFeeMinor),
       'status': serializer.toJson<String>(
         $InstallmentContractsTable.$converterstatus.toJson(status),
       ),
@@ -7859,27 +7733,31 @@ class InstallmentContractRow extends DataClass
 
   InstallmentContractRow copyWith({
     String? id,
+    Value<String?> productId = const Value.absent(),
+    Value<String?> productName = const Value.absent(),
+    bool? customRules,
+    String? dayCount,
+    String? rounding,
+    String? tailDifference,
     String? liabilityAccountId,
     InstallmentSourceType? sourceType,
     Value<String?> disbursementAccountId = const Value.absent(),
     Value<String?> disbursementTransactionId = const Value.absent(),
     Value<String?> sourceRepaymentId = const Value.absent(),
     int? principalMinor,
-    int? totalPeriods,
     DateTime? borrowingDate,
-    DateTime? firstRepaymentDate,
-    DateTime? lastRepaymentDate,
-    InstallmentRepaymentMethod? repaymentMethod,
-    Value<InterestRatePeriod?> interestRatePeriod = const Value.absent(),
-    Value<int?> interestRatePpm = const Value.absent(),
-    InterestAccrualMethod? interestAccrualMethod,
-    int? totalFeeMinor,
     InstallmentContractStatus? status,
     Value<String?> note = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => InstallmentContractRow(
     id: id ?? this.id,
+    productId: productId.present ? productId.value : this.productId,
+    productName: productName.present ? productName.value : this.productName,
+    customRules: customRules ?? this.customRules,
+    dayCount: dayCount ?? this.dayCount,
+    rounding: rounding ?? this.rounding,
+    tailDifference: tailDifference ?? this.tailDifference,
     liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
     sourceType: sourceType ?? this.sourceType,
     disbursementAccountId: disbursementAccountId.present
@@ -7892,19 +7770,7 @@ class InstallmentContractRow extends DataClass
         ? sourceRepaymentId.value
         : this.sourceRepaymentId,
     principalMinor: principalMinor ?? this.principalMinor,
-    totalPeriods: totalPeriods ?? this.totalPeriods,
     borrowingDate: borrowingDate ?? this.borrowingDate,
-    firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
-    lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
-    repaymentMethod: repaymentMethod ?? this.repaymentMethod,
-    interestRatePeriod: interestRatePeriod.present
-        ? interestRatePeriod.value
-        : this.interestRatePeriod,
-    interestRatePpm: interestRatePpm.present
-        ? interestRatePpm.value
-        : this.interestRatePpm,
-    interestAccrualMethod: interestAccrualMethod ?? this.interestAccrualMethod,
-    totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
     status: status ?? this.status,
     note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
@@ -7913,6 +7779,18 @@ class InstallmentContractRow extends DataClass
   InstallmentContractRow copyWithCompanion(InstallmentContractsCompanion data) {
     return InstallmentContractRow(
       id: data.id.present ? data.id.value : this.id,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      productName: data.productName.present
+          ? data.productName.value
+          : this.productName,
+      customRules: data.customRules.present
+          ? data.customRules.value
+          : this.customRules,
+      dayCount: data.dayCount.present ? data.dayCount.value : this.dayCount,
+      rounding: data.rounding.present ? data.rounding.value : this.rounding,
+      tailDifference: data.tailDifference.present
+          ? data.tailDifference.value
+          : this.tailDifference,
       liabilityAccountId: data.liabilityAccountId.present
           ? data.liabilityAccountId.value
           : this.liabilityAccountId,
@@ -7931,33 +7809,9 @@ class InstallmentContractRow extends DataClass
       principalMinor: data.principalMinor.present
           ? data.principalMinor.value
           : this.principalMinor,
-      totalPeriods: data.totalPeriods.present
-          ? data.totalPeriods.value
-          : this.totalPeriods,
       borrowingDate: data.borrowingDate.present
           ? data.borrowingDate.value
           : this.borrowingDate,
-      firstRepaymentDate: data.firstRepaymentDate.present
-          ? data.firstRepaymentDate.value
-          : this.firstRepaymentDate,
-      lastRepaymentDate: data.lastRepaymentDate.present
-          ? data.lastRepaymentDate.value
-          : this.lastRepaymentDate,
-      repaymentMethod: data.repaymentMethod.present
-          ? data.repaymentMethod.value
-          : this.repaymentMethod,
-      interestRatePeriod: data.interestRatePeriod.present
-          ? data.interestRatePeriod.value
-          : this.interestRatePeriod,
-      interestRatePpm: data.interestRatePpm.present
-          ? data.interestRatePpm.value
-          : this.interestRatePpm,
-      interestAccrualMethod: data.interestAccrualMethod.present
-          ? data.interestAccrualMethod.value
-          : this.interestAccrualMethod,
-      totalFeeMinor: data.totalFeeMinor.present
-          ? data.totalFeeMinor.value
-          : this.totalFeeMinor,
       status: data.status.present ? data.status.value : this.status,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -7969,21 +7823,19 @@ class InstallmentContractRow extends DataClass
   String toString() {
     return (StringBuffer('InstallmentContractRow(')
           ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('customRules: $customRules, ')
+          ..write('dayCount: $dayCount, ')
+          ..write('rounding: $rounding, ')
+          ..write('tailDifference: $tailDifference, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('sourceRepaymentId: $sourceRepaymentId, ')
           ..write('principalMinor: $principalMinor, ')
-          ..write('totalPeriods: $totalPeriods, ')
           ..write('borrowingDate: $borrowingDate, ')
-          ..write('firstRepaymentDate: $firstRepaymentDate, ')
-          ..write('lastRepaymentDate: $lastRepaymentDate, ')
-          ..write('repaymentMethod: $repaymentMethod, ')
-          ..write('interestRatePeriod: $interestRatePeriod, ')
-          ..write('interestRatePpm: $interestRatePpm, ')
-          ..write('interestAccrualMethod: $interestAccrualMethod, ')
-          ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
@@ -7995,21 +7847,19 @@ class InstallmentContractRow extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
+    productId,
+    productName,
+    customRules,
+    dayCount,
+    rounding,
+    tailDifference,
     liabilityAccountId,
     sourceType,
     disbursementAccountId,
     disbursementTransactionId,
     sourceRepaymentId,
     principalMinor,
-    totalPeriods,
     borrowingDate,
-    firstRepaymentDate,
-    lastRepaymentDate,
-    repaymentMethod,
-    interestRatePeriod,
-    interestRatePpm,
-    interestAccrualMethod,
-    totalFeeMinor,
     status,
     note,
     createdAt,
@@ -8020,21 +7870,19 @@ class InstallmentContractRow extends DataClass
       identical(this, other) ||
       (other is InstallmentContractRow &&
           other.id == this.id &&
+          other.productId == this.productId &&
+          other.productName == this.productName &&
+          other.customRules == this.customRules &&
+          other.dayCount == this.dayCount &&
+          other.rounding == this.rounding &&
+          other.tailDifference == this.tailDifference &&
           other.liabilityAccountId == this.liabilityAccountId &&
           other.sourceType == this.sourceType &&
           other.disbursementAccountId == this.disbursementAccountId &&
           other.disbursementTransactionId == this.disbursementTransactionId &&
           other.sourceRepaymentId == this.sourceRepaymentId &&
           other.principalMinor == this.principalMinor &&
-          other.totalPeriods == this.totalPeriods &&
           other.borrowingDate == this.borrowingDate &&
-          other.firstRepaymentDate == this.firstRepaymentDate &&
-          other.lastRepaymentDate == this.lastRepaymentDate &&
-          other.repaymentMethod == this.repaymentMethod &&
-          other.interestRatePeriod == this.interestRatePeriod &&
-          other.interestRatePpm == this.interestRatePpm &&
-          other.interestAccrualMethod == this.interestAccrualMethod &&
-          other.totalFeeMinor == this.totalFeeMinor &&
           other.status == this.status &&
           other.note == this.note &&
           other.createdAt == this.createdAt &&
@@ -8044,21 +7892,19 @@ class InstallmentContractRow extends DataClass
 class InstallmentContractsCompanion
     extends UpdateCompanion<InstallmentContractRow> {
   final Value<String> id;
+  final Value<String?> productId;
+  final Value<String?> productName;
+  final Value<bool> customRules;
+  final Value<String> dayCount;
+  final Value<String> rounding;
+  final Value<String> tailDifference;
   final Value<String> liabilityAccountId;
   final Value<InstallmentSourceType> sourceType;
   final Value<String?> disbursementAccountId;
   final Value<String?> disbursementTransactionId;
   final Value<String?> sourceRepaymentId;
   final Value<int> principalMinor;
-  final Value<int> totalPeriods;
   final Value<DateTime> borrowingDate;
-  final Value<DateTime> firstRepaymentDate;
-  final Value<DateTime> lastRepaymentDate;
-  final Value<InstallmentRepaymentMethod> repaymentMethod;
-  final Value<InterestRatePeriod?> interestRatePeriod;
-  final Value<int?> interestRatePpm;
-  final Value<InterestAccrualMethod> interestAccrualMethod;
-  final Value<int> totalFeeMinor;
   final Value<InstallmentContractStatus> status;
   final Value<String?> note;
   final Value<DateTime> createdAt;
@@ -8066,21 +7912,19 @@ class InstallmentContractsCompanion
   final Value<int> rowid;
   const InstallmentContractsCompanion({
     this.id = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.customRules = const Value.absent(),
+    this.dayCount = const Value.absent(),
+    this.rounding = const Value.absent(),
+    this.tailDifference = const Value.absent(),
     this.liabilityAccountId = const Value.absent(),
     this.sourceType = const Value.absent(),
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
     this.sourceRepaymentId = const Value.absent(),
     this.principalMinor = const Value.absent(),
-    this.totalPeriods = const Value.absent(),
     this.borrowingDate = const Value.absent(),
-    this.firstRepaymentDate = const Value.absent(),
-    this.lastRepaymentDate = const Value.absent(),
-    this.repaymentMethod = const Value.absent(),
-    this.interestRatePeriod = const Value.absent(),
-    this.interestRatePpm = const Value.absent(),
-    this.interestAccrualMethod = const Value.absent(),
-    this.totalFeeMinor = const Value.absent(),
     this.status = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -8089,21 +7933,19 @@ class InstallmentContractsCompanion
   });
   InstallmentContractsCompanion.insert({
     required String id,
+    this.productId = const Value.absent(),
+    this.productName = const Value.absent(),
+    this.customRules = const Value.absent(),
+    this.dayCount = const Value.absent(),
+    this.rounding = const Value.absent(),
+    this.tailDifference = const Value.absent(),
     required String liabilityAccountId,
     required InstallmentSourceType sourceType,
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
     this.sourceRepaymentId = const Value.absent(),
     required int principalMinor,
-    required int totalPeriods,
     required DateTime borrowingDate,
-    required DateTime firstRepaymentDate,
-    required DateTime lastRepaymentDate,
-    required InstallmentRepaymentMethod repaymentMethod,
-    this.interestRatePeriod = const Value.absent(),
-    this.interestRatePpm = const Value.absent(),
-    this.interestAccrualMethod = const Value.absent(),
-    this.totalFeeMinor = const Value.absent(),
     required InstallmentContractStatus status,
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -8113,29 +7955,23 @@ class InstallmentContractsCompanion
        liabilityAccountId = Value(liabilityAccountId),
        sourceType = Value(sourceType),
        principalMinor = Value(principalMinor),
-       totalPeriods = Value(totalPeriods),
        borrowingDate = Value(borrowingDate),
-       firstRepaymentDate = Value(firstRepaymentDate),
-       lastRepaymentDate = Value(lastRepaymentDate),
-       repaymentMethod = Value(repaymentMethod),
        status = Value(status);
   static Insertable<InstallmentContractRow> custom({
     Expression<String>? id,
+    Expression<String>? productId,
+    Expression<String>? productName,
+    Expression<bool>? customRules,
+    Expression<String>? dayCount,
+    Expression<String>? rounding,
+    Expression<String>? tailDifference,
     Expression<String>? liabilityAccountId,
     Expression<String>? sourceType,
     Expression<String>? disbursementAccountId,
     Expression<String>? disbursementTransactionId,
     Expression<String>? sourceRepaymentId,
     Expression<int>? principalMinor,
-    Expression<int>? totalPeriods,
     Expression<DateTime>? borrowingDate,
-    Expression<DateTime>? firstRepaymentDate,
-    Expression<DateTime>? lastRepaymentDate,
-    Expression<String>? repaymentMethod,
-    Expression<String>? interestRatePeriod,
-    Expression<int>? interestRatePpm,
-    Expression<String>? interestAccrualMethod,
-    Expression<int>? totalFeeMinor,
     Expression<String>? status,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
@@ -8144,6 +7980,12 @@ class InstallmentContractsCompanion
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (productId != null) 'product_id': productId,
+      if (productName != null) 'product_name': productName,
+      if (customRules != null) 'custom_rules': customRules,
+      if (dayCount != null) 'day_count': dayCount,
+      if (rounding != null) 'rounding': rounding,
+      if (tailDifference != null) 'tail_difference': tailDifference,
       if (liabilityAccountId != null)
         'liability_account_id': liabilityAccountId,
       if (sourceType != null) 'source_type': sourceType,
@@ -8153,18 +7995,7 @@ class InstallmentContractsCompanion
         'disbursement_transaction_id': disbursementTransactionId,
       if (sourceRepaymentId != null) 'source_repayment_id': sourceRepaymentId,
       if (principalMinor != null) 'principal_minor': principalMinor,
-      if (totalPeriods != null) 'total_periods': totalPeriods,
       if (borrowingDate != null) 'start_date': borrowingDate,
-      if (firstRepaymentDate != null)
-        'first_repayment_date': firstRepaymentDate,
-      if (lastRepaymentDate != null) 'last_repayment_date': lastRepaymentDate,
-      if (repaymentMethod != null) 'repayment_method': repaymentMethod,
-      if (interestRatePeriod != null)
-        'interest_rate_period': interestRatePeriod,
-      if (interestRatePpm != null) 'interest_rate_ppm': interestRatePpm,
-      if (interestAccrualMethod != null)
-        'interest_accrual_method': interestAccrualMethod,
-      if (totalFeeMinor != null) 'total_fee_minor': totalFeeMinor,
       if (status != null) 'status': status,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
@@ -8175,21 +8006,19 @@ class InstallmentContractsCompanion
 
   InstallmentContractsCompanion copyWith({
     Value<String>? id,
+    Value<String?>? productId,
+    Value<String?>? productName,
+    Value<bool>? customRules,
+    Value<String>? dayCount,
+    Value<String>? rounding,
+    Value<String>? tailDifference,
     Value<String>? liabilityAccountId,
     Value<InstallmentSourceType>? sourceType,
     Value<String?>? disbursementAccountId,
     Value<String?>? disbursementTransactionId,
     Value<String?>? sourceRepaymentId,
     Value<int>? principalMinor,
-    Value<int>? totalPeriods,
     Value<DateTime>? borrowingDate,
-    Value<DateTime>? firstRepaymentDate,
-    Value<DateTime>? lastRepaymentDate,
-    Value<InstallmentRepaymentMethod>? repaymentMethod,
-    Value<InterestRatePeriod?>? interestRatePeriod,
-    Value<int?>? interestRatePpm,
-    Value<InterestAccrualMethod>? interestAccrualMethod,
-    Value<int>? totalFeeMinor,
     Value<InstallmentContractStatus>? status,
     Value<String?>? note,
     Value<DateTime>? createdAt,
@@ -8198,6 +8027,12 @@ class InstallmentContractsCompanion
   }) {
     return InstallmentContractsCompanion(
       id: id ?? this.id,
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      customRules: customRules ?? this.customRules,
+      dayCount: dayCount ?? this.dayCount,
+      rounding: rounding ?? this.rounding,
+      tailDifference: tailDifference ?? this.tailDifference,
       liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
       sourceType: sourceType ?? this.sourceType,
       disbursementAccountId:
@@ -8206,16 +8041,7 @@ class InstallmentContractsCompanion
           disbursementTransactionId ?? this.disbursementTransactionId,
       sourceRepaymentId: sourceRepaymentId ?? this.sourceRepaymentId,
       principalMinor: principalMinor ?? this.principalMinor,
-      totalPeriods: totalPeriods ?? this.totalPeriods,
       borrowingDate: borrowingDate ?? this.borrowingDate,
-      firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
-      lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
-      repaymentMethod: repaymentMethod ?? this.repaymentMethod,
-      interestRatePeriod: interestRatePeriod ?? this.interestRatePeriod,
-      interestRatePpm: interestRatePpm ?? this.interestRatePpm,
-      interestAccrualMethod:
-          interestAccrualMethod ?? this.interestAccrualMethod,
-      totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
       status: status ?? this.status,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
@@ -8229,6 +8055,24 @@ class InstallmentContractsCompanion
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (productName.present) {
+      map['product_name'] = Variable<String>(productName.value);
+    }
+    if (customRules.present) {
+      map['custom_rules'] = Variable<bool>(customRules.value);
+    }
+    if (dayCount.present) {
+      map['day_count'] = Variable<String>(dayCount.value);
+    }
+    if (rounding.present) {
+      map['rounding'] = Variable<String>(rounding.value);
+    }
+    if (tailDifference.present) {
+      map['tail_difference'] = Variable<String>(tailDifference.value);
     }
     if (liabilityAccountId.present) {
       map['liability_account_id'] = Variable<String>(liabilityAccountId.value);
@@ -8254,46 +8098,8 @@ class InstallmentContractsCompanion
     if (principalMinor.present) {
       map['principal_minor'] = Variable<int>(principalMinor.value);
     }
-    if (totalPeriods.present) {
-      map['total_periods'] = Variable<int>(totalPeriods.value);
-    }
     if (borrowingDate.present) {
       map['start_date'] = Variable<DateTime>(borrowingDate.value);
-    }
-    if (firstRepaymentDate.present) {
-      map['first_repayment_date'] = Variable<DateTime>(
-        firstRepaymentDate.value,
-      );
-    }
-    if (lastRepaymentDate.present) {
-      map['last_repayment_date'] = Variable<DateTime>(lastRepaymentDate.value);
-    }
-    if (repaymentMethod.present) {
-      map['repayment_method'] = Variable<String>(
-        $InstallmentContractsTable.$converterrepaymentMethod.toSql(
-          repaymentMethod.value,
-        ),
-      );
-    }
-    if (interestRatePeriod.present) {
-      map['interest_rate_period'] = Variable<String>(
-        $InstallmentContractsTable.$converterinterestRatePeriodn.toSql(
-          interestRatePeriod.value,
-        ),
-      );
-    }
-    if (interestRatePpm.present) {
-      map['interest_rate_ppm'] = Variable<int>(interestRatePpm.value);
-    }
-    if (interestAccrualMethod.present) {
-      map['interest_accrual_method'] = Variable<String>(
-        $InstallmentContractsTable.$converterinterestAccrualMethod.toSql(
-          interestAccrualMethod.value,
-        ),
-      );
-    }
-    if (totalFeeMinor.present) {
-      map['total_fee_minor'] = Variable<int>(totalFeeMinor.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(
@@ -8319,23 +8125,1729 @@ class InstallmentContractsCompanion
   String toString() {
     return (StringBuffer('InstallmentContractsCompanion(')
           ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('productName: $productName, ')
+          ..write('customRules: $customRules, ')
+          ..write('dayCount: $dayCount, ')
+          ..write('rounding: $rounding, ')
+          ..write('tailDifference: $tailDifference, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('sourceRepaymentId: $sourceRepaymentId, ')
           ..write('principalMinor: $principalMinor, ')
-          ..write('totalPeriods: $totalPeriods, ')
           ..write('borrowingDate: $borrowingDate, ')
-          ..write('firstRepaymentDate: $firstRepaymentDate, ')
-          ..write('lastRepaymentDate: $lastRepaymentDate, ')
-          ..write('repaymentMethod: $repaymentMethod, ')
-          ..write('interestRatePeriod: $interestRatePeriod, ')
-          ..write('interestRatePpm: $interestRatePpm, ')
-          ..write('interestAccrualMethod: $interestAccrualMethod, ')
-          ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentProductsTable extends InstallmentProducts
+    with TableInfo<$InstallmentProductsTable, InstallmentProductRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentProductsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _dayCountMeta = const VerificationMeta(
+    'dayCount',
+  );
+  @override
+  late final GeneratedColumn<String> dayCount = GeneratedColumn<String>(
+    'day_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('thirty360'),
+  );
+  static const VerificationMeta _roundingMeta = const VerificationMeta(
+    'rounding',
+  );
+  @override
+  late final GeneratedColumn<String> rounding = GeneratedColumn<String>(
+    'rounding',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('halfUp'),
+  );
+  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
+    'tailDifference',
+  );
+  @override
+  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
+    'tail_difference',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('lastPeriod'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    archived,
+    dayCount,
+    rounding,
+    tailDifference,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_products';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentProductRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
+    if (data.containsKey('day_count')) {
+      context.handle(
+        _dayCountMeta,
+        dayCount.isAcceptableOrUnknown(data['day_count']!, _dayCountMeta),
+      );
+    }
+    if (data.containsKey('rounding')) {
+      context.handle(
+        _roundingMeta,
+        rounding.isAcceptableOrUnknown(data['rounding']!, _roundingMeta),
+      );
+    }
+    if (data.containsKey('tail_difference')) {
+      context.handle(
+        _tailDifferenceMeta,
+        tailDifference.isAcceptableOrUnknown(
+          data['tail_difference']!,
+          _tailDifferenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentProductRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentProductRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
+      dayCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_count'],
+      )!,
+      rounding: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rounding'],
+      )!,
+      tailDifference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tail_difference'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentProductsTable createAlias(String alias) {
+    return $InstallmentProductsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentProductRow extends DataClass
+    implements Insertable<InstallmentProductRow> {
+  final String id;
+  final String name;
+  final bool archived;
+  final String dayCount;
+  final String rounding;
+  final String tailDifference;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentProductRow({
+    required this.id,
+    required this.name,
+    required this.archived,
+    required this.dayCount,
+    required this.rounding,
+    required this.tailDifference,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['archived'] = Variable<bool>(archived);
+    map['day_count'] = Variable<String>(dayCount);
+    map['rounding'] = Variable<String>(rounding);
+    map['tail_difference'] = Variable<String>(tailDifference);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentProductsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentProductsCompanion(
+      id: Value(id),
+      name: Value(name),
+      archived: Value(archived),
+      dayCount: Value(dayCount),
+      rounding: Value(rounding),
+      tailDifference: Value(tailDifference),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentProductRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentProductRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      archived: serializer.fromJson<bool>(json['archived']),
+      dayCount: serializer.fromJson<String>(json['dayCount']),
+      rounding: serializer.fromJson<String>(json['rounding']),
+      tailDifference: serializer.fromJson<String>(json['tailDifference']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'archived': serializer.toJson<bool>(archived),
+      'dayCount': serializer.toJson<String>(dayCount),
+      'rounding': serializer.toJson<String>(rounding),
+      'tailDifference': serializer.toJson<String>(tailDifference),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentProductRow copyWith({
+    String? id,
+    String? name,
+    bool? archived,
+    String? dayCount,
+    String? rounding,
+    String? tailDifference,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentProductRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    archived: archived ?? this.archived,
+    dayCount: dayCount ?? this.dayCount,
+    rounding: rounding ?? this.rounding,
+    tailDifference: tailDifference ?? this.tailDifference,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentProductRow copyWithCompanion(InstallmentProductsCompanion data) {
+    return InstallmentProductRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      archived: data.archived.present ? data.archived.value : this.archived,
+      dayCount: data.dayCount.present ? data.dayCount.value : this.dayCount,
+      rounding: data.rounding.present ? data.rounding.value : this.rounding,
+      tailDifference: data.tailDifference.present
+          ? data.tailDifference.value
+          : this.tailDifference,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentProductRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('archived: $archived, ')
+          ..write('dayCount: $dayCount, ')
+          ..write('rounding: $rounding, ')
+          ..write('tailDifference: $tailDifference, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    archived,
+    dayCount,
+    rounding,
+    tailDifference,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentProductRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.archived == this.archived &&
+          other.dayCount == this.dayCount &&
+          other.rounding == this.rounding &&
+          other.tailDifference == this.tailDifference &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentProductsCompanion
+    extends UpdateCompanion<InstallmentProductRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<bool> archived;
+  final Value<String> dayCount;
+  final Value<String> rounding;
+  final Value<String> tailDifference;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InstallmentProductsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.archived = const Value.absent(),
+    this.dayCount = const Value.absent(),
+    this.rounding = const Value.absent(),
+    this.tailDifference = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentProductsCompanion.insert({
+    required String id,
+    required String name,
+    this.archived = const Value.absent(),
+    this.dayCount = const Value.absent(),
+    this.rounding = const Value.absent(),
+    this.tailDifference = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
+  static Insertable<InstallmentProductRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<bool>? archived,
+    Expression<String>? dayCount,
+    Expression<String>? rounding,
+    Expression<String>? tailDifference,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (archived != null) 'archived': archived,
+      if (dayCount != null) 'day_count': dayCount,
+      if (rounding != null) 'rounding': rounding,
+      if (tailDifference != null) 'tail_difference': tailDifference,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentProductsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<bool>? archived,
+    Value<String>? dayCount,
+    Value<String>? rounding,
+    Value<String>? tailDifference,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentProductsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      archived: archived ?? this.archived,
+      dayCount: dayCount ?? this.dayCount,
+      rounding: rounding ?? this.rounding,
+      tailDifference: tailDifference ?? this.tailDifference,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
+    if (dayCount.present) {
+      map['day_count'] = Variable<String>(dayCount.value);
+    }
+    if (rounding.present) {
+      map['rounding'] = Variable<String>(rounding.value);
+    }
+    if (tailDifference.present) {
+      map['tail_difference'] = Variable<String>(tailDifference.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentProductsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('archived: $archived, ')
+          ..write('dayCount: $dayCount, ')
+          ..write('rounding: $rounding, ')
+          ..write('tailDifference: $tailDifference, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentStageConfigsTable extends InstallmentStageConfigs
+    with TableInfo<$InstallmentStageConfigsTable, InstallmentStageConfigRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentStageConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerTypeMeta = const VerificationMeta(
+    'ownerType',
+  );
+  @override
+  late final GeneratedColumn<String> ownerType = GeneratedColumn<String>(
+    'owner_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageKindMeta = const VerificationMeta(
+    'stageKind',
+  );
+  @override
+  late final GeneratedColumn<String> stageKind = GeneratedColumn<String>(
+    'stage_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repaymentMethodMeta = const VerificationMeta(
+    'repaymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> repaymentMethod = GeneratedColumn<String>(
+    'repayment_method',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _intervalMonthsMeta = const VerificationMeta(
+    'intervalMonths',
+  );
+  @override
+  late final GeneratedColumn<int> intervalMonths = GeneratedColumn<int>(
+    'interval_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratePeriodMeta = const VerificationMeta(
+    'ratePeriod',
+  );
+  @override
+  late final GeneratedColumn<String> ratePeriod = GeneratedColumn<String>(
+    'rate_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _accrualMeta = const VerificationMeta(
+    'accrual',
+  );
+  @override
+  late final GeneratedColumn<String> accrual = GeneratedColumn<String>(
+    'accrual',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountAlgorithmMeta = const VerificationMeta(
+    'amountAlgorithm',
+  );
+  @override
+  late final GeneratedColumn<String> amountAlgorithm = GeneratedColumn<String>(
+    'amount_algorithm',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _periodsMeta = const VerificationMeta(
+    'periods',
+  );
+  @override
+  late final GeneratedColumn<int> periods = GeneratedColumn<int>(
+    'periods',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratePpmMeta = const VerificationMeta(
+    'ratePpm',
+  );
+  @override
+  late final GeneratedColumn<int> ratePpm = GeneratedColumn<int>(
+    'rate_ppm',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _endPrincipalMinorMeta = const VerificationMeta(
+    'endPrincipalMinor',
+  );
+  @override
+  late final GeneratedColumn<int> endPrincipalMinor = GeneratedColumn<int>(
+    'end_principal_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fixedAmountMinorMeta = const VerificationMeta(
+    'fixedAmountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> fixedAmountMinor = GeneratedColumn<int>(
+    'fixed_amount_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _feeMinorMeta = const VerificationMeta(
+    'feeMinor',
+  );
+  @override
+  late final GeneratedColumn<int> feeMinor = GeneratedColumn<int>(
+    'fee_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _untilDateMeta = const VerificationMeta(
+    'untilDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> untilDate = GeneratedColumn<DateTime>(
+    'until_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _firstDateMeta = const VerificationMeta(
+    'firstDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstDate = GeneratedColumn<DateTime>(
+    'first_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastDateMeta = const VerificationMeta(
+    'lastDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastDate = GeneratedColumn<DateTime>(
+    'last_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _accrualStartDateMeta = const VerificationMeta(
+    'accrualStartDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> accrualStartDate =
+      GeneratedColumn<DateTime>(
+        'accrual_start_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    ownerType,
+    ownerId,
+    position,
+    stageKind,
+    repaymentMethod,
+    intervalMonths,
+    ratePeriod,
+    accrual,
+    amountAlgorithm,
+    periods,
+    ratePpm,
+    endPrincipalMinor,
+    fixedAmountMinor,
+    feeMinor,
+    untilDate,
+    firstDate,
+    lastDate,
+    accrualStartDate,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_stage_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentStageConfigRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('owner_type')) {
+      context.handle(
+        _ownerTypeMeta,
+        ownerType.isAcceptableOrUnknown(data['owner_type']!, _ownerTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerTypeMeta);
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ownerIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('stage_kind')) {
+      context.handle(
+        _stageKindMeta,
+        stageKind.isAcceptableOrUnknown(data['stage_kind']!, _stageKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stageKindMeta);
+    }
+    if (data.containsKey('repayment_method')) {
+      context.handle(
+        _repaymentMethodMeta,
+        repaymentMethod.isAcceptableOrUnknown(
+          data['repayment_method']!,
+          _repaymentMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interval_months')) {
+      context.handle(
+        _intervalMonthsMeta,
+        intervalMonths.isAcceptableOrUnknown(
+          data['interval_months']!,
+          _intervalMonthsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rate_period')) {
+      context.handle(
+        _ratePeriodMeta,
+        ratePeriod.isAcceptableOrUnknown(data['rate_period']!, _ratePeriodMeta),
+      );
+    }
+    if (data.containsKey('accrual')) {
+      context.handle(
+        _accrualMeta,
+        accrual.isAcceptableOrUnknown(data['accrual']!, _accrualMeta),
+      );
+    }
+    if (data.containsKey('amount_algorithm')) {
+      context.handle(
+        _amountAlgorithmMeta,
+        amountAlgorithm.isAcceptableOrUnknown(
+          data['amount_algorithm']!,
+          _amountAlgorithmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('periods')) {
+      context.handle(
+        _periodsMeta,
+        periods.isAcceptableOrUnknown(data['periods']!, _periodsMeta),
+      );
+    }
+    if (data.containsKey('rate_ppm')) {
+      context.handle(
+        _ratePpmMeta,
+        ratePpm.isAcceptableOrUnknown(data['rate_ppm']!, _ratePpmMeta),
+      );
+    }
+    if (data.containsKey('end_principal_minor')) {
+      context.handle(
+        _endPrincipalMinorMeta,
+        endPrincipalMinor.isAcceptableOrUnknown(
+          data['end_principal_minor']!,
+          _endPrincipalMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fixed_amount_minor')) {
+      context.handle(
+        _fixedAmountMinorMeta,
+        fixedAmountMinor.isAcceptableOrUnknown(
+          data['fixed_amount_minor']!,
+          _fixedAmountMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fee_minor')) {
+      context.handle(
+        _feeMinorMeta,
+        feeMinor.isAcceptableOrUnknown(data['fee_minor']!, _feeMinorMeta),
+      );
+    }
+    if (data.containsKey('until_date')) {
+      context.handle(
+        _untilDateMeta,
+        untilDate.isAcceptableOrUnknown(data['until_date']!, _untilDateMeta),
+      );
+    }
+    if (data.containsKey('first_date')) {
+      context.handle(
+        _firstDateMeta,
+        firstDate.isAcceptableOrUnknown(data['first_date']!, _firstDateMeta),
+      );
+    }
+    if (data.containsKey('last_date')) {
+      context.handle(
+        _lastDateMeta,
+        lastDate.isAcceptableOrUnknown(data['last_date']!, _lastDateMeta),
+      );
+    }
+    if (data.containsKey('accrual_start_date')) {
+      context.handle(
+        _accrualStartDateMeta,
+        accrualStartDate.isAcceptableOrUnknown(
+          data['accrual_start_date']!,
+          _accrualStartDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentStageConfigRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentStageConfigRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      ownerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_type'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      stageKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stage_kind'],
+      )!,
+      repaymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repayment_method'],
+      ),
+      intervalMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interval_months'],
+      ),
+      ratePeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate_period'],
+      ),
+      accrual: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}accrual'],
+      ),
+      amountAlgorithm: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}amount_algorithm'],
+      ),
+      periods: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}periods'],
+      ),
+      ratePpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_ppm'],
+      ),
+      endPrincipalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}end_principal_minor'],
+      ),
+      fixedAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fixed_amount_minor'],
+      ),
+      feeMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fee_minor'],
+      ),
+      untilDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}until_date'],
+      ),
+      firstDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_date'],
+      ),
+      lastDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_date'],
+      ),
+      accrualStartDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}accrual_start_date'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentStageConfigsTable createAlias(String alias) {
+    return $InstallmentStageConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentStageConfigRow extends DataClass
+    implements Insertable<InstallmentStageConfigRow> {
+  final String id;
+  final String ownerType;
+  final String ownerId;
+  final int position;
+  final String stageKind;
+  final String? repaymentMethod;
+  final int? intervalMonths;
+  final String? ratePeriod;
+  final String? accrual;
+  final String? amountAlgorithm;
+  final int? periods;
+  final int? ratePpm;
+  final int? endPrincipalMinor;
+  final int? fixedAmountMinor;
+  final int? feeMinor;
+  final DateTime? untilDate;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  final DateTime? accrualStartDate;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentStageConfigRow({
+    required this.id,
+    required this.ownerType,
+    required this.ownerId,
+    required this.position,
+    required this.stageKind,
+    this.repaymentMethod,
+    this.intervalMonths,
+    this.ratePeriod,
+    this.accrual,
+    this.amountAlgorithm,
+    this.periods,
+    this.ratePpm,
+    this.endPrincipalMinor,
+    this.fixedAmountMinor,
+    this.feeMinor,
+    this.untilDate,
+    this.firstDate,
+    this.lastDate,
+    this.accrualStartDate,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['owner_type'] = Variable<String>(ownerType);
+    map['owner_id'] = Variable<String>(ownerId);
+    map['position'] = Variable<int>(position);
+    map['stage_kind'] = Variable<String>(stageKind);
+    if (!nullToAbsent || repaymentMethod != null) {
+      map['repayment_method'] = Variable<String>(repaymentMethod);
+    }
+    if (!nullToAbsent || intervalMonths != null) {
+      map['interval_months'] = Variable<int>(intervalMonths);
+    }
+    if (!nullToAbsent || ratePeriod != null) {
+      map['rate_period'] = Variable<String>(ratePeriod);
+    }
+    if (!nullToAbsent || accrual != null) {
+      map['accrual'] = Variable<String>(accrual);
+    }
+    if (!nullToAbsent || amountAlgorithm != null) {
+      map['amount_algorithm'] = Variable<String>(amountAlgorithm);
+    }
+    if (!nullToAbsent || periods != null) {
+      map['periods'] = Variable<int>(periods);
+    }
+    if (!nullToAbsent || ratePpm != null) {
+      map['rate_ppm'] = Variable<int>(ratePpm);
+    }
+    if (!nullToAbsent || endPrincipalMinor != null) {
+      map['end_principal_minor'] = Variable<int>(endPrincipalMinor);
+    }
+    if (!nullToAbsent || fixedAmountMinor != null) {
+      map['fixed_amount_minor'] = Variable<int>(fixedAmountMinor);
+    }
+    if (!nullToAbsent || feeMinor != null) {
+      map['fee_minor'] = Variable<int>(feeMinor);
+    }
+    if (!nullToAbsent || untilDate != null) {
+      map['until_date'] = Variable<DateTime>(untilDate);
+    }
+    if (!nullToAbsent || firstDate != null) {
+      map['first_date'] = Variable<DateTime>(firstDate);
+    }
+    if (!nullToAbsent || lastDate != null) {
+      map['last_date'] = Variable<DateTime>(lastDate);
+    }
+    if (!nullToAbsent || accrualStartDate != null) {
+      map['accrual_start_date'] = Variable<DateTime>(accrualStartDate);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentStageConfigsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentStageConfigsCompanion(
+      id: Value(id),
+      ownerType: Value(ownerType),
+      ownerId: Value(ownerId),
+      position: Value(position),
+      stageKind: Value(stageKind),
+      repaymentMethod: repaymentMethod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repaymentMethod),
+      intervalMonths: intervalMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(intervalMonths),
+      ratePeriod: ratePeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratePeriod),
+      accrual: accrual == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accrual),
+      amountAlgorithm: amountAlgorithm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amountAlgorithm),
+      periods: periods == null && nullToAbsent
+          ? const Value.absent()
+          : Value(periods),
+      ratePpm: ratePpm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratePpm),
+      endPrincipalMinor: endPrincipalMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endPrincipalMinor),
+      fixedAmountMinor: fixedAmountMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fixedAmountMinor),
+      feeMinor: feeMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(feeMinor),
+      untilDate: untilDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(untilDate),
+      firstDate: firstDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstDate),
+      lastDate: lastDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastDate),
+      accrualStartDate: accrualStartDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accrualStartDate),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentStageConfigRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentStageConfigRow(
+      id: serializer.fromJson<String>(json['id']),
+      ownerType: serializer.fromJson<String>(json['ownerType']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      position: serializer.fromJson<int>(json['position']),
+      stageKind: serializer.fromJson<String>(json['stageKind']),
+      repaymentMethod: serializer.fromJson<String?>(json['repaymentMethod']),
+      intervalMonths: serializer.fromJson<int?>(json['intervalMonths']),
+      ratePeriod: serializer.fromJson<String?>(json['ratePeriod']),
+      accrual: serializer.fromJson<String?>(json['accrual']),
+      amountAlgorithm: serializer.fromJson<String?>(json['amountAlgorithm']),
+      periods: serializer.fromJson<int?>(json['periods']),
+      ratePpm: serializer.fromJson<int?>(json['ratePpm']),
+      endPrincipalMinor: serializer.fromJson<int?>(json['endPrincipalMinor']),
+      fixedAmountMinor: serializer.fromJson<int?>(json['fixedAmountMinor']),
+      feeMinor: serializer.fromJson<int?>(json['feeMinor']),
+      untilDate: serializer.fromJson<DateTime?>(json['untilDate']),
+      firstDate: serializer.fromJson<DateTime?>(json['firstDate']),
+      lastDate: serializer.fromJson<DateTime?>(json['lastDate']),
+      accrualStartDate: serializer.fromJson<DateTime?>(
+        json['accrualStartDate'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'ownerType': serializer.toJson<String>(ownerType),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'position': serializer.toJson<int>(position),
+      'stageKind': serializer.toJson<String>(stageKind),
+      'repaymentMethod': serializer.toJson<String?>(repaymentMethod),
+      'intervalMonths': serializer.toJson<int?>(intervalMonths),
+      'ratePeriod': serializer.toJson<String?>(ratePeriod),
+      'accrual': serializer.toJson<String?>(accrual),
+      'amountAlgorithm': serializer.toJson<String?>(amountAlgorithm),
+      'periods': serializer.toJson<int?>(periods),
+      'ratePpm': serializer.toJson<int?>(ratePpm),
+      'endPrincipalMinor': serializer.toJson<int?>(endPrincipalMinor),
+      'fixedAmountMinor': serializer.toJson<int?>(fixedAmountMinor),
+      'feeMinor': serializer.toJson<int?>(feeMinor),
+      'untilDate': serializer.toJson<DateTime?>(untilDate),
+      'firstDate': serializer.toJson<DateTime?>(firstDate),
+      'lastDate': serializer.toJson<DateTime?>(lastDate),
+      'accrualStartDate': serializer.toJson<DateTime?>(accrualStartDate),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentStageConfigRow copyWith({
+    String? id,
+    String? ownerType,
+    String? ownerId,
+    int? position,
+    String? stageKind,
+    Value<String?> repaymentMethod = const Value.absent(),
+    Value<int?> intervalMonths = const Value.absent(),
+    Value<String?> ratePeriod = const Value.absent(),
+    Value<String?> accrual = const Value.absent(),
+    Value<String?> amountAlgorithm = const Value.absent(),
+    Value<int?> periods = const Value.absent(),
+    Value<int?> ratePpm = const Value.absent(),
+    Value<int?> endPrincipalMinor = const Value.absent(),
+    Value<int?> fixedAmountMinor = const Value.absent(),
+    Value<int?> feeMinor = const Value.absent(),
+    Value<DateTime?> untilDate = const Value.absent(),
+    Value<DateTime?> firstDate = const Value.absent(),
+    Value<DateTime?> lastDate = const Value.absent(),
+    Value<DateTime?> accrualStartDate = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentStageConfigRow(
+    id: id ?? this.id,
+    ownerType: ownerType ?? this.ownerType,
+    ownerId: ownerId ?? this.ownerId,
+    position: position ?? this.position,
+    stageKind: stageKind ?? this.stageKind,
+    repaymentMethod: repaymentMethod.present
+        ? repaymentMethod.value
+        : this.repaymentMethod,
+    intervalMonths: intervalMonths.present
+        ? intervalMonths.value
+        : this.intervalMonths,
+    ratePeriod: ratePeriod.present ? ratePeriod.value : this.ratePeriod,
+    accrual: accrual.present ? accrual.value : this.accrual,
+    amountAlgorithm: amountAlgorithm.present
+        ? amountAlgorithm.value
+        : this.amountAlgorithm,
+    periods: periods.present ? periods.value : this.periods,
+    ratePpm: ratePpm.present ? ratePpm.value : this.ratePpm,
+    endPrincipalMinor: endPrincipalMinor.present
+        ? endPrincipalMinor.value
+        : this.endPrincipalMinor,
+    fixedAmountMinor: fixedAmountMinor.present
+        ? fixedAmountMinor.value
+        : this.fixedAmountMinor,
+    feeMinor: feeMinor.present ? feeMinor.value : this.feeMinor,
+    untilDate: untilDate.present ? untilDate.value : this.untilDate,
+    firstDate: firstDate.present ? firstDate.value : this.firstDate,
+    lastDate: lastDate.present ? lastDate.value : this.lastDate,
+    accrualStartDate: accrualStartDate.present
+        ? accrualStartDate.value
+        : this.accrualStartDate,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentStageConfigRow copyWithCompanion(
+    InstallmentStageConfigsCompanion data,
+  ) {
+    return InstallmentStageConfigRow(
+      id: data.id.present ? data.id.value : this.id,
+      ownerType: data.ownerType.present ? data.ownerType.value : this.ownerType,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      position: data.position.present ? data.position.value : this.position,
+      stageKind: data.stageKind.present ? data.stageKind.value : this.stageKind,
+      repaymentMethod: data.repaymentMethod.present
+          ? data.repaymentMethod.value
+          : this.repaymentMethod,
+      intervalMonths: data.intervalMonths.present
+          ? data.intervalMonths.value
+          : this.intervalMonths,
+      ratePeriod: data.ratePeriod.present
+          ? data.ratePeriod.value
+          : this.ratePeriod,
+      accrual: data.accrual.present ? data.accrual.value : this.accrual,
+      amountAlgorithm: data.amountAlgorithm.present
+          ? data.amountAlgorithm.value
+          : this.amountAlgorithm,
+      periods: data.periods.present ? data.periods.value : this.periods,
+      ratePpm: data.ratePpm.present ? data.ratePpm.value : this.ratePpm,
+      endPrincipalMinor: data.endPrincipalMinor.present
+          ? data.endPrincipalMinor.value
+          : this.endPrincipalMinor,
+      fixedAmountMinor: data.fixedAmountMinor.present
+          ? data.fixedAmountMinor.value
+          : this.fixedAmountMinor,
+      feeMinor: data.feeMinor.present ? data.feeMinor.value : this.feeMinor,
+      untilDate: data.untilDate.present ? data.untilDate.value : this.untilDate,
+      firstDate: data.firstDate.present ? data.firstDate.value : this.firstDate,
+      lastDate: data.lastDate.present ? data.lastDate.value : this.lastDate,
+      accrualStartDate: data.accrualStartDate.present
+          ? data.accrualStartDate.value
+          : this.accrualStartDate,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentStageConfigRow(')
+          ..write('id: $id, ')
+          ..write('ownerType: $ownerType, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('position: $position, ')
+          ..write('stageKind: $stageKind, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('intervalMonths: $intervalMonths, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('accrual: $accrual, ')
+          ..write('amountAlgorithm: $amountAlgorithm, ')
+          ..write('periods: $periods, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('endPrincipalMinor: $endPrincipalMinor, ')
+          ..write('fixedAmountMinor: $fixedAmountMinor, ')
+          ..write('feeMinor: $feeMinor, ')
+          ..write('untilDate: $untilDate, ')
+          ..write('firstDate: $firstDate, ')
+          ..write('lastDate: $lastDate, ')
+          ..write('accrualStartDate: $accrualStartDate, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    ownerType,
+    ownerId,
+    position,
+    stageKind,
+    repaymentMethod,
+    intervalMonths,
+    ratePeriod,
+    accrual,
+    amountAlgorithm,
+    periods,
+    ratePpm,
+    endPrincipalMinor,
+    fixedAmountMinor,
+    feeMinor,
+    untilDate,
+    firstDate,
+    lastDate,
+    accrualStartDate,
+    createdAt,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentStageConfigRow &&
+          other.id == this.id &&
+          other.ownerType == this.ownerType &&
+          other.ownerId == this.ownerId &&
+          other.position == this.position &&
+          other.stageKind == this.stageKind &&
+          other.repaymentMethod == this.repaymentMethod &&
+          other.intervalMonths == this.intervalMonths &&
+          other.ratePeriod == this.ratePeriod &&
+          other.accrual == this.accrual &&
+          other.amountAlgorithm == this.amountAlgorithm &&
+          other.periods == this.periods &&
+          other.ratePpm == this.ratePpm &&
+          other.endPrincipalMinor == this.endPrincipalMinor &&
+          other.fixedAmountMinor == this.fixedAmountMinor &&
+          other.feeMinor == this.feeMinor &&
+          other.untilDate == this.untilDate &&
+          other.firstDate == this.firstDate &&
+          other.lastDate == this.lastDate &&
+          other.accrualStartDate == this.accrualStartDate &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentStageConfigsCompanion
+    extends UpdateCompanion<InstallmentStageConfigRow> {
+  final Value<String> id;
+  final Value<String> ownerType;
+  final Value<String> ownerId;
+  final Value<int> position;
+  final Value<String> stageKind;
+  final Value<String?> repaymentMethod;
+  final Value<int?> intervalMonths;
+  final Value<String?> ratePeriod;
+  final Value<String?> accrual;
+  final Value<String?> amountAlgorithm;
+  final Value<int?> periods;
+  final Value<int?> ratePpm;
+  final Value<int?> endPrincipalMinor;
+  final Value<int?> fixedAmountMinor;
+  final Value<int?> feeMinor;
+  final Value<DateTime?> untilDate;
+  final Value<DateTime?> firstDate;
+  final Value<DateTime?> lastDate;
+  final Value<DateTime?> accrualStartDate;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InstallmentStageConfigsCompanion({
+    this.id = const Value.absent(),
+    this.ownerType = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.stageKind = const Value.absent(),
+    this.repaymentMethod = const Value.absent(),
+    this.intervalMonths = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.accrual = const Value.absent(),
+    this.amountAlgorithm = const Value.absent(),
+    this.periods = const Value.absent(),
+    this.ratePpm = const Value.absent(),
+    this.endPrincipalMinor = const Value.absent(),
+    this.fixedAmountMinor = const Value.absent(),
+    this.feeMinor = const Value.absent(),
+    this.untilDate = const Value.absent(),
+    this.firstDate = const Value.absent(),
+    this.lastDate = const Value.absent(),
+    this.accrualStartDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentStageConfigsCompanion.insert({
+    required String id,
+    required String ownerType,
+    required String ownerId,
+    required int position,
+    required String stageKind,
+    this.repaymentMethod = const Value.absent(),
+    this.intervalMonths = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.accrual = const Value.absent(),
+    this.amountAlgorithm = const Value.absent(),
+    this.periods = const Value.absent(),
+    this.ratePpm = const Value.absent(),
+    this.endPrincipalMinor = const Value.absent(),
+    this.fixedAmountMinor = const Value.absent(),
+    this.feeMinor = const Value.absent(),
+    this.untilDate = const Value.absent(),
+    this.firstDate = const Value.absent(),
+    this.lastDate = const Value.absent(),
+    this.accrualStartDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       ownerType = Value(ownerType),
+       ownerId = Value(ownerId),
+       position = Value(position),
+       stageKind = Value(stageKind);
+  static Insertable<InstallmentStageConfigRow> custom({
+    Expression<String>? id,
+    Expression<String>? ownerType,
+    Expression<String>? ownerId,
+    Expression<int>? position,
+    Expression<String>? stageKind,
+    Expression<String>? repaymentMethod,
+    Expression<int>? intervalMonths,
+    Expression<String>? ratePeriod,
+    Expression<String>? accrual,
+    Expression<String>? amountAlgorithm,
+    Expression<int>? periods,
+    Expression<int>? ratePpm,
+    Expression<int>? endPrincipalMinor,
+    Expression<int>? fixedAmountMinor,
+    Expression<int>? feeMinor,
+    Expression<DateTime>? untilDate,
+    Expression<DateTime>? firstDate,
+    Expression<DateTime>? lastDate,
+    Expression<DateTime>? accrualStartDate,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (ownerType != null) 'owner_type': ownerType,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (position != null) 'position': position,
+      if (stageKind != null) 'stage_kind': stageKind,
+      if (repaymentMethod != null) 'repayment_method': repaymentMethod,
+      if (intervalMonths != null) 'interval_months': intervalMonths,
+      if (ratePeriod != null) 'rate_period': ratePeriod,
+      if (accrual != null) 'accrual': accrual,
+      if (amountAlgorithm != null) 'amount_algorithm': amountAlgorithm,
+      if (periods != null) 'periods': periods,
+      if (ratePpm != null) 'rate_ppm': ratePpm,
+      if (endPrincipalMinor != null) 'end_principal_minor': endPrincipalMinor,
+      if (fixedAmountMinor != null) 'fixed_amount_minor': fixedAmountMinor,
+      if (feeMinor != null) 'fee_minor': feeMinor,
+      if (untilDate != null) 'until_date': untilDate,
+      if (firstDate != null) 'first_date': firstDate,
+      if (lastDate != null) 'last_date': lastDate,
+      if (accrualStartDate != null) 'accrual_start_date': accrualStartDate,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentStageConfigsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? ownerType,
+    Value<String>? ownerId,
+    Value<int>? position,
+    Value<String>? stageKind,
+    Value<String?>? repaymentMethod,
+    Value<int?>? intervalMonths,
+    Value<String?>? ratePeriod,
+    Value<String?>? accrual,
+    Value<String?>? amountAlgorithm,
+    Value<int?>? periods,
+    Value<int?>? ratePpm,
+    Value<int?>? endPrincipalMinor,
+    Value<int?>? fixedAmountMinor,
+    Value<int?>? feeMinor,
+    Value<DateTime?>? untilDate,
+    Value<DateTime?>? firstDate,
+    Value<DateTime?>? lastDate,
+    Value<DateTime?>? accrualStartDate,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentStageConfigsCompanion(
+      id: id ?? this.id,
+      ownerType: ownerType ?? this.ownerType,
+      ownerId: ownerId ?? this.ownerId,
+      position: position ?? this.position,
+      stageKind: stageKind ?? this.stageKind,
+      repaymentMethod: repaymentMethod ?? this.repaymentMethod,
+      intervalMonths: intervalMonths ?? this.intervalMonths,
+      ratePeriod: ratePeriod ?? this.ratePeriod,
+      accrual: accrual ?? this.accrual,
+      amountAlgorithm: amountAlgorithm ?? this.amountAlgorithm,
+      periods: periods ?? this.periods,
+      ratePpm: ratePpm ?? this.ratePpm,
+      endPrincipalMinor: endPrincipalMinor ?? this.endPrincipalMinor,
+      fixedAmountMinor: fixedAmountMinor ?? this.fixedAmountMinor,
+      feeMinor: feeMinor ?? this.feeMinor,
+      untilDate: untilDate ?? this.untilDate,
+      firstDate: firstDate ?? this.firstDate,
+      lastDate: lastDate ?? this.lastDate,
+      accrualStartDate: accrualStartDate ?? this.accrualStartDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (ownerType.present) {
+      map['owner_type'] = Variable<String>(ownerType.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (stageKind.present) {
+      map['stage_kind'] = Variable<String>(stageKind.value);
+    }
+    if (repaymentMethod.present) {
+      map['repayment_method'] = Variable<String>(repaymentMethod.value);
+    }
+    if (intervalMonths.present) {
+      map['interval_months'] = Variable<int>(intervalMonths.value);
+    }
+    if (ratePeriod.present) {
+      map['rate_period'] = Variable<String>(ratePeriod.value);
+    }
+    if (accrual.present) {
+      map['accrual'] = Variable<String>(accrual.value);
+    }
+    if (amountAlgorithm.present) {
+      map['amount_algorithm'] = Variable<String>(amountAlgorithm.value);
+    }
+    if (periods.present) {
+      map['periods'] = Variable<int>(periods.value);
+    }
+    if (ratePpm.present) {
+      map['rate_ppm'] = Variable<int>(ratePpm.value);
+    }
+    if (endPrincipalMinor.present) {
+      map['end_principal_minor'] = Variable<int>(endPrincipalMinor.value);
+    }
+    if (fixedAmountMinor.present) {
+      map['fixed_amount_minor'] = Variable<int>(fixedAmountMinor.value);
+    }
+    if (feeMinor.present) {
+      map['fee_minor'] = Variable<int>(feeMinor.value);
+    }
+    if (untilDate.present) {
+      map['until_date'] = Variable<DateTime>(untilDate.value);
+    }
+    if (firstDate.present) {
+      map['first_date'] = Variable<DateTime>(firstDate.value);
+    }
+    if (lastDate.present) {
+      map['last_date'] = Variable<DateTime>(lastDate.value);
+    }
+    if (accrualStartDate.present) {
+      map['accrual_start_date'] = Variable<DateTime>(accrualStartDate.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentStageConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('ownerType: $ownerType, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('position: $position, ')
+          ..write('stageKind: $stageKind, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('intervalMonths: $intervalMonths, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('accrual: $accrual, ')
+          ..write('amountAlgorithm: $amountAlgorithm, ')
+          ..write('periods: $periods, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('endPrincipalMinor: $endPrincipalMinor, ')
+          ..write('fixedAmountMinor: $fixedAmountMinor, ')
+          ..write('feeMinor: $feeMinor, ')
+          ..write('untilDate: $untilDate, ')
+          ..write('firstDate: $firstDate, ')
+          ..write('lastDate: $lastDate, ')
+          ..write('accrualStartDate: $accrualStartDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -8369,6 +9881,17 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageIdMeta = const VerificationMeta(
+    'stageId',
+  );
+  @override
+  late final GeneratedColumn<String> stageId = GeneratedColumn<String>(
+    'stage_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _periodNoMeta = const VerificationMeta(
     'periodNo',
@@ -8475,6 +9998,7 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
   List<GeneratedColumn> get $columns => [
     id,
     contractId,
+    stageId,
     periodNo,
     expectedRepaymentDate,
     expectedPrincipalMinor,
@@ -8509,6 +10033,12 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
       );
     } else if (isInserting) {
       context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('stage_id')) {
+      context.handle(
+        _stageIdMeta,
+        stageId.isAcceptableOrUnknown(data['stage_id']!, _stageIdMeta),
+      );
     }
     if (data.containsKey('period_no')) {
       context.handle(
@@ -8591,6 +10121,10 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
         DriftSqlType.string,
         data['${effectivePrefix}contract_id'],
       )!,
+      stageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stage_id'],
+      ),
       periodNo: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}period_no'],
@@ -8647,6 +10181,7 @@ class InstallmentScheduleRow extends DataClass
     implements Insertable<InstallmentScheduleRow> {
   final String id;
   final String contractId;
+  final String? stageId;
   final int periodNo;
   final DateTime expectedRepaymentDate;
   final int expectedPrincipalMinor;
@@ -8659,6 +10194,7 @@ class InstallmentScheduleRow extends DataClass
   const InstallmentScheduleRow({
     required this.id,
     required this.contractId,
+    this.stageId,
     required this.periodNo,
     required this.expectedRepaymentDate,
     required this.expectedPrincipalMinor,
@@ -8674,6 +10210,9 @@ class InstallmentScheduleRow extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['contract_id'] = Variable<String>(contractId);
+    if (!nullToAbsent || stageId != null) {
+      map['stage_id'] = Variable<String>(stageId);
+    }
     map['period_no'] = Variable<int>(periodNo);
     map['expected_repayment_date'] = Variable<DateTime>(expectedRepaymentDate);
     map['expected_principal_minor'] = Variable<int>(expectedPrincipalMinor);
@@ -8696,6 +10235,9 @@ class InstallmentScheduleRow extends DataClass
     return InstallmentSchedulesCompanion(
       id: Value(id),
       contractId: Value(contractId),
+      stageId: stageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stageId),
       periodNo: Value(periodNo),
       expectedRepaymentDate: Value(expectedRepaymentDate),
       expectedPrincipalMinor: Value(expectedPrincipalMinor),
@@ -8716,6 +10258,7 @@ class InstallmentScheduleRow extends DataClass
     return InstallmentScheduleRow(
       id: serializer.fromJson<String>(json['id']),
       contractId: serializer.fromJson<String>(json['contractId']),
+      stageId: serializer.fromJson<String?>(json['stageId']),
       periodNo: serializer.fromJson<int>(json['periodNo']),
       expectedRepaymentDate: serializer.fromJson<DateTime>(
         json['expectedRepaymentDate'],
@@ -8741,6 +10284,7 @@ class InstallmentScheduleRow extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'contractId': serializer.toJson<String>(contractId),
+      'stageId': serializer.toJson<String?>(stageId),
       'periodNo': serializer.toJson<int>(periodNo),
       'expectedRepaymentDate': serializer.toJson<DateTime>(
         expectedRepaymentDate,
@@ -8760,6 +10304,7 @@ class InstallmentScheduleRow extends DataClass
   InstallmentScheduleRow copyWith({
     String? id,
     String? contractId,
+    Value<String?> stageId = const Value.absent(),
     int? periodNo,
     DateTime? expectedRepaymentDate,
     int? expectedPrincipalMinor,
@@ -8772,6 +10317,7 @@ class InstallmentScheduleRow extends DataClass
   }) => InstallmentScheduleRow(
     id: id ?? this.id,
     contractId: contractId ?? this.contractId,
+    stageId: stageId.present ? stageId.value : this.stageId,
     periodNo: periodNo ?? this.periodNo,
     expectedRepaymentDate: expectedRepaymentDate ?? this.expectedRepaymentDate,
     expectedPrincipalMinor:
@@ -8789,6 +10335,7 @@ class InstallmentScheduleRow extends DataClass
       contractId: data.contractId.present
           ? data.contractId.value
           : this.contractId,
+      stageId: data.stageId.present ? data.stageId.value : this.stageId,
       periodNo: data.periodNo.present ? data.periodNo.value : this.periodNo,
       expectedRepaymentDate: data.expectedRepaymentDate.present
           ? data.expectedRepaymentDate.value
@@ -8814,6 +10361,7 @@ class InstallmentScheduleRow extends DataClass
     return (StringBuffer('InstallmentScheduleRow(')
           ..write('id: $id, ')
           ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
           ..write('periodNo: $periodNo, ')
           ..write('expectedRepaymentDate: $expectedRepaymentDate, ')
           ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
@@ -8831,6 +10379,7 @@ class InstallmentScheduleRow extends DataClass
   int get hashCode => Object.hash(
     id,
     contractId,
+    stageId,
     periodNo,
     expectedRepaymentDate,
     expectedPrincipalMinor,
@@ -8847,6 +10396,7 @@ class InstallmentScheduleRow extends DataClass
       (other is InstallmentScheduleRow &&
           other.id == this.id &&
           other.contractId == this.contractId &&
+          other.stageId == this.stageId &&
           other.periodNo == this.periodNo &&
           other.expectedRepaymentDate == this.expectedRepaymentDate &&
           other.expectedPrincipalMinor == this.expectedPrincipalMinor &&
@@ -8862,6 +10412,7 @@ class InstallmentSchedulesCompanion
     extends UpdateCompanion<InstallmentScheduleRow> {
   final Value<String> id;
   final Value<String> contractId;
+  final Value<String?> stageId;
   final Value<int> periodNo;
   final Value<DateTime> expectedRepaymentDate;
   final Value<int> expectedPrincipalMinor;
@@ -8875,6 +10426,7 @@ class InstallmentSchedulesCompanion
   const InstallmentSchedulesCompanion({
     this.id = const Value.absent(),
     this.contractId = const Value.absent(),
+    this.stageId = const Value.absent(),
     this.periodNo = const Value.absent(),
     this.expectedRepaymentDate = const Value.absent(),
     this.expectedPrincipalMinor = const Value.absent(),
@@ -8889,6 +10441,7 @@ class InstallmentSchedulesCompanion
   InstallmentSchedulesCompanion.insert({
     required String id,
     required String contractId,
+    this.stageId = const Value.absent(),
     required int periodNo,
     required DateTime expectedRepaymentDate,
     this.expectedPrincipalMinor = const Value.absent(),
@@ -8907,6 +10460,7 @@ class InstallmentSchedulesCompanion
   static Insertable<InstallmentScheduleRow> custom({
     Expression<String>? id,
     Expression<String>? contractId,
+    Expression<String>? stageId,
     Expression<int>? periodNo,
     Expression<DateTime>? expectedRepaymentDate,
     Expression<int>? expectedPrincipalMinor,
@@ -8921,6 +10475,7 @@ class InstallmentSchedulesCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (contractId != null) 'contract_id': contractId,
+      if (stageId != null) 'stage_id': stageId,
       if (periodNo != null) 'period_no': periodNo,
       if (expectedRepaymentDate != null)
         'expected_repayment_date': expectedRepaymentDate,
@@ -8940,6 +10495,7 @@ class InstallmentSchedulesCompanion
   InstallmentSchedulesCompanion copyWith({
     Value<String>? id,
     Value<String>? contractId,
+    Value<String?>? stageId,
     Value<int>? periodNo,
     Value<DateTime>? expectedRepaymentDate,
     Value<int>? expectedPrincipalMinor,
@@ -8954,6 +10510,7 @@ class InstallmentSchedulesCompanion
     return InstallmentSchedulesCompanion(
       id: id ?? this.id,
       contractId: contractId ?? this.contractId,
+      stageId: stageId ?? this.stageId,
       periodNo: periodNo ?? this.periodNo,
       expectedRepaymentDate:
           expectedRepaymentDate ?? this.expectedRepaymentDate,
@@ -8978,6 +10535,9 @@ class InstallmentSchedulesCompanion
     }
     if (contractId.present) {
       map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (stageId.present) {
+      map['stage_id'] = Variable<String>(stageId.value);
     }
     if (periodNo.present) {
       map['period_no'] = Variable<int>(periodNo.value);
@@ -9025,6 +10585,7 @@ class InstallmentSchedulesCompanion
     return (StringBuffer('InstallmentSchedulesCompanion(')
           ..write('id: $id, ')
           ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
           ..write('periodNo: $periodNo, ')
           ..write('expectedRepaymentDate: $expectedRepaymentDate, ')
           ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
@@ -11713,6 +13274,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $BillGenerationSuppressionsTable(this);
   late final $InstallmentContractsTable installmentContracts =
       $InstallmentContractsTable(this);
+  late final $InstallmentProductsTable installmentProducts =
+      $InstallmentProductsTable(this);
+  late final $InstallmentStageConfigsTable installmentStageConfigs =
+      $InstallmentStageConfigsTable(this);
   late final $InstallmentSchedulesTable installmentSchedules =
       $InstallmentSchedulesTable(this);
   late final $RepaymentsTable repayments = $RepaymentsTable(this);
@@ -11742,6 +13307,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     billItems,
     billGenerationSuppressions,
     installmentContracts,
+    installmentProducts,
+    installmentStageConfigs,
     installmentSchedules,
     repayments,
     repaymentItems,
@@ -15284,21 +16851,19 @@ typedef $$BillGenerationSuppressionsTableProcessedTableManager =
 typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
       required String id,
+      Value<String?> productId,
+      Value<String?> productName,
+      Value<bool> customRules,
+      Value<String> dayCount,
+      Value<String> rounding,
+      Value<String> tailDifference,
       required String liabilityAccountId,
       required InstallmentSourceType sourceType,
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
       Value<String?> sourceRepaymentId,
       required int principalMinor,
-      required int totalPeriods,
       required DateTime borrowingDate,
-      required DateTime firstRepaymentDate,
-      required DateTime lastRepaymentDate,
-      required InstallmentRepaymentMethod repaymentMethod,
-      Value<InterestRatePeriod?> interestRatePeriod,
-      Value<int?> interestRatePpm,
-      Value<InterestAccrualMethod> interestAccrualMethod,
-      Value<int> totalFeeMinor,
       required InstallmentContractStatus status,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -15308,21 +16873,19 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
 typedef $$InstallmentContractsTableUpdateCompanionBuilder =
     InstallmentContractsCompanion Function({
       Value<String> id,
+      Value<String?> productId,
+      Value<String?> productName,
+      Value<bool> customRules,
+      Value<String> dayCount,
+      Value<String> rounding,
+      Value<String> tailDifference,
       Value<String> liabilityAccountId,
       Value<InstallmentSourceType> sourceType,
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
       Value<String?> sourceRepaymentId,
       Value<int> principalMinor,
-      Value<int> totalPeriods,
       Value<DateTime> borrowingDate,
-      Value<DateTime> firstRepaymentDate,
-      Value<DateTime> lastRepaymentDate,
-      Value<InstallmentRepaymentMethod> repaymentMethod,
-      Value<InterestRatePeriod?> interestRatePeriod,
-      Value<int?> interestRatePpm,
-      Value<InterestAccrualMethod> interestAccrualMethod,
-      Value<int> totalFeeMinor,
       Value<InstallmentContractStatus> status,
       Value<String?> note,
       Value<DateTime> createdAt,
@@ -15341,6 +16904,36 @@ class $$InstallmentContractsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get customRules => $composableBuilder(
+    column: $table.customRules,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayCount => $composableBuilder(
+    column: $table.dayCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rounding => $composableBuilder(
+    column: $table.rounding,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15379,63 +16972,8 @@ class $$InstallmentContractsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get totalPeriods => $composableBuilder(
-    column: $table.totalPeriods,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<DateTime> get borrowingDate => $composableBuilder(
     column: $table.borrowingDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get firstRepaymentDate => $composableBuilder(
-    column: $table.firstRepaymentDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastRepaymentDate => $composableBuilder(
-    column: $table.lastRepaymentDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<
-    InstallmentRepaymentMethod,
-    InstallmentRepaymentMethod,
-    String
-  >
-  get repaymentMethod => $composableBuilder(
-    column: $table.repaymentMethod,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<
-    InterestRatePeriod?,
-    InterestRatePeriod,
-    String
-  >
-  get interestRatePeriod => $composableBuilder(
-    column: $table.interestRatePeriod,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnFilters<int> get interestRatePpm => $composableBuilder(
-    column: $table.interestRatePpm,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<
-    InterestAccrualMethod,
-    InterestAccrualMethod,
-    String
-  >
-  get interestAccrualMethod => $composableBuilder(
-    column: $table.interestAccrualMethod,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnFilters<int> get totalFeeMinor => $composableBuilder(
-    column: $table.totalFeeMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15479,6 +17017,36 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get customRules => $composableBuilder(
+    column: $table.customRules,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayCount => $composableBuilder(
+    column: $table.dayCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rounding => $composableBuilder(
+    column: $table.rounding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
     builder: (column) => ColumnOrderings(column),
@@ -15509,48 +17077,8 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get totalPeriods => $composableBuilder(
-    column: $table.totalPeriods,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get borrowingDate => $composableBuilder(
     column: $table.borrowingDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get firstRepaymentDate => $composableBuilder(
-    column: $table.firstRepaymentDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastRepaymentDate => $composableBuilder(
-    column: $table.lastRepaymentDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get repaymentMethod => $composableBuilder(
-    column: $table.repaymentMethod,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get interestRatePeriod => $composableBuilder(
-    column: $table.interestRatePeriod,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get interestRatePpm => $composableBuilder(
-    column: $table.interestRatePpm,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get interestAccrualMethod => $composableBuilder(
-    column: $table.interestAccrualMethod,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get totalFeeMinor => $composableBuilder(
-    column: $table.totalFeeMinor,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15587,6 +17115,30 @@ class $$InstallmentContractsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<String> get productName => $composableBuilder(
+    column: $table.productName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get customRules => $composableBuilder(
+    column: $table.customRules,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dayCount =>
+      $composableBuilder(column: $table.dayCount, builder: (column) => column);
+
+  GeneratedColumn<String> get rounding =>
+      $composableBuilder(column: $table.rounding, builder: (column) => column);
+
+  GeneratedColumn<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
     builder: (column) => column,
@@ -15618,51 +17170,8 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get totalPeriods => $composableBuilder(
-    column: $table.totalPeriods,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<DateTime> get borrowingDate => $composableBuilder(
     column: $table.borrowingDate,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get firstRepaymentDate => $composableBuilder(
-    column: $table.firstRepaymentDate,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<DateTime> get lastRepaymentDate => $composableBuilder(
-    column: $table.lastRepaymentDate,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<InstallmentRepaymentMethod, String>
-  get repaymentMethod => $composableBuilder(
-    column: $table.repaymentMethod,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<InterestRatePeriod?, String>
-  get interestRatePeriod => $composableBuilder(
-    column: $table.interestRatePeriod,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get interestRatePpm => $composableBuilder(
-    column: $table.interestRatePpm,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<InterestAccrualMethod, String>
-  get interestAccrualMethod => $composableBuilder(
-    column: $table.interestAccrualMethod,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get totalFeeMinor => $composableBuilder(
-    column: $table.totalFeeMinor,
     builder: (column) => column,
   );
 
@@ -15724,24 +17233,19 @@ class $$InstallmentContractsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String?> productId = const Value.absent(),
+                Value<String?> productName = const Value.absent(),
+                Value<bool> customRules = const Value.absent(),
+                Value<String> dayCount = const Value.absent(),
+                Value<String> rounding = const Value.absent(),
+                Value<String> tailDifference = const Value.absent(),
                 Value<String> liabilityAccountId = const Value.absent(),
                 Value<InstallmentSourceType> sourceType = const Value.absent(),
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
                 Value<String?> sourceRepaymentId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
-                Value<int> totalPeriods = const Value.absent(),
                 Value<DateTime> borrowingDate = const Value.absent(),
-                Value<DateTime> firstRepaymentDate = const Value.absent(),
-                Value<DateTime> lastRepaymentDate = const Value.absent(),
-                Value<InstallmentRepaymentMethod> repaymentMethod =
-                    const Value.absent(),
-                Value<InterestRatePeriod?> interestRatePeriod =
-                    const Value.absent(),
-                Value<int?> interestRatePpm = const Value.absent(),
-                Value<InterestAccrualMethod> interestAccrualMethod =
-                    const Value.absent(),
-                Value<int> totalFeeMinor = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -15749,21 +17253,19 @@ class $$InstallmentContractsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion(
                 id: id,
+                productId: productId,
+                productName: productName,
+                customRules: customRules,
+                dayCount: dayCount,
+                rounding: rounding,
+                tailDifference: tailDifference,
                 liabilityAccountId: liabilityAccountId,
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
                 sourceRepaymentId: sourceRepaymentId,
                 principalMinor: principalMinor,
-                totalPeriods: totalPeriods,
                 borrowingDate: borrowingDate,
-                firstRepaymentDate: firstRepaymentDate,
-                lastRepaymentDate: lastRepaymentDate,
-                repaymentMethod: repaymentMethod,
-                interestRatePeriod: interestRatePeriod,
-                interestRatePpm: interestRatePpm,
-                interestAccrualMethod: interestAccrualMethod,
-                totalFeeMinor: totalFeeMinor,
                 status: status,
                 note: note,
                 createdAt: createdAt,
@@ -15773,23 +17275,19 @@ class $$InstallmentContractsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String?> productId = const Value.absent(),
+                Value<String?> productName = const Value.absent(),
+                Value<bool> customRules = const Value.absent(),
+                Value<String> dayCount = const Value.absent(),
+                Value<String> rounding = const Value.absent(),
+                Value<String> tailDifference = const Value.absent(),
                 required String liabilityAccountId,
                 required InstallmentSourceType sourceType,
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
                 Value<String?> sourceRepaymentId = const Value.absent(),
                 required int principalMinor,
-                required int totalPeriods,
                 required DateTime borrowingDate,
-                required DateTime firstRepaymentDate,
-                required DateTime lastRepaymentDate,
-                required InstallmentRepaymentMethod repaymentMethod,
-                Value<InterestRatePeriod?> interestRatePeriod =
-                    const Value.absent(),
-                Value<int?> interestRatePpm = const Value.absent(),
-                Value<InterestAccrualMethod> interestAccrualMethod =
-                    const Value.absent(),
-                Value<int> totalFeeMinor = const Value.absent(),
                 required InstallmentContractStatus status,
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -15797,21 +17295,19 @@ class $$InstallmentContractsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion.insert(
                 id: id,
+                productId: productId,
+                productName: productName,
+                customRules: customRules,
+                dayCount: dayCount,
+                rounding: rounding,
+                tailDifference: tailDifference,
                 liabilityAccountId: liabilityAccountId,
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
                 sourceRepaymentId: sourceRepaymentId,
                 principalMinor: principalMinor,
-                totalPeriods: totalPeriods,
                 borrowingDate: borrowingDate,
-                firstRepaymentDate: firstRepaymentDate,
-                lastRepaymentDate: lastRepaymentDate,
-                repaymentMethod: repaymentMethod,
-                interestRatePeriod: interestRatePeriod,
-                interestRatePpm: interestRatePpm,
-                interestAccrualMethod: interestAccrualMethod,
-                totalFeeMinor: totalFeeMinor,
                 status: status,
                 note: note,
                 createdAt: createdAt,
@@ -15847,10 +17343,823 @@ typedef $$InstallmentContractsTableProcessedTableManager =
       InstallmentContractRow,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentProductsTableCreateCompanionBuilder =
+    InstallmentProductsCompanion Function({
+      required String id,
+      required String name,
+      Value<bool> archived,
+      Value<String> dayCount,
+      Value<String> rounding,
+      Value<String> tailDifference,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentProductsTableUpdateCompanionBuilder =
+    InstallmentProductsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<bool> archived,
+      Value<String> dayCount,
+      Value<String> rounding,
+      Value<String> tailDifference,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentProductsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentProductsTable> {
+  $$InstallmentProductsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayCount => $composableBuilder(
+    column: $table.dayCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rounding => $composableBuilder(
+    column: $table.rounding,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentProductsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentProductsTable> {
+  $$InstallmentProductsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayCount => $composableBuilder(
+    column: $table.dayCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rounding => $composableBuilder(
+    column: $table.rounding,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentProductsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentProductsTable> {
+  $$InstallmentProductsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<String> get dayCount =>
+      $composableBuilder(column: $table.dayCount, builder: (column) => column);
+
+  GeneratedColumn<String> get rounding =>
+      $composableBuilder(column: $table.rounding, builder: (column) => column);
+
+  GeneratedColumn<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentProductsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentProductsTable,
+          InstallmentProductRow,
+          $$InstallmentProductsTableFilterComposer,
+          $$InstallmentProductsTableOrderingComposer,
+          $$InstallmentProductsTableAnnotationComposer,
+          $$InstallmentProductsTableCreateCompanionBuilder,
+          $$InstallmentProductsTableUpdateCompanionBuilder,
+          (
+            InstallmentProductRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentProductsTable,
+              InstallmentProductRow
+            >,
+          ),
+          InstallmentProductRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentProductsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentProductsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentProductsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InstallmentProductsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentProductsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
+                Value<String> dayCount = const Value.absent(),
+                Value<String> rounding = const Value.absent(),
+                Value<String> tailDifference = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentProductsCompanion(
+                id: id,
+                name: name,
+                archived: archived,
+                dayCount: dayCount,
+                rounding: rounding,
+                tailDifference: tailDifference,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<bool> archived = const Value.absent(),
+                Value<String> dayCount = const Value.absent(),
+                Value<String> rounding = const Value.absent(),
+                Value<String> tailDifference = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentProductsCompanion.insert(
+                id: id,
+                name: name,
+                archived: archived,
+                dayCount: dayCount,
+                rounding: rounding,
+                tailDifference: tailDifference,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentProductsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentProductsTable,
+      InstallmentProductRow,
+      $$InstallmentProductsTableFilterComposer,
+      $$InstallmentProductsTableOrderingComposer,
+      $$InstallmentProductsTableAnnotationComposer,
+      $$InstallmentProductsTableCreateCompanionBuilder,
+      $$InstallmentProductsTableUpdateCompanionBuilder,
+      (
+        InstallmentProductRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentProductsTable,
+          InstallmentProductRow
+        >,
+      ),
+      InstallmentProductRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentStageConfigsTableCreateCompanionBuilder =
+    InstallmentStageConfigsCompanion Function({
+      required String id,
+      required String ownerType,
+      required String ownerId,
+      required int position,
+      required String stageKind,
+      Value<String?> repaymentMethod,
+      Value<int?> intervalMonths,
+      Value<String?> ratePeriod,
+      Value<String?> accrual,
+      Value<String?> amountAlgorithm,
+      Value<int?> periods,
+      Value<int?> ratePpm,
+      Value<int?> endPrincipalMinor,
+      Value<int?> fixedAmountMinor,
+      Value<int?> feeMinor,
+      Value<DateTime?> untilDate,
+      Value<DateTime?> firstDate,
+      Value<DateTime?> lastDate,
+      Value<DateTime?> accrualStartDate,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentStageConfigsTableUpdateCompanionBuilder =
+    InstallmentStageConfigsCompanion Function({
+      Value<String> id,
+      Value<String> ownerType,
+      Value<String> ownerId,
+      Value<int> position,
+      Value<String> stageKind,
+      Value<String?> repaymentMethod,
+      Value<int?> intervalMonths,
+      Value<String?> ratePeriod,
+      Value<String?> accrual,
+      Value<String?> amountAlgorithm,
+      Value<int?> periods,
+      Value<int?> ratePpm,
+      Value<int?> endPrincipalMinor,
+      Value<int?> fixedAmountMinor,
+      Value<int?> feeMinor,
+      Value<DateTime?> untilDate,
+      Value<DateTime?> firstDate,
+      Value<DateTime?> lastDate,
+      Value<DateTime?> accrualStartDate,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentStageConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentStageConfigsTable> {
+  $$InstallmentStageConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerType => $composableBuilder(
+    column: $table.ownerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stageKind => $composableBuilder(
+    column: $table.stageKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accrual => $composableBuilder(
+    column: $table.accrual,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periods => $composableBuilder(
+    column: $table.periods,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endPrincipalMinor => $composableBuilder(
+    column: $table.endPrincipalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fixedAmountMinor => $composableBuilder(
+    column: $table.fixedAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get feeMinor => $composableBuilder(
+    column: $table.feeMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get untilDate => $composableBuilder(
+    column: $table.untilDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstDate => $composableBuilder(
+    column: $table.firstDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastDate => $composableBuilder(
+    column: $table.lastDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get accrualStartDate => $composableBuilder(
+    column: $table.accrualStartDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentStageConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentStageConfigsTable> {
+  $$InstallmentStageConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerType => $composableBuilder(
+    column: $table.ownerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stageKind => $composableBuilder(
+    column: $table.stageKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accrual => $composableBuilder(
+    column: $table.accrual,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periods => $composableBuilder(
+    column: $table.periods,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endPrincipalMinor => $composableBuilder(
+    column: $table.endPrincipalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fixedAmountMinor => $composableBuilder(
+    column: $table.fixedAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get feeMinor => $composableBuilder(
+    column: $table.feeMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get untilDate => $composableBuilder(
+    column: $table.untilDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstDate => $composableBuilder(
+    column: $table.firstDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastDate => $composableBuilder(
+    column: $table.lastDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get accrualStartDate => $composableBuilder(
+    column: $table.accrualStartDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentStageConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentStageConfigsTable> {
+  $$InstallmentStageConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerType =>
+      $composableBuilder(column: $table.ownerType, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get stageKind =>
+      $composableBuilder(column: $table.stageKind, builder: (column) => column);
+
+  GeneratedColumn<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accrual =>
+      $composableBuilder(column: $table.accrual, builder: (column) => column);
+
+  GeneratedColumn<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get periods =>
+      $composableBuilder(column: $table.periods, builder: (column) => column);
+
+  GeneratedColumn<int> get ratePpm =>
+      $composableBuilder(column: $table.ratePpm, builder: (column) => column);
+
+  GeneratedColumn<int> get endPrincipalMinor => $composableBuilder(
+    column: $table.endPrincipalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fixedAmountMinor => $composableBuilder(
+    column: $table.fixedAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get feeMinor =>
+      $composableBuilder(column: $table.feeMinor, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get untilDate =>
+      $composableBuilder(column: $table.untilDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstDate =>
+      $composableBuilder(column: $table.firstDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastDate =>
+      $composableBuilder(column: $table.lastDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get accrualStartDate => $composableBuilder(
+    column: $table.accrualStartDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentStageConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentStageConfigsTable,
+          InstallmentStageConfigRow,
+          $$InstallmentStageConfigsTableFilterComposer,
+          $$InstallmentStageConfigsTableOrderingComposer,
+          $$InstallmentStageConfigsTableAnnotationComposer,
+          $$InstallmentStageConfigsTableCreateCompanionBuilder,
+          $$InstallmentStageConfigsTableUpdateCompanionBuilder,
+          (
+            InstallmentStageConfigRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentStageConfigsTable,
+              InstallmentStageConfigRow
+            >,
+          ),
+          InstallmentStageConfigRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentStageConfigsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentStageConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentStageConfigsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentStageConfigsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentStageConfigsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> ownerType = const Value.absent(),
+                Value<String> ownerId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> stageKind = const Value.absent(),
+                Value<String?> repaymentMethod = const Value.absent(),
+                Value<int?> intervalMonths = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<String?> accrual = const Value.absent(),
+                Value<String?> amountAlgorithm = const Value.absent(),
+                Value<int?> periods = const Value.absent(),
+                Value<int?> ratePpm = const Value.absent(),
+                Value<int?> endPrincipalMinor = const Value.absent(),
+                Value<int?> fixedAmountMinor = const Value.absent(),
+                Value<int?> feeMinor = const Value.absent(),
+                Value<DateTime?> untilDate = const Value.absent(),
+                Value<DateTime?> firstDate = const Value.absent(),
+                Value<DateTime?> lastDate = const Value.absent(),
+                Value<DateTime?> accrualStartDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentStageConfigsCompanion(
+                id: id,
+                ownerType: ownerType,
+                ownerId: ownerId,
+                position: position,
+                stageKind: stageKind,
+                repaymentMethod: repaymentMethod,
+                intervalMonths: intervalMonths,
+                ratePeriod: ratePeriod,
+                accrual: accrual,
+                amountAlgorithm: amountAlgorithm,
+                periods: periods,
+                ratePpm: ratePpm,
+                endPrincipalMinor: endPrincipalMinor,
+                fixedAmountMinor: fixedAmountMinor,
+                feeMinor: feeMinor,
+                untilDate: untilDate,
+                firstDate: firstDate,
+                lastDate: lastDate,
+                accrualStartDate: accrualStartDate,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String ownerType,
+                required String ownerId,
+                required int position,
+                required String stageKind,
+                Value<String?> repaymentMethod = const Value.absent(),
+                Value<int?> intervalMonths = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<String?> accrual = const Value.absent(),
+                Value<String?> amountAlgorithm = const Value.absent(),
+                Value<int?> periods = const Value.absent(),
+                Value<int?> ratePpm = const Value.absent(),
+                Value<int?> endPrincipalMinor = const Value.absent(),
+                Value<int?> fixedAmountMinor = const Value.absent(),
+                Value<int?> feeMinor = const Value.absent(),
+                Value<DateTime?> untilDate = const Value.absent(),
+                Value<DateTime?> firstDate = const Value.absent(),
+                Value<DateTime?> lastDate = const Value.absent(),
+                Value<DateTime?> accrualStartDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentStageConfigsCompanion.insert(
+                id: id,
+                ownerType: ownerType,
+                ownerId: ownerId,
+                position: position,
+                stageKind: stageKind,
+                repaymentMethod: repaymentMethod,
+                intervalMonths: intervalMonths,
+                ratePeriod: ratePeriod,
+                accrual: accrual,
+                amountAlgorithm: amountAlgorithm,
+                periods: periods,
+                ratePpm: ratePpm,
+                endPrincipalMinor: endPrincipalMinor,
+                fixedAmountMinor: fixedAmountMinor,
+                feeMinor: feeMinor,
+                untilDate: untilDate,
+                firstDate: firstDate,
+                lastDate: lastDate,
+                accrualStartDate: accrualStartDate,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentStageConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentStageConfigsTable,
+      InstallmentStageConfigRow,
+      $$InstallmentStageConfigsTableFilterComposer,
+      $$InstallmentStageConfigsTableOrderingComposer,
+      $$InstallmentStageConfigsTableAnnotationComposer,
+      $$InstallmentStageConfigsTableCreateCompanionBuilder,
+      $$InstallmentStageConfigsTableUpdateCompanionBuilder,
+      (
+        InstallmentStageConfigRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentStageConfigsTable,
+          InstallmentStageConfigRow
+        >,
+      ),
+      InstallmentStageConfigRow,
+      PrefetchHooks Function()
+    >;
 typedef $$InstallmentSchedulesTableCreateCompanionBuilder =
     InstallmentSchedulesCompanion Function({
       required String id,
       required String contractId,
+      Value<String?> stageId,
       required int periodNo,
       required DateTime expectedRepaymentDate,
       Value<int> expectedPrincipalMinor,
@@ -15866,6 +18175,7 @@ typedef $$InstallmentSchedulesTableUpdateCompanionBuilder =
     InstallmentSchedulesCompanion Function({
       Value<String> id,
       Value<String> contractId,
+      Value<String?> stageId,
       Value<int> periodNo,
       Value<DateTime> expectedRepaymentDate,
       Value<int> expectedPrincipalMinor,
@@ -15894,6 +18204,11 @@ class $$InstallmentSchedulesTableFilterComposer
 
   ColumnFilters<String> get contractId => $composableBuilder(
     column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stageId => $composableBuilder(
+    column: $table.stageId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15967,6 +18282,11 @@ class $$InstallmentSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get stageId => $composableBuilder(
+    column: $table.stageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get periodNo => $composableBuilder(
     column: $table.periodNo,
     builder: (column) => ColumnOrderings(column),
@@ -16029,6 +18349,9 @@ class $$InstallmentSchedulesTableAnnotationComposer
     column: $table.contractId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get stageId =>
+      $composableBuilder(column: $table.stageId, builder: (column) => column);
 
   GeneratedColumn<int> get periodNo =>
       $composableBuilder(column: $table.periodNo, builder: (column) => column);
@@ -16112,6 +18435,7 @@ class $$InstallmentSchedulesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> contractId = const Value.absent(),
+                Value<String?> stageId = const Value.absent(),
                 Value<int> periodNo = const Value.absent(),
                 Value<DateTime> expectedRepaymentDate = const Value.absent(),
                 Value<int> expectedPrincipalMinor = const Value.absent(),
@@ -16125,6 +18449,7 @@ class $$InstallmentSchedulesTableTableManager
               }) => InstallmentSchedulesCompanion(
                 id: id,
                 contractId: contractId,
+                stageId: stageId,
                 periodNo: periodNo,
                 expectedRepaymentDate: expectedRepaymentDate,
                 expectedPrincipalMinor: expectedPrincipalMinor,
@@ -16140,6 +18465,7 @@ class $$InstallmentSchedulesTableTableManager
               ({
                 required String id,
                 required String contractId,
+                Value<String?> stageId = const Value.absent(),
                 required int periodNo,
                 required DateTime expectedRepaymentDate,
                 Value<int> expectedPrincipalMinor = const Value.absent(),
@@ -16153,6 +18479,7 @@ class $$InstallmentSchedulesTableTableManager
               }) => InstallmentSchedulesCompanion.insert(
                 id: id,
                 contractId: contractId,
+                stageId: stageId,
                 periodNo: periodNo,
                 expectedRepaymentDate: expectedRepaymentDate,
                 expectedPrincipalMinor: expectedPrincipalMinor,
@@ -17559,6 +19886,13 @@ class $AppDatabaseManager {
       );
   $$InstallmentContractsTableTableManager get installmentContracts =>
       $$InstallmentContractsTableTableManager(_db, _db.installmentContracts);
+  $$InstallmentProductsTableTableManager get installmentProducts =>
+      $$InstallmentProductsTableTableManager(_db, _db.installmentProducts);
+  $$InstallmentStageConfigsTableTableManager get installmentStageConfigs =>
+      $$InstallmentStageConfigsTableTableManager(
+        _db,
+        _db.installmentStageConfigs,
+      );
   $$InstallmentSchedulesTableTableManager get installmentSchedules =>
       $$InstallmentSchedulesTableTableManager(_db, _db.installmentSchedules);
   $$RepaymentsTableTableManager get repayments =>

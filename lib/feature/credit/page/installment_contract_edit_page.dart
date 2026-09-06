@@ -1,28 +1,24 @@
+import '../widget/installment_terms_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money.dart';
-import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
-import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
-import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
 import '../view_model/installment_contract_edit_state.dart';
 import '../view_model/installment_contract_edit_view_model.dart';
-import '../widget/installment_field_options.dart';
 
 class InstallmentContractEditPage extends ConsumerStatefulWidget {
   const InstallmentContractEditPage({required this.contractId, super.key});
@@ -37,21 +33,6 @@ class InstallmentContractEditPage extends ConsumerStatefulWidget {
 class _InstallmentContractEditPageState
     extends ConsumerState<InstallmentContractEditPage> {
   final _formKey = GlobalKey<FormState>();
-  final _periodsController = TextEditingController();
-  final _rateController = TextEditingController();
-  final _feeController = TextEditingController();
-  final _overrideInstallmentController = TextEditingController();
-  String? _syncedContractId;
-
-  @override
-  void dispose() {
-    _periodsController.dispose();
-    _rateController.dispose();
-    _feeController.dispose();
-    _overrideInstallmentController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final editAsync = ref.watch(
@@ -88,7 +69,6 @@ class _InstallmentContractEditPageState
     AsyncValue<ContractMetrics> metricsAsync,
   ) {
     final contract = loaded.contract;
-    _syncControllers(contract);
 
     return Form(
       key: _formKey,
@@ -105,69 +85,34 @@ class _InstallmentContractEditPageState
             principal: contract.principal,
           ),
           const SizedBox(height: AppSpacing.space12),
-          _ConfigSection(
-            contract: contract,
-            paidCount: loaded.paidCount,
-            firstRepaymentDate: loaded.firstRepaymentDate,
-            lastRepaymentDate: loaded.lastRepaymentDate,
-            method: loaded.method,
-            ratePeriod: loaded.ratePeriod,
-            accrualMethod: loaded.accrualMethod,
-            periodsController: _periodsController,
-            rateController: _rateController,
-            feeController: _feeController,
-            overrideInstallmentController: _overrideInstallmentController,
-            onPickFirstDate: loaded.paidCount > 0
-                ? null
-                : (onSelected) => _pickFirstDate(loaded, onSelected),
-            onPickLastDate: (onSelected) => _pickLastDate(loaded, onSelected),
-            onFirstDateChanged: (value) {
-              if (value != null) {
-                ref
-                    .read(
-                      installmentContractEditViewModelProvider(
-                        widget.contractId,
-                      ).notifier,
-                    )
-                    .setFirstRepaymentDate(value);
-              }
-            },
-            onLastDateChanged: (value) {
-              if (value != null) {
-                ref
-                    .read(
-                      installmentContractEditViewModelProvider(
-                        widget.contractId,
-                      ).notifier,
-                    )
-                    .setLastRepaymentDate(value);
-              }
-            },
-            onMethodChanged: (v) => ref
-                .read(
-                  installmentContractEditViewModelProvider(
-                    widget.contractId,
-                  ).notifier,
-                )
-                .setMethod(v),
-            onRatePeriodChanged: (v) => ref
-                .read(
-                  installmentContractEditViewModelProvider(
-                    widget.contractId,
-                  ).notifier,
-                )
-                .setRatePeriod(v),
-            onAccrualMethodChanged: loaded.paidCount > 0
-                ? null
-                : (v) => ref
-                      .read(
-                        installmentContractEditViewModelProvider(
-                          widget.contractId,
-                        ).notifier,
-                      )
-                      .setAccrualMethod(v),
-            onRecalculate: _recalculate,
-          ),
+          ...[
+            AppPlainSwitchRow(
+              label: '自定义本笔贷款',
+              value: loaded.customRules,
+              description: '关闭保留修改，只锁定阶段结构和计算规则',
+              onChanged: ref
+                  .read(
+                    installmentContractEditViewModelProvider(
+                      widget.contractId,
+                    ).notifier,
+                  )
+                  .setCustomRules,
+            ),
+            InstallmentTermsEditor(
+              value: loaded.stageDraft,
+              rulesEditable: loaded.customRules,
+              onChanged: ref
+                  .read(
+                    installmentContractEditViewModelProvider(
+                      widget.contractId,
+                    ).notifier,
+                  )
+                  .setStageDraft,
+            ),
+            TextButton(onPressed: _recalculate, child: const Text('按参数重算并预览')),
+            if (!loaded.stagePlanPreviewed)
+              const Text('保存条款不会自动重算计划；需要时先点击按参数重算。'),
+          ],
           const SizedBox(height: AppSpacing.space12),
           _ScheduleSection(
             draft: loaded.draft,
@@ -186,41 +131,6 @@ class _InstallmentContractEditPageState
     );
   }
 
-  void _syncControllers(InstallmentContractReadModel contract) {
-    if (_syncedContractId == contract.id) return;
-    _syncedContractId = contract.id;
-    _periodsController.text = installmentContractPeriodsText(contract);
-    _rateController.text = installmentContractRateText(contract);
-    _feeController.text = installmentContractFeeText(contract);
-    _overrideInstallmentController.text = '';
-  }
-
-  Future<void> _pickFirstDate(
-    InstallmentContractEditLoaded loaded,
-    ValueChanged<DateTime?> onSelected,
-  ) async {
-    final picked = await showAppDatePicker(
-      context: context,
-      initialDate: loaded.firstRepaymentDate,
-      title: '选择首期还款日',
-    );
-    if (picked == null || !mounted) return;
-    onSelected(picked);
-  }
-
-  Future<void> _pickLastDate(
-    InstallmentContractEditLoaded loaded,
-    ValueChanged<DateTime?> onSelected,
-  ) async {
-    final picked = await showAppDatePicker(
-      context: context,
-      initialDate: loaded.lastRepaymentDate,
-      title: '选择末期还款日',
-    );
-    if (picked == null || !mounted) return;
-    onSelected(picked);
-  }
-
   Future<void> _recalculate() async {
     final form = _formKey.currentState!;
     if (!form.validate()) return;
@@ -229,12 +139,7 @@ class _InstallmentContractEditPageState
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
         )
-        .recalculate(
-          totalPeriodsText: _periodsController.text,
-          rateText: _rateController.text,
-          feeText: _feeController.text,
-          overrideInstallmentText: _overrideInstallmentController.text,
-        );
+        .recalculate();
     switch (outcome) {
       case UiActionFailure<void>(:final error):
         if (mounted) _showError(error.message);
@@ -278,12 +183,7 @@ class _InstallmentContractEditPageState
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
         )
-        .submit(
-          totalPeriodsText: _periodsController.text,
-          rateText: _rateController.text,
-          feeText: _feeController.text,
-          overrideInstallmentText: _overrideInstallmentController.text,
-        );
+        .submit();
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -296,175 +196,6 @@ class _InstallmentContractEditPageState
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
-  }
-}
-
-class _ConfigSection extends StatelessWidget {
-  const _ConfigSection({
-    required this.contract,
-    required this.paidCount,
-    required this.firstRepaymentDate,
-    required this.lastRepaymentDate,
-    required this.method,
-    required this.ratePeriod,
-    required this.accrualMethod,
-    required this.periodsController,
-    required this.rateController,
-    required this.feeController,
-    required this.overrideInstallmentController,
-    required this.onPickFirstDate,
-    required this.onPickLastDate,
-    required this.onFirstDateChanged,
-    required this.onLastDateChanged,
-    required this.onMethodChanged,
-    required this.onRatePeriodChanged,
-    required this.onAccrualMethodChanged,
-    required this.onRecalculate,
-  });
-
-  final InstallmentContractReadModel contract;
-  final int paidCount;
-  final DateTime firstRepaymentDate;
-  final DateTime lastRepaymentDate;
-  final InstallmentRepaymentMethod method;
-  final InterestRatePeriod ratePeriod;
-  final InterestAccrualMethod accrualMethod;
-  final TextEditingController periodsController;
-  final TextEditingController rateController;
-  final TextEditingController feeController;
-  final TextEditingController overrideInstallmentController;
-  final AppPlainSelectTap<DateTime>? onPickFirstDate;
-  final AppPlainSelectTap<DateTime> onPickLastDate;
-  final ValueChanged<DateTime?> onFirstDateChanged;
-  final ValueChanged<DateTime?> onLastDateChanged;
-  final ValueChanged<InstallmentRepaymentMethod> onMethodChanged;
-  final ValueChanged<InterestRatePeriod> onRatePeriodChanged;
-  final ValueChanged<InterestAccrualMethod>? onAccrualMethodChanged;
-  final VoidCallback onRecalculate;
-
-  static const double _rowMinHeight = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return AppFormSection(
-      title: '分期配置',
-      spacing: AppSpacing.space4,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space12,
-        vertical: AppSpacing.space4,
-      ),
-      children: [
-        AppPlainFormRow(
-          label: '借款日期',
-          minHeight: _rowMinHeight,
-          child: _readOnly(context, formatDateLabel(contract.borrowingDate)),
-        ),
-        AppPlainFormRow(
-          label: '分期类型',
-          minHeight: _rowMinHeight,
-          child: _readOnly(context, _sourceTypeLabel(contract.sourceType)),
-        ),
-        AppPlainFormRow(
-          label: '本金',
-          minHeight: _rowMinHeight,
-          child: _readOnly(context, contract.principal.format()),
-        ),
-        AppPlainIntegerFormRow(
-          label: '期数',
-          controller: periodsController,
-          hintText: '总期数',
-          minHeight: _rowMinHeight,
-          validator: (value) {
-            final n = int.tryParse((value ?? '').trim());
-            if (n == null || n <= 0) return '期数必须为正整数';
-            if (n < paidCount + 1) {
-              return '期数必须不小于已还期数 + 1（当前 ${paidCount + 1}）';
-            }
-            return null;
-          },
-        ),
-        DateTimePlainFormRow(
-          label: '首期还款日',
-          dateTime: firstRepaymentDate,
-          value: formatDateLabel(firstRepaymentDate),
-          onTap: onPickFirstDate,
-          onChanged: onFirstDateChanged,
-          minHeight: _rowMinHeight,
-        ),
-        DateTimePlainFormRow(
-          label: '末期还款日',
-          dateTime: lastRepaymentDate,
-          value: formatDateLabel(lastRepaymentDate),
-          onTap: onPickLastDate,
-          onChanged: onLastDateChanged,
-          minHeight: _rowMinHeight,
-        ),
-        AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>(
-          label: '分期方式',
-          value: method,
-          options: installmentRepaymentMethodOptions,
-          onChanged: onMethodChanged,
-          minHeight: _rowMinHeight,
-        ),
-        if (method != InstallmentRepaymentMethod.flatFee &&
-            method != InstallmentRepaymentMethod.custom)
-          AppPlainSelectMenuFormRow<InterestAccrualMethod>(
-            label: '计息方式',
-            value: accrualMethod,
-            options: interestAccrualMethodOptions,
-            onChanged: onAccrualMethodChanged,
-            minHeight: _rowMinHeight,
-          ),
-        if (method != InstallmentRepaymentMethod.flatFee &&
-            method != InstallmentRepaymentMethod.custom)
-          ValueWithUnitPlainFormRow<InterestRatePeriod>(
-            label: '利率',
-            controller: rateController,
-            hintText: '例：7.2',
-            suffixText: '%',
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            unit: ratePeriod,
-            unitOptions: interestRatePeriodOptions,
-            onUnitChanged: onRatePeriodChanged,
-            minHeight: _rowMinHeight,
-          ),
-        if (method == InstallmentRepaymentMethod.flatFee)
-          MoneyPlainFormRow(
-            label: '总手续费',
-            controller: feeController,
-            hintText: '各期合计（可选）',
-            minHeight: _rowMinHeight,
-          ),
-        if (method == InstallmentRepaymentMethod.equalInstallment)
-          MoneyPlainFormRow(
-            label: '还款固定额',
-            controller: overrideInstallmentController,
-            hintText: '前 n-1 期固定额（可选）',
-            minHeight: _rowMinHeight,
-          ),
-        Divider(
-          height: 1,
-          color: colors.outlineVariant.withValues(alpha: 0.55),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: onRecalculate,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('按配置重算'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _readOnly(BuildContext context, String text) {
-    final colors = Theme.of(context).colorScheme;
-    return Text(
-      text,
-      style: context.appTextStyles.formValue.copyWith(color: colors.onSurface),
     );
   }
 }
@@ -1016,13 +747,6 @@ String _statusLabel(InstallmentScheduleStatus status) {
     InstallmentScheduleStatus.partiallyPaid => '部分已还',
     InstallmentScheduleStatus.paid => '已还',
     InstallmentScheduleStatus.skipped => '已跳过',
-  };
-}
-
-String _sourceTypeLabel(InstallmentSourceType type) {
-  return switch (type) {
-    InstallmentSourceType.disbursement => '放款分期',
-    InstallmentSourceType.billConversion => '账单分期',
   };
 }
 

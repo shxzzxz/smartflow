@@ -55,11 +55,17 @@ void main() {
       expect(command.liabilityAccountId, 'loan');
       expect(command.disbursementAccountId, 'cash');
       expect(command.principal, const Money(minorUnits: 1234));
-      expect(command.totalPeriods, 12);
-      expect(command.firstRepaymentDate, DateTime(2026, 8, 12));
-      expect(command.lastRepaymentDate, DateTime(2027, 7, 12));
-      expect(command.interestRatePpm, 72000);
-      expect(command.equalInstallmentOverrideMinor, 456);
+      expect(command.stageTerms.totalPeriods, 12);
+      expect(command.stageTerms.firstDate, DateTime(2026, 8, 12));
+      expect(command.stageTerms.lastDate, DateTime(2027, 7, 12));
+      expect(command.stageTerms.repayments.first.rate?.ppm, 72000);
+      expect(
+        (command.stageTerms.repayments.single.installmentAmount
+                as FixedInstallmentAmount)
+            .amount
+            .minorUnits,
+        456,
+      );
       expect(command.note, 'note');
     });
 
@@ -134,8 +140,8 @@ void main() {
         expect(command.liabilityAccountId, 'card');
         expect(command.disbursementAccountId, 'cash');
         expect(command.principal, const Money(minorUnits: 10000));
-        expect(command.totalFeeMinor, 300);
-        expect(command.interestRatePeriod, isNull);
+        expect(command.stageTerms.totalFeeMinor, 300);
+        expect(command.stageTerms.repayments.first.rate?.period, isNull);
       },
     );
 

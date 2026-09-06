@@ -7,6 +7,183 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
 void main() {
+  test('v32 drops scalar contract columns and preserves authoritative staged terms', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-v32-stage-migration-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/smartflow.sqlite');
+    final old = _openDatabase(file);
+    await _restoreFlatContractColumns(old);
+    await old.customStatement(
+      "INSERT INTO installment_contracts "
+      "(id, liability_account_id, source_type, principal_minor, start_date, status, total_periods, interest_rate_ppm) "
+      "VALUES ('staged', 'loan', 'disbursement', 10000, 1700000000, 'active', 999, 999999)",
+    );
+    await old.customStatement(
+      "INSERT INTO installment_stage_configs "
+      "(id, owner_type, owner_id, position, stage_kind, repayment_method, interval_months, periods, "
+      "rate_period, rate_ppm, accrual, first_date, fee_minor, end_principal_minor) VALUES "
+      "('stage-1', 'contract', 'staged', 0, 'repayment', 'interestFirst', 1, 2, 'annual', 36000, 'daily', 1703000000, 0, NULL), "
+      "('stage-2', 'contract', 'staged', 1, 'repayment', 'equalPrincipal', 1, 3, 'monthly', 2000, 'monthly', 1709000000, 150, NULL)",
+    );
+    await old.customStatement(
+      "INSERT INTO installment_schedules "
+      "(id, contract_id, stage_id, period_no, expected_repayment_date, expected_principal_minor, status) "
+      "VALUES ('period-1', 'staged', 'stage-1', 1, 1703000000, 0, 'paid')",
+    );
+    await old.customStatement(
+      "INSERT INTO repayments "
+      "(id, repayment_type, target_type, target_id, repayment_date) "
+      "VALUES ('repayment-1', 'PREPAYMENT', 'CONTRACT', 'staged', 1704000000)",
+    );
+    await old.customStatement(
+      "INSERT INTO repayment_items "
+      "(id, repayment_id, allocated_principal_minor, allocated_interest_minor, allocated_fee_minor, allocated_discount_minor) "
+      "VALUES ('allocation-1', 'repayment-1', 1000, 0, 0, 0)",
+    );
+    final before = <String, List<Map<String, Object?>>>{};
+    for (final table in [
+      'installment_stage_configs',
+      'installment_schedules',
+      'repayments',
+      'repayment_items',
+    ]) {
+      before[table] = (await old.customSelect('SELECT * FROM $table').get())
+          .map((r) => r.data)
+          .toList();
+    }
+    await old.customStatement('PRAGMA user_version = 32');
+    await old.close();
+    final current = _openDatabase(file);
+    addTearDown(current.close);
+    for (final entry in before.entries) {
+      expect(
+        (await current.customSelect('SELECT * FROM ${entry.key}').get())
+            .map((r) => r.data)
+            .toList(),
+        entry.value,
+      );
+    }
+    final columns =
+        (await current
+                .customSelect('PRAGMA table_info(installment_contracts)')
+                .get())
+            .map((r) => r.read<String>('name'))
+            .toSet();
+    expect(columns, isNot(contains('total_periods')));
+    expect(columns, isNot(contains('interest_rate_ppm')));
+    expect(
+      (await current.select(current.installmentContracts).getSingle())
+          .principalMinor,
+      10000,
+    );
+  });
+
+  test(
+    'v31 migrates each contract to its own stage without changing schedules',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-stage-migration-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final stale = _openDatabase(file);
+      await _restoreFlatContractColumns(stale);
+      await stale.customStatement(
+        "INSERT INTO installment_contracts "
+        "(id, liability_account_id, source_type, principal_minor, total_periods, start_date, "
+        "first_repayment_date, last_repayment_date, repayment_method, interest_rate_period, "
+        "interest_rate_ppm, interest_accrual_method, total_fee_minor, status) VALUES "
+        "('legacy', 'loan', 'disbursement', 10000, 2, 1700000000, 1703000000, 1706000000, "
+        "'equalInstallment', 'annual', 36000, 'daily', 500, 'active')",
+      );
+      await stale.customStatement(
+        "INSERT INTO installment_schedules "
+        "(id, contract_id, period_no, expected_repayment_date, expected_principal_minor, "
+        "expected_interest_minor, expected_fee_minor, status) VALUES "
+        "('schedule', 'legacy', 1, 1703000010, 4999, 301, 250, 'paid')",
+      );
+      final before =
+          (await stale
+                  .customSelect("SELECT * FROM installment_schedules")
+                  .get())
+              .single
+              .data;
+      await stale.customStatement('DROP TABLE installment_stage_configs');
+      await stale.customStatement('DROP TABLE installment_products');
+      for (final column in [
+        'product_id',
+        'product_name',
+        'custom_rules',
+        'day_count',
+        'rounding',
+        'tail_difference',
+      ]) {
+        await stale.customStatement(
+          'ALTER TABLE installment_contracts DROP COLUMN $column',
+        );
+      }
+      await stale.customStatement(
+        'ALTER TABLE installment_schedules DROP COLUMN stage_id',
+      );
+      await stale.customStatement('PRAGMA user_version = 31');
+      await stale.close();
+      final upgraded = _openDatabase(file);
+      addTearDown(upgraded.close);
+      final stage = await upgraded
+          .select(upgraded.installmentStageConfigs)
+          .getSingle();
+      expect(stage.ownerType, 'contract');
+      expect(stage.ownerId, 'legacy');
+      expect(stage.periods, 2);
+      expect(stage.ratePpm, 36000);
+      expect(stage.amountAlgorithm, 'actualRate');
+      expect(stage.endPrincipalMinor, null);
+      expect(stage.fixedAmountMinor, null);
+      final contractColumns =
+          (await upgraded
+                  .customSelect('PRAGMA table_info(installment_contracts)')
+                  .get())
+              .map((r) => r.read<String>('name'))
+              .toSet();
+      expect(
+        contractColumns.intersection({
+          'total_periods',
+          'first_repayment_date',
+          'last_repayment_date',
+          'repayment_method',
+          'interest_rate_period',
+          'interest_rate_ppm',
+          'interest_accrual_method',
+          'total_fee_minor',
+        }),
+        isEmpty,
+      );
+
+      final after =
+          (await upgraded
+                  .customSelect('SELECT * FROM installment_schedules')
+                  .get())
+              .single
+              .data;
+      expect(after['stage_id'], stage.id);
+      expect({...after}..remove('stage_id'), {...before}..remove('stage_id'));
+      for (final table in [
+        'installment_products',
+        'installment_stage_configs',
+        'installment_contracts',
+      ]) {
+        expect(
+          await upgraded
+              .customSelect("PRAGMA foreign_key_list('$table')")
+              .get(),
+          isEmpty,
+        );
+      }
+    },
+  );
+
   test(
     'v30 backfills repayment times and preserves items and indexes',
     () async {
@@ -121,7 +298,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 31);
+    expect(version.read<int>('user_version'), 33);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -160,7 +337,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 31);
+      expect(version.read<int>('user_version'), 33);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -214,7 +391,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 31);
+      expect(version.read<int>('user_version'), 33);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -325,7 +502,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 31);
+      expect(version.read<int>('user_version'), 33);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -492,7 +669,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 31);
+      expect(version.read<int>('user_version'), 33);
 
       for (final table in [
         'import_entity_mappings',
@@ -1065,6 +1242,7 @@ CREATE TABLE repayments (
 /// 测试先用当前 Drift schema 建库，再显式还原 v28 的交易相关结构。
 /// 这样设置旧 user_version 后，升级输入与真实历史数据库一致。
 Future<void> _prepareV28TransactionSchema(AppDatabase database) async {
+  await _restoreFlatContractColumns(database);
   await database.customStatement(
     'DROP INDEX IF EXISTS transaction_lines_transaction_idx',
   );
@@ -1087,16 +1265,49 @@ Future<void> _prepareV28TransactionSchema(AppDatabase database) async {
   }
 }
 
-Future<void> _insertNoTransactionContract(AppDatabase database) {
-  return database.customStatement(
-    "INSERT INTO installment_contracts "
-    "(id, liability_account_id, source_type, disbursement_account_id, "
-    "disbursement_transaction_id, principal_minor, total_periods, "
-    "start_date, first_repayment_date, last_repayment_date, "
-    "repayment_method, interest_accrual_method, status) "
-    "VALUES ('migration-contract', 'loan-1', 'disbursement', NULL, NULL, "
-    "120000, 12, 0, 0, 0, 'equalInstallment', 'daily', 'active')",
-  );
+Future<void> _insertNoTransactionContract(AppDatabase database) async {
+  final columns = await database
+      .customSelect('PRAGMA table_info(installment_contracts)')
+      .get();
+  if (columns.any((r) => r.read<String>('name') == 'total_periods')) {
+    await database.customStatement(
+      "INSERT INTO installment_contracts "
+      "(id, liability_account_id, source_type, principal_minor, total_periods, start_date, "
+      "first_repayment_date, last_repayment_date, repayment_method, interest_accrual_method, status) "
+      "VALUES ('migration-contract', 'loan-1', 'disbursement', 120000, 12, 0, 0, 0, 'equalInstallment', 'daily', 'active')",
+    );
+  } else {
+    await database.customStatement(
+      "INSERT INTO installment_contracts "
+      "(id, liability_account_id, source_type, principal_minor, start_date, status) "
+      "VALUES ('migration-contract', 'loan-1', 'disbursement', 120000, 0, 'active')",
+    );
+  }
+}
+
+Future<void> _restoreFlatContractColumns(AppDatabase database) async {
+  final columns =
+      (await database
+              .customSelect('PRAGMA table_info(installment_contracts)')
+              .get())
+          .map((r) => r.read<String>('name'))
+          .toSet();
+  for (final field in {
+    'total_periods': 'INTEGER NOT NULL DEFAULT 1',
+    'first_repayment_date': 'INTEGER NOT NULL DEFAULT 0',
+    'last_repayment_date': 'INTEGER NOT NULL DEFAULT 0',
+    'repayment_method': "TEXT NOT NULL DEFAULT 'equalPrincipal'",
+    'interest_rate_period': 'TEXT NULL',
+    'interest_rate_ppm': 'INTEGER NULL',
+    'interest_accrual_method': "TEXT NOT NULL DEFAULT 'daily'",
+    'total_fee_minor': 'INTEGER NOT NULL DEFAULT 0',
+  }.entries) {
+    if (!columns.contains(field.key)) {
+      await database.customStatement(
+        'ALTER TABLE installment_contracts ADD COLUMN ${field.key} ${field.value}',
+      );
+    }
+  }
 }
 
 const _staleInstallmentContractsSql = '''

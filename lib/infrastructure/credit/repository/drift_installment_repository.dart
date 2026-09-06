@@ -7,6 +7,7 @@ import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/port/installment_repository.dart';
 import '../../database/app_database.dart';
+import '../mapper/installment_stage_mapper.dart';
 
 class DriftInstallmentRepository implements InstallmentRepository {
   DriftInstallmentRepository(this._database);
@@ -15,9 +16,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<InstallmentContract?> findContract(String id) async {
-    final row =
-        await (_database.select(_database.installmentContracts)
-          ..where((c) => c.id.equals(id))).getSingleOrNull();
+    final row = await (_database.select(
+      _database.installmentContracts,
+    )..where((c) => c.id.equals(id))).getSingleOrNull();
     return row == null ? null : _mapContract(row);
   }
 
@@ -33,7 +34,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
                 (c) => OrderingTerm.desc(c.id),
               ]))
             .get();
-    return rows.map(_mapContract).toList();
+    return Future.wait(rows.map(_mapContract));
   }
 
   @override
@@ -79,9 +80,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<InstallmentSchedule?> findSchedule(String scheduleId) async {
-    final row =
-        await (_database.select(_database.installmentSchedules)
-          ..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
+    final row = await (_database.select(
+      _database.installmentSchedules,
+    )..where((s) => s.id.equals(scheduleId))).getSingleOrNull();
     return row == null ? null : _mapSchedule(row);
   }
 
@@ -90,14 +91,17 @@ class DriftInstallmentRepository implements InstallmentRepository {
     String transactionId,
   ) async {
     final row =
-        await (_database.select(_database.installmentContracts)..where(
-          (c) => c.disbursementTransactionId.equals(transactionId),
-        )).getSingleOrNull();
+        await (_database.select(_database.installmentContracts)
+              ..where((c) => c.disbursementTransactionId.equals(transactionId)))
+            .getSingleOrNull();
     return row == null ? null : _mapContract(row);
   }
 
   @override
-  Future<void> saveContract(InstallmentContract contract) async {
+  Future<void> saveContract(InstallmentContract contract) =>
+      _database.transaction(() => _insertContract(contract));
+
+  Future<void> _insertContract(InstallmentContract contract) async {
     final now = DateTime.now();
     await _database
         .into(_database.installmentContracts)
@@ -105,6 +109,11 @@ class DriftInstallmentRepository implements InstallmentRepository {
           InstallmentContractsCompanion.insert(
             id: contract.id,
             liabilityAccountId: contract.liabilityAccountId,
+            productId: Value(contract.productId),
+            productName: Value(contract.productName),
+            customRules: Value(contract.customRules),
+            dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
+            rounding: Value(contract.stageTerms.rounding.name),
             sourceType: contract.sourceType,
             disbursementAccountId: Value(contract.disbursementAccountId),
             disbursementTransactionId: Value(
@@ -112,21 +121,29 @@ class DriftInstallmentRepository implements InstallmentRepository {
             ),
             sourceRepaymentId: Value(contract.sourceRepaymentId),
             principalMinor: contract.principal.minorUnits,
-            totalPeriods: contract.totalPeriods,
+
             borrowingDate: contract.borrowingDate,
-            firstRepaymentDate: contract.firstRepaymentDate,
-            lastRepaymentDate: contract.lastRepaymentDate,
-            repaymentMethod: contract.repaymentMethod,
-            interestRatePeriod: Value(contract.interestRatePeriod),
-            interestRatePpm: Value(contract.interestRatePpm),
-            interestAccrualMethod: Value(contract.interestAccrualMethod),
-            totalFeeMinor: Value(contract.totalFeeMinor),
+
             status: contract.status,
             note: Value(contract.note),
             createdAt: Value(contract.createdAt),
             updatedAt: Value(now),
           ),
         );
+    await _saveStages(contract);
+  }
+
+  Future<void> _saveStages(InstallmentContract contract) async {
+    await (_database.delete(_database.installmentStageConfigs)..where(
+          (r) => r.ownerType.equals('contract') & r.ownerId.equals(contract.id),
+        ))
+        .go();
+    await _database.batch(
+      (batch) => batch.insertAll(_database.installmentStageConfigs, [
+        for (var i = 0; i < contract.stageTerms.stages.length; i++)
+          encodeContractStage(contract.stageTerms.stages[i], contract.id, i),
+      ]),
+    );
   }
 
   @override
@@ -146,27 +163,27 @@ class DriftInstallmentRepository implements InstallmentRepository {
     List<InstallmentSchedule> schedules,
   ) {
     return _database.transaction(() async {
-      final updated = await (_database.update(_database.installmentContracts)
-        ..where((row) => row.id.equals(contract.id))).write(
-        InstallmentContractsCompanion(
-          disbursementAccountId: Value(contract.disbursementAccountId),
-          totalPeriods: Value(contract.totalPeriods),
-          borrowingDate: Value(contract.borrowingDate),
-          firstRepaymentDate: Value(contract.firstRepaymentDate),
-          lastRepaymentDate: Value(contract.lastRepaymentDate),
-          repaymentMethod: Value(contract.repaymentMethod),
-          interestRatePeriod: Value(contract.interestRatePeriod),
-          interestRatePpm: Value(contract.interestRatePpm),
-          interestAccrualMethod: Value(contract.interestAccrualMethod),
-          totalFeeMinor: Value(contract.totalFeeMinor),
-          status: Value(contract.status),
-          note: Value(contract.note),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+      final updated =
+          await (_database.update(
+            _database.installmentContracts,
+          )..where((row) => row.id.equals(contract.id))).write(
+            InstallmentContractsCompanion(
+              disbursementAccountId: Value(contract.disbursementAccountId),
+              customRules: Value(contract.customRules),
+              dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
+              rounding: Value(contract.stageTerms.rounding.name),
+
+              borrowingDate: Value(contract.borrowingDate),
+
+              status: Value(contract.status),
+              note: Value(contract.note),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
       if (updated == 0) {
         throw BusinessException(CreditErrorCode.contractPersistenceConflict);
       }
+      await _saveStages(contract);
       await _replaceSchedules(contract.id, schedules);
     });
   }
@@ -175,8 +192,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
     String contractId,
     List<InstallmentSchedule> schedules,
   ) async {
-    await (_database.delete(_database.installmentSchedules)
-      ..where((s) => s.contractId.equals(contractId))).go();
+    await (_database.delete(
+      _database.installmentSchedules,
+    )..where((s) => s.contractId.equals(contractId))).go();
     await _database.batch((batch) {
       for (final schedule in schedules) {
         batch.insert(_database.installmentSchedules, _scheduleInsert(schedule));
@@ -186,16 +204,23 @@ class DriftInstallmentRepository implements InstallmentRepository {
 
   @override
   Future<void> deleteContract(String contractId) async {
-    await (_database.delete(_database.installmentSchedules)
-      ..where((s) => s.contractId.equals(contractId))).go();
-    await (_database.delete(_database.installmentContracts)
-      ..where((c) => c.id.equals(contractId))).go();
+    await (_database.delete(
+      _database.installmentSchedules,
+    )..where((s) => s.contractId.equals(contractId))).go();
+    await (_database.delete(_database.installmentStageConfigs)..where(
+          (s) => s.ownerType.equals('contract') & s.ownerId.equals(contractId),
+        ))
+        .go();
+    await (_database.delete(
+      _database.installmentContracts,
+    )..where((c) => c.id.equals(contractId))).go();
   }
 
   InstallmentSchedulesCompanion _scheduleInsert(InstallmentSchedule schedule) {
     return InstallmentSchedulesCompanion.insert(
       id: schedule.id,
       contractId: schedule.contractId,
+      stageId: Value(schedule.stageId ?? '${schedule.contractId}:stage:1'),
       periodNo: schedule.periodNo,
       expectedRepaymentDate: schedule.expectedRepaymentDate,
       expectedPrincipalMinor: Value(schedule.expectedPrincipal.minorUnits),
@@ -208,7 +233,21 @@ class DriftInstallmentRepository implements InstallmentRepository {
     );
   }
 
-  InstallmentContract _mapContract(InstallmentContractRow row) {
+  Future<InstallmentContract> _mapContract(InstallmentContractRow row) async {
+    final stages =
+        await (_database.select(_database.installmentStageConfigs)
+              ..where(
+                (s) =>
+                    s.ownerType.equals('contract') & s.ownerId.equals(row.id),
+              )
+              ..orderBy([(s) => OrderingTerm.asc(s.position)]))
+            .get();
+    if (stages.isEmpty) {
+      throw BusinessException(
+        CreditErrorCode.contractPersistenceConflict,
+        message: '合同缺少阶段配置，请检查迁移数据',
+      );
+    }
     return InstallmentContract(
       id: row.id,
       liabilityAccountId: row.liabilityAccountId,
@@ -217,18 +256,18 @@ class DriftInstallmentRepository implements InstallmentRepository {
       disbursementTransactionId: row.disbursementTransactionId,
       sourceRepaymentId: row.sourceRepaymentId,
       principal: Money(minorUnits: row.principalMinor),
-      totalPeriods: row.totalPeriods,
+      productId: row.productId,
+      productName: row.productName,
+      customRules: row.customRules,
       borrowingDate: row.borrowingDate,
-      firstRepaymentDate: row.firstRepaymentDate,
-      lastRepaymentDate: row.lastRepaymentDate,
-      repaymentMethod: row.repaymentMethod,
-      interestRatePeriod: row.interestRatePeriod,
-      interestRatePpm: row.interestRatePpm,
-      interestAccrualMethod: row.interestAccrualMethod,
-      totalFeeMinor: row.totalFeeMinor,
       status: row.status,
       note: row.note,
       createdAt: row.createdAt,
+      stageTerms: decodeContractTerms(
+        stages,
+        dayCount: row.dayCount,
+        rounding: row.rounding,
+      ),
     );
   }
 
@@ -236,6 +275,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
     return InstallmentSchedule(
       id: row.id,
       contractId: row.contractId,
+      stageId: row.stageId,
       periodNo: row.periodNo,
       expectedRepaymentDate: row.expectedRepaymentDate,
       expectedPrincipal: Money(minorUnits: row.expectedPrincipalMinor),

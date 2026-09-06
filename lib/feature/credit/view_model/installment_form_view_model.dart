@@ -1,3 +1,6 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import '../../../application/credit/credit_query_api.dart';
+import 'installment_terms_draft.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logging/logging.dart';
 
@@ -48,14 +51,55 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     );
   }
 
+  void selectProduct(InstallmentProductReadModel product) {
+    _updateLoaded(
+      (current) => current.copyWith(
+        termsDraft: InstallmentTermsDraft.product(
+          product.stages,
+          product.dayCount,
+          product.rounding,
+        ),
+        productId: product.id,
+        productName: product.name,
+        customRules: false,
+      ),
+    );
+  }
+
+  void setCustomRules(bool value) =>
+      _updateLoaded((s) => s.copyWith(customRules: value));
+  void setTermsDraft(InstallmentTermsDraft value) =>
+      _updateLoaded((s) => s.copyWith(termsDraft: value));
+  void startStageConfiguration() => _updateLoaded(
+    (s) => s.copyWith(
+      termsDraft: InstallmentTermsDraft.initial(),
+      customRules: true,
+    ),
+  );
+
+  Future<UiActionOutcome<LoanCalculation>> preview(String principalText) async {
+    final current = _loadedOrNull();
+    final principal = _parsePositiveMoney(principalText);
+    if (current?.termsDraft == null || principal == null) {
+      return const UiActionOutcome.failure(
+        UiError(code: 'invalid', message: '请先填写本金和阶段参数'),
+      );
+    }
+    return guardUiAction(_logger, 'Preview loan stages', () async {
+      final terms = current!.termsDraft!.contractTerms();
+      return ref
+          .read(loanCalculatorQueryProvider)
+          .calculate(terms.planTerms(principal, current.borrowingDate));
+    });
+  }
+
   void setBorrowingDate(DateTime value) {
     _updateLoaded((state) {
       return state.copyWith(
         borrowingDate: value,
-        firstRepaymentDate:
-            state.firstDateTouched
-                ? state.firstRepaymentDate
-                : _addMonths(value, 1),
+        firstRepaymentDate: state.firstDateTouched
+            ? state.firstRepaymentDate
+            : _addMonths(value, 1),
       );
     });
   }
@@ -100,6 +144,9 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 
     final principal = _parsePositiveMoney(principalText);
     if (principal == null) return _invalidAction('请输入有效本金');
+    if (current.termsDraft != null) {
+      return _submitStages(current, principal, noteText);
+    }
     final totalPeriods = int.tryParse(totalPeriodsText.trim());
     if (totalPeriods == null || totalPeriods <= 0) {
       return _invalidAction('请输入有效期数');
@@ -121,8 +168,8 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     if (totalFee == null) return _invalidAction('请输入有效手续费');
     final overrideMinor =
         current.method == InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(overrideInstallmentText)
-            : null;
+        ? _parseOptionalOverride(overrideInstallmentText)
+        : null;
 
     _setLoaded(current.copyWith(submitting: true));
     try {
@@ -135,22 +182,24 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
           final result = await service.createDisbursementContract(
             CreateDisbursementContractCommand(
               liabilityAccountId: current.liability.id,
-              disbursementAccountId:
-                  current.createDisbursementTransaction
-                      ? current.disbursementAccountId
-                      : null,
+              disbursementAccountId: current.createDisbursementTransaction
+                  ? current.disbursementAccountId
+                  : null,
               principal: principal,
-              totalPeriods: totalPeriods,
               borrowingDate: current.borrowingDate,
-              firstRepaymentDate: current.firstRepaymentDate,
-              lastRepaymentDate: current.lastRepaymentDate,
-              repaymentMethod: current.method,
-              interestRatePeriod: ratePpm == null ? null : current.ratePeriod,
-              interestRatePpm: ratePpm,
-              interestAccrualMethod: current.accrualMethod,
-              totalFeeMinor: totalFee.minorUnits,
-              equalInstallmentOverrideMinor: overrideMinor,
               note: note,
+              stageTerms: InstallmentContractTerms.singleStage(
+                id: 'stage-1',
+                totalPeriods: totalPeriods,
+                firstDate: current.firstRepaymentDate,
+                lastDate: current.lastRepaymentDate,
+                method: current.method,
+                ratePeriod: ratePpm == null ? null : current.ratePeriod,
+                ratePpm: ratePpm,
+                accrual: current.accrualMethod,
+                feeMinor: totalFee.minorUnits,
+                fixedAmountMinor: overrideMinor,
+              ),
             ),
           );
           ref.invalidate(
@@ -165,6 +214,47 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       if (latest != null) {
         _setLoaded(latest.copyWith(submitting: false));
       }
+    }
+  }
+
+  Future<UiActionOutcome<String>> _submitStages(
+    InstallmentFormLoaded current,
+    Money principal,
+    String noteText,
+  ) async {
+    if (current.createDisbursementTransaction &&
+        current.disbursementAccountId == null) {
+      return _invalidAction('请选择放款入账账户');
+    }
+    _setLoaded(current.copyWith(submitting: true));
+    try {
+      return await guardUiAction(_logger, 'Create staged loan', () async {
+        final terms = current.termsDraft!.contractTerms();
+        final result = await ref
+            .read(installmentAppServiceProvider)
+            .createDisbursementContract(
+              CreateDisbursementContractCommand(
+                liabilityAccountId: current.liability.id,
+                disbursementAccountId: current.createDisbursementTransaction
+                    ? current.disbursementAccountId
+                    : null,
+                principal: principal,
+                borrowingDate: current.borrowingDate,
+                productId: current.productId,
+                customRules: current.customRules,
+                note: trimToNull(noteText),
+                stageTerms: terms,
+              ),
+            );
+        ref.invalidate(
+          installmentContractsByAccountProvider(current.liability.id),
+        );
+        ref.invalidate(creditAccountOverviewProvider(current.liability.id));
+        return result.contractId;
+      });
+    } finally {
+      final latest = _loadedOrNull();
+      if (latest != null) _setLoaded(latest.copyWith(submitting: false));
     }
   }
 
@@ -278,6 +368,10 @@ class InstallmentFormLoaded extends InstallmentFormState {
     required this.createDisbursementTransaction,
     required this.submitting,
     this.disbursementAccountId,
+    this.termsDraft,
+    this.productId,
+    this.productName,
+    this.customRules = false,
   });
 
   factory InstallmentFormLoaded.initial({
@@ -306,6 +400,9 @@ class InstallmentFormLoaded extends InstallmentFormState {
     );
   }
 
+  final InstallmentTermsDraft? termsDraft;
+  final String? productId, productName;
+  final bool customRules;
   final Account liability;
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;
@@ -333,22 +430,28 @@ class InstallmentFormLoaded extends InstallmentFormState {
     InterestAccrualMethod? accrualMethod,
     bool? createDisbursementTransaction,
     bool? submitting,
+    InstallmentTermsDraft? termsDraft,
+    String? productId,
+    String? productName,
+    bool? customRules,
   }) {
     return InstallmentFormLoaded(
+      termsDraft: termsDraft ?? this.termsDraft,
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      customRules: customRules ?? this.customRules,
       liabilityAccounts: liabilityAccounts,
       fundAccounts: fundAccounts,
       liability: liability,
       sourceType: sourceType ?? this.sourceType,
-      disbursementAccountId:
-          disbursementAccountId == _sentinel
-              ? this.disbursementAccountId
-              : disbursementAccountId as String?,
+      disbursementAccountId: disbursementAccountId == _sentinel
+          ? this.disbursementAccountId
+          : disbursementAccountId as String?,
       borrowingDate: borrowingDate ?? this.borrowingDate,
       firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
-      lastRepaymentDate:
-          lastRepaymentDate == _sentinel
-              ? this.lastRepaymentDate
-              : lastRepaymentDate as DateTime?,
+      lastRepaymentDate: lastRepaymentDate == _sentinel
+          ? this.lastRepaymentDate
+          : lastRepaymentDate as DateTime?,
       firstDateTouched: firstDateTouched ?? this.firstDateTouched,
       method: method ?? this.method,
       ratePeriod: ratePeriod ?? this.ratePeriod,

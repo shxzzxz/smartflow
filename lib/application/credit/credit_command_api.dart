@@ -1,6 +1,9 @@
 /// 信贷写侧 application API。
 library;
 
+export 'product/installment_product_service.dart'
+    show InstallmentProductService;
+
 export '../../domain/credit/entity/credit_liability_account.dart';
 export '../../domain/credit/entity/bill.dart';
 export '../../domain/credit/entity/installment_contract.dart';

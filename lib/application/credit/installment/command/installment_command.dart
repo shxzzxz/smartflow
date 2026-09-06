@@ -1,24 +1,18 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 
 class CreateDisbursementContractCommand {
   const CreateDisbursementContractCommand({
     required this.liabilityAccountId,
     required this.principal,
-    required this.totalPeriods,
     required this.borrowingDate,
-    required this.firstRepaymentDate,
-    required this.repaymentMethod,
-    this.lastRepaymentDate,
-    this.interestRatePeriod,
-    this.interestRatePpm,
-    this.interestAccrualMethod = InterestAccrualMethod.daily,
-    this.totalFeeMinor = 0,
-    this.equalInstallmentOverrideMinor,
     this.disbursementAccountId,
     this.note,
     this.counterpartyName,
+    required this.stageTerms,
+    this.productId,
+    this.customRules = false,
   });
 
   final String liabilityAccountId;
@@ -26,27 +20,15 @@ class CreateDisbursementContractCommand {
   /// 放款入账账户。为空时用于迁移场景：只创建合同和计划，不创建放款交易。
   final String? disbursementAccountId;
   final Money principal;
-  final int totalPeriods;
 
   /// 借款日期，同时作为放款交易的 occurredAt。
   final DateTime borrowingDate;
-  final DateTime firstRepaymentDate;
-
-  /// 末期还款日，缺省时 = 首期 + (期数-1) 月。
-  final DateTime? lastRepaymentDate;
-
-  final InstallmentRepaymentMethod repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
-  final InterestAccrualMethod interestAccrualMethod;
-  final int totalFeeMinor;
-
-  /// 等额本息下用户给定的每期还款额 A（前 N-1 期；末期吸误差）。
-  /// 仅生成计划期间使用，**不落库**。null 时回落到公式推导。
-  final int? equalInstallmentOverrideMinor;
 
   final String? note;
   final String? counterpartyName;
+  final InstallmentContractTerms stageTerms;
+  final String? productId;
+  final bool customRules;
 }
 
 class DeleteContractCommand {
@@ -101,37 +83,10 @@ enum ContractStatusValidationIssueType {
 class RecalculateContractSchedulesCommand {
   const RecalculateContractSchedulesCommand({
     required this.contractId,
-    this.terms,
-    this.equalInstallmentOverrideMinor,
+    this.stageTerms,
   });
-
   final String contractId;
-  final ContractRecalculationTerms? terms;
-
-  /// 等额本息下用户给定的每期还款额 A，仅用于本次显式重算，不落库。
-  final int? equalInstallmentOverrideMinor;
-}
-
-class ContractRecalculationTerms {
-  const ContractRecalculationTerms({
-    required this.totalPeriods,
-    required this.firstRepaymentDate,
-    required this.lastRepaymentDate,
-    required this.repaymentMethod,
-    required this.interestRatePeriod,
-    required this.interestRatePpm,
-    required this.interestAccrualMethod,
-    required this.totalFeeMinor,
-  });
-
-  final int totalPeriods;
-  final DateTime firstRepaymentDate;
-  final DateTime lastRepaymentDate;
-  final InstallmentRepaymentMethod repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
-  final InterestAccrualMethod interestAccrualMethod;
-  final int totalFeeMinor;
+  final InstallmentContractTerms? stageTerms;
 }
 
 class RecalculatedSchedulePreview {
@@ -203,34 +158,17 @@ class SchedulePendingPatch {
 class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,
-    this.totalPeriods,
-    this.firstRepaymentDate,
-    this.lastRepaymentDate,
     this.borrowingDate,
-    this.repaymentMethod,
-    this.interestRatePeriod,
-    this.interestRatePpm,
-    this.interestAccrualMethod,
-    this.totalFeeMinor,
-    this.equalInstallmentOverrideMinor,
     this.disbursementAccountId,
     this.note,
     this.schedulePatches = const [],
+    this.stageTerms,
+    this.customRules,
+    this.regeneratePlan = false,
   });
 
   final String contractId;
-  final int? totalPeriods;
-  final DateTime? firstRepaymentDate;
-  final DateTime? lastRepaymentDate;
   final DateTime? borrowingDate;
-  final InstallmentRepaymentMethod? repaymentMethod;
-  final Patch<InterestRatePeriod>? interestRatePeriod;
-  final Patch<int>? interestRatePpm;
-  final InterestAccrualMethod? interestAccrualMethod;
-  final int? totalFeeMinor;
-
-  /// 等额本息下用户给定的每期还款额 A，仅重算 pending 期次时使用，**不落库**。
-  final int? equalInstallmentOverrideMinor;
 
   /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。
   /// 业务上禁止清除（账单分期合同永远 null，放款合同永远有值）。
@@ -238,6 +176,9 @@ class UpdateContractCommand {
 
   final Patch<String>? note;
   final List<SchedulePendingPatch> schedulePatches;
+  final InstallmentContractTerms? stageTerms;
+  final bool? customRules;
+  final bool regeneratePlan;
 }
 
 class CreateContractResult {

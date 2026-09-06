@@ -45,30 +45,6 @@ class InstallmentRecalculationTerms {
     this.intervalMonths = 1,
   });
 
-  factory InstallmentRecalculationTerms.fromContract(
-    InstallmentContract contract, {
-    int? equalInstallmentOverrideMinor,
-  }) {
-    return InstallmentRecalculationTerms(
-      principal: contract.principal,
-      borrowingDate: contract.borrowingDate,
-      method: contract.repaymentMethod,
-      accrual: contract.interestAccrualMethod,
-      rate: InterestRate.maybe(
-        contract.interestRatePeriod,
-        contract.interestRatePpm,
-      ),
-      totalFee: Money(minorUnits: contract.totalFeeMinor),
-      installmentAmount:
-          equalInstallmentOverrideMinor != null &&
-              equalInstallmentOverrideMinor > 0
-          ? EqualInstallmentAmount.fixed(
-              Money(minorUnits: equalInstallmentOverrideMinor),
-            )
-          : const EqualInstallmentAmount.actualRate(),
-    );
-  }
-
   final Money principal;
   final DateTime borrowingDate;
   final InstallmentRepaymentMethod method;
@@ -105,7 +81,7 @@ class InstallmentRecalculationRow {
 /// 按锚点规则重算待还尾部。
 ///
 /// 锚点 = max(触发事件的还款日期, 最后一个非待还期次日期)；日期不晚于锚点的期次一律冻结，
-/// 锚点之后的连续待还尾部作为一个阶段一次性分配剩余本金，计息起点为最后一个冻结期次的日期。
+/// 锚点之后的连续待还尾部按合同阶段顺序分配剩余本金。
 class InstallmentPrepaymentRecalculator {
   const InstallmentPrepaymentRecalculator({
     InstallmentPlanEngine planEngine = const InstallmentPlanEngine(),
@@ -120,42 +96,143 @@ class InstallmentPrepaymentRecalculator {
     required List<InstallmentSchedule> schedules,
     required int prepaymentPrincipalMinor,
     DateTime? eventDate,
-    int? equalInstallmentOverrideMinor,
     bool regenerateDates = false,
   }) {
-    Map<int, DateTime>? pendingDatesByPeriodNo;
-    if (regenerateDates) {
-      final generatedDates = _planEngine.generateDates(
-        firstRepaymentDate: contract.firstRepaymentDate,
-        lastRepaymentDate: contract.lastRepaymentDate,
-        totalPeriods: contract.totalPeriods,
-      );
-      pendingDatesByPeriodNo = {
-        for (var index = 0; index < generatedDates.length; index++)
-          index + 1: generatedDates[index],
-      };
+    final terms = contract.stageTerms;
+    final timeline = [...schedules]
+      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    DateTime? anchor = eventDate == null ? null : _dateOnly(eventDate);
+    for (final row in timeline) {
+      if (row.status != InstallmentScheduleStatus.pending &&
+          (anchor == null ||
+              _dateOnly(row.expectedRepaymentDate).isAfter(anchor))) {
+        anchor = _dateOnly(row.expectedRepaymentDate);
+      }
     }
-    return recalculateRows(
-      terms: InstallmentRecalculationTerms.fromContract(
-        contract,
-        equalInstallmentOverrideMinor: equalInstallmentOverrideMinor,
+    final frozen = timeline
+        .where(
+          (r) =>
+              anchor != null &&
+              !_dateOnly(r.expectedRepaymentDate).isAfter(anchor),
+        )
+        .toList();
+    final frozenIds = frozen.map((r) => r.id).toSet();
+    final tail = timeline.where((r) => !frozenIds.contains(r.id)).toList();
+    final remaining =
+        contract.principal.minorUnits -
+        prepaymentPrincipalMinor -
+        frozen.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits);
+    if (remaining < 0 || (tail.isEmpty && remaining != 0)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: remaining < 0
+            ? 'Remaining principal would be negative.'
+            : 'No pending schedule remains after the anchor; restore skipped schedules first.',
+      );
+    }
+    if (tail.isEmpty) return [];
+    final generated = <int, ({String stageId, DateTime date})>{};
+    var period = 1;
+    for (final stage in terms.stages) {
+      if (stage.terms case AmortizingStage(:final dates)) {
+        for (final date in dates.getDates()) {
+          generated[period++] = (stageId: stage.id, date: date);
+        }
+      }
+    }
+    String stageId(InstallmentSchedule r) =>
+        r.stageId ?? generated[r.periodNo]?.stageId ?? terms.stages.first.id;
+    DateTime dateOf(InstallmentSchedule r) {
+      if (!regenerateDates) return r.expectedRepaymentDate;
+      final value = generated[r.periodNo];
+      if (value == null || value.stageId != stageId(r)) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: 'Pending schedule period is outside the contract terms.',
+        );
+      }
+      return value.date;
+    }
+
+    _validateTimeline(contract.borrowingDate, [
+      for (final r in frozen) r.expectedRepaymentDate,
+      for (final r in tail) dateOf(r),
+    ]);
+    var start = frozen.isEmpty
+        ? contract.borrowingDate
+        : frozen.last.expectedRepaymentDate;
+    final stages = <InstallmentStage>[];
+    final orderedTail = <InstallmentSchedule>[];
+    var started = false;
+    for (final config in terms.stages) {
+      final stage = config.terms;
+      if (stage is DefermentStage) {
+        if (!started) {
+          if (stage.until.isAfter(start)) start = stage.until;
+        } else {
+          stages.add(stage);
+        }
+        continue;
+      }
+      final amortizing = stage as AmortizingStage;
+      final rows = tail.where((r) => stageId(r) == config.id).toList();
+      if (rows.isEmpty) continue;
+      final stageFrozen = frozen.where((r) => stageId(r) == config.id).toList();
+      final frozenFee = stageFrozen.fold<int>(
+        0,
+        (sum, r) => sum + r.expectedFee.minorUnits,
+      );
+      final fee = amortizing.fee.minorUnits - frozenFee;
+      stages.add(
+        AmortizingStage(
+          dates: ExplicitRepaymentDates([
+            for (final r in rows) dateOf(r),
+          ], intervalMonths: amortizing.dates.intervalMonths),
+          accrualStartDate: !started && stageFrozen.isNotEmpty
+              ? start
+              : amortizing.accrualStartDate,
+          method: amortizing.method,
+          rate: amortizing.rate,
+          accrual: amortizing.accrual,
+          endPrincipal: amortizing.endPrincipal,
+          fee: Money(minorUnits: fee < 0 ? 0 : fee),
+          installmentAmount: amortizing.installmentAmount,
+        ),
+      );
+      orderedTail.addAll(rows);
+      started = true;
+    }
+    if (orderedTail.length != tail.length ||
+        [for (final r in orderedTail) r.id].join('|') !=
+            [for (final r in tail) r.id].join('|')) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '计划与合同阶段的归属不一致',
+      );
+    }
+    final plan = _planEngine.plan(
+      InstallmentPlanTerms(
+        principal: Money(minorUnits: remaining),
+        borrowingDate: start,
+        stages: stages,
+        dayCount: terms.dayCount,
+        rounding: terms.rounding,
+        tailDifference: terms.tailDifference,
       ),
-      rows: [
-        for (final schedule in schedules)
-          InstallmentRecalculationRow(
-            id: schedule.id,
-            periodNo: schedule.periodNo,
-            date: schedule.expectedRepaymentDate,
-            principal: schedule.expectedPrincipal,
-            interest: schedule.expectedInterest,
-            fee: schedule.expectedFee,
-            isPending: schedule.status == InstallmentScheduleStatus.pending,
-          ),
-      ],
-      prepaymentPrincipal: Money(minorUnits: prepaymentPrincipalMinor),
-      eventDate: eventDate,
-      pendingDatesByPeriodNo: pendingDatesByPeriodNo,
+      firstPeriodNo: tail.first.periodNo,
+      capEndPrincipal: true,
     );
+    return [
+      for (var i = 0; i < tail.length; i++)
+        InstallmentScheduleRecalculation(
+          scheduleId: tail[i].id,
+          periodNo: tail[i].periodNo,
+          expectedRepaymentDate: dateOf(tail[i]),
+          expectedPrincipal: plan.entries[i].expectedPrincipal,
+          expectedInterest: plan.entries[i].expectedInterest,
+          expectedFee: plan.entries[i].expectedFee,
+        ),
+    ];
   }
 
   List<InstallmentScheduleRecalculation> recalculateRows({

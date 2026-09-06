@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -345,15 +346,18 @@ void main() {
             disbursementAccountId: 'asset-account',
             disbursementTransactionId: 'tx-borrowing',
             principal: const Money(minorUnits: 120000),
-            totalPeriods: 3,
             borrowingDate: DateTime(2026, 6, 1),
-            firstRepaymentDate: DateTime(2026, 7, 1),
-            lastRepaymentDate: DateTime(2026, 9, 1),
-            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-            interestAccrualMethod: InterestAccrualMethod.daily,
-            totalFeeMinor: 0,
             status: InstallmentContractStatus.active,
             createdAt: DateTime(2026, 6, 1),
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: contractId,
+              totalPeriods: 3,
+              firstDate: DateTime(2026, 7, 1),
+              lastDate: DateTime(2026, 9, 1),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.daily,
+              feeMinor: 0,
+            ),
           ),
         );
         await fixture.installmentRepository.saveAggregate(
@@ -505,15 +509,18 @@ void main() {
           disbursementAccountId: 'asset-account',
           disbursementTransactionId: 'tx-borrowing',
           principal: const Money(minorUnits: 60000),
-          totalPeriods: 1,
           borrowingDate: DateTime(2026, 6, 1),
-          firstRepaymentDate: DateTime(2026, 7, 1),
-          lastRepaymentDate: DateTime(2026, 7, 1),
-          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          interestAccrualMethod: InterestAccrualMethod.daily,
-          totalFeeMinor: 0,
           status: InstallmentContractStatus.active,
           createdAt: DateTime(2026, 6, 1),
+          stageTerms: InstallmentContractTerms.singleStage(
+            id: contractId,
+            totalPeriods: 1,
+            firstDate: DateTime(2026, 7, 1),
+            lastDate: DateTime(2026, 7, 1),
+            method: InstallmentRepaymentMethod.equalPrincipal,
+            accrual: InterestAccrualMethod.daily,
+            feeMinor: 0,
+          ),
         ),
       );
       await fixture.installmentRepository.saveAggregate(
@@ -578,15 +585,18 @@ void main() {
         disbursementAccountId: 'asset-account',
         disbursementTransactionId: 'tx-borrowing',
         principal: const Money(minorUnits: 60000),
-        totalPeriods: 1,
         borrowingDate: DateTime(2026, 6, 1),
-        firstRepaymentDate: DateTime(2026, 7, 1),
-        lastRepaymentDate: DateTime(2026, 7, 1),
-        repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-        interestAccrualMethod: InterestAccrualMethod.daily,
-        totalFeeMinor: 0,
         status: InstallmentContractStatus.active,
         createdAt: DateTime(2026, 6, 1),
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: fixture.ids.newId(),
+          totalPeriods: 1,
+          firstDate: DateTime(2026, 7, 1),
+          lastDate: DateTime(2026, 7, 1),
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          accrual: InterestAccrualMethod.daily,
+          feeMinor: 0,
+        ),
       );
       final schedule = InstallmentSchedule(
         id: fixture.ids.newId(),
@@ -883,19 +893,22 @@ class _Fixture {
       disbursementAccountId: 'asset-account',
       disbursementTransactionId: 'tx-borrowing',
       principal: const Money(minorUnits: 60000),
-      totalPeriods: 2,
       borrowingDate: DateTime(2026, 5, 1),
-      firstRepaymentDate: repaymentDate,
-      lastRepaymentDate: DateTime(
-        repaymentDate.year,
-        repaymentDate.month + 1,
-        repaymentDate.day,
-      ),
-      repaymentMethod: InstallmentRepaymentMethod.interestFirst,
-      interestAccrualMethod: InterestAccrualMethod.daily,
-      totalFeeMinor: 0,
       status: InstallmentContractStatus.active,
       createdAt: DateTime(2026, 5, 1),
+      stageTerms: InstallmentContractTerms.singleStage(
+        id: ids.newId(),
+        totalPeriods: 2,
+        firstDate: repaymentDate,
+        lastDate: DateTime(
+          repaymentDate.year,
+          repaymentDate.month + 1,
+          repaymentDate.day,
+        ),
+        method: InstallmentRepaymentMethod.interestFirst,
+        accrual: InterestAccrualMethod.daily,
+        feeMinor: 0,
+      ),
     );
     final schedule = InstallmentSchedule(
       id: ids.newId(),
@@ -914,7 +927,7 @@ class _Fixture {
         id: ids.newId(),
         contractId: contract.id,
         periodNo: 2,
-        expectedRepaymentDate: contract.lastRepaymentDate,
+        expectedRepaymentDate: contract.stageTerms.lastDate,
         expectedPrincipal: contract.principal,
         expectedInterest: const Money(minorUnits: 1000),
         expectedFee: Money.zero(),

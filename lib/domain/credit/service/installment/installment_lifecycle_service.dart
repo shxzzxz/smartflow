@@ -73,12 +73,14 @@ class InstallmentLifecycleService {
     required List<InstallmentSchedulePlanEntry> entries,
     required DateTime createdAt,
     required String Function() newId,
+    Map<int, String> stageIdsByPeriod = const {},
   }) {
     return [
       for (final entry in entries)
         InstallmentSchedule(
           id: newId(),
           contractId: contractId,
+          stageId: stageIdsByPeriod[entry.periodNo],
           periodNo: entry.periodNo,
           expectedRepaymentDate: entry.expectedRepaymentDate,
           expectedPrincipal: entry.expectedPrincipal,

@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
@@ -742,15 +743,18 @@ class _Fixture {
       disbursementAccountId: 'asset-account',
       disbursementTransactionId: 'tx-borrowing',
       principal: const Money(minorUnits: 60000),
-      totalPeriods: 1,
       borrowingDate: DateTime(2026, 6, 1),
-      firstRepaymentDate: DateTime(2026, 7, 1),
-      lastRepaymentDate: DateTime(2026, 7, 1),
-      repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-      interestAccrualMethod: InterestAccrualMethod.daily,
-      totalFeeMinor: 0,
       status: status,
       createdAt: DateTime(2026, 6, 1),
+      stageTerms: InstallmentContractTerms.singleStage(
+        id: ids.newId(),
+        totalPeriods: 1,
+        firstDate: DateTime(2026, 7, 1),
+        lastDate: DateTime(2026, 7, 1),
+        method: InstallmentRepaymentMethod.equalPrincipal,
+        accrual: InterestAccrualMethod.daily,
+        feeMinor: 0,
+      ),
     );
   }
 

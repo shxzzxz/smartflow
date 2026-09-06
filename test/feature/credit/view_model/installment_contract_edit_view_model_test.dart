@@ -1,3 +1,6 @@
+import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
+import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -5,7 +8,6 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_state.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_view_model.dart';
@@ -24,9 +26,12 @@ void main() {
 
       final loaded = state as InstallmentContractEditLoaded;
       expect(loaded.contract.id, 'contract-1');
-      expect(loaded.paidCount, 0);
+      expect(loaded.stageDraft.stages, hasLength(1));
       expect(loaded.draft.map((row) => row.periodNo), [1, 2]);
-      expect(loaded.ratePeriod, InterestRatePeriod.monthly);
+      expect(
+        loaded.stageDraft.stages.single.ratePeriod,
+        InterestRatePeriod.monthly,
+      );
     });
 
     test(
@@ -59,25 +64,26 @@ void main() {
           installmentContractEditViewModelProvider('contract-1').notifier,
         );
         await _readState(container);
-        viewModel
-          ..setFirstRepaymentDate(DateTime(2026, 3, 1))
-          ..setLastRepaymentDate(DateTime(2026, 5, 1));
-
-        final outcome = await viewModel.recalculate(
-          totalPeriodsText: '3',
-          rateText: '12',
-          feeText: '0.30',
-          overrideInstallmentText: '',
+        viewModel.setStageDraft(
+          _draft(
+            periods: '3',
+            rate: '12',
+            fee: '0.30',
+            firstDate: DateTime(2026, 3, 1),
+            lastDate: DateTime(2026, 5, 1),
+          ),
         );
+
+        final outcome = await viewModel.recalculate();
 
         expect(outcome, isA<UiActionSuccess<void>>());
         expect(service.previewCommands, hasLength(1));
         final previewCommand = service.previewCommands.single;
-        expect(previewCommand.terms!.totalPeriods, 3);
-        expect(previewCommand.terms!.firstRepaymentDate, DateTime(2026, 3, 1));
-        expect(previewCommand.terms!.lastRepaymentDate, DateTime(2026, 5, 1));
-        expect(previewCommand.terms!.interestRatePpm, 120000);
-        expect(previewCommand.terms!.totalFeeMinor, 30);
+        expect(previewCommand.stageTerms!.totalPeriods, 3);
+        expect(previewCommand.stageTerms!.firstDate, DateTime(2026, 3, 1));
+        expect(previewCommand.stageTerms!.lastDate, DateTime(2026, 5, 1));
+        expect(previewCommand.stageTerms!.repayments.single.rate!.ppm, 120000);
+        expect(previewCommand.stageTerms!.totalFeeMinor, 30);
         final loaded =
             container
                     .read(
@@ -92,7 +98,8 @@ void main() {
         ]);
         expect(loaded.draft.map((row) => row.interest.minorUnits), [120, 80]);
         expect(loaded.draft.map((row) => row.fee.minorUnits), [10, 20]);
-        expect(loaded.manualPatchedPeriodNos, {1, 2});
+        expect(loaded.stagePlanPreviewed, isTrue);
+        expect(loaded.manualPatchedPeriodNos, isEmpty);
       },
     );
 
@@ -136,31 +143,31 @@ void main() {
         installmentContractEditViewModelProvider('contract-1').notifier,
       );
       await _readState(container);
-      viewModel
-        ..setMethod(InstallmentRepaymentMethod.equalInstallment)
-        ..applyAmount(
-          _scheduleRow(container, 2),
-          InstallmentAmountField.interest,
-          const Money(minorUnits: 88),
-        );
-
-      final outcome = await viewModel.submit(
-        totalPeriodsText: '2',
-        rateText: '7.2',
-        feeText: '',
-        overrideInstallmentText: '55',
+      viewModel.setStageDraft(_draft(rate: '7.2', fixed: '55'));
+      viewModel.applyAmount(
+        _scheduleRow(container, 2),
+        InstallmentAmountField.interest,
+        const Money(minorUnits: 88),
       );
+
+      final outcome = await viewModel.submit();
 
       expect(outcome, isA<SubmitSuccess>());
       final command = service.updateCommands.single;
       expect(command.contractId, 'contract-1');
-      expect(command.totalPeriods, 2);
+      expect(command.stageTerms!.totalPeriods, 2);
       expect(
-        command.repaymentMethod,
+        command.stageTerms!.repayments.single.method,
         InstallmentRepaymentMethod.equalInstallment,
       );
-      expect(command.interestRatePpm, isA<PatchSet<int>>());
-      expect(command.equalInstallmentOverrideMinor, 5500);
+      expect(command.stageTerms!.repayments.single.rate!.ppm, 72000);
+      expect(
+        (command.stageTerms!.repayments.single.installmentAmount
+                as FixedInstallmentAmount)
+            .amount
+            .minorUnits,
+        5500,
+      );
       expect(command.schedulePatches.single.periodNo, 2);
       expect(
         command.schedulePatches.single.expectedInterest,
@@ -189,12 +196,7 @@ void main() {
       );
       await _readState(container);
 
-      final outcome = await viewModel.submit(
-        totalPeriodsText: '1',
-        rateText: '',
-        feeText: '',
-        overrideInstallmentText: '',
-      );
+      final outcome = await viewModel.submit();
 
       expect(outcome, isA<SubmitFailure>());
       final failure = outcome as SubmitFailure;
@@ -217,12 +219,7 @@ void main() {
       );
       await _readState(container);
 
-      final outcome = await viewModel.submit(
-        totalPeriodsText: '1',
-        rateText: '',
-        feeText: '',
-        overrideInstallmentText: '',
-      );
+      final outcome = await viewModel.submit();
 
       expect(outcome, isA<SubmitFailure>());
       final failure = outcome as SubmitFailure;
@@ -249,15 +246,7 @@ void main() {
       );
       await _readState(container);
 
-      await expectLater(
-        () => viewModel.submit(
-          totalPeriodsText: '1',
-          rateText: '',
-          feeText: '',
-          overrideInstallmentText: '',
-        ),
-        throwsA(same(unexpected)),
-      );
+      await expectLater(() => viewModel.submit(), throwsA(same(unexpected)));
       final loaded =
           container
                   .read(installmentContractEditViewModelProvider('contract-1'))
@@ -315,17 +304,20 @@ InstallmentContractReadModel _contract() {
     disbursementAccountId: 'bank',
     disbursementTransactionId: 'tx-disbursement',
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 2,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 3, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestRatePeriod: InterestRatePeriod.monthly,
-    interestRatePpm: 10000,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract-1:stage:1',
+      totalPeriods: 2,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 3, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      ratePeriod: InterestRatePeriod.monthly,
+      ratePpm: 10000,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: 0,
+    ),
   );
 }
 
@@ -414,4 +406,29 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   Future<void> deleteContract(DeleteContractCommand command) {
     throw UnimplementedError();
   }
+}
+
+InstallmentTermsDraft _draft({
+  String periods = '2',
+  String rate = '',
+  String fee = '',
+  String fixed = '',
+  DateTime? firstDate,
+  DateTime? lastDate,
+}) {
+  final current = InstallmentTermsDraft.contract(_contract().stageTerms);
+  var stage = current.stages.single.copyWith(
+    firstDate: firstDate,
+    lastDate: lastDate,
+    method: InstallmentRepaymentMethod.equalInstallment,
+  );
+  stage = stage
+      .setInput(StageInput.periods, periods)
+      .setInput(StageInput.rate, rate)
+      .setInput(StageInput.fee, fee)
+      .setInput(StageInput.fixedAmount, fixed);
+  if (fixed.isNotEmpty) {
+    stage = stage.copyWith(algorithm: InstallmentAmountAlgorithm.fixed);
+  }
+  return current.replace(stage);
 }

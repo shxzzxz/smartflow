@@ -19,10 +19,12 @@ class InstallmentSchedule {
     required InstallmentScheduleStatus status,
     required this.createdAt,
     this.note,
+    this.stageId,
   }) : _status = status;
 
   final String id;
   final String contractId;
+  final String? stageId;
   final int periodNo;
   DateTime expectedRepaymentDate;
   Money expectedPrincipal;

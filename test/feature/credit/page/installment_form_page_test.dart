@@ -40,7 +40,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(AppFormSection), findsNWidgets(4));
+    expect(find.byType(AppFormSection), findsNWidgets(5));
     expect(find.text('分期设置'), findsNothing);
     expect(find.text('还款规则'), findsOneWidget);
     expect(

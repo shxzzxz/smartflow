@@ -120,10 +120,10 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContractReadModel contract,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
-return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound() when notFound != null:
+return loaded(_that.contract,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound() when notFound != null:
 return notFound();case _:
   return orElse();
 
@@ -142,10 +142,10 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContractReadModel contract,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded():
-return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound():
+return loaded(_that.contract,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound():
 return notFound();}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -160,10 +160,10 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContractReadModel contract,  int paidCount,  DateTime firstRepaymentDate,  DateTime lastRepaymentDate,  InstallmentRepaymentMethod method,  InterestRatePeriod ratePeriod,  InterestAccrualMethod accrualMethod,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContractReadModel contract,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
-return loaded(_that.contract,_that.paidCount,_that.firstRepaymentDate,_that.lastRepaymentDate,_that.method,_that.ratePeriod,_that.accrualMethod,_that.draft,_that.manualPatchedPeriodNos,_that.submitting);case InstallmentContractEditNotFound() when notFound != null:
+return loaded(_that.contract,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound() when notFound != null:
 return notFound();case _:
   return null;
 
@@ -176,16 +176,10 @@ return notFound();case _:
 
 
 class InstallmentContractEditLoaded implements InstallmentContractEditState {
-  const InstallmentContractEditLoaded({required this.contract, required this.paidCount, required this.firstRepaymentDate, required this.lastRepaymentDate, required this.method, required this.ratePeriod, required this.accrualMethod, required  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
+  const InstallmentContractEditLoaded({required this.contract, required  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false, required this.stageDraft, this.customRules = false, this.stagePlanPreviewed = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
   
 
  final  InstallmentContractReadModel contract;
- final  int paidCount;
- final  DateTime firstRepaymentDate;
- final  DateTime lastRepaymentDate;
- final  InstallmentRepaymentMethod method;
- final  InterestRatePeriod ratePeriod;
- final  InterestAccrualMethod accrualMethod;
  final  List<InstallmentContractDraftRow> _draft;
  List<InstallmentContractDraftRow> get draft {
   if (_draft is EqualUnmodifiableListView) return _draft;
@@ -201,6 +195,9 @@ class InstallmentContractEditLoaded implements InstallmentContractEditState {
 }
 
 @JsonKey() final  bool submitting;
+ final  InstallmentTermsDraft stageDraft;
+@JsonKey() final  bool customRules;
+@JsonKey() final  bool stagePlanPreviewed;
 
 /// Create a copy of InstallmentContractEditState
 /// with the given fields replaced by the non-null parameter values.
@@ -212,16 +209,16 @@ $InstallmentContractEditLoadedCopyWith<InstallmentContractEditLoaded> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstallmentContractEditLoaded&&(identical(other.contract, contract) || other.contract == contract)&&(identical(other.paidCount, paidCount) || other.paidCount == paidCount)&&(identical(other.firstRepaymentDate, firstRepaymentDate) || other.firstRepaymentDate == firstRepaymentDate)&&(identical(other.lastRepaymentDate, lastRepaymentDate) || other.lastRepaymentDate == lastRepaymentDate)&&(identical(other.method, method) || other.method == method)&&(identical(other.ratePeriod, ratePeriod) || other.ratePeriod == ratePeriod)&&(identical(other.accrualMethod, accrualMethod) || other.accrualMethod == accrualMethod)&&const DeepCollectionEquality().equals(other._draft, _draft)&&const DeepCollectionEquality().equals(other._manualPatchedPeriodNos, _manualPatchedPeriodNos)&&(identical(other.submitting, submitting) || other.submitting == submitting));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstallmentContractEditLoaded&&(identical(other.contract, contract) || other.contract == contract)&&const DeepCollectionEquality().equals(other._draft, _draft)&&const DeepCollectionEquality().equals(other._manualPatchedPeriodNos, _manualPatchedPeriodNos)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.stageDraft, stageDraft) || other.stageDraft == stageDraft)&&(identical(other.customRules, customRules) || other.customRules == customRules)&&(identical(other.stagePlanPreviewed, stagePlanPreviewed) || other.stagePlanPreviewed == stagePlanPreviewed));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,contract,paidCount,firstRepaymentDate,lastRepaymentDate,method,ratePeriod,accrualMethod,const DeepCollectionEquality().hash(_draft),const DeepCollectionEquality().hash(_manualPatchedPeriodNos),submitting);
+int get hashCode => Object.hash(runtimeType,contract,const DeepCollectionEquality().hash(_draft),const DeepCollectionEquality().hash(_manualPatchedPeriodNos),submitting,stageDraft,customRules,stagePlanPreviewed);
 
 @override
 String toString() {
-  return 'InstallmentContractEditState.loaded(contract: $contract, paidCount: $paidCount, firstRepaymentDate: $firstRepaymentDate, lastRepaymentDate: $lastRepaymentDate, method: $method, ratePeriod: $ratePeriod, accrualMethod: $accrualMethod, draft: $draft, manualPatchedPeriodNos: $manualPatchedPeriodNos, submitting: $submitting)';
+  return 'InstallmentContractEditState.loaded(contract: $contract, draft: $draft, manualPatchedPeriodNos: $manualPatchedPeriodNos, submitting: $submitting, stageDraft: $stageDraft, customRules: $customRules, stagePlanPreviewed: $stagePlanPreviewed)';
 }
 
 
@@ -232,7 +229,7 @@ abstract mixin class $InstallmentContractEditLoadedCopyWith<$Res> implements $In
   factory $InstallmentContractEditLoadedCopyWith(InstallmentContractEditLoaded value, $Res Function(InstallmentContractEditLoaded) _then) = _$InstallmentContractEditLoadedCopyWithImpl;
 @useResult
 $Res call({
- InstallmentContractReadModel contract, int paidCount, DateTime firstRepaymentDate, DateTime lastRepaymentDate, InstallmentRepaymentMethod method, InterestRatePeriod ratePeriod, InterestAccrualMethod accrualMethod, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting
+ InstallmentContractReadModel contract, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting, InstallmentTermsDraft stageDraft, bool customRules, bool stagePlanPreviewed
 });
 
 
@@ -249,18 +246,15 @@ class _$InstallmentContractEditLoadedCopyWithImpl<$Res>
 
 /// Create a copy of InstallmentContractEditState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? contract = null,Object? paidCount = null,Object? firstRepaymentDate = null,Object? lastRepaymentDate = null,Object? method = null,Object? ratePeriod = null,Object? accrualMethod = null,Object? draft = null,Object? manualPatchedPeriodNos = null,Object? submitting = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? contract = null,Object? draft = null,Object? manualPatchedPeriodNos = null,Object? submitting = null,Object? stageDraft = null,Object? customRules = null,Object? stagePlanPreviewed = null,}) {
   return _then(InstallmentContractEditLoaded(
 contract: null == contract ? _self.contract : contract // ignore: cast_nullable_to_non_nullable
-as InstallmentContractReadModel,paidCount: null == paidCount ? _self.paidCount : paidCount // ignore: cast_nullable_to_non_nullable
-as int,firstRepaymentDate: null == firstRepaymentDate ? _self.firstRepaymentDate : firstRepaymentDate // ignore: cast_nullable_to_non_nullable
-as DateTime,lastRepaymentDate: null == lastRepaymentDate ? _self.lastRepaymentDate : lastRepaymentDate // ignore: cast_nullable_to_non_nullable
-as DateTime,method: null == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
-as InstallmentRepaymentMethod,ratePeriod: null == ratePeriod ? _self.ratePeriod : ratePeriod // ignore: cast_nullable_to_non_nullable
-as InterestRatePeriod,accrualMethod: null == accrualMethod ? _self.accrualMethod : accrualMethod // ignore: cast_nullable_to_non_nullable
-as InterestAccrualMethod,draft: null == draft ? _self._draft : draft // ignore: cast_nullable_to_non_nullable
+as InstallmentContractReadModel,draft: null == draft ? _self._draft : draft // ignore: cast_nullable_to_non_nullable
 as List<InstallmentContractDraftRow>,manualPatchedPeriodNos: null == manualPatchedPeriodNos ? _self._manualPatchedPeriodNos : manualPatchedPeriodNos // ignore: cast_nullable_to_non_nullable
 as Set<int>,submitting: null == submitting ? _self.submitting : submitting // ignore: cast_nullable_to_non_nullable
+as bool,stageDraft: null == stageDraft ? _self.stageDraft : stageDraft // ignore: cast_nullable_to_non_nullable
+as InstallmentTermsDraft,customRules: null == customRules ? _self.customRules : customRules // ignore: cast_nullable_to_non_nullable
+as bool,stagePlanPreviewed: null == stagePlanPreviewed ? _self.stagePlanPreviewed : stagePlanPreviewed // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

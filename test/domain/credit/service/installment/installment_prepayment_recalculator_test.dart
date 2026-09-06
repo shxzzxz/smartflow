@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -445,15 +446,18 @@ void main() {
           liabilityAccountId: 'liability',
           sourceType: InstallmentSourceType.disbursement,
           principal: const Money(minorUnits: 10000),
-          totalPeriods: 4,
           borrowingDate: DateTime(2026, 1, 1),
-          firstRepaymentDate: DateTime(2026, 3, 1),
-          lastRepaymentDate: DateTime(2026, 6, 1),
-          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          interestAccrualMethod: InterestAccrualMethod.monthly,
-          totalFeeMinor: 0,
           status: InstallmentContractStatus.active,
           createdAt: DateTime(2026, 1, 1),
+          stageTerms: InstallmentContractTerms.singleStage(
+            id: 'contract:stage:1',
+            totalPeriods: 4,
+            firstDate: DateTime(2026, 3, 1),
+            lastDate: DateTime(2026, 6, 1),
+            method: InstallmentRepaymentMethod.equalPrincipal,
+            accrual: InterestAccrualMethod.monthly,
+            feeMinor: 0,
+          ),
         );
         final schedules = [
           _schedule(
@@ -505,15 +509,18 @@ void main() {
         liabilityAccountId: 'liability',
         sourceType: InstallmentSourceType.disbursement,
         principal: const Money(minorUnits: 10000),
-        totalPeriods: 1,
         borrowingDate: DateTime(2026, 1, 1),
-        firstRepaymentDate: DateTime(2026, 2, 1),
-        lastRepaymentDate: DateTime(2026, 2, 1),
-        repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-        interestAccrualMethod: InterestAccrualMethod.monthly,
-        totalFeeMinor: 0,
         status: InstallmentContractStatus.active,
         createdAt: DateTime(2026, 1, 1),
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: 'contract:stage:1',
+          totalPeriods: 1,
+          firstDate: DateTime(2026, 2, 1),
+          lastDate: DateTime(2026, 2, 1),
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          accrual: InterestAccrualMethod.monthly,
+          feeMinor: 0,
+        ),
       );
 
       expect(
@@ -544,15 +551,18 @@ InstallmentContract _contract() {
     liabilityAccountId: 'liability',
     sourceType: InstallmentSourceType.disbursement,
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 5,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 6, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: InterestAccrualMethod.monthly,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: 5,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 6, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
   );
 }
 
@@ -566,17 +576,20 @@ InstallmentContract _dailyInterestContract({
     liabilityAccountId: 'liability',
     sourceType: InstallmentSourceType.disbursement,
     principal: const Money(minorUnits: 10000),
-    totalPeriods: totalPeriods,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, totalPeriods + 1, 1),
-    repaymentMethod: repaymentMethod,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    interestRatePeriod: InterestRatePeriod.monthly,
-    interestRatePpm: 30000,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: totalPeriods,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, totalPeriods + 1, 1),
+      method: repaymentMethod,
+      ratePeriod: InterestRatePeriod.monthly,
+      ratePpm: 30000,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: 0,
+    ),
   );
 }
 

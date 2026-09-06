@@ -80,18 +80,14 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       disbursementTransactionId: value.disbursementTransactionId,
       sourceRepaymentId: value.sourceRepaymentId,
       principal: value.principal,
-      totalPeriods: value.totalPeriods,
+      productId: value.productId,
+      productName: value.productName,
+      customRules: value.customRules,
       borrowingDate: value.borrowingDate,
-      firstRepaymentDate: value.firstRepaymentDate,
-      lastRepaymentDate: value.lastRepaymentDate,
-      repaymentMethod: value.repaymentMethod,
-      interestRatePeriod: value.interestRatePeriod,
-      interestRatePpm: value.interestRatePpm,
-      interestAccrualMethod: value.interestAccrualMethod,
-      totalFeeMinor: value.totalFeeMinor,
       status: value.status,
       note: value.note,
       createdAt: value.createdAt,
+      stageTerms: value.stageTerms,
     );
   }
 
@@ -99,6 +95,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     return InstallmentScheduleReadModel(
       id: value.id,
       contractId: value.contractId,
+      stageId: value.stageId,
       periodNo: value.periodNo,
       expectedRepaymentDate: value.expectedRepaymentDate,
       expectedPrincipal: value.expectedPrincipal,

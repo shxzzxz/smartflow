@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -301,15 +302,18 @@ InstallmentContract _contract({String? disbursementTransactionId}) {
     disbursementAccountId: disbursementTransactionId == null ? null : 'asset',
     disbursementTransactionId: disbursementTransactionId,
     principal: const Money(minorUnits: 5000),
-    totalPeriods: 1,
     borrowingDate: DateTime(2026, 6, 1),
-    firstRepaymentDate: DateTime(2026, 7, 25),
-    lastRepaymentDate: DateTime(2026, 7, 25),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 6, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: 1,
+      firstDate: DateTime(2026, 7, 25),
+      lastDate: DateTime(2026, 7, 25),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: 0,
+    ),
   );
 }
 

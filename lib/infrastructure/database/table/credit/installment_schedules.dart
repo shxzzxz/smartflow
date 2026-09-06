@@ -6,17 +6,16 @@ import '../../../../domain/credit/valobj/installment_enums.dart';
 class InstallmentSchedules extends Table {
   TextColumn get id => text()();
   TextColumn get contractId => text().named('contract_id')();
+  TextColumn get stageId => text().nullable()();
   IntColumn get periodNo => integer().named('period_no')();
   DateTimeColumn get expectedRepaymentDate =>
       dateTime().named('expected_repayment_date')();
-  IntColumn get expectedPrincipalMinor =>
-      integer()
-          .named('expected_principal_minor')
-          .withDefault(const Constant(0))();
-  IntColumn get expectedInterestMinor =>
-      integer()
-          .named('expected_interest_minor')
-          .withDefault(const Constant(0))();
+  IntColumn get expectedPrincipalMinor => integer()
+      .named('expected_principal_minor')
+      .withDefault(const Constant(0))();
+  IntColumn get expectedInterestMinor => integer()
+      .named('expected_interest_minor')
+      .withDefault(const Constant(0))();
   IntColumn get expectedFeeMinor =>
       integer().named('expected_fee_minor').withDefault(const Constant(0))();
   TextColumn get status =>

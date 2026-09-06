@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -71,10 +72,9 @@ void main() {
         installmentDetailViewModelProvider('contract-1').future,
       );
 
-      final outcome =
-          await container
-              .read(installmentDetailViewModelProvider('contract-1').notifier)
-              .deleteContract();
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .deleteContract();
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(service.deleteCommands.single.contractId, 'contract-1');
@@ -145,10 +145,9 @@ void main() {
         installmentDetailViewModelProvider('contract-1').future,
       );
 
-      final outcome =
-          await container
-              .read(installmentDetailViewModelProvider('contract-1').notifier)
-              .validateContractStatuses();
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .validateContractStatuses();
 
       expect(outcome, isA<UiActionSuccess<ContractStatusValidationResult>>());
       expect(service.validationCommands.single.contractId, 'contract-1');
@@ -166,10 +165,9 @@ void main() {
         installmentDetailViewModelProvider('contract-1').future,
       );
 
-      final outcome =
-          await container
-              .read(installmentDetailViewModelProvider('contract-1').notifier)
-              .deleteContract();
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .deleteContract();
 
       expect(outcome, isA<UiActionFailure<void>>());
       final failure = outcome as UiActionFailure<void>;
@@ -239,15 +237,18 @@ InstallmentContractReadModel _contract() {
     sourceType: InstallmentSourceType.disbursement,
     disbursementAccountId: 'cash',
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 2,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 3, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestAccrualMethod: InterestAccrualMethod.daily,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract-1:stage:1',
+      totalPeriods: 2,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 3, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.daily,
+      feeMinor: 0,
+    ),
   );
 }
 

@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,14 +23,19 @@ void main() {
   group('accountDetailActions', () {
     test('maps each account profile to its supported detail actions', () {
       expect(
-        accountDetailActions(_accountView('receivable', AccountProfileKind.receivable))
-            .map((action) => action.label),
+        accountDetailActions(
+          _accountView('receivable', AccountProfileKind.receivable),
+        ).map((action) => action.label),
         ['借出', '收回', '坏账'],
       );
       final payableActions = accountDetailActions(
         _accountView('payable', AccountProfileKind.payable),
       );
-      expect(payableActions.map((action) => action.label), ['借入', '还款', '债务豁免']);
+      expect(payableActions.map((action) => action.label), [
+        '借入',
+        '还款',
+        '债务豁免',
+      ]);
       expect(
         payableActions.first.route,
         '/transaction/new?mode=borrowing&liabilityAccountId=payable',
@@ -171,10 +177,9 @@ void main() {
       final commandService = _FakeAccountAppService();
       final container = _deleteContainer(commandService);
 
-      final outcome =
-          await container
-              .read(accountDetailViewModelProvider('cash').notifier)
-              .archiveAccount();
+      final outcome = await container
+          .read(accountDetailViewModelProvider('cash').notifier)
+          .archiveAccount();
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(commandService.archiveCommands.single.id, 'cash');
@@ -189,10 +194,9 @@ void main() {
       );
       final container = _deleteContainer(commandService);
 
-      final outcome =
-          await container
-              .read(accountDetailViewModelProvider('cash').notifier)
-              .archiveAccount();
+      final outcome = await container
+          .read(accountDetailViewModelProvider('cash').notifier)
+          .archiveAccount();
 
       expect(outcome, isA<UiActionFailure<void>>());
       final failure = outcome as UiActionFailure<void>;
@@ -207,10 +211,9 @@ void main() {
           _FakeAccountAppService(exception: Exception('unexpected')),
         );
 
-        final outcome =
-            await container
-                .read(accountDetailViewModelProvider('cash').notifier)
-                .archiveAccount();
+        final outcome = await container
+            .read(accountDetailViewModelProvider('cash').notifier)
+            .archiveAccount();
 
         expect(outcome, isA<UiActionFailure<void>>());
         final failure = outcome as UiActionFailure<void>;
@@ -223,10 +226,9 @@ void main() {
       final commandService = _FakeAccountAppService();
       final container = _deleteContainer(commandService);
 
-      final outcome =
-          await container
-              .read(accountDetailViewModelProvider('cash').notifier)
-              .deletePermanently();
+      final outcome = await container
+          .read(accountDetailViewModelProvider('cash').notifier)
+          .deletePermanently();
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(commandService.deleteCommands.single.id, 'cash');
@@ -250,10 +252,9 @@ void main() {
         creditService: creditService,
       );
 
-      final outcome =
-          await container
-              .read(accountDetailViewModelProvider('card').notifier)
-              .deletePermanently();
+      final outcome = await container
+          .read(accountDetailViewModelProvider('card').notifier)
+          .deletePermanently();
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(creditService.deleteCommands.single.accountId, 'card');
@@ -395,15 +396,18 @@ InstallmentContractReadModel _contract() {
     liabilityAccountId: 'card',
     sourceType: InstallmentSourceType.billConversion,
     principal: const Money(minorUnits: 10000),
-    totalPeriods: 3,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 4, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalInstallment,
-    interestAccrualMethod: InterestAccrualMethod.monthly,
-    totalFeeMinor: 0,
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract-1:stage:1',
+      totalPeriods: 3,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 4, 1),
+      method: InstallmentRepaymentMethod.equalInstallment,
+      accrual: InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
   );
 }
 

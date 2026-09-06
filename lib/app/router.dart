@@ -1,3 +1,5 @@
+import '../feature/credit/page/installment_products_page.dart';
+import '../feature/credit/page/installment_product_edit_page.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
@@ -399,6 +401,21 @@ final appRouter = GoRouter(
       path: '/profile/installment-guide',
       builder: (context, state) =>
           const ManualArticlePage(slug: 'credit-metrics'),
+    ),
+    GoRoute(
+      path: '/installment-products',
+      builder: (context, state) => const InstallmentProductsPage(),
+    ),
+    GoRoute(
+      path: '/installment-products/new',
+      builder: (context, state) => const InstallmentProductEditPage(),
+    ),
+    GoRoute(
+      path: '/installment-products/:productId/edit',
+      builder: (context, state) => InstallmentProductEditPage(
+        productId: state.pathParameters['productId'],
+        copy: state.uri.queryParameters['copy'] == 'true',
+      ),
     ),
     GoRoute(
       path: '/profile/loan-calculator',

@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart' as credit;
 import 'package:smartflow/core/money/money.dart';
@@ -224,19 +225,22 @@ class _Fixture {
         disbursementAccountId: 'cash-1',
         disbursementTransactionId: 'borrow-tx',
         principal: Money(minorUnits: principal),
-        totalPeriods: schedulePrincipals.length,
         borrowingDate: DateTime(2026, 6, 25),
-        firstRepaymentDate: firstDate,
-        lastRepaymentDate: DateTime(
-          firstDate.year,
-          firstDate.month + schedulePrincipals.length - 1,
-          firstDate.day,
-        ),
-        repaymentMethod: credit.InstallmentRepaymentMethod.equalPrincipal,
-        interestAccrualMethod: credit.InterestAccrualMethod.monthly,
-        totalFeeMinor: 0,
         status: credit.InstallmentContractStatus.active,
         createdAt: DateTime(2026, 6, 1),
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: contractId,
+          totalPeriods: schedulePrincipals.length,
+          firstDate: firstDate,
+          lastDate: DateTime(
+            firstDate.year,
+            firstDate.month + schedulePrincipals.length - 1,
+            firstDate.day,
+          ),
+          method: credit.InstallmentRepaymentMethod.equalPrincipal,
+          accrual: credit.InterestAccrualMethod.monthly,
+          feeMinor: 0,
+        ),
       ),
     );
     await installments

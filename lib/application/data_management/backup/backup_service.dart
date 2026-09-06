@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 
 import 'backup_models.dart';
+import 'installment_backup_migration.dart';
 
 abstract interface class BackupSnapshotGateway {
   int get schemaVersion;
@@ -173,6 +174,11 @@ class BackupService {
     if (!hasPreferences) {
       throw const BackupValidationException('备份缺少 preferences.json。');
     }
+    migrateInstallmentBackup(
+      tables,
+      schemaVersion: manifest.schemaVersion,
+      formatVersion: manifest.formatVersion,
+    );
     for (final table in BackupTables.all) {
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
@@ -250,6 +256,9 @@ class BackupService {
     final transactions = _index(snapshot.rows('transactions'));
     final tags = _index(snapshot.rows('tags'));
     final contracts = _index(snapshot.rows('installment_contracts'));
+    final products = _index(snapshot.rows('installment_products'));
+    final stages = _index(snapshot.rows('installment_stage_configs'));
+    _validateInstallmentStages(snapshot, contracts, products, stages);
     final bills = _index(snapshot.rows('bills'));
     final billItems = _index(snapshot.rows('bill_items'));
     final schedules = _index(snapshot.rows('installment_schedules'));
@@ -486,6 +495,199 @@ class BackupService {
     _validatePostingBalance(snapshot, accounts);
   }
 
+  static void _validateInstallmentStages(
+    BackupSnapshot snapshot,
+    Map<String, BackupJson> contracts,
+    Map<String, BackupJson> products,
+    Map<String, BackupJson> stages,
+  ) {
+    const variableFields = [
+      'periods',
+      'ratePpm',
+      'endPrincipalMinor',
+      'fixedAmountMinor',
+      'feeMinor',
+      'untilDate',
+      'firstDate',
+      'lastDate',
+      'accrualStartDate',
+    ];
+    final positions = <String>{};
+    if (stages.length != snapshot.rows('installment_stage_configs').length ||
+        products.length != snapshot.rows('installment_products').length) {
+      throw const BackupValidationException('分期产品或阶段标识重复');
+    }
+    for (final row in [...products.values, ...contracts.values]) {
+      if (!const {'thirty360', 'thirty365'}.contains(row['dayCount']) ||
+          !const {
+            'halfUp',
+            'halfEven',
+            'down',
+            'up',
+          }.contains(row['rounding']) ||
+          row['tailDifference'] != 'lastPeriod') {
+        throw const BackupValidationException('分期计算约定无效');
+      }
+    }
+    for (final c in contracts.values) {
+      _optionalReference(
+        c,
+        'productId',
+        products,
+        'installment_contracts.productId',
+      );
+    }
+    for (final row in stages.values) {
+      final owner = row['ownerType'];
+      if (owner != 'product' && owner != 'contract') {
+        throw const BackupValidationException('阶段归属类型无效');
+      }
+      _requiredReference(
+        row,
+        'ownerId',
+        owner == 'product' ? products : contracts,
+        'installment_stage_configs.ownerId',
+      );
+      final position = row['position'];
+      if (position is! int ||
+          position < 0 ||
+          !positions.add('$owner:${row['ownerId']}:$position')) {
+        throw const BackupValidationException('阶段顺序无效或重复');
+      }
+      if (owner == 'product' &&
+          variableFields.any((field) => row[field] != null)) {
+        throw const BackupValidationException('产品阶段不能包含金额、期数或日期');
+      }
+      if (row['stageKind'] != 'deferment' && row['stageKind'] != 'repayment') {
+        throw const BackupValidationException('阶段类型无效');
+      }
+      if (row['stageKind'] == 'deferment') {
+        if ([
+              'repaymentMethod',
+              'intervalMonths',
+              'ratePeriod',
+              'accrual',
+              'amountAlgorithm',
+              ...variableFields.where((f) => f != 'untilDate'),
+            ].any((f) => row[f] != null) ||
+            (owner == 'contract' && row['untilDate'] == null)) {
+          throw const BackupValidationException('免还阶段配置无效');
+        }
+      } else {
+        if (row['untilDate'] != null) {
+          throw const BackupValidationException('还款阶段不能包含免还结束日');
+        }
+        if (!const {
+          'equalInstallment',
+          'equalPrincipal',
+          'interestFirst',
+          'flatFee',
+          'custom',
+        }.contains(row['repaymentMethod'])) {
+          throw const BackupValidationException('阶段还款方式无效');
+        }
+        if (owner == 'contract' &&
+            (row['firstDate'] == null || row['periods'] is! int)) {
+          throw const BackupValidationException('合同阶段缺少日期或期数');
+        }
+        if (row['repaymentMethod'] == 'equalInstallment' &&
+            !const {
+              'nominalRate',
+              'actualRate',
+              'fixed',
+            }.contains(row['amountAlgorithm'])) {
+          throw const BackupValidationException('等额本息固定额算法无效');
+        }
+        if (owner == 'contract' &&
+            row['amountAlgorithm'] == 'fixed' &&
+            row['fixedAmountMinor'] == null) {
+          throw const BackupValidationException('指定固定额缺少金额');
+        }
+        if (row['repaymentMethod'] != 'equalInstallment' &&
+            (row['amountAlgorithm'] != null ||
+                row['fixedAmountMinor'] != null)) {
+          throw const BackupValidationException('非等额本息阶段不能指定固定额算法');
+        }
+        for (final field in [
+          'periods',
+          'intervalMonths',
+          'fixedAmountMinor',
+          'ratePpm',
+          'endPrincipalMinor',
+          'feeMinor',
+        ]) {
+          final number = row[field];
+          final positive = const {
+            'periods',
+            'intervalMonths',
+            'fixedAmountMinor',
+          }.contains(field);
+          if (number != null &&
+              (number is! int || number < (positive ? 1 : 0))) {
+            throw BackupValidationException('阶段字段 $field 无效');
+          }
+        }
+        if (row['ratePeriod'] != null &&
+                !const {
+                  'annual',
+                  'monthly',
+                  'daily',
+                }.contains(row['ratePeriod']) ||
+            row['accrual'] != null &&
+                !const {
+                  'annual',
+                  'monthly',
+                  'daily',
+                }.contains(row['accrual'])) {
+          throw const BackupValidationException('阶段利率单位或计息方式无效');
+        }
+        if (row['ratePpm'] != null && row['ratePeriod'] == null) {
+          throw const BackupValidationException('阶段利率缺少单位');
+        }
+        if (row['repaymentMethod'] != 'flatFee' &&
+            (row['intervalMonths'] == null ||
+                row['accrual'] == null ||
+                owner == 'product' && row['ratePeriod'] == null)) {
+          throw const BackupValidationException('阶段计算规则不完整');
+        }
+      }
+    }
+    for (final entry in {'product': products, 'contract': contracts}.entries) {
+      for (final id in entry.value.keys) {
+        final owned =
+            stages.values
+                .where((s) => s['ownerType'] == entry.key && s['ownerId'] == id)
+                .toList()
+              ..sort(
+                (a, b) =>
+                    (a['position'] as int).compareTo(b['position'] as int),
+              );
+        if (!owned.any((s) => s['stageKind'] == 'repayment') ||
+            List.generate(
+              owned.length,
+              (i) => owned[i]['position'] == i,
+            ).contains(false)) {
+          throw const BackupValidationException('产品或合同缺少有效的有序阶段');
+        }
+      }
+    }
+    for (final row in snapshot.rows('installment_schedules')) {
+      _requiredReference(
+        row,
+        'stageId',
+        stages,
+        'installment_schedules.stageId',
+      );
+      final stage = stages[row['stageId']];
+      if (stage != null &&
+          (stage['ownerType'] != 'contract' ||
+              stage['ownerId'] != row['contractId'] ||
+              stage['stageKind'] != 'repayment')) {
+        throw const BackupValidationException('计划期次与所属合同阶段不一致');
+      }
+    }
+  }
+
   static void _validateWireCodes(BackupSnapshot snapshot) {
     const codes = <String, Set<String>>{
       'accountType': {'asset', 'liability', 'equity', 'income', 'expense'},
@@ -539,7 +741,7 @@ class BackupService {
         'custom',
       },
       'interestRatePeriod': {'annual', 'monthly', 'daily'},
-      'interestAccrualMethod': {'daily', 'monthly'},
+      'interestAccrualMethod': {'daily', 'monthly', 'annual'},
       'contractStatus': {'active', 'settled'},
       'scheduleStatus': {'pending', 'partiallyPaid', 'paid', 'skipped'},
       'importSource': {'yimu'},
@@ -587,9 +789,6 @@ class BackupService {
     }
     for (final row in snapshot.rows('installment_contracts')) {
       check(row, 'sourceType', 'installmentSourceType');
-      check(row, 'repaymentMethod', 'repaymentMethod');
-      check(row, 'interestRatePeriod', 'interestRatePeriod', nullable: true);
-      check(row, 'interestAccrualMethod', 'interestAccrualMethod');
       check(row, 'status', 'contractStatus');
     }
     for (final row in snapshot.rows('installment_schedules')) {

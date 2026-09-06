@@ -1,3 +1,4 @@
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -84,7 +85,7 @@ void main() {
       final contract = _contract(status: InstallmentContractStatus.settled);
 
       expect(
-        () => contract.reviseTerms(totalPeriods: 3),
+        () => contract.reviseStageTerms(_terms(totalPeriods: 3)),
         throwsA(
           isA<BusinessException>().having(
             (exception) => exception.code,
@@ -102,7 +103,7 @@ void main() {
       );
 
       expect(
-        () => contract.reviseTerms(disbursementAccountId: 'cash'),
+        () => contract.reviseDetails(disbursementAccountId: 'cash'),
         throwsA(
           isA<BusinessException>().having(
             (exception) => exception.code,
@@ -117,10 +118,12 @@ void main() {
       final contract = _contract();
 
       expect(
-        () => contract.reviseTerms(
-          totalPeriods: 3,
-          firstRepaymentDate: DateTime(2026, 4, 1),
-          lastRepaymentDate: DateTime(2026, 3, 1),
+        () => contract.reviseStageTerms(
+          _terms(
+            totalPeriods: 3,
+            firstDate: DateTime(2026, 4, 1),
+            lastDate: DateTime(2026, 3, 1),
+          ),
         ),
         throwsA(
           isA<BusinessException>().having(
@@ -130,15 +133,15 @@ void main() {
           ),
         ),
       );
-      expect(contract.totalPeriods, 2);
-      expect(contract.firstRepaymentDate, DateTime(2026, 2, 1));
+      expect(contract.stageTerms.totalPeriods, 2);
+      expect(contract.stageTerms.firstDate, DateTime(2026, 2, 1));
     });
 
     test('negative fee revision is rejected without mutation', () {
       final contract = _contract();
 
       expect(
-        () => contract.reviseTerms(totalFeeMinor: -1),
+        () => contract.reviseStageTerms(_terms(feeMinor: -1)),
         throwsA(
           isA<BusinessException>().having(
             (exception) => exception.code,
@@ -147,7 +150,7 @@ void main() {
           ),
         ),
       );
-      expect(contract.totalFeeMinor, 0);
+      expect(contract.stageTerms.totalFeeMinor, 0);
     });
 
     test('negative rate revision is rejected without partial mutation', () {
@@ -157,14 +160,17 @@ void main() {
       );
 
       expect(
-        () => contract.reviseTerms(
-          totalPeriods: 3,
-          interestRatePpm: const Patch<int>.set(-1),
+        () => contract.reviseStageTerms(
+          _terms(
+            totalPeriods: 3,
+            ratePeriod: InterestRatePeriod.monthly,
+            ratePpm: -1,
+          ),
         ),
         throwsA(isA<BusinessException>()),
       );
-      expect(contract.totalPeriods, 2);
-      expect(contract.interestRatePpm, 120000);
+      expect(contract.stageTerms.totalPeriods, 2);
+      expect(contract.stageTerms.repayments.first.rate?.ppm, 120000);
     });
 
     test('rate period and value must be revised as an atomic pair', () {
@@ -174,15 +180,15 @@ void main() {
       );
 
       expect(
-        () => contract.reviseTerms(
-          totalFeeMinor: 100,
-          interestRatePeriod: const Patch<InterestRatePeriod>.clear(),
-        ),
+        () => contract.reviseStageTerms(_terms(feeMinor: 100, ratePpm: 120000)),
         throwsA(isA<BusinessException>()),
       );
-      expect(contract.totalFeeMinor, 0);
-      expect(contract.interestRatePeriod, InterestRatePeriod.monthly);
-      expect(contract.interestRatePpm, 120000);
+      expect(contract.stageTerms.totalFeeMinor, 0);
+      expect(
+        contract.stageTerms.repayments.first.rate?.period,
+        InterestRatePeriod.monthly,
+      );
+      expect(contract.stageTerms.repayments.first.rate?.ppm, 120000);
     });
 
     test('term revision can explicitly clear nullable values', () {
@@ -192,14 +198,11 @@ void main() {
         note: 'legacy',
       );
 
-      contract.reviseTerms(
-        interestRatePeriod: const Patch<InterestRatePeriod>.clear(),
-        interestRatePpm: const Patch<int>.clear(),
-        note: const Patch<String>.clear(),
-      );
+      contract.reviseStageTerms(_terms());
+      contract.reviseDetails(note: const Patch<String>.clear());
 
-      expect(contract.interestRatePeriod, isNull);
-      expect(contract.interestRatePpm, isNull);
+      expect(contract.stageTerms.repayments.first.rate?.period, isNull);
+      expect(contract.stageTerms.repayments.first.rate?.ppm, isNull);
       expect(contract.note, isNull);
     });
 
@@ -267,10 +270,9 @@ BillItem _billItem({
   return BillItem(
     id: id,
     billId: 'bill',
-    itemType:
-        scheduleId == null
-            ? BillItemType.consumption
-            : BillItemType.installment,
+    itemType: scheduleId == null
+        ? BillItemType.consumption
+        : BillItemType.installment,
     contractId: scheduleId == null ? null : 'contract',
     scheduleId: scheduleId,
     repaymentDate: DateTime(2026, 7, 20),
@@ -295,18 +297,21 @@ InstallmentContract _contract({
     sourceType: sourceType,
     sourceRepaymentId: sourceRepaymentId,
     principal: const Money(minorUnits: 1000),
-    totalPeriods: 2,
     borrowingDate: DateTime(2026, 1, 1),
-    firstRepaymentDate: DateTime(2026, 2, 1),
-    lastRepaymentDate: DateTime(2026, 3, 1),
-    repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-    interestRatePeriod: interestRatePeriod,
-    interestRatePpm: interestRatePpm,
-    interestAccrualMethod: InterestAccrualMethod.monthly,
-    totalFeeMinor: 0,
     status: status,
     note: note,
     createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: 'contract:stage:1',
+      totalPeriods: 2,
+      firstDate: DateTime(2026, 2, 1),
+      lastDate: DateTime(2026, 3, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      ratePeriod: interestRatePeriod,
+      ratePpm: interestRatePpm,
+      accrual: InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
   );
 }
 
@@ -326,3 +331,22 @@ InstallmentSchedule _schedule({
     createdAt: DateTime(2026, 1, 1),
   );
 }
+
+InstallmentContractTerms _terms({
+  int totalPeriods = 2,
+  DateTime? firstDate,
+  DateTime? lastDate,
+  int feeMinor = 0,
+  InterestRatePeriod? ratePeriod,
+  int? ratePpm,
+}) => InstallmentContractTerms.singleStage(
+  id: 'contract:stage:1',
+  totalPeriods: totalPeriods,
+  firstDate: firstDate ?? DateTime(2026, 2, 1),
+  lastDate: lastDate,
+  method: InstallmentRepaymentMethod.equalPrincipal,
+  accrual: InterestAccrualMethod.monthly,
+  ratePeriod: ratePeriod,
+  ratePpm: ratePpm,
+  feeMinor: feeMinor,
+);

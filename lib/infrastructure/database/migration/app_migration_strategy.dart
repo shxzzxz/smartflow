@@ -133,6 +133,95 @@ SET repayment_date = COALESCE(
         await migrator.alterTable(TableMigration(database.repayments));
         await _createRepaymentIndexes(database);
       }
+      if (from < 33) {
+        await database.transaction(() async {
+          if (from < 32) {
+            if (!await _hasColumn(database, 'installment_products', 'id')) {
+              await migrator.createTable(database.installmentProducts);
+            }
+            if (!await _hasColumn(
+              database,
+              'installment_stage_configs',
+              'id',
+            )) {
+              await migrator.createTable(database.installmentStageConfigs);
+            }
+            for (final column in [
+              database.installmentContracts.productId,
+              database.installmentContracts.productName,
+              database.installmentContracts.customRules,
+              database.installmentContracts.dayCount,
+              database.installmentContracts.rounding,
+              database.installmentContracts.tailDifference,
+            ]) {
+              if (!await _hasColumn(
+                database,
+                'installment_contracts',
+                column.$name,
+              )) {
+                await migrator.addColumn(database.installmentContracts, column);
+              }
+            }
+            if (!await _hasColumn(
+              database,
+              'installment_schedules',
+              'stage_id',
+            )) {
+              await migrator.addColumn(
+                database.installmentSchedules,
+                database.installmentSchedules.stageId,
+              );
+            }
+            if (await _hasColumn(
+              database,
+              'installment_contracts',
+              'repayment_method',
+            )) {
+              await database.customStatement('''
+INSERT INTO installment_stage_configs
+  (id, owner_type, owner_id, position, stage_kind, repayment_method,
+   interval_months, rate_period, accrual, amount_algorithm, periods, rate_ppm,
+   fee_minor, first_date, last_date, created_at, updated_at)
+SELECT id || ':stage:1', 'contract', id, 0, 'repayment', repayment_method,
+  1, interest_rate_period, interest_accrual_method,
+  CASE WHEN repayment_method = 'equalInstallment' THEN 'actualRate' ELSE NULL END,
+  total_periods, interest_rate_ppm, total_fee_minor, first_repayment_date,
+  last_repayment_date, created_at, updated_at
+FROM installment_contracts
+WHERE NOT EXISTS (
+  SELECT 1 FROM installment_stage_configs AS stage
+  WHERE stage.owner_type = 'contract' AND stage.owner_id = installment_contracts.id
+)
+''');
+              await database.customStatement(
+                "UPDATE installment_schedules "
+                "SET stage_id = contract_id || ':stage:1' WHERE stage_id IS NULL",
+              );
+            }
+          }
+          // 旧多期 flatFee 实际按等额本金免息分配手续费；迁为相同计算语义的阶段。
+          await database.customStatement(
+            "UPDATE installment_stage_configs "
+            "SET repayment_method = 'equalPrincipal', rate_period = NULL, rate_ppm = NULL "
+            "WHERE owner_type = 'contract' AND repayment_method = 'flatFee' AND periods > 1",
+          );
+          await migrator.alterTable(
+            TableMigration(database.installmentContracts),
+          );
+          await database.customStatement(
+            'CREATE INDEX IF NOT EXISTS installment_contracts_liability_status_idx '
+            'ON installment_contracts (liability_account_id, status)',
+          );
+          await database.customStatement(
+            'CREATE INDEX IF NOT EXISTS installment_contracts_disbursement_tx_idx '
+            'ON installment_contracts (disbursement_transaction_id) WHERE disbursement_transaction_id IS NOT NULL',
+          );
+          await database.customStatement(
+            'CREATE INDEX IF NOT EXISTS installment_contracts_source_repayment_idx '
+            'ON installment_contracts (source_repayment_id) WHERE source_repayment_id IS NOT NULL',
+          );
+        });
+      }
     },
   );
 }
