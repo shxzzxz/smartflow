@@ -47,9 +47,9 @@ class InstallmentRepaymentFormViewModel
 
     final paidFromAccountId =
         contract.disbursementAccountId != null &&
-                accounts.any((a) => a.id == contract.disbursementAccountId)
-            ? contract.disbursementAccountId
-            : (accounts.isEmpty ? null : accounts.first.id);
+            accounts.any((a) => a.id == contract.disbursementAccountId)
+        ? contract.disbursementAccountId
+        : (accounts.isEmpty ? null : accounts.first.id);
 
     return InstallmentRepaymentFormState.loaded(
       contract: contract,
@@ -93,10 +93,9 @@ class InstallmentRepaymentFormViewModel
     if (cashPaid.minorUnits <= 0) {
       return _invalidCommand('实付金额必须大于 0');
     }
-    final paidFromAccountId =
-        current.createTransaction
-            ? _selectedId(current.paidFromAccountId, current.accounts)
-            : null;
+    final paidFromAccountId = current.createTransaction
+        ? _selectedId(current.paidFromAccountId, current.accounts)
+        : null;
     if (current.createTransaction && paidFromAccountId == null) {
       return _invalidCommand('请选择还款账户');
     }
@@ -117,13 +116,15 @@ class InstallmentRepaymentFormViewModel
                 fee: fee,
                 discount: discount,
               ),
-              transactionInfo:
-                  paidFromAccountId == null
-                      ? null
-                      : RepaymentTransactionInfo(
-                        paidFromAccountId: paidFromAccountId,
-                        occurredAt: current.occurredAt,
-                      ),
+              transactionInfo: paidFromAccountId == null
+                  ? null
+                  : RepaymentTransactionInfo(
+                      paidFromAccountId: paidFromAccountId,
+                      occurredAt: current.occurredAt,
+                    ),
+              repaymentDate: paidFromAccountId == null
+                  ? current.occurredAt
+                  : null,
               note: trimToNull(noteText),
             ),
           );
@@ -282,10 +283,9 @@ class InstallmentRepaymentFormState {
   }) {
     return InstallmentRepaymentFormState(
       status: status ?? this.status,
-      contract:
-          contract == _sentinel
-              ? this.contract
-              : contract as InstallmentContractReadModel?,
+      contract: contract == _sentinel
+          ? this.contract
+          : contract as InstallmentContractReadModel?,
       schedules: schedules,
       accounts: accounts,
       principalText: principalText ?? this.principalText,
@@ -294,10 +294,9 @@ class InstallmentRepaymentFormState {
       discountText: discountText ?? this.discountText,
       noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
-      paidFromAccountId:
-          paidFromAccountId == _sentinel
-              ? this.paidFromAccountId
-              : paidFromAccountId as String?,
+      paidFromAccountId: paidFromAccountId == _sentinel
+          ? this.paidFromAccountId
+          : paidFromAccountId as String?,
       createTransaction: createTransaction ?? this.createTransaction,
       submitting: submitting ?? this.submitting,
     );

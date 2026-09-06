@@ -22,6 +22,7 @@ void main() {
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
         transactionId: 'tx-root-1',
+        repaymentDate: DateTime(2026, 1, 1),
         items: [
           _item(
             id: 'item-1',
@@ -108,15 +109,18 @@ void main() {
           targetType: RepaymentTargetType.account,
           targetId: 'account-1',
           transactionId: 'tx-root-1',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [
             _item(id: 'item-1', repaymentId: 'repayment-1', principal: 1000),
           ],
         ),
       );
 
-      await repository.replaceRepaymentItems('repayment-1', [
+      final repayment = (await repository.findRepayment('repayment-1'))!;
+      repayment.replaceItems([
         _item(id: 'item-2', repaymentId: 'repayment-1', principal: 300),
       ]);
+      await repository.updateRepayment(repayment);
 
       final replaced = await repository.findRepayment('repayment-1');
       expect(replaced!.items.map((item) => item.id), ['item-2']);
@@ -181,6 +185,7 @@ void main() {
           repaymentType: RepaymentType.installment,
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
+          repaymentDate: DateTime(2026, 2, 5),
           items: [
             _item(
               id: 'item-1',
@@ -205,6 +210,7 @@ void main() {
       final result = await repository.listByContract('contract-1');
 
       expect(result.map((repayment) => repayment.id), ['repayment-1']);
+      expect(result.single.repaymentDate, DateTime(2026, 2, 5));
       expect(
         result.single.totalAllocated().interest,
         const Money(minorUnits: 50),

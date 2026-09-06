@@ -1,5 +1,4 @@
 import '../../../../core/money/money.dart';
-import '../../../../domain/credit/port/credit_ledger_port.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 
@@ -28,14 +27,10 @@ abstract interface class ContractRepaymentQuery {
 }
 
 class ContractRepaymentQueryImpl implements ContractRepaymentQuery {
-  const ContractRepaymentQueryImpl({
-    required RepaymentRepository repayments,
-    required CreditLedgerPort ledger,
-  }) : _repayments = repayments,
-       _ledger = ledger;
+  const ContractRepaymentQueryImpl({required RepaymentRepository repayments})
+    : _repayments = repayments;
 
   final RepaymentRepository _repayments;
-  final CreditLedgerPort _ledger;
 
   @override
   Future<List<ContractRepayment>> listContractRepayments(
@@ -44,20 +39,13 @@ class ContractRepaymentQueryImpl implements ContractRepaymentQuery {
     final repayments = await _repayments.listByContract(contractId);
     final result = <ContractRepayment>[];
     for (final repayment in repayments) {
-      final transaction =
-          repayment.transactionId == null
-              ? null
-              : await _ledger.findParentTransaction(repayment.transactionId!);
       final allocated = repayment.totalAllocated();
       result.add(
         ContractRepayment(
           id: repayment.id,
           transactionId: repayment.transactionId,
           repaymentType: repayment.repaymentType,
-          occurredAt:
-              transaction?.occurredAt ??
-              repayment.createdAt ??
-              DateTime.fromMillisecondsSinceEpoch(0),
+          occurredAt: repayment.repaymentDate,
           principal: allocated.principal,
           interest: allocated.interest,
           fee: allocated.fee,

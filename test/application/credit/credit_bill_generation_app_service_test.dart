@@ -115,6 +115,7 @@ void main() {
       await fixture.repaymentAppService.createBillRepayment(
         CreateBillRepaymentCommand(
           billId: openBill.id,
+          repaymentDate: DateTime(2026, 6, 4),
           allocations: [
             BillRepaymentAllocation(
               billItemId: openItemId,
@@ -161,6 +162,7 @@ void main() {
         await fixture.repaymentAppService.createBillRepayment(
           CreateBillRepaymentCommand(
             billId: june.id,
+            repaymentDate: DateTime(2026, 6, 5),
             allocations: [
               BillRepaymentAllocation(
                 billItemId: june.items.single.id,
@@ -609,6 +611,7 @@ void main() {
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: bill.id,
+        repaymentDate: DateTime(2026, 7, 1),
         items: [
           RepaymentItem(
             id: fixture.ids.newId(),

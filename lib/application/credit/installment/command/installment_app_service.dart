@@ -111,19 +111,18 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     );
     return _runner.run<CreateContractResult>(() async {
       final disbursementAccountId = command.disbursementAccountId;
-      final borrowing =
-          disbursementAccountId == null
-              ? null
-              : await _ledger.postBorrowing(
-                CreditLedgerPostBorrowingCommand(
-                  amount: command.principal,
-                  liabilityAccountId: command.liabilityAccountId,
-                  occurredAt: command.borrowingDate,
-                  receiveAccountId: disbursementAccountId,
-                  counterpartyName: command.counterpartyName,
-                  note: command.note,
-                ),
-              );
+      final borrowing = disbursementAccountId == null
+          ? null
+          : await _ledger.postBorrowing(
+              CreditLedgerPostBorrowingCommand(
+                amount: command.principal,
+                liabilityAccountId: command.liabilityAccountId,
+                occurredAt: command.borrowingDate,
+                receiveAccountId: disbursementAccountId,
+                counterpartyName: command.counterpartyName,
+                note: command.note,
+              ),
+            );
       final now = DateTime.now();
       final contractId = _idGenerator.newId();
       final aggregate = _origination.originateDisbursement(
@@ -319,13 +318,13 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     final schedules = await _repository.listSchedules(contractId);
     final prepaymentPrincipalMinor = await _prepaymentSumMinor(contractId);
     final calculationContract = _contractForRecalculation(contract, command);
-    final recalculations = _prepaymentRecalculator
-        .recalculateAllPendingWithRegeneratedDates(
-          contract: calculationContract,
-          schedules: schedules,
-          prepaymentPrincipalMinor: prepaymentPrincipalMinor,
-          equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-        );
+    final recalculations = _prepaymentRecalculator.recalculate(
+      contract: calculationContract,
+      schedules: schedules,
+      prepaymentPrincipalMinor: prepaymentPrincipalMinor,
+      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+      regenerateDates: true,
+    );
 
     return [
       for (final recalculation in recalculations)

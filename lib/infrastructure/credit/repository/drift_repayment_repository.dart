@@ -17,9 +17,9 @@ class DriftRepaymentRepository implements RepaymentRepository {
   @override
   Future<Repayment?> findRepayment(String repaymentId) async {
     final row =
-        await (_database.select(_database.repayments)..where(
-          (repayment) => repayment.id.equals(repaymentId),
-        )).getSingleOrNull();
+        await (_database.select(_database.repayments)
+              ..where((repayment) => repayment.id.equals(repaymentId)))
+            .getSingleOrNull();
     if (row == null) return null;
     return _mapRepayment(row, await listItems(row.id));
   }
@@ -28,8 +28,9 @@ class DriftRepaymentRepository implements RepaymentRepository {
   Future<Repayment?> findByTransaction(String transactionId) async {
     final row =
         await (_database.select(_database.repayments)..where(
-          (repayment) => repayment.transactionId.equals(transactionId),
-        )).getSingleOrNull();
+              (repayment) => repayment.transactionId.equals(transactionId),
+            ))
+            .getSingleOrNull();
     if (row == null) return null;
     return _mapRepayment(row, await listItems(row.id));
   }
@@ -161,11 +162,10 @@ class DriftRepaymentRepository implements RepaymentRepository {
     final interest = item.allocatedInterestMinor.sum();
     final fee = item.allocatedFeeMinor.sum();
     final discount = item.allocatedDiscountMinor.sum();
-    final query =
-        _database.selectOnly(item)
-          ..addColumns([item.billItemId, principal, interest, fee, discount])
-          ..where(item.billItemId.isIn(ids))
-          ..groupBy([item.billItemId]);
+    final query = _database.selectOnly(item)
+      ..addColumns([item.billItemId, principal, interest, fee, discount])
+      ..where(item.billItemId.isIn(ids))
+      ..groupBy([item.billItemId]);
     final rows = await query.get();
     return {
       for (final row in rows)
@@ -190,34 +190,35 @@ class DriftRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<void> replaceRepaymentItems(
-    String repaymentId,
-    List<RepaymentItem> items,
-  ) async {
-    final row =
-        await (_database.select(_database.repayments)..where(
-          (repayment) => repayment.id.equals(repaymentId),
-        )).getSingleOrNull();
-    if (row == null) {
+  Future<void> updateRepayment(Repayment repayment) async {
+    final now = DateTime.now();
+    final updated =
+        await (_database.update(
+          _database.repayments,
+        )..where((row) => row.id.equals(repayment.id))).write(
+          RepaymentsCompanion(
+            transactionId: Value(repayment.transactionId),
+            repaymentDate: Value(repayment.repaymentDate),
+            updatedAt: Value(now),
+          ),
+        );
+    if (updated == 0) {
       throw BusinessException(CreditErrorCode.repaymentNotFound);
     }
-    final repayment = _mapRepayment(row, items);
-
-    final now = DateTime.now();
-    await (_database.delete(_database.repaymentItems)
-      ..where((item) => item.repaymentId.equals(repaymentId))).go();
+    await (_database.delete(
+      _database.repaymentItems,
+    )..where((item) => item.repaymentId.equals(repayment.id))).go();
     await _insertItems(repayment.items, now);
-    await (_database.update(_database.repayments)..where(
-      (item) => item.id.equals(repaymentId),
-    )).write(RepaymentsCompanion(updatedAt: Value(now)));
   }
 
   @override
   Future<void> deleteRepayment(String repaymentId) async {
-    await (_database.delete(_database.repaymentItems)
-      ..where((item) => item.repaymentId.equals(repaymentId))).go();
-    await (_database.delete(_database.repayments)
-      ..where((repayment) => repayment.id.equals(repaymentId))).go();
+    await (_database.delete(
+      _database.repaymentItems,
+    )..where((item) => item.repaymentId.equals(repaymentId))).go();
+    await (_database.delete(
+      _database.repayments,
+    )..where((repayment) => repayment.id.equals(repaymentId))).go();
   }
 
   Future<void> _insertItems(List<RepaymentItem> items, DateTime now) async {
@@ -257,6 +258,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       targetType: repayment.targetType.code,
       targetId: repayment.targetId,
       transactionId: Value(repayment.transactionId),
+      repaymentDate: repayment.repaymentDate,
       createdAt: Value(repayment.createdAt ?? now),
       updatedAt: Value(now),
     );
@@ -283,6 +285,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       targetType: RepaymentTargetType.fromCode(row.targetType),
       targetId: row.targetId,
       transactionId: row.transactionId,
+      repaymentDate: row.repaymentDate,
       items: items,
       createdAt: row.createdAt,
     );

@@ -574,8 +574,12 @@ ContractMetricsQuery contractMetricsQuery(Ref ref) {
 ContractRepaymentQuery contractRepaymentQuery(Ref ref) {
   return ContractRepaymentQueryImpl(
     repayments: ref.watch(repaymentRepositoryProvider),
-    ledger: ref.watch(creditLedgerPortProvider),
   );
+}
+
+@Riverpod(keepAlive: true)
+LoanCalculatorQuery loanCalculatorQuery(Ref ref) {
+  return const LoanCalculatorQueryImpl();
 }
 
 @Riverpod(keepAlive: true)

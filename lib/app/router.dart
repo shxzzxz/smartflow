@@ -25,6 +25,7 @@ import '../feature/credit/page/bill_repayment_form_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
 import '../feature/credit/page/installment_repayment_form_page.dart';
+import '../feature/credit/page/loan_calculator_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
 import '../feature/credit/page/unattributed_repayment_form_page.dart';
 import '../feature/placeholder/page/placeholder_page.dart';
@@ -398,6 +399,10 @@ final appRouter = GoRouter(
       path: '/profile/installment-guide',
       builder: (context, state) =>
           const ManualArticlePage(slug: 'credit-metrics'),
+    ),
+    GoRoute(
+      path: '/profile/loan-calculator',
+      builder: (context, state) => const LoanCalculatorPage(),
     ),
     GoRoute(
       path: '/profile/manual',

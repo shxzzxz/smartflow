@@ -2342,10 +2342,14 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _formSectionPreview() {
-    return const AppFormSection(
+    return AppFormSection(
       title: '分组标题',
       description: '这是分组的说明文案',
-      children: [
+      trailing: TextButton(
+        onPressed: () => _showMessage('分组操作已触发'),
+        child: const Text('操作'),
+      ),
+      children: const [
         AppPlainValueRow(label: '字段名称', value: '字段内容'),
         AppPlainValueRow(label: '另一字段', value: '另一内容'),
       ],

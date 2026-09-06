@@ -7,6 +7,9 @@ class Repayments extends Table {
   TextColumn get targetType => text().named('target_type')();
   TextColumn get targetId => text().named('target_id')();
   TextColumn get transactionId => text().named('transaction_id').nullable()();
+
+  /// 每笔还款自持的业务时间；关联交易的交易时间由信贷用例同步维护。
+  DateTimeColumn get repaymentDate => dateTime().named('repayment_date')();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

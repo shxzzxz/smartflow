@@ -38,7 +38,7 @@ void main() {
     expect(find.text('信贷与分期'), findsOneWidget);
     expect(find.text('2 篇'), findsOneWidget);
     expect(find.text('1 篇'), findsOneWidget);
-    expect(find.text('3 篇'), findsOneWidget);
+    expect(find.text('4 篇'), findsOneWidget);
 
     expect(find.text('SmartFlow 的记账方式'), findsOneWidget);
     expect(find.text('计息方式和关键指标'), findsOneWidget);
@@ -91,9 +91,8 @@ GoRouter _manualRouter() {
       GoRoute(path: '/profile/manual', builder: (_, _) => const ManualPage()),
       GoRoute(
         path: '/profile/manual/:slug',
-        builder:
-            (_, state) =>
-                ManualArticlePage(slug: state.pathParameters['slug']!),
+        builder: (_, state) =>
+            ManualArticlePage(slug: state.pathParameters['slug']!),
       ),
     ],
   );

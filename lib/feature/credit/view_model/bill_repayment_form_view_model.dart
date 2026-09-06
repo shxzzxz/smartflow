@@ -28,12 +28,11 @@ final _logger = Logger('feature.credit.bill_repayment_form');
 class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
   @override
   Future<BillRepaymentFormState> build(BillRepaymentFormArgs args) async {
-    final editView =
-        args.repaymentId == null
-            ? null
-            : await ref
-                .read(repaymentAppServiceProvider)
-                .loadBillRepaymentEditView(args.repaymentId!);
+    final editView = args.repaymentId == null
+        ? null
+        : await ref
+              .read(repaymentAppServiceProvider)
+              .loadBillRepaymentEditView(args.repaymentId!);
     final billId = args.billId ?? editView?.billId;
     final repaymentSourceAccounts = await ref.watch(
       accountsForSelectionPurposeProvider(
@@ -61,24 +60,22 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       );
     }
 
-    final pending =
-        editView == null
-            ? _pendingBreakdown(lines)
-            : _totalAllocations(editView.allocations);
+    final pending = editView == null
+        ? _pendingBreakdown(lines)
+        : _totalAllocations(editView.allocations);
     final repaymentAccounts = _repaymentAccounts(
       repaymentSourceAccounts,
       detail.summary.accountId,
     );
-    final defaultManualAllocations =
-        editView == null
-            ? _manualAmountsFromDrafts(
-              _allocationReview(
-                lines: lines,
-                mode: BillRepaymentAllocationMode.fifo,
-                amount: pending,
-              ).allocations,
-            )
-            : _manualAmountsFromCommandAllocations(editView.allocations);
+    final defaultManualAllocations = editView == null
+        ? _manualAmountsFromDrafts(
+            _allocationReview(
+              lines: lines,
+              mode: BillRepaymentAllocationMode.fifo,
+              amount: pending,
+            ).allocations,
+          )
+        : _manualAmountsFromCommandAllocations(editView.allocations);
     return BillRepaymentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -185,10 +182,9 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     if (cashPaid.minorUnits <= 0) {
       return _invalidCommand('实付金额必须大于 0');
     }
-    final paidFromAccountId =
-        current.createTransaction
-            ? _selectedId(current.paidFromAccountId, current.repaymentAccounts)
-            : null;
+    final paidFromAccountId = current.createTransaction
+        ? _selectedId(current.paidFromAccountId, current.repaymentAccounts)
+        : null;
     if (current.createTransaction && paidFromAccountId == null) {
       return _invalidCommand('请选择还款账户');
     }
@@ -224,13 +220,15 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
             credit.CreateBillRepaymentCommand(
               billId: current.summary!.id,
               allocations: commandAllocations,
-              transactionInfo:
-                  paidFromAccountId == null
-                      ? null
-                      : credit.RepaymentTransactionInfo(
-                        paidFromAccountId: paidFromAccountId,
-                        occurredAt: current.occurredAt,
-                      ),
+              transactionInfo: paidFromAccountId == null
+                  ? null
+                  : credit.RepaymentTransactionInfo(
+                      paidFromAccountId: paidFromAccountId,
+                      occurredAt: current.occurredAt,
+                    ),
+              repaymentDate: paidFromAccountId == null
+                  ? current.occurredAt
+                  : null,
               note: trimToNull(noteText),
             ),
           );
@@ -239,14 +237,16 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
             credit.EditBillRepaymentCommand(
               repaymentId: current.editingRepaymentId!,
               allocations: commandAllocations,
-              transactionInfo:
-                  paidFromAccountId == null
-                      ? null
-                      : credit.RepaymentTransactionInfo(
-                        paidFromAccountId: paidFromAccountId,
-                        occurredAt: current.occurredAt,
-                        note: trimToNull(noteText),
-                      ),
+              transactionInfo: paidFromAccountId == null
+                  ? null
+                  : credit.RepaymentTransactionInfo(
+                      paidFromAccountId: paidFromAccountId,
+                      occurredAt: current.occurredAt,
+                      note: trimToNull(noteText),
+                    ),
+              repaymentDate: paidFromAccountId == null
+                  ? current.occurredAt
+                  : null,
               note: trimToNull(noteText),
             ),
           );
@@ -440,10 +440,9 @@ class BillRepaymentFormState {
       discountText: discountText,
       noteText: noteText,
       occurredAt: occurredAt ?? this.occurredAt,
-      paidFromAccountId:
-          paidFromAccountId == _sentinel
-              ? this.paidFromAccountId
-              : paidFromAccountId as String?,
+      paidFromAccountId: paidFromAccountId == _sentinel
+          ? this.paidFromAccountId
+          : paidFromAccountId as String?,
       editingRepaymentId: editingRepaymentId,
       createTransaction: createTransaction ?? this.createTransaction,
       allocationMode: allocationMode ?? this.allocationMode,
@@ -502,8 +501,9 @@ BillRepaymentAllocationReview _allocationReview({
     for (final allocation in review.allocations)
       allocation.billItemId: allocation.allocated,
   };
-  final targetId =
-      allocations.isNotEmpty ? allocations.keys.first : lines.first.billItemId;
+  final targetId = allocations.isNotEmpty
+      ? allocations.keys.first
+      : lines.first.billItemId;
   allocations[targetId] = _add(allocations[targetId], review.unallocated);
   return allocator.reviewManual(
     amount: amount,

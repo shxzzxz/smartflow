@@ -26,10 +26,7 @@ void main() {
       final detail = await fixture.query.findBillDetail('bill-1');
 
       expect(detail!.repayments, hasLength(1));
-      expect(
-        detail.repayments.single.timeSource,
-        credit_query.BillRepaymentTimeSource.recordCreatedAt,
-      );
+      expect(detail.repayments.single.displayTime, DateTime(2026, 6, 21));
       expect(
         detail.repayments.single.allocated.principal,
         const Money(minorUnits: 1000),
@@ -39,7 +36,7 @@ void main() {
   );
 
   test(
-    'bill detail derives repayment display from current transaction',
+    'bill detail reads repayment time from record and account from transaction',
     () async {
       final fixture = _Fixture(
         transactionDetails: {'tx-root': _transactionDetail()},
@@ -51,11 +48,7 @@ void main() {
       final detail = await fixture.query.findBillDetail('bill-1');
 
       final repayment = detail!.repayments.single;
-      expect(
-        repayment.timeSource,
-        credit_query.BillRepaymentTimeSource.transaction,
-      );
-      expect(repayment.displayTime, DateTime(2026, 6, 20));
+      expect(repayment.displayTime, DateTime(2026, 6, 21));
       expect(repayment.paidFromAccountId, 'cash-1');
     },
   );
@@ -132,6 +125,7 @@ class _Fixture {
         targetType: credit.RepaymentTargetType.bill,
         targetId: 'bill-1',
         transactionId: transactionId,
+        repaymentDate: DateTime(2026, 6, 21),
         items: [
           RepaymentItem(
             id: 'repayment-item-1',

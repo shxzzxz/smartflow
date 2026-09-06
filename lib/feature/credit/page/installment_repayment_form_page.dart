@@ -99,13 +99,12 @@ class _InstallmentRepaymentFormPageState
               ),
               CreditRepaymentTransactionFields(
                 createTransaction: state.createTransaction,
-                onCreateTransactionChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setCreateTransaction(value),
+                onCreateTransactionChanged: (value) =>
+                    ref.read(provider.notifier).setCreateTransaction(value),
                 occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
-                onPickDate:
-                    (onSelected) => _pickDate(state.occurredAt, onSelected),
+                onPickDate: (onSelected) =>
+                    _pickDate(state.occurredAt, onSelected),
                 onOccurredAtChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -117,20 +116,22 @@ class _InstallmentRepaymentFormPageState
                 ),
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.accounts,
-                onRepaymentAccountChanged:
-                    ref.read(provider.notifier).setPaidFromAccountId,
-                onPickAccount:
-                    (onSelected) => _pickAccount(
-                      accounts: state.accounts,
-                      selectedId: state.paidFromAccountId,
-                      onSelected: onSelected,
-                    ),
+                onRepaymentAccountChanged: ref
+                    .read(provider.notifier)
+                    .setPaidFromAccountId,
+                onPickAccount: (onSelected) => _pickAccount(
+                  accounts: state.accounts,
+                  selectedId: state.paidFromAccountId,
+                  onSelected: onSelected,
+                ),
               ),
               NotePlainFormRow(controller: _noteController),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
-          const CreditRepaymentSubmitHint(text: '提交后，全部待还期次金额将按剩余本金重新计算。'),
+          const CreditRepaymentSubmitHint(
+            text: '提交后，以本次还款日期为锚点重新计算其后的待还期次；锚点之前的期次保持不变。',
+          ),
           AppSubmitButton(
             label: '提交并重算',
             loading: state.submitting,

@@ -10,9 +10,11 @@ class Repayment {
     required this.targetType,
     required this.targetId,
     required List<RepaymentItem> items,
+    required DateTime repaymentDate,
     this.transactionId,
     this.createdAt,
-  }) : _items = List.unmodifiable(items) {
+  }) : _items = List.unmodifiable(items),
+       _repaymentDate = repaymentDate {
     _ensureValid();
   }
 
@@ -22,9 +24,13 @@ class Repayment {
   final String targetId;
   final DateTime? createdAt;
   String? transactionId;
+  DateTime _repaymentDate;
   List<RepaymentItem> _items;
 
   List<RepaymentItem> get items => _items;
+
+  /// 还款发生的业务时间；关联交易的交易时间由信贷用例同步维护。
+  DateTime get repaymentDate => _repaymentDate;
 
   void validateTarget() {
     final valid = switch (repaymentType) {
@@ -63,6 +69,10 @@ class Repayment {
   void replaceItems(List<RepaymentItem> nextItems) {
     _items = List.unmodifiable(nextItems);
     _ensureItemsValid();
+  }
+
+  void reviseRepaymentDate(DateTime value) {
+    _repaymentDate = value;
   }
 
   void _ensureValid() {
@@ -108,8 +118,9 @@ class Repayment {
       final isBillLevel =
           repaymentType == RepaymentType.bill ||
           repaymentType == RepaymentType.installment;
-      final billItemValid =
-          isBillLevel ? item.billItemId != null : item.billItemId == null;
+      final billItemValid = isBillLevel
+          ? item.billItemId != null
+          : item.billItemId == null;
       if (!billItemValid) {
         throw BusinessException(
           CreditErrorCode.repaymentInvalidCommand,

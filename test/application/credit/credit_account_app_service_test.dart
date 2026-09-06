@@ -507,6 +507,7 @@ Repayment _repayment({
     targetType: targetType,
     targetId: targetId,
     transactionId: transactionId,
+    repaymentDate: DateTime(2026, 8, 25),
     items: [
       RepaymentItem(
         id: '$id-item',

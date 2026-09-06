@@ -262,17 +262,20 @@ void main() {
     addTearDown(subscription.close);
 
     final state = await container.read(provider.future);
-    final outcome = await (container.read(provider.notifier)
-      ..setCreateTransaction(false)).submit(
-      principalText: state.principalText,
-      interestText: state.interestText,
-      feeText: state.feeText,
-      discountText: state.discountText,
-      noteText: state.noteText,
-    );
+    final outcome =
+        await (container.read(
+          provider.notifier,
+        )..setCreateTransaction(false)).submit(
+          principalText: state.principalText,
+          interestText: state.interestText,
+          feeText: state.feeText,
+          discountText: state.discountText,
+          noteText: state.noteText,
+        );
 
     expect(outcome, isA<SubmitSuccess>());
     expect(repayment.billRepaymentCommands.single.transactionInfo, isNull);
+    expect(repayment.billRepaymentCommands.single.repaymentDate, isNotNull);
   });
 
   test('bill repayment form allows interest-only allocation', () async {
@@ -448,17 +451,16 @@ void main() {
     addTearDown(subscription.close);
 
     await container.read(provider.future);
-    final notifier =
-        container.read(provider.notifier)
-          ..setAllocationMode(BillRepaymentAllocationMode.manual)
-          ..setManualAllocationAmount(
-            billItemId: 'bill-item-1',
-            principal: const Money(minorUnits: 2000),
-          )
-          ..setManualAllocationAmount(
-            billItemId: 'bill-item-2',
-            principal: const Money(minorUnits: 4000),
-          );
+    final notifier = container.read(provider.notifier)
+      ..setAllocationMode(BillRepaymentAllocationMode.manual)
+      ..setManualAllocationAmount(
+        billItemId: 'bill-item-1',
+        principal: const Money(minorUnits: 2000),
+      )
+      ..setManualAllocationAmount(
+        billItemId: 'bill-item-2',
+        principal: const Money(minorUnits: 4000),
+      );
     final outcome = await notifier.submit(
       principalText: '60',
       interestText: '',
@@ -1001,8 +1003,22 @@ TransactionReadModel _detail() {
         accountId: 'expense',
         amount: Money(minorUnits: 1000),
       ),
-      TransactionLine(id: 'advance-out', transactionId: 'parent', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1000)),
-      TransactionLine(id: 'advance-receivable', transactionId: 'parent', lineNo: 3, role: TransactionRole.receivable, accountId: 'company', amount: Money(minorUnits: 1000)),
+      TransactionLine(
+        id: 'advance-out',
+        transactionId: 'parent',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 1000),
+      ),
+      TransactionLine(
+        id: 'advance-receivable',
+        transactionId: 'parent',
+        lineNo: 3,
+        role: TransactionRole.receivable,
+        accountId: 'company',
+        amount: Money(minorUnits: 1000),
+      ),
     ],
     entries: [
       Entry(
@@ -1048,7 +1064,15 @@ TransactionReadModel _detail() {
       isClosed: false,
     ),
     children: [
-      TransactionReadModel(id: 'refund', parentTransactionId: 'parent', businessPurpose: BusinessPurpose.refund, occurredAt: DateTime(2026), primaryAmount: const Money(minorUnits: 200), isExcludedFromStats: false, isExcludedFromBudget: false),
+      TransactionReadModel(
+        id: 'refund',
+        parentTransactionId: 'parent',
+        businessPurpose: BusinessPurpose.refund,
+        occurredAt: DateTime(2026),
+        primaryAmount: const Money(minorUnits: 200),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      ),
     ],
   );
 }

@@ -8,6 +8,133 @@ import 'package:smartflow/infrastructure/database/migration/account_profile_migr
 
 void main() {
   test(
+    'v30 backfills repayment times and preserves items and indexes',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-repayment-time-migration-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(
+        '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+      );
+      final stale = _openDatabase(file);
+      await stale.customStatement('DROP TABLE repayments');
+      await stale.customStatement(
+        _v29RepaymentsSql.replaceFirst(
+          '  created_at INTEGER',
+          '  repayment_date INTEGER NULL,\n  created_at INTEGER',
+        ),
+      );
+      await stale.customStatement('''
+INSERT INTO repayments
+(id, repayment_type, target_type, target_id, transaction_id, repayment_date,
+ created_at, updated_at) VALUES
+('with-tx', 'BILL', 'BILL', 'bill', 'tx', NULL, 1700000000, 1700000100),
+('no-tx', 'BILL', 'BILL', 'bill', NULL, 1700000200, 1700000000, 1700000100),
+('legacy', 'BILL', 'BILL', 'bill', NULL, NULL, 1700000000, 1700000100),
+('missing-tx', 'PREPAYMENT', 'CONTRACT', 'contract', 'missing', NULL,
+ 1700000000, 1700000100)
+''');
+      await stale.customStatement('''
+INSERT INTO transactions
+(id, business_purpose, occurred_at, posted_at, primary_amount_minor, source_kind)
+VALUES ('tx', 'debtRepayment', 1700000400, 1700000500, 1000, 'manual')
+''');
+      await stale.customStatement('''
+INSERT INTO repayment_items
+(id, repayment_id, bill_item_id, allocated_principal_minor,
+ allocated_interest_minor, allocated_fee_minor, allocated_discount_minor)
+VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
+''');
+      await stale.customStatement('PRAGMA user_version = 30');
+      await stale.close();
+      final upgraded = _openDatabase(file);
+      addTearDown(upgraded.close);
+      final rows = await upgraded.select(upgraded.repayments).get();
+      expect(
+        {
+          for (final row in rows)
+            row.id: row.repaymentDate.millisecondsSinceEpoch ~/ 1000,
+        },
+        {
+          'with-tx': 1700000400,
+          'no-tx': 1700000200,
+          'legacy': 1700000000,
+          'missing-tx': 1700000000,
+        },
+      );
+      final item = await upgraded.select(upgraded.repaymentItems).getSingle();
+      expect(item.repaymentId, 'with-tx');
+      expect(item.allocatedPrincipalMinor, 1000);
+      expect(item.allocatedInterestMinor, 50);
+      final indexes = await upgraded
+          .customSelect("PRAGMA index_list('repayments')")
+          .get();
+      expect(
+        indexes.map((row) => row.read<String>('name')),
+        containsAll(['repayments_target_idx', 'repayments_transaction_unique']),
+      );
+      await expectLater(
+        upgraded.customStatement(
+          "UPDATE repayments SET repayment_date = NULL WHERE id = 'with-tx'",
+        ),
+        throwsA(isA<Exception>()),
+      );
+      final foreignKeys = await upgraded
+          .customSelect("PRAGMA foreign_key_list('repayments')")
+          .get();
+      expect(foreignKeys, isEmpty);
+    },
+  );
+
+  test('opening a v29 database adds repayment_date and backfills it for '
+      'all repayments', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-repayment-date-migration-test-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}smartflow.sqlite',
+    );
+
+    final staleDatabase = _openDatabase(file);
+    await staleDatabase.customStatement('DROP TABLE repayments');
+    await staleDatabase.customStatement(_v29RepaymentsSql);
+    await staleDatabase.customStatement(
+      "INSERT INTO repayments "
+      "(id, repayment_type, target_type, target_id, transaction_id, "
+      "created_at, updated_at) VALUES "
+      "('no-tx', 'BILL', 'BILL', 'bill-1', NULL, 1700000000, 1700000000), "
+      "('with-tx', 'PREPAYMENT', 'CONTRACT', 'contract-1', 'tx-1', "
+      "1700000100, 1700000100)",
+    );
+    await staleDatabase.customStatement(
+      "INSERT INTO transactions (id, business_purpose, occurred_at, posted_at, "
+      "primary_amount_minor, source_kind) VALUES "
+      "('tx-1', 'debtRepayment', 1700000200, 1700000300, 1000, 'manual')",
+    );
+    await staleDatabase.customStatement('PRAGMA user_version = 29');
+    await staleDatabase.close();
+
+    final upgraded = _openDatabase(file);
+    addTearDown(upgraded.close);
+    final version = await upgraded
+        .customSelect('PRAGMA user_version')
+        .getSingle();
+    expect(version.read<int>('user_version'), 31);
+    final rows = await upgraded
+        .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
+        .get();
+    expect(
+      {
+        for (final row in rows)
+          row.read<String>('id'): row.readNullable<int>('repayment_date'),
+      },
+      {'no-tx': 1700000000, 'with-tx': 1700000200},
+    );
+  });
+
+  test(
     'opening a stale v18 database rebuilds the installment constraint',
     () async {
       final directory = await Directory.systemTemp.createTemp(
@@ -33,7 +160,7 @@ void main() {
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 29);
+      expect(version.read<int>('user_version'), 31);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -87,7 +214,7 @@ void main() {
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 29);
+      expect(version.read<int>('user_version'), 31);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -198,7 +325,7 @@ void main() {
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 29);
+      expect(version.read<int>('user_version'), 31);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -365,7 +492,7 @@ void main() {
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 29);
+      expect(version.read<int>('user_version'), 31);
 
       for (final table in [
         'import_entity_mappings',
@@ -911,6 +1038,29 @@ AppDatabase _openDatabase(File file) {
     DatabaseConnection(NativeDatabase(file), closeStreamsSynchronously: true),
   );
 }
+
+/// v29 的 repayments 结构：尚无 repayment_date 列。
+const _v29RepaymentsSql = '''
+CREATE TABLE repayments (
+  id TEXT NOT NULL PRIMARY KEY,
+  repayment_type TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  transaction_id TEXT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  CHECK (repayment_type IN (
+    'BILL', 'INSTALLMENT', 'PREPAYMENT', 'UNATTRIBUTED'
+  )),
+  CHECK (target_type IN ('BILL', 'CONTRACT', 'ACCOUNT')),
+  CHECK (
+    (repayment_type IN ('BILL', 'INSTALLMENT') AND target_type = 'BILL')
+    OR (repayment_type = 'PREPAYMENT' AND target_type = 'CONTRACT')
+    OR (repayment_type = 'UNATTRIBUTED' AND target_type = 'ACCOUNT')
+  ),
+  CHECK (repayment_type <> 'INSTALLMENT' OR transaction_id IS NULL)
+)
+''';
 
 /// 测试先用当前 Drift schema 建库，再显式还原 v28 的交易相关结构。
 /// 这样设置旧 user_version 后，升级输入与真实历史数据库一致。

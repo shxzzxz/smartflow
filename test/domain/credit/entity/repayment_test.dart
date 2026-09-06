@@ -15,6 +15,7 @@ void main() {
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
         transactionId: 'tx-1',
+        repaymentDate: DateTime(2026, 1, 1),
         items: [
           _item(
             id: 'item-1',
@@ -53,6 +54,7 @@ void main() {
           repaymentType: RepaymentType.bill,
           targetType: RepaymentTargetType.account,
           targetId: 'account-1',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [
             _item(
               id: 'item-1',
@@ -73,6 +75,7 @@ void main() {
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
           transactionId: 'tx-1',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [
             _item(
               id: 'item-1',
@@ -92,6 +95,7 @@ void main() {
           repaymentType: RepaymentType.unattributed,
           targetType: RepaymentTargetType.account,
           targetId: 'account-1',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [_item(id: 'item-1', repaymentId: 'repayment-1')],
         ),
         throwsA(_creditInvalidCommand()),
@@ -105,6 +109,7 @@ void main() {
           repaymentType: RepaymentType.prepayment,
           targetType: RepaymentTargetType.contract,
           targetId: 'contract-1',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [
             _item(
               id: 'item-1',
@@ -115,6 +120,62 @@ void main() {
         ),
         throwsA(_creditInvalidCommand()),
       );
+    });
+
+    test('stores the date even when a ledger transaction is present', () {
+      final repayment = Repayment(
+        id: 'repayment-1',
+        repaymentType: RepaymentType.bill,
+        targetType: RepaymentTargetType.bill,
+        targetId: 'bill-1',
+        transactionId: 'tx-1',
+        repaymentDate: DateTime(2026, 1, 1),
+        items: [
+          _item(
+            id: 'item-1',
+            repaymentId: 'repayment-1',
+            billItemId: 'bill-item-1',
+          ),
+        ],
+      );
+      expect(repayment.repaymentDate, DateTime(2026, 1, 1));
+    });
+
+    test('revises the repayment date with and without ledger transaction', () {
+      final withoutTransaction = Repayment(
+        id: 'repayment-1',
+        repaymentType: RepaymentType.bill,
+        targetType: RepaymentTargetType.bill,
+        targetId: 'bill-1',
+        repaymentDate: DateTime(2026, 1, 1),
+        items: [
+          _item(
+            id: 'item-1',
+            repaymentId: 'repayment-1',
+            billItemId: 'bill-item-1',
+          ),
+        ],
+      );
+      withoutTransaction.reviseRepaymentDate(DateTime(2026, 2, 1));
+      expect(withoutTransaction.repaymentDate, DateTime(2026, 2, 1));
+
+      final withTransaction = Repayment(
+        id: 'repayment-2',
+        repaymentType: RepaymentType.bill,
+        targetType: RepaymentTargetType.bill,
+        targetId: 'bill-1',
+        transactionId: 'tx-1',
+        repaymentDate: DateTime(2026, 1, 1),
+        items: [
+          _item(
+            id: 'item-2',
+            repaymentId: 'repayment-2',
+            billItemId: 'bill-item-1',
+          ),
+        ],
+      );
+      withTransaction.reviseRepaymentDate(DateTime(2026, 2, 1));
+      expect(withTransaction.repaymentDate, DateTime(2026, 2, 1));
     });
   });
 }

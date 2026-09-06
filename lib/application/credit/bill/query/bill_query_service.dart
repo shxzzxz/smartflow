@@ -137,11 +137,10 @@ class BillQueryServiceImpl implements BillQueryService {
     required DateTime now,
     required Map<String, RepaymentAmountBreakdown> allocatedByItemId,
   }) {
-    final overdueCount =
-        bill.items.where((item) {
-          return _isOutstanding(item.status) &&
-              _dateOnly(item.repaymentDate).isBefore(_dateOnly(now));
-        }).length;
+    final overdueCount = bill.items.where((item) {
+      return _isOutstanding(item.status) &&
+          _dateOnly(item.repaymentDate).isBefore(_dateOnly(now));
+    }).length;
     return BillSummaryReadModel(
       id: bill.id,
       accountId: bill.accountId,
@@ -226,34 +225,22 @@ class BillQueryServiceImpl implements BillQueryService {
       bill.id,
     );
     return [
-      for (final repayment in repayments)
-        await _repaymentForBill(repayment, fallbackTime: _currentTime()),
+      for (final repayment in repayments) await _repaymentForBill(repayment),
     ];
   }
 
-  Future<BillRepaymentReadModel> _repaymentForBill(
-    Repayment repayment, {
-    required DateTime fallbackTime,
-  }) async {
+  Future<BillRepaymentReadModel> _repaymentForBill(Repayment repayment) async {
     final total = repayment.totalAllocated();
     final transactionId = repayment.transactionId;
-    final detail =
-        transactionId == null
-            ? null
-            : await _ledger.findParentTransaction(transactionId);
+    final detail = transactionId == null
+        ? null
+        : await _ledger.findParentTransaction(transactionId);
     final usesTransaction = detail != null;
     return BillRepaymentReadModel(
       id: repayment.id,
       repaymentType: repayment.repaymentType,
       allocated: _amountDto(total),
-      displayTime:
-          usesTransaction
-              ? detail.occurredAt
-              : repayment.createdAt ?? fallbackTime,
-      timeSource:
-          usesTransaction
-              ? BillRepaymentTimeSource.transaction
-              : BillRepaymentTimeSource.recordCreatedAt,
+      displayTime: repayment.repaymentDate,
       transactionId: transactionId,
       paidFromAccountId: usesTransaction ? detail.paidFromAccountId : null,
     );

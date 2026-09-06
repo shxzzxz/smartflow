@@ -109,6 +109,30 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           rethrow;
         }
       }
+      if (from < 30 &&
+          !await _hasColumn(database, 'repayments', 'repayment_date')) {
+        await database.customStatement(
+          'ALTER TABLE repayments ADD COLUMN repayment_date INTEGER',
+        );
+        // 存量无交易还款此前以创建时间展示，回填为还款日期以满足"无交易必填"约束。
+        await database.customStatement(
+          'UPDATE repayments SET repayment_date = created_at '
+          'WHERE transaction_id IS NULL',
+        );
+      }
+      if (from < 31) {
+        // 有交易的历史还款以交易时间为准；其余保留已有时间，缺失时沿用创建时间。
+        await database.customStatement('''
+UPDATE repayments
+SET repayment_date = COALESCE(
+  (SELECT occurred_at FROM transactions WHERE id = repayments.transaction_id),
+  repayment_date,
+  created_at
+)
+''');
+        await migrator.alterTable(TableMigration(database.repayments));
+        await _createRepaymentIndexes(database);
+      }
     },
   );
 }

@@ -21,6 +21,184 @@ import '../../helper/test_app_database.dart';
 
 void main() {
   group('RepaymentAppService', () {
+    for (final editPath in ['metadata', 'account', 'bill']) {
+      for (final failRepaymentWrite in [false, true]) {
+        test(
+          '$editPath time edit ${failRepaymentWrite ? 'rolls back both sides on failure' : 'persists both sides'}',
+          () async {
+            final fixture = _Fixture();
+            addTearDown(fixture.close);
+            await fixture.seedBill(
+              status: credit.BillStatus.billed,
+              itemType: credit.BillItemType.consumption,
+              expectedPrincipal: 1000,
+            );
+            final original = DateTime(2026, 6, 20, 10, 11, 12);
+            final updated = DateTime(2026, 6, 21, 14, 15, 16);
+            final result = await fixture.service.createBillRepayment(
+              credit.CreateBillRepaymentCommand(
+                billId: 'bill-1',
+                allocations: [
+                  _allocation(billItemId: 'bill-item-1', principal: 1000),
+                ],
+                transactionInfo: credit.RepaymentTransactionInfo(
+                  paidFromAccountId: 'cash-1',
+                  occurredAt: original,
+                ),
+              ),
+            );
+            expect(
+              (await fixture.repayments.findRepayment(
+                result.repaymentId,
+              ))!.repaymentDate,
+              original,
+            );
+            fixture.transactionQuery.details['tx-current'] = _transactionDetail(
+              transactionId: 'tx-current',
+              occurredAt: original,
+            );
+            await fixture.database.customStatement(
+              '''
+INSERT INTO transactions
+(id, business_purpose, occurred_at, posted_at, primary_amount_minor, source_kind)
+VALUES ('tx-current', 'debtRepayment', ?, ?, 1000, 'manual')
+''',
+              [
+                original.millisecondsSinceEpoch ~/ 1000,
+                original.millisecondsSinceEpoch ~/ 1000,
+              ],
+            );
+            // The ledger port participates in the same database, including its
+            // own nested transaction. A subsequent repayment failure must undo it.
+            Future<void> writeLedgerTime(
+              DateTime time,
+            ) => fixture.database.transaction(() async {
+              await fixture.database.customStatement(
+                "UPDATE transactions SET occurred_at = ? WHERE id = 'tx-current'",
+                [time.millisecondsSinceEpoch ~/ 1000],
+              );
+            });
+            fixture.update.onUpdateBasicInfo = (command) =>
+                writeLedgerTime(command.occurredAt!);
+            fixture.edit.onEditRepayment = (command) =>
+                writeLedgerTime(command.occurredAt!);
+            final beforeItems = await fixture.database
+                .select(fixture.database.repaymentItems)
+                .get();
+            if (failRepaymentWrite) {
+              await fixture.database.customStatement('''
+CREATE TRIGGER fail_repayment_item_write BEFORE INSERT ON repayment_items
+BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
+''');
+            }
+            Future<void> editTime() async {
+              if (editPath == 'bill') {
+                await fixture.service.editBillRepayment(
+                  credit.EditBillRepaymentCommand(
+                    repaymentId: result.repaymentId,
+                    allocations: [
+                      _allocation(billItemId: 'bill-item-1', principal: 800),
+                    ],
+                    transactionInfo: credit.RepaymentTransactionInfo(
+                      paidFromAccountId: 'bank-1',
+                      occurredAt: updated,
+                    ),
+                  ),
+                );
+              } else {
+                await fixture.service.editRepaymentTransaction(
+                  credit.EditCreditRepaymentTransactionCommand(
+                    transactionId: result.transactionId,
+                    occurredAt: updated,
+                    paidFromAccountId: editPath == 'account' ? 'bank-1' : null,
+                  ),
+                );
+              }
+            }
+
+            if (failRepaymentWrite) {
+              await expectLater(editTime(), throwsA(isA<Exception>()));
+            } else {
+              await editTime();
+            }
+            final expected = failRepaymentWrite ? original : updated;
+            final repayment = (await fixture.repayments.findRepayment(
+              result.repaymentId,
+            ))!;
+            final transaction = await fixture.database
+                .select(fixture.database.transactions)
+                .getSingle();
+            expect(repayment.repaymentDate, expected);
+            expect(transaction.occurredAt, expected);
+            expect(transaction.postedAt, original);
+            expect(
+              repayment.totalAllocated().principal.minorUnits,
+              !failRepaymentWrite && editPath == 'bill' ? 800 : 1000,
+            );
+            if (failRepaymentWrite) {
+              expect(
+                await fixture.database
+                    .select(fixture.database.repaymentItems)
+                    .get(),
+                beforeItems,
+              );
+            }
+          },
+        );
+      }
+    }
+
+    test(
+      'prepayment time edit saves time without recalculating schedules',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 90000,
+          schedulePrincipals: [30000, 30000, 30000],
+        );
+        final result = await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
+            contractId: contractId,
+            amount: _amount(principal: 10000),
+            transactionInfo: _transactionInfo(),
+          ),
+        );
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.repaymentDate,
+          _transactionInfo().occurredAt,
+        );
+        final before = await fixture.database
+            .select(fixture.database.installmentSchedules)
+            .get();
+        fixture.transactionQuery.details[result.transactionId!] =
+            _transactionDetail(
+              transactionId: result.transactionId!,
+              occurredAt: _transactionInfo().occurredAt,
+            );
+        await fixture.service.editRepaymentTransaction(
+          credit.EditCreditRepaymentTransactionCommand(
+            repaymentId: result.repaymentId,
+            occurredAt: DateTime(2026, 9, 1, 8, 30),
+          ),
+        );
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.repaymentDate,
+          DateTime(2026, 9, 1, 8, 30),
+        );
+        expect(
+          await fixture.database
+              .select(fixture.database.installmentSchedules)
+              .get(),
+          before,
+        );
+      },
+    );
+
     test('creates no-transaction bill repayment and settles bill', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
@@ -36,10 +214,10 @@ void main() {
           allocations: [
             _allocation(billItemId: 'bill-item-1', principal: 1000),
           ],
+          repaymentDate: DateTime(2026, 6, 20),
         ),
       );
 
-      expect(result.transactionId, isNull);
       expect(result.transactionId, isNull);
 
       final repayment = await fixture.repayments.findRepayment(
@@ -47,12 +225,44 @@ void main() {
       );
       expect(repayment!.repaymentType, credit.RepaymentType.bill);
       expect(repayment.targetId, 'bill-1');
+      expect(repayment.repaymentDate, DateTime(2026, 6, 20));
       expect(repayment.items.single.billItemId, 'bill-item-1');
 
       final bill = await fixture.bills.findBill('bill-1');
       expect(bill!.items.single.status, credit.BillItemStatus.paid);
       expect(bill.status, credit.BillStatus.settled);
     });
+
+    test(
+      'rejects no-transaction bill repayment without a repayment date',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+
+        await expectLater(
+          () => fixture.service.createBillRepayment(
+            credit.CreateBillRepaymentCommand(
+              billId: 'bill-1',
+              allocations: [
+                _allocation(billItemId: 'bill-item-1', principal: 1000),
+              ],
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (exception) => exception.code,
+              'code',
+              CreditErrorCode.repaymentInvalidCommand.code,
+            ),
+          ),
+        );
+      },
+    );
 
     test('creates interest-only bill repayment with zero principal', () async {
       final fixture = _Fixture();
@@ -69,6 +279,7 @@ void main() {
           allocations: [
             _allocation(billItemId: 'bill-item-1', principal: 0, interest: 100),
           ],
+          repaymentDate: DateTime(2026, 6, 20),
         ),
       );
 
@@ -95,6 +306,7 @@ void main() {
           allocations: [
             _allocation(billItemId: 'bill-item-1', principal: 1000),
           ],
+          repaymentDate: DateTime(2026, 6, 20),
         ),
       );
 
@@ -102,6 +314,7 @@ void main() {
         credit.EditBillRepaymentCommand(
           repaymentId: created.repaymentId,
           allocations: [_allocation(billItemId: 'bill-item-1', principal: 500)],
+          repaymentDate: DateTime(2026, 6, 22),
         ),
       );
 
@@ -112,6 +325,7 @@ void main() {
         repayment!.totalAllocated().principal,
         const Money(minorUnits: 500),
       );
+      expect(repayment.repaymentDate, DateTime(2026, 6, 22));
       final bill = await fixture.bills.findBill('bill-1');
       expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
       expect(bill.status, credit.BillStatus.billed);
@@ -174,7 +388,8 @@ void main() {
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
-        expect(repayment!.transactionId, 'tx-current');
+        expect(repayment!.repaymentDate, DateTime(2026, 6, 20));
+        expect(repayment.transactionId, 'tx-current');
 
         final bill = await fixture.bills.findBill('bill-1');
         expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
@@ -246,6 +461,7 @@ void main() {
               _allocation(billItemId: 'bill-item-consumption', principal: 500),
               _allocation(billItemId: 'bill-item-installment', principal: 700),
             ],
+            repaymentDate: DateTime(2026, 6, 20),
           ),
         );
 
@@ -292,6 +508,7 @@ void main() {
             allocations: [
               _allocation(billItemId: 'bill-item-installment', principal: 400),
             ],
+            repaymentDate: DateTime(2026, 6, 20),
           ),
         );
 
@@ -327,6 +544,7 @@ void main() {
           allocations: [
             _allocation(billItemId: 'bill-item-1', principal: 1200),
           ],
+          repaymentDate: DateTime(2026, 6, 20),
         ),
       );
 
@@ -373,7 +591,6 @@ void main() {
             );
 
         expect(result.transactionId, isNull);
-        expect(result.transactionId, isNull);
         expect(result.contractId, isNotNull);
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
@@ -391,6 +608,8 @@ void main() {
         );
         expect(contract.sourceRepaymentId, result.repaymentId);
         expect(contract.principal, const Money(minorUnits: 6000));
+        // 分期还款无交易，以合同起算日作为它的还款日期。
+        expect(repayment.repaymentDate, contract.borrowingDate);
         final schedules = await fixture.installments.listSchedules(
           result.contractId!,
         );
@@ -440,6 +659,7 @@ void main() {
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             amount: _amount(principal: 20000),
+            repaymentDate: DateTime(2026, 8, 1),
           ),
         );
 
@@ -449,6 +669,7 @@ void main() {
         );
         expect(repayment!.repaymentType, credit.RepaymentType.prepayment);
         expect(repayment.targetId, contractId);
+        expect(repayment.repaymentDate, DateTime(2026, 8, 1));
         expect(repayment.items.single.billItemId, isNull);
         expect(
           repayment.items.single.allocated.principal,
@@ -513,6 +734,7 @@ void main() {
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             amount: _amount(fee: 500),
+            repaymentDate: DateTime(2026, 7, 1),
           ),
         );
 
@@ -547,7 +769,8 @@ void main() {
     );
 
     test(
-      'prepayment occurrence date does not filter pending schedules',
+      'prepayment dated after a pending schedule freezes it and recalculates '
+      'only later schedules',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -562,7 +785,7 @@ void main() {
             amount: _amount(principal: 30000),
             transactionInfo: credit.RepaymentTransactionInfo(
               paidFromAccountId: 'cash-1',
-              occurredAt: DateTime(2027, 1, 1),
+              occurredAt: DateTime(2026, 8, 1),
             ),
           ),
         );
@@ -571,12 +794,48 @@ void main() {
           contractId,
         );
         expect(recalculated.map((schedule) => schedule.expectedPrincipal), [
-          const Money(minorUnits: 30000),
-          const Money(minorUnits: 30000),
-          const Money(minorUnits: 30000),
+          const Money(minorUnits: 40000),
+          const Money(minorUnits: 25000),
+          const Money(minorUnits: 25000),
         ]);
       },
     );
+
+    test('prepayment dated after every schedule is rejected', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final contractId = await fixture.seedContractWithSchedules(
+        principal: 120000,
+        schedulePrincipals: [40000, 40000, 40000],
+      );
+
+      await expectLater(
+        () => fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
+            contractId: contractId,
+            amount: _amount(principal: 30000),
+            transactionInfo: credit.RepaymentTransactionInfo(
+              paidFromAccountId: 'cash-1',
+              occurredAt: DateTime(2027, 1, 1),
+            ),
+          ),
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.contractInvalidCommand.code,
+          ),
+        ),
+      );
+      expect(
+        await fixture.repayments.listByTarget(
+          credit.RepaymentTargetType.contract,
+          contractId,
+        ),
+        isEmpty,
+      );
+    });
 
     test(
       'creates no-transaction prepayment without skipping pending rows',
@@ -605,6 +864,7 @@ void main() {
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             amount: _amount(principal: 80000, fee: 500),
+            repaymentDate: DateTime(2026, 7, 1),
           ),
         );
 
@@ -670,6 +930,7 @@ void main() {
           result.repaymentId,
         );
         expect(repayment!.repaymentType, credit.RepaymentType.unattributed);
+        expect(repayment.repaymentDate, _transactionInfo().occurredAt);
         expect(repayment.targetType, credit.RepaymentTargetType.account);
         expect(repayment.targetId, 'credit-1');
         expect(repayment.items.single.billItemId, isNull);
@@ -702,6 +963,7 @@ void main() {
           allocations: [
             _allocation(billItemId: 'bill-item-1', principal: 1000),
           ],
+          repaymentDate: DateTime(2026, 6, 20),
         ),
       );
 
@@ -787,6 +1049,7 @@ void main() {
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: result.contractId!,
             amount: _amount(principal: 1000),
+            repaymentDate: DateTime(2026, 7, 1),
           ),
         );
 
@@ -833,6 +1096,7 @@ void main() {
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
             amount: _amount(principal: 80000),
+            repaymentDate: DateTime(2026, 8, 1),
           ),
         );
         expect(
@@ -892,6 +1156,7 @@ void main() {
         credit.CreateContractPrepaymentRepaymentCommand(
           contractId: contractId,
           amount: _amount(principal: 80000),
+          repaymentDate: DateTime(2026, 7, 1),
         ),
       );
 
@@ -941,11 +1206,11 @@ void main() {
             transactionInfo: _transactionInfo(),
           ),
         );
-        fixture.transactionQuery.details[result
-            .transactionId!] = _transactionDetail(
-          transactionId: result.transactionId!,
-          occurredAt: DateTime(2026, 7, 1),
-        );
+        fixture.transactionQuery.details[result.transactionId!] =
+            _transactionDetail(
+              transactionId: result.transactionId!,
+              occurredAt: DateTime(2026, 7, 1),
+            );
 
         await fixture.service.deleteRepayment(
           credit.DeleteCreditRepaymentCommand(repaymentId: result.repaymentId),
@@ -1003,6 +1268,12 @@ void main() {
             note: const Patch<String?>.set('updated'),
           ),
         );
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.repaymentDate,
+          DateTime(2026, 6, 21),
+        );
         await fixture.service.editRepaymentTransaction(
           credit.EditCreditRepaymentTransactionCommand(
             repaymentId: result.repaymentId,
@@ -1019,6 +1290,13 @@ void main() {
         expect(edit.liabilityAccountId, 'credit-1');
         expect(edit.paidFromAccountId, 'bank-1');
         expect(edit.principal, const Money(minorUnits: 1000));
+        expect(edit.occurredAt, DateTime(2026, 6, 21));
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.repaymentDate,
+          DateTime(2026, 6, 21),
+        );
         expect(
           (edit.interest as PatchSet<Money?>).value,
           const Money(minorUnits: 50),
@@ -1263,13 +1541,12 @@ class _Fixture {
   }
 
   Future<bool> deletedTransactionMarkerExists() async {
-    final rows =
-        await database
-            .customSelect(
-              "SELECT key FROM app_metadata "
-              "WHERE key = 'test.deleted_transaction'",
-            )
-            .get();
+    final rows = await database
+        .customSelect(
+          "SELECT key FROM app_metadata "
+          "WHERE key = 'test.deleted_transaction'",
+        )
+        .get();
     return rows.isNotEmpty;
   }
 
@@ -1278,12 +1555,9 @@ class _Fixture {
     required credit.BillItemType itemType,
     required int expectedPrincipal,
   }) async {
-    final installment =
-        itemType == credit.BillItemType.installment
-            ? await seedInstallmentContract(
-              expectedPrincipal: expectedPrincipal,
-            )
-            : null;
+    final installment = itemType == credit.BillItemType.installment
+        ? await seedInstallmentContract(expectedPrincipal: expectedPrincipal)
+        : null;
     await seedBillItems(
       status: status,
       items: [
@@ -1467,14 +1741,13 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         occurredAt: command.occurredAt,
         counterpartyName: command.counterpartyName,
         note: command.note,
-        ownership:
-            command.ownership == null
-                ? null
-                : ledger.TransactionOwnership(
-                  ownerType: command.ownership!.ownerType,
-                  ownerId: command.ownership!.ownerId,
-                  ownerRole: command.ownership!.ownerRole,
-                ),
+        ownership: command.ownership == null
+            ? null
+            : ledger.TransactionOwnership(
+                ownerType: command.ownership!.ownerType,
+                ownerId: command.ownership!.ownerId,
+                ownerRole: command.ownership!.ownerRole,
+              ),
       ),
     );
     return CreditLedgerPostedTransaction(transactionId: result.transactionId);
@@ -1489,18 +1762,15 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
       ledger.EditRepaymentCommand(
         transactionId: command.transactionId,
         principal: amount?.principal,
-        interest:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.interest)),
-        fee:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.fee)),
-        discount:
-            amount == null
-                ? null
-                : Patch<Money?>.set(_positiveOrNull(amount.discount)),
+        interest: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.interest)),
+        fee: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.fee)),
+        discount: amount == null
+            ? null
+            : Patch<Money?>.set(_positiveOrNull(amount.discount)),
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
@@ -1604,6 +1874,7 @@ class _FakeEditService implements ledger.TransactionEditAppService {
   final deletedTransactionIds = <String>[];
   final repaymentCommands = <ledger.EditRepaymentCommand>[];
   Future<void> Function(String transactionId)? onDeleteTransaction;
+  Future<void> Function(ledger.EditRepaymentCommand command)? onEditRepayment;
 
   @override
   Future<void> deleteTransaction(
@@ -1618,6 +1889,7 @@ class _FakeEditService implements ledger.TransactionEditAppService {
     ledger.EditRepaymentCommand command,
   ) async {
     repaymentCommands.add(command);
+    await onEditRepayment?.call(command);
     return const ledger.PostedTransactionResult(transactionId: 'tx-current');
   }
 
@@ -1627,12 +1899,15 @@ class _FakeEditService implements ledger.TransactionEditAppService {
 
 class _FakeUpdateService implements ledger.TransactionUpdateAppService {
   final basicInfoCommands = <ledger.UpdateTransactionBasicInfoCommand>[];
+  Future<void> Function(ledger.UpdateTransactionBasicInfoCommand command)?
+  onUpdateBasicInfo;
 
   @override
   Future<ledger.PostedTransactionResult> updateBasicInfo(
     ledger.UpdateTransactionBasicInfoCommand command,
   ) async {
     basicInfoCommands.add(command);
+    await onUpdateBasicInfo?.call(command);
     return const ledger.PostedTransactionResult(transactionId: 'tx-current');
   }
 

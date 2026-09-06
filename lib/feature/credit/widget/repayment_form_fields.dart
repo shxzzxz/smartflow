@@ -118,14 +118,15 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
             value: createTransaction,
             onChanged: onCreateTransactionChanged!,
           ),
-        if (createTransaction) ...[
-          DateTimePlainFormRow(
-            label: '还款日期',
-            dateTime: occurredAt,
-            value: occurredAtText,
-            onTap: onPickDate,
-            onChanged: onOccurredAtChanged,
-          ),
+        DateTimePlainFormRow(
+          label: '还款日期',
+          dateTime: occurredAt,
+          value: occurredAtText,
+          onTap: onPickDate,
+          onChanged: onOccurredAtChanged,
+          supportingText: createTransaction ? null : '无交易还款由记录自身持有还款日期',
+        ),
+        if (createTransaction)
           AccountPlainFormRow(
             label: '还款账户',
             account: repaymentAccount,
@@ -135,7 +136,6 @@ class CreditRepaymentTransactionFields extends StatelessWidget {
             onChanged: onRepaymentAccountChanged,
             validator: (value) => value == null ? '请选择还款账户' : null,
           ),
-        ],
       ],
     );
   }

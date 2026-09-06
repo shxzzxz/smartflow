@@ -46,10 +46,18 @@ const manualArticles = <ManualArticle>[
   ManualArticle(
     slug: 'credit-metrics',
     title: '计息方式和关键指标',
-    summary: '理解按日计息、按月计息，以及 IRR、APR 和 EAR。',
+    summary: '理解计息方式、利率换算、舍入、等额本息固定额算法、计划重算，以及 IRR、APR 和 EAR。',
     category: '信贷与分期',
-    keywords: ['计息', 'IRR', 'APR', 'EAR', '利息'],
+    keywords: ['计息', '利率', '舍入', '重算', 'IRR', 'APR', 'EAR', '利息'],
     assetPath: 'assets/manual/credit-metrics.md',
+  ),
+  ManualArticle(
+    slug: 'loan-calculator',
+    title: '贷款计算器',
+    summary: '不落库地试算还款计划、年化指标与提前还款。',
+    category: '信贷与分期',
+    keywords: ['计算器', '还款计划', '提前还款', '气球贷', '助学贷款'],
+    assetPath: 'assets/manual/loan-calculator.md',
   ),
 ];
 

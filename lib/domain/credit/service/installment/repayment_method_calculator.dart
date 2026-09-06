@@ -1,5 +1,11 @@
+import 'package:rational/rational.dart';
+
+import '../../../../core/error/app_exception.dart';
 import '../../../../core/money/money.dart';
-import '../../valobj/installment_enums.dart';
+import '../../../../core/money/rounding_mode.dart';
+import '../../valobj/credit_error_code.dart';
+import '../../valobj/equal_installment_amount.dart';
+import 'interest_accrual_policy.dart';
 
 class InstallmentAmountAllocation {
   const InstallmentAmountAllocation({
@@ -13,94 +19,119 @@ class InstallmentAmountAllocation {
   final Money fee;
 }
 
-class RepaymentMethodCalculationPeriod {
-  const RepaymentMethodCalculationPeriod({
-    required this.dayCount,
-    required this.additionalOutstandingPrincipal,
-  });
-
-  final int dayCount;
-  final Money additionalOutstandingPrincipal;
-}
-
+/// 一个阶段的本息分摊输入：期初本金、期末本金、每期期利率与舍入方式。
 class RepaymentMethodCalculationInput {
   const RepaymentMethodCalculationInput({
-    required this.principal,
-    required this.periods,
-    required this.accrualMethod,
-    this.ratePeriod,
-    this.ratePpm,
-    this.remainingFeeMinor = 0,
-    this.equalInstallmentOverrideMinor,
+    required this.openingPrincipal,
+    required this.endPrincipal,
+    required this.rates,
+    required this.rounding,
+    this.installmentAmount = const EqualInstallmentAmount.nominalRate(),
   });
 
-  final Money principal;
-  final List<RepaymentMethodCalculationPeriod> periods;
-  final InterestAccrualMethod accrualMethod;
-  final InterestRatePeriod? ratePeriod;
-  final int? ratePpm;
-  final int remainingFeeMinor;
-  final int? equalInstallmentOverrideMinor;
+  final Money openingPrincipal;
+  final Money endPrincipal;
+  final List<PeriodRate> rates;
+  final RoundingMode rounding;
+  final EqualInstallmentAmount installmentAmount;
+
+  int get periodCount => rates.length;
 }
 
+class RepaymentMethodCalculation {
+  const RepaymentMethodCalculation({
+    required this.allocations,
+    this.installmentAmount,
+  });
+
+  final List<InstallmentAmountAllocation> allocations;
+
+  /// 等额本息实际采用的固定额；其他方式为空。
+  final Money? installmentAmount;
+}
+
+/// 还款方式只决定各期本金的分摊形状；利率换算与手续费不在此处。
 abstract interface class RepaymentMethodCalculator {
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  );
+  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input);
 }
 
 class EqualInstallmentCalculator implements RepaymentMethodCalculator {
   const EqualInstallmentCalculator();
 
   @override
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  ) {
-    final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.periods.length;
-    final int installmentMinor;
-    final override = input.equalInstallmentOverrideMinor;
-    if (override != null && override > 0) {
-      installmentMinor = override;
-    } else if (monthlyRate == 0) {
-      return const EqualPrincipalCalculator().calculate(input);
-    } else {
-      installmentMinor = _solveInstallment(
-        principalMinor: input.principal.minorUnits,
-        monthlyRate: monthlyRate,
-        accrual: input.accrualMethod,
-        periods: input.periods,
-      );
-    }
+  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input) {
+    final n = input.periodCount;
+    final opening = input.openingPrincipal.minorUnits;
+    final end = input.endPrincipal.minorUnits;
+    final installmentMinor = switch (input.installmentAmount) {
+      FixedInstallmentAmount(:final amount) => _requirePositive(amount),
+      NominalRateInstallmentAmount() => _solveInstallment(
+        openingMinor: opening,
+        endMinor: end,
+        rates: [for (final rate in input.rates) rate.nominal],
+        rounding: input.rounding,
+      ),
+      ActualRateInstallmentAmount() => _solveInstallment(
+        openingMinor: opening,
+        endMinor: end,
+        rates: [for (final rate in input.rates) rate.actual],
+        rounding: input.rounding,
+      ),
+    };
 
     final allocations = <InstallmentAmountAllocation>[];
-    var remaining = input.principal.minorUnits;
-    var principalAccum = 0;
+    var balance = opening;
     for (var i = 0; i < n; i++) {
-      final isLast = i == n - 1;
-      final interestMinor = _interestForPeriod(
-        balanceMinor:
-            remaining +
-            input.periods[i].additionalOutstandingPrincipal.minorUnits,
-        monthlyRate: monthlyRate,
-        days: input.periods[i].dayCount,
-        accrual: input.accrualMethod,
-      );
-      var principalMinor = installmentMinor - interestMinor;
-      if (isLast) {
-        principalMinor = input.principal.minorUnits - principalAccum;
+      final interest = _interestFor(balance, input.rates[i], input.rounding);
+      final int principal;
+      if (i == n - 1) {
+        principal = balance - end;
+        if (principal < 0) {
+          throw _invalid(
+            'Installment amount repays the principal before the final period.',
+          );
+        }
+      } else {
+        principal = installmentMinor - interest;
+        if (principal < 0) {
+          throw _invalid(
+            'Installment amount does not cover the interest of period ${i + 1}.',
+          );
+        }
       }
-      allocations.add(
-        InstallmentAmountAllocation(
-          principal: Money(minorUnits: principalMinor),
-          interest: Money(minorUnits: interestMinor),
-          fee: Money.zero(),
-        ),
-      );
-      remaining -= principalMinor;
-      principalAccum += principalMinor;
+      allocations.add(_allocation(principal, interest));
+      balance -= principal;
     }
-    return allocations;
+    return RepaymentMethodCalculation(
+      allocations: allocations,
+      installmentAmount: Money(minorUnits: installmentMinor),
+    );
+  }
+
+  int _requirePositive(Money amount) {
+    if (amount.minorUnits <= 0) {
+      throw _invalid('Fixed installment amount must be positive.');
+    }
+    return amount.minorUnits;
+  }
+
+  /// A = (p0·Π(1+r_i) − pn) / Σ_i Π_{j>i}(1+r_j)
+  int _solveInstallment({
+    required int openingMinor,
+    required int endMinor,
+    required List<Rational> rates,
+    required RoundingMode rounding,
+  }) {
+    var paymentGrowth = Rational.zero;
+    var suffix = Rational.one;
+    for (var i = rates.length - 1; i >= 0; i--) {
+      paymentGrowth += suffix;
+      suffix *= Rational.one + rates[i];
+    }
+    final amount =
+        (Rational.fromInt(openingMinor) * suffix - Rational.fromInt(endMinor)) /
+        paymentGrowth;
+    return amount.roundToInt(rounding);
   }
 }
 
@@ -108,39 +139,19 @@ class EqualPrincipalCalculator implements RepaymentMethodCalculator {
   const EqualPrincipalCalculator();
 
   @override
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  ) {
-    final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.periods.length;
-    final perPrincipal = input.principal.minorUnits ~/ n;
+  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input) {
+    final n = input.periodCount;
+    final total =
+        input.openingPrincipal.minorUnits - input.endPrincipal.minorUnits;
+    final principals = splitEvenly(total, n, input.rounding);
     final allocations = <InstallmentAmountAllocation>[];
-    var remaining = input.principal.minorUnits;
-    var principalAccum = 0;
+    var balance = input.openingPrincipal.minorUnits;
     for (var i = 0; i < n; i++) {
-      var principalMinor = perPrincipal;
-      if (i == n - 1) {
-        principalMinor = input.principal.minorUnits - principalAccum;
-      }
-      final interestMinor = _interestForPeriod(
-        balanceMinor:
-            remaining +
-            input.periods[i].additionalOutstandingPrincipal.minorUnits,
-        monthlyRate: monthlyRate,
-        days: input.periods[i].dayCount,
-        accrual: input.accrualMethod,
-      );
-      allocations.add(
-        InstallmentAmountAllocation(
-          principal: Money(minorUnits: principalMinor),
-          interest: Money(minorUnits: interestMinor),
-          fee: Money.zero(),
-        ),
-      );
-      remaining -= principalMinor;
-      principalAccum += principalMinor;
+      final interest = _interestFor(balance, input.rates[i], input.rounding);
+      allocations.add(_allocation(principals[i], interest));
+      balance -= principals[i];
     }
-    return allocations;
+    return RepaymentMethodCalculation(allocations: allocations);
   }
 }
 
@@ -148,64 +159,18 @@ class InterestFirstCalculator implements RepaymentMethodCalculator {
   const InterestFirstCalculator();
 
   @override
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  ) {
-    final monthlyRate = _toMonthlyRate(input.ratePeriod, input.ratePpm);
-    final n = input.periods.length;
-    return [
-      for (var i = 0; i < n; i++)
-        InstallmentAmountAllocation(
-          principal: Money(
-            minorUnits: i == n - 1 ? input.principal.minorUnits : 0,
+  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input) {
+    final n = input.periodCount;
+    final opening = input.openingPrincipal.minorUnits;
+    return RepaymentMethodCalculation(
+      allocations: [
+        for (var i = 0; i < n; i++)
+          _allocation(
+            i == n - 1 ? opening - input.endPrincipal.minorUnits : 0,
+            _interestFor(opening, input.rates[i], input.rounding),
           ),
-          interest: Money(
-            minorUnits: _interestForPeriod(
-              balanceMinor:
-                  input.principal.minorUnits +
-                  input.periods[i].additionalOutstandingPrincipal.minorUnits,
-              monthlyRate: monthlyRate,
-              days: input.periods[i].dayCount,
-              accrual: input.accrualMethod,
-            ),
-          ),
-          fee: Money.zero(),
-        ),
-    ];
-  }
-}
-
-class FlatFeeCalculator implements RepaymentMethodCalculator {
-  const FlatFeeCalculator();
-
-  @override
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  ) {
-    final periods = input.periods.length;
-    final perPrincipal = input.principal.minorUnits ~/ periods;
-    final perFee = input.remainingFeeMinor ~/ periods;
-    final allocations = <InstallmentAmountAllocation>[];
-    var principalAccum = 0;
-    var feeAccum = 0;
-    for (var i = 0; i < periods; i++) {
-      var principalMinor = perPrincipal;
-      var feeMinor = perFee;
-      if (i == periods - 1) {
-        principalMinor = input.principal.minorUnits - principalAccum;
-        feeMinor = input.remainingFeeMinor - feeAccum;
-      }
-      allocations.add(
-        InstallmentAmountAllocation(
-          principal: Money(minorUnits: principalMinor),
-          interest: Money.zero(),
-          fee: Money(minorUnits: feeMinor),
-        ),
-      );
-      principalAccum += principalMinor;
-      feeAccum += feeMinor;
-    }
-    return allocations;
+      ],
+    );
   }
 }
 
@@ -213,80 +178,47 @@ class CustomInstallmentCalculator implements RepaymentMethodCalculator {
   const CustomInstallmentCalculator();
 
   @override
-  List<InstallmentAmountAllocation> calculate(
-    RepaymentMethodCalculationInput input,
-  ) {
-    final zero = Money.zero();
-    return [
-      for (var i = 0; i < input.periods.length; i++)
-        InstallmentAmountAllocation(principal: zero, interest: zero, fee: zero),
-    ];
-  }
-}
-
-int _interestForPeriod({
-  required int balanceMinor,
-  required double monthlyRate,
-  required int days,
-  required InterestAccrualMethod accrual,
-}) {
-  switch (accrual) {
-    case InterestAccrualMethod.daily:
-      return (balanceMinor * monthlyRate * days / 30).round();
-    case InterestAccrualMethod.monthly:
-      return (balanceMinor * monthlyRate).round();
-  }
-}
-
-int _solveInstallment({
-  required int principalMinor,
-  required double monthlyRate,
-  required InterestAccrualMethod accrual,
-  required List<RepaymentMethodCalculationPeriod> periods,
-}) {
-  var additionalInterestGrowth = 0.0;
-  var paymentGrowth = 0.0;
-  var suffix = 1.0;
-  for (var i = periods.length - 1; i >= 0; i--) {
-    final period = periods[i];
-    final periodRate = _periodRate(
-      monthlyRate: monthlyRate,
-      days: period.dayCount,
-      accrual: accrual,
+  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input) {
+    return RepaymentMethodCalculation(
+      allocations: [
+        for (var i = 0; i < input.periodCount; i++) _allocation(0, 0),
+      ],
     );
-    paymentGrowth += suffix;
-    additionalInterestGrowth +=
-        period.additionalOutstandingPrincipal.minorUnits * periodRate * suffix;
-    suffix *= 1 + periodRate;
-  }
-  return ((principalMinor * suffix + additionalInterestGrowth) / paymentGrowth)
-      .round();
-}
-
-double _periodRate({
-  required double monthlyRate,
-  required int days,
-  required InterestAccrualMethod accrual,
-}) {
-  switch (accrual) {
-    case InterestAccrualMethod.daily:
-      return monthlyRate * days / 30;
-    case InterestAccrualMethod.monthly:
-      return monthlyRate;
   }
 }
 
-double _toMonthlyRate(InterestRatePeriod? period, int? ppm) {
-  if (period == null || ppm == null || ppm == 0) {
-    return 0;
+/// 把 [totalMinor] 均分为 [count] 份：每份按 [rounding] 落到分，尾差记入最后一份。
+List<int> splitEvenly(int totalMinor, int count, RoundingMode rounding) {
+  if (count <= 0) {
+    throw ArgumentError.value(count, 'count', 'Must be > 0');
   }
-  final rate = ppm / 1000000.0;
-  switch (period) {
-    case InterestRatePeriod.annual:
-      return rate / 12.0;
-    case InterestRatePeriod.monthly:
-      return rate;
-    case InterestRatePeriod.daily:
-      return rate * 30.0;
+  var share = Rational(
+    BigInt.from(totalMinor),
+    BigInt.from(count),
+  ).roundToInt(rounding);
+  var last = totalMinor - share * (count - 1);
+  if (last < 0 || (totalMinor >= 0 && share < 0)) {
+    share = totalMinor ~/ count;
+    last = totalMinor - share * (count - 1);
   }
+  return [for (var i = 0; i < count - 1; i++) share, last];
+}
+
+int _interestFor(int balanceMinor, PeriodRate rate, RoundingMode rounding) {
+  return (Rational.fromInt(balanceMinor) * rate.actual).roundToInt(rounding);
+}
+
+InstallmentAmountAllocation _allocation(int principal, int interest) {
+  return InstallmentAmountAllocation(
+    principal: Money(minorUnits: principal),
+    interest: Money(minorUnits: interest),
+    fee: Money.zero(),
+  );
+}
+
+BusinessException _invalid(String message) {
+  return BusinessException(
+    CreditErrorCode.contractInvalidCommand,
+    message: message,
+  );
 }

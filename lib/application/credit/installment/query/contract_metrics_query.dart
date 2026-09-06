@@ -2,6 +2,7 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/service/installment/installment_metrics.dart'
     as domain;
+import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import 'contract_metrics_read_model.dart';
 
@@ -28,32 +29,19 @@ class ContractMetricsQueryImpl implements ContractMetricsQuery {
     }
     final schedules = await _installments.listSchedules(contractId);
     final result = _calculator.compute(
-      contract: contract,
-      schedules: schedules,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      plan: [
+        for (final schedule in schedules)
+          InstallmentSchedulePlanEntry(
+            periodNo: schedule.periodNo,
+            expectedRepaymentDate: schedule.expectedRepaymentDate,
+            expectedPrincipal: schedule.expectedPrincipal,
+            expectedInterest: schedule.expectedInterest,
+            expectedFee: schedule.expectedFee,
+          ),
+      ],
     );
-    return ContractMetrics(
-      monthlyIrr: result.monthlyIrr,
-      nominalApr: result.nominalApr,
-      effectiveApr: result.effectiveApr,
-      totalRepayment: result.totalRepayment,
-      totalInterest: result.totalInterest,
-      totalFee: result.totalFee,
-      converged: result.converged,
-      unavailableReason: _mapUnavailableReason(result.unavailableReason),
-    );
-  }
-
-  ContractMetricsUnavailableReason? _mapUnavailableReason(
-    domain.ContractMetricsUnavailableReason? reason,
-  ) {
-    return switch (reason) {
-      null => null,
-      domain.ContractMetricsUnavailableReason.principalNotConserved =>
-        ContractMetricsUnavailableReason.principalNotConserved,
-      domain.ContractMetricsUnavailableReason.insufficientCashflows =>
-        ContractMetricsUnavailableReason.insufficientCashflows,
-      domain.ContractMetricsUnavailableReason.noRateSolution =>
-        ContractMetricsUnavailableReason.noRateSolution,
-    };
+    return ContractMetrics.fromDomain(result);
   }
 }

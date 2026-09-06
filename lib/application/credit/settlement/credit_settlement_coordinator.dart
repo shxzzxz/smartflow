@@ -72,16 +72,21 @@ class CreditSettlementCoordinator {
     }
   }
 
-  Future<void> recalculateAllPendingSchedules(String contractId) async {
+  /// 以 [eventDate]（触发事件的还款日期）为锚点重算锚点之后的待还期次。
+  Future<void> recalculatePendingSchedules(
+    String contractId, {
+    required DateTime? eventDate,
+  }) async {
     final contract = await _installments.findContract(contractId);
     if (contract == null) return;
 
     final schedules = await _installments.listSchedules(contractId);
     final prepaymentPrincipalMinor = await prepaymentSumMinor(contractId);
-    final recalculations = _prepaymentRecalculator.recalculateAllPending(
+    final recalculations = _prepaymentRecalculator.recalculate(
       contract: contract,
       schedules: schedules,
       prepaymentPrincipalMinor: prepaymentPrincipalMinor,
+      eventDate: eventDate,
     );
 
     contract.reviseSchedules(

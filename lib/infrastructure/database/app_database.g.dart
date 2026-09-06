@@ -9099,6 +9099,18 @@ class $RepaymentsTable extends Repayments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _repaymentDateMeta = const VerificationMeta(
+    'repaymentDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> repaymentDate =
+      GeneratedColumn<DateTime>(
+        'repayment_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -9130,6 +9142,7 @@ class $RepaymentsTable extends Repayments
     targetType,
     targetId,
     transactionId,
+    repaymentDate,
     createdAt,
     updatedAt,
   ];
@@ -9186,6 +9199,17 @@ class $RepaymentsTable extends Repayments
         ),
       );
     }
+    if (data.containsKey('repayment_date')) {
+      context.handle(
+        _repaymentDateMeta,
+        repaymentDate.isAcceptableOrUnknown(
+          data['repayment_date']!,
+          _repaymentDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_repaymentDateMeta);
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -9227,6 +9251,10 @@ class $RepaymentsTable extends Repayments
         DriftSqlType.string,
         data['${effectivePrefix}transaction_id'],
       ),
+      repaymentDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}repayment_date'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -9250,6 +9278,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
   final String targetType;
   final String targetId;
   final String? transactionId;
+
+  /// 每笔还款自持的业务时间；关联交易的交易时间由信贷用例同步维护。
+  final DateTime repaymentDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   const RepaymentRow({
@@ -9258,6 +9289,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     required this.targetType,
     required this.targetId,
     this.transactionId,
+    required this.repaymentDate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -9271,6 +9303,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     if (!nullToAbsent || transactionId != null) {
       map['transaction_id'] = Variable<String>(transactionId);
     }
+    map['repayment_date'] = Variable<DateTime>(repaymentDate);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -9285,6 +9318,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       transactionId: transactionId == null && nullToAbsent
           ? const Value.absent()
           : Value(transactionId),
+      repaymentDate: Value(repaymentDate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -9301,6 +9335,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       targetType: serializer.fromJson<String>(json['targetType']),
       targetId: serializer.fromJson<String>(json['targetId']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
+      repaymentDate: serializer.fromJson<DateTime>(json['repaymentDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -9314,6 +9349,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       'targetType': serializer.toJson<String>(targetType),
       'targetId': serializer.toJson<String>(targetId),
       'transactionId': serializer.toJson<String?>(transactionId),
+      'repaymentDate': serializer.toJson<DateTime>(repaymentDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -9325,6 +9361,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     String? targetType,
     String? targetId,
     Value<String?> transactionId = const Value.absent(),
+    DateTime? repaymentDate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => RepaymentRow(
@@ -9335,6 +9372,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     transactionId: transactionId.present
         ? transactionId.value
         : this.transactionId,
+    repaymentDate: repaymentDate ?? this.repaymentDate,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -9351,6 +9389,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       transactionId: data.transactionId.present
           ? data.transactionId.value
           : this.transactionId,
+      repaymentDate: data.repaymentDate.present
+          ? data.repaymentDate.value
+          : this.repaymentDate,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -9364,6 +9405,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
           ..write('transactionId: $transactionId, ')
+          ..write('repaymentDate: $repaymentDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -9377,6 +9419,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     targetType,
     targetId,
     transactionId,
+    repaymentDate,
     createdAt,
     updatedAt,
   );
@@ -9389,6 +9432,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           other.targetType == this.targetType &&
           other.targetId == this.targetId &&
           other.transactionId == this.transactionId &&
+          other.repaymentDate == this.repaymentDate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -9399,6 +9443,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
   final Value<String> targetType;
   final Value<String> targetId;
   final Value<String?> transactionId;
+  final Value<DateTime> repaymentDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -9408,6 +9453,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     this.targetType = const Value.absent(),
     this.targetId = const Value.absent(),
     this.transactionId = const Value.absent(),
+    this.repaymentDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -9418,19 +9464,22 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     required String targetType,
     required String targetId,
     this.transactionId = const Value.absent(),
+    required DateTime repaymentDate,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        repaymentType = Value(repaymentType),
        targetType = Value(targetType),
-       targetId = Value(targetId);
+       targetId = Value(targetId),
+       repaymentDate = Value(repaymentDate);
   static Insertable<RepaymentRow> custom({
     Expression<String>? id,
     Expression<String>? repaymentType,
     Expression<String>? targetType,
     Expression<String>? targetId,
     Expression<String>? transactionId,
+    Expression<DateTime>? repaymentDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -9441,6 +9490,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       if (targetType != null) 'target_type': targetType,
       if (targetId != null) 'target_id': targetId,
       if (transactionId != null) 'transaction_id': transactionId,
+      if (repaymentDate != null) 'repayment_date': repaymentDate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -9453,6 +9503,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     Value<String>? targetType,
     Value<String>? targetId,
     Value<String?>? transactionId,
+    Value<DateTime>? repaymentDate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -9463,6 +9514,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       targetType: targetType ?? this.targetType,
       targetId: targetId ?? this.targetId,
       transactionId: transactionId ?? this.transactionId,
+      repaymentDate: repaymentDate ?? this.repaymentDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -9487,6 +9539,9 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     if (transactionId.present) {
       map['transaction_id'] = Variable<String>(transactionId.value);
     }
+    if (repaymentDate.present) {
+      map['repayment_date'] = Variable<DateTime>(repaymentDate.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -9507,6 +9562,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
           ..write('transactionId: $transactionId, ')
+          ..write('repaymentDate: $repaymentDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -16144,6 +16200,7 @@ typedef $$RepaymentsTableCreateCompanionBuilder =
       required String targetType,
       required String targetId,
       Value<String?> transactionId,
+      required DateTime repaymentDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -16155,6 +16212,7 @@ typedef $$RepaymentsTableUpdateCompanionBuilder =
       Value<String> targetType,
       Value<String> targetId,
       Value<String?> transactionId,
+      Value<DateTime> repaymentDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -16191,6 +16249,11 @@ class $$RepaymentsTableFilterComposer
 
   ColumnFilters<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16239,6 +16302,11 @@ class $$RepaymentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -16277,6 +16345,11 @@ class $$RepaymentsTableAnnotationComposer
 
   GeneratedColumn<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get repaymentDate => $composableBuilder(
+    column: $table.repaymentDate,
     builder: (column) => column,
   );
 
@@ -16323,6 +16396,7 @@ class $$RepaymentsTableTableManager
                 Value<String> targetType = const Value.absent(),
                 Value<String> targetId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
+                Value<DateTime> repaymentDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -16332,6 +16406,7 @@ class $$RepaymentsTableTableManager
                 targetType: targetType,
                 targetId: targetId,
                 transactionId: transactionId,
+                repaymentDate: repaymentDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -16343,6 +16418,7 @@ class $$RepaymentsTableTableManager
                 required String targetType,
                 required String targetId,
                 Value<String?> transactionId = const Value.absent(),
+                required DateTime repaymentDate,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -16352,6 +16428,7 @@ class $$RepaymentsTableTableManager
                 targetType: targetType,
                 targetId: targetId,
                 transactionId: transactionId,
+                repaymentDate: repaymentDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

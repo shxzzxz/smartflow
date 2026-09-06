@@ -130,6 +130,7 @@ void main() {
             repaymentType: RepaymentType.bill,
             targetType: RepaymentTargetType.bill,
             targetId: 'bill',
+            repaymentDate: DateTime(2026, 7, 1),
             items: [
               RepaymentItem(
                 id: 'item',
@@ -221,6 +222,7 @@ void main() {
           repaymentType: RepaymentType.prepayment,
           targetType: RepaymentTargetType.contract,
           targetId: migrationContract.id,
+          repaymentDate: DateTime(2026, 7, 1),
           items: [
             RepaymentItem(
               id: 'item',
@@ -476,10 +478,7 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<void> replaceRepaymentItems(
-    String repaymentId,
-    List<RepaymentItem> items,
-  ) async {}
+  Future<void> updateRepayment(Repayment repayment) async {}
 
   @override
   Future<void> saveRepayment(Repayment repayment) async {}

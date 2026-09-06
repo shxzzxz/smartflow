@@ -45,11 +45,10 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
       setState(
-        () =>
-            _versionInfo = const AppVersionInfo(
-              versionName: '未知版本',
-              buildNumber: 0,
-            ),
+        () => _versionInfo = const AppVersionInfo(
+          versionName: '未知版本',
+          buildNumber: 0,
+        ),
       );
     }
   }
@@ -88,6 +87,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '标签管理',
                         description: '维护交易标签词表',
                         onTap: () => context.push('/tags'),
+                      ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.calculator_line,
+                        label: '贷款计算器',
+                        description: '试算还款计划、利息与年化利率，不写入数据',
+                        onTap: () => context.push('/profile/loan-calculator'),
                       ),
                     ],
                   ),
@@ -140,10 +145,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       _ProfileActionRow(
                         icon: RemixIcons.download_cloud_2_line,
                         label: '软件版本',
-                        description:
-                            versionInfo == null
-                                ? '正在读取当前版本'
-                                : versionInfo.versionName,
+                        description: versionInfo == null
+                            ? '正在读取当前版本'
+                            : versionInfo.versionName,
                         onTap: () => context.push('/profile/software-version'),
                       ),
                     ],

@@ -16,7 +16,6 @@ void main() {
         discount: Money(minorUnits: 0),
       ),
       displayTime: DateTime(2026, 7, 17),
-      timeSource: BillRepaymentTimeSource.transaction,
     );
 
     expect(billRepaymentDateText(repayment), '还款日 2026-07-17');

@@ -57,6 +57,7 @@ void main() {
           targetType: credit.RepaymentTargetType.account,
           targetId: 'credit-1',
           transactionId: 'tx-root',
+          repaymentDate: DateTime(2026, 1, 1),
           items: [
             RepaymentItem(
               id: 'unattributed-item-1',
@@ -112,6 +113,7 @@ void main() {
           repaymentType: credit.RepaymentType.bill,
           targetType: credit.RepaymentTargetType.bill,
           targetId: 'bill-1',
+          repaymentDate: DateTime(2026, 7, 1),
           items: const [
             RepaymentItem(
               id: 'repayment-partial-item',
@@ -250,8 +252,9 @@ class _Fixture {
                 firstDate.day,
               ),
               expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
-              expectedInterest:
-                  index == 0 ? const Money(minorUnits: 100) : Money.zero(),
+              expectedInterest: index == 0
+                  ? const Money(minorUnits: 100)
+                  : Money.zero(),
               expectedFee: Money.zero(),
               status: credit.InstallmentScheduleStatus.pending,
               createdAt: DateTime(2026, 6, 1),

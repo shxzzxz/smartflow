@@ -9,6 +9,7 @@ class AppFormSection extends StatelessWidget {
     required this.children,
     super.key,
     this.title,
+    this.trailing,
     this.description,
     this.spacing = AppSpacing.space4,
     this.padding = const EdgeInsets.all(AppSpacing.space16),
@@ -17,6 +18,7 @@ class AppFormSection extends StatelessWidget {
 
   final List<Widget> children;
   final String? title;
+  final Widget? trailing;
   final String? description;
   final double spacing;
   final EdgeInsetsGeometry padding;
@@ -33,7 +35,17 @@ class AppFormSection extends StatelessWidget {
         if (title != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-            child: Text(title, style: context.appTextStyles.groupTitle),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(title, style: context.appTextStyles.groupTitle),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: AppSpacing.space8),
+                  trailing!,
+                ],
+              ],
+            ),
           ),
           if (description != null) ...[
             const SizedBox(height: AppSpacing.space4),

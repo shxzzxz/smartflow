@@ -32,12 +32,16 @@ class CreateBillRepaymentCommand {
     required this.billId,
     required this.allocations,
     this.transactionInfo,
+    this.repaymentDate,
     this.note,
   });
 
   final String billId;
   final List<BillRepaymentAllocation> allocations;
   final RepaymentTransactionInfo? transactionInfo;
+
+  /// 无交易还款的时间输入；有交易时使用 transactionInfo.occurredAt 并同步保存。
+  final DateTime? repaymentDate;
   final String? note;
 }
 
@@ -46,12 +50,16 @@ class EditBillRepaymentCommand {
     required this.repaymentId,
     required this.allocations,
     this.transactionInfo,
+    this.repaymentDate,
     this.note,
   });
 
   final String repaymentId;
   final List<BillRepaymentAllocation> allocations;
   final RepaymentTransactionInfo? transactionInfo;
+
+  /// 无交易还款的时间输入；为空表示不改，有交易时使用 transactionInfo.occurredAt。
+  final DateTime? repaymentDate;
   final String? note;
 }
 
@@ -114,12 +122,16 @@ class CreateContractPrepaymentRepaymentCommand {
     required this.contractId,
     required this.amount,
     this.transactionInfo,
+    this.repaymentDate,
     this.note,
   });
 
   final String contractId;
   final RepaymentAmountDto amount;
   final RepaymentTransactionInfo? transactionInfo;
+
+  /// 无交易提前还款的时间输入；有交易时使用 transactionInfo.occurredAt 并同步保存。
+  final DateTime? repaymentDate;
   final String? note;
 }
 

@@ -27,10 +27,8 @@ abstract interface class RepaymentRepository {
 
   Future<void> saveRepayment(Repayment repayment);
 
-  Future<void> replaceRepaymentItems(
-    String repaymentId,
-    List<RepaymentItem> items,
-  );
+  /// 以聚合当前状态覆盖已存在的还款记录及其全部还款明细。
+  Future<void> updateRepayment(Repayment repayment);
 
   Future<void> deleteRepayment(String repaymentId);
 }

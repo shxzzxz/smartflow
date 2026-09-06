@@ -2955,7 +2955,55 @@ final class ContractRepaymentQueryProvider
 }
 
 String _$contractRepaymentQueryHash() =>
-    r'b498f0bc81f2445a1445f4538ea81575a2892aae';
+    r'3c7ac8925c59f6bdab9769e992f90c97420a2cbc';
+
+@ProviderFor(loanCalculatorQuery)
+final loanCalculatorQueryProvider = LoanCalculatorQueryProvider._();
+
+final class LoanCalculatorQueryProvider
+    extends
+        $FunctionalProvider<
+          LoanCalculatorQuery,
+          LoanCalculatorQuery,
+          LoanCalculatorQuery
+        >
+    with $Provider<LoanCalculatorQuery> {
+  LoanCalculatorQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'loanCalculatorQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$loanCalculatorQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<LoanCalculatorQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LoanCalculatorQuery create(Ref ref) {
+    return loanCalculatorQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LoanCalculatorQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LoanCalculatorQuery>(value),
+    );
+  }
+}
+
+String _$loanCalculatorQueryHash() =>
+    r'b19db6de141fa3838bb1f87641c2d0bfc1ca8219';
 
 @ProviderFor(creditBillGenerationAppService)
 final creditBillGenerationAppServiceProvider =

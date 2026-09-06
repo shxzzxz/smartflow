@@ -79,11 +79,7 @@ BillRepaymentAllocationReview billRepaymentManualAllocationReview({
 }
 
 String billRepaymentDateText(BillRepaymentReadModel repayment) {
-  final prefix =
-      repayment.timeSource == BillRepaymentTimeSource.transaction
-          ? '还款日'
-          : '记录于';
-  return '$prefix ${formatDateLabel(repayment.displayTime)}';
+  return '还款日 ${formatDateLabel(repayment.displayTime)}';
 }
 
 String billRepaymentBreakdownText(BillRepaymentReadModel repayment) {

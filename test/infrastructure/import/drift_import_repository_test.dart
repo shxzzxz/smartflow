@@ -16,7 +16,7 @@ void main() {
       final version = await database
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 29);
+      expect(version.read<int>('user_version'), 31);
 
       for (final table in [
         'import_entity_mappings',

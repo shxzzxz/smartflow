@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
 import '../../../../core/money/money.dart';
-import '../../entity/installment_contract.dart';
-import '../../entity/installment_schedule.dart';
+import 'installment_plan_engine.dart';
 
 enum ContractMetricsUnavailableReason {
   principalNotConserved,
@@ -52,28 +51,30 @@ class ContractMetrics {
   bool get isAvailable => unavailableReason == null;
 }
 
+/// 合同维度 IRR / APR / EAR：只看借款本金、借款日与全部计划行的约定现金流。
 class InstallmentMetricsCalculator {
   const InstallmentMetricsCalculator();
 
   ContractMetrics compute({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
+    required Money principal,
+    required DateTime borrowingDate,
+    required List<InstallmentSchedulePlanEntry> plan,
   }) {
     var totalRepayMinor = 0;
     var totalInterestMinor = 0;
     var totalFeeMinor = 0;
-    final breakdown = _buildBreakdown(schedules: schedules);
-    for (final b in breakdown) {
-      totalRepayMinor += b.principal + b.interest + b.fee;
-      totalInterestMinor += b.interest;
-      totalFeeMinor += b.fee;
+    var scheduledPrincipalMinor = 0;
+    for (final entry in plan) {
+      totalRepayMinor +=
+          entry.expectedPrincipal.minorUnits +
+          entry.expectedInterest.minorUnits +
+          entry.expectedFee.minorUnits;
+      totalInterestMinor += entry.expectedInterest.minorUnits;
+      totalFeeMinor += entry.expectedFee.minorUnits;
+      scheduledPrincipalMinor += entry.expectedPrincipal.minorUnits;
     }
 
-    final scheduledPrincipalMinor = schedules.fold<int>(
-      0,
-      (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
-    );
-    if (scheduledPrincipalMinor != contract.principal.minorUnits) {
+    if (scheduledPrincipalMinor != principal.minorUnits) {
       return ContractMetrics.unavailable(
         unavailableReason:
             ContractMetricsUnavailableReason.principalNotConserved,
@@ -83,7 +84,11 @@ class InstallmentMetricsCalculator {
       );
     }
 
-    final flows = _buildCashflows(contract: contract, schedules: schedules);
+    final flows = _buildCashflows(
+      principal: principal,
+      borrowingDate: borrowingDate,
+      plan: plan,
+    );
     final hasPositive = flows.any((flow) => flow.amount > 0);
     final hasNegative = flows.any((flow) => flow.amount < 0);
     if (flows.length < 2 || !hasPositive || !hasNegative) {
@@ -123,44 +128,31 @@ class InstallmentMetricsCalculator {
   // ---------- 内部 ----------
 
   List<_DatedCashflow> _buildCashflows({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
+    required Money principal,
+    required DateTime borrowingDate,
+    required List<InstallmentSchedulePlanEntry> plan,
   }) {
     final flows = <_DatedCashflow>[];
     // t0: 借款流入
     flows.add(
       _DatedCashflow(
-        date: contract.borrowingDate,
-        amount: contract.principal.minorUnits.toDouble(),
+        date: borrowingDate,
+        amount: principal.minorUnits.toDouble(),
       ),
     );
-    final breakdown = _buildBreakdown(schedules: schedules);
-    for (final b in breakdown) {
-      final outflow = -(b.principal + b.interest + b.fee).toDouble();
+    for (final entry in plan) {
+      final outflow =
+          -(entry.expectedPrincipal.minorUnits +
+                  entry.expectedInterest.minorUnits +
+                  entry.expectedFee.minorUnits)
+              .toDouble();
       if (outflow == 0) continue;
-      flows.add(_DatedCashflow(date: b.date, amount: outflow));
+      flows.add(
+        _DatedCashflow(date: entry.expectedRepaymentDate, amount: outflow),
+      );
     }
     flows.sort((a, b) => a.date.compareTo(b.date));
     return flows;
-  }
-
-  List<_Breakdown> _buildBreakdown({
-    required List<InstallmentSchedule> schedules,
-  }) {
-    final out = <_Breakdown>[];
-
-    for (final s in schedules) {
-      out.add(
-        _Breakdown(
-          date: s.expectedRepaymentDate,
-          principal: s.expectedPrincipal.minorUnits,
-          interest: s.expectedInterest.minorUnits,
-          fee: s.expectedFee.minorUnits,
-        ),
-      );
-    }
-
-    return out;
   }
 
   /// XIRR：解出年化利率，使
@@ -243,20 +235,6 @@ class _DatedCashflow {
 
   final DateTime date;
   final double amount;
-}
-
-class _Breakdown {
-  const _Breakdown({
-    required this.date,
-    required this.principal,
-    required this.interest,
-    required this.fee,
-  });
-
-  final DateTime date;
-  final int principal;
-  final int interest;
-  final int fee;
 }
 
 class _XirrResult {

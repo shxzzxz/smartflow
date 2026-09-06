@@ -170,10 +170,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
-        note:
-            command.note == null
-                ? const Patch<String?>.clear()
-                : Patch<String?>.set(command.note),
+        note: command.note == null
+            ? const Patch<String?>.clear()
+            : Patch<String?>.set(command.note),
         tagIds: command.tagIds,
       ),
     );
@@ -255,17 +254,16 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     );
 
     final repaymentId = _idGenerator.newId();
-    final items =
-        command.allocations
-            .map(
-              (allocation) => RepaymentItem(
-                id: _idGenerator.newId(),
-                repaymentId: repaymentId,
-                billItemId: allocation.billItemId,
-                allocated: _domainAmount(allocation.allocated),
-              ),
-            )
-            .toList();
+    final items = command.allocations
+        .map(
+          (allocation) => RepaymentItem(
+            id: _idGenerator.newId(),
+            repaymentId: repaymentId,
+            billItemId: allocation.billItemId,
+            allocated: _domainAmount(allocation.allocated),
+          ),
+        )
+        .toList();
 
     return _transactionRunner.run(() async {
       final total = _repaymentPolicy.total(allocations);
@@ -283,6 +281,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         targetType: RepaymentTargetType.bill,
         targetId: bill.id,
         transactionId: post?.transactionId,
+        repaymentDate: _requireRepaymentDate(
+          command.transactionInfo?.occurredAt ?? command.repaymentDate,
+        ),
         items: items,
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
@@ -303,7 +304,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       return null;
     }
     String? paidFromAccountId;
-    DateTime? occurredAt;
     String? note;
     if (repayment.transactionId != null) {
       final detail = await _ledger.findRepaymentTransaction(
@@ -311,7 +311,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       );
       if (detail != null) {
         paidFromAccountId = _firstSettlementAccountId(detail);
-        occurredAt = detail.occurredAt;
         note = detail.note;
       }
     }
@@ -333,7 +332,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       hasTransaction: repayment.transactionId != null,
       transactionId: repayment.transactionId,
       paidFromAccountId: paidFromAccountId,
-      occurredAt: occurredAt,
+      occurredAt: repayment.repaymentDate,
       note: note,
     );
   }
@@ -384,16 +383,21 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
             liabilityAccountId: bill.accountId,
             paidFromAccountId: info.paidFromAccountId,
             occurredAt: info.occurredAt,
-            note:
-                info.note == null
-                    ? const Patch<String?>.clear()
-                    : Patch<String?>.set(info.note),
+            note: info.note == null
+                ? const Patch<String?>.clear()
+                : Patch<String?>.set(info.note),
           ),
         );
       }
       repayment.replaceItems(items);
+      final repaymentDate = transactionId == null
+          ? command.repaymentDate
+          : command.transactionInfo!.occurredAt;
+      if (repaymentDate != null) {
+        repayment.reviseRepaymentDate(repaymentDate);
+      }
       repayment.validateAgainstLedgerTransaction(total);
-      await _repayments.replaceRepaymentItems(repayment.id, items);
+      await _repayments.updateRepayment(repayment);
       await _repaymentSettlement.refreshBillStatuses(bill, [
         ...oldAllocations,
         ...allocations,
@@ -430,34 +434,53 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     );
 
     final repaymentId = _idGenerator.newId();
-    final items =
-        command.allocations
-            .map(
-              (allocation) => RepaymentItem(
-                id: _idGenerator.newId(),
-                repaymentId: repaymentId,
-                billItemId: allocation.billItemId,
-                allocated: _domainAmount(allocation.allocated),
-              ),
-            )
-            .toList();
+    final items = command.allocations
+        .map(
+          (allocation) => RepaymentItem(
+            id: _idGenerator.newId(),
+            repaymentId: repaymentId,
+            billItemId: allocation.billItemId,
+            allocated: _domainAmount(allocation.allocated),
+          ),
+        )
+        .toList();
 
     return _transactionRunner.run(() async {
       final total = _repaymentPolicy.total(allocations);
+      final contractId = _idGenerator.newId();
+      final aggregate = _origination.originateBillConversion(
+        contractId: contractId,
+        bill: bill,
+        sourceRepaymentId: repaymentId,
+        principal: total.principal,
+        totalPeriods: command.totalPeriods,
+        borrowingDate: command.borrowingDate,
+        firstRepaymentDate: command.firstRepaymentDate,
+        lastRepaymentDate: command.lastRepaymentDate,
+        repaymentMethod: command.repaymentMethod,
+        interestRatePeriod: command.interestRatePeriod,
+        interestRatePpm: command.interestRatePpm,
+        interestAccrualMethod: command.interestAccrualMethod,
+        totalFeeMinor: command.totalFeeMinor,
+        equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+        note: command.note,
+        createdAt: DateTime.now(),
+        newScheduleId: _idGenerator.newId,
+      );
+      // 分期还款天然无交易，以新合同的起算日作为它的还款日期。
       final repayment = Repayment(
         id: repaymentId,
         repaymentType: RepaymentType.installment,
         targetType: RepaymentTargetType.bill,
         targetId: bill.id,
+        repaymentDate: aggregate.contract.borrowingDate,
         items: items,
       );
       await _repayments.saveRepayment(repayment);
       await _repaymentSettlement.refreshBillStatuses(bill, allocations);
-      final contractId = await _createBillConversionContract(
-        bill: bill,
-        repaymentId: repaymentId,
-        principal: total.principal,
-        command: command,
+      await _installments.insertAggregate(
+        aggregate.contract,
+        aggregate.schedules,
       );
       return CreateRepaymentResult(
         repaymentId: repaymentId,
@@ -499,6 +522,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         targetType: RepaymentTargetType.contract,
         targetId: contract.id,
         transactionId: post?.transactionId,
+        repaymentDate: _requireRepaymentDate(
+          command.transactionInfo?.occurredAt ?? command.repaymentDate,
+        ),
         items: [
           RepaymentItem(
             id: _idGenerator.newId(),
@@ -509,7 +535,11 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
       if (total.principal.minorUnits > 0) {
-        await _repaymentSettlement.recalculateAllPendingSchedules(contract.id);
+        await _repaymentSettlement.recalculatePendingSchedules(
+          contract.id,
+          eventDate:
+              command.transactionInfo?.occurredAt ?? repayment.repaymentDate,
+        );
         await _repaymentSettlement.refreshContractStatus(contract.id);
       }
       return CreateRepaymentResult(
@@ -554,6 +584,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         targetType: RepaymentTargetType.account,
         targetId: command.accountId,
         transactionId: post.transactionId,
+        repaymentDate: command.transactionInfo.occurredAt,
         items: [
           RepaymentItem(
             id: _idGenerator.newId(),
@@ -573,40 +604,57 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   @override
   Future<void> editRepaymentTransaction(
     EditCreditRepaymentTransactionCommand command,
-  ) async {
-    final repayment = await _findRepaymentForCommand(
-      repaymentId: command.repaymentId,
-      transactionId: command.transactionId,
-    );
-    final transactionId = repayment.transactionId;
-    if (transactionId == null) {
-      throw BusinessException(CreditErrorCode.repaymentNotEditable);
-    }
-    final detail = await _currentParentTransactionDetail(transactionId);
-    final currentTransactionId = detail.transactionId;
-
-    if (command.paidFromAccountId == null) {
-      await _ledger.updateBasicInfo(
-        CreditLedgerUpdateBasicInfoCommand(
-          transactionId: currentTransactionId,
-          occurredAt: command.occurredAt,
-          note: command.note,
-        ),
+  ) {
+    return _transactionRunner.run(() async {
+      final repayment = await _findRepaymentForCommand(
+        repaymentId: command.repaymentId,
+        transactionId: command.transactionId,
       );
-      return;
-    }
+      final transactionId = repayment.transactionId;
+      if (transactionId == null) {
+        throw BusinessException(CreditErrorCode.repaymentNotEditable);
+      }
+      final detail = await _currentParentTransactionDetail(transactionId);
+      final currentTransactionId = detail.transactionId;
 
-    final liabilityAccountId = await _liabilityAccountIdForRepayment(repayment);
-    await _ledger.editRepayment(
-      CreditLedgerEditRepaymentCommand(
-        transactionId: currentTransactionId,
-        amount: repayment.totalAllocated(),
-        liabilityAccountId: liabilityAccountId,
-        paidFromAccountId: command.paidFromAccountId,
-        occurredAt: command.occurredAt ?? detail.occurredAt,
-        note: command.note,
-      ),
-    );
+      if (command.paidFromAccountId == null) {
+        await _ledger.updateBasicInfo(
+          CreditLedgerUpdateBasicInfoCommand(
+            transactionId: currentTransactionId,
+            occurredAt: command.occurredAt,
+            note: command.note,
+          ),
+        );
+      } else {
+        final liabilityAccountId = await _liabilityAccountIdForRepayment(
+          repayment,
+        );
+        await _ledger.editRepayment(
+          CreditLedgerEditRepaymentCommand(
+            transactionId: currentTransactionId,
+            amount: repayment.totalAllocated(),
+            liabilityAccountId: liabilityAccountId,
+            paidFromAccountId: command.paidFromAccountId,
+            occurredAt: command.occurredAt ?? repayment.repaymentDate,
+            note: command.note,
+          ),
+        );
+      }
+      if (command.occurredAt != null) {
+        repayment.reviseRepaymentDate(command.occurredAt!);
+        await _repayments.updateRepayment(repayment);
+      }
+    });
+  }
+
+  DateTime _requireRepaymentDate(DateTime? value) {
+    if (value == null) {
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: 'Repayment must carry a repayment date.',
+      );
+    }
+    return value;
   }
 
   @override
@@ -633,7 +681,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         case RepaymentType.installment:
           await _deleteBillConversionInstallmentRepayment(repayment);
         case RepaymentType.prepayment:
-          await _deleteContractPrepaymentRepayment(repayment);
+          await _deleteContractPrepaymentRepayment(
+            repayment,
+            eventDate: transactionDetail?.occurredAt ?? repayment.repaymentDate,
+          );
         case RepaymentType.unattributed:
           await _repayments.deleteRepayment(repayment.id);
       }
@@ -647,10 +698,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     if ((repaymentId == null) == (transactionId == null)) {
       throw BusinessException(CreditErrorCode.repaymentInvalidCommand);
     }
-    final repayment =
-        repaymentId != null
-            ? await _repayments.findRepayment(repaymentId)
-            : await _repayments.findByTransaction(transactionId!);
+    final repayment = repaymentId != null
+        ? await _repayments.findRepayment(repaymentId)
+        : await _repayments.findByTransaction(transactionId!);
     if (repayment == null) {
       throw BusinessException(CreditErrorCode.repaymentNotFound);
     }
@@ -697,7 +747,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     }
   }
 
-  Future<void> _deleteContractPrepaymentRepayment(Repayment repayment) async {
+  Future<void> _deleteContractPrepaymentRepayment(
+    Repayment repayment, {
+    required DateTime? eventDate,
+  }) async {
     final contract = await _installments.findContract(repayment.targetId);
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
@@ -706,7 +759,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repayment.totalAllocated().principal.minorUnits > 0;
     await _repayments.deleteRepayment(repayment.id);
     if (changesPrincipal) {
-      await _repaymentSettlement.recalculateAllPendingSchedules(contract.id);
+      await _repaymentSettlement.recalculatePendingSchedules(
+        contract.id,
+        eventDate: eventDate,
+      );
       await _repaymentSettlement.refreshContractStatus(contract.id);
     }
   }
@@ -767,40 +823,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
           allocated: _domainAmount(allocation.allocated),
         ),
     ];
-  }
-
-  Future<String> _createBillConversionContract({
-    required Bill bill,
-    required String repaymentId,
-    required Money principal,
-    required CreateBillConversionInstallmentRepaymentCommand command,
-  }) async {
-    final now = DateTime.now();
-    final contractId = _idGenerator.newId();
-    final aggregate = _origination.originateBillConversion(
-      contractId: contractId,
-      bill: bill,
-      sourceRepaymentId: repaymentId,
-      principal: principal,
-      totalPeriods: command.totalPeriods,
-      borrowingDate: command.borrowingDate,
-      firstRepaymentDate: command.firstRepaymentDate,
-      lastRepaymentDate: command.lastRepaymentDate,
-      repaymentMethod: command.repaymentMethod,
-      interestRatePeriod: command.interestRatePeriod,
-      interestRatePpm: command.interestRatePpm,
-      interestAccrualMethod: command.interestAccrualMethod,
-      totalFeeMinor: command.totalFeeMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
-      note: command.note,
-      createdAt: now,
-      newScheduleId: _idGenerator.newId,
-    );
-    await _installments.insertAggregate(
-      aggregate.contract,
-      aggregate.schedules,
-    );
-    return contractId;
   }
 
   Future<CreditLedgerPostedTransaction?> _postLedgerTransactionIfNeeded({

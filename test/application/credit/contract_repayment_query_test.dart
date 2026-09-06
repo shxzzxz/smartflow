@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/installment/query/contract_repayment_query.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
-import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
@@ -17,6 +16,7 @@ void main() {
           targetType: RepaymentTargetType.contract,
           targetId: 'contract',
           transactionId: 'root',
+          repaymentDate: DateTime(2026, 2, 10),
           items: const [
             RepaymentItem(
               id: 'item',
@@ -32,16 +32,7 @@ void main() {
         ),
       ],
     );
-    final ledger = _FakeCreditLedgerPort(
-      transaction: CreditLedgerTransactionSnapshot(
-        transactionId: 'current',
-        occurredAt: DateTime(2026, 2, 10),
-      ),
-    );
-    final query = ContractRepaymentQueryImpl(
-      repayments: repayments,
-      ledger: ledger,
-    );
+    final query = ContractRepaymentQueryImpl(repayments: repayments);
 
     final result = await query.listContractRepayments('contract');
 
@@ -67,20 +58,6 @@ class _FakeRepaymentRepository implements RepaymentRepository {
 
   @override
   Future<List<Repayment>> listByContract(String contractId) async => repayments;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCreditLedgerPort implements CreditLedgerPort {
-  _FakeCreditLedgerPort({required this.transaction});
-
-  final CreditLedgerTransactionSnapshot transaction;
-
-  @override
-  Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
-    String transactionId,
-  ) async => transaction;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

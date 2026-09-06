@@ -72,27 +72,25 @@ class InstallmentDetailPage extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('删除分期合同'),
-            content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除分期合同'),
+        content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
-    final outcome =
-        await ref
-            .read(installmentDetailViewModelProvider(contractId).notifier)
-            .deleteContract();
+    final outcome = await ref
+        .read(installmentDetailViewModelProvider(contractId).notifier)
+        .deleteContract();
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():
@@ -110,27 +108,25 @@ class InstallmentDetailPage extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('校验合同状态'),
-            content: const Text('将根据实际还款记录重新计算还款计划和合同状态。不会修改金额、日期、账单或交易。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('校验'),
-              ),
-            ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('校验合同状态'),
+        content: const Text('将根据实际还款记录重新计算还款计划和合同状态。不会修改金额、日期、账单或交易。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('校验'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
-    final outcome =
-        await ref
-            .read(installmentDetailViewModelProvider(contractId).notifier)
-            .validateContractStatuses();
+    final outcome = await ref
+        .read(installmentDetailViewModelProvider(contractId).notifier)
+        .validateContractStatuses();
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<ContractStatusValidationResult>(:final value):
@@ -317,8 +313,8 @@ class _ActionBar extends StatelessWidget {
                 child: _ActionButton(
                   icon: RemixIcons.bank_card_line,
                   label: '提前还款',
-                  onTap:
-                      () => context.push('/installments/${contract.id}/repay'),
+                  onTap: () =>
+                      context.push('/installments/${contract.id}/repay'),
                 ),
               ),
               const SizedBox(width: AppSpacing.space6),
@@ -326,8 +322,8 @@ class _ActionBar extends StatelessWidget {
                 child: _ActionButton(
                   icon: RemixIcons.edit_line,
                   label: '编辑合同',
-                  onTap:
-                      () => context.push('/installments/${contract.id}/edit'),
+                  onTap: () =>
+                      context.push('/installments/${contract.id}/edit'),
                 ),
               ),
               const SizedBox(width: AppSpacing.space6),
@@ -483,21 +479,20 @@ class _ScheduleRow extends ConsumerWidget {
   Future<void> _confirmSkip(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('跳过本期'),
-            content: Text('第${schedule.periodNo}期将不再进入账单，之后可以撤销跳过。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('跳过'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('跳过本期'),
+        content: Text('第${schedule.periodNo}期将不再进入账单，之后可以撤销跳过。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('跳过'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !context.mounted) return;
     await _handleOutcome(
@@ -546,10 +541,9 @@ class _RepaymentRow extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
     final total = cashflow.principal + cashflow.interest + cashflow.fee;
     final row = InkWell(
-      onTap:
-          cashflow.transactionId == null
-              ? null
-              : () => context.push('/transaction/${cashflow.transactionId}'),
+      onTap: cashflow.transactionId == null
+          ? null
+          : () => context.push('/transaction/${cashflow.transactionId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -605,21 +599,20 @@ class _RepaymentRow extends ConsumerWidget {
     final typeLabel = _repaymentTypeLabel(cashflow.repaymentType);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text('撤销$typeLabel'),
-            content: const Text('将删除该笔还款交易，并把对应期次状态还原为待还。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('撤销'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: Text('撤销$typeLabel'),
+        content: const Text('将删除该笔还款交易，并把对应期次状态还原为待还。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('撤销'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
     final outcome = await ref
@@ -651,6 +644,7 @@ String _accrualMethodLabel(InterestAccrualMethod method) {
   return switch (method) {
     InterestAccrualMethod.daily => '按日计息',
     InterestAccrualMethod.monthly => '按月计息',
+    InterestAccrualMethod.annual => '按年计息',
   };
 }
 

@@ -44,6 +44,7 @@ dependencies:
   json_annotation: 4.12.0
   intl: ^0.20.3
   decimal: ^3.2.6
+  rational: ^2.2.3
   crypto: 3.0.7
   flutter_svg: ^2.3.0
   remixicon: ^4.9.3

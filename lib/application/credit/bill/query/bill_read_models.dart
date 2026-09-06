@@ -123,15 +123,12 @@ class BillItemReadModel {
   }
 }
 
-enum BillRepaymentTimeSource { transaction, recordCreatedAt }
-
 class BillRepaymentReadModel {
   const BillRepaymentReadModel({
     required this.id,
     required this.repaymentType,
     required this.allocated,
     required this.displayTime,
-    required this.timeSource,
     this.transactionId,
     this.paidFromAccountId,
   });
@@ -140,7 +137,6 @@ class BillRepaymentReadModel {
   final RepaymentType repaymentType;
   final RepaymentAmountDto allocated;
   final DateTime displayTime;
-  final BillRepaymentTimeSource timeSource;
   final String? transactionId;
   final String? paidFromAccountId;
 

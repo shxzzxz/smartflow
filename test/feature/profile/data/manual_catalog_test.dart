@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/feature/profile/data/manual_catalog.dart';
 
 void main() {
-  test('contains the first six manual articles in product order', () {
-    expect(manualArticles, hasLength(6));
+  test('contains the manual articles in product order', () {
+    expect(manualArticles, hasLength(7));
     expect(
       manualArticles.map((article) => article.slug).toList(),
       equals([
@@ -13,6 +13,7 @@ void main() {
         'credit-bills',
         'installment-contracts',
         'credit-metrics',
+        'loan-calculator',
       ]),
     );
   });

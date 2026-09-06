@@ -63,16 +63,15 @@ void main() {
       'uses next credit billing cycle for cash installment schedules',
       () async {
         final fixture = _Fixture();
-        fixture
-            .creditAccounts
-            .accounts['credit-liability'] = CreditLiabilityAccount(
-          id: 'credit-ext',
-          accountId: 'credit-liability',
-          kind: CreditLiabilityAccountKind.credit,
-          billingDay: 5,
-          repaymentDay: 25,
-          billingDayToNext: true,
-        );
+        fixture.creditAccounts.accounts['credit-liability'] =
+            CreditLiabilityAccount(
+              id: 'credit-ext',
+              accountId: 'credit-liability',
+              kind: CreditLiabilityAccountKind.credit,
+              billingDay: 5,
+              repaymentDay: 25,
+              billingDayToNext: true,
+            );
 
         final result = await fixture.service.createDisbursementContract(
           _createDisbursementCommand(
@@ -147,8 +146,8 @@ void main() {
             id: 'schedule-1',
             contractId: 'contract-1',
             periodNo: 1,
-            principal: const Money(minorUnits: 1),
-            fee: Money.zero(),
+            status: InstallmentScheduleStatus.skipped,
+            principal: const Money(minorUnits: 99),
             date: DateTime(2026, 7, 10),
           ),
           _schedule(
@@ -163,9 +162,9 @@ void main() {
             id: 'schedule-3',
             contractId: 'contract-1',
             periodNo: 3,
-            status: InstallmentScheduleStatus.skipped,
-            principal: const Money(minorUnits: 99),
-            date: DateTime(2026, 10, 10),
+            principal: const Money(minorUnits: 1),
+            fee: Money.zero(),
+            date: DateTime(2026, 11, 10),
           ),
         ]);
 
@@ -187,21 +186,67 @@ void main() {
         );
         await fixture.service.recalculateContractSchedules(command);
 
+        // 锚点是被跳过的第 1 期；其后的待还尾部按合同条款重生日期并重新分配。
         expect(preview.map((row) => row.expectedRepaymentDate), [
-          DateTime(2026, 7, 10),
           DateTime(2026, 8, 10),
+          DateTime(2026, 10, 10),
         ]);
         final schedules = fixture.installments.schedulesFor('contract-1');
         expect(preview.map((row) => row.expectedPrincipal.minorUnits), [
-          4950,
           4951,
+          4950,
         ]);
         expect(preview.map((row) => row.expectedFee.minorUnits), [250, 250]);
-        expect(schedules[0].expectedPrincipal, preview[0].expectedPrincipal);
-        expect(schedules[0].expectedFee, preview[0].expectedFee);
+        expect(schedules[0].expectedPrincipal, const Money(minorUnits: 99));
+        expect(schedules[0].status, InstallmentScheduleStatus.skipped);
+        expect(schedules[1].expectedPrincipal, preview[0].expectedPrincipal);
+        expect(schedules[1].expectedFee, preview[0].expectedFee);
         expect(schedules[1].expectedRepaymentDate, DateTime(2026, 8, 10));
-        expect(schedules[2].expectedPrincipal, const Money(minorUnits: 99));
-        expect(schedules[2].status, InstallmentScheduleStatus.skipped);
+        expect(schedules[2].expectedRepaymentDate, DateTime(2026, 10, 10));
+      },
+    );
+
+    test(
+      'explicit recalculation fails when only skipped rows remain with principal',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _contract(
+            id: 'contract-1',
+            principal: const Money(minorUnits: 10000),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        fixture.installments.putSchedules('contract-1', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'contract-1',
+            periodNo: 1,
+            principal: const Money(minorUnits: 5000),
+            date: DateTime(2026, 7, 10),
+          ),
+          _schedule(
+            id: 'schedule-2',
+            contractId: 'contract-1',
+            periodNo: 2,
+            status: InstallmentScheduleStatus.skipped,
+            principal: const Money(minorUnits: 1000),
+            date: DateTime(2026, 8, 10),
+          ),
+        ]);
+
+        await expectLater(
+          fixture.service.previewContractRecalculation(
+            RecalculateContractSchedulesCommand(contractId: 'contract-1'),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (e) => e.code,
+              'code',
+              CreditErrorCode.contractInvalidCommand.code,
+            ),
+          ),
+        );
       },
     );
 
@@ -439,6 +484,7 @@ void main() {
             repaymentType: RepaymentType.bill,
             targetType: RepaymentTargetType.bill,
             targetId: 'bill-skipped',
+            repaymentDate: DateTime(2026, 7, 10),
             items: [
               RepaymentItem(
                 id: 'repayment-item-skipped',
@@ -587,6 +633,7 @@ void main() {
             repaymentType: RepaymentType.bill,
             targetType: RepaymentTargetType.bill,
             targetId: 'bill-zero-allocation',
+            repaymentDate: DateTime(2026, 7, 10),
             items: const [
               RepaymentItem(
                 id: 'repayment-item-zero-allocation',
@@ -712,6 +759,7 @@ void main() {
             repaymentType: RepaymentType.bill,
             targetType: RepaymentTargetType.bill,
             targetId: 'bill-with-orphan-item',
+            repaymentDate: DateTime(2026, 7, 10),
             items: [
               RepaymentItem(
                 id: 'repayment-item-missing-bill-item',
@@ -841,6 +889,7 @@ void main() {
           repaymentType: RepaymentType.bill,
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-other',
+          repaymentDate: DateTime(2026, 7, 10),
           items: [
             RepaymentItem(
               id: 'repayment-item-wrong-target',
@@ -932,6 +981,7 @@ void main() {
               repaymentType: RepaymentType.bill,
               targetType: RepaymentTargetType.bill,
               targetId: entry.billId,
+              repaymentDate: DateTime(2026, 7, 10),
               items: [
                 RepaymentItem(
                   id: '${entry.repaymentId}-item',
@@ -1007,6 +1057,7 @@ void main() {
             repaymentType: RepaymentType.bill,
             targetType: RepaymentTargetType.bill,
             targetId: 'bill-partial',
+            repaymentDate: DateTime(2026, 7, 10),
             items: [
               RepaymentItem(
                 id: 'repayment-item-partial',
@@ -1055,6 +1106,7 @@ void main() {
             targetType: RepaymentTargetType.contract,
             targetId: 'with-repayment',
             transactionId: 'tx-repay',
+            repaymentDate: DateTime(2026, 1, 1),
             items: [
               RepaymentItem(
                 id: 'repayment-item-1',
@@ -1131,8 +1183,9 @@ InstallmentContract _contract({
     id: id,
     liabilityAccountId: 'loan-liability',
     sourceType: InstallmentSourceType.disbursement,
-    disbursementAccountId:
-        disbursementTransactionId == null ? null : 'asset-cash',
+    disbursementAccountId: disbursementTransactionId == null
+        ? null
+        : 'asset-cash',
     disbursementTransactionId: disbursementTransactionId,
     principal: principal,
     totalPeriods: totalPeriods,
@@ -1475,15 +1528,8 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 
   @override
-  Future<void> replaceRepaymentItems(
-    String repaymentId,
-    List<RepaymentItem> nextItems,
-  ) async {
-    final repayment = repayments[repaymentId];
-    if (repayment != null) {
-      repayment.replaceItems(nextItems);
-    }
-    items[repaymentId] = [...nextItems];
+  Future<void> updateRepayment(Repayment repayment) async {
+    putRepayment(repayment);
   }
 
   @override
