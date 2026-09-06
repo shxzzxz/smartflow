@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
 void main() {
   const query = LoanCalculatorQueryImpl();
@@ -145,6 +148,82 @@ void main() {
       expect(simulation.periods.last.remainingPrincipal, Money.zero());
     }
   });
+
+  for (final prepaymentMinor in [10000, 50000]) {
+    test(
+      'balloon simulation matches contract after prepaying $prepaymentMinor',
+      () {
+        const principal = Money(minorUnits: 100000);
+        final borrowingDate = DateTime(2026, 1, 1);
+        final terms = InstallmentContractTerms(
+          stages: [
+            InstallmentContractStage(
+              id: 'balloon',
+              terms: AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime(2026, 2, 1),
+                  count: 4,
+                ),
+                method: InstallmentRepaymentMethod.equalPrincipal,
+                rate: onePercentMonthly,
+                endPrincipal: const Money(minorUnits: 60000),
+              ),
+            ),
+          ],
+        );
+        var nextId = 0;
+        final loan = const InstallmentOriginationService()
+            .originateDisbursement(
+              contractId: 'loan',
+              liabilityAccountId: 'liability',
+              terms: InstallmentOriginationTerms(
+                principal: principal,
+                borrowingDate: borrowingDate,
+                stageTerms: terms,
+              ),
+              createdAt: borrowingDate,
+              newScheduleId: () => 'schedule-${nextId++}',
+            );
+        final date = DateTime(2026, 1, 15);
+        final simulation = query.simulatePrepayment(
+          LoanPrepaymentSimulationRequest(
+            terms: terms.planTerms(principal, borrowingDate),
+            paidPeriods: 0,
+            prepaymentDate: date,
+            prepaymentPrincipal: Money(minorUnits: prepaymentMinor),
+          ),
+        );
+        final actual = const InstallmentPrepaymentRecalculator().recalculate(
+          contract: loan.contract,
+          schedules: loan.schedules,
+          prepaymentPrincipalMinor: prepaymentMinor,
+          eventDate: date,
+        );
+
+        expect(
+          simulation.periods.map((r) => r.principal),
+          actual.map((r) => r.expectedPrincipal),
+        );
+        expect(
+          simulation.periods.map((r) => r.interest),
+          actual.map((r) => r.expectedInterest),
+        );
+        expect(
+          simulation.periods.map((r) => r.date),
+          actual.map((r) => r.expectedRepaymentDate),
+        );
+        expect(simulation.periods.last.remainingPrincipal, Money.zero());
+        expect(
+          simulation.totalInterest.minorUnits,
+          prepaymentMinor == 10000 ? 3150 : 2000,
+        );
+        expect(
+          simulation.interestSaved.minorUnits,
+          prepaymentMinor == 10000 ? 250 : 1400,
+        );
+      },
+    );
+  }
 
   test('prepayment simulation rejects multi stage terms and bad inputs', () {
     final multiStage = InstallmentPlanTerms(

@@ -108,6 +108,7 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
         method: stage.method,
         accrual: stage.accrual,
         rate: stage.rate,
+        endPrincipal: stage.endPrincipal,
         totalFee: stage.fee,
         installmentAmount: stage.installmentAmount,
         dayCount: terms.dayCount,

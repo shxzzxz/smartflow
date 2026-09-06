@@ -32,7 +32,7 @@ class InstallmentContractEditViewModel
     ContractMetrics? metrics;
     try {
       metrics = await ref.watch(installmentMetricsProvider(contractId).future);
-    } catch (error, stack) {
+    } on Exception catch (error, stack) {
       _logger.warning('Load saved contract metrics', error, stack);
     }
     return InstallmentContractEditState.loaded(

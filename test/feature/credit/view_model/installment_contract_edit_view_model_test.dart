@@ -15,6 +15,28 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 void main() {
   group('InstallmentContractEditViewModel', () {
+    test(
+      'metrics exceptions allow editing but programming errors propagate',
+      () async {
+        final service = _FakeInstallmentAppService(
+          contract: _contract(),
+          schedules: [_schedule(1)],
+        );
+        final recoverable = _container(
+          service,
+          metricsError: Exception('metrics unavailable'),
+        );
+        expect(
+          (await _readState(recoverable) as InstallmentContractEditLoaded)
+              .metrics,
+          isNull,
+        );
+        final error = StateError('invalid metrics state');
+        final broken = _container(service, metricsError: error);
+        await expectLater(_readState(broken), throwsA(same(error)));
+      },
+    );
+
     test('loads contract and schedules into draft state', () async {
       final service = _FakeInstallmentAppService(
         contract: _contract(),
@@ -257,11 +279,16 @@ void main() {
   });
 }
 
-ProviderContainer _container(_FakeInstallmentAppService service) {
+ProviderContainer _container(
+  _FakeInstallmentAppService service, {
+  Object? metricsError,
+}) {
   final container = ProviderContainer(
+    retry: (_, _) => null,
     overrides: [
-      installmentMetricsProvider.overrideWith(
-        (ref, id) async => const ContractMetrics(
+      installmentMetricsProvider.overrideWith((ref, id) async {
+        if (metricsError != null) throw metricsError;
+        return const ContractMetrics(
           monthlyIrr: null,
           nominalApr: null,
           effectiveApr: null,
@@ -270,8 +297,8 @@ ProviderContainer _container(_FakeInstallmentAppService service) {
           totalFee: Money(minorUnits: 0),
           converged: false,
           unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
-        ),
-      ),
+        );
+      }),
       installmentContractProvider.overrideWith(
         (ref, contractId) async => service.contract,
       ),

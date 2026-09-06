@@ -2,6 +2,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
+import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'installment_terms_draft.dart';
@@ -39,6 +40,16 @@ class InstallmentProductEditState {
   final String name;
   final InstallmentTermsDraft terms;
   final bool saving;
+
+  InstallmentProductEditState copyWith({
+    String? name,
+    InstallmentTermsDraft? terms,
+    bool? saving,
+  }) => InstallmentProductEditState(
+    name: name ?? this.name,
+    terms: terms ?? this.terms,
+    saving: saving ?? this.saving,
+  );
 }
 
 @riverpod
@@ -69,25 +80,23 @@ class InstallmentProductEditViewModel
   void setTerms(InstallmentTermsDraft terms) {
     final current = state.asData?.value;
     if (current != null) {
-      state = AsyncData(
-        InstallmentProductEditState(name: current.name, terms: terms),
-      );
+      state = AsyncData(current.copyWith(terms: terms));
     }
   }
 
   Future<UiActionOutcome<String>> save(String name) async {
     final current = state.requireValue;
-    state = AsyncData(
-      InstallmentProductEditState(
-        name: name,
-        terms: current.terms,
-        saving: true,
-      ),
-    );
-    final outcome = await guardUiAction(
-      _logger,
-      'Save installment product',
-      () async {
+    if (current.saving) {
+      return UiActionOutcome.failure(
+        UiError(
+          code: CreditErrorCode.contractInvalidCommand.code,
+          message: '产品正在保存，请勿重复提交',
+        ),
+      );
+    }
+    state = AsyncData(current.copyWith(name: name, saving: true));
+    try {
+      return await guardUiAction(_logger, 'Save installment product', () async {
         final id = await ref
             .read(installmentProductServiceProvider)
             .save(
@@ -99,11 +108,11 @@ class InstallmentProductEditViewModel
             );
         ref.invalidate(installmentProductsViewModelProvider);
         return id;
-      },
-    );
-    state = AsyncData(
-      InstallmentProductEditState(name: name, terms: current.terms),
-    );
-    return outcome;
+      });
+    } finally {
+      if (ref.mounted) {
+        state = AsyncData(state.requireValue.copyWith(saving: false));
+      }
+    }
   }
 }

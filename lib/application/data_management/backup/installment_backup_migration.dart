@@ -6,6 +6,23 @@ void migrateInstallmentBackup(
   required int schemaVersion,
   required int formatVersion,
 }) {
+  if (schemaVersion < 31 && tables.containsKey('repayments')) {
+    // 与数据库 v31 迁移一致：交易时间优先，其次已有还款时间，最后创建时间。
+    final transactionDates = {
+      for (final row in tables['transactions'] ?? <BackupJson>[])
+        row['id']: row['occurredAt'],
+    };
+    tables['repayments'] = [
+      for (final row in tables['repayments'] ?? <BackupJson>[])
+        {
+          ...row,
+          'repaymentDate':
+              transactionDates[row['transactionId']] ??
+              row['repaymentDate'] ??
+              row['createdAt'],
+        },
+    ];
+  }
   if (schemaVersion < 32 && formatVersion < 2) {
     _upgradeSingleStageSnapshot(tables);
   }

@@ -38,6 +38,7 @@ class InstallmentRecalculationTerms {
     required this.method,
     required this.accrual,
     this.rate,
+    this.endPrincipal,
     this.totalFee = const Money(minorUnits: 0),
     this.installmentAmount = const EqualInstallmentAmount.actualRate(),
     this.dayCount = DayCountConvention.thirty360,
@@ -50,6 +51,7 @@ class InstallmentRecalculationTerms {
   final InstallmentRepaymentMethod method;
   final InterestAccrualMethod accrual;
   final InterestRate? rate;
+  final Money? endPrincipal;
   final Money totalFee;
   final EqualInstallmentAmount installmentAmount;
   final DayCountConvention dayCount;
@@ -308,6 +310,7 @@ class InstallmentPrepaymentRecalculator {
                 method: terms.method,
                 rate: terms.rate,
                 accrual: terms.accrual,
+                endPrincipal: terms.endPrincipal,
                 fee: Money(
                   minorUnits: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
                 ),
@@ -316,6 +319,7 @@ class InstallmentPrepaymentRecalculator {
             ],
           ),
           firstPeriodNo: tail.first.periodNo,
+          capEndPrincipal: true,
         )
         .entries;
 

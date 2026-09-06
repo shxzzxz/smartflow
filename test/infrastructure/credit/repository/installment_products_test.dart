@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/product/installment_product_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -252,133 +253,194 @@ void main() {
     },
   );
 
-  test(
-    'format one backups gain stage rows before validation and restore',
-    () async {
-      await db.customStatement(
-        "INSERT INTO accounts (id, name, account_type, account_subtype, account_profile_key) "
-        "VALUES ('liability', '贷款', 'liability', 'loan', 'credit.loan')",
-      );
-      var next = 0;
-      final loan = const InstallmentOriginationService().originateDisbursement(
-        contractId: 'old',
-        liabilityAccountId: 'liability',
-        createdAt: DateTime(2026),
-        newScheduleId: () => 'old-${next++}',
-        terms: InstallmentOriginationTerms(
-          principal: const Money(minorUnits: 10000),
-          borrowingDate: DateTime(2026),
-          stageTerms: InstallmentContractTerms.singleStage(
-            id: 'stage-1',
-            totalPeriods: 2,
-            firstDate: DateTime(2026, 2),
-            method: InstallmentRepaymentMethod.equalPrincipal,
-            accrual: InterestAccrualMethod.monthly,
-            feeMinor: 0,
-          ),
-        ),
-      );
-      await contracts.insertAggregate(loan.contract, loan.schedules);
-      final gateway = DriftBackupGateway(db);
-      final snapshot = await gateway.readSnapshot();
-      final files = <String, Uint8List>{};
-      final descriptors = <BackupFileDescriptor>[];
-      void add(String table, String path, String content, int count) {
-        final bytes = Uint8List.fromList(utf8.encode(content));
-        files[path] = bytes;
-        descriptors.add(
-          BackupFileDescriptor(
-            table: table,
-            path: path,
-            rowCount: count,
-            byteCount: bytes.length,
-            sha256: sha256.convert(bytes).toString(),
-          ),
+  for (final schemaVersion in [29, 30, 31]) {
+    test(
+      'format one schema $schemaVersion backups restore stages and repayment dates',
+      () async {
+        await db.customStatement(
+          "INSERT INTO accounts (id, name, account_type, account_subtype, account_profile_key) "
+          "VALUES ('liability', '贷款', 'liability', 'loan', 'credit.loan')",
         );
-      }
+        var next = 0;
+        final loan = const InstallmentOriginationService()
+            .originateDisbursement(
+              contractId: 'old',
+              liabilityAccountId: 'liability',
+              createdAt: DateTime(2026),
+              newScheduleId: () => 'old-${next++}',
+              terms: InstallmentOriginationTerms(
+                principal: const Money(minorUnits: 10000),
+                borrowingDate: DateTime(2026),
+                stageTerms: InstallmentContractTerms.singleStage(
+                  id: 'stage-1',
+                  totalPeriods: 2,
+                  firstDate: DateTime(2026, 2),
+                  method: InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: InterestAccrualMethod.monthly,
+                  feeMinor: 0,
+                ),
+              ),
+            );
+        await contracts.insertAggregate(loan.contract, loan.schedules);
+        final createdAt = DateTime(2026, 1, 20);
+        final paidAt = DateTime(2026, 1, 10);
+        await db.customStatement(
+          "INSERT INTO transactions (id, business_purpose, occurred_at, posted_at, primary_amount_minor, source_kind) "
+          "VALUES ('repayment-tx', 'debtRepayment', ?, ?, 100, 'manual')",
+          [
+            paidAt.millisecondsSinceEpoch ~/ 1000,
+            createdAt.millisecondsSinceEpoch ~/ 1000,
+          ],
+        );
+        await db.customStatement(
+          "INSERT INTO accounts (id, name, account_type, account_subtype, balance_minor) "
+          "VALUES ('cash-account', '现金', 'asset', 'fund', -100)",
+        );
+        await db.customStatement(
+          "UPDATE accounts SET balance_minor = -100 WHERE id = 'liability'",
+        );
+        await db.customStatement(
+          "INSERT INTO entries (id, transaction_id, account_id, direction, amount_minor) VALUES "
+          "('debit', 'repayment-tx', 'liability', 'debit', 100), "
+          "('credit', 'repayment-tx', 'cash-account', 'credit', 100)",
+        );
+        for (final id in ['cash', 'offline', 'fallback']) {
+          await db
+              .into(db.repayments)
+              .insert(
+                RepaymentsCompanion.insert(
+                  id: id,
+                  repaymentType: 'PREPAYMENT',
+                  targetType: 'CONTRACT',
+                  targetId: 'old',
+                  transactionId: Value(id == 'cash' ? 'repayment-tx' : null),
+                  repaymentDate: id == 'fallback' ? createdAt : paidAt,
+                  createdAt: Value(createdAt),
+                ),
+              );
+        }
+        final gateway = DriftBackupGateway(db);
+        final snapshot = await gateway.readSnapshot();
+        final files = <String, Uint8List>{};
+        final descriptors = <BackupFileDescriptor>[];
+        void add(String table, String path, String content, int count) {
+          final bytes = Uint8List.fromList(utf8.encode(content));
+          files[path] = bytes;
+          descriptors.add(
+            BackupFileDescriptor(
+              table: table,
+              path: path,
+              rowCount: count,
+              byteCount: bytes.length,
+              sha256: sha256.convert(bytes).toString(),
+            ),
+          );
+        }
 
-      for (final table in BackupTables.all.where(
-        (t) => t != 'installment_products' && t != 'installment_stage_configs',
-      )) {
-        final rows = [
-          for (final row in snapshot.rows(table)) {...row},
-        ];
-        if (table == 'installment_contracts') {
-          for (final row in rows) {
-            row.addAll({
-              'totalPeriods': 2,
-              'firstRepaymentDate': DateTime(2026, 2).millisecondsSinceEpoch,
-              'lastRepaymentDate': DateTime(2026, 3).millisecondsSinceEpoch,
-              'repaymentMethod': 'equalPrincipal',
-              'interestAccrualMethod': 'monthly',
-              'interestRatePeriod': null,
-              'interestRatePpm': null,
-              'totalFeeMinor': 0,
-            });
-            for (final field in [
-              'productId',
-              'productName',
-              'customRules',
-              'dayCount',
-              'rounding',
-              'tailDifference',
-            ]) {
-              row.remove(field);
+        for (final table in BackupTables.all.where(
+          (t) =>
+              t != 'installment_products' && t != 'installment_stage_configs',
+        )) {
+          final rows = [
+            for (final row in snapshot.rows(table)) {...row},
+          ];
+          if (table == 'installment_contracts') {
+            for (final row in rows) {
+              row.addAll({
+                'totalPeriods': 2,
+                'firstRepaymentDate': DateTime(2026, 2).millisecondsSinceEpoch,
+                'lastRepaymentDate': DateTime(2026, 3).millisecondsSinceEpoch,
+                'repaymentMethod': 'equalPrincipal',
+                'interestAccrualMethod': 'monthly',
+                'interestRatePeriod': null,
+                'interestRatePpm': null,
+                'totalFeeMinor': 0,
+              });
+              for (final field in [
+                'productId',
+                'productName',
+                'customRules',
+                'dayCount',
+                'rounding',
+                'tailDifference',
+              ]) {
+                row.remove(field);
+              }
             }
           }
-        }
-        if (table == 'installment_schedules') {
-          for (final row in rows) {
-            row.remove('stageId');
+          if (table == 'installment_schedules') {
+            for (final row in rows) {
+              row.remove('stageId');
+            }
           }
+          if (table == 'repayments') {
+            for (final row in rows) {
+              if (schemaVersion == 29) {
+                row.remove('repaymentDate');
+              } else if (schemaVersion == 30 && row['id'] != 'offline') {
+                row['repaymentDate'] = null;
+              }
+            }
+          }
+          add(
+            table,
+            '${BackupTables.sectionFor(table)}/$table.ndjson',
+            rows.map(jsonEncode).join('\n'),
+            rows.length,
+          );
         }
-        add(
-          table,
-          '${BackupTables.sectionFor(table)}/$table.ndjson',
-          rows.map(jsonEncode).join('\n'),
-          rows.length,
+        add('preferences', 'preferences.json', '{}', 0);
+        final package = BackupPackage(
+          manifest: BackupManifest(
+            formatVersion: 1,
+            appVersion: 'old',
+            schemaVersion: schemaVersion,
+            createdAt: DateTime(2026),
+            baseCurrency: 'CNY',
+            minorUnit: 2,
+            backupId: 'legacy',
+            files: descriptors,
+          ),
+          files: files,
         );
-      }
-      add('preferences', 'preferences.json', '{}', 0);
-      final package = BackupPackage(
-        manifest: BackupManifest(
-          formatVersion: 1,
-          appVersion: 'old',
-          schemaVersion: 31,
-          createdAt: DateTime(2026),
-          baseCurrency: 'CNY',
-          minorUnit: 2,
-          backupId: 'legacy',
-          files: descriptors,
-        ),
-        files: files,
-      );
-      final service = BackupService(
-        gateway: gateway,
-        packageStore: _PackageStore(package),
-      );
-      final upgraded = (await service.inspect('old')).snapshot;
-      expect(
-        upgraded.rows('installment_stage_configs').single['id'],
-        'old:stage:1',
-      );
-      expect(
-        upgraded.rows('installment_schedules').map((r) => r['stageId']),
-        everyElement('old:stage:1'),
-      );
-      await gateway.replaceSnapshot(upgraded);
-      final restored = (await contracts.findContract('old'))!;
-      expect(restored.stageTerms.stages, hasLength(1));
-      expect(restored.stageTerms.repayments.single.dates.getDates(), [
-        DateTime(2026, 2),
-        DateTime(2026, 3),
-      ]);
-      expect(
-        (await contracts.listSchedules('old')).map((s) => s.expectedPrincipal),
-        loan.schedules.map((s) => s.expectedPrincipal),
-      );
-    },
-  );
+        final service = BackupService(
+          gateway: gateway,
+          packageStore: _PackageStore(package),
+        );
+        final upgraded = (await service.inspect('old')).snapshot;
+        expect(
+          upgraded.rows('installment_stage_configs').single['id'],
+          'old:stage:1',
+        );
+        expect(
+          upgraded.rows('installment_schedules').map((r) => r['stageId']),
+          everyElement('old:stage:1'),
+        );
+        await service.restore('old');
+        final restoredRepayments = await db.select(db.repayments).get();
+        expect(
+          {for (final r in restoredRepayments) r.id: r.repaymentDate},
+          {
+            'cash': paidAt,
+            'offline': schemaVersion == 29 ? createdAt : paidAt,
+            'fallback': createdAt,
+          },
+        );
+        final restored = (await contracts.findContract('old'))!;
+        expect(restored.stageTerms.stages, hasLength(1));
+        expect(restored.stageTerms.repayments.single.dates.getDates(), [
+          DateTime(2026, 2),
+          DateTime(2026, 3),
+        ]);
+        expect(
+          (await contracts.listSchedules(
+            'old',
+          )).map((s) => s.expectedPrincipal),
+          loan.schedules.map((s) => s.expectedPrincipal),
+        );
+      },
+    );
+  }
 
   test(
     'backup rejects product values and a schedule pointing to a product stage',

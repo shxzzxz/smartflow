@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:smartflow/application/credit/product/installment_product_service.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
@@ -19,6 +21,42 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 
 void main() {
   group('InstallmentFormViewModel', () {
+    test(
+      'product loading maps exceptions to outcomes and preserves programming errors',
+      () async {
+        final products = _Products();
+        final container = _container(products: products);
+        final args = _args('loan');
+        await _readState(container, args);
+        final vm = container.read(
+          installmentFormViewModelProvider(args).notifier,
+        );
+        when(() => products.list()).thenAnswer((_) async => []);
+        expect(
+          await vm.loadProducts(),
+          isA<UiActionSuccess<List<InstallmentProductReadModel>>>(),
+        );
+        when(() => products.list()).thenThrow(
+          BusinessException(
+            CreditErrorCode.contractInvalidCommand,
+            message: '产品暂不可用',
+          ),
+        );
+        final business = await vm.loadProducts();
+        expect(
+          business,
+          isA<UiActionFailure<List<InstallmentProductReadModel>>>(),
+        );
+        expect((business as UiActionFailure).error.message, '产品暂不可用');
+        when(() => products.list()).thenThrow(Exception('database detail'));
+        final unknown = await vm.loadProducts();
+        expect((unknown as UiActionFailure).error.code, 'unknown');
+        final bug = StateError('invalid product state');
+        when(() => products.list()).thenThrow(bug);
+        await expectLater(() => vm.loadProducts(), throwsA(same(bug)));
+      },
+    );
+
     test('loads liability and defaults loan account to disbursement', () async {
       final container = _container();
       final state = await _readState(container, _args('loan'));
@@ -308,6 +346,7 @@ InstallmentFormArgs _args(
 ProviderContainer _container({
   _FakeInstallmentAppService? service,
   _FakeCreditAccountQueryService? creditQueryService,
+  InstallmentProductService? products,
 }) {
   final liabilities = [
     _account(
@@ -324,6 +363,8 @@ ProviderContainer _container({
   final funds = [_account('cash', AccountType.asset)];
   final container = ProviderContainer(
     overrides: [
+      if (products != null)
+        installmentProductServiceProvider.overrideWithValue(products),
       accountsForSelectionPurposeProvider.overrideWith(
         (ref, purpose) => Stream.value(switch (purpose) {
           AccountSelectionPurpose.repaymentTarget => liabilities,
@@ -341,6 +382,8 @@ ProviderContainer _container({
   addTearDown(container.dispose);
   return container;
 }
+
+class _Products extends Mock implements InstallmentProductService {}
 
 class _FakeCreditAccountQueryService implements CreditAccountQueryService {
   int findOverviewCalls = 0;

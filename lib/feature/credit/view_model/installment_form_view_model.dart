@@ -44,8 +44,12 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     );
   }
 
-  Future<List<InstallmentProductReadModel>> loadProducts() =>
-      ref.read(installmentProductServiceProvider).list();
+  Future<UiActionOutcome<List<InstallmentProductReadModel>>> loadProducts() =>
+      guardUiAction(
+        _logger,
+        'Load installment products',
+        () async => ref.read(installmentProductServiceProvider).list(),
+      );
 
   void selectProduct(InstallmentProductReadModel product) => _updateLoaded(
     (s) => s.copyWith(

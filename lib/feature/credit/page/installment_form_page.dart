@@ -198,14 +198,16 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   }
 
   Future<void> _pickProduct(InstallmentFormViewModel notifier) async {
-    final List<InstallmentProductReadModel> products;
-    try {
-      products = await notifier.loadProducts();
-    } catch (_) {
-      if (mounted) _showError('产品加载失败，请稍后重试');
-      return;
-    }
+    final outcome = await notifier.loadProducts();
     if (!mounted) return;
+    final List<InstallmentProductReadModel> products;
+    switch (outcome) {
+      case UiActionSuccess(:final value):
+        products = value;
+      case UiActionFailure(:final error):
+        _showError(error.message);
+        return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
