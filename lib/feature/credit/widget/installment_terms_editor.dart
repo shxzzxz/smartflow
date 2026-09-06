@@ -1,35 +1,56 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:remixicon/remixicon.dart';
+
 import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
+import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
-import '../../../design_system/widget/app_select.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
 import '../../../widget/business/finance/money_input.dart';
+import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../view_model/installment_terms_draft.dart';
 import 'installment_field_options.dart';
 
-/// 产品只展示稳定规则；合同额外展示本笔参数，规则由开关解锁。
+enum InstallmentTermsEditorMode { calculator, contract, product }
+
+/// 同一草稿承载产品规则和本笔条款，页面拥有预览、重算及保存行为。
 class InstallmentTermsEditor extends StatelessWidget {
   const InstallmentTermsEditor({
     required this.value,
     required this.onChanged,
-    this.productMode = false,
+    this.mode = InstallmentTermsEditorMode.contract,
+    this.borrowingDate,
+    this.planAction,
+    this.beforePlanAction,
     this.rulesEditable = true,
+    this.usesBillingCycle = false,
     super.key,
   });
   final InstallmentTermsDraft value;
   final ValueChanged<InstallmentTermsDraft> onChanged;
-  final bool productMode;
+  final InstallmentTermsEditorMode mode;
+  final DateTime? borrowingDate;
+  final AppSubmitButton? planAction;
+  final Widget? beforePlanAction;
+  bool get productMode => mode == InstallmentTermsEditorMode.product;
   final bool rulesEditable;
+
+  /// 信用账户放款分期只有一个还款阶段，日期及间隔由账户账期确定。
+  final bool usesBillingCycle;
 
   @override
   Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       AppFormSection(
         title: '计算约定',
+        padding: _sectionPadding,
         children: [
           AppPlainSelectMenuFormRow(
             label: '标准天数',
@@ -51,32 +72,73 @@ class InstallmentTermsEditor extends StatelessWidget {
         const SizedBox(height: AppSpacing.space12),
         _stage(context, value.stages[i], i),
       ],
-      if (rulesEditable)
-        Wrap(
-          spacing: AppSpacing.space8,
-          children: [
-            TextButton.icon(
-              onPressed: () => onChanged(value.add(false)),
-              icon: const Icon(Icons.add),
-              label: const Text('添加还款阶段'),
-            ),
-            TextButton.icon(
-              onPressed: () => onChanged(value.add(true)),
-              icon: const Icon(Icons.add),
-              label: const Text('添加免还阶段'),
-            ),
-          ],
+      if (rulesEditable && !usesBillingCycle) ...[
+        const SizedBox(height: AppSpacing.space12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final buttons = [
+              OutlinedButton.icon(
+                onPressed: () => onChanged(
+                  value.add(
+                    false,
+                    borrowingDate: productMode ? null : borrowingDate,
+                  ),
+                ),
+                icon: const Icon(RemixIcons.add_line),
+                label: const Text('添加还款阶段'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => onChanged(
+                  value.add(
+                    true,
+                    borrowingDate: productMode ? null : borrowingDate,
+                  ),
+                ),
+                icon: const Icon(RemixIcons.time_line),
+                label: const Text('添加免还期'),
+              ),
+            ];
+            if (constraints.maxWidth < 340 ||
+                MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  buttons[0],
+                  const SizedBox(height: AppSpacing.space8),
+                  buttons[1],
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: buttons[0]),
+                const SizedBox(width: AppSpacing.space8),
+                Expanded(child: buttons[1]),
+              ],
+            );
+          },
         ),
+      ],
+      if (beforePlanAction case final child?) ...[
+        const SizedBox(height: AppSpacing.space12),
+        child,
+      ],
+      if (planAction case final action?) ...[
+        const SizedBox(height: AppSpacing.space24),
+        action,
+      ],
     ],
   );
 
   Widget _stage(BuildContext context, InstallmentStageDraft s, int index) {
     void update(InstallmentStageDraft next) => onChanged(value.replace(next));
     final flat = s.method == InstallmentRepaymentMethod.flatFee;
+    final custom = s.method == InstallmentRepaymentMethod.custom;
     return AppFormSection(
       key: ValueKey(s.id),
+      padding: _sectionPadding,
       title: '阶段 ${index + 1} · ${s.deferment ? '免还期' : '还款阶段'}',
-      trailing: rulesEditable
+      trailing: rulesEditable && !usesBillingCycle
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -85,21 +147,21 @@ class InstallmentTermsEditor extends StatelessWidget {
                   onPressed: index == 0
                       ? null
                       : () => onChanged(value.move(index, index - 1)),
-                  icon: const Icon(Icons.arrow_upward),
+                  icon: const Icon(RemixIcons.arrow_up_line),
                 ),
                 IconButton(
                   tooltip: '下移阶段',
                   onPressed: index == value.stages.length - 1
                       ? null
                       : () => onChanged(value.move(index, index + 1)),
-                  icon: const Icon(Icons.arrow_downward),
+                  icon: const Icon(RemixIcons.arrow_down_line),
                 ),
                 IconButton(
                   tooltip: '删除阶段',
                   onPressed: value.stages.length <= 1
                       ? null
                       : () => onChanged(value.remove(s.id)),
-                  icon: const Icon(Icons.delete_outline),
+                  icon: const Icon(RemixIcons.delete_bin_line),
                 ),
               ],
             )
@@ -111,7 +173,7 @@ class InstallmentTermsEditor extends StatelessWidget {
               else
                 _date(
                   context,
-                  '免还结束日',
+                  '免还至',
                   s.untilDate,
                   (d) => update(s.copyWith(untilDate: d)),
                 ),
@@ -120,40 +182,33 @@ class InstallmentTermsEditor extends StatelessWidget {
               AppPlainSelectMenuFormRow(
                 label: '还款方式',
                 value: s.method,
-                options: installmentRepaymentMethodOptions,
+                options: mode == InstallmentTermsEditorMode.calculator
+                    ? loanCalculatorRepaymentMethodOptions
+                    : installmentRepaymentMethodOptions,
                 enabled: rulesEditable,
-                onChanged: (v) => update(
-                  s.copyWith(
-                    method: v,
-                    inputs: {
-                      ...s.inputs,
-                      if (v == InstallmentRepaymentMethod.flatFee)
-                        StageInput.rate: '',
-                      if (v != InstallmentRepaymentMethod.equalInstallment)
-                        StageInput.fixedAmount: '',
-                    },
-                  ),
-                ),
+                onChanged: (v) => update(s.changeMethod(v)),
               ),
+              if (!productMode && !flat)
+                _input(s, StageInput.periods, '期数', update, hint: '本阶段期数'),
               if (!flat)
                 _input(
                   s,
                   StageInput.interval,
-                  '各期间隔（月）',
+                  '各期间隔',
                   update,
-                  enabled: rulesEditable,
-                  hint: '1 月供，3 季供，12 年供',
+                  enabled: rulesEditable && !usesBillingCycle,
+                  hint: '每期间隔月数：1 月供，3 季供，12 年供',
                 ),
-              if (!productMode && !flat)
-                _input(s, StageInput.periods, '期数', update),
-              if (!productMode)
+              if (!productMode && usesBillingCycle)
+                const AppPlainValueRow(label: '还款日期', value: '按账户账期生成'),
+              if (!productMode && !usesBillingCycle)
                 _date(
                   context,
                   flat ? '还款日' : '首期还款日',
                   s.firstDate,
                   (d) => update(s.copyWith(firstDate: d)),
                 ),
-              if (!productMode && !flat) ...[
+              if (!productMode && !flat && !usesBillingCycle) ...[
                 _date(
                   context,
                   '末期还款日',
@@ -170,7 +225,7 @@ class InstallmentTermsEditor extends StatelessWidget {
                     ),
                   ),
               ],
-              if (!flat)
+              if (!flat && !custom && productMode)
                 AppPlainSelectMenuFormRow(
                   label: '利率单位',
                   value: s.ratePeriod,
@@ -178,9 +233,22 @@ class InstallmentTermsEditor extends StatelessWidget {
                   enabled: rulesEditable,
                   onChanged: (v) => update(s.copyWith(ratePeriod: v)),
                 ),
-              if (!productMode && !flat)
-                _input(s, StageInput.rate, '利率（%）', update, hint: '留空即免息'),
-              if (!flat)
+              if (!flat && !custom && !productMode)
+                _DraftInput(
+                  key: ValueKey('${s.id}:rate'),
+                  value: s.text(StageInput.rate),
+                  label: '利率',
+                  hint: '留空即免息',
+                  enabled: true,
+                  money: false,
+                  ratePeriod: s.ratePeriod,
+                  unitEnabled: rulesEditable,
+                  onRatePeriodChanged: (v) => update(s.copyWith(ratePeriod: v)),
+                  onChanged: (text) =>
+                      update(s.setInput(StageInput.rate, text)),
+                  validator: _validateRate,
+                ),
+              if (!flat && !custom)
                 AppPlainSelectMenuFormRow(
                   label: '计息方式',
                   value: s.accrual,
@@ -193,37 +261,15 @@ class InstallmentTermsEditor extends StatelessWidget {
                   label: '固定额算法',
                   value: s.algorithm,
                   enabled: rulesEditable,
-                  options: const [
-                    AppSelectOption(
-                      value: InstallmentAmountAlgorithm.nominalRate,
-                      label: '固定名义期利率',
-                    ),
-                    AppSelectOption(
-                      value: InstallmentAmountAlgorithm.actualRate,
-                      label: '动态实际期利率',
-                    ),
-                    AppSelectOption(
-                      value: InstallmentAmountAlgorithm.fixed,
-                      label: '指定固定额',
-                    ),
-                  ],
-                  onChanged: (v) => update(
-                    s.copyWith(
-                      algorithm: v,
-                      inputs: {
-                        ...s.inputs,
-                        if (v != InstallmentAmountAlgorithm.fixed)
-                          StageInput.fixedAmount: '',
-                      },
-                    ),
-                  ),
+                  options: installmentAmountAlgorithmOptions,
+                  onChanged: (v) => update(s.changeAlgorithm(v)),
                 ),
                 if (!productMode &&
                     s.algorithm == InstallmentAmountAlgorithm.fixed)
                   _input(
                     s,
                     StageInput.fixedAmount,
-                    '指定固定额',
+                    '固定还款额',
                     update,
                     money: true,
                   ),
@@ -247,7 +293,7 @@ class InstallmentTermsEditor extends StatelessWidget {
                   '手续费',
                   update,
                   money: true,
-                  hint: '留空为 0',
+                  hint: flat ? '还款日一次收取（可选）' : '本阶段手续费合计，留空为 0',
                 ),
               ],
             ],
@@ -269,6 +315,11 @@ class InstallmentTermsEditor extends StatelessWidget {
     hint: hint,
     enabled: enabled,
     money: money,
+    validator: field == StageInput.periods || field == StageInput.interval
+        ? _validatePositiveInt
+        : field == StageInput.fixedAmount
+        ? validatePositiveMoneyText
+        : validateOptionalNonNegativeMoneyText,
     onChanged: (text) => update(s.setInput(field, text)),
   );
 
@@ -281,6 +332,8 @@ class InstallmentTermsEditor extends StatelessWidget {
   }) => AppPlainSelectFormRow<DateTime>(
     label: label,
     value: date,
+    validator: (value) =>
+        value == null && label != '末期还款日' ? '请选择$label' : null,
     placeholder: placeholder,
     valueText: date == null ? null : formatDateLabel(date),
     onTap: (selected) async {
@@ -289,7 +342,7 @@ class InstallmentTermsEditor extends StatelessWidget {
         initialDate: date ?? DateTime.now(),
         title: label,
       );
-      if (picked != null) selected(picked);
+      if (context.mounted && picked != null) selected(picked);
     },
     onChanged: (v) {
       if (v != null) onChanged(v);
@@ -305,11 +358,19 @@ class _DraftInput extends StatefulWidget {
     required this.enabled,
     required this.money,
     this.hint,
+    this.validator,
+    this.ratePeriod,
+    this.onRatePeriodChanged,
+    this.unitEnabled = true,
     super.key,
   });
   final String value, label;
   final String? hint;
   final bool enabled, money;
+  final FormFieldValidator<String>? validator;
+  final InterestRatePeriod? ratePeriod;
+  final ValueChanged<InterestRatePeriod>? onRatePeriodChanged;
+  final bool unitEnabled;
   final ValueChanged<String> onChanged;
   @override
   State<_DraftInput> createState() => _DraftInputState();
@@ -320,7 +381,7 @@ class _DraftInputState extends State<_DraftInput> {
   @override
   void didUpdateWidget(covariant _DraftInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (controller.text != widget.value) controller.text = widget.value;
+    syncTextControllerText(controller, widget.value);
   }
 
   @override
@@ -330,20 +391,51 @@ class _DraftInputState extends State<_DraftInput> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.money
+  Widget build(BuildContext context) => widget.ratePeriod != null
+      ? ValueWithUnitPlainFormRow<InterestRatePeriod>(
+          label: widget.label,
+          controller: controller,
+          hintText: widget.hint,
+          suffixText: '%',
+          unit: widget.ratePeriod!,
+          unitOptions: interestRatePeriodOptions,
+          unitEnabled: widget.unitEnabled,
+          onUnitChanged: widget.onRatePeriodChanged!,
+          onChanged: widget.onChanged,
+          validator: widget.validator,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        )
+      : widget.money
       ? MoneyPlainFormRow(
           label: widget.label,
           controller: controller,
           hintText: widget.hint,
           onChanged: widget.onChanged,
-          validator: validateOptionalNonNegativeMoneyText,
+          validator: widget.validator,
         )
-      : AppPlainTextFormRow(
+      : AppPlainIntegerFormRow(
           label: widget.label,
           controller: controller,
-          hintText: widget.hint,
+          hintText: widget.hint ?? '',
           enabled: widget.enabled,
           onChanged: widget.onChanged,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: widget.validator,
         );
+}
+
+const _sectionPadding = EdgeInsets.symmetric(
+  horizontal: AppSpacing.space16,
+  vertical: AppSpacing.space8,
+);
+
+String? _validatePositiveInt(String? value) {
+  final n = int.tryParse((value ?? '').trim());
+  return n == null || n <= 0 ? '必须为正整数' : null;
+}
+
+String? _validateRate(String? value) {
+  final text = (value ?? '').trim();
+  if (text.isEmpty) return null;
+  final rate = Decimal.tryParse(text);
+  return rate == null || rate < Decimal.zero ? '请输入有效的非负利率' : null;
 }

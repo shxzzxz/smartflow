@@ -7,9 +7,9 @@ import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/account/account_type_tag.dart';
 import 'package:smartflow/widget/business/analytics/analysis_chart_card.dart';
+import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_chart_empty_state.dart';
-import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_donut_chart.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
@@ -34,15 +34,16 @@ import 'package:smartflow/widget/business/transaction/transaction_progress_badge
 import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
+import '../../widget/business/category/tree_select.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
 import '../token/chart.dart';
-import '../token/radius.dart';
 import '../token/list.dart';
+import '../token/radius.dart';
 import '../token/spacing.dart';
-import '../widget/app_datetime_picker.dart';
 import '../widget/app_cascade_multi_select.dart';
 import '../widget/app_date_picker_panel.dart';
+import '../widget/app_datetime_picker.dart';
 import '../widget/app_dropdown.dart';
 import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
@@ -51,15 +52,15 @@ import '../widget/app_page_header.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
+import '../widget/app_segmented_control.dart';
 import '../widget/app_select.dart';
 import '../widget/app_settings_row.dart';
-import '../widget/app_segmented_control.dart';
 import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_status_banner.dart';
 import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
 import '../widget/app_swipe_action.dart';
-import '../../widget/business/category/tree_select.dart';
+import 'installment_component_previews.dart';
 
 const _showcaseCategories = <String>[
   '设计基础',
@@ -77,6 +78,12 @@ const _showcaseCategories = <String>[
 void _ignoreSwitchChange(bool _) {}
 
 enum _ShowcaseExampleKind {
+  loanBasicInfo,
+  installmentTerms,
+  installmentSchedule,
+  installmentScheduleEditor,
+  installmentSummary,
+
   colorSemantics,
   typography,
   spacing,
@@ -500,6 +507,41 @@ const _showcaseExamples = <_ShowcaseExample>[
     componentNames: 'AppFormSection',
     keywords: ['布局', '表单', '分组', '说明'],
   ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.loanBasicInfo,
+    category: '财务表达',
+    title: '贷款基本信息',
+    componentNames: 'LoanBasicInfoFields',
+    keywords: ['贷款', '分期', '计划'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.installmentTerms,
+    category: '财务表达',
+    title: '贷款配置',
+    componentNames: 'InstallmentTermsEditor',
+    keywords: ['贷款', '分期', '计划'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.installmentSchedule,
+    category: '财务表达',
+    title: '还款计划展示',
+    componentNames: 'InstallmentScheduleView',
+    keywords: ['贷款', '分期', '计划'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.installmentScheduleEditor,
+    category: '财务表达',
+    title: '还款计划编辑',
+    componentNames: 'InstallmentScheduleEditor',
+    keywords: ['贷款', '分期', '计划'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.installmentSummary,
+    category: '财务表达',
+    title: '贷款计划汇总',
+    componentNames: 'InstallmentPlanSummaryCard',
+    keywords: ['贷款', '分期', '计划'],
+  ),
 ];
 
 const _sampleTransactionRows = <TransactionRowPresentation>[
@@ -795,6 +837,15 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
 
   Widget _buildPreview(_ShowcaseExample example) {
     return switch (example.kind) {
+      _ShowcaseExampleKind.loanBasicInfo => const LoanBasicInfoPreview(),
+      _ShowcaseExampleKind.installmentTerms => const InstallmentTermsPreview(),
+      _ShowcaseExampleKind.installmentSchedule =>
+        const InstallmentSchedulePreview(),
+      _ShowcaseExampleKind.installmentScheduleEditor =>
+        const InstallmentScheduleEditorPreview(),
+      _ShowcaseExampleKind.installmentSummary =>
+        const InstallmentSummaryPreview(),
+
       _ShowcaseExampleKind.colorSemantics => _colorSemanticsPreview(),
       _ShowcaseExampleKind.typography => _typographyPreview(),
       _ShowcaseExampleKind.spacing => _spacingPreview(),

@@ -3,21 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 
 import '../../../core/money/money.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
-import '../../../design_system/widget/app_detail_summary_card.dart';
-import '../../../design_system/widget/app_status_badge.dart';
-import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/contract_status_validation_presentation.dart';
+import '../presentation/installment_schedule_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
+import '../widget/installment_schedule_view.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -150,14 +152,16 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contract = loaded.contract;
-    final scheduleItems = loaded.scheduleItems;
+    final scheduleItems = {
+      for (final item in loaded.scheduleItems) item.schedule.id: item,
+    };
     final cashflows = loaded.repayments;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space10,
+        AppSpacing.space16,
         AppSpacing.space6,
-        AppSpacing.space10,
+        AppSpacing.space16,
         AppSpacing.space16,
       ),
       children: [
@@ -172,18 +176,12 @@ class _Body extends StatelessWidget {
         const SizedBox(height: AppSpacing.space12),
         Text('还款计划', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var i = 0; i < scheduleItems.length; i++) ...[
-                _ScheduleRow(contract: contract, item: scheduleItems[i]),
-                if (i < scheduleItems.length - 1)
-                  SizedBox(
-                    key: ValueKey('installment-schedule-gap-$i'),
-                    height: AppSpacing.space4,
-                  ),
-              ],
-            ],
+        InstallmentScheduleView(
+          items: contractScheduleItems(contract, loaded.schedules),
+          rowWrapper: (context, row, child) => _ScheduleActions(
+            contract: contract,
+            item: scheduleItems[row.id]!,
+            child: child,
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
@@ -401,71 +399,19 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ScheduleRow extends ConsumerWidget {
-  const _ScheduleRow({required this.contract, required this.item});
-
+class _ScheduleActions extends ConsumerWidget {
+  const _ScheduleActions({
+    required this.contract,
+    required this.item,
+    required this.child,
+  });
   final InstallmentContractReadModel contract;
   final InstallmentScheduleItemState item;
-
+  final Widget child;
   InstallmentScheduleReadModel get schedule => item.schedule;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    final total =
-        schedule.expectedPrincipal +
-        schedule.expectedInterest +
-        schedule.expectedFee;
-    final row = InkWell(
-      onTap: null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space10,
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 48,
-              child: Text('第${schedule.periodNo}期', style: styles.formLabel),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    formatDateLabel(schedule.expectedRepaymentDate),
-                    style: styles.formLabel,
-                  ),
-                  Text(
-                    '本金 ${schedule.expectedPrincipal.format()}'
-                    '${schedule.expectedInterest.minorUnits > 0 ? '  利息 ${schedule.expectedInterest.format()}' : ''}'
-                    '${schedule.expectedFee.minorUnits > 0 ? '  手续费 ${schedule.expectedFee.format()}' : ''}',
-                    style: styles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(total.format(), style: styles.formLabel),
-                Text(
-                  _scheduleStatusLabel(schedule.status),
-                  style: styles.listSupporting.copyWith(
-                    color: _scheduleStatusColor(schedule.status, colors),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-
+    final row = child;
     final action = item.action;
     if (action == null) return row;
 
@@ -659,27 +605,6 @@ String _accrualMethodLabel(InterestAccrualMethod method) {
     InterestAccrualMethod.daily => '按日计息',
     InterestAccrualMethod.monthly => '按月计息',
     InterestAccrualMethod.annual => '按年计息',
-  };
-}
-
-String _scheduleStatusLabel(InstallmentScheduleStatus status) {
-  return switch (status) {
-    InstallmentScheduleStatus.pending => '待还',
-    InstallmentScheduleStatus.partiallyPaid => '部分已还',
-    InstallmentScheduleStatus.paid => '已还',
-    InstallmentScheduleStatus.skipped => '已跳过',
-  };
-}
-
-Color _scheduleStatusColor(
-  InstallmentScheduleStatus status,
-  ColorScheme colors,
-) {
-  return switch (status) {
-    InstallmentScheduleStatus.pending => colors.primary,
-    InstallmentScheduleStatus.partiallyPaid => colors.error,
-    InstallmentScheduleStatus.paid => colors.tertiary,
-    InstallmentScheduleStatus.skipped => colors.outline,
   };
 }
 

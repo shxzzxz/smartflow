@@ -2,32 +2,6 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/rounding_mode.dart';
 
-/// 等额本息固定额算法在页面上的选择项。
-enum EqualInstallmentAmountMode { nominalRate, actualRate, fixed }
-
-EqualInstallmentAmount equalInstallmentAmountFor(
-  EqualInstallmentAmountMode mode, {
-  Money? fixedAmount,
-}) {
-  return switch (mode) {
-    EqualInstallmentAmountMode.nominalRate =>
-      const EqualInstallmentAmount.nominalRate(),
-    EqualInstallmentAmountMode.actualRate =>
-      const EqualInstallmentAmount.actualRate(),
-    EqualInstallmentAmountMode.fixed => EqualInstallmentAmount.fixed(
-      fixedAmount ?? Money.zero(),
-    ),
-  };
-}
-
-String equalInstallmentAmountModeLabel(EqualInstallmentAmountMode mode) {
-  return switch (mode) {
-    EqualInstallmentAmountMode.nominalRate => '固定名义期利率',
-    EqualInstallmentAmountMode.actualRate => '动态实际期利率',
-    EqualInstallmentAmountMode.fixed => '指定固定额',
-  };
-}
-
 String loanRepaymentMethodLabel(InstallmentRepaymentMethod method) {
   return switch (method) {
     InstallmentRepaymentMethod.equalInstallment => '等额本息',
@@ -71,7 +45,7 @@ String contractMetricsUnavailableLabel(
 
 /// 小数利率（0.0123）格式化为百分数文本（1.23%）。
 String formatRatePercent(double? value, {int fractionDigits = 2}) {
-  if (value == null) return '—';
+  if (value == null || !value.isFinite) return '—';
   return '${(value * 100).toStringAsFixed(fractionDigits)}%';
 }
 

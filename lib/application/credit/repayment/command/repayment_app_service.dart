@@ -1,3 +1,4 @@
+import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
@@ -424,13 +425,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     _repaymentPolicy.validateBillConversionInstallment(
       bill: bill,
       allocations: allocations,
-      totalPeriods: command.totalPeriods,
-      firstRepaymentDate: command.firstRepaymentDate,
-      lastRepaymentDate: command.lastRepaymentDate,
-      interestRatePeriod: command.interestRatePeriod,
-      interestRatePpm: command.interestRatePpm,
-      totalFeeMinor: command.totalFeeMinor,
-      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+      stageTerms: command.stageTerms,
     );
 
     final repaymentId = _idGenerator.newId();
@@ -453,16 +448,19 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         bill: bill,
         sourceRepaymentId: repaymentId,
         principal: total.principal,
-        totalPeriods: command.totalPeriods,
         borrowingDate: command.borrowingDate,
-        firstRepaymentDate: command.firstRepaymentDate,
-        lastRepaymentDate: command.lastRepaymentDate,
-        repaymentMethod: command.repaymentMethod,
-        interestRatePeriod: command.interestRatePeriod,
-        interestRatePpm: command.interestRatePpm,
-        interestAccrualMethod: command.interestAccrualMethod,
-        totalFeeMinor: command.totalFeeMinor,
-        equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
+        stageTerms: InstallmentContractTerms(
+          dayCount: command.stageTerms.dayCount,
+          rounding: command.stageTerms.rounding,
+          tailDifference: command.stageTerms.tailDifference,
+          stages: [
+            for (final stage in command.stageTerms.stages)
+              InstallmentContractStage(
+                id: _idGenerator.newId(),
+                terms: stage.terms,
+              ),
+          ],
+        ),
         note: command.note,
         createdAt: DateTime.now(),
         newScheduleId: _idGenerator.newId,

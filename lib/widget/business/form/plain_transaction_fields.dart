@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:remixicon/remixicon.dart';
-
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/form.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
@@ -9,7 +9,6 @@ import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/design_system/widget/app_select.dart';
-import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
 import '../icon/business_icon.dart';
 
@@ -232,6 +231,8 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
     this.keyboardType,
     this.inputFormatters,
     this.validator,
+    this.onChanged,
+    this.unitEnabled = true,
     this.minHeight = AppFormTokens.rowMinHeight,
   });
 
@@ -245,6 +246,8 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
+  final ValueChanged<String>? onChanged;
+  final bool unitEnabled;
   final double minHeight;
 
   @override
@@ -269,6 +272,7 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
                   style: valueStyle,
                   validator: validator,
                   hintText: hintText,
+                  onChanged: onChanged,
                 ),
               ),
               if (suffixText != null) ...[
@@ -277,25 +281,35 @@ class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
               ],
               const SizedBox(width: AppSpacing.space8),
               SizedBox(
-                width: 52,
-                child: AppSelectMenu<T>(
-                  options: unitOptions,
-                  value: fieldUnit ?? unit,
-                  onChanged: (nextValue) => fieldChanged(nextValue),
-                  alignment: AppSelectMenuAlignment.end,
-                  triggerBuilder: (context, selected) => Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(selected.label, style: valueStyle),
-                      const SizedBox(width: AppSpacing.space2),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        size: AppSpacing.space20,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                width: 32 + MediaQuery.textScalerOf(context).scale(20),
+                child: !unitEnabled
+                    ? Text(
+                        unitOptions
+                            .firstWhere((option) => option.value == unit)
+                            .label,
+                        style: valueStyle,
+                        textAlign: TextAlign.end,
+                      )
+                    : AppSelectMenu<T>(
+                        options: unitOptions,
+                        value: fieldUnit ?? unit,
+                        onChanged: (nextValue) => fieldChanged(nextValue),
+                        alignment: AppSelectMenuAlignment.end,
+                        triggerBuilder: (context, selected) => Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(selected.label, style: valueStyle),
+                            const SizedBox(width: AppSpacing.space2),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              size: AppSpacing.space20,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
               ),
             ],
           ),

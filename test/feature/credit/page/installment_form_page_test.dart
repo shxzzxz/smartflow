@@ -40,9 +40,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(AppFormSection), findsNWidgets(5));
+    expect(find.byType(AppFormSection), findsWidgets);
+    expect(find.text('贷款'), findsOneWidget);
+    expect(find.text('放款信息'), findsOneWidget);
     expect(find.text('分期设置'), findsNothing);
-    expect(find.text('还款规则'), findsOneWidget);
+    expect(find.text('计算约定'), findsOneWidget);
+    expect(find.text('阶段 1 · 还款阶段'), findsOneWidget);
     expect(
       find.byType(AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>),
       findsOneWidget,
@@ -56,7 +59,7 @@ void main() {
       findsNothing,
     );
     expect(find.text('%'), findsOneWidget);
-    expect(find.text('按期数和首期还款日自动生成'), findsOneWidget);
+    expect(find.text('按期数与间隔生成'), findsOneWidget);
 
     expect(tester.getTopLeft(find.byType(AppFormSection).first).dx, 16);
   });
@@ -90,7 +93,7 @@ void main() {
       expect(find.text('到账账户'), findsOneWidget);
       expect(find.text('末期还款日'), findsOneWidget);
 
-      await tester.tap(find.byType(Switch));
+      await tester.tap(find.byType(Switch).first);
       await tester.pumpAndSettle();
 
       expect(find.text('到账账户'), findsNothing);

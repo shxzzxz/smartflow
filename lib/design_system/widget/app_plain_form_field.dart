@@ -150,6 +150,8 @@ class AppPlainIntegerFormRow extends StatelessWidget {
     required this.hintText,
     super.key,
     this.validator,
+    this.onChanged,
+    this.enabled = true,
     this.requiredIndicator = false,
     this.minHeight = AppFormTokens.rowMinHeight,
   });
@@ -159,6 +161,8 @@ class AppPlainIntegerFormRow extends StatelessWidget {
   final String hintText;
   final FormFieldValidator<String>? validator;
   final bool requiredIndicator;
+  final bool enabled;
+  final ValueChanged<String>? onChanged;
   final double minHeight;
 
   @override
@@ -171,6 +175,8 @@ class AppPlainIntegerFormRow extends StatelessWidget {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       validator: validator,
+      onChanged: onChanged,
+      enabled: enabled,
       minHeight: minHeight,
     );
   }

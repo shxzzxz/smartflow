@@ -1,7 +1,9 @@
+import 'package:decimal/decimal.dart';
+
 import '../../../core/error/app_exception.dart';
-import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/rounding_mode.dart';
+import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/valobj/day_count_convention.dart';
 import '../../../domain/credit/valobj/equal_installment_amount.dart';
 import '../../../domain/credit/valobj/installment_contract_terms.dart';
@@ -64,6 +66,36 @@ class InstallmentStageDraft {
   InstallmentStageDraft setInput(StageInput field, String value) =>
       copyWith(inputs: {...inputs, field: value});
 
+  InstallmentStageDraft changeMethod(InstallmentRepaymentMethod value) {
+    final flat = value == InstallmentRepaymentMethod.flatFee;
+    final custom = value == InstallmentRepaymentMethod.custom;
+    return copyWith(
+      method: value,
+      lastDate: flat ? null : lastDate,
+      algorithm: value == InstallmentRepaymentMethod.equalInstallment
+          ? algorithm
+          : InstallmentAmountAlgorithm.nominalRate,
+      inputs: {
+        ...inputs,
+        if (flat || custom) StageInput.rate: '',
+        if (flat) StageInput.periods: '1',
+        if (flat) StageInput.interval: '1',
+        if (value != InstallmentRepaymentMethod.equalInstallment)
+          StageInput.fixedAmount: '',
+      },
+    );
+  }
+
+  InstallmentStageDraft changeAlgorithm(InstallmentAmountAlgorithm value) =>
+      copyWith(
+        algorithm: value,
+        inputs: {
+          ...inputs,
+          if (value != InstallmentAmountAlgorithm.fixed)
+            StageInput.fixedAmount: '',
+        },
+      );
+
   InstallmentStageRule toRule() {
     if (deferment) return InstallmentStageRule.deferment(id: id);
     final flat = method == InstallmentRepaymentMethod.flatFee;
@@ -91,13 +123,20 @@ class InstallmentStageDraft {
     }
     if (firstDate == null) _invalid('请选择首期还款日');
     final flat = method == InstallmentRepaymentMethod.flatFee;
-    InterestRate? rate = flat ? null : InterestRate(ppm: 0, period: ratePeriod);
-    if (!flat && text(StageInput.rate).trim().isNotEmpty) {
-      final percent = double.tryParse(text(StageInput.rate).trim());
-      if (percent == null || !percent.isFinite || percent < 0) {
+    final hasInterest = !flat && method != InstallmentRepaymentMethod.custom;
+    // 零利率仍保留所选单位，重新打开合同后规则不会漂移。
+    InterestRate? rate = hasInterest
+        ? InterestRate(ppm: 0, period: ratePeriod)
+        : null;
+    if (hasInterest && text(StageInput.rate).trim().isNotEmpty) {
+      final percent = Decimal.tryParse(text(StageInput.rate).trim());
+      if (percent == null || percent < Decimal.zero) {
         _invalid('请输入有效的非负利率');
       }
-      rate = InterestRate(ppm: (percent * 10000).round(), period: ratePeriod);
+      rate = InterestRate(
+        ppm: (percent * Decimal.fromInt(10000)).round().toBigInt().toInt(),
+        period: ratePeriod,
+      );
     }
     return InstallmentContractStage(
       id: id,
@@ -159,6 +198,20 @@ class InstallmentTermsDraft {
 
   factory InstallmentTermsDraft.initial() =>
       InstallmentTermsDraft(stages: [InstallmentStageDraft(id: 'draft-1')]);
+
+  factory InstallmentTermsDraft.loan(DateTime borrowingDate) =>
+      InstallmentTermsDraft(
+        stages: [
+          InstallmentStageDraft(
+            id: 'draft-1',
+            firstDate: IntervalRepaymentDates.addMonthsClamped(
+              borrowingDate,
+              1,
+            ),
+            inputs: const {StageInput.periods: '12', StageInput.interval: '1'},
+          ),
+        ],
+      );
   InstallmentTermsDraft copyWith({
     List<InstallmentStageDraft>? stages,
     DayCountConvention? dayCount,
@@ -171,21 +224,57 @@ class InstallmentTermsDraft {
   InstallmentTermsDraft replace(InstallmentStageDraft stage) => copyWith(
     stages: [for (final old in stages) old.id == stage.id ? stage : old],
   );
-  InstallmentTermsDraft add(bool deferment) {
+  InstallmentTermsDraft add(bool deferment, {DateTime? borrowingDate}) {
     var suffix = stages.length + 1;
     while (stages.any((s) => s.id == 'draft-$suffix')) {
       suffix++;
     }
+    DateTime? anchor = borrowingDate;
+    if (stages.isNotEmpty) {
+      final last = stages.last;
+      if (last.deferment) {
+        anchor = last.untilDate ?? anchor;
+      } else {
+        final first = last.firstDate;
+        final count = int.tryParse(last.text(StageInput.periods));
+        final interval = int.tryParse(last.text(StageInput.interval));
+        anchor =
+            last.lastDate ??
+            (first == null
+                ? anchor
+                : last.method == InstallmentRepaymentMethod.flatFee
+                ? first
+                : IntervalRepaymentDates.addMonthsClamped(
+                    first,
+                    ((count ?? 1) - 1).clamp(0, 10000) *
+                        (interval ?? 1).clamp(1, 120),
+                  ));
+      }
+    }
     return copyWith(
       stages: [
         ...stages,
-        InstallmentStageDraft(id: 'draft-$suffix', deferment: deferment),
+        InstallmentStageDraft(
+          id: 'draft-$suffix',
+          deferment: deferment,
+          firstDate: anchor == null || deferment
+              ? null
+              : IntervalRepaymentDates.addMonthsClamped(anchor, 1),
+          untilDate: anchor == null || !deferment
+              ? null
+              : IntervalRepaymentDates.addMonthsClamped(anchor, 12),
+          inputs: {
+            StageInput.interval: '1',
+            if (borrowingDate != null && !deferment) StageInput.periods: '12',
+          },
+        ),
       ],
     );
   }
 
-  InstallmentTermsDraft remove(String id) =>
-      copyWith(stages: stages.where((s) => s.id != id).toList());
+  InstallmentTermsDraft remove(String id) => stages.length <= 1
+      ? this
+      : copyWith(stages: stages.where((s) => s.id != id).toList());
   InstallmentTermsDraft move(int from, int to) {
     final next = [...stages];
     next.insert(to, next.removeAt(from));

@@ -11,8 +11,8 @@ import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
-import 'package:smartflow/feature/credit/page/installment_product_edit_page.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
+import 'package:smartflow/feature/credit/page/installment_product_edit_page.dart';
 import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
@@ -47,7 +47,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('产品名称'), findsOneWidget);
-    expect(find.text('各期间隔（月）'), findsOneWidget);
+    expect(find.text('各期间隔'), findsOneWidget);
     for (final label in [
       '本金',
       '期数',
@@ -147,7 +147,7 @@ void main() {
                   )
                   .requireValue
               as InstallmentFormLoaded;
-      vm.setTermsDraft(before.termsDraft!.add(true));
+      vm.setTermsDraft(before.termsDraft.add(true));
       await tester.pumpAndSettle();
       await tester.tap(customSwitch);
       await tester.pumpAndSettle();
@@ -161,7 +161,7 @@ void main() {
                   .requireValue
               as InstallmentFormLoaded;
       expect(after.customRules, isFalse);
-      expect(after.termsDraft!.stages, hasLength(2));
+      expect(after.termsDraft.stages, hasLength(2));
       expect(after.productId, 'p');
       verifyNever(
         () => service.save(

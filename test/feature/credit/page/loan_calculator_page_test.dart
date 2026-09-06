@@ -65,7 +65,7 @@ void main() {
     expect(find.text('阶段 1 · 免还期'), findsOneWidget);
     expect(find.text('只推进时间线，不产生期次，也不计息'), findsNothing);
     final titleCenter = tester.getCenter(find.text('阶段 1 · 免还期'));
-    final deleteButton = find.widgetWithText(TextButton, '删除阶段').first;
+    final deleteButton = find.byTooltip('删除阶段').first;
     final deleteCenter = tester.getCenter(deleteButton);
     expect(deleteCenter.dy, closeTo(titleCenter.dy, 1));
     expect(deleteCenter.dx, greaterThan(titleCenter.dx));

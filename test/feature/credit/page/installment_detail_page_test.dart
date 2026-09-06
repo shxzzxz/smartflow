@@ -1,4 +1,3 @@
-import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +7,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
@@ -131,14 +131,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(Divider), findsNothing);
-    expect(
-      tester
-          .widget<SizedBox>(
-            find.byKey(const ValueKey('installment-schedule-gap-0')),
-          )
-          .height,
-      AppSpacing.space4,
-    );
+    expect(find.text('第1期'), findsOneWidget);
+    expect(find.text('第2期'), findsOneWidget);
     expect(
       tester
           .widget<SizedBox>(

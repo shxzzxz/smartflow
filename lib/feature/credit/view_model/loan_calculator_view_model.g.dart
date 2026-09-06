@@ -42,7 +42,7 @@ final class LoanCalculatorViewModelProvider
 }
 
 String _$loanCalculatorViewModelHash() =>
-    r'223613edf486289af9b1a9e6a030f00325eff9c8';
+    r'74af78634c4928d9cc5ab50241e5c0f51dec5689';
 
 abstract class _$LoanCalculatorViewModel
     extends $Notifier<LoanCalculatorState> {

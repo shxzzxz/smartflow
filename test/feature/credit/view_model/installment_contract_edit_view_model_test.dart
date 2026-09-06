@@ -1,6 +1,3 @@
-import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
-import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
-import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
@@ -8,9 +5,12 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_state.dart';
 import 'package:smartflow/feature/credit/view_model/installment_contract_edit_view_model.dart';
+import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 void main() {
@@ -260,6 +260,18 @@ void main() {
 ProviderContainer _container(_FakeInstallmentAppService service) {
   final container = ProviderContainer(
     overrides: [
+      installmentMetricsProvider.overrideWith(
+        (ref, id) async => const ContractMetrics(
+          monthlyIrr: null,
+          nominalApr: null,
+          effectiveApr: null,
+          totalRepayment: Money(minorUnits: 10100),
+          totalInterest: Money(minorUnits: 100),
+          totalFee: Money(minorUnits: 0),
+          converged: false,
+          unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
+        ),
+      ),
       installmentContractProvider.overrideWith(
         (ref, contractId) async => service.contract,
       ),

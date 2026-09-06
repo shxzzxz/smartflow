@@ -524,22 +524,15 @@ void main() {
     final loaded = state as BillConversionInstallmentLoaded;
     final outcome = await container
         .read(provider.notifier)
-        .submit(
-          principalText: loaded.principalText,
-          totalPeriodsText: loaded.totalPeriodsText,
-          rateText: '',
-          totalFeeText: '',
-          overrideInstallmentText: '',
-          noteText: '',
-        );
+        .submit(principalText: loaded.principalText, noteText: '');
 
     expect(state, isA<BillConversionInstallmentLoaded>());
     expect(outcome, isA<UiActionSuccess<String>>());
     final command = repayment.billConversionCommands.single;
     expect(command.billId, 'bill');
-    expect(command.totalPeriods, 12);
+    expect(command.stageTerms.totalPeriods, 12);
     expect(
-      command.repaymentMethod,
+      command.stageTerms.repayments.single.method,
       credit.InstallmentRepaymentMethod.equalInstallment,
     );
     expect(command.allocations, hasLength(1));

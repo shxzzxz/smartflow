@@ -8,6 +8,8 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
+import '../../valobj/installment_contract_terms.dart';
+
 class BillRepaymentAllocationDraft {
   const BillRepaymentAllocationDraft({
     required this.billItemId,
@@ -58,13 +60,7 @@ class RepaymentPolicyService {
   void validateBillConversionInstallment({
     required Bill bill,
     required List<BillRepaymentAllocationDraft> allocations,
-    required int totalPeriods,
-    required DateTime? firstRepaymentDate,
-    required DateTime? lastRepaymentDate,
-    required InterestRatePeriod? interestRatePeriod,
-    required int? interestRatePpm,
-    required int totalFeeMinor,
-    required int? equalInstallmentOverrideMinor,
+    required InstallmentContractTerms stageTerms,
   }) {
     if (bill.status != BillStatus.billed || allocations.isEmpty) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
@@ -92,16 +88,7 @@ class RepaymentPolicyService {
     if (principal.minorUnits <= 0) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
     }
-    validateInstallmentTerms(
-      principal: principal,
-      totalPeriods: totalPeriods,
-      firstRepaymentDate: firstRepaymentDate,
-      lastRepaymentDate: lastRepaymentDate,
-      interestRatePeriod: interestRatePeriod,
-      interestRatePpm: interestRatePpm,
-      totalFeeMinor: totalFeeMinor,
-      equalInstallmentOverrideMinor: equalInstallmentOverrideMinor,
-    );
+    stageTerms.validate();
   }
 
   void validateActiveContractRepayment({

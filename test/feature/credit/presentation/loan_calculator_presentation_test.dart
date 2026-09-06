@@ -5,24 +5,6 @@ import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/feature/credit/presentation/loan_calculator_presentation.dart';
 
 void main() {
-  test('maps installment amount modes to domain values', () {
-    expect(
-      equalInstallmentAmountFor(EqualInstallmentAmountMode.nominalRate),
-      const EqualInstallmentAmount.nominalRate(),
-    );
-    expect(
-      equalInstallmentAmountFor(EqualInstallmentAmountMode.actualRate),
-      const EqualInstallmentAmount.actualRate(),
-    );
-    expect(
-      equalInstallmentAmountFor(
-        EqualInstallmentAmountMode.fixed,
-        fixedAmount: const Money(minorUnits: 123),
-      ),
-      const EqualInstallmentAmount.fixed(Money(minorUnits: 123)),
-    );
-  });
-
   test('labels cover every option', () {
     for (final method in InstallmentRepaymentMethod.values) {
       expect(loanRepaymentMethodLabel(method), isNotEmpty);
@@ -44,6 +26,8 @@ void main() {
     expect(formatRatePercent(0.0123), '1.23%');
     expect(formatRatePercent(0.0123, fractionDigits: 4), '1.2300%');
     expect(formatRatePercent(null), '—');
+    expect(formatRatePercent(double.nan), '—');
+    expect(formatRatePercent(double.infinity), '—');
     expect(formatSignedMoney(const Money(minorUnits: 52)), '+0.52');
     expect(formatSignedMoney(const Money(minorUnits: -5)), '-0.05');
     expect(formatSignedMoney(Money.zero()), '0.00');

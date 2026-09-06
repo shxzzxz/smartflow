@@ -1,3 +1,9 @@
+import 'package:smartflow/application/credit/calculator/query/loan_calculator_query.dart';
+import 'package:smartflow/core/money/rounding_mode.dart';
+import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
+import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
@@ -555,6 +561,112 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     });
 
     test(
+      'bill conversion preserves complete staged terms and matches calculator preview',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 10000,
+        );
+        final borrowingDate = DateTime(2026, 6, 25);
+        final terms = InstallmentContractTerms(
+          dayCount: DayCountConvention.thirty365,
+          rounding: RoundingMode.down,
+          stages: [
+            InstallmentContractStage(
+              id: 'draft-interest',
+              terms: AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime(2026, 7, 25),
+                  count: 2,
+                  intervalMonths: 3,
+                ),
+                method: credit.InstallmentRepaymentMethod.interestFirst,
+                accrual: credit.InterestAccrualMethod.monthly,
+                rate: InterestRate(
+                  ppm: 72000,
+                  period: credit.InterestRatePeriod.annual,
+                ),
+                fee: const Money(minorUnits: 100),
+              ),
+            ),
+            InstallmentContractStage(
+              id: 'draft-principal',
+              terms: AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime(2027, 1, 25),
+                  count: 2,
+                  intervalMonths: 3,
+                ),
+                method: credit.InstallmentRepaymentMethod.equalPrincipal,
+                accrual: credit.InterestAccrualMethod.monthly,
+                rate: InterestRate(
+                  ppm: 72000,
+                  period: credit.InterestRatePeriod.annual,
+                ),
+                fee: const Money(minorUnits: 101),
+              ),
+            ),
+          ],
+        );
+        final expected = const LoanCalculatorQueryImpl().calculate(
+          terms.planTerms(const Money(minorUnits: 10000), borrowingDate),
+        );
+        final result = await fixture.service
+            .createBillConversionInstallmentRepayment(
+              credit.CreateBillConversionInstallmentRepaymentCommand(
+                billId: 'bill-1',
+                allocations: [
+                  _allocation(billItemId: 'bill-item-1', principal: 10000),
+                ],
+                borrowingDate: borrowingDate,
+                stageTerms: terms,
+              ),
+            );
+        final contract = (await fixture.installments.findContract(
+          result.contractId!,
+        ))!;
+        final schedules = await fixture.installments.listSchedules(
+          result.contractId!,
+        );
+        expect(contract.stageTerms.dayCount, DayCountConvention.thirty365);
+        expect(contract.stageTerms.rounding, RoundingMode.down);
+        expect(contract.stageTerms.stages, hasLength(2));
+        expect(
+          contract.stageTerms.stages.map((s) => s.id),
+          isNot(contains('draft-interest')),
+        );
+        expect(
+          contract.stageTerms.repayments.map((s) => s.dates.intervalMonths),
+          [3, 3],
+        );
+        expect(schedules.map((s) => s.stageId).toSet(), hasLength(2));
+        expect(
+          schedules.map((s) => s.expectedPrincipal),
+          expected.periods.map((s) => s.principal),
+        );
+        expect(
+          schedules.map((s) => s.expectedInterest),
+          expected.periods.map((s) => s.interest),
+        );
+        expect(
+          schedules.map((s) => s.expectedFee),
+          expected.periods.map((s) => s.fee),
+        );
+        expect(
+          schedules.map((s) => s.expectedRepaymentDate),
+          expected.periods.map((s) => s.date),
+        );
+        expect(
+          (await fixture.bills.findBill('bill-1'))!.status,
+          credit.BillStatus.settled,
+        );
+      },
+    );
+
+    test(
       'creates bill conversion contract and mixes with cash allocation',
       () async {
         final fixture = _Fixture();
@@ -584,10 +696,13 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
                 allocations: [
                   _allocation(billItemId: 'bill-item-1', principal: 6000),
                 ],
-                totalPeriods: 2,
-                firstRepaymentDate: DateTime(2026, 7, 25),
-                repaymentMethod:
-                    credit.InstallmentRepaymentMethod.equalPrincipal,
+                borrowingDate: DateTime(2026, 6, 25),
+                stageTerms: InstallmentContractTerms.singleStage(
+                  totalPeriods: 2,
+                  firstDate: DateTime(2026, 7, 25),
+                  method: credit.InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: credit.InterestAccrualMethod.daily,
+                ),
               ),
             );
 
@@ -998,10 +1113,13 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
                 allocations: [
                   _allocation(billItemId: 'bill-item-1', principal: 6000),
                 ],
-                totalPeriods: 2,
-                firstRepaymentDate: DateTime(2026, 7, 25),
-                repaymentMethod:
-                    credit.InstallmentRepaymentMethod.equalPrincipal,
+                borrowingDate: DateTime(2026, 6, 25),
+                stageTerms: InstallmentContractTerms.singleStage(
+                  totalPeriods: 2,
+                  firstDate: DateTime(2026, 7, 25),
+                  method: credit.InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: credit.InterestAccrualMethod.daily,
+                ),
               ),
             );
 
@@ -1040,10 +1158,13 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
                 allocations: [
                   _allocation(billItemId: 'bill-item-1', principal: 6000),
                 ],
-                totalPeriods: 2,
-                firstRepaymentDate: DateTime(2026, 7, 25),
-                repaymentMethod:
-                    credit.InstallmentRepaymentMethod.equalPrincipal,
+                borrowingDate: DateTime(2026, 6, 25),
+                stageTerms: InstallmentContractTerms.singleStage(
+                  totalPeriods: 2,
+                  firstDate: DateTime(2026, 7, 25),
+                  method: credit.InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: credit.InterestAccrualMethod.daily,
+                ),
               ),
             );
         await fixture.service.createContractPrepaymentRepayment(

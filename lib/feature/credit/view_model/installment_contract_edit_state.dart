@@ -1,8 +1,10 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/money/money.dart';
+import 'installment_schedule_draft.dart';
 import 'installment_terms_draft.dart';
+
+export 'installment_schedule_draft.dart';
 
 part 'installment_contract_edit_state.freezed.dart';
 
@@ -10,6 +12,7 @@ part 'installment_contract_edit_state.freezed.dart';
 sealed class InstallmentContractEditState with _$InstallmentContractEditState {
   const factory InstallmentContractEditState.loaded({
     required InstallmentContractReadModel contract,
+    ContractMetrics? metrics,
     required List<InstallmentContractDraftRow> draft,
     @Default({}) Set<int> manualPatchedPeriodNos,
     @Default(false) bool submitting,
@@ -21,22 +24,3 @@ sealed class InstallmentContractEditState with _$InstallmentContractEditState {
   const factory InstallmentContractEditState.notFound() =
       InstallmentContractEditNotFound;
 }
-
-@freezed
-abstract class InstallmentContractDraftRow with _$InstallmentContractDraftRow {
-  const InstallmentContractDraftRow._();
-
-  const factory InstallmentContractDraftRow({
-    required int periodNo,
-    required DateTime date,
-    required Money principal,
-    required Money interest,
-    required Money fee,
-    required InstallmentScheduleStatus status,
-    String? scheduleId,
-  }) = _InstallmentContractDraftRow;
-
-  Money get total => principal + interest + fee;
-}
-
-enum InstallmentAmountField { principal, interest, fee }

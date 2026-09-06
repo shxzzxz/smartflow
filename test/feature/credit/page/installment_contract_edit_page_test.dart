@@ -1,4 +1,3 @@
-import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +5,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/feature/credit/page/installment_contract_edit_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
@@ -50,6 +50,8 @@ void main() {
     );
     await tester.enterText(editor, '60');
 
+    await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pump();
 

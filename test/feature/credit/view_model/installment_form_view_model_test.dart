@@ -8,11 +8,13 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
-import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
+import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
+import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
+import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
@@ -23,9 +25,27 @@ void main() {
 
       final loaded = state as InstallmentFormLoaded;
       expect(loaded.liability.id, 'loan');
-      expect(loaded.sourceType, InstallmentSourceType.disbursement);
+      expect(loaded.isDisbursement, isTrue);
       expect(loaded.fundAccounts.map((account) => account.id), ['cash']);
     });
+
+    test(
+      'credit account keeps billing-cycle capabilities and rejects arbitrary preview',
+      () async {
+        final container = _container();
+        final args = _args('card');
+        final loaded =
+            await _readState(container, args) as InstallmentFormLoaded;
+        expect(loaded.usesBillingCycle, isTrue);
+        expect(loaded.canChooseProduct, isFalse);
+        expect(
+          await container
+              .read(installmentFormViewModelProvider(args).notifier)
+              .preview('100'),
+          isA<UiActionFailure<LoanCalculation>>(),
+        );
+      },
+    );
 
     test('submits disbursement contract command', () async {
       final service = _FakeInstallmentAppService();
@@ -35,17 +55,29 @@ void main() {
       final viewModel = container.read(
         installmentFormViewModelProvider(args).notifier,
       );
-      viewModel
-        ..setDisbursementAccountId('cash')
-        ..setFirstRepaymentDate(DateTime(2026, 8, 12))
-        ..setLastRepaymentDate(DateTime(2027, 7, 12));
+      viewModel.setDisbursementAccountId('cash');
+      viewModel.setTermsDraft(
+        InstallmentTermsDraft(
+          stages: [
+            InstallmentStageDraft(
+              id: 'test',
+              firstDate: DateTime(2026, 8, 12),
+              lastDate: DateTime(2027, 7, 12),
+              algorithm: InstallmentAmountAlgorithm.fixed,
+              inputs: const {
+                StageInput.periods: '12',
+                StageInput.interval: '1',
+                StageInput.rate: '7.2',
+                StageInput.fixedAmount: '4.56',
+              },
+            ),
+          ],
+        ),
+      );
 
       final outcome = await viewModel.submit(
         principalText: '12.34',
-        totalPeriodsText: '12',
-        rateText: '7.2',
-        totalFeeText: '',
-        overrideInstallmentText: '4.56',
+
         noteText: ' note ',
       );
 
@@ -93,10 +125,7 @@ void main() {
 
         final outcome = await viewModel.submit(
           principalText: '100',
-          totalPeriodsText: '6',
-          rateText: '',
-          totalFeeText: '',
-          overrideInstallmentText: '',
+
           noteText: '',
         );
 
@@ -124,16 +153,22 @@ void main() {
             .read(installmentFormViewModelProvider(args).notifier)
             .setDisbursementAccountId('cash');
 
+        final cardState =
+            container.read(installmentFormViewModelProvider(args)).requireValue
+                as InstallmentFormLoaded;
+        container
+            .read(installmentFormViewModelProvider(args).notifier)
+            .setTermsDraft(
+              cardState.termsDraft.replace(
+                cardState.termsDraft.stages.single.setInput(
+                  StageInput.fee,
+                  '3',
+                ),
+              ),
+            );
         final outcome = await container
             .read(installmentFormViewModelProvider(args).notifier)
-            .submit(
-              principalText: '100',
-              totalPeriodsText: '6',
-              rateText: '',
-              totalFeeText: '3',
-              overrideInstallmentText: '',
-              noteText: '',
-            );
+            .submit(principalText: '100', noteText: '');
 
         expect(outcome, isA<UiActionSuccess<String>>());
         final command = service.disbursementCommands.single;
@@ -141,7 +176,11 @@ void main() {
         expect(command.disbursementAccountId, 'cash');
         expect(command.principal, const Money(minorUnits: 10000));
         expect(command.stageTerms.totalFeeMinor, 300);
-        expect(command.stageTerms.repayments.first.rate?.period, isNull);
+        expect(
+          command.stageTerms.repayments.first.rate?.period,
+          InterestRatePeriod.annual,
+        );
+        expect(command.stageTerms.repayments.first.rate?.ppm, 0);
       },
     );
 
@@ -155,24 +194,33 @@ void main() {
         final viewModel = container.read(
           installmentFormViewModelProvider(args).notifier,
         );
-        viewModel
-          ..setDisbursementAccountId('cash')
-          ..setFirstRepaymentDate(DateTime(2026, 8, 12))
-          ..setLastRepaymentDate(DateTime(2026, 8, 12));
+        viewModel.setDisbursementAccountId('cash');
+        viewModel.setTermsDraft(
+          InstallmentTermsDraft(
+            stages: [
+              InstallmentStageDraft(
+                id: 'test',
+                firstDate: DateTime(2026, 8, 12),
+                lastDate: DateTime(2026, 8, 12),
+                inputs: const {
+                  StageInput.periods: '12',
+                  StageInput.interval: '1',
+                },
+              ),
+            ],
+          ),
+        );
 
         final outcome = await viewModel.submit(
           principalText: '100',
-          totalPeriodsText: '12',
-          rateText: '',
-          totalFeeText: '',
-          overrideInstallmentText: '',
+
           noteText: '',
         );
 
         expect(outcome, isA<UiActionFailure<String>>());
         expect(
           (outcome as UiActionFailure<String>).error.message,
-          '末期还款日必须晚于首期还款日',
+          contains('日期'),
         );
         expect(service.disbursementCommands, isEmpty);
       },
@@ -194,14 +242,7 @@ void main() {
 
       final outcome = await container
           .read(installmentFormViewModelProvider(args).notifier)
-          .submit(
-            principalText: '10',
-            totalPeriodsText: '1',
-            rateText: '',
-            totalFeeText: '',
-            overrideInstallmentText: '',
-            noteText: '',
-          );
+          .submit(principalText: '10', noteText: '');
 
       expect(outcome, isA<UiActionFailure<String>>());
       final failure = outcome as UiActionFailure<String>;
@@ -225,14 +266,7 @@ void main() {
 
       final outcome = await container
           .read(installmentFormViewModelProvider(args).notifier)
-          .submit(
-            principalText: '10',
-            totalPeriodsText: '1',
-            rateText: '',
-            totalFeeText: '',
-            overrideInstallmentText: '',
-            noteText: '',
-          );
+          .submit(principalText: '10', noteText: '');
 
       expect(outcome, isA<UiActionFailure<String>>());
       expect((outcome as UiActionFailure<String>).error.code, 'unknown');
@@ -242,10 +276,7 @@ void main() {
       expect(formRecords, hasLength(1));
       final record = formRecords.single;
       expect(record.level, Level.SEVERE);
-      expect(
-        record.message,
-        'Installment form submission failed unexpectedly.',
-      );
+      expect(record.message, 'Create staged installment failed unexpectedly.');
       expect(record.error, isA<Exception>());
       expect(record.stackTrace, isNotNull);
     });
@@ -284,7 +315,11 @@ ProviderContainer _container({
       AccountType.liability,
       profileKey: AccountProfileKind.loan.key,
     ),
-    _account('card', AccountType.liability),
+    _account(
+      'card',
+      AccountType.liability,
+      profileKey: AccountProfileKind.credit.key,
+    ),
   ];
   final funds = [_account('cash', AccountType.asset)];
   final container = ProviderContainer(

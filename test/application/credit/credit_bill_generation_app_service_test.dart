@@ -1,4 +1,3 @@
-import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -6,14 +5,15 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
-import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
-import 'package:smartflow/infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
-import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_account_port.dart';
+import 'package:smartflow/infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_generation_suppression_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -21,16 +21,16 @@ import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repos
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_query_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
-import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
+import '../../helper/fake_transaction_tag_repository.dart';
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
-import '../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
   group('CreditBillGenerationAppService', () {
@@ -271,8 +271,13 @@ void main() {
                     ),
                   ),
                 ],
-                totalPeriods: 1,
-                repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+                borrowingDate: DateTime(2026, 6, 25),
+                stageTerms: InstallmentContractTerms.singleStage(
+                  totalPeriods: 1,
+                  firstDate: DateTime(2026, 7, 25),
+                  method: InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: InterestAccrualMethod.daily,
+                ),
               ),
             );
 

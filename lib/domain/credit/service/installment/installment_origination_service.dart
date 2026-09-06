@@ -9,6 +9,7 @@ import 'package:smartflow/domain/credit/service/installment/installment_plan_eng
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
+
 import '../../valobj/installment_contract_terms.dart';
 import '../../valobj/installment_plan_terms.dart';
 
@@ -127,49 +128,26 @@ class InstallmentOriginationService {
     required Bill bill,
     required String sourceRepaymentId,
     required Money principal,
-    required int totalPeriods,
-    required InstallmentRepaymentMethod repaymentMethod,
-    required InterestAccrualMethod interestAccrualMethod,
-    required int totalFeeMinor,
+    required DateTime borrowingDate,
+    required InstallmentContractTerms stageTerms,
     required DateTime createdAt,
     required String Function() newScheduleId,
-    DateTime? borrowingDate,
-    DateTime? firstRepaymentDate,
-    DateTime? lastRepaymentDate,
-    InterestRatePeriod? interestRatePeriod,
-    int? interestRatePpm,
-    int? equalInstallmentOverrideMinor,
     String? note,
-  }) {
-    final effectiveBorrowingDate = borrowingDate ?? _defaultBorrowingDate(bill);
-    final effectiveFirstDate =
-        firstRepaymentDate ?? _addMonths(effectiveBorrowingDate, 1);
-    return _originate(
-      contractId: contractId,
-      liabilityAccountId: bill.accountId,
-      sourceType: InstallmentSourceType.billConversion,
-      sourceRepaymentId: sourceRepaymentId,
-      terms: InstallmentOriginationTerms(
-        principal: principal,
-        borrowingDate: effectiveBorrowingDate,
-        note: note,
-        stageTerms: InstallmentContractTerms.singleStage(
-          id: '$contractId:stage:1',
-          totalPeriods: totalPeriods,
-          firstDate: effectiveFirstDate,
-          lastDate: lastRepaymentDate,
-          method: repaymentMethod,
-          ratePeriod: interestRatePeriod,
-          ratePpm: interestRatePpm,
-          accrual: interestAccrualMethod,
-          feeMinor: totalFeeMinor,
-          fixedAmountMinor: equalInstallmentOverrideMinor,
-        ),
-      ),
-      createdAt: createdAt,
-      newScheduleId: newScheduleId,
-    );
-  }
+  }) => _originate(
+    contractId: contractId,
+    liabilityAccountId: bill.accountId,
+    sourceType: InstallmentSourceType.billConversion,
+    sourceRepaymentId: sourceRepaymentId,
+    terms: InstallmentOriginationTerms(
+      principal: principal,
+      borrowingDate: borrowingDate,
+      stageTerms: stageTerms,
+      note: note,
+      customRules: true,
+    ),
+    createdAt: createdAt,
+    newScheduleId: newScheduleId,
+  );
 
   InstallmentOriginationResult _originate({
     required String contractId,
@@ -230,23 +208,5 @@ class InstallmentOriginationService {
         stageIdsByPeriod: stageIdsByPeriod,
       ),
     );
-  }
-
-  DateTime _defaultBorrowingDate(Bill bill) {
-    final windowRepaymentDate = bill.window?.repaymentDate;
-    if (windowRepaymentDate != null) return windowRepaymentDate;
-    if (bill.items.isEmpty) {
-      throw BusinessException(CreditErrorCode.contractInvalidCommand);
-    }
-    return bill.items
-        .map((item) => item.repaymentDate)
-        .reduce((a, b) => a.isAfter(b) ? a : b);
-  }
-
-  DateTime _addMonths(DateTime date, int months) {
-    return IntervalRepaymentDates(
-      firstDate: date,
-      count: months + 1,
-    ).getDates().last;
   }
 }

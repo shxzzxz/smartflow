@@ -4,15 +4,17 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/credit/credit_query_api.dart' as credit_query;
+import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/bill_repayment_allocation.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
-import '../presentation/bill_repayment_allocation.dart';
 import 'bill_repayment_command_mapping.dart';
+import 'installment_terms_draft.dart';
 
 part 'bill_conversion_installment_form_view_model.g.dart';
 
@@ -46,49 +48,43 @@ class BillConversionInstallmentFormViewModel
       summary: detail.summary,
       lines: lines,
       principalText: principal.format(),
-      totalPeriodsText: '12',
       borrowingDate: borrowingDate,
-      firstRepaymentDate: _addMonths(borrowingDate, 1),
+      termsDraft: InstallmentTermsDraft.loan(borrowingDate),
     );
   }
 
-  void setBorrowingDate(DateTime value) {
-    _updateLoaded((state) {
-      return state.copyWith(
-        borrowingDate: value,
-        firstRepaymentDate:
-            state.firstDateTouched
-                ? state.firstRepaymentDate
-                : _addMonths(value, 1),
+  void setBorrowingDate(DateTime value) =>
+      _updateLoaded((s) => s.copyWith(borrowingDate: value));
+  void setTermsDraft(InstallmentTermsDraft value) =>
+      _updateLoaded((s) => s.copyWith(termsDraft: value));
+
+  Future<UiActionOutcome<credit_query.LoanCalculation>> preview(
+    String principalText,
+  ) => guardUiAction(_logger, 'Preview bill installment', () async {
+    final current = state.requireValue as BillConversionInstallmentLoaded;
+    final principal = _parsePositiveMoney(principalText);
+    if (principal == null ||
+        principal.minorUnits > current.convertiblePrincipal.minorUnits) {
+      throw BusinessException(
+        credit.CreditErrorCode.billInvalidCommand,
+        message: '请输入不超过可分期本金的有效金额',
       );
-    });
-  }
-
-  void setFirstRepaymentDate(DateTime value) {
-    _updateLoaded(
-      (state) =>
-          state.copyWith(firstRepaymentDate: value, firstDateTouched: true),
-    );
-  }
-
-  void setMethod(credit.InstallmentRepaymentMethod value) =>
-      _updateLoaded((state) => state.copyWith(method: value));
-
-  void setRatePeriod(credit.InterestRatePeriod value) =>
-      _updateLoaded((state) => state.copyWith(ratePeriod: value));
-
-  void setAccrualMethod(credit.InterestAccrualMethod value) =>
-      _updateLoaded((state) => state.copyWith(accrualMethod: value));
+    }
+    return ref
+        .read(loanCalculatorQueryProvider)
+        .calculate(
+          current.termsDraft.contractTerms().planTerms(
+            principal,
+            current.borrowingDate,
+          ),
+        );
+  });
 
   void setAllocationMode(BillRepaymentAllocationMode value) =>
       _updateLoaded((state) => state.copyWith(allocationMode: value));
 
   Future<UiActionOutcome<String>> submit({
     required String principalText,
-    required String totalPeriodsText,
-    required String rateText,
-    required String totalFeeText,
-    required String overrideInstallmentText,
     required String noteText,
   }) async {
     final current = _loadedOrNull();
@@ -99,19 +95,6 @@ class BillConversionInstallmentFormViewModel
     if (principal.minorUnits > current.convertiblePrincipal.minorUnits) {
       return _invalidAction('分期本金不能超过可分期本金');
     }
-
-    final totalPeriods = int.tryParse(totalPeriodsText.trim());
-    if (totalPeriods == null || totalPeriods <= 0) {
-      return _invalidAction('请输入有效期数');
-    }
-
-    final ratePpm = _parseRatePpm(rateText);
-    final totalFee = _parseOptionalMoney(totalFeeText);
-    if (totalFee == null) return _invalidAction('请输入有效手续费');
-    final overrideMinor =
-        current.method == credit.InstallmentRepaymentMethod.equalInstallment
-            ? _parseOptionalOverride(overrideInstallmentText)
-            : null;
 
     final review = _allocationReview(
       lines: current.lines,
@@ -142,16 +125,8 @@ class BillConversionInstallmentFormViewModel
                   allocations: billRepaymentCommandAllocations(
                     review.allocations,
                   ),
-                  totalPeriods: totalPeriods,
                   borrowingDate: current.borrowingDate,
-                  firstRepaymentDate: current.firstRepaymentDate,
-                  repaymentMethod: current.method,
-                  interestRatePeriod:
-                      ratePpm == null ? null : current.ratePeriod,
-                  interestRatePpm: ratePpm,
-                  interestAccrualMethod: current.accrualMethod,
-                  totalFeeMinor: totalFee.minorUnits,
-                  equalInstallmentOverrideMinor: overrideMinor,
+                  stageTerms: current.termsDraft.contractTerms(),
                   note: trimToNull(noteText),
                 ),
               );
@@ -209,9 +184,8 @@ sealed class BillConversionInstallmentFormState {
     required credit_query.BillSummaryReadModel summary,
     required List<BillRepaymentAllocationLine> lines,
     required String principalText,
-    required String totalPeriodsText,
     required DateTime borrowingDate,
-    required DateTime firstRepaymentDate,
+    required InstallmentTermsDraft termsDraft,
   }) = BillConversionInstallmentLoaded;
 
   const factory BillConversionInstallmentFormState.notFound() =
@@ -232,76 +206,33 @@ class BillConversionInstallmentLoaded
     required this.summary,
     required this.lines,
     required this.principalText,
-    required this.totalPeriodsText,
     required this.borrowingDate,
-    required this.firstRepaymentDate,
-    this.firstDateTouched = false,
-    this.method = credit.InstallmentRepaymentMethod.equalInstallment,
-    this.ratePeriod = credit.InterestRatePeriod.monthly,
-    this.accrualMethod = credit.InterestAccrualMethod.daily,
+    required this.termsDraft,
     this.allocationMode = BillRepaymentAllocationMode.fifo,
-    this.rateText = '',
-    this.totalFeeText = '',
-    this.overrideInstallmentText = '',
-    this.noteText = '',
     this.submitting = false,
   });
-
   final credit_query.BillSummaryReadModel summary;
   final List<BillRepaymentAllocationLine> lines;
   final String principalText;
-  final String totalPeriodsText;
   final DateTime borrowingDate;
-  final DateTime firstRepaymentDate;
-  final bool firstDateTouched;
-  final credit.InstallmentRepaymentMethod method;
-  final credit.InterestRatePeriod ratePeriod;
-  final credit.InterestAccrualMethod accrualMethod;
+  final InstallmentTermsDraft termsDraft;
   final BillRepaymentAllocationMode allocationMode;
-  final String rateText;
-  final String totalFeeText;
-  final String overrideInstallmentText;
-  final String noteText;
   final bool submitting;
-
   Money get convertiblePrincipal => _pendingPrincipal(lines);
-
   BillConversionInstallmentLoaded copyWith({
-    String? principalText,
-    String? totalPeriodsText,
     DateTime? borrowingDate,
-    DateTime? firstRepaymentDate,
-    bool? firstDateTouched,
-    credit.InstallmentRepaymentMethod? method,
-    credit.InterestRatePeriod? ratePeriod,
-    credit.InterestAccrualMethod? accrualMethod,
+    InstallmentTermsDraft? termsDraft,
     BillRepaymentAllocationMode? allocationMode,
-    String? rateText,
-    String? totalFeeText,
-    String? overrideInstallmentText,
-    String? noteText,
     bool? submitting,
-  }) {
-    return BillConversionInstallmentLoaded(
-      summary: summary,
-      lines: lines,
-      principalText: principalText ?? this.principalText,
-      totalPeriodsText: totalPeriodsText ?? this.totalPeriodsText,
-      borrowingDate: borrowingDate ?? this.borrowingDate,
-      firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
-      firstDateTouched: firstDateTouched ?? this.firstDateTouched,
-      method: method ?? this.method,
-      ratePeriod: ratePeriod ?? this.ratePeriod,
-      accrualMethod: accrualMethod ?? this.accrualMethod,
-      allocationMode: allocationMode ?? this.allocationMode,
-      rateText: rateText ?? this.rateText,
-      totalFeeText: totalFeeText ?? this.totalFeeText,
-      overrideInstallmentText:
-          overrideInstallmentText ?? this.overrideInstallmentText,
-      noteText: noteText ?? this.noteText,
-      submitting: submitting ?? this.submitting,
-    );
-  }
+  }) => BillConversionInstallmentLoaded(
+    summary: summary,
+    lines: lines,
+    principalText: principalText,
+    borrowingDate: borrowingDate ?? this.borrowingDate,
+    termsDraft: termsDraft ?? this.termsDraft,
+    allocationMode: allocationMode ?? this.allocationMode,
+    submitting: submitting ?? this.submitting,
+  );
 }
 
 class BillConversionInstallmentNotFound
@@ -372,31 +303,4 @@ BillRepaymentAllocationReview _allocationReview({
 Money? _parsePositiveMoney(String value) {
   final money = Money.tryParse(value);
   return money != null && money.minorUnits > 0 ? money : null;
-}
-
-Money? _parseOptionalMoney(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return Money.zero();
-  final money = Money.tryParse(trimmed);
-  return money != null && money.minorUnits >= 0 ? money : null;
-}
-
-int? _parseOptionalOverride(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  final money = Money.tryParse(trimmed);
-  if (money == null || money.minorUnits <= 0) return null;
-  return money.minorUnits;
-}
-
-int? _parseRatePpm(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return null;
-  final percent = double.tryParse(trimmed);
-  if (percent == null || percent <= 0) return null;
-  return (percent * 10000).round();
-}
-
-DateTime _addMonths(DateTime date, int months) {
-  return DateTime(date.year, date.month + months, date.day);
 }

@@ -53,7 +53,7 @@ final class InstallmentFormViewModelProvider
 }
 
 String _$installmentFormViewModelHash() =>
-    r'8b52264c06dde1c655e66e3c23a6ebad317ec34a';
+    r'519f57b1278c579cf2123272b72647b5ef094bab';
 
 final class InstallmentFormViewModelFamily extends $Family
     with

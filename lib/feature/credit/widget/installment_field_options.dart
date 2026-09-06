@@ -2,7 +2,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/design_system/widget/app_select.dart';
 
-import '../presentation/loan_calculator_presentation.dart';
+import '../../../domain/credit/valobj/installment_stage_rule.dart';
 
 const List<AppSelectOption<InterestRatePeriod>> interestRatePeriodOptions = [
   AppSelectOption(value: InterestRatePeriod.annual, label: '年'),
@@ -71,15 +71,15 @@ const List<AppSelectOption<RoundingMode>> roundingModeOptions = [
   AppSelectOption(value: RoundingMode.up, label: '进一'),
 ];
 
-const List<AppSelectOption<EqualInstallmentAmountMode>>
-equalInstallmentAmountModeOptions = [
+const List<AppSelectOption<InstallmentAmountAlgorithm>>
+installmentAmountAlgorithmOptions = [
   AppSelectOption(
-    value: EqualInstallmentAmountMode.nominalRate,
+    value: InstallmentAmountAlgorithm.nominalRate,
     label: '固定名义期利率',
   ),
   AppSelectOption(
-    value: EqualInstallmentAmountMode.actualRate,
+    value: InstallmentAmountAlgorithm.actualRate,
     label: '动态实际期利率',
   ),
-  AppSelectOption(value: EqualInstallmentAmountMode.fixed, label: '指定固定额'),
+  AppSelectOption(value: InstallmentAmountAlgorithm.fixed, label: '指定固定额'),
 ];

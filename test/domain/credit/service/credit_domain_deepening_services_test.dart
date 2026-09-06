@@ -1,4 +1,3 @@
-import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -16,6 +15,7 @@ import 'package:smartflow/domain/credit/service/repayment/repayment_policy_servi
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
@@ -78,13 +78,12 @@ void main() {
                 allocated: _breakdown(principal: 100, interest: 1),
               ),
             ],
-            totalPeriods: 1,
-            firstRepaymentDate: null,
-            lastRepaymentDate: null,
-            interestRatePeriod: null,
-            interestRatePpm: null,
-            totalFeeMinor: 0,
-            equalInstallmentOverrideMinor: null,
+            stageTerms: InstallmentContractTerms.singleStage(
+              totalPeriods: 1,
+              firstDate: DateTime(2026, 2, 1),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.monthly,
+            ),
           ),
           throwsA(isA<BusinessException>()),
         );
@@ -97,13 +96,12 @@ void main() {
               allocated: _breakdown(principal: 100),
             ),
           ],
-          totalPeriods: 1,
-          firstRepaymentDate: null,
-          lastRepaymentDate: null,
-          interestRatePeriod: null,
-          interestRatePpm: null,
-          totalFeeMinor: 0,
-          equalInstallmentOverrideMinor: null,
+          stageTerms: InstallmentContractTerms.singleStage(
+            totalPeriods: 1,
+            firstDate: DateTime(2026, 2, 1),
+            method: InstallmentRepaymentMethod.equalPrincipal,
+            accrual: InterestAccrualMethod.monthly,
+          ),
         );
       },
     );

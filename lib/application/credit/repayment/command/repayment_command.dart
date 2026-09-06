@@ -1,5 +1,5 @@
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
 import '../repayment_amount_dto.dart';
 
@@ -89,31 +89,14 @@ class CreateBillConversionInstallmentRepaymentCommand {
   const CreateBillConversionInstallmentRepaymentCommand({
     required this.billId,
     required this.allocations,
-    required this.totalPeriods,
-    required this.repaymentMethod,
-    this.borrowingDate,
-    this.firstRepaymentDate,
-    this.lastRepaymentDate,
-    this.interestRatePeriod,
-    this.interestRatePpm,
-    this.interestAccrualMethod = InterestAccrualMethod.daily,
-    this.totalFeeMinor = 0,
-    this.equalInstallmentOverrideMinor,
+    required this.borrowingDate,
+    required this.stageTerms,
     this.note,
   });
-
   final String billId;
   final List<BillRepaymentAllocation> allocations;
-  final int totalPeriods;
-  final DateTime? borrowingDate;
-  final DateTime? firstRepaymentDate;
-  final DateTime? lastRepaymentDate;
-  final InstallmentRepaymentMethod repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
-  final InterestAccrualMethod interestAccrualMethod;
-  final int totalFeeMinor;
-  final int? equalInstallmentOverrideMinor;
+  final DateTime borrowingDate;
+  final InstallmentContractTerms stageTerms;
   final String? note;
 }
 

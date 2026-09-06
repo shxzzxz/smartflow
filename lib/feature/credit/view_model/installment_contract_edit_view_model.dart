@@ -1,15 +1,16 @@
-import 'installment_terms_draft.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart' show ContractMetrics;
 import '../../../core/money/money.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../provider/installment_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
+import '../provider/installment_query_providers.dart';
 import 'installment_contract_edit_state.dart';
+import 'installment_terms_draft.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
 
@@ -28,7 +29,14 @@ class InstallmentContractEditViewModel
     final schedules = await ref.watch(
       installmentSchedulesProvider(contractId).future,
     );
+    ContractMetrics? metrics;
+    try {
+      metrics = await ref.watch(installmentMetricsProvider(contractId).future);
+    } catch (error, stack) {
+      _logger.warning('Load saved contract metrics', error, stack);
+    }
     return InstallmentContractEditState.loaded(
+      metrics: metrics,
       contract: contract,
       stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
       customRules: contract.customRules,
