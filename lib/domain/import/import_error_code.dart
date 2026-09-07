@@ -44,6 +44,7 @@ enum ImportErrorCode implements AppErrorCode {
   final String defaultMessage;
 }
 
+/// 导入业务拒绝，可携带失败交易组；技术异常与 Error 不包装为此类型。
 final class ImportWorkflowException extends AppException {
   ImportWorkflowException(
     super.errorCode, {

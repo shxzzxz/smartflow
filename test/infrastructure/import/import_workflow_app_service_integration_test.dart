@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:logging/logging.dart';
+import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/import/import_workflow_models.dart';
 import 'package:smartflow/application/credit/account/command/credit_account_app_service.dart';
@@ -11,6 +14,7 @@ import 'package:smartflow/application/ledger/transaction/command/transaction_led
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/query/transaction_query_service.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/import/import_error_code.dart';
 import 'package:smartflow/domain/import/import_models.dart';
@@ -21,6 +25,7 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/feature/import/view_model/import_view_model.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/import/ledger_import_port.dart';
@@ -46,6 +51,67 @@ import '../../helper/test_app_database.dart';
 import '../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
+  for (final reverting in [false, true]) {
+    test(
+      '${reverting ? 'revert' : 'commit'} logs each SQLite write failure once at the action boundary',
+      () async {
+        final fixture = await _Fixture.create();
+        addTearDown(fixture.database.close);
+        final plan = _expenseRefundAndNoAccountIncomePlan();
+        await fixture.saveMappings(plan.sourceEntities);
+        final review = await fixture.service.review(plan);
+        String? batchId;
+        if (reverting) {
+          final result = await fixture.service.commit(
+            ImportCommitCommand(
+              plan: plan,
+              mappings: review.effectiveMappings,
+              selectedGroupIndexes: {0, 1},
+            ),
+          );
+          batchId = result.batch!.id;
+        }
+        final viewModel = _preparedViewModel(fixture, review);
+        final records = <LogRecord>[];
+        final subscription = Logger.root.onRecord.listen((record) {
+          if (record.error != null) records.add(record);
+        });
+        addTearDown(subscription.cancel);
+
+        await fixture.database.customStatement('PRAGMA query_only = ON');
+        for (var attempt = 1; attempt <= 2; attempt++) {
+          if (reverting) {
+            expect(
+              await viewModel.revertBatch(batchId!),
+              isA<ImportActionFailure<ImportBatch>>(),
+            );
+          } else {
+            expect(
+              await viewModel.commitSelectedGroups(),
+              isA<ImportActionFailure<ImportCommitResult>>(),
+            );
+          }
+          // The real SQLite failure must retain its cause and original stack.
+          expect(records.last.error, isA<Exception>());
+          expect(records.last.error.toString(), contains('readonly database'));
+          expect(records.last.stackTrace, isNotNull);
+          expect(records, hasLength(attempt));
+          expect(records.last.level, Level.SEVERE);
+          expect(records.last.loggerName, 'feature.import');
+          if (reverting) expect(records.last.message, contains(batchId!));
+          expect(
+            records.last.message,
+            contains(
+              reverting
+                  ? ImportErrorCode.revertFailed.code
+                  : ImportErrorCode.commitFailed.code,
+            ),
+          );
+        }
+      },
+    );
+  }
+
   test(
     'creates a credit account with centralized import cycle defaults',
     () async {
@@ -861,9 +927,28 @@ void main() {
                 'code',
                 ImportErrorCode.commitFailed.code,
               )
-              .having((error) => error.groupIndex, 'groupIndex', 1),
+              .having((error) => error.groupIndex, 'groupIndex', 1)
+              .having((error) => error.cause, 'cause', isA<BusinessException>()),
         ),
       );
+
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen((record) {
+        if (record.error != null) records.add(record);
+      });
+      addTearDown(subscription.cancel);
+      final viewModel = _preparedViewModel(fixture, review);
+      expect(
+        await viewModel.commitSelectedGroups(),
+        isA<ImportActionFailure<ImportCommitResult>>(),
+      );
+      expect(records, hasLength(1));
+      expect(records.single.level, Level.WARNING);
+      expect(records.single.loggerName, 'feature.import');
+      expect(records.single.message, contains('group 2'));
+      expect(records.single.message, contains(ImportErrorCode.commitFailed.code));
+      expect(records.single.error, isA<BusinessException>());
+      expect(records.single.stackTrace, isNotNull);
 
       expect(
         await fixture.database.select(fixture.database.transactions).get(),
@@ -1313,6 +1398,35 @@ void main() {
       expect(review.mappingItems.single.existingTargetOptions, isEmpty);
     },
   );
+}
+
+ImportViewModel _preparedViewModel(_Fixture fixture, ImportPlanReview review) {
+  final initialState = ImportPageState.initial().copyWith(
+    phase: ImportPagePhase.review,
+    plan: review.plan,
+    review: review,
+    selectedGroupIndexes: {0, 1},
+    mappingConfirmed: true,
+  );
+  final container = ProviderContainer(
+    overrides: [
+      importWorkflowAppServiceProvider.overrideWithValue(fixture.service),
+      importViewModelProvider.overrideWith(
+        () => _PreparedImportViewModel(initialState),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+  return container.read(importViewModelProvider.notifier);
+}
+
+class _PreparedImportViewModel extends ImportViewModel {
+  _PreparedImportViewModel(this.initialState);
+
+  final ImportPageState initialState;
+
+  @override
+  ImportPageState build() => initialState;
 }
 
 class _Fixture {

@@ -767,7 +767,17 @@ class ImportViewModel extends Notifier<ImportPageState> {
       }
       return ImportActionOutcome.success(result);
     } on AppException catch (exception, stackTrace) {
-      logUiActionException(_logger, 'Import commit', exception, stackTrace);
+      final groupIndex = exception is ImportWorkflowException
+          ? exception.groupIndex
+          : null;
+      logUiActionException(
+        _logger,
+        groupIndex == null
+            ? 'Import commit'
+            : 'Import commit group ${groupIndex + 1}',
+        exception,
+        stackTrace,
+      );
       return _fail<ImportCommitResult>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -835,7 +845,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
     } on AppException catch (exception, stackTrace) {
       logUiActionException(
         _logger,
-        'Import batch revert',
+        'Import batch revert (batch=$batchId)',
         exception,
         stackTrace,
       );

@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 
 import '../../application/shared/transaction_runner.dart';
+import '../../core/error/app_exception.dart';
 import '../../core/id/id_generator.dart';
 import '../../domain/import/import_error_code.dart';
 import '../../domain/import/import_models.dart';
@@ -434,18 +435,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                 topLevelTransactionId: topLevelId,
               ),
             );
-          } catch (error, stackTrace) {
-            if (error is ImportWorkflowException) rethrow;
-            _logger.severe(
-              'Import group ${index + 1} creation failed; rolling back.',
-              error,
-              stackTrace,
-            );
+          } on BusinessException catch (error, stackTrace) {
             throw ImportWorkflowException(
               ImportErrorCode.commitFailed,
               message: '第 ${index + 1} 个交易组创建失败，所有更改已回滚。',
               cause: error,
-              stackTrace: stackTrace,
+              stackTrace: error.stackTrace ?? stackTrace,
               groupIndex: index,
             );
           }
@@ -471,21 +466,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           skippedGroupCount: plan.groups.length - items.length,
           importedAt: importedAt,
         );
-        try {
-          await _batches.saveImportedBatch(batch: batch, items: items);
-        } catch (error, stackTrace) {
-          _logger.severe(
-            'Import batch persistence failed; rolling back.',
-            error,
-            stackTrace,
-          );
-          throw ImportWorkflowException(
-            ImportErrorCode.commitFailed,
-            message: '导入批次写入失败，所有账务交易已回滚。',
-            cause: error,
-            stackTrace: stackTrace,
-          );
-        }
+        await _batches.saveImportedBatch(batch: batch, items: items);
         return ImportCommitResult(
           batch: batch,
           skippedGroupCount: batch.skippedGroupCount,
@@ -508,11 +489,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         );
       }
       return result;
-    } on ImportWorkflowException {
+    } on AppException {
       rethrow;
-    } catch (error, stackTrace) {
-      _logger.severe('Import commit failed unexpectedly.', error, stackTrace);
-      throw ImportWorkflowException(
+    } on Exception catch (error, stackTrace) {
+      throw InfrastructureException(
         ImportErrorCode.commitFailed,
         cause: error,
         stackTrace: stackTrace,
@@ -570,15 +550,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         'source=${batch.source.name}.',
       );
       return batch;
-    } on ImportWorkflowException {
+    } on AppException {
       rethrow;
-    } catch (error, stackTrace) {
-      _logger.severe(
-        'Import batch revert failed unexpectedly: batch=$batchId.',
-        error,
-        stackTrace,
-      );
-      throw ImportWorkflowException(
+    } on Exception catch (error, stackTrace) {
+      throw InfrastructureException(
         ImportErrorCode.revertFailed,
         cause: error,
         stackTrace: stackTrace,
