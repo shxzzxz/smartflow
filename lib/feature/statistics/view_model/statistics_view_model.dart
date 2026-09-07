@@ -119,8 +119,8 @@ StatisticsContentState statisticsRangeContent(
   final report = ref.watch(
     statisticsRangeReportProvider(from, until, balancePointIntervalDays),
   );
-  if (report case AsyncError(:final error)) {
-    return StatisticsContentState.error(message: '加载失败：$error');
+  if (report case AsyncError()) {
+    return const StatisticsContentState.error(message: '加载失败，请稍后重试。');
   }
   final reportValue = report.value;
   if (reportValue == null) {
@@ -138,8 +138,9 @@ Stream<CashflowReport> statisticsCashflowReport(
 ) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfDate =
-      now.year == month.year && now.month == month.month ? now : null;
+  final asOfDate = now.year == month.year && now.month == month.month
+      ? now
+      : null;
   return ref
       .watch(financialMetricsServiceProvider)
       .watchCashflowReport(
@@ -151,10 +152,9 @@ Stream<CashflowReport> statisticsCashflowReport(
 Stream<BalanceReport> statisticsBalanceReport(Ref ref, DateTime visibleMonth) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfExclusive =
-      now.year == month.year && now.month == month.month
-          ? DateTime(now.year, now.month, now.day + 1)
-          : month.nextMonthStart;
+  final asOfExclusive = now.year == month.year && now.month == month.month
+      ? DateTime(now.year, now.month, now.day + 1)
+      : month.nextMonthStart;
   return ref
       .watch(financialMetricsServiceProvider)
       .watchBalanceReport(
@@ -171,17 +171,16 @@ StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
   final isCurrentMonth = now.year == month.year && now.month == month.month;
-  final reportUntil =
-      isCurrentMonth
-          ? DateTime(now.year, now.month, now.day + 1)
-          : month.nextMonthStart;
+  final reportUntil = isCurrentMonth
+      ? DateTime(now.year, now.month, now.day + 1)
+      : month.nextMonthStart;
   final cashflow = ref.watch(statisticsCashflowReportProvider(visibleMonth));
   final balance = ref.watch(statisticsBalanceReportProvider(visibleMonth));
   final accounts = ref.watch(accountsByIdProvider);
 
   for (final value in [cashflow, balance, accounts]) {
-    if (value case AsyncError(:final error)) {
-      return StatisticsContentState.error(message: '加载失败：$error');
+    if (value case AsyncError()) {
+      return const StatisticsContentState.error(message: '加载失败，请稍后重试。');
     }
   }
   final cashflowValue = cashflow.value;
@@ -214,28 +213,27 @@ Stream<List<TransactionReadModel>> statisticsTransactions(
   required StatisticsDrilldownScope scope,
 }) async* {
   final accountLookup = await ref.watch(accountLookupProvider.future);
-  final categoryAccountIds =
-      category == null
-          ? null
-          : resolveCategoryAccountIds([category], accountLookup.byId);
+  final categoryAccountIds = category == null
+      ? null
+      : resolveCategoryAccountIds([category], accountLookup.byId);
   yield* ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
         TransactionListQuery(
           match: TransactionImpactMatch(
             categoryAccountIds: categoryAccountIds,
-            settlementAccountIds:
-                settlementAccountId == null ? null : {settlementAccountId},
+            settlementAccountIds: settlementAccountId == null
+                ? null
+                : {settlementAccountId},
           ),
           tagIds: tagId == null ? null : {tagId},
           untaggedOnly: untaggedOnly,
           occurredFrom: occurredFrom,
           occurredUntil: occurredUntil,
           topLevelOnly: false,
-          scope:
-              scope == StatisticsDrilldownScope.cashflow
-                  ? TransactionScopeFilter.stats
-                  : TransactionScopeFilter.assetLiability,
+          scope: scope == StatisticsDrilldownScope.cashflow
+              ? TransactionScopeFilter.stats
+              : TransactionScopeFilter.assetLiability,
           limit: null,
         ),
       );
@@ -264,25 +262,28 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
     ),
   );
   final accountLookup = ref.watch(accountLookupProvider);
-  if (transactions case AsyncError(:final error)) {
-    return StatisticsTransactionsContentState.error(message: '加载失败：$error');
+  if (transactions case AsyncError()) {
+    return const StatisticsTransactionsContentState.error(
+      message: '加载失败，请稍后重试。',
+    );
   }
-  if (accountLookup case AsyncError(:final error)) {
-    return StatisticsTransactionsContentState.error(message: '加载失败：$error');
+  if (accountLookup case AsyncError()) {
+    return const StatisticsTransactionsContentState.error(
+      message: '加载失败，请稍后重试。',
+    );
   }
   final transactionValues = transactions.value;
   final lookup = accountLookup.value;
   if (transactionValues == null || lookup == null) {
     return const StatisticsTransactionsContentState.loading();
   }
-  final amountSource =
-      category != null
-          ? TransactionCategoryImpactAmountSource(
-            resolveCategoryAccountIds([category], lookup.byId),
-          )
-          : settlementAccountId != null
-          ? TransactionAccountImpactAmountSource(settlementAccountId)
-          : const TransactionGroupAmountSource();
+  final amountSource = category != null
+      ? TransactionCategoryImpactAmountSource(
+          resolveCategoryAccountIds([category], lookup.byId),
+        )
+      : settlementAccountId != null
+      ? TransactionAccountImpactAmountSource(settlementAccountId)
+      : const TransactionGroupAmountSource();
   return StatisticsTransactionsContentState.loaded(
     groups: groupTransactionsByDay(
       items: transactionValues,

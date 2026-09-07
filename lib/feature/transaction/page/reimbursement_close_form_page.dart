@@ -53,7 +53,7 @@ class _ReimbursementCloseFormPageState
       body: SafeArea(
         child: switch (asyncState) {
           AsyncData(value: final state) => _buildLoaded(provider, state),
-          AsyncError(:final error) => Center(child: Text('加载失败：$error')),
+          AsyncError() => const Center(child: Text('加载失败，请稍后重试。')),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),

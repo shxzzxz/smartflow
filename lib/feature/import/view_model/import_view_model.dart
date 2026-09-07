@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/provider.dart';
 import '../../../application/import/import_api.dart';
 import '../../../core/error/app_exception.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
 final _logger = Logger('feature.import');
@@ -143,10 +144,9 @@ class ImportPageState {
     final requiredMappingKeys = <ImportMappingKey>{};
     for (final group in currentReview.groups) {
       if (!group.canSelect) continue;
-      final sourceKeys =
-          group.group.transactions
-              .expand((draft) => draft.sourceEntityKeys)
-              .toSet();
+      final sourceKeys = group.group.transactions
+          .expand((draft) => draft.sourceEntityKeys)
+          .toSet();
       for (final entity in currentReview.plan.sourceEntities) {
         if (sourceKeys.contains(entity.sourceEntityKey)) {
           requiredMappingKeys.add(ImportMappingKey.fromEntity(entity));
@@ -195,10 +195,9 @@ class ImportPageState {
   }) {
     return ImportPageState(
       phase: phase ?? this.phase,
-      selectedBundle:
-          selectedBundle == _sentinel
-              ? this.selectedBundle
-              : selectedBundle as ImportBundle?,
+      selectedBundle: selectedBundle == _sentinel
+          ? this.selectedBundle
+          : selectedBundle as ImportBundle?,
       fileProgress: fileProgress ?? this.fileProgress,
       plan: plan == _sentinel ? this.plan : plan as ImportParseResult?,
       review: review == _sentinel ? this.review : review as ImportPlanReview?,
@@ -208,8 +207,7 @@ class ImportPageState {
           groupMappingOverrides ?? this.groupMappingOverrides,
       selectedGroupIndexes: selectedGroupIndexes ?? this.selectedGroupIndexes,
       confirmedExactDuplicateIndexes:
-          confirmedExactDuplicateIndexes ??
-          this.confirmedExactDuplicateIndexes,
+          confirmedExactDuplicateIndexes ?? this.confirmedExactDuplicateIndexes,
       confirmedSuspectedDuplicateIndexes:
           confirmedSuspectedDuplicateIndexes ??
           this.confirmedSuspectedDuplicateIndexes,
@@ -221,14 +219,12 @@ class ImportPageState {
       saveMappingConfiguration:
           saveMappingConfiguration ?? this.saveMappingConfiguration,
       error: error == _sentinel ? this.error : error as UiError?,
-      lastCommit:
-          lastCommit == _sentinel
-              ? this.lastCommit
-              : lastCommit as ImportCommitResult?,
-      revertingBatchId:
-          revertingBatchId == _sentinel
-              ? this.revertingBatchId
-              : revertingBatchId as String?,
+      lastCommit: lastCommit == _sentinel
+          ? this.lastCommit
+          : lastCommit as ImportCommitResult?,
+      revertingBatchId: revertingBatchId == _sentinel
+          ? this.revertingBatchId
+          : revertingBatchId as String?,
     );
   }
 }
@@ -253,8 +249,9 @@ class ImportViewModel extends Notifier<ImportPageState> {
         state = state.copyWith(phase: _settledPhase);
         return const ImportActionOutcome.success(null);
       }
-      final selectedBundle =
-          append ? _mergeBundles(state.selectedBundle, bundle) : bundle;
+      final selectedBundle = append
+          ? _mergeBundles(state.selectedBundle, bundle)
+          : bundle;
       state = state.copyWith(
         phase: ImportPagePhase.idle,
         selectedBundle: selectedBundle,
@@ -276,7 +273,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
         saveMappingConfiguration: false,
       );
       return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(_logger, 'Import file pick', exception, stackTrace);
       return _fail<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -323,7 +321,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
       plan = ref
           .read(importPlanAppServiceProvider)
           .parse(source: ImportSource.yimu, bundle: bundle);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import bundle parse',
+        exception,
+        stackTrace,
+      );
       return _failParsing<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -335,10 +339,9 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
 
     state = state.copyWith(
-      phase:
-          plan.hasFatalIssues
-              ? ImportPagePhase.review
-              : ImportPagePhase.reviewing,
+      phase: plan.hasFatalIssues
+          ? ImportPagePhase.review
+          : ImportPagePhase.reviewing,
       plan: plan,
       review: null,
       fileProgress: _fileProgressForPlan(bundle, plan),
@@ -359,7 +362,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
         selectAllImportable: true,
       );
       return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import plan review',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -503,7 +512,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
         groupMappingOverrides: state.groupMappingOverrides,
       );
       return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import mapping update',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -583,27 +598,23 @@ class ImportViewModel extends Notifier<ImportPageState> {
   void selectAllImportable(bool selected) {
     final review = state.review;
     if (review == null) return;
-    final indexes =
-        selected
-            ? {
-              for (final group in review.groups)
-                if (group.canSelect && !group.requiresConfirmation) group.index,
-            }
-            : <int>{};
+    final indexes = selected
+        ? {
+            for (final group in review.groups)
+              if (group.canSelect && !group.requiresConfirmation) group.index,
+          }
+        : <int>{};
     state = state.copyWith(
       selectedGroupIndexes: indexes,
-      confirmedExactDuplicateIndexes:
-          selected
-              ? state.confirmedExactDuplicateIndexes.intersection(indexes)
-              : const {},
-      confirmedSuspectedDuplicateIndexes:
-          selected
-              ? state.confirmedSuspectedDuplicateIndexes.intersection(indexes)
-              : const {},
-      confirmedWarningIndexes:
-          selected
-              ? state.confirmedWarningIndexes.intersection(indexes)
-              : const {},
+      confirmedExactDuplicateIndexes: selected
+          ? state.confirmedExactDuplicateIndexes.intersection(indexes)
+          : const {},
+      confirmedSuspectedDuplicateIndexes: selected
+          ? state.confirmedSuspectedDuplicateIndexes.intersection(indexes)
+          : const {},
+      confirmedWarningIndexes: selected
+          ? state.confirmedWarningIndexes.intersection(indexes)
+          : const {},
       lastCommit: null,
     );
   }
@@ -690,8 +701,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
           mappings: review.effectiveMappings,
           plannedCreations: state.plannedCreations,
           selectedGroupIndexes: state.selectedGroupIndexes,
-          confirmedExactDuplicateIndexes:
-              state.confirmedExactDuplicateIndexes,
+          confirmedExactDuplicateIndexes: state.confirmedExactDuplicateIndexes,
           confirmedSuspectedDuplicateIndexes:
               state.confirmedSuspectedDuplicateIndexes,
           confirmedWarningIndexes: state.confirmedWarningIndexes,
@@ -718,7 +728,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
           groupMappingOverrides: state.groupMappingOverrides,
         );
         batches = await service.listBatches(source: ImportSource.yimu);
-      } on AppException catch (exception) {
+      } on AppException catch (exception, stackTrace) {
+        logUiActionException(
+          _logger,
+          'Import commit refresh',
+          exception,
+          stackTrace,
+        );
         refreshError = UiError.fromException(exception);
       } on Exception catch (exception, stackTrace) {
         _logger.severe(
@@ -750,7 +766,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
         );
       }
       return ImportActionOutcome.success(result);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(_logger, 'Import commit', exception, stackTrace);
       return _fail<ImportCommitResult>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -770,7 +787,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
           .listBatches(source: ImportSource.yimu);
       state = state.copyWith(historyLoading: false, batches: batches);
       return ImportActionOutcome.success(batches);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import history load',
+        exception,
+        stackTrace,
+      );
       return _failHistory(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -809,7 +832,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
         state = state.copyWith(batches: batches, revertingBatchId: null);
       }
       return ImportActionOutcome.success(reverted);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import batch revert',
+        exception,
+        stackTrace,
+      );
       return _failRevert<ImportBatch>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -833,8 +862,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
 
   ImportPagePhase get _settledPhase =>
       state.review == null && state.plan == null
-          ? ImportPagePhase.idle
-          : ImportPagePhase.review;
+      ? ImportPagePhase.idle
+      : ImportPagePhase.review;
 
   Future<ImportActionOutcome<void>> _reviewWithMappings(
     Map<ImportMappingKey, String> mappings, {
@@ -862,7 +891,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
             groupMappingOverrides ?? state.groupMappingOverrides,
       );
       return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import plan review',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -885,14 +920,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
       error: null,
       mappingConfirmed: false,
       saveMappingConfiguration: false,
-      confirmedSuspectedDuplicateIndexes:
-          state.confirmedSuspectedDuplicateIndexes
-              .where((index) => index != editedGroupIndex)
-              .toSet(),
-      confirmedWarningIndexes:
-          state.confirmedWarningIndexes
-              .where((index) => index != editedGroupIndex)
-              .toSet(),
+      confirmedSuspectedDuplicateIndexes: state
+          .confirmedSuspectedDuplicateIndexes
+          .where((index) => index != editedGroupIndex)
+          .toSet(),
+      confirmedWarningIndexes: state.confirmedWarningIndexes
+          .where((index) => index != editedGroupIndex)
+          .toSet(),
     );
     try {
       final review = await ref
@@ -910,7 +944,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
         groupMappingOverrides: groupMappingOverrides,
       );
       return const ImportActionOutcome.success(null);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import plan review',
+        exception,
+        stackTrace,
+      );
       return _fail<void>(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(
@@ -955,14 +995,12 @@ class ImportViewModel extends Notifier<ImportPageState> {
       for (final group in review.groups)
         if (group.canSelect && !group.isExactDuplicate) group.index,
     };
-    final selected =
-        selectAllImportable
-            ? {
-              for (final group in review.groups)
-                if (group.canSelect && !group.requiresConfirmation)
-                  group.index,
-            }
-            : state.selectedGroupIndexes.intersection(importable);
+    final selected = selectAllImportable
+        ? {
+            for (final group in review.groups)
+              if (group.canSelect && !group.requiresConfirmation) group.index,
+          }
+        : state.selectedGroupIndexes.intersection(importable);
     final confirmedExactDuplicates = state.confirmedExactDuplicateIndexes
         .intersection(selected);
     final confirmed = state.confirmedSuspectedDuplicateIndexes.intersection(
@@ -1004,14 +1042,13 @@ class ImportViewModel extends Notifier<ImportPageState> {
     final bundle = state.selectedBundle;
     state = state.copyWith(
       phase: ImportPagePhase.idle,
-      fileProgress:
-          bundle == null
-              ? const []
-              : _fileProgressForBundle(
-                bundle,
-                ImportFileProcessingStatus.failed,
-                detail: error.message,
-              ),
+      fileProgress: bundle == null
+          ? const []
+          : _fileProgressForBundle(
+              bundle,
+              ImportFileProcessingStatus.failed,
+              detail: error.message,
+            ),
       error: error,
     );
     return ImportActionFailure<T>(error);
@@ -1079,10 +1116,9 @@ ImportFileProgress _fileProgressFromResult(
   if (result == null) {
     return ImportFileProgress(
       fileIndex: fileIndex,
-      status:
-          planHasFatalIssues
-              ? ImportFileProcessingStatus.failed
-              : ImportFileProcessingStatus.success,
+      status: planHasFatalIssues
+          ? ImportFileProcessingStatus.failed
+          : ImportFileProcessingStatus.success,
       detail: planHasFatalIssues ? '无法确认该文件的解析结果。' : null,
     );
   }
@@ -1093,8 +1129,9 @@ ImportFileProgress _fileProgressFromResult(
       detail: result.fatalIssues.first.message,
     );
   }
-  final issueCount =
-      result.fileType == null ? 0 : issueCountByType[result.fileType] ?? 0;
+  final issueCount = result.fileType == null
+      ? 0
+      : issueCountByType[result.fileType] ?? 0;
   if (issueCount > 0) {
     return ImportFileProgress(
       fileIndex: fileIndex,

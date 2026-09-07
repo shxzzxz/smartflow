@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -13,6 +14,7 @@ import '../presentation/calendar_month_presentation.dart';
 part 'calendar_view_model.g.dart';
 
 const calendarTransactionPageSize = 50;
+final _logger = Logger('feature.calendar');
 
 @riverpod
 class CalendarViewModel extends _$CalendarViewModel {
@@ -154,7 +156,12 @@ class CalendarTransactionFeedViewModel
         hasMore: nextPage.length == calendarTransactionPageSize,
         isLoadingMore: false,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe(
+        'Calendar transaction pagination failed.',
+        error,
+        stackTrace,
+      );
       if (!ref.mounted || requestGeneration != _requestGeneration) return;
       state = current.copyWith(
         isLoadingMore: false,
@@ -171,8 +178,9 @@ Stream<CashflowComparison> calendarCashflowComparison(
 ) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfDate =
-      now.year == month.year && now.month == month.month ? now : null;
+  final asOfDate = now.year == month.year && now.month == month.month
+      ? now
+      : null;
   return ref
       .watch(financialMetricsServiceProvider)
       .watchCashflowComparison(
@@ -240,20 +248,20 @@ CalendarContentState calendarContent(
     calendarTransactionFeedViewModelProvider(selectedDate),
   );
 
-  if (comparison case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
+  if (comparison case AsyncError()) {
+    return const CalendarContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (dailySummaries case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
+  if (dailySummaries case AsyncError()) {
+    return const CalendarContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (creditDueItems case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
+  if (creditDueItems case AsyncError()) {
+    return const CalendarContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (monthlyBillSummaries case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
+  if (monthlyBillSummaries case AsyncError()) {
+    return const CalendarContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (accountLookup case AsyncError(:final error)) {
-    return CalendarContentState.error(message: '加载失败：$error');
+  if (accountLookup case AsyncError()) {
+    return const CalendarContentState.error(message: '加载失败，请稍后重试。');
   }
   if (feed case CalendarTransactionFeedError(:final message)) {
     return CalendarContentState.error(message: message);

@@ -2,6 +2,8 @@
 
 本文档定义 SmartFlow 的错误表达边界。通用 `Result` / `Failure` 已退出命令式业务主路径；命令失败使用内部异常表达，长期值返回失败使用场景专用 violation / validation report。
 
+异常记录时机、级别、数据边界和重复记录处理见 [日志规范](logging.md)。错误展示责任与日志记录责任分别确定，展示错误不意味着需要再次记录。
+
 ## 基本原则
 
 校验用于判断输入、规则或状态是否满足要求；错误用于表达一次命令或调用已经失败。异常用于阻断一次命令流程；返回值用于表达普通判断、组合、预检和批量校验。
@@ -29,6 +31,7 @@
 - View 负责根据 ViewModel 暴露的错误状态执行 snackbar、dialog、inline error、banner 或 fullscreen placeholder。
 - ViewModel 对 View 的返回协议不使用 `Result<T>` 命名，避免和业务层历史 `Result` 混用；使用 `SubmitOutcome`、`UiActionOutcome` 或具体页面语义 outcome。
 - `UiError` 只包含错误语义和字段错误，不包含 snackbar / dialog / banner 等展示方式。
+- 命令边界将失败转换为 UI outcome 时承担最终日志责任；已使用共享 action guard 时由 guard 记录，ViewModel 不重复记录。业务拒绝使用 `WARNING`，导致命令失败的基础设施异常和未知异常使用 `SEVERE`，包装异常须保留 code、原始 cause 与堆栈并遵守日志数据边界。
 
 ## 全局异常处理
 
@@ -36,8 +39,8 @@
 
 - 捕获 Flutter framework error。
 - 捕获未处理 async error。
-- 后续可通过 Riverpod `ProviderObserver` 记录 provider 错误。
-- 记录日志并展示兜底错误页或兜底提示。
+- 通过 Riverpod `ProviderObserver` 记录 provider 错误；observer 只记录，页面负责加载错误展示。
+- 未处理异常记录日志并按错误发生位置展示兜底错误页或兜底提示；同一次失败已由 observer 记录时，全局边界避免重复记录。
 - Debug 下保留错误详情；Release 下展示通用文案。
 
 全局处理不尝试恢复业务状态，不维护复杂错误队列。业务可预期失败应在 ViewModel 捕获 `AppException` 后转成 UI outcome；用户命令中的普通 `Exception` 由 ViewModel 兜底成未知错误；未被命令 outcome 接住的异常和 `Error` 进入全局处理。
@@ -53,6 +56,8 @@ Future<T> run<T>(Future<T> Function() body);
 命令式业务失败抛内部异常，底层事务机制自然回滚；ViewModel 在 application 调用边界捕获 `AppException` 和普通 `Exception`。`TransactionRunner` 只暴露异常友好的普通返回值接口，不再提供返回通用 `Result<T>` 的事务入口。
 
 repository / adapter 只转换调用方明确关心的持久化失败，例如 `UPDATE` 影响行数为 0、幂等表唯一冲突或版本冲突。不要给每条 SQL 或每个 repository 方法套通用 guard。未知数据库异常不包装为业务失败；在用户命令链路中由 ViewModel 的普通 `Exception` 兜底成未知错误，在非命令链路中进入页面加载错误或全局错误处理。
+
+仅转换或继续传播失败的 repository、adapter 和事务执行器不重复记录异常。事务成功日志在最外层事务提交后记录，失败日志不得在回滚尚未完成时宣称已经回滚。
 
 ## 内部异常类型
 

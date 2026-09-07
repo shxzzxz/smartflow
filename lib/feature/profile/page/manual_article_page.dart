@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
@@ -12,6 +13,8 @@ import '../model/manual_article.dart';
 import '../widget/manual_markdown.dart';
 import '../widget/manual_sheets.dart';
 import '../widget/manual_widgets.dart';
+
+final _logger = Logger('feature.profile.manual');
 
 class ManualArticlePage extends StatefulWidget {
   const ManualArticlePage({required this.slug, super.key});
@@ -64,7 +67,8 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
             headings.map((heading) => MapEntry(heading.key, GlobalKey())),
           );
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logger.severe('Manual article load failed.', error, stackTrace);
       if (!mounted) {
         return;
       }
@@ -168,12 +172,9 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
     }
 
     final styles = context.appTextStyles;
-    final related =
-        manualArticles
-            .where(
-              (a) => a.slug != article.slug && a.category == article.category,
-            )
-            .toList();
+    final related = manualArticles
+        .where((a) => a.slug != article.slug && a.category == article.category)
+        .toList();
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -202,10 +203,9 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
                   for (var index = 0; index < related.length; index++) ...[
                     ManualArticleRow(
                       article: related[index],
-                      onTap:
-                          () => context.push(
-                            '/profile/manual/${related[index].slug}',
-                          ),
+                      onTap: () => context.push(
+                        '/profile/manual/${related[index].slug}',
+                      ),
                     ),
                     if (index < related.length - 1)
                       const Divider(height: 1, indent: 16, endIndent: 16),

@@ -85,7 +85,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           await _standardizeAccountProfiles(database);
         } on AccountProfileMigrationError catch (error, stackTrace) {
           _logger.severe(
-            'Account profile migration failed: $error',
+            'Account profile migration failed.',
             error,
             stackTrace,
           );
@@ -102,7 +102,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           await _createTransactionRowIndexes(database);
         } on TransactionLineMigrationError catch (error, stackTrace) {
           _logger.severe(
-            'Transaction line migration failed: $error',
+            'Transaction line migration failed.',
             error,
             stackTrace,
           );

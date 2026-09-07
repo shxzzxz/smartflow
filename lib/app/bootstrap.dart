@@ -18,8 +18,13 @@ Future<void> _logAppStarted() async {
       'SmartFlow started: version ${version.versionName} '
       '(build ${version.buildNumber}).',
     );
-  } catch (_) {
+  } catch (error, stackTrace) {
     // 平台通道不可用（如桌面调试）时仍记录启动。
+    logger.warning(
+      'SmartFlow version lookup failed; continuing startup without version.',
+      error,
+      stackTrace,
+    );
     logger.info('SmartFlow started.');
   }
 }

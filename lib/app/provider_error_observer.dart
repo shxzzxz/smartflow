@@ -13,6 +13,10 @@ final class AppProviderErrorObserver extends ProviderObserver {
     Object error,
     StackTrace stackTrace,
   ) {
-    _logger.severe('Provider failed: ${context.provider}', error, stackTrace);
+    _logger.severe(
+      'Provider failed: ${context.provider.runtimeType}.',
+      error,
+      stackTrace,
+    );
   }
 }

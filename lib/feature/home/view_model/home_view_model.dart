@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
@@ -14,6 +15,7 @@ import '../../shared/view_model/app_settings_view_model.dart';
 part 'home_view_model.g.dart';
 
 const homeTransactionPageSize = 50;
+final _logger = Logger('feature.home');
 
 @riverpod
 class HomeViewModel extends _$HomeViewModel {
@@ -244,7 +246,8 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
         hasMore: nextPage.length == homeTransactionPageSize,
         isLoadingMore: false,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Home transaction pagination failed.', error, stackTrace);
       if (!ref.mounted || requestGeneration != _requestGeneration) return;
       state = current.copyWith(
         isLoadingMore: false,
@@ -270,8 +273,9 @@ Stream<CashflowComparison> homeCashflowComparison(
 ) {
   final now = ref.watch(currentDateTimeProvider);
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfDate =
-      now.year == month.year && now.month == month.month ? now : null;
+  final asOfDate = now.year == month.year && now.month == month.month
+      ? now
+      : null;
   return ref
       .watch(financialMetricsServiceProvider)
       .watchCashflowComparison(
@@ -296,14 +300,14 @@ HomeFilterOptionsState homeFilterOptions(Ref ref) {
   final incomeTree = ref.watch(categoryTreeProvider(AccountType.income));
   final accounts = ref.watch(accountListProvider);
 
-  if (expenseTree case AsyncError(:final error)) {
-    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  if (expenseTree case AsyncError()) {
+    return const HomeFilterOptionsState.error(message: '加载筛选项失败，请稍后重试。');
   }
-  if (incomeTree case AsyncError(:final error)) {
-    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  if (incomeTree case AsyncError()) {
+    return const HomeFilterOptionsState.error(message: '加载筛选项失败，请稍后重试。');
   }
-  if (accounts case AsyncError(:final error)) {
-    return HomeFilterOptionsState.error(message: '加载筛选项失败：$error');
+  if (accounts case AsyncError()) {
+    return const HomeFilterOptionsState.error(message: '加载筛选项失败，请稍后重试。');
   }
   final expenseValues = expenseTree.value;
   final incomeValues = incomeTree.value;
@@ -333,17 +337,17 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
       ref.watch(appSettingsViewModelProvider).value?.cashflowPeriodMetric ??
       const AppSettings().cashflowPeriodMetric;
 
-  if (comparison case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
+  if (comparison case AsyncError()) {
+    return const HomeContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (dailySummaries case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
+  if (dailySummaries case AsyncError()) {
+    return const HomeContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (accountLookup case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
+  if (accountLookup case AsyncError()) {
+    return const HomeContentState.error(message: '加载失败，请稍后重试。');
   }
-  if (budgetReport case AsyncError(:final error)) {
-    return HomeContentState.error(message: '加载失败：$error');
+  if (budgetReport case AsyncError()) {
+    return const HomeContentState.error(message: '加载失败，请稍后重试。');
   }
 
   final comparisonValue = comparison.value;
@@ -411,14 +415,12 @@ class HomeTransactionFilter {
     required Set<String>? settlementAccountIds,
     Set<String>? tagIds,
     this.untaggedOnly = false,
-  }) : categoryAccountIds =
-           categoryAccountIds == null
-               ? null
-               : Set.unmodifiable(categoryAccountIds),
-       settlementAccountIds =
-           settlementAccountIds == null
-               ? null
-               : Set.unmodifiable(settlementAccountIds),
+  }) : categoryAccountIds = categoryAccountIds == null
+           ? null
+           : Set.unmodifiable(categoryAccountIds),
+       settlementAccountIds = settlementAccountIds == null
+           ? null
+           : Set.unmodifiable(settlementAccountIds),
        tagIds = tagIds == null ? null : Set.unmodifiable(tagIds);
 
   const HomeTransactionFilter.all()

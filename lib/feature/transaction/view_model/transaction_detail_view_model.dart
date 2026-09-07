@@ -11,6 +11,7 @@ import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'transaction_detail_action_dispatcher.dart';
 import 'transaction_detail_state.dart';
@@ -236,7 +237,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     _setSubmitting(true);
     try {
       return await body(loaded);
-    } on AppException catch (exception) {
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Transaction detail action',
+        exception,
+        stackTrace,
+      );
       return UiActionOutcome.failure(UiError.fromException(exception));
     } on Exception catch (exception, stackTrace) {
       _logger.severe(

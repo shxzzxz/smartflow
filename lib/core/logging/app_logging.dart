@@ -27,7 +27,7 @@ Future<AppLogFileSink> configureAppLogging({
   );
   await sink.initialize();
 
-  Logger.root.level = Level.ALL;
+  Logger.root.level = kDebugMode ? Level.FINE : Level.INFO;
   await _rootLogSubscription?.cancel();
   _rootLogSubscription = Logger.root.onRecord.listen((record) {
     unawaited(

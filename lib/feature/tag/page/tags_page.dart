@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
@@ -12,6 +13,8 @@ import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/tag/tag_name_dialog.dart';
 import '../../../widget/business/tag/tag_search_field.dart';
 import '../../shared/provider/tag_providers.dart';
+
+final _logger = Logger('feature.tag');
 
 /// 标签词表管理：新建、重命名、合并、排序与删除。
 /// 删除标签会解除全部交易引用，确认时展示使用数量。
@@ -79,7 +82,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               child: tagsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) =>
-                    Center(child: Text('标签加载失败：$error')),
+                    const Center(child: Text('标签加载失败，请稍后重试。')),
                 data: (tags) => _buildTagContent(context, ref, tags, colors),
               ),
             ),
@@ -329,7 +332,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     late final List<TagView> tags;
     try {
       tags = await service.listTags();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Tag list load failed.', error, stackTrace);
       if (context.mounted) _showMessage(context, '标签加载失败，请稍后重试');
       return;
     }
@@ -364,7 +368,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       }
       if (!context.mounted) return;
       _leaveBatchMode();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Tag batch delete failed.', error, stackTrace);
       if (!context.mounted) return;
       setState(() => _batchDeleting = false);
       _showMessage(context, '批量删除失败，请稍后重试');

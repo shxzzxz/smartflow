@@ -62,8 +62,8 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
               groups: groups,
               balanceSheet: balanceSheet,
               hideBalances: _hideBalances,
-              onToggleHide:
-                  () => setState(() => _hideBalances = !_hideBalances),
+              onToggleHide: () =>
+                  setState(() => _hideBalances = !_hideBalances),
             ),
           (AsyncError(:final error), _, _, _) ||
           (_, AsyncError(:final error), _, _) ||
@@ -149,30 +149,27 @@ class _AccountsContent extends ConsumerWidget {
                 ],
               ],
             ),
-            footer:
-                archivedAccounts.isNotEmpty
-                    ? Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.space20),
-                      child: _ArchivedAccountsEntry(
-                        count: archivedAccounts.length,
-                        onTap:
-                            () => context.push(
-                              '/account/archived',
-                              extra: hideBalances,
-                            ),
+            footer: archivedAccounts.isNotEmpty
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.space20),
+                    child: _ArchivedAccountsEntry(
+                      count: archivedAccounts.length,
+                      onTap: () => context.push(
+                        '/account/archived',
+                        extra: hideBalances,
                       ),
-                    )
-                    : null,
+                    ),
+                  )
+                : null,
             itemCount: sections.length,
-            onReorderItem:
-                (oldIndex, newIndex) => _reorderSections(
-                  context,
-                  ref,
-                  sections: sections,
-                  groups: groups,
-                  oldIndex: oldIndex,
-                  newIndex: newIndex,
-                ),
+            onReorderItem: (oldIndex, newIndex) => _reorderSections(
+              context,
+              ref,
+              sections: sections,
+              groups: groups,
+              oldIndex: oldIndex,
+              newIndex: newIndex,
+            ),
             itemBuilder: (context, index) {
               final section = sections[index];
               return Padding(
@@ -186,10 +183,9 @@ class _AccountsContent extends ConsumerWidget {
                   reorderEnabled: section.id != 'ungrouped',
                   hideBalances: hideBalances,
                   collapsed: collapsedKeys.contains(section.id),
-                  onToggleCollapsed:
-                      () => ref
-                          .read(assetSectionCollapseViewModelProvider.notifier)
-                          .toggle(section.id),
+                  onToggleCollapsed: () => ref
+                      .read(assetSectionCollapseViewModelProvider.notifier)
+                      .toggle(section.id),
                   onAccountReorder: (oldAccountIndex, newAccountIndex) {
                     _moveAccount(
                       context,
@@ -289,10 +285,9 @@ class _AssetsHeader extends StatelessWidget {
         if (allCollapsed != null)
           AppHeaderIconButton(
             onPressed: onToggleCollapseAll,
-            icon:
-                allCollapsed
-                    ? RemixIcons.expand_up_down_line
-                    : RemixIcons.contract_up_down_line,
+            icon: allCollapsed
+                ? RemixIcons.expand_up_down_line
+                : RemixIcons.contract_up_down_line,
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
         AppHeaderIconButton(
@@ -311,8 +306,9 @@ class _AssetsHeader extends StatelessWidget {
             ),
             AppPopupMenuAction(
               label: hideBalances ? '显示余额' : '隐藏余额',
-              icon:
-                  hideBalances ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+              icon: hideBalances
+                  ? RemixIcons.eye_line
+                  : RemixIcons.eye_off_line,
               onPressed: onToggleHide,
             ),
           ],
@@ -393,8 +389,8 @@ class _NetAssetCard extends StatelessWidget {
                       hideBalances
                           ? '较上月 ****'
                           : _formatNetAssetComparison(
-                            comparison.netAssetChange,
-                          ),
+                              comparison.netAssetChange,
+                            ),
                       style: textStyles.onPrimarySupporting,
                     ),
                   ],
@@ -457,11 +453,10 @@ class _AssetDonutPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final strokeWidth = size.width * 0.22;
-    final paint =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth
-          ..strokeCap = StrokeCap.butt;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
     paint.color = baseColor.withValues(alpha: 0.22);
     canvas.drawArc(rect.deflate(strokeWidth / 2), 0, 6.283, false, paint);
     paint.color = baseColor.withValues(alpha: 0.72);
@@ -524,10 +519,9 @@ class _LegendRow extends StatelessWidget {
               final hiddenText = '¥ ****';
               return AdaptiveMoneyText(
                 preciseText: hideBalance ? hiddenText : money.format(),
-                compactText:
-                    hideBalance
-                        ? hiddenText
-                        : formatMoney(money, style: MoneyFormatStyle.compact),
+                compactText: hideBalance
+                    ? hiddenText
+                    : formatMoney(money, style: MoneyFormatStyle.compact),
                 style: textStyles.onPrimaryTinyStrong,
                 maxWidth: constraints.maxWidth,
               );
@@ -641,20 +635,17 @@ class _AccountSection extends StatelessWidget {
                   buildDefaultDragHandles: false,
                   itemCount: accounts.length,
                   onReorderItem: onAccountReorder,
-                  itemBuilder:
-                      (context, index) => Padding(
-                        key: ValueKey(accounts[index].id),
-                        padding: const EdgeInsets.only(
-                          bottom: AppSpacing.space4,
-                        ),
-                        child: ReorderableDelayedDragStartListener(
-                          index: index,
-                          child: _AccountRow(
-                            model: accounts[index],
-                            hideBalance: hideBalances,
-                          ),
-                        ),
+                  itemBuilder: (context, index) => Padding(
+                    key: ValueKey(accounts[index].id),
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space4),
+                    child: ReorderableDelayedDragStartListener(
+                      index: index,
+                      child: _AccountRow(
+                        model: accounts[index],
+                        hideBalance: hideBalances,
                       ),
+                    ),
+                  ),
                 ),
             ],
           ],
@@ -673,10 +664,9 @@ class _AccountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final semantic =
-        model.accountType == AccountType.asset
-            ? MoneySemantic.asset
-            : MoneySemantic.liability;
+    final semantic = model.accountType == AccountType.asset
+        ? MoneySemantic.asset
+        : MoneySemantic.liability;
 
     final row = AccountListRow(
       account: model,
@@ -793,14 +783,8 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
               Expanded(
                 child: ReorderableListView.builder(
                   itemCount: groups.length,
-                  onReorderItem:
-                      (oldIndex, newIndex) => _reorderGroups(
-                        context,
-                        ref,
-                        groups,
-                        oldIndex,
-                        newIndex,
-                      ),
+                  onReorderItem: (oldIndex, newIndex) =>
+                      _reorderGroups(context, ref, groups, oldIndex, newIndex),
                   itemBuilder: (context, index) {
                     final group = groups[index];
                     return ListTile(
@@ -812,24 +796,22 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
                       title: Text(group.name),
                       trailing: PopupMenuButton<_AccountGroupAction>(
                         position: PopupMenuPosition.under,
-                        onSelected:
-                            (action) => _handleAction(
-                              context,
-                              ref,
-                              group: group,
-                              action: action,
-                            ),
-                        itemBuilder:
-                            (context) => const [
-                              PopupMenuItem(
-                                value: _AccountGroupAction.rename,
-                                child: Text('重命名'),
-                              ),
-                              PopupMenuItem(
-                                value: _AccountGroupAction.delete,
-                                child: Text('删除'),
-                              ),
-                            ],
+                        onSelected: (action) => _handleAction(
+                          context,
+                          ref,
+                          group: group,
+                          action: action,
+                        ),
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: _AccountGroupAction.rename,
+                            child: Text('重命名'),
+                          ),
+                          PopupMenuItem(
+                            value: _AccountGroupAction.delete,
+                            child: Text('删除'),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -876,21 +858,20 @@ class _AccountGroupManagerSheet extends ConsumerWidget {
       case _AccountGroupAction.delete:
         final confirmed = await showDialog<bool>(
           context: context,
-          builder:
-              (dialogContext) => AlertDialog(
-                title: Text('删除“${group.name}”？'),
-                content: const Text('该分组中的账户会变为未分组，账户本身不会被删除。'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(false),
-                    child: const Text('取消'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(dialogContext).pop(true),
-                    child: const Text('删除'),
-                  ),
-                ],
+          builder: (dialogContext) => AlertDialog(
+            title: Text('删除“${group.name}”？'),
+            content: const Text('该分组中的账户会变为未分组，账户本身不会被删除。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('取消'),
               ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
         );
         if (confirmed != true || !context.mounted) return;
         final outcome = await ref
@@ -1004,7 +985,7 @@ class _AccountsErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Text('账户加载失败：$error'),
+        child: const Text('账户加载失败，请稍后重试。'),
       ),
     );
   }

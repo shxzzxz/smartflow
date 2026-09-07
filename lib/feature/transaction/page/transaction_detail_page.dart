@@ -56,7 +56,8 @@ class TransactionDetailPage extends ConsumerWidget {
             Expanded(
               child: stateAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) => Center(child: Text('$error')),
+                error: (error, stackTrace) =>
+                    const Center(child: Text('交易详情加载失败，请稍后重试。')),
                 data: (state) {
                   return switch (state) {
                     TransactionDetailNotFound() => const Center(

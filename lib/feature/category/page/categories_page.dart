@@ -374,7 +374,7 @@ class _CategoryErrorView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Text('分类加载失败：$error'),
+        child: const Text('分类加载失败，请稍后重试。'),
       ),
     );
   }

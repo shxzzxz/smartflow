@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/provider.dart';
@@ -25,6 +26,8 @@ import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/tag/tag_multi_select_sheet.dart';
 
+final _logger = Logger('feature.home');
+
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -45,8 +48,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final visibleTransactionIds = _contentTransactionIds(content);
     final visibleCount = visibleTransactionIds.length;
-    final selectedVisibleCount =
-        _selectedTransactionIds.intersection(visibleTransactionIds).length;
+    final selectedVisibleCount = _selectedTransactionIds
+        .intersection(visibleTransactionIds)
+        .length;
     final allVisibleTransactionsSelected =
         visibleTransactionIds.isNotEmpty &&
         selectedVisibleCount == visibleCount;
@@ -64,55 +68,49 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: [
               AnimatedSwitcher(
                 duration: AppMotion.durationFast,
-                child:
-                    _batchMode
-                        ? AppPageHeader(
-                          key: const ValueKey('home-batch-header'),
-                          title:
-                              selectedVisibleCount > 0
-                                  ? '已选 $selectedVisibleCount 笔'
-                                  : '选择交易',
-                          subtitle: hasMore ? '已加载 $visibleCount 笔' : null,
-                          onBack: _exitBatchMode,
-                          actions: [
-                            AppHeaderIconButton(
-                              icon:
-                                  allVisibleTransactionsSelected
-                                      ? RemixIcons.checkbox_circle_fill
-                                      : RemixIcons.checkbox_circle_line,
-                              tooltip:
-                                  allVisibleTransactionsSelected
-                                      ? '取消全选'
-                                      : '全选已加载',
-                              onPressed:
-                                  !_batchSubmitting &&
-                                          visibleTransactionIds.isNotEmpty
-                                      ? () =>
-                                          _toggleSelectAll(visibleTransactionIds)
-                                      : null,
-                            ),
-                          ],
-                        )
-                        : AppPageHeader.custom(
-                          key: const ValueKey('home-header'),
-                          titleContent: AppMonthSelector(
-                            visibleMonth: state.visibleMonth,
-                            onPreviousMonth: () => _shiftMonth(-1),
-                            onMonthPressed: _pickMonth,
-                            onNextMonth: () => _shiftMonth(1),
+                child: _batchMode
+                    ? AppPageHeader(
+                        key: const ValueKey('home-batch-header'),
+                        title: selectedVisibleCount > 0
+                            ? '已选 $selectedVisibleCount 笔'
+                            : '选择交易',
+                        subtitle: hasMore ? '已加载 $visibleCount 笔' : null,
+                        onBack: _exitBatchMode,
+                        actions: [
+                          AppHeaderIconButton(
+                            icon: allVisibleTransactionsSelected
+                                ? RemixIcons.checkbox_circle_fill
+                                : RemixIcons.checkbox_circle_line,
+                            tooltip: allVisibleTransactionsSelected
+                                ? '取消全选'
+                                : '全选已加载',
+                            onPressed:
+                                !_batchSubmitting &&
+                                    visibleTransactionIds.isNotEmpty
+                                ? () => _toggleSelectAll(visibleTransactionIds)
+                                : null,
                           ),
-                          actions: [
-                            _HomeFilterButton(filter: state.transactionFilter),
-                            _HomeSettingsMenu(
-                              showAddTransactionFab:
-                                  settings.showAddTransactionFab,
-                              pullToCreateSensitivity:
-                                  settings.pullToCreateSensitivity,
-                              cashflowPeriodMetric:
-                                  settings.cashflowPeriodMetric,
-                            ),
-                          ],
+                        ],
+                      )
+                    : AppPageHeader.custom(
+                        key: const ValueKey('home-header'),
+                        titleContent: AppMonthSelector(
+                          visibleMonth: state.visibleMonth,
+                          onPreviousMonth: () => _shiftMonth(-1),
+                          onMonthPressed: _pickMonth,
+                          onNextMonth: () => _shiftMonth(1),
                         ),
+                        actions: [
+                          _HomeFilterButton(filter: state.transactionFilter),
+                          _HomeSettingsMenu(
+                            showAddTransactionFab:
+                                settings.showAddTransactionFab,
+                            pullToCreateSensitivity:
+                                settings.pullToCreateSensitivity,
+                            cashflowPeriodMetric: settings.cashflowPeriodMetric,
+                          ),
+                        ],
+                      ),
               ),
               Expanded(
                 child: AbsorbPointer(
@@ -150,26 +148,23 @@ class _HomePageState extends ConsumerState<HomePage> {
                           selectedTransactionIds: _selectedTransactionIds,
                           onTransactionTap: _handleTransactionTap,
                           onTransactionLongPress: _handleTransactionLongPress,
-                          onSelectionChanged:
-                              _batchSubmitting ? null : _handleSelectionChanged,
-                          onLoadMore:
-                              () =>
-                                  ref
-                                      .read(
-                                        homeTransactionFeedViewModelProvider(
-                                          state.visibleMonth,
-                                        ).notifier,
-                                      )
-                                      .loadMore(),
-                          onRefresh:
-                              () =>
-                                  ref
-                                      .read(
-                                        homeTransactionFeedViewModelProvider(
-                                          state.visibleMonth,
-                                        ).notifier,
-                                      )
-                                      .refresh(),
+                          onSelectionChanged: _batchSubmitting
+                              ? null
+                              : _handleSelectionChanged,
+                          onLoadMore: () => ref
+                              .read(
+                                homeTransactionFeedViewModelProvider(
+                                  state.visibleMonth,
+                                ).notifier,
+                              )
+                              .loadMore(),
+                          onRefresh: () => ref
+                              .read(
+                                homeTransactionFeedViewModelProvider(
+                                  state.visibleMonth,
+                                ).notifier,
+                              )
+                              .refresh(),
                         ),
                       HomeContentError(:final message) => Center(
                         child: Text(message),
@@ -184,29 +179,26 @@ class _HomePageState extends ConsumerState<HomePage> {
             ],
           ),
         ),
-        floatingActionButton:
-            !_batchMode && settings.showAddTransactionFab
-                ? FloatingActionButton(
-                  onPressed: _openNewTransaction,
-                  tooltip: '新建记账',
-                  shape: const CircleBorder(),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  child: const Icon(RemixIcons.add_line),
-                )
-                : null,
-        bottomNavigationBar:
-            _batchMode
-                ? HomeBatchActionBar(
-                  selectedCount: selectedVisibleCount,
-                  enabled: !_batchSubmitting,
-                  processing: _batchSubmitting,
-                  onDelete:
-                      () => _deleteSelectedTransactions(visibleTransactionIds),
-                  onManageTags:
-                      () => _manageSelectedTags(visibleTransactionIds),
-                )
-                : null,
+        floatingActionButton: !_batchMode && settings.showAddTransactionFab
+            ? FloatingActionButton(
+                onPressed: _openNewTransaction,
+                tooltip: '新建记账',
+                shape: const CircleBorder(),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                child: const Icon(RemixIcons.add_line),
+              )
+            : null,
+        bottomNavigationBar: _batchMode
+            ? HomeBatchActionBar(
+                selectedCount: selectedVisibleCount,
+                enabled: !_batchSubmitting,
+                processing: _batchSubmitting,
+                onDelete: () =>
+                    _deleteSelectedTransactions(visibleTransactionIds),
+                onManageTags: () => _manageSelectedTags(visibleTransactionIds),
+              )
+            : null,
       ),
     );
   }
@@ -287,22 +279,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (ids.isEmpty || _batchSubmitting) return;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('删除交易'),
-            content: Text('确定删除选中的 ${ids.length} 笔交易？删除后交易及其账务记录将无法恢复。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: _destructiveConfirmStyle(context),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('删除交易'),
+        content: Text('确定删除选中的 ${ids.length} 笔交易？删除后交易及其账务记录将无法恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: _destructiveConfirmStyle(context),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !mounted) return;
 
@@ -331,7 +322,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         successMessage: '已删除 ${result.deletedGroupCount} 笔交易',
         skippedMessage: '笔交易因存在业务关联未处理',
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Home batch delete failed.', error, stackTrace);
       if (!mounted) return;
       setState(() => _batchSubmitting = false);
       _showMessage('批量删除失败，请稍后重试');
@@ -347,7 +339,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     List<TagView> tags;
     try {
       tags = await ref.read(tagApplicationServiceProvider).listTags();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Home tag list load failed.', error, stackTrace);
       if (mounted) _showMessage('标签加载失败，请稍后重试');
       return;
     }
@@ -363,22 +356,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (action == _BatchTagAction.clear) {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('清空标签'),
-              content: Text('确定清空选中的 ${ids.length} 笔交易的全部标签？'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  style: _destructiveConfirmStyle(context),
-                  child: const Text('清空'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: const Text('清空标签'),
+          content: Text('确定清空选中的 ${ids.length} 笔交易的全部标签？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
             ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: _destructiveConfirmStyle(context),
+              child: const Text('清空'),
+            ),
+          ],
+        ),
       );
       if (confirmed != true || !mounted) return;
       await _runTagBatch(
@@ -398,10 +390,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (result == null || !mounted || result.selectedTagIds.isEmpty) return;
     await _runTagBatch(
       ids: ids,
-      operation:
-          action == _BatchTagAction.add
-              ? TransactionTagBatchOperation.add
-              : TransactionTagBatchOperation.remove,
+      operation: action == _BatchTagAction.add
+          ? TransactionTagBatchOperation.add
+          : TransactionTagBatchOperation.remove,
       tagIds: result.selectedTagIds,
     );
   }
@@ -431,7 +422,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         successMessage: successMessage,
         skippedMessage: '笔交易不支持标签操作',
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.severe('Home tag batch update failed.', error, stackTrace);
       if (!mounted) return;
       setState(() => _batchSubmitting = false);
       _showMessage('批量标签操作失败，请稍后重试');
@@ -443,16 +435,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     required String successMessage,
     required String skippedMessage,
   }) {
-    final message =
-        skippedCount == 0
-            ? successMessage
-            : '$successMessage，跳过 $skippedCount $skippedMessage';
+    final message = skippedCount == 0
+        ? successMessage
+        : '$successMessage，跳过 $skippedCount $skippedMessage';
     _showMessage(
       message,
-      duration:
-          skippedCount == 0
-              ? const Duration(seconds: 3)
-              : const Duration(seconds: 6),
+      duration: skippedCount == 0
+          ? const Duration(seconds: 3)
+          : const Duration(seconds: 6),
     );
   }
 
@@ -468,15 +458,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           duration: duration,
           // SnackBar 由根 Scaffold 承载，批量模式下根 Scaffold 没有底部栏，
           // 需要自行让开挂在本页 Scaffold 上的批量操作栏。
-          margin:
-              _batchMode
-                  ? const EdgeInsets.fromLTRB(
-                    AppSpacing.space16,
-                    AppSpacing.space4,
-                    AppSpacing.space16,
-                    AppComponentTokens.navigationBarHeight + AppSpacing.space10,
-                  )
-                  : null,
+          margin: _batchMode
+              ? const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space4,
+                  AppSpacing.space16,
+                  AppComponentTokens.navigationBarHeight + AppSpacing.space10,
+                )
+              : null,
         ),
       );
   }
@@ -512,27 +501,26 @@ class _HomeFilterButton extends ConsumerWidget {
     final loadedOptions = options is HomeFilterOptionsLoaded ? options : null;
     return IconButton(
       tooltip: filter.isActive ? '交易筛选（已启用）' : '交易筛选',
-      onPressed:
-          loadedOptions != null
-              ? () async {
-                final selected = await showHomeTransactionFilterSheet(
-                  context: context,
-                  initialFilter: filter,
-                  expenseTree: loadedOptions.expenseTree,
-                  incomeTree: loadedOptions.incomeTree,
-                  accounts: loadedOptions.accounts,
-                );
-                if (selected == null || !context.mounted) return;
-                ref
-                    .read(homeViewModelProvider.notifier)
-                    .applyTransactionFilter(
-                      categoryAccountIds: selected.categoryAccountIds,
-                      settlementAccountIds: selected.settlementAccountIds,
-                      tagIds: selected.tagIds,
-                      untaggedOnly: selected.untaggedOnly,
-                    );
-              }
-              : null,
+      onPressed: loadedOptions != null
+          ? () async {
+              final selected = await showHomeTransactionFilterSheet(
+                context: context,
+                initialFilter: filter,
+                expenseTree: loadedOptions.expenseTree,
+                incomeTree: loadedOptions.incomeTree,
+                accounts: loadedOptions.accounts,
+              );
+              if (selected == null || !context.mounted) return;
+              ref
+                  .read(homeViewModelProvider.notifier)
+                  .applyTransactionFilter(
+                    categoryAccountIds: selected.categoryAccountIds,
+                    settlementAccountIds: selected.settlementAccountIds,
+                    tagIds: selected.tagIds,
+                    untaggedOnly: selected.untaggedOnly,
+                  );
+            }
+          : null,
       icon: Badge(
         isLabelVisible: filter.isActive,
         smallSize: AppSpacing.space8,
@@ -695,17 +683,16 @@ class _HomeContent extends StatelessWidget {
         CashflowSummaryCard(
           summary: summary,
           metricActions: {
-            CashflowSummaryMetricKind.budget:
-                () => context.push(
-                  Uri(
-                    path: '/budget',
-                    queryParameters: {
-                      'month':
-                          '${visibleMonth.year}-'
-                          '${visibleMonth.month.toString().padLeft(2, '0')}',
-                    },
-                  ).toString(),
-                ),
+            CashflowSummaryMetricKind.budget: () => context.push(
+              Uri(
+                path: '/budget',
+                queryParameters: {
+                  'month':
+                      '${visibleMonth.year}-'
+                      '${visibleMonth.month.toString().padLeft(2, '0')}',
+                },
+              ).toString(),
+            ),
           },
         ),
         if (hasPendingRefresh || isRefreshing) ...[
@@ -714,14 +701,13 @@ class _HomeContent extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: isRefreshing ? null : onRefresh,
-              icon:
-                  isRefreshing
-                      ? const SizedBox(
-                        width: AppSpacing.space16,
-                        height: AppSpacing.space16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Icon(RemixIcons.refresh_line),
+              icon: isRefreshing
+                  ? const SizedBox(
+                      width: AppSpacing.space16,
+                      height: AppSpacing.space16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(RemixIcons.refresh_line),
               label: Text(
                 refreshErrorMessage ?? (isRefreshing ? '正在刷新交易' : '交易有更新，点击刷新'),
               ),
