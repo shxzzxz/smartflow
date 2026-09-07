@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../application/data_management/backup/backup_archive.dart';
@@ -11,7 +12,17 @@ import '../../../application/data_management/backup/backup_service.dart';
 import '../../../core/error/app_error_code.dart';
 import '../../../core/error/app_exception.dart';
 
+final _logger = Logger('infra.backup');
+
 enum _BackupArchiveErrorCode implements AppErrorCode {
+  prepareFailed(
+    code: 'infra.backup.prepare_failed',
+    defaultMessage: '无法准备备份临时文件，请稍后重试。',
+  ),
+  compressFailed(
+    code: 'infra.backup.compress_failed',
+    defaultMessage: '无法生成备份压缩包，请稍后重试。',
+  ),
   pickerFailed(
     code: 'infra.backup.picker_failed',
     defaultMessage: '无法打开文件选择器，请稍后重试。',
@@ -26,7 +37,7 @@ enum _BackupArchiveErrorCode implements AppErrorCode {
   ),
   writeFailed(
     code: 'infra.backup.write_failed',
-    defaultMessage: '无法保存备份，请检查文件权限后重试。',
+    defaultMessage: '无法保存备份，请重试或选择其他保存位置。',
   );
 
   const _BackupArchiveErrorCode({
@@ -52,29 +63,67 @@ class PlatformBackupArchive implements BackupArchivePort {
   Future<BackupManifest?> export(BackupService service) async {
     final now = DateTime.now();
     final stamp = _timestamp(now);
-    final temporaryDirectory = await getTemporaryDirectory();
+    _logger.info('Backup export: preparing temporary directory.');
+    final Directory temporaryDirectory;
+    try {
+      temporaryDirectory = await getTemporaryDirectory();
+    } on Exception catch (error, stackTrace) {
+      throw InfrastructureException(
+        _BackupArchiveErrorCode.prepareFailed,
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    }
     final staging = Directory(
       '${temporaryDirectory.path}${Platform.pathSeparator}smartflow-backup-$stamp-${now.microsecondsSinceEpoch}',
     );
     try {
-      final manifest = await service.createBackup(staging);
-      final archiveBytes = await _zipDirectory(staging);
-      final savedPath = await FilePicker.saveFile(
-        dialogTitle: '保存备份',
-        fileName: 'smartflow-backup-$stamp.zip',
-        type: FileType.custom,
-        allowedExtensions: const ['zip'],
-        bytes: archiveBytes,
+      _logger.info('Backup export: creating snapshot package.');
+      final BackupManifest manifest;
+      try {
+        manifest = await service.createBackup(staging);
+      } on FileSystemException catch (error, stackTrace) {
+        // Validation and unknown database failures retain their own semantics.
+        throw InfrastructureException(
+          _BackupArchiveErrorCode.prepareFailed,
+          cause: error,
+          stackTrace: stackTrace,
+        );
+      }
+      _logger.info('Backup export: compressing snapshot package.');
+      final Uint8List archiveBytes;
+      try {
+        archiveBytes = await _zipDirectory(staging);
+      } on Exception catch (error, stackTrace) {
+        throw InfrastructureException(
+          _BackupArchiveErrorCode.compressFailed,
+          cause: error,
+          stackTrace: stackTrace,
+        );
+      }
+      _logger.info('Backup export: opening save dialog.');
+      final Uri? savedPath;
+      try {
+        savedPath = await FilePicker.saveFile(
+          dialogTitle: '保存备份',
+          fileName: 'smartflow-backup-$stamp.zip',
+          type: FileType.custom,
+          allowedExtensions: const ['zip'],
+          bytes: archiveBytes,
+        );
+      } on Exception catch (error, stackTrace) {
+        throw InfrastructureException(
+          _BackupArchiveErrorCode.writeFailed,
+          cause: error,
+          stackTrace: stackTrace,
+        );
+      }
+      _logger.info(
+        savedPath == null
+            ? 'Backup export canceled.'
+            : 'Backup export completed.',
       );
       return savedPath == null ? null : manifest;
-    } on AppException {
-      rethrow;
-    } on Exception catch (error, stackTrace) {
-      throw InfrastructureException(
-        _BackupArchiveErrorCode.writeFailed,
-        cause: error,
-        stackTrace: stackTrace,
-      );
     } finally {
       await _deleteQuietly(staging);
     }

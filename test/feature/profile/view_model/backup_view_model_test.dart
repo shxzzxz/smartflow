@@ -15,9 +15,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         backupServiceProvider.overrideWithValue(_unusedService()),
-        backupArchivePortProvider.overrideWithValue(
-          _FailingBackupArchive(),
-        ),
+        backupArchivePortProvider.overrideWithValue(_FailingBackupArchive()),
       ],
     );
     addTearDown(container.dispose);
@@ -28,7 +26,7 @@ void main() {
     expect(outcome, isA<UiActionFailure<void>>());
     final failure = outcome as UiActionFailure<void>;
     expect(failure.error.code, 'infra.backup.write_failed');
-    expect(failure.error.message, '无法保存备份，请检查文件权限后重试。');
+    expect(failure.error.message, '无法保存备份，请重试或选择其他保存位置。');
     expect(container.read(backupViewModelProvider).busy, isFalse);
   });
 }
@@ -67,7 +65,7 @@ class _BackupWriteFailed implements AppErrorCode {
   String get code => 'infra.backup.write_failed';
 
   @override
-  String get defaultMessage => '无法保存备份，请检查文件权限后重试。';
+  String get defaultMessage => '无法保存备份，请重试或选择其他保存位置。';
 }
 
 class _UnusedGateway implements BackupSnapshotGateway {

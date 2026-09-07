@@ -116,15 +116,23 @@ class BackupViewModel extends Notifier<BackupPageState> {
   ) async {
     try {
       return UiActionOutcome.success(await action());
-    } on BackupValidationException catch (error) {
-      return UiActionOutcome.failure(
-        UiError(code: 'backup.invalid', message: error.message),
+    } on BackupValidationException catch (error, stackTrace) {
+      _logger.warning('$operation failed [backup.invalid].', error, stackTrace);
+      return const UiActionOutcome.failure(
+        UiError(code: 'backup.invalid', message: '备份数据校验失败，请查看日志了解原因。'),
       );
-    } on FormatException catch (error) {
-      return UiActionOutcome.failure(
-        UiError(code: 'backup.invalid', message: error.message),
+    } on FormatException catch (error, stackTrace) {
+      _logger.warning('$operation failed [backup.invalid].', error, stackTrace);
+      return const UiActionOutcome.failure(
+        UiError(code: 'backup.invalid', message: '备份数据格式无效，请查看日志了解原因。'),
       );
-    } on AppException catch (error) {
+    } on AppException catch (error, stackTrace) {
+      _logger.log(
+        error is InfrastructureException ? Level.SEVERE : Level.WARNING,
+        '$operation failed [${error.code}].',
+        error.cause ?? error,
+        error.stackTrace ?? stackTrace,
+      );
       return UiActionOutcome.failure(UiError.fromException(error));
     } on Exception catch (error, stackTrace) {
       _logger.severe('$operation failed unexpectedly.', error, stackTrace);
