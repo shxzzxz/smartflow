@@ -151,6 +151,7 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
       ),
     );
     final baseInterest = _sum(base.entries, (entry) => entry.expectedInterest);
+    final baseFee = _sum(base.entries, (entry) => entry.expectedFee);
     final totalInterest = _sum(periods, (period) => period.interest);
     return LoanPrepaymentSimulation(
       periods: periods,
@@ -162,6 +163,9 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
       firstRecalculatedPeriodNo: recalculations.isEmpty
           ? null
           : recalculations.first.periodNo,
+      paidPeriods: request.paidPeriods,
+      beforeTotalInterest: baseInterest,
+      beforeTotalFee: baseFee,
     );
   }
 

@@ -12,6 +12,8 @@ class InstallmentScheduleViewItem {
     required this.fee,
     this.status,
     this.stageLabel,
+    this.periodLabel,
+    this.statusLabel,
   });
   final String id;
   final int periodNo;
@@ -19,6 +21,8 @@ class InstallmentScheduleViewItem {
   final Money principal, interest, fee;
   final InstallmentScheduleStatus? status;
   final String? stageLabel;
+  final String? periodLabel;
+  final String? statusLabel;
   Money get total => principal + interest + fee;
 }
 
@@ -41,6 +45,61 @@ List<InstallmentScheduleViewItem> calculationScheduleItems(
             : null,
       ),
   ];
+}
+
+List<InstallmentScheduleViewItem> prepaymentScheduleItems(
+  LoanPrepaymentSimulation simulation,
+  DateTime prepaymentDate,
+) {
+  final items =
+      [
+        for (final period in simulation.periods)
+          InstallmentScheduleViewItem(
+            id: 'prepayment-period-${period.periodNo}',
+            periodNo: period.periodNo,
+            date: period.date,
+            principal: period.principal,
+            interest: period.interest,
+            fee: period.fee,
+            statusLabel: _prepaymentStatus(simulation, period.periodNo),
+            stageLabel: simulation.stages.length > 1
+                ? _stageLabelFor(simulation.stages, period.periodNo)
+                : null,
+          ),
+        InstallmentScheduleViewItem(
+          id: 'prepayment-event',
+          periodNo: 0,
+          periodLabel: '提',
+          date: prepaymentDate,
+          principal: simulation.prepaymentPrincipal,
+          interest: Money.zero(),
+          fee: Money.zero(),
+          statusLabel: '提前还',
+        ),
+      ]..sort((a, b) {
+        final byDate = a.date.compareTo(b.date);
+        if (byDate != 0) return byDate;
+        // The event is shown before the regular period when dates coincide.
+        if (a.periodLabel == '提') return -1;
+        if (b.periodLabel == '提') return 1;
+        return a.periodNo.compareTo(b.periodNo);
+      });
+  return items;
+}
+
+String? _prepaymentStatus(LoanPrepaymentSimulation simulation, int periodNo) {
+  if (periodNo <= simulation.paidPeriods) return '已还';
+  final first = simulation.firstRecalculatedPeriodNo;
+  return first != null && periodNo >= first ? '重算' : '待还';
+}
+
+String? _stageLabelFor(List<LoanCalculationStage> stages, int periodNo) {
+  for (final stage in stages) {
+    if (periodNo == stage.firstPeriodNo) {
+      return '阶段 ${stage.index + 1}';
+    }
+  }
+  return null;
 }
 
 String installmentScheduleStatusLabel(InstallmentScheduleStatus status) =>

@@ -8,10 +8,12 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
+import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
+import 'package:smartflow/feature/credit/page/installment_products_page.dart';
 import 'package:smartflow/feature/credit/page/installment_product_edit_page.dart';
 import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
@@ -29,6 +31,24 @@ void main() {
   setUp(() {
     service = _Products();
     when(() => service.list()).thenAnswer((_) async => [_product]);
+  });
+
+  testWidgets('product list keeps its summary inside a card', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          installmentProductServiceProvider.overrideWithValue(service),
+        ],
+        child: const MaterialApp(home: InstallmentProductsPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppSurface), findsOneWidget);
+    expect(find.text('借呗先息后本'), findsOneWidget);
+    expect(find.text('先息后本'), findsOneWidget);
+    expect(find.text('1 个阶段'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('product editor omits all per-loan fields on a phone screen', (

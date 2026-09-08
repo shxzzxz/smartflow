@@ -1,4 +1,3 @@
-import '../../../core/time/date_label.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import 'loan_calculator_presentation.dart';
 
@@ -36,6 +35,12 @@ List<LoanComparisonRowPresentation> presentLoanComparison({
 
   return [
     LoanComparisonRowPresentation(
+      label: '本金',
+      firstValue: value(first, (c) => c.principal.format()),
+      secondValue: value(second, (c) => c.principal.format()),
+      difference: difference((a, b) => (a.principal - b.principal).format()),
+    ),
+    LoanComparisonRowPresentation(
       label: '总还款',
       firstValue: value(first, (c) => c.calculation.totalRepayment.format()),
       secondValue: value(second, (c) => c.calculation.totalRepayment.format()),
@@ -62,7 +67,7 @@ List<LoanComparisonRowPresentation> presentLoanComparison({
       ),
     ),
     LoanComparisonRowPresentation(
-      label: '实际年化（XIRR）',
+      label: '实际年化 XIRR',
       firstValue: value(
         first,
         (c) => formatRatePercent(c.calculation.metrics.xirr),
@@ -78,43 +83,6 @@ List<LoanComparisonRowPresentation> presentLoanComparison({
             ? '—'
             : formatRatePercent(firstRate - secondRate);
       }),
-    ),
-    LoanComparisonRowPresentation(
-      label: '本金',
-      firstValue: value(first, (c) => c.principal.format()),
-      secondValue: value(second, (c) => c.principal.format()),
-      difference: difference((a, b) => (a.principal - b.principal).format()),
-    ),
-    LoanComparisonRowPresentation(
-      label: '借款日期',
-      firstValue: value(first, (c) => formatDateLabel(c.borrowingDate)),
-      secondValue: value(second, (c) => formatDateLabel(c.borrowingDate)),
-      difference: '—',
-    ),
-    LoanComparisonRowPresentation(
-      label: '还款期数',
-      firstValue: value(first, (c) => '${c.calculation.periods.length} 期'),
-      secondValue: value(second, (c) => '${c.calculation.periods.length} 期'),
-      difference: difference(
-        (a, b) =>
-            '${a.calculation.periods.length - b.calculation.periods.length} 期',
-      ),
-    ),
-    LoanComparisonRowPresentation(
-      label: '末期还款日',
-      firstValue: value(
-        first,
-        (c) => c.calculation.periods.isEmpty
-            ? '—'
-            : formatDateLabel(c.calculation.periods.last.date),
-      ),
-      secondValue: value(
-        second,
-        (c) => c.calculation.periods.isEmpty
-            ? '—'
-            : formatDateLabel(c.calculation.periods.last.date),
-      ),
-      difference: '—',
     ),
   ];
 }

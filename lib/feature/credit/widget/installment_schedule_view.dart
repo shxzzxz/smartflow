@@ -72,7 +72,10 @@ class _ScheduleRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 48,
-            child: Text('第${item.periodNo}期', style: styles.formLabel),
+            child: Text(
+              item.periodLabel ?? '${item.periodNo}',
+              style: styles.formLabel,
+            ),
           ),
           Expanded(
             child: Column(
@@ -93,7 +96,12 @@ class _ScheduleRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(item.total.format(), style: styles.formLabel),
-              if (item.status case final status?)
+              if (item.statusLabel case final customStatus?)
+                Text(
+                  customStatus,
+                  style: supporting.copyWith(color: colors.primary),
+                )
+              else if (item.status case final status?)
                 Text(
                   installmentScheduleStatusLabel(status),
                   style: supporting.copyWith(

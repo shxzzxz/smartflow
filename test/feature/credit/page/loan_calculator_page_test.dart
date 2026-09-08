@@ -265,7 +265,9 @@ void main() {
       await tester.enterText(find.byType(TextField).last, '300');
       await tap(tester, '试算');
       expect(find.text('提前还款结果'), findsOneWidget);
-      expect(find.text('节省利息'), findsOneWidget);
+      expect(find.text('试算前息费'), findsOneWidget);
+      expect(find.text('试算后息费'), findsOneWidget);
+      expect(find.text('息费变化'), findsOneWidget);
       expect(find.text('阶段 2'), findsOneWidget);
       expect(find.text('阶段 3'), findsOneWidget);
       expect(find.textContaining('手续费 20.00'), findsNWidgets(2));

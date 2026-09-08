@@ -256,7 +256,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('创建放款交易'), findsOneWidget);
+      expect(find.text('创建交易'), findsOneWidget);
+      expect(find.text('关闭则仅创建合同和计划'), findsOneWidget);
       expect(find.text('到账账户'), findsOneWidget);
       expect(find.text('末期还款日'), findsNothing);
 

@@ -132,8 +132,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(Divider), findsNothing);
-    expect(find.text('第1期'), findsOneWidget);
-    expect(find.text('第2期'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
     expect(
       tester
           .widget<SizedBox>(

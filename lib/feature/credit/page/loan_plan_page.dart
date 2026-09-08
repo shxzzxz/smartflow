@@ -28,7 +28,7 @@ class LoanPlanPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final repayment = simulation;
     final items = repayment != null
-        ? calculationScheduleItems(repayment.periods, stages: repayment.stages)
+        ? prepaymentScheduleItems(repayment, prepaymentDate!)
         : calculationScheduleItems(
             calculation!.periods,
             stages: calculation!.stages,
@@ -54,16 +54,16 @@ class LoanPlanPage extends StatelessWidget {
                       title: '提前还款试算',
                       mainItems: [
                         AppDetailSummaryCardItem(
-                          label: '节省利息',
-                          value: repayment.interestSaved.format(),
+                          label: '试算前息费',
+                          value: repayment.beforeCharges.format(),
                         ),
                         AppDetailSummaryCardItem(
-                          label: '试算后总利息',
-                          value: repayment.totalInterest.format(),
+                          label: '试算后息费',
+                          value: repayment.afterCharges.format(),
                         ),
                         AppDetailSummaryCardItem(
-                          label: '总手续费',
-                          value: repayment.totalFee.format(),
+                          label: '息费变化',
+                          value: repayment.chargesSaved.format(),
                         ),
                       ],
                       supportingItems: [
@@ -74,13 +74,6 @@ class LoanPlanPage extends StatelessWidget {
                         AppDetailSummaryCardItem(
                           label: '提前还款日',
                           value: formatDateLabel(prepaymentDate!),
-                        ),
-                        AppDetailSummaryCardItem(
-                          label: '重算范围',
-                          span: 2,
-                          value: repayment.firstRecalculatedPeriodNo == null
-                              ? '剩余本金已结清，无待还期次'
-                              : '第 ${repayment.firstRecalculatedPeriodNo} 期起',
                         ),
                       ],
                     ),

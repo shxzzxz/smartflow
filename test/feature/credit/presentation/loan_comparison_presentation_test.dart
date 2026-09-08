@@ -15,10 +15,15 @@ void main() {
 
       final rows = presentLoanComparison(first: first, second: second);
 
+      expect(rows.map((row) => row.label).toList(), [
+        '本金',
+        '总还款',
+        '总利息',
+        '总手续费',
+        '实际年化 XIRR',
+      ]);
       expect(rows[0].difference, '20.00');
-      expect(rows[3].difference, '2.00%');
-      expect(rows[4].difference, '20.00');
-      expect(rows[6].difference, '2 期');
+      expect(rows[4].difference, '2.00%');
     },
   );
 
@@ -30,10 +35,8 @@ void main() {
 
     expect(rows[0].secondValue, '待配置');
     expect(rows[0].difference, '—');
-    expect(rows[3].firstValue, '—');
-    expect(rows[3].difference, '—');
-    expect(rows[5].difference, '—');
-    expect(rows[7].difference, '—');
+    expect(rows[4].firstValue, '—');
+    expect(rows[4].difference, '—');
   });
 }
 

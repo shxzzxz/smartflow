@@ -12,8 +12,8 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../design_system/widget/app_status_banner.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../presentation/bill_repayment_allocation.dart';
 import '../view_model/bill_conversion_installment_form_view_model.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_basic_info_fields.dart';
@@ -100,8 +100,12 @@ class _BillConversionInstallmentFormPageState
           AppSpacing.space24,
         ),
         children: [
+          const AppStatusBanner(
+            message: '仅支持消费账单明细进行账单分期还款',
+            tone: AppStatusBannerTone.info,
+          ),
+          const SizedBox(height: AppSpacing.space12),
           AppFormSection(
-            title: '分期设置',
             children: [
               AppPlainValueRow(
                 label: '账单',
@@ -116,23 +120,19 @@ class _BillConversionInstallmentFormPageState
                 borrowingDate: state.borrowingDate,
                 onBorrowingDateChanged: notifier.setBorrowingDate,
               ),
+              NotePlainFormRow(controller: _noteController),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          AppFormSection(
+            children: [
               AppPlainSelectFormRow<String>(
                 label: '分期配置',
                 value: state.productName ?? '自定义',
                 placeholder: '点击配置',
                 onTap: (_) => _configure(state),
               ),
-              DropdownPlainFormRow<BillRepaymentAllocationMode>(
-                label: '分摊方式',
-                value: state.allocationMode,
-                items: billRepaymentAllocationModeItems,
-                onChanged: notifier.setAllocationMode,
-              ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          AppFormSection(
-            children: [NotePlainFormRow(controller: _noteController)],
           ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
@@ -202,15 +202,6 @@ class _BillConversionInstallmentFormPageState
     );
   }
 }
-
-const List<DropdownMenuItem<BillRepaymentAllocationMode>>
-billRepaymentAllocationModeItems = [
-  DropdownMenuItem(
-    value: BillRepaymentAllocationMode.fifo,
-    child: Text('FIFO'),
-  ),
-  DropdownMenuItem(value: BillRepaymentAllocationMode.equal, child: Text('均摊')),
-];
 
 String _periodLabel(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月账单';

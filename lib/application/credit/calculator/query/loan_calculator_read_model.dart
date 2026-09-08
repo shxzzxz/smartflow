@@ -73,6 +73,9 @@ class LoanPrepaymentSimulation {
     required this.totalFee,
     required this.interestSaved,
     required this.firstRecalculatedPeriodNo,
+    this.paidPeriods = 0,
+    this.beforeTotalInterest = const Money(minorUnits: 0),
+    this.beforeTotalFee = const Money(minorUnits: 0),
   });
 
   /// 锚点前沿用原计划、锚点后按剩余本金重算的完整计划。
@@ -87,4 +90,15 @@ class LoanPrepaymentSimulation {
 
   /// 第一个被重算的期次；提前还款把剩余本金全部结清且尾部为空时为空。
   final int? firstRecalculatedPeriodNo;
+
+  /// 试算输入中从第 1 期起已还清的期数。
+  final int paidPeriods;
+
+  /// 提前还款前的计划息费，用于结果概览。
+  final Money beforeTotalInterest;
+  final Money beforeTotalFee;
+
+  Money get beforeCharges => beforeTotalInterest + beforeTotalFee;
+  Money get afterCharges => totalInterest + totalFee;
+  Money get chargesSaved => beforeCharges - afterCharges;
 }

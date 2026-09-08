@@ -112,8 +112,8 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 onBorrowingDateChanged: notifier.setBorrowingDate,
               ),
               AppPlainSwitchRow(
-                label: '创建放款交易',
-                description: '迁移已有贷款时可关闭，仅创建合同和还款计划',
+                label: '创建交易',
+                description: '关闭则仅创建合同和计划',
                 value: state.createDisbursementTransaction,
                 onChanged: notifier.setCreateDisbursementTransaction,
               ),
