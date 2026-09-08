@@ -344,7 +344,7 @@ class BackupService {
       _requiredReference(row, 'tagId', tags, 'transaction_tags.tagId');
     }
     for (final row in snapshot.rows('budgets')) {
-      _optionalReference(row, 'accountId', accounts, 'budgets.accountId');
+      _optionalText(row, 'accountId', 'budgets.accountId');
     }
     for (final row in snapshot.rows('credit_liability_accounts')) {
       _requiredReference(
@@ -484,10 +484,11 @@ class BackupService {
       );
     }
     for (final row in snapshot.rows('import_entity_mappings')) {
-      _requiredReference(
+      // Default mappings are soft references. A deleted target is ignored by
+      // the import review flow and can be remapped later.
+      _requiredText(
         row,
         'targetAccountId',
-        accounts,
         'import_entity_mappings.targetAccountId',
       );
     }
@@ -879,6 +880,20 @@ class BackupService {
     if (value != null &&
         (value is! String || value.isEmpty || !target.containsKey(value))) {
       throw BackupValidationException('$field 引用了不存在的记录。');
+    }
+  }
+
+  static void _requiredText(BackupJson row, String key, String field) {
+    final value = row[key];
+    if (value is! String || value.trim().isEmpty) {
+      throw BackupValidationException('$field 不是有效的文本。');
+    }
+  }
+
+  static void _optionalText(BackupJson row, String key, String field) {
+    final value = row[key];
+    if (value != null && (value is! String || value.trim().isEmpty)) {
+      throw BackupValidationException('$field 不是有效的文本。');
     }
   }
 

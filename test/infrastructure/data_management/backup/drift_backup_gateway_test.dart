@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart';
 
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/infrastructure/data_management/backup/file_backup_package_store.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/domain/import/import_models.dart';
 import 'dart:io';
 import '../../../helper/test_app_database.dart';
 
@@ -80,5 +82,44 @@ void main() {
       (await service.inspect(directory)).snapshot.rows('accounts'),
       isNotEmpty,
     );
+  });
+
+  test('exports soft references whose targets were deleted', () async {
+    await database
+        .into(database.importEntityMappings)
+        .insert(
+          ImportEntityMappingsCompanion.insert(
+            id: 'mapping',
+            source: ImportSource.yimu,
+            entityKind: ImportEntityKind.account,
+            sourceEntityKey: 'account:deleted',
+            targetAccountId: 'deleted-account',
+          ),
+        );
+    await database
+        .into(database.budgets)
+        .insert(
+          BudgetsCompanion.insert(
+            id: 'budget',
+            monthKey: 202601,
+            accountId: const Value('deleted-category'),
+            amountMinor: 100,
+          ),
+        );
+
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow-soft-reference-backup-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final service = BackupService(
+      gateway: gateway,
+      packageStore: const FileBackupPackageStore(),
+    );
+
+    await service.createBackup(directory);
+
+    final snapshot = (await service.inspect(directory)).snapshot;
+    expect(snapshot.rows('import_entity_mappings'), hasLength(1));
+    expect(snapshot.rows('budgets'), hasLength(1));
   });
 }

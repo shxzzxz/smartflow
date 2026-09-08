@@ -198,18 +198,51 @@ void main() {
 
     expect(() => BackupService.validateSnapshot(withHistory), returnsNormally);
   });
+
+  test('allows unavailable import mapping and budget targets', () {
+    final snapshot = _emptySnapshot(
+      tables: {
+        'import_entity_mappings': [
+          {
+            'id': 'mapping',
+            'source': 'yimu',
+            'entityKind': 'account',
+            'sourceEntityKey': 'account:deleted',
+            'targetAccountId': 'deleted-account',
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        'budgets': [
+          {
+            'id': 'budget',
+            'monthKey': 202601,
+            'accountId': 'deleted-category',
+            'amountMinor': 100,
+            'sortOrder': 0,
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    );
+
+    expect(() => BackupService.validateSnapshot(snapshot), returnsNormally);
+  });
 }
 
 BackupSnapshot _emptySnapshot({
   Iterable<BackupJson> accounts = const [],
   Iterable<BackupJson> transactions = const [],
   Iterable<BackupJson> entries = const [],
+  Map<String, List<BackupJson>>? tables,
 }) {
   return BackupSnapshot(
     tables: {
       'accounts': accounts,
       'transactions': transactions,
       'entries': entries,
+      ...?tables,
     },
     preferences: const {'settings.example': 'true'},
   );
