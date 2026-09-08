@@ -5,6 +5,7 @@ import '../../../../domain/credit/service/installment/installment_metrics.dart'
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/service/installment/installment_prepayment_recalculator.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
+import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../installment/query/contract_metrics_read_model.dart';
 import 'loan_calculator_read_model.dart';
@@ -17,7 +18,7 @@ class LoanPrepaymentSimulationRequest {
     required this.prepaymentPrincipal,
   });
 
-  /// 只支持单个摊还阶段的条款。
+  /// 包含免还期和还款阶段的完整条款。
   final InstallmentPlanTerms terms;
 
   /// 已按原计划还清的期数（从第 1 期起连续）。
@@ -53,22 +54,9 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
   LoanCalculation calculate(InstallmentPlanTerms terms) {
     final plan = _engine.plan(terms);
     final periods = _periods(terms.principal, plan.entries);
-    final amortizingIndexes = [
-      for (var i = 0; i < terms.stages.length; i++)
-        if (terms.stages[i] is AmortizingStage) i,
-    ];
     return LoanCalculation(
       periods: periods,
-      stages: [
-        for (var i = 0; i < plan.stages.length; i++)
-          LoanCalculationStage(
-            index: amortizingIndexes[i],
-            firstPeriodNo: plan.stages[i].firstPeriodNo,
-            lastPeriodNo: plan.stages[i].lastPeriodNo,
-            installmentAmount: plan.stages[i].installmentAmount,
-            lastPeriodDifference: plan.stages[i].lastPeriodDifference,
-          ),
-      ],
+      stages: _stages(terms, plan),
       totalPrincipal: _sum(periods, (period) => period.principal),
       totalInterest: _sum(periods, (period) => period.interest),
       totalFee: _sum(periods, (period) => period.fee),
@@ -87,34 +75,38 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
     LoanPrepaymentSimulationRequest request,
   ) {
     final terms = request.terms;
-    final stage = _singleAmortizingStage(terms);
     final base = _engine.plan(terms);
     if (request.paidPeriods < 0 || request.paidPeriods >= base.entries.length) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
-        message: 'Paid periods must be fewer than the total periods.',
+        message: '已还期数必须少于总期数',
       );
     }
     if (request.prepaymentPrincipal.minorUnits <= 0) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
-        message: 'Prepayment principal must be positive.',
+        message: '提前还本金必须大于零',
       );
     }
-    final recalculations = _recalculator.recalculateRows(
-      terms: InstallmentRecalculationTerms(
-        principal: terms.principal,
-        borrowingDate: terms.borrowingDate,
-        method: stage.method,
-        accrual: stage.accrual,
-        rate: stage.rate,
-        endPrincipal: stage.endPrincipal,
-        totalFee: stage.fee,
-        installmentAmount: stage.installmentAmount,
-        dayCount: terms.dayCount,
-        rounding: terms.rounding,
-        intervalMonths: stage.dates.intervalMonths,
-      ),
+    if (request.prepaymentDate.isBefore(terms.borrowingDate)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '提前还款日不能早于借款日期',
+      );
+    }
+    final contractTerms = InstallmentContractTerms(
+      stages: [
+        for (var i = 0; i < terms.stages.length; i++)
+          InstallmentContractStage(id: 'stage-$i', terms: terms.stages[i]),
+      ],
+      dayCount: terms.dayCount,
+      rounding: terms.rounding,
+      tailDifference: terms.tailDifference,
+    );
+    final recalculations = _recalculator.recalculateStages(
+      terms: contractTerms,
+      principal: terms.principal,
+      borrowingDate: terms.borrowingDate,
       rows: [
         for (final entry in base.entries)
           InstallmentRecalculationRow(
@@ -162,6 +154,7 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
     final totalInterest = _sum(periods, (period) => period.interest);
     return LoanPrepaymentSimulation(
       periods: periods,
+      stages: _stages(terms, base),
       prepaymentPrincipal: request.prepaymentPrincipal,
       totalInterest: totalInterest,
       totalFee: _sum(periods, (period) => period.fee),
@@ -172,15 +165,24 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
     );
   }
 
-  AmortizingStage _singleAmortizingStage(InstallmentPlanTerms terms) {
-    if (terms.stages.length == 1 && terms.stages.single is AmortizingStage) {
-      return terms.stages.single as AmortizingStage;
-    }
-    throw BusinessException(
-      CreditErrorCode.contractInvalidCommand,
-      message:
-          'Prepayment simulation only supports terms with a single amortizing stage.',
-    );
+  List<LoanCalculationStage> _stages(
+    InstallmentPlanTerms terms,
+    InstallmentPlan plan,
+  ) {
+    final indexes = [
+      for (var i = 0; i < terms.stages.length; i++)
+        if (terms.stages[i] is AmortizingStage) i,
+    ];
+    return [
+      for (var i = 0; i < plan.stages.length; i++)
+        LoanCalculationStage(
+          index: indexes[i],
+          firstPeriodNo: plan.stages[i].firstPeriodNo,
+          lastPeriodNo: plan.stages[i].lastPeriodNo,
+          installmentAmount: plan.stages[i].installmentAmount,
+          lastPeriodDifference: plan.stages[i].lastPeriodDifference,
+        ),
+    ];
   }
 
   List<LoanCalculationPeriod> _periods(

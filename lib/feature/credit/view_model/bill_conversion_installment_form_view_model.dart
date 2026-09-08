@@ -15,6 +15,7 @@ import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
 import 'bill_repayment_command_mapping.dart';
 import 'installment_terms_draft.dart';
+import 'loan_configuration_view_model.dart';
 
 part 'bill_conversion_installment_form_view_model.g.dart';
 
@@ -43,7 +44,8 @@ class BillConversionInstallmentFormViewModel
     }
 
     final principal = _pendingPrincipal(lines);
-    final borrowingDate = detail.summary.windowRepaymentDate ?? DateTime.now();
+    final now = DateTime.now();
+    final borrowingDate = DateTime(now.year, now.month, now.day);
     return BillConversionInstallmentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -57,6 +59,17 @@ class BillConversionInstallmentFormViewModel
       _updateLoaded((s) => s.copyWith(borrowingDate: value));
   void setTermsDraft(InstallmentTermsDraft value) =>
       _updateLoaded((s) => s.copyWith(termsDraft: value));
+  void applyConfiguration(InstallmentConfigurationDraft configuration) {
+    _updateLoaded(
+      (s) => s.copyWith(
+        principalText: configuration.principal?.format() ?? s.principalText,
+        borrowingDate: configuration.borrowingDate,
+        termsDraft: configuration.terms,
+        productId: configuration.productId,
+        productName: configuration.productName,
+      ),
+    );
+  }
 
   Future<UiActionOutcome<credit_query.LoanCalculation>> preview(
     String principalText,
@@ -127,6 +140,8 @@ class BillConversionInstallmentFormViewModel
                   ),
                   borrowingDate: current.borrowingDate,
                   stageTerms: current.termsDraft.contractTerms(),
+                  productId: current.productId,
+                  productName: current.productName,
                   note: trimToNull(noteText),
                 ),
               );
@@ -208,6 +223,8 @@ class BillConversionInstallmentLoaded
     required this.principalText,
     required this.borrowingDate,
     required this.termsDraft,
+    this.productId,
+    this.productName,
     this.allocationMode = BillRepaymentAllocationMode.fifo,
     this.submitting = false,
   });
@@ -216,24 +233,34 @@ class BillConversionInstallmentLoaded
   final String principalText;
   final DateTime borrowingDate;
   final InstallmentTermsDraft termsDraft;
+  final String? productId, productName;
   final BillRepaymentAllocationMode allocationMode;
   final bool submitting;
   Money get convertiblePrincipal => _pendingPrincipal(lines);
   BillConversionInstallmentLoaded copyWith({
+    String? principalText,
     DateTime? borrowingDate,
     InstallmentTermsDraft? termsDraft,
+    Object? productId = _sentinel,
+    Object? productName = _sentinel,
     BillRepaymentAllocationMode? allocationMode,
     bool? submitting,
   }) => BillConversionInstallmentLoaded(
     summary: summary,
     lines: lines,
-    principalText: principalText,
+    principalText: principalText ?? this.principalText,
     borrowingDate: borrowingDate ?? this.borrowingDate,
     termsDraft: termsDraft ?? this.termsDraft,
+    productId: productId == _sentinel ? this.productId : productId as String?,
+    productName: productName == _sentinel
+        ? this.productName
+        : productName as String?,
     allocationMode: allocationMode ?? this.allocationMode,
     submitting: submitting ?? this.submitting,
   );
 }
+
+const _sentinel = Object();
 
 class BillConversionInstallmentNotFound
     extends BillConversionInstallmentFormState {
@@ -265,6 +292,7 @@ List<BillRepaymentAllocationLine> _conversionLines(
         BillRepaymentAllocationLine(
           billItemId: item.id,
           itemType: item.itemType,
+          repaymentDate: item.repaymentDate,
           expected: credit.RepaymentAmountBreakdown(
             principal: item.expectedPrincipal,
             interest: Money.zero(),

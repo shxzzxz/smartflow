@@ -4,19 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/time/date_label.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_contract_edit_state.dart';
 import '../view_model/installment_contract_edit_view_model.dart';
 import '../widget/installment_plan_summary_card.dart';
 import '../widget/installment_schedule_editor.dart';
-import '../widget/installment_terms_editor.dart';
-import '../widget/loan_basic_info_fields.dart';
+import '../view_model/loan_configuration_view_model.dart';
+import 'loan_configuration_page.dart';
 
 class InstallmentContractEditPage extends ConsumerStatefulWidget {
   const InstallmentContractEditPage({required this.contractId, super.key});
@@ -31,6 +33,14 @@ class InstallmentContractEditPage extends ConsumerStatefulWidget {
 class _InstallmentContractEditPageState
     extends ConsumerState<InstallmentContractEditPage> {
   final _formKey = GlobalKey<FormState>();
+  TextEditingController? _nameController;
+
+  @override
+  void dispose() {
+    _nameController?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final editAsync = ref.watch(
@@ -61,6 +71,9 @@ class _InstallmentContractEditPageState
 
   Widget _buildBody(InstallmentContractEditLoaded loaded) {
     final contract = loaded.contract;
+    final nameController = _nameController ??= TextEditingController(
+      text: contract.name,
+    );
 
     return Form(
       key: _formKey,
@@ -72,57 +85,52 @@ class _InstallmentContractEditPageState
           AppSpacing.space24,
         ),
         children: [
-          AppFormSection(
-            title: '贷款',
-            children: [
-              LoanBasicInfoFields.readOnly(
-                principal: contract.principal,
-                borrowingDate: contract.borrowingDate,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space12),
           if (loaded.metrics case final metrics?)
             InstallmentPlanSummaryCard(
-              title: '已保存合同汇总',
+              title: contract.name,
               metrics: metrics,
-              periodCount: contract.totalPeriods,
+              contractStatus: contract.status,
             )
           else
             const Text('已保存合同指标加载失败，请稍后重试'),
           const SizedBox(height: AppSpacing.space12),
-          ...[
-            AppPlainSwitchRow(
-              label: '自定义本笔贷款',
-              value: loaded.customRules,
-              description: '关闭保留修改，只锁定阶段结构和计算规则',
-              onChanged: ref
-                  .read(
-                    installmentContractEditViewModelProvider(
-                      widget.contractId,
-                    ).notifier,
-                  )
-                  .setCustomRules,
-            ),
-            InstallmentTermsEditor(
-              value: loaded.stageDraft,
-              borrowingDate: contract.borrowingDate,
-              planAction: AppSubmitButton(
-                label: '按参数重算并预览',
-                onPressed: _recalculate,
+          AppFormSection(
+            title: '合同配置',
+            children: [
+              AppPlainTextFormRow(
+                label: '合同名称',
+                controller: nameController,
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? '请输入合同名称' : null,
               ),
-              rulesEditable: loaded.customRules,
-              onChanged: ref
-                  .read(
-                    installmentContractEditViewModelProvider(
-                      widget.contractId,
-                    ).notifier,
-                  )
-                  .setStageDraft,
-            ),
-            if (!loaded.stagePlanPreviewed)
-              const Text('保存条款不会自动重算计划；需要时先点击按参数重算。'),
-          ],
+              AppPlainValueRow(
+                label: '借款日期',
+                value: formatDateLabel(contract.borrowingDate),
+                valueAlignment: AppPlainRowValueAlignment.start,
+              ),
+              AppPlainValueRow(
+                label: '分期类型',
+                value:
+                    contract.sourceType == InstallmentSourceType.billConversion
+                    ? '账单分期'
+                    : '放款分期',
+                valueAlignment: AppPlainRowValueAlignment.start,
+              ),
+              AppPlainValueRow(
+                label: '本金',
+                value: contract.principal.format(),
+                valueAlignment: AppPlainRowValueAlignment.start,
+              ),
+              AppPlainSelectFormRow<String>(
+                label: '分期配置',
+                value: loaded.productName ?? '自定义',
+                placeholder: '点击配置',
+                onTap: (_) => _configure(loaded),
+              ),
+              AppSubmitButton(label: '按配置重算', onPressed: _recalculate),
+              if (!loaded.stagePlanPreviewed) const Text('修改配置不会自动重算还款计划。'),
+            ],
+          ),
           const SizedBox(height: AppSpacing.space12),
           InstallmentScheduleEditor(
             draft: loaded.draft,
@@ -139,6 +147,32 @@ class _InstallmentContractEditPageState
         ],
       ),
     );
+  }
+
+  Future<void> _configure(InstallmentContractEditLoaded loaded) async {
+    _formKey.currentState!.save();
+    FocusScope.of(context).unfocus();
+    final contract = loaded.contract;
+    final initial = InstallmentConfigurationDraft(
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      terms: loaded.stageDraft,
+      productId: loaded.productId,
+      productName: loaded.productName,
+      basicInfoReadOnly: true,
+    );
+    final configuration = await Navigator.of(context)
+        .push<InstallmentConfigurationDraft>(
+          MaterialPageRoute(
+            builder: (_) => LoanConfigurationPage(installment: initial),
+          ),
+        );
+    if (!mounted || configuration == null) return;
+    ref
+        .read(
+          installmentContractEditViewModelProvider(widget.contractId).notifier,
+        )
+        .applyConfiguration(configuration);
   }
 
   Future<void> _recalculate() async {
@@ -193,7 +227,7 @@ class _InstallmentContractEditPageState
         .read(
           installmentContractEditViewModelProvider(widget.contractId).notifier,
         )
-        .submit();
+        .submit(nameText: _nameController?.text);
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():

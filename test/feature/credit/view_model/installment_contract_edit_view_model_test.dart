@@ -122,6 +122,17 @@ void main() {
         expect(loaded.draft.map((row) => row.fee.minorUnits), [10, 20]);
         expect(loaded.stagePlanPreviewed, isTrue);
         expect(loaded.manualPatchedPeriodNos, isEmpty);
+        viewModel.setStageDraft(loaded.stageDraft);
+        expect(
+          (container
+                      .read(
+                        installmentContractEditViewModelProvider('contract-1'),
+                      )
+                      .requireValue
+                  as InstallmentContractEditLoaded)
+              .stagePlanPreviewed,
+          isTrue,
+        );
       },
     );
 
@@ -291,7 +302,7 @@ ProviderContainer _container(
         return const ContractMetrics(
           monthlyIrr: null,
           nominalApr: null,
-          effectiveApr: null,
+          xirr: null,
           totalRepayment: Money(minorUnits: 10100),
           totalInterest: Money(minorUnits: 100),
           totalFee: Money(minorUnits: 0),

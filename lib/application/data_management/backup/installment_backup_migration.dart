@@ -1,4 +1,5 @@
 import 'backup_models.dart';
+import '../../../core/time/date_label.dart';
 
 /// 旧快照只在导入入口升级；当前合同行不包含阶段参数。
 void migrateInstallmentBackup(
@@ -6,6 +7,12 @@ void migrateInstallmentBackup(
   required int schemaVersion,
   required int formatVersion,
 }) {
+  if (schemaVersion < 34) {
+    tables['installment_contracts'] = [
+      for (final row in tables['installment_contracts'] ?? <BackupJson>[])
+        {...row, 'name': row['name'] ?? _contractDateName(row)},
+    ];
+  }
   if (schemaVersion < 31 && tables.containsKey('repayments')) {
     // 与数据库 v31 迁移一致：交易时间优先，其次已有还款时间，最后创建时间。
     final transactionDates = {
@@ -58,6 +65,12 @@ void migrateInstallmentBackup(
         ),
     ];
   }
+}
+
+String _contractDateName(BackupJson row) {
+  final value = row['borrowingDate'];
+  if (value is! int) throw const BackupValidationException('合同缺少有效借款日期');
+  return formatCompactDate(DateTime.fromMillisecondsSinceEpoch(value));
 }
 
 void _upgradeSingleStageSnapshot(Map<String, Iterable<BackupJson>> tables) {

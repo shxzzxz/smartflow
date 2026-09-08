@@ -67,6 +67,7 @@ class LoanCalculation {
 class LoanPrepaymentSimulation {
   const LoanPrepaymentSimulation({
     required this.periods,
+    this.stages = const [],
     required this.prepaymentPrincipal,
     required this.totalInterest,
     required this.totalFee,
@@ -76,6 +77,7 @@ class LoanPrepaymentSimulation {
 
   /// 锚点前沿用原计划、锚点后按剩余本金重算的完整计划。
   final List<LoanCalculationPeriod> periods;
+  final List<LoanCalculationStage> stages;
   final Money prepaymentPrincipal;
   final Money totalInterest;
   final Money totalFee;

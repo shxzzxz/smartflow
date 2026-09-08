@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart' as credit_query;
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
@@ -18,13 +19,18 @@ class BillEditViewModel extends _$BillEditViewModel {
   Future<BillEditFormState> build(String billId) async {
     final detail = await ref.watch(billDetailProvider(billId).future);
     final summary = detail?.summary;
-    final startDate = summary?.windowStartDate;
-    final billingDate = summary?.windowBillingDate;
-    final repaymentDate = summary?.windowRepaymentDate;
+    final consumption = detail?.items
+        .where((item) => item.itemType == credit_query.BillItemType.consumption)
+        .firstOrNull;
+    final startDate = consumption?.startInclusive ?? summary?.windowStartDate;
+    final billingDate = consumption?.endInclusive ?? summary?.windowBillingDate;
+    final repaymentDate =
+        consumption?.repaymentDate ?? summary?.windowRepaymentDate;
     if (summary == null || startDate == null || billingDate == null) {
       return const BillEditFormState();
     }
     return BillEditFormState(
+      billItemId: consumption?.id,
       startDate: startDate,
       billingDate: billingDate,
       repaymentDate: repaymentDate,
@@ -57,13 +63,21 @@ class BillEditViewModel extends _$BillEditViewModel {
     _setLoaded(state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Bill window edit submit', () async {
-        await ref
-            .read(creditBillGenerationAppServiceProvider)
-            .updateBillWindow(
-              billId: billId,
-              startDate: state.startDate!,
-              billingDate: state.billingDate!,
-            );
+        final service = ref.read(creditBillGenerationAppServiceProvider);
+        if (state.billItemId case final itemId?) {
+          await service.updateConsumptionWindow(
+            billId: billId,
+            billItemId: itemId,
+            startInclusive: state.startDate!,
+            endInclusive: state.billingDate!,
+          );
+        } else {
+          await service.updateBillWindow(
+            billId: billId,
+            startDate: state.startDate!,
+            billingDate: state.billingDate!,
+          );
+        }
         ref.invalidate(billDetailProvider(billId));
         ref.invalidateSelf();
       });

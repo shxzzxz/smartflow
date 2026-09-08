@@ -108,6 +108,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
         .insert(
           InstallmentContractsCompanion.insert(
             id: contract.id,
+            name: Value(contract.name),
             liabilityAccountId: contract.liabilityAccountId,
             productId: Value(contract.productId),
             productName: Value(contract.productName),
@@ -168,6 +169,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
             _database.installmentContracts,
           )..where((row) => row.id.equals(contract.id))).write(
             InstallmentContractsCompanion(
+              name: Value(contract.name),
+              productId: Value(contract.productId),
+              productName: Value(contract.productName),
               disbursementAccountId: Value(contract.disbursementAccountId),
               customRules: Value(contract.customRules),
               dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
@@ -258,6 +262,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       principal: Money(minorUnits: row.principalMinor),
       productId: row.productId,
       productName: row.productName,
+      name: row.name,
       customRules: row.customRules,
       borrowingDate: row.borrowingDate,
       status: row.status,

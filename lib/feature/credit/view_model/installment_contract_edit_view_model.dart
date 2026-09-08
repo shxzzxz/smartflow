@@ -11,6 +11,7 @@ import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
 import 'installment_contract_edit_state.dart';
 import 'installment_terms_draft.dart';
+import 'loan_configuration_view_model.dart';
 
 part 'installment_contract_edit_view_model.g.dart';
 
@@ -38,6 +39,8 @@ class InstallmentContractEditViewModel
     return InstallmentContractEditState.loaded(
       metrics: metrics,
       contract: contract,
+      productId: contract.productId,
+      productName: contract.productName,
       stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
       customRules: contract.customRules,
       draft: [
@@ -56,10 +59,22 @@ class InstallmentContractEditViewModel
   }
 
   void setStageDraft(InstallmentTermsDraft value) => _updateLoaded(
-    (s) => s.copyWith(stageDraft: value, stagePlanPreviewed: false),
+    (s) => identical(s.stageDraft, value)
+        ? s
+        : s.copyWith(stageDraft: value, stagePlanPreviewed: false),
   );
   void setCustomRules(bool value) =>
       _updateLoaded((s) => s.copyWith(customRules: value));
+  void applyConfiguration(InstallmentConfigurationDraft value) => _updateLoaded(
+    (s) => s.copyWith(
+      stageDraft: value.terms,
+      productId: value.productId,
+      productName: value.productName,
+      customRules: true,
+      stagePlanPreviewed:
+          identical(s.stageDraft, value.terms) && s.stagePlanPreviewed,
+    ),
+  );
 
   Future<UiActionOutcome<void>> _recalculateStages(
     InstallmentContractEditLoaded loaded,
@@ -98,6 +113,7 @@ class InstallmentContractEditViewModel
 
   Future<SubmitOutcome> _submitStages(
     InstallmentContractEditLoaded loaded,
+    String? nameText,
   ) async {
     _setLoaded(loaded.copyWith(submitting: true));
     try {
@@ -108,6 +124,8 @@ class InstallmentContractEditViewModel
             .updateContract(
               UpdateContractCommand(
                 contractId: contractId,
+                name: nameText,
+                productId: loaded.productId,
                 stageTerms: terms,
                 customRules: loaded.customRules,
                 regeneratePlan: loaded.stagePlanPreviewed,
@@ -185,10 +203,10 @@ class InstallmentContractEditViewModel
     );
   }
 
-  Future<SubmitOutcome> submit() async {
+  Future<SubmitOutcome> submit({String? nameText}) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidSubmit('合同尚未加载');
-    return _submitStages(loaded);
+    return _submitStages(loaded, nameText);
   }
 
   void _invalidateCreditContractProviders(String liabilityAccountId) {

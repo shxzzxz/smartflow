@@ -2,12 +2,15 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
+import '../../domain/credit/entity/installment_product.dart';
 import '../../shared/account_group/initial_account_groups.dart';
 import '../../shared/account_profile/account_profile_kind.dart';
+import '../credit/initial_installment_products.dart';
+import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 10;
+const currentBuiltinDataVersion = 12;
 
 const _uuid = Uuid();
 
@@ -47,6 +50,44 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
       await _seedReceivableAndPayableCategories(database);
     }
 
+    // 旧 schema 的迁移中也会调用本方法，此时产品表可能尚未创建。
+    // 保留版本 10，待 beforeOpen 在完整 schema 上补齐产品。
+    final productTables = await database
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name IN ('installment_products', 'installment_stage_configs')",
+        )
+        .get();
+    if (productTables.length < 2) {
+      await _writeBuiltinDataVersion(database, 10);
+      return;
+    }
+    if (version < 12) {
+      final repository = DriftInstallmentProductRepository(database);
+      for (final initial in initialInstallmentProducts) {
+        if (version >= 11 &&
+            initial.id != 'builtin-loan-equal-principal' &&
+            initial.id != 'builtin-loan-interest-first') {
+          continue;
+        }
+        if (await repository.find(initial.id) != null) continue;
+        await repository.save(
+          InstallmentProduct(
+            id: initial.id,
+            name: initial.name,
+            stages: initial.stages,
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
+    if (version >= 11 && version < 12) {
+      // 已有合同保留原产品快照，旧模板退出选择列表。
+      await (database.update(database.installmentProducts)..where(
+            (row) => row.id.equals('builtin-loan-interest-then-installment'),
+          ))
+          .write(const InstallmentProductsCompanion(archived: Value(true)));
+    }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
 }
@@ -169,20 +210,21 @@ Future<void> _renameInterestAndFeeSystemKeys(AppDatabase database) async {
 
 Future<void> _renameOpeningBalanceAccount(AppDatabase database) async {
   await (database.update(database.accounts)..where(
-    (account) => account.systemKey.equalsValue(SystemKey.openingBalance),
-  )).write(
-    AccountsCompanion(
-      name: const Value('系统期初余额'),
-      updatedAt: Value(DateTime.now()),
-    ),
-  );
+        (account) => account.systemKey.equalsValue(SystemKey.openingBalance),
+      ))
+      .write(
+        AccountsCompanion(
+          name: const Value('系统期初余额'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 }
 
 Future<int> _readBuiltinDataVersion(AppDatabase database) async {
   final row =
-      await (database.select(database.appMetadata)..where(
-        (metadata) => metadata.key.equals(builtinDataVersionKey),
-      )).getSingleOrNull();
+      await (database.select(database.appMetadata)
+            ..where((metadata) => metadata.key.equals(builtinDataVersionKey)))
+          .getSingleOrNull();
   return int.tryParse(row?.value ?? '') ?? 0;
 }
 
@@ -438,31 +480,30 @@ Future<void> _updateCategoryIcon(
   String? parentName,
   SystemKey? systemKey,
 }) async {
-  final parentId =
-      parentName == null
-          ? null
-          : await _findParentId(database, name: parentName, type: type);
+  final parentId = parentName == null
+      ? null
+      : await _findParentId(database, name: parentName, type: type);
   if (parentName != null && parentId == null) {
     return;
   }
 
   await (database.update(database.accounts)..where((account) {
-    final identity =
-        systemKey == null
+        final identity = systemKey == null
             ? account.name.equals(name) &
-                (parentId == null
-                    ? account.parentId.isNull()
-                    : account.parentId.equals(parentId))
+                  (parentId == null
+                      ? account.parentId.isNull()
+                      : account.parentId.equals(parentId))
             : account.systemKey.equalsValue(systemKey);
-    return identity &
-        account.accountType.equalsValue(type) &
-        account.source.equalsValue(AccountSource.builtin);
-  })).write(
-    AccountsCompanion(
-      iconKey: Value(iconKey),
-      updatedAt: Value(DateTime.now()),
-    ),
-  );
+        return identity &
+            account.accountType.equalsValue(type) &
+            account.source.equalsValue(AccountSource.builtin);
+      }))
+      .write(
+        AccountsCompanion(
+          iconKey: Value(iconKey),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
 }
 
 Future<String?> _findParentId(
@@ -472,11 +513,12 @@ Future<String?> _findParentId(
 }) async {
   final row =
       await (database.select(database.accounts)..where(
-        (account) =>
-            account.name.equals(name) &
-            account.accountType.equalsValue(type) &
-            account.parentId.isNull(),
-      )).getSingleOrNull();
+            (account) =>
+                account.name.equals(name) &
+                account.accountType.equalsValue(type) &
+                account.parentId.isNull(),
+          ))
+          .getSingleOrNull();
   return row?.id;
 }
 
@@ -587,20 +629,21 @@ Future<AccountRow?> _findBuiltinAccount(
   SystemKey? systemKey,
 }) {
   return (database.select(database.accounts)..where((account) {
-    final identity =
-        systemKey == null
+        final identity = systemKey == null
             ? account.name.equals(name) &
-                (parentId == null
-                    ? account.parentId.isNull()
-                    : account.parentId.equals(parentId))
+                  (parentId == null
+                      ? account.parentId.isNull()
+                      : account.parentId.equals(parentId))
             : account.systemKey.equalsValue(systemKey);
-    return identity & account.accountType.equalsValue(type);
-  })).getSingleOrNull();
+        return identity & account.accountType.equalsValue(type);
+      }))
+      .getSingleOrNull();
 }
 
 Future<void> _markBuiltinSource(AppDatabase database, String accountId) async {
-  await (database.update(database.accounts)
-    ..where((account) => account.id.equals(accountId))).write(
+  await (database.update(
+    database.accounts,
+  )..where((account) => account.id.equals(accountId))).write(
     AccountsCompanion(
       source: const Value(AccountSource.builtin),
       updatedAt: Value(DateTime.now()),

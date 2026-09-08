@@ -43,10 +43,6 @@ class RepaymentPolicyService {
       if (item.status == BillItemStatus.skipped) {
         throw BusinessException(CreditErrorCode.billInvalidCommand);
       }
-      if (bill.status == BillStatus.open &&
-          item.itemType != BillItemType.consumption) {
-        throw BusinessException(CreditErrorCode.billInvalidCommand);
-      }
       if (allocation.allocated.hasNegativePart) {
         throw BusinessException(CreditErrorCode.billInvalidCommand);
       }

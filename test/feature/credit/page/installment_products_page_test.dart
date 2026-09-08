@@ -13,7 +13,8 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
 import 'package:smartflow/feature/credit/page/installment_product_edit_page.dart';
-import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
+import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
+import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
@@ -47,7 +48,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('产品名称'), findsOneWidget);
-    expect(find.text('各期间隔'), findsOneWidget);
+    expect(find.text('间隔月数'), findsOneWidget);
     for (final label in [
       '本金',
       '期数',
@@ -65,7 +66,7 @@ void main() {
   });
 
   testWidgets(
-    'selection loads rules; switch unlocks and closing preserves edits',
+    'template rules are editable immediately and advanced toggle preserves edits',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(480, 1600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -106,7 +107,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('选择产品'));
+      await tester.tap(find.text('分期配置'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('产品模板'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('借呗先息后本'));
       await tester.pumpAndSettle();
@@ -119,49 +122,27 @@ void main() {
               selector,
             )
             .enabled,
-        isFalse,
-      );
-      expect(find.text('期数'), findsOneWidget);
-      final customSwitch = find.byType(Switch).last;
-      await tester.tap(customSwitch);
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<AppPlainSelectMenuFormRow<InstallmentRepaymentMethod>>(
-              selector,
-            )
-            .enabled,
         isTrue,
       );
-      final vm = container.read(
-        installmentFormViewModelProvider(
-          const InstallmentFormArgs(liabilityAccountId: 'loan'),
-        ).notifier,
+      expect(find.text('期数'), findsOneWidget);
+      expect(find.text('自定义本笔贷款'), findsNothing);
+      final page = tester.widget<LoanConfigurationPage>(
+        find.byType(LoanConfigurationPage),
       );
-      final before =
-          container
-                  .read(
-                    installmentFormViewModelProvider(
-                      const InstallmentFormArgs(liabilityAccountId: 'loan'),
-                    ),
-                  )
-                  .requireValue
-              as InstallmentFormLoaded;
-      vm.setTermsDraft(before.termsDraft.add(true));
+      final provider = loanConfigurationViewModelProvider(
+        installment: page.installment,
+      );
+      final vm = container.read(provider.notifier);
+      vm.setTerms(container.read(provider).terms.add(true));
       await tester.pumpAndSettle();
-      await tester.tap(customSwitch);
+      await tester.ensureVisible(find.byType(FilterChip));
+      await tester.tap(find.byType(FilterChip));
       await tester.pumpAndSettle();
-      final after =
-          container
-                  .read(
-                    installmentFormViewModelProvider(
-                      const InstallmentFormArgs(liabilityAccountId: 'loan'),
-                    ),
-                  )
-                  .requireValue
-              as InstallmentFormLoaded;
-      expect(after.customRules, isFalse);
-      expect(after.termsDraft.stages, hasLength(2));
+      await tester.tap(find.byType(FilterChip));
+      await tester.pumpAndSettle();
+      final after = container.read(provider);
+      expect(after.advanced, isFalse);
+      expect(after.terms.stages, hasLength(2));
       expect(after.productId, 'p');
       verifyNever(
         () => service.save(

@@ -104,7 +104,7 @@ class InstallmentStageDraft {
       method: method,
       intervalMonths: flat
           ? null
-          : _positiveInt(text(StageInput.interval), '各期间隔'),
+          : _positiveInt(text(StageInput.interval), '间隔月数'),
       ratePeriod: flat ? null : ratePeriod,
       accrual: flat ? null : accrual,
       amountAlgorithm: method == InstallmentRepaymentMethod.equalInstallment
@@ -147,7 +147,7 @@ class InstallmentStageDraft {
           count: flat ? 1 : _positiveInt(text(StageInput.periods), '期数'),
           intervalMonths: flat
               ? 1
-              : _positiveInt(text(StageInput.interval), '各期间隔'),
+              : _positiveInt(text(StageInput.interval), '间隔月数'),
         ),
         method: method,
         accrual: accrual,

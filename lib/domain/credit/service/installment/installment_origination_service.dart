@@ -1,14 +1,12 @@
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
-import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_lifecycle_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 
 import '../../valobj/installment_contract_terms.dart';
 import '../../valobj/installment_plan_terms.dart';
@@ -59,50 +57,9 @@ class InstallmentOriginationService {
     required InstallmentOriginationTerms terms,
     required DateTime createdAt,
     required String Function() newScheduleId,
-    CreditLiabilityAccount? creditAccount,
     String? disbursementAccountId,
     String? disbursementTransactionId,
   }) {
-    final cycleBounds = _lifecycle.cycleScheduleBoundsForDisbursement(
-      creditAccount,
-      borrowingDate: terms.borrowingDate,
-      totalPeriods: terms.stageTerms.totalPeriods,
-    );
-    var stages = terms.stageTerms;
-    if (cycleBounds != null) {
-      if (terms.productId != null ||
-          stages.stages.length != 1 ||
-          stages.repayments.length != 1) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '信用账户按账期生成单阶段计划',
-        );
-      }
-      final stage = stages.repayments.single;
-      stages = InstallmentContractTerms(
-        dayCount: stages.dayCount,
-        rounding: stages.rounding,
-        tailDifference: stages.tailDifference,
-        stages: [
-          InstallmentContractStage(
-            id: stages.stages.single.id,
-            terms: AmortizingStage(
-              dates: IntervalRepaymentDates(
-                firstDate: cycleBounds.first,
-                lastDate: cycleBounds.last,
-                count: stages.totalPeriods,
-              ),
-              method: stage.method,
-              rate: stage.rate,
-              accrual: stage.accrual,
-              endPrincipal: stage.endPrincipal,
-              fee: stage.fee,
-              installmentAmount: stage.installmentAmount,
-            ),
-          ),
-        ],
-      );
-    }
     return _originate(
       contractId: contractId,
       liabilityAccountId: liabilityAccountId,
@@ -116,7 +73,7 @@ class InstallmentOriginationService {
         productId: terms.productId,
         productName: terms.productName,
         customRules: terms.customRules,
-        stageTerms: stages,
+        stageTerms: terms.stageTerms,
       ),
       createdAt: createdAt,
       newScheduleId: newScheduleId,
@@ -132,6 +89,8 @@ class InstallmentOriginationService {
     required InstallmentContractTerms stageTerms,
     required DateTime createdAt,
     required String Function() newScheduleId,
+    String? productId,
+    String? productName,
     String? note,
   }) => _originate(
     contractId: contractId,
@@ -142,6 +101,8 @@ class InstallmentOriginationService {
       principal: principal,
       borrowingDate: borrowingDate,
       stageTerms: stageTerms,
+      productId: productId,
+      productName: productName,
       note: note,
       customRules: true,
     ),

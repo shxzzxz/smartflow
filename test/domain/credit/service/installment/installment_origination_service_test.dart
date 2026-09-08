@@ -8,6 +8,32 @@ import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
+  test('cash installments accept a product and retain configured dates', () {
+    final result = const InstallmentOriginationService().originateDisbursement(
+      contractId: 'cash-contract',
+      liabilityAccountId: 'credit',
+      terms: InstallmentOriginationTerms(
+        principal: const Money(minorUnits: 10000),
+        borrowingDate: DateTime(2026, 1, 1),
+        productId: 'template',
+        productName: '等额本金',
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: 'stage',
+          totalPeriods: 2,
+          firstDate: DateTime(2026, 2, 1),
+          lastDate: DateTime(2026, 3, 1),
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          accrual: InterestAccrualMethod.monthly,
+          feeMinor: 0,
+        ),
+      ),
+      createdAt: DateTime(2026),
+      newScheduleId: () => 'schedule',
+    );
+    expect(result.contract.productId, 'template');
+    expect(result.schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
+    expect(result.schedules.last.expectedRepaymentDate, DateTime(2026, 3, 1));
+  });
   test(
     'disbursement and bill conversion share contract schedule origination',
     () {

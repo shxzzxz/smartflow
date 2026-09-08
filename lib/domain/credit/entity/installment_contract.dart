@@ -1,6 +1,7 @@
 import '../../../core/money/money.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
+import '../../../core/time/date_label.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
 import '../valobj/installment_contract_terms.dart';
@@ -28,6 +29,7 @@ class InstallmentContract {
 
   InstallmentContract({
     required this.id,
+    String? name,
     required this.liabilityAccountId,
     required this.sourceType,
     required this.principal,
@@ -42,10 +44,12 @@ class InstallmentContract {
     this.productId,
     this.productName,
     this.customRules = false,
-  }) : _status = status,
+  }) : name = name ?? formatCompactDate(borrowingDate),
+       _status = status,
        _stageTerms = stageTerms;
 
   final String id;
+  String name;
   final String liabilityAccountId;
   final InstallmentSourceType sourceType;
   String? disbursementAccountId;
@@ -59,27 +63,46 @@ class InstallmentContract {
   InstallmentContractStatus _status;
   String? note;
   final DateTime createdAt;
-  final String? productId;
-  final String? productName;
+  String? productId;
+  String? productName;
   bool customRules;
   InstallmentContractTerms _stageTerms;
   InstallmentContractTerms get stageTerms => _stageTerms;
 
-  void reviseStageTerms(InstallmentContractTerms terms, {bool? customRules}) {
+  void reviseStageTerms(
+    InstallmentContractTerms terms, {
+    bool? customRules,
+    String? productId,
+    String? productName,
+  }) {
     ensureEditable();
     terms.validate();
     _stageTerms = terms;
     if (customRules != null) this.customRules = customRules;
+    if (productId != null) {
+      this.productId = productId;
+      this.productName = productName;
+    }
   }
 
   InstallmentContractStatus get status => _status;
 
   void reviseDetails({
+    String? name,
     DateTime? borrowingDate,
     Patch<String>? note,
     String? disbursementAccountId,
   }) {
     ensureEditable();
+    if (name != null) {
+      if (name.trim().isEmpty) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '请输入合同名称',
+        );
+      }
+      this.name = name.trim();
+    }
     if (disbursementAccountId != null &&
         (sourceType != InstallmentSourceType.disbursement ||
             disbursementTransactionId == null)) {

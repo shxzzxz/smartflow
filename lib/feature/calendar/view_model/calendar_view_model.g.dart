@@ -207,7 +207,7 @@ final class CalendarTransactionFeedViewModelProvider
 }
 
 String _$calendarTransactionFeedViewModelHash() =>
-    r'dcf91cd32eb17dad87cd9c921ae57dd29452aa95';
+    r'1e96b95f3f094708019bbf9ac7d6ed9065045344';
 
 /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
 /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
@@ -688,7 +688,7 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'bb401684621380be8749b92fbc025b44aecb1998';
+String _$calendarContentHash() => r'fed852c3ba9234ce542cddb50d36762b693760d0';
 
 final class CalendarContentFamily extends $Family
     with

@@ -1,10 +1,12 @@
 import '../../../../core/money/money.dart';
+import '../../../../core/time/date_label.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 
 class InstallmentContractReadModel {
   const InstallmentContractReadModel({
     required this.id,
+    String? name,
     required this.liabilityAccountId,
     required this.sourceType,
     required this.principal,
@@ -19,9 +21,11 @@ class InstallmentContractReadModel {
     this.productId,
     this.productName,
     this.customRules = false,
-  });
+  }) : _name = name;
 
   final String id;
+  final String? _name;
+  String get name => _name ?? formatCompactDate(borrowingDate);
   final String liabilityAccountId;
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;

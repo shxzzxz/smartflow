@@ -74,6 +74,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
   InstallmentContractReadModel _contractReadModel(InstallmentContract value) {
     return InstallmentContractReadModel(
       id: value.id,
+      name: value.name,
       liabilityAccountId: value.liabilityAccountId,
       sourceType: value.sourceType,
       disbursementAccountId: value.disbursementAccountId,

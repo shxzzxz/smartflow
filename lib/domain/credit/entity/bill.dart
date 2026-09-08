@@ -24,7 +24,17 @@ class Bill {
     this.window,
     this.createdAt,
   }) : _status = status,
-       _items = List.of(items);
+       _items = List.of(items) {
+    // Legacy callers did not persist a billing state. Infer it from the
+    // aggregate lifecycle while preserving explicit item projections.
+    if (status != BillStatus.open) {
+      for (final item in _items) {
+        if (item.itemType == BillItemType.consumption) {
+          item.billingState = BillItemBillingState.billed;
+        }
+      }
+    }
+  }
 
   final String id;
   final String accountId;
@@ -84,12 +94,12 @@ class Bill {
   }
 
   void refreshOpenProjection({
-    required BillWindow window,
+    BillWindow? window,
     required List<BillItem> sourceItems,
   }) {
     _ensureOpen();
-    this.window = window;
-    _status = BillStatus.open;
+    if (window != null) this.window = window;
+    _status = _projectStatus(BillStatus.open, sourceItems);
     _items = List.of(sourceItems);
   }
 
@@ -98,6 +108,11 @@ class Bill {
     required List<BillItem> sourceItems,
   }) {
     if (window != null) this.window = window;
+    for (final item in sourceItems) {
+      if (item.itemType == BillItemType.consumption) {
+        item.billingState = BillItemBillingState.billed;
+      }
+    }
     _items = List.of(sourceItems);
     _status = _projectClosedStatus(_items);
   }
@@ -124,16 +139,20 @@ class Bill {
     for (final item in _items) {
       final allocation = allocationsByItemId[item.id];
       if (allocation == null) continue;
+      final nextStatus = _settlement.judgeBillItem(
+        expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
+        allocatedPrincipalMinor: allocation.principalMinor,
+        hasAllocation: allocation.hasAllocation,
+        hasExpectedRepayment:
+            item.expectedPrincipal.minorUnits != 0 ||
+            item.expectedInterest.minorUnits != 0 ||
+            item.expectedFee.minorUnits != 0,
+      );
       item._markStatus(
-        _settlement.judgeBillItem(
-          expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
-          allocatedPrincipalMinor: allocation.principalMinor,
-          hasAllocation: allocation.hasAllocation,
-          hasExpectedRepayment:
-              item.expectedPrincipal.minorUnits != 0 ||
-              item.expectedInterest.minorUnits != 0 ||
-              item.expectedFee.minorUnits != 0,
-        ),
+        nextStatus == BillItemStatus.paid &&
+                allocation.principalMinor > item.expectedPrincipal.minorUnits
+            ? BillItemStatus.overpaid
+            : nextStatus,
       );
       if (item.scheduleId != null) {
         scheduleItemStatuses[item.scheduleId!] = item.status;
@@ -159,6 +178,11 @@ class Bill {
     return _settlement.projectBillStatus(
       current,
       items.map((item) => item.status),
+      hasOpenConsumption: items.any(
+        (item) =>
+            item.itemType == BillItemType.consumption &&
+            item.billingState == BillItemBillingState.open,
+      ),
     );
   }
 
@@ -180,14 +204,24 @@ class BillItem {
     required this.expectedInterest,
     required this.expectedFee,
     required this.status,
+    BillItemBillingState? billingState,
+    this.startInclusive,
+    this.endInclusive,
     this.contractId,
     this.scheduleId,
     this.createdAt,
-  });
+  }) : billingState =
+           billingState ??
+           (itemType == BillItemType.consumption
+               ? BillItemBillingState.open
+               : BillItemBillingState.billed);
 
   final String id;
   String billId;
   final BillItemType itemType;
+  BillItemBillingState billingState;
+  DateTime? startInclusive;
+  DateTime? endInclusive;
   final String? contractId;
   final String? scheduleId;
   DateTime repaymentDate;
@@ -204,6 +238,9 @@ class BillItem {
     Money? expectedInterest,
     Money? expectedFee,
     BillItemStatus? status,
+    BillItemBillingState? billingState,
+    DateTime? startInclusive,
+    DateTime? endInclusive,
   }) {
     if (billId != null) this.billId = billId;
     if (repaymentDate != null) this.repaymentDate = repaymentDate;
@@ -211,6 +248,9 @@ class BillItem {
     if (expectedInterest != null) this.expectedInterest = expectedInterest;
     if (expectedFee != null) this.expectedFee = expectedFee;
     if (status != null) this.status = status;
+    if (billingState != null) this.billingState = billingState;
+    if (startInclusive != null) this.startInclusive = startInclusive;
+    if (endInclusive != null) this.endInclusive = endInclusive;
   }
 
   void moveToBill(String nextBillId, {required DateTime repaymentDate}) {

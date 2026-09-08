@@ -44,6 +44,10 @@ BillStatusBadgePresentation billItemStatusPresentation({
       label: '已核销',
       tone: BillStatusTone.success,
     ),
+    BillItemStatus.overpaid => const BillStatusBadgePresentation(
+      label: '溢缴',
+      tone: BillStatusTone.primary,
+    ),
     BillItemStatus.skipped => const BillStatusBadgePresentation(
       label: '已跳过',
       tone: BillStatusTone.neutral,
@@ -54,12 +58,18 @@ BillStatusBadgePresentation billItemStatusPresentation({
 BillItemRowPresentation billItemRowPresentation(BillItemReadModel item) {
   return BillItemRowPresentation(
     id: item.id,
-    leadingIcon:
-        item.itemType == BillItemType.consumption
-            ? RemixIcons.shopping_bag_3_line
-            : RemixIcons.calendar_schedule_line,
+    leadingIcon: item.itemType == BillItemType.consumption
+        ? RemixIcons.shopping_bag_3_line
+        : RemixIcons.calendar_schedule_line,
     title: billItemLabel(item),
-    supportingTexts: [formatDateLabel(item.repaymentDate)],
+    supportingTexts: [
+      '还款 ${formatDateLabel(item.repaymentDate)}',
+      if (item.itemType == BillItemType.consumption &&
+          item.startInclusive != null &&
+          item.endInclusive != null)
+        '统计 ${formatDateLabel(item.startInclusive!)} - '
+            '${formatDateLabel(item.endInclusive!)}',
+    ],
     amount: item.remainingTotal,
     status: billItemStatusPresentation(
       status: item.status,

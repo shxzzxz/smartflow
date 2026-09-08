@@ -405,7 +405,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     );
 
     test(
-      'rejects installment item allocation while bill is still open',
+      'allows installment item allocation while bill is still open',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -415,23 +415,17 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           expectedPrincipal: 1000,
         );
 
-        await expectLater(
-          () => fixture.service.createBillRepayment(
-            credit.CreateBillRepaymentCommand(
-              billId: 'bill-1',
-              allocations: [
-                _allocation(billItemId: 'bill-item-1', principal: 1000),
-              ],
-            ),
-          ),
-          throwsA(
-            isA<BusinessException>().having(
-              (exception) => exception.code,
-              'code',
-              CreditErrorCode.billInvalidCommand.code,
-            ),
+        await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1000),
+            ],
+            repaymentDate: DateTime(2026, 6, 20),
           ),
         );
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.paid);
       },
     );
 
@@ -536,7 +530,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
       },
     );
 
-    test('allows manual principal over-allocation and settles item', () async {
+    test('allows manual principal over-allocation and marks item overpaid', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
       await fixture.seedBill(
@@ -556,7 +550,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
       );
 
       final bill = await fixture.bills.findBill('bill-1');
-      expect(bill!.items.single.status, credit.BillItemStatus.paid);
+      expect(bill!.items.single.status, credit.BillItemStatus.overpaid);
       expect(bill.status, credit.BillStatus.settled);
     });
 

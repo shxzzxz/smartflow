@@ -7,6 +7,43 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
 void main() {
+  test(
+    'v33 backfills contract names from local borrowing dates without changing plans',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-contract-names-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final old = _openDatabase(file);
+      await old.customSelect('SELECT 1').get();
+      await old.customStatement(
+        'ALTER TABLE installment_contracts DROP COLUMN name',
+      );
+      final date = DateTime(2026, 12, 3);
+      await old.customStatement(
+        "INSERT INTO installment_contracts (id, liability_account_id, source_type, principal_minor, start_date, status) "
+        "VALUES ('dated', 'loan', 'disbursement', 10000, ?, 'active')",
+        [date.millisecondsSinceEpoch ~/ 1000],
+      );
+      await old.customStatement('PRAGMA user_version = 33');
+      await old.close();
+      final current = _openDatabase(file);
+      final row = await current
+          .select(current.installmentContracts)
+          .getSingle();
+      expect(row.name, '20261203');
+      expect(row.borrowingDate, date);
+      expect(row.principalMinor, 10000);
+      await current.close();
+      final reopened = _openDatabase(file);
+      addTearDown(reopened.close);
+      expect(
+        (await reopened.select(reopened.installmentContracts).getSingle()).name,
+        '20261203',
+      );
+    },
+  );
   test('v32 drops scalar contract columns and preserves authoritative staged terms', () async {
     final directory = await Directory.systemTemp.createTemp(
       'smartflow-v32-stage-migration-',
@@ -298,7 +335,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 33);
+    expect(version.read<int>('user_version'), 35);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -337,7 +374,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 33);
+      expect(version.read<int>('user_version'), 35);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -391,7 +428,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 33);
+      expect(version.read<int>('user_version'), 35);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -502,7 +539,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 33);
+      expect(version.read<int>('user_version'), 35);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -669,7 +706,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 33);
+      expect(version.read<int>('user_version'), 35);
 
       for (final table in [
         'import_entity_mappings',

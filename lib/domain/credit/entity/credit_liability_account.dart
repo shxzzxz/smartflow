@@ -69,8 +69,9 @@ class CreditLiabilityAccount {
     final startDate =
         previousWindow?.billingDate ??
         DateTime(previousPeriod.year, previousPeriod.month, billingDay!);
-    final repaymentPeriod =
-        repaymentDay! > billingDay! ? period : period.next();
+    final repaymentPeriod = repaymentDay! > billingDay!
+        ? period
+        : period.next();
     final repaymentDate = DateTime(
       repaymentPeriod.year,
       repaymentPeriod.month,
@@ -82,6 +83,28 @@ class CreditLiabilityAccount {
       billingDate: billingDate,
       repaymentDate: repaymentDate,
     );
+  }
+
+  /// Returns the closed consumption interval for a bill period.
+  ConsumptionWindow consumptionWindowForPeriod(
+    BillPeriod period, {
+    BillWindow? previousWindow,
+  }) {
+    final window = nextCreditBillWindow(period, previousWindow: previousWindow);
+    return ConsumptionWindow(
+      startInclusive: effectiveCreditWindowStart(window),
+      endInclusive: effectiveCreditWindowEnd(
+        window,
+      ).subtract(const Duration(days: 1)),
+    );
+  }
+
+  DateTime repaymentDateForCreditPeriod(BillPeriod period) {
+    _ensureCreditCycleConfigured();
+    final repaymentPeriod = repaymentDay! > billingDay!
+        ? period
+        : period.next();
+    return DateTime(repaymentPeriod.year, repaymentPeriod.month, repaymentDay!);
   }
 
   DateTime effectiveCreditWindowStart(BillWindow window) {

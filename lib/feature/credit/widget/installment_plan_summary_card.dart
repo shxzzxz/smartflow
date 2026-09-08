@@ -12,7 +12,7 @@ class InstallmentPlanSummaryCard extends StatelessWidget {
     this.title = '还款计划',
     this.principal,
     this.periodCount,
-    this.stages = const [],
+    this.contractStatus,
     super.key,
   });
 
@@ -20,12 +20,21 @@ class InstallmentPlanSummaryCard extends StatelessWidget {
   final String title;
   final Money? principal;
   final int? periodCount;
-  final List<LoanCalculationStage> stages;
+  final InstallmentContractStatus? contractStatus;
 
   @override
   Widget build(BuildContext context) => AppDetailSummaryCard(
     title: title,
-    headerTrailing: periodCount == null
+    headerTrailing: contractStatus != null
+        ? AppStatusBadge(
+            label: contractStatus == InstallmentContractStatus.active
+                ? '进行中'
+                : '已结清',
+            color: contractStatus == InstallmentContractStatus.active
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.tertiary,
+          )
+        : periodCount == null
         ? null
         : AppStatusBadge(
             label: '$periodCount 期',
@@ -45,37 +54,17 @@ class InstallmentPlanSummaryCard extends StatelessWidget {
     supportingItems: [
       if (principal case final amount?)
         AppDetailSummaryCardItem(label: '本金', value: amount.format()),
-      if (metrics.isAvailable) ...[
+      if (metrics.isAvailable)
         AppDetailSummaryCardItem(
-          label: '月 IRR',
-          value: formatRatePercent(metrics.monthlyIrr, fractionDigits: 4),
-        ),
-        AppDetailSummaryCardItem(
-          label: '名义年化 APR',
-          value: formatRatePercent(metrics.nominalApr),
-        ),
-        AppDetailSummaryCardItem(
-          label: '有效年化 EAR',
-          value: formatRatePercent(metrics.effectiveApr),
-        ),
-      ] else
+          label: '实际年化（XIRR）',
+          value: formatRatePercent(metrics.xirr),
+        )
+      else
         AppDetailSummaryCardItem(
           label: '指标不可用',
           value: contractMetricsUnavailableLabel(metrics.unavailableReason!),
           span: 2,
         ),
-      for (final stage in stages)
-        if (stage.installmentAmount case final amount?) ...[
-          AppDetailSummaryCardItem(
-            label: '第 ${stage.firstPeriodNo}–${stage.lastPeriodNo} 期固定额',
-            value: amount.format(),
-          ),
-          if (stage.lastPeriodDifference case final difference?)
-            AppDetailSummaryCardItem(
-              label: '末期与固定额差额',
-              value: formatSignedMoney(difference),
-            ),
-        ],
     ],
   );
 }

@@ -7,8 +7,15 @@ class BillItems extends Table {
   TextColumn get id => text()();
   TextColumn get billId => text().named('bill_id')();
   TextColumn get itemType => textEnum<BillItemType>().named('item_type')();
+  TextColumn get billingState => textEnum<BillItemBillingState>()
+      .named('billing_state')
+      .withDefault(const Constant('open'))();
   TextColumn get contractId => text().named('contract_id').nullable()();
   TextColumn get scheduleId => text().named('schedule_id').nullable()();
+  DateTimeColumn get startInclusive =>
+      dateTime().named('start_inclusive').nullable()();
+  DateTimeColumn get endInclusive =>
+      dateTime().named('end_inclusive').nullable()();
   DateTimeColumn get repaymentDate => dateTime().named('repayment_date')();
   IntColumn get expectedPrincipalMinor =>
       integer().named('expected_principal_minor')();

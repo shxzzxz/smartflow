@@ -60,41 +60,38 @@ void main() {
       },
     );
 
-    test(
-      'uses next credit billing cycle for cash installment schedules',
-      () async {
-        final fixture = _Fixture();
-        fixture.creditAccounts.accounts['credit-liability'] =
-            CreditLiabilityAccount(
-              id: 'credit-ext',
-              accountId: 'credit-liability',
-              kind: CreditLiabilityAccountKind.credit,
-              billingDay: 5,
-              repaymentDay: 25,
-              billingDayToNext: true,
-            );
+    test('keeps configured dates for cash installment schedules', () async {
+      final fixture = _Fixture();
+      fixture.creditAccounts.accounts['credit-liability'] =
+          CreditLiabilityAccount(
+            id: 'credit-ext',
+            accountId: 'credit-liability',
+            kind: CreditLiabilityAccountKind.credit,
+            billingDay: 5,
+            repaymentDay: 25,
+            billingDayToNext: true,
+          );
 
-        final result = await fixture.service.createDisbursementContract(
-          _createDisbursementCommand(
-            liabilityAccountId: 'credit-liability',
-            disbursementAccountId: null,
-            borrowingDate: DateTime(2026, 6, 4),
-            firstRepaymentDate: DateTime(2026, 6, 10),
-            lastRepaymentDate: DateTime(2026, 6, 10),
-          ),
-        );
+      final result = await fixture.service.createDisbursementContract(
+        _createDisbursementCommand(
+          liabilityAccountId: 'credit-liability',
+          disbursementAccountId: null,
+          borrowingDate: DateTime(2026, 6, 4),
+          firstRepaymentDate: DateTime(2026, 6, 10),
+          lastRepaymentDate: DateTime(2026, 7, 10),
+        ),
+      );
 
-        final contract = fixture.installments.contracts[result.contractId]!;
-        expect(contract.stageTerms.firstDate, DateTime(2026, 7, 25));
-        expect(contract.stageTerms.lastDate, DateTime(2026, 8, 25));
-        expect(
-          fixture.installments
-              .schedulesFor(result.contractId)
-              .map((s) => s.expectedRepaymentDate),
-          [DateTime(2026, 7, 25), DateTime(2026, 8, 25)],
-        );
-      },
-    );
+      final contract = fixture.installments.contracts[result.contractId]!;
+      expect(contract.stageTerms.firstDate, DateTime(2026, 6, 10));
+      expect(contract.stageTerms.lastDate, DateTime(2026, 7, 10));
+      expect(
+        fixture.installments
+            .schedulesFor(result.contractId)
+            .map((s) => s.expectedRepaymentDate),
+        [DateTime(2026, 6, 10), DateTime(2026, 7, 10)],
+      );
+    });
 
     test(
       'updates parameter snapshot without recalculating schedules',
@@ -1269,7 +1266,6 @@ class _Fixture {
   late final InstallmentAppService service = InstallmentAppServiceImpl(
     repository: installments,
     bills: bills,
-    creditAccounts: creditAccounts,
     ledger: ledger,
     repayments: repayments,
     transactionRunner: const _ImmediateRunner(),

@@ -3,24 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../core/time/date_label.dart';
+import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/component.dart';
+import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
+import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../view_model/installment_terms_draft.dart';
 import 'installment_field_options.dart';
+import 'installment_stage_card.dart';
 
 enum InstallmentTermsEditorMode { calculator, contract, product }
 
 /// 同一草稿承载产品规则和本笔条款，页面拥有预览、重算及保存行为。
-class InstallmentTermsEditor extends StatelessWidget {
+class InstallmentTermsEditor extends StatefulWidget {
   const InstallmentTermsEditor({
     required this.value,
     required this.onChanged,
@@ -29,7 +33,7 @@ class InstallmentTermsEditor extends StatelessWidget {
     this.planAction,
     this.beforePlanAction,
     this.rulesEditable = true,
-    this.usesBillingCycle = false,
+    this.showAdvanced = true,
     super.key,
   });
   final InstallmentTermsDraft value;
@@ -41,89 +45,171 @@ class InstallmentTermsEditor extends StatelessWidget {
   bool get productMode => mode == InstallmentTermsEditorMode.product;
   final bool rulesEditable;
 
-  /// 信用账户放款分期只有一个还款阶段，日期及间隔由账户账期确定。
-  final bool usesBillingCycle;
+  /// 只控制计算约定和固定额算法的显示，不修改草稿或锁定其他字段。
+  final bool showAdvanced;
+
+  @override
+  State<InstallmentTermsEditor> createState() => _InstallmentTermsEditorState();
+}
+
+class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
+  final _expanded = <String>{};
+  final _stageKeys = <String, GlobalKey>{};
+  final _invalidFields = <String, BuildContext>{};
+  bool _validationScheduled = false;
+
+  InstallmentTermsDraft get value => widget.value;
+  ValueChanged<InstallmentTermsDraft> get onChanged => widget.onChanged;
+  InstallmentTermsEditorMode get mode => widget.mode;
+  bool get productMode => widget.productMode;
+  bool get rulesEditable => widget.rulesEditable;
+  DateTime? get borrowingDate => widget.borrowingDate;
+
+  @override
+  void initState() {
+    super.initState();
+    if (value.stages.isNotEmpty) _expanded.add(value.stages.first.id);
+  }
+
+  @override
+  void didUpdateWidget(covariant InstallmentTermsEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ids = value.stages.map((s) => s.id).toSet();
+    final oldIds = oldWidget.value.stages.map((s) => s.id).toSet();
+    _expanded.retainAll(ids);
+    _stageKeys.removeWhere((id, _) => !ids.contains(id));
+    _invalidFields.removeWhere((id, _) => !ids.contains(id));
+    if (ids.intersection(oldIds).isEmpty) {
+      if (value.stages.isNotEmpty) _expanded.add(value.stages.first.id);
+    } else {
+      _expanded.addAll(ids.difference(oldIds));
+    }
+  }
+
+  void _addStage(bool deferment) {
+    final next = value.add(
+      deferment,
+      borrowingDate: productMode ? null : borrowingDate,
+    );
+    onChanged(next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final target = _stageKeys[next.stages.last.id]?.currentContext;
+      if (target != null) _scrollTo(target);
+    });
+  }
+
+  void _onInvalid(String id, BuildContext field) {
+    _invalidFields[id] = field;
+    if (_validationScheduled) return;
+    _validationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _validationScheduled = false;
+      if (!mounted) return;
+      final invalid = [
+        for (final stage in value.stages)
+          if (_invalidFields[stage.id] case final field?) (stage.id, field),
+      ];
+      _invalidFields.clear();
+      if (invalid.isEmpty) return;
+      setState(() => _expanded.addAll(invalid.map((entry) => entry.$1)));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && invalid.first.$2.mounted) _scrollTo(invalid.first.$2);
+      });
+    });
+  }
+
+  void _scrollTo(BuildContext target) {
+    Scrollable.ensureVisible(
+      target,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AppMotion.durationFast,
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      AppFormSection(
-        title: '计算约定',
-        padding: _sectionPadding,
-        children: [
-          AppPlainSelectMenuFormRow(
-            label: '标准天数',
-            value: value.dayCount,
-            options: dayCountConventionOptions,
-            enabled: rulesEditable,
-            onChanged: (v) => onChanged(value.copyWith(dayCount: v)),
-          ),
-          AppPlainSelectMenuFormRow(
-            label: '舍入方式',
-            value: value.rounding,
-            options: roundingModeOptions,
-            enabled: rulesEditable,
-            onChanged: (v) => onChanged(value.copyWith(rounding: v)),
-          ),
-        ],
-      ),
-      for (var i = 0; i < value.stages.length; i++) ...[
-        const SizedBox(height: AppSpacing.space12),
-        _stage(context, value.stages[i], i),
+      if (widget.showAdvanced) ...[
+        AppFormSection(
+          title: '计算约定',
+          padding: _sectionPadding,
+          children: [
+            AppPlainSelectMenuFormRow(
+              label: '标准天数',
+              value: value.dayCount,
+              options: dayCountConventionOptions,
+              enabled: rulesEditable,
+              onChanged: (v) => onChanged(value.copyWith(dayCount: v)),
+            ),
+            AppPlainSelectMenuFormRow(
+              label: '舍入方式',
+              value: value.rounding,
+              options: roundingModeOptions,
+              enabled: rulesEditable,
+              onChanged: (v) => onChanged(value.copyWith(rounding: v)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space16),
       ],
-      if (rulesEditable && !usesBillingCycle) ...[
-        const SizedBox(height: AppSpacing.space12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final buttons = [
-              OutlinedButton.icon(
-                onPressed: () => onChanged(
-                  value.add(
-                    false,
-                    borrowingDate: productMode ? null : borrowingDate,
-                  ),
+      Text('还款阶段', style: context.appTextStyles.groupTitle),
+      const SizedBox(height: AppSpacing.space8),
+      for (var i = 0; i < value.stages.length; i++)
+        _TimelineEntry(
+          key: ValueKey(value.stages[i].id),
+          first: i == 0,
+          last: i == value.stages.length - 1 && !rulesEditable,
+          active: _expanded.contains(value.stages[i].id),
+          child: _stage(context, value.stages[i], i),
+        ),
+      if (rulesEditable) ...[
+        _TimelineEntry(
+          last: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final buttons = [
+                OutlinedButton.icon(
+                  onPressed: () => _addStage(false),
+                  icon: const Icon(RemixIcons.add_line),
+                  label: const Text('添加还款阶段'),
                 ),
-                icon: const Icon(RemixIcons.add_line),
-                label: const Text('添加还款阶段'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => onChanged(
-                  value.add(
-                    true,
-                    borrowingDate: productMode ? null : borrowingDate,
-                  ),
+                OutlinedButton.icon(
+                  onPressed: () => _addStage(true),
+                  icon: const Icon(RemixIcons.time_line),
+                  label: const Text('添加免还期'),
                 ),
-                icon: const Icon(RemixIcons.time_line),
-                label: const Text('添加免还期'),
-              ),
-            ];
-            if (constraints.maxWidth < 340 ||
-                MediaQuery.textScalerOf(context).scale(1) > 1.3) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              ];
+              if (constraints.maxWidth < 340 ||
+                  MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    buttons[0],
+                    const SizedBox(height: AppSpacing.space8),
+                    buttons[1],
+                  ],
+                );
+              }
+              return Row(
                 children: [
-                  buttons[0],
-                  const SizedBox(height: AppSpacing.space8),
-                  buttons[1],
+                  Expanded(child: buttons[0]),
+                  const SizedBox(width: AppSpacing.space8),
+                  Expanded(child: buttons[1]),
                 ],
               );
-            }
-            return Row(
-              children: [
-                Expanded(child: buttons[0]),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(child: buttons[1]),
-              ],
-            );
-          },
+            },
+          ),
         ),
       ],
-      if (beforePlanAction case final child?) ...[
+      if (widget.beforePlanAction case final child?) ...[
         const SizedBox(height: AppSpacing.space12),
         child,
       ],
-      if (planAction case final action?) ...[
+      if (widget.planAction case final action?) ...[
         const SizedBox(height: AppSpacing.space24),
         action,
       ],
@@ -134,38 +220,41 @@ class InstallmentTermsEditor extends StatelessWidget {
     void update(InstallmentStageDraft next) => onChanged(value.replace(next));
     final flat = s.method == InstallmentRepaymentMethod.flatFee;
     final custom = s.method == InstallmentRepaymentMethod.custom;
-    return AppFormSection(
-      key: ValueKey(s.id),
-      padding: _sectionPadding,
-      title: '阶段 ${index + 1} · ${s.deferment ? '免还期' : '还款阶段'}',
-      trailing: rulesEditable && !usesBillingCycle
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: '上移阶段',
-                  onPressed: index == 0
-                      ? null
-                      : () => onChanged(value.move(index, index - 1)),
-                  icon: const Icon(RemixIcons.arrow_up_line),
-                ),
-                IconButton(
-                  tooltip: '下移阶段',
-                  onPressed: index == value.stages.length - 1
-                      ? null
-                      : () => onChanged(value.move(index, index + 1)),
-                  icon: const Icon(RemixIcons.arrow_down_line),
-                ),
-                IconButton(
-                  tooltip: '删除阶段',
-                  onPressed: value.stages.length <= 1
-                      ? null
-                      : () => onChanged(value.remove(s.id)),
-                  icon: const Icon(RemixIcons.delete_bin_line),
-                ),
-              ],
-            )
-          : null,
+    return InstallmentStageCard(
+      key: _stageKeys.putIfAbsent(s.id, GlobalKey.new),
+      number: index + 1,
+      title: s.deferment ? '免还期' : '还款阶段',
+      summary: _summary(s, index),
+      expanded: _expanded.contains(s.id),
+      onToggle: () => setState(() {
+        if (!_expanded.remove(s.id)) _expanded.add(s.id);
+      }),
+      onInvalid: (field) => _onInvalid(s.id, field),
+      actions: [
+        if (rulesEditable) ...[
+          IconButton(
+            tooltip: '上移阶段',
+            onPressed: index == 0
+                ? null
+                : () => onChanged(value.move(index, index - 1)),
+            icon: const Icon(RemixIcons.arrow_up_line),
+          ),
+          IconButton(
+            tooltip: '下移阶段',
+            onPressed: index == value.stages.length - 1
+                ? null
+                : () => onChanged(value.move(index, index + 1)),
+            icon: const Icon(RemixIcons.arrow_down_line),
+          ),
+          IconButton(
+            tooltip: '删除阶段',
+            onPressed: value.stages.length <= 1
+                ? null
+                : () => onChanged(value.remove(s.id)),
+            icon: const Icon(RemixIcons.delete_bin_line),
+          ),
+        ],
+      ],
       children: s.deferment
           ? [
               if (productMode)
@@ -194,21 +283,19 @@ class InstallmentTermsEditor extends StatelessWidget {
                 _input(
                   s,
                   StageInput.interval,
-                  '各期间隔',
+                  '间隔月数',
                   update,
-                  enabled: rulesEditable && !usesBillingCycle,
+                  enabled: rulesEditable,
                   hint: '每期间隔月数：1 月供，3 季供，12 年供',
                 ),
-              if (!productMode && usesBillingCycle)
-                const AppPlainValueRow(label: '还款日期', value: '按账户账期生成'),
-              if (!productMode && !usesBillingCycle)
+              if (!productMode)
                 _date(
                   context,
                   flat ? '还款日' : '首期还款日',
                   s.firstDate,
                   (d) => update(s.copyWith(firstDate: d)),
                 ),
-              if (!productMode && !flat && !usesBillingCycle) ...[
+              if (!productMode && !flat) ...[
                 _date(
                   context,
                   '末期还款日',
@@ -257,13 +344,14 @@ class InstallmentTermsEditor extends StatelessWidget {
                   onChanged: (v) => update(s.copyWith(accrual: v)),
                 ),
               if (s.method == InstallmentRepaymentMethod.equalInstallment) ...[
-                AppPlainSelectMenuFormRow(
-                  label: '固定额算法',
-                  value: s.algorithm,
-                  enabled: rulesEditable,
-                  options: installmentAmountAlgorithmOptions,
-                  onChanged: (v) => update(s.changeAlgorithm(v)),
-                ),
+                if (widget.showAdvanced)
+                  AppPlainSelectMenuFormRow(
+                    label: '固定额算法',
+                    value: s.algorithm,
+                    enabled: rulesEditable,
+                    options: installmentAmountAlgorithmOptions,
+                    onChanged: (v) => update(s.changeAlgorithm(v)),
+                  ),
                 if (!productMode &&
                     s.algorithm == InstallmentAmountAlgorithm.fixed)
                   _input(
@@ -298,6 +386,72 @@ class InstallmentTermsEditor extends StatelessWidget {
               ],
             ],
     );
+  }
+
+  List<String> _summary(InstallmentStageDraft stage, int index) {
+    final String range;
+    if (productMode) {
+      range = '时间范围在本笔贷款中填写';
+    } else {
+      final start = index == 0
+          ? borrowingDate
+          : _endDate(value.stages[index - 1]);
+      final end = _endDate(stage);
+      range =
+          '${start == null ? '起点待确定' : formatDateLabel(start)} → '
+          '${end == null ? '结束日期待确定' : formatDateLabel(end)}';
+    }
+    if (stage.deferment) {
+      return ['不还款、不计息', range];
+    }
+    final method = installmentRepaymentMethodOptions
+        .firstWhere((option) => option.value == stage.method)
+        .label;
+    final flat = stage.method == InstallmentRepaymentMethod.flatFee;
+    final custom = stage.method == InstallmentRepaymentMethod.custom;
+    final unit = interestRatePeriodOptions
+        .firstWhere((option) => option.value == stage.ratePeriod)
+        .label;
+    final rateText = stage.text(StageInput.rate).trim();
+    final rate = rateText.isEmpty ? Decimal.zero : Decimal.tryParse(rateText);
+    return [
+      [
+        flat ? '$method · 单次还款' : method,
+        if (!flat && !custom)
+          productMode
+              ? '$unit利率（本笔填写）'
+              : rate == null || rate < Decimal.zero
+              ? '$unit利率待完善'
+              : '$unit利率 $rate%',
+      ].join(' · '),
+      range,
+    ];
+  }
+
+  DateTime? _endDate(InstallmentStageDraft stage) {
+    if (stage.deferment) return stage.untilDate;
+    if (stage.method == InstallmentRepaymentMethod.flatFee) {
+      return stage.firstDate;
+    }
+    if (stage.lastDate != null) return stage.lastDate;
+    final first = stage.firstDate;
+    final count = int.tryParse(stage.text(StageInput.periods));
+    final interval = int.tryParse(stage.text(StageInput.interval));
+    if (first == null ||
+        count == null ||
+        count <= 0 ||
+        interval == null ||
+        interval <= 0) {
+      return null;
+    }
+    final months = (count - 1) * interval;
+    if (months < 0 || months ~/ interval != count - 1) return null;
+    try {
+      return IntervalRepaymentDates.addMonthsClamped(first, months);
+    } on ArgumentError {
+      // 摘要允许未完成或超出日期范围的输入，提交校验仍由原表单负责。
+      return null;
+    }
   }
 
   Widget _input(
@@ -348,6 +502,56 @@ class InstallmentTermsEditor extends StatelessWidget {
       if (v != null) onChanged(v);
     },
   );
+}
+
+class _TimelineEntry extends StatelessWidget {
+  const _TimelineEntry({
+    required this.child,
+    this.first = false,
+    this.last = false,
+    this.active = false,
+    super.key,
+  });
+
+  final Widget child;
+  final bool first, last, active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Stack(
+      children: [
+        if (!first || !last)
+          Positioned(
+            left: AppSpacing.space4,
+            top: first ? AppSpacing.space24 : 0,
+            bottom: last ? null : 0,
+            height: last ? AppSpacing.space24 : null,
+            width: AppComponentTokens.outlineWidth,
+            child: ColoredBox(color: colors.outlineVariant),
+          ),
+        Positioned(
+          left: 0,
+          top: AppSpacing.space20,
+          child: Container(
+            width: AppSpacing.space8,
+            height: AppSpacing.space8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active ? colors.primary : colors.outlineVariant,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(
+            left: AppSpacing.space20,
+            bottom: AppSpacing.space12,
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
 }
 
 class _DraftInput extends StatefulWidget {

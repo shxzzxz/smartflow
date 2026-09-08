@@ -13,7 +13,7 @@ class ContractMetrics {
   const ContractMetrics.available({
     required this.monthlyIrr,
     required this.nominalApr,
-    required this.effectiveApr,
+    required this.xirr,
     required this.totalRepayment,
     required this.totalInterest,
     required this.totalFee,
@@ -27,7 +27,7 @@ class ContractMetrics {
     required this.totalFee,
   }) : monthlyIrr = null,
        nominalApr = null,
-       effectiveApr = null,
+       xirr = null,
        converged = false;
 
   /// 月 IRR（小数；0.01 = 1%）。
@@ -36,8 +36,8 @@ class ContractMetrics {
   /// 名义年化利率 = 月IRR × 12。
   final double? nominalApr;
 
-  /// 有效年化利率 EAR = (1+月IRR)^12 − 1。
-  final double? effectiveApr;
+  /// 按现金流实际日期、365 天年基准求解的年化 XIRR。
+  final double? xirr;
 
   final Money totalRepayment;
   final Money totalInterest;
@@ -51,7 +51,7 @@ class ContractMetrics {
   bool get isAvailable => unavailableReason == null;
 }
 
-/// 合同维度 IRR / APR / EAR：只看借款本金、借款日与全部计划行的约定现金流。
+/// 合同维度 XIRR 及其月利率、名义年化换算：只看约定现金流。
 class InstallmentMetricsCalculator {
   const InstallmentMetricsCalculator();
 
@@ -110,14 +110,14 @@ class InstallmentMetricsCalculator {
         totalFee: Money(minorUnits: totalFeeMinor),
       );
     }
-    final ear = xirrResult.rate;
-    final monthlyIrr = math.pow(1 + ear, 1 / 12) - 1;
+    final xirr = xirrResult.rate;
+    final monthlyIrr = math.pow(1 + xirr, 1 / 12) - 1;
     final nominalApr = monthlyIrr * 12;
 
     return ContractMetrics.available(
       monthlyIrr: monthlyIrr.toDouble(),
       nominalApr: nominalApr.toDouble(),
-      effectiveApr: ear,
+      xirr: xirr,
       totalRepayment: Money(minorUnits: totalRepayMinor),
       totalInterest: Money(minorUnits: totalInterestMinor),
       totalFee: Money(minorUnits: totalFeeMinor),

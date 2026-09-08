@@ -13,6 +13,7 @@ class BillRepaymentAllocationLine {
     required this.expected,
     this.alreadyAllocated = RepaymentAmountBreakdown.zero,
     this.label = '',
+    this.repaymentDate,
   });
 
   final String billItemId;
@@ -20,6 +21,7 @@ class BillRepaymentAllocationLine {
   final RepaymentAmountBreakdown expected;
   final RepaymentAmountBreakdown alreadyAllocated;
   final String label;
+  final DateTime? repaymentDate;
 
   int get remainingPrincipal => _remaining(
     expected.principal.minorUnits,
@@ -139,6 +141,16 @@ class BillRepaymentAllocator {
       for (var i = 0; i < lines.length; i++) (index: i, line: lines[i]),
     ];
     indexed.sort((left, right) {
+      final leftDate = left.line.repaymentDate;
+      final rightDate = right.line.repaymentDate;
+      if (leftDate != null && rightDate != null) {
+        final dateCompare = leftDate.compareTo(rightDate);
+        if (dateCompare != 0) return dateCompare;
+      } else if (leftDate != null) {
+        return -1;
+      } else if (rightDate != null) {
+        return 1;
+      }
       final typeCompare = _itemTypeOrder(
         left.line.itemType,
       ).compareTo(_itemTypeOrder(right.line.itemType));

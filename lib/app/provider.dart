@@ -564,7 +564,6 @@ InstallmentAppService installmentAppService(Ref ref) {
     repository: ref.watch(installmentRepositoryProvider),
     products: ref.watch(installmentProductRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
-    creditAccounts: ref.watch(creditAccountRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),

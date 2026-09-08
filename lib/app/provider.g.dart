@@ -2908,7 +2908,7 @@ final class InstallmentAppServiceProvider
 }
 
 String _$installmentAppServiceHash() =>
-    r'1485200b170077e394de0a7981523d46beb10faa';
+    r'81f0493aeea1dc9d96d720fc21eb8979a305272d';
 
 @ProviderFor(installmentQueryService)
 final installmentQueryServiceProvider = InstallmentQueryServiceProvider._();

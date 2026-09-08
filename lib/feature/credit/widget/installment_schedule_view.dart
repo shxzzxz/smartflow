@@ -4,7 +4,6 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../presentation/installment_schedule_presentation.dart';
 
@@ -67,48 +66,45 @@ class _ScheduleRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space12,
-        vertical: AppSpacing.space8,
+        vertical: AppSpacing.space10,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Wrap(
-            spacing: AppSpacing.space8,
-            runSpacing: AppSpacing.space4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('第${item.periodNo}期', style: styles.formLabel),
-              Text(formatDateLabel(item.date), style: styles.formLabel),
-              if (item.recalculated)
-                AppStatusBadge(label: '重算', color: colors.primary),
-              if (item.status case final status?)
-                AppStatusBadge(
-                  label: installmentScheduleStatusLabel(status),
-                  color: switch (status) {
-                    InstallmentScheduleStatus.pending => colors.primary,
-                    InstallmentScheduleStatus.partiallyPaid => colors.error,
-                    InstallmentScheduleStatus.paid => colors.tertiary,
-                    InstallmentScheduleStatus.skipped => colors.outline,
-                  },
-                ),
-            ],
+          SizedBox(
+            width: 48,
+            child: Text('第${item.periodNo}期', style: styles.formLabel),
           ),
-          const SizedBox(height: AppSpacing.space4),
-          Wrap(
-            spacing: AppSpacing.space12,
-            runSpacing: AppSpacing.space4,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(formatDateLabel(item.date), style: styles.formLabel),
+                Text(
+                  '本金 ${item.principal.format()}'
+                  '${item.interest.minorUnits > 0 ? '  利息 ${item.interest.format()}' : ''}'
+                  '${item.fee.minorUnits > 0 ? '  手续费 ${item.fee.format()}' : ''}',
+                  style: supporting,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('本金 ${item.principal.format()}', style: supporting),
-              if (item.interest.minorUnits != 0)
-                Text('利息 ${item.interest.format()}', style: supporting),
-              if (item.fee.minorUnits != 0)
-                Text('手续费 ${item.fee.format()}', style: supporting),
-              Text(
-                '合计 ${item.total.format()}',
-                style: styles.formValueEmphasis,
-              ),
-              if (item.remainingPrincipal case final remaining?)
-                Text('剩余 ${remaining.format()}', style: supporting),
+              Text(item.total.format(), style: styles.formLabel),
+              if (item.status case final status?)
+                Text(
+                  installmentScheduleStatusLabel(status),
+                  style: supporting.copyWith(
+                    color: switch (status) {
+                      InstallmentScheduleStatus.pending => colors.primary,
+                      InstallmentScheduleStatus.partiallyPaid => colors.error,
+                      InstallmentScheduleStatus.paid => colors.tertiary,
+                      InstallmentScheduleStatus.skipped => colors.outline,
+                    },
+                  ),
+                ),
             ],
           ),
         ],

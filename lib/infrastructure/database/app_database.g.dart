@@ -6073,6 +6073,16 @@ class $BillItemsTable extends BillItems
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<BillItemType>($BillItemsTable.$converteritemType);
+  @override
+  late final GeneratedColumnWithTypeConverter<BillItemBillingState, String>
+  billingState = GeneratedColumn<String>(
+    'billing_state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('open'),
+  ).withConverter<BillItemBillingState>($BillItemsTable.$converterbillingState);
   static const VerificationMeta _contractIdMeta = const VerificationMeta(
     'contractId',
   );
@@ -6093,6 +6103,29 @@ class $BillItemsTable extends BillItems
     aliasedName,
     true,
     type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startInclusiveMeta = const VerificationMeta(
+    'startInclusive',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startInclusive =
+      GeneratedColumn<DateTime>(
+        'start_inclusive',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _endInclusiveMeta = const VerificationMeta(
+    'endInclusive',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endInclusive = GeneratedColumn<DateTime>(
+    'end_inclusive',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _repaymentDateMeta = const VerificationMeta(
@@ -6176,8 +6209,11 @@ class $BillItemsTable extends BillItems
     id,
     billId,
     itemType,
+    billingState,
     contractId,
     scheduleId,
+    startInclusive,
+    endInclusive,
     repaymentDate,
     expectedPrincipalMinor,
     expectedInterestMinor,
@@ -6221,6 +6257,24 @@ class $BillItemsTable extends BillItems
       context.handle(
         _scheduleIdMeta,
         scheduleId.isAcceptableOrUnknown(data['schedule_id']!, _scheduleIdMeta),
+      );
+    }
+    if (data.containsKey('start_inclusive')) {
+      context.handle(
+        _startInclusiveMeta,
+        startInclusive.isAcceptableOrUnknown(
+          data['start_inclusive']!,
+          _startInclusiveMeta,
+        ),
+      );
+    }
+    if (data.containsKey('end_inclusive')) {
+      context.handle(
+        _endInclusiveMeta,
+        endInclusive.isAcceptableOrUnknown(
+          data['end_inclusive']!,
+          _endInclusiveMeta,
+        ),
       );
     }
     if (data.containsKey('repayment_date')) {
@@ -6302,6 +6356,12 @@ class $BillItemsTable extends BillItems
           data['${effectivePrefix}item_type'],
         )!,
       ),
+      billingState: $BillItemsTable.$converterbillingState.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}billing_state'],
+        )!,
+      ),
       contractId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}contract_id'],
@@ -6309,6 +6369,14 @@ class $BillItemsTable extends BillItems
       scheduleId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}schedule_id'],
+      ),
+      startInclusive: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_inclusive'],
+      ),
+      endInclusive: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_inclusive'],
       ),
       repaymentDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -6350,6 +6418,10 @@ class $BillItemsTable extends BillItems
 
   static JsonTypeConverter2<BillItemType, String, String> $converteritemType =
       const EnumNameConverter<BillItemType>(BillItemType.values);
+  static JsonTypeConverter2<BillItemBillingState, String, String>
+  $converterbillingState = const EnumNameConverter<BillItemBillingState>(
+    BillItemBillingState.values,
+  );
   static JsonTypeConverter2<BillItemStatus, String, String> $converterstatus =
       const EnumNameConverter<BillItemStatus>(BillItemStatus.values);
 }
@@ -6358,8 +6430,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
   final String id;
   final String billId;
   final BillItemType itemType;
+  final BillItemBillingState billingState;
   final String? contractId;
   final String? scheduleId;
+  final DateTime? startInclusive;
+  final DateTime? endInclusive;
   final DateTime repaymentDate;
   final int expectedPrincipalMinor;
   final int expectedInterestMinor;
@@ -6371,8 +6446,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
     required this.id,
     required this.billId,
     required this.itemType,
+    required this.billingState,
     this.contractId,
     this.scheduleId,
+    this.startInclusive,
+    this.endInclusive,
     required this.repaymentDate,
     required this.expectedPrincipalMinor,
     required this.expectedInterestMinor,
@@ -6391,11 +6469,22 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
         $BillItemsTable.$converteritemType.toSql(itemType),
       );
     }
+    {
+      map['billing_state'] = Variable<String>(
+        $BillItemsTable.$converterbillingState.toSql(billingState),
+      );
+    }
     if (!nullToAbsent || contractId != null) {
       map['contract_id'] = Variable<String>(contractId);
     }
     if (!nullToAbsent || scheduleId != null) {
       map['schedule_id'] = Variable<String>(scheduleId);
+    }
+    if (!nullToAbsent || startInclusive != null) {
+      map['start_inclusive'] = Variable<DateTime>(startInclusive);
+    }
+    if (!nullToAbsent || endInclusive != null) {
+      map['end_inclusive'] = Variable<DateTime>(endInclusive);
     }
     map['repayment_date'] = Variable<DateTime>(repaymentDate);
     map['expected_principal_minor'] = Variable<int>(expectedPrincipalMinor);
@@ -6416,12 +6505,19 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       id: Value(id),
       billId: Value(billId),
       itemType: Value(itemType),
+      billingState: Value(billingState),
       contractId: contractId == null && nullToAbsent
           ? const Value.absent()
           : Value(contractId),
       scheduleId: scheduleId == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduleId),
+      startInclusive: startInclusive == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startInclusive),
+      endInclusive: endInclusive == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endInclusive),
       repaymentDate: Value(repaymentDate),
       expectedPrincipalMinor: Value(expectedPrincipalMinor),
       expectedInterestMinor: Value(expectedInterestMinor),
@@ -6443,8 +6539,13 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       itemType: $BillItemsTable.$converteritemType.fromJson(
         serializer.fromJson<String>(json['itemType']),
       ),
+      billingState: $BillItemsTable.$converterbillingState.fromJson(
+        serializer.fromJson<String>(json['billingState']),
+      ),
       contractId: serializer.fromJson<String?>(json['contractId']),
       scheduleId: serializer.fromJson<String?>(json['scheduleId']),
+      startInclusive: serializer.fromJson<DateTime?>(json['startInclusive']),
+      endInclusive: serializer.fromJson<DateTime?>(json['endInclusive']),
       repaymentDate: serializer.fromJson<DateTime>(json['repaymentDate']),
       expectedPrincipalMinor: serializer.fromJson<int>(
         json['expectedPrincipalMinor'],
@@ -6469,8 +6570,13 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       'itemType': serializer.toJson<String>(
         $BillItemsTable.$converteritemType.toJson(itemType),
       ),
+      'billingState': serializer.toJson<String>(
+        $BillItemsTable.$converterbillingState.toJson(billingState),
+      ),
       'contractId': serializer.toJson<String?>(contractId),
       'scheduleId': serializer.toJson<String?>(scheduleId),
+      'startInclusive': serializer.toJson<DateTime?>(startInclusive),
+      'endInclusive': serializer.toJson<DateTime?>(endInclusive),
       'repaymentDate': serializer.toJson<DateTime>(repaymentDate),
       'expectedPrincipalMinor': serializer.toJson<int>(expectedPrincipalMinor),
       'expectedInterestMinor': serializer.toJson<int>(expectedInterestMinor),
@@ -6487,8 +6593,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
     String? id,
     String? billId,
     BillItemType? itemType,
+    BillItemBillingState? billingState,
     Value<String?> contractId = const Value.absent(),
     Value<String?> scheduleId = const Value.absent(),
+    Value<DateTime?> startInclusive = const Value.absent(),
+    Value<DateTime?> endInclusive = const Value.absent(),
     DateTime? repaymentDate,
     int? expectedPrincipalMinor,
     int? expectedInterestMinor,
@@ -6500,8 +6609,13 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
     id: id ?? this.id,
     billId: billId ?? this.billId,
     itemType: itemType ?? this.itemType,
+    billingState: billingState ?? this.billingState,
     contractId: contractId.present ? contractId.value : this.contractId,
     scheduleId: scheduleId.present ? scheduleId.value : this.scheduleId,
+    startInclusive: startInclusive.present
+        ? startInclusive.value
+        : this.startInclusive,
+    endInclusive: endInclusive.present ? endInclusive.value : this.endInclusive,
     repaymentDate: repaymentDate ?? this.repaymentDate,
     expectedPrincipalMinor:
         expectedPrincipalMinor ?? this.expectedPrincipalMinor,
@@ -6516,12 +6630,21 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
       id: data.id.present ? data.id.value : this.id,
       billId: data.billId.present ? data.billId.value : this.billId,
       itemType: data.itemType.present ? data.itemType.value : this.itemType,
+      billingState: data.billingState.present
+          ? data.billingState.value
+          : this.billingState,
       contractId: data.contractId.present
           ? data.contractId.value
           : this.contractId,
       scheduleId: data.scheduleId.present
           ? data.scheduleId.value
           : this.scheduleId,
+      startInclusive: data.startInclusive.present
+          ? data.startInclusive.value
+          : this.startInclusive,
+      endInclusive: data.endInclusive.present
+          ? data.endInclusive.value
+          : this.endInclusive,
       repaymentDate: data.repaymentDate.present
           ? data.repaymentDate.value
           : this.repaymentDate,
@@ -6546,8 +6669,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
           ..write('id: $id, ')
           ..write('billId: $billId, ')
           ..write('itemType: $itemType, ')
+          ..write('billingState: $billingState, ')
           ..write('contractId: $contractId, ')
           ..write('scheduleId: $scheduleId, ')
+          ..write('startInclusive: $startInclusive, ')
+          ..write('endInclusive: $endInclusive, ')
           ..write('repaymentDate: $repaymentDate, ')
           ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
           ..write('expectedInterestMinor: $expectedInterestMinor, ')
@@ -6564,8 +6690,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
     id,
     billId,
     itemType,
+    billingState,
     contractId,
     scheduleId,
+    startInclusive,
+    endInclusive,
     repaymentDate,
     expectedPrincipalMinor,
     expectedInterestMinor,
@@ -6581,8 +6710,11 @@ class BillItemRow extends DataClass implements Insertable<BillItemRow> {
           other.id == this.id &&
           other.billId == this.billId &&
           other.itemType == this.itemType &&
+          other.billingState == this.billingState &&
           other.contractId == this.contractId &&
           other.scheduleId == this.scheduleId &&
+          other.startInclusive == this.startInclusive &&
+          other.endInclusive == this.endInclusive &&
           other.repaymentDate == this.repaymentDate &&
           other.expectedPrincipalMinor == this.expectedPrincipalMinor &&
           other.expectedInterestMinor == this.expectedInterestMinor &&
@@ -6596,8 +6728,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
   final Value<String> id;
   final Value<String> billId;
   final Value<BillItemType> itemType;
+  final Value<BillItemBillingState> billingState;
   final Value<String?> contractId;
   final Value<String?> scheduleId;
+  final Value<DateTime?> startInclusive;
+  final Value<DateTime?> endInclusive;
   final Value<DateTime> repaymentDate;
   final Value<int> expectedPrincipalMinor;
   final Value<int> expectedInterestMinor;
@@ -6610,8 +6745,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
     this.id = const Value.absent(),
     this.billId = const Value.absent(),
     this.itemType = const Value.absent(),
+    this.billingState = const Value.absent(),
     this.contractId = const Value.absent(),
     this.scheduleId = const Value.absent(),
+    this.startInclusive = const Value.absent(),
+    this.endInclusive = const Value.absent(),
     this.repaymentDate = const Value.absent(),
     this.expectedPrincipalMinor = const Value.absent(),
     this.expectedInterestMinor = const Value.absent(),
@@ -6625,8 +6763,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
     required String id,
     required String billId,
     required BillItemType itemType,
+    this.billingState = const Value.absent(),
     this.contractId = const Value.absent(),
     this.scheduleId = const Value.absent(),
+    this.startInclusive = const Value.absent(),
+    this.endInclusive = const Value.absent(),
     required DateTime repaymentDate,
     required int expectedPrincipalMinor,
     required int expectedInterestMinor,
@@ -6647,8 +6788,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
     Expression<String>? id,
     Expression<String>? billId,
     Expression<String>? itemType,
+    Expression<String>? billingState,
     Expression<String>? contractId,
     Expression<String>? scheduleId,
+    Expression<DateTime>? startInclusive,
+    Expression<DateTime>? endInclusive,
     Expression<DateTime>? repaymentDate,
     Expression<int>? expectedPrincipalMinor,
     Expression<int>? expectedInterestMinor,
@@ -6662,8 +6806,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
       if (id != null) 'id': id,
       if (billId != null) 'bill_id': billId,
       if (itemType != null) 'item_type': itemType,
+      if (billingState != null) 'billing_state': billingState,
       if (contractId != null) 'contract_id': contractId,
       if (scheduleId != null) 'schedule_id': scheduleId,
+      if (startInclusive != null) 'start_inclusive': startInclusive,
+      if (endInclusive != null) 'end_inclusive': endInclusive,
       if (repaymentDate != null) 'repayment_date': repaymentDate,
       if (expectedPrincipalMinor != null)
         'expected_principal_minor': expectedPrincipalMinor,
@@ -6681,8 +6828,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
     Value<String>? id,
     Value<String>? billId,
     Value<BillItemType>? itemType,
+    Value<BillItemBillingState>? billingState,
     Value<String?>? contractId,
     Value<String?>? scheduleId,
+    Value<DateTime?>? startInclusive,
+    Value<DateTime?>? endInclusive,
     Value<DateTime>? repaymentDate,
     Value<int>? expectedPrincipalMinor,
     Value<int>? expectedInterestMinor,
@@ -6696,8 +6846,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
       id: id ?? this.id,
       billId: billId ?? this.billId,
       itemType: itemType ?? this.itemType,
+      billingState: billingState ?? this.billingState,
       contractId: contractId ?? this.contractId,
       scheduleId: scheduleId ?? this.scheduleId,
+      startInclusive: startInclusive ?? this.startInclusive,
+      endInclusive: endInclusive ?? this.endInclusive,
       repaymentDate: repaymentDate ?? this.repaymentDate,
       expectedPrincipalMinor:
           expectedPrincipalMinor ?? this.expectedPrincipalMinor,
@@ -6725,11 +6878,22 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
         $BillItemsTable.$converteritemType.toSql(itemType.value),
       );
     }
+    if (billingState.present) {
+      map['billing_state'] = Variable<String>(
+        $BillItemsTable.$converterbillingState.toSql(billingState.value),
+      );
+    }
     if (contractId.present) {
       map['contract_id'] = Variable<String>(contractId.value);
     }
     if (scheduleId.present) {
       map['schedule_id'] = Variable<String>(scheduleId.value);
+    }
+    if (startInclusive.present) {
+      map['start_inclusive'] = Variable<DateTime>(startInclusive.value);
+    }
+    if (endInclusive.present) {
+      map['end_inclusive'] = Variable<DateTime>(endInclusive.value);
     }
     if (repaymentDate.present) {
       map['repayment_date'] = Variable<DateTime>(repaymentDate.value);
@@ -6770,8 +6934,11 @@ class BillItemsCompanion extends UpdateCompanion<BillItemRow> {
           ..write('id: $id, ')
           ..write('billId: $billId, ')
           ..write('itemType: $itemType, ')
+          ..write('billingState: $billingState, ')
           ..write('contractId: $contractId, ')
           ..write('scheduleId: $scheduleId, ')
+          ..write('startInclusive: $startInclusive, ')
+          ..write('endInclusive: $endInclusive, ')
           ..write('repaymentDate: $repaymentDate, ')
           ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
           ..write('expectedInterestMinor: $expectedInterestMinor, ')
@@ -7076,6 +7243,16 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _productIdMeta = const VerificationMeta(
     'productId',
   );
@@ -7277,6 +7454,7 @@ class $InstallmentContractsTable extends InstallmentContracts
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    name,
     productId,
     productName,
     customRules,
@@ -7311,6 +7489,12 @@ class $InstallmentContractsTable extends InstallmentContracts
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
       context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
     }
     if (data.containsKey('product_id')) {
       context.handle(
@@ -7448,6 +7632,10 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
       productId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}product_id'],
@@ -7541,6 +7729,9 @@ class $InstallmentContractsTable extends InstallmentContracts
 class InstallmentContractRow extends DataClass
     implements Insertable<InstallmentContractRow> {
   final String id;
+
+  /// 正常创建由合同填入借款日期名称；空值仅供迁移添加列后回填。
+  final String name;
   final String? productId;
   final String? productName;
   final bool customRules;
@@ -7562,6 +7753,7 @@ class InstallmentContractRow extends DataClass
   final DateTime updatedAt;
   const InstallmentContractRow({
     required this.id,
+    required this.name,
     this.productId,
     this.productName,
     required this.customRules,
@@ -7584,6 +7776,7 @@ class InstallmentContractRow extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
     if (!nullToAbsent || productId != null) {
       map['product_id'] = Variable<String>(productId);
     }
@@ -7629,6 +7822,7 @@ class InstallmentContractRow extends DataClass
   InstallmentContractsCompanion toCompanion(bool nullToAbsent) {
     return InstallmentContractsCompanion(
       id: Value(id),
+      name: Value(name),
       productId: productId == null && nullToAbsent
           ? const Value.absent()
           : Value(productId),
@@ -7667,6 +7861,7 @@ class InstallmentContractRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentContractRow(
       id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
       productId: serializer.fromJson<String?>(json['productId']),
       productName: serializer.fromJson<String?>(json['productName']),
       customRules: serializer.fromJson<bool>(json['customRules']),
@@ -7703,6 +7898,7 @@ class InstallmentContractRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
       'productId': serializer.toJson<String?>(productId),
       'productName': serializer.toJson<String?>(productName),
       'customRules': serializer.toJson<bool>(customRules),
@@ -7733,6 +7929,7 @@ class InstallmentContractRow extends DataClass
 
   InstallmentContractRow copyWith({
     String? id,
+    String? name,
     Value<String?> productId = const Value.absent(),
     Value<String?> productName = const Value.absent(),
     bool? customRules,
@@ -7752,6 +7949,7 @@ class InstallmentContractRow extends DataClass
     DateTime? updatedAt,
   }) => InstallmentContractRow(
     id: id ?? this.id,
+    name: name ?? this.name,
     productId: productId.present ? productId.value : this.productId,
     productName: productName.present ? productName.value : this.productName,
     customRules: customRules ?? this.customRules,
@@ -7779,6 +7977,7 @@ class InstallmentContractRow extends DataClass
   InstallmentContractRow copyWithCompanion(InstallmentContractsCompanion data) {
     return InstallmentContractRow(
       id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
       productId: data.productId.present ? data.productId.value : this.productId,
       productName: data.productName.present
           ? data.productName.value
@@ -7823,6 +8022,7 @@ class InstallmentContractRow extends DataClass
   String toString() {
     return (StringBuffer('InstallmentContractRow(')
           ..write('id: $id, ')
+          ..write('name: $name, ')
           ..write('productId: $productId, ')
           ..write('productName: $productName, ')
           ..write('customRules: $customRules, ')
@@ -7847,6 +8047,7 @@ class InstallmentContractRow extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
+    name,
     productId,
     productName,
     customRules,
@@ -7870,6 +8071,7 @@ class InstallmentContractRow extends DataClass
       identical(this, other) ||
       (other is InstallmentContractRow &&
           other.id == this.id &&
+          other.name == this.name &&
           other.productId == this.productId &&
           other.productName == this.productName &&
           other.customRules == this.customRules &&
@@ -7892,6 +8094,7 @@ class InstallmentContractRow extends DataClass
 class InstallmentContractsCompanion
     extends UpdateCompanion<InstallmentContractRow> {
   final Value<String> id;
+  final Value<String> name;
   final Value<String?> productId;
   final Value<String?> productName;
   final Value<bool> customRules;
@@ -7912,6 +8115,7 @@ class InstallmentContractsCompanion
   final Value<int> rowid;
   const InstallmentContractsCompanion({
     this.id = const Value.absent(),
+    this.name = const Value.absent(),
     this.productId = const Value.absent(),
     this.productName = const Value.absent(),
     this.customRules = const Value.absent(),
@@ -7933,6 +8137,7 @@ class InstallmentContractsCompanion
   });
   InstallmentContractsCompanion.insert({
     required String id,
+    this.name = const Value.absent(),
     this.productId = const Value.absent(),
     this.productName = const Value.absent(),
     this.customRules = const Value.absent(),
@@ -7959,6 +8164,7 @@ class InstallmentContractsCompanion
        status = Value(status);
   static Insertable<InstallmentContractRow> custom({
     Expression<String>? id,
+    Expression<String>? name,
     Expression<String>? productId,
     Expression<String>? productName,
     Expression<bool>? customRules,
@@ -7980,6 +8186,7 @@ class InstallmentContractsCompanion
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (name != null) 'name': name,
       if (productId != null) 'product_id': productId,
       if (productName != null) 'product_name': productName,
       if (customRules != null) 'custom_rules': customRules,
@@ -8006,6 +8213,7 @@ class InstallmentContractsCompanion
 
   InstallmentContractsCompanion copyWith({
     Value<String>? id,
+    Value<String>? name,
     Value<String?>? productId,
     Value<String?>? productName,
     Value<bool>? customRules,
@@ -8027,6 +8235,7 @@ class InstallmentContractsCompanion
   }) {
     return InstallmentContractsCompanion(
       id: id ?? this.id,
+      name: name ?? this.name,
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
       customRules: customRules ?? this.customRules,
@@ -8055,6 +8264,9 @@ class InstallmentContractsCompanion
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
     }
     if (productId.present) {
       map['product_id'] = Variable<String>(productId.value);
@@ -8125,6 +8337,7 @@ class InstallmentContractsCompanion
   String toString() {
     return (StringBuffer('InstallmentContractsCompanion(')
           ..write('id: $id, ')
+          ..write('name: $name, ')
           ..write('productId: $productId, ')
           ..write('productName: $productName, ')
           ..write('customRules: $customRules, ')
@@ -16325,8 +16538,11 @@ typedef $$BillItemsTableCreateCompanionBuilder =
       required String id,
       required String billId,
       required BillItemType itemType,
+      Value<BillItemBillingState> billingState,
       Value<String?> contractId,
       Value<String?> scheduleId,
+      Value<DateTime?> startInclusive,
+      Value<DateTime?> endInclusive,
       required DateTime repaymentDate,
       required int expectedPrincipalMinor,
       required int expectedInterestMinor,
@@ -16341,8 +16557,11 @@ typedef $$BillItemsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> billId,
       Value<BillItemType> itemType,
+      Value<BillItemBillingState> billingState,
       Value<String?> contractId,
       Value<String?> scheduleId,
+      Value<DateTime?> startInclusive,
+      Value<DateTime?> endInclusive,
       Value<DateTime> repaymentDate,
       Value<int> expectedPrincipalMinor,
       Value<int> expectedInterestMinor,
@@ -16378,6 +16597,16 @@ class $$BillItemsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnWithTypeConverterFilters<
+    BillItemBillingState,
+    BillItemBillingState,
+    String
+  >
+  get billingState => $composableBuilder(
+    column: $table.billingState,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
   ColumnFilters<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnFilters(column),
@@ -16385,6 +16614,16 @@ class $$BillItemsTableFilterComposer
 
   ColumnFilters<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startInclusive => $composableBuilder(
+    column: $table.startInclusive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endInclusive => $composableBuilder(
+    column: $table.endInclusive,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16449,6 +16688,11 @@ class $$BillItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get billingState => $composableBuilder(
+    column: $table.billingState,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => ColumnOrderings(column),
@@ -16456,6 +16700,16 @@ class $$BillItemsTableOrderingComposer
 
   ColumnOrderings<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startInclusive => $composableBuilder(
+    column: $table.startInclusive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endInclusive => $composableBuilder(
+    column: $table.endInclusive,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -16513,6 +16767,12 @@ class $$BillItemsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<BillItemType, String> get itemType =>
       $composableBuilder(column: $table.itemType, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<BillItemBillingState, String>
+  get billingState => $composableBuilder(
+    column: $table.billingState,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get contractId => $composableBuilder(
     column: $table.contractId,
     builder: (column) => column,
@@ -16520,6 +16780,16 @@ class $$BillItemsTableAnnotationComposer
 
   GeneratedColumn<String> get scheduleId => $composableBuilder(
     column: $table.scheduleId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startInclusive => $composableBuilder(
+    column: $table.startInclusive,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get endInclusive => $composableBuilder(
+    column: $table.endInclusive,
     builder: (column) => column,
   );
 
@@ -16587,8 +16857,11 @@ class $$BillItemsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> billId = const Value.absent(),
                 Value<BillItemType> itemType = const Value.absent(),
+                Value<BillItemBillingState> billingState = const Value.absent(),
                 Value<String?> contractId = const Value.absent(),
                 Value<String?> scheduleId = const Value.absent(),
+                Value<DateTime?> startInclusive = const Value.absent(),
+                Value<DateTime?> endInclusive = const Value.absent(),
                 Value<DateTime> repaymentDate = const Value.absent(),
                 Value<int> expectedPrincipalMinor = const Value.absent(),
                 Value<int> expectedInterestMinor = const Value.absent(),
@@ -16601,8 +16874,11 @@ class $$BillItemsTableTableManager
                 id: id,
                 billId: billId,
                 itemType: itemType,
+                billingState: billingState,
                 contractId: contractId,
                 scheduleId: scheduleId,
+                startInclusive: startInclusive,
+                endInclusive: endInclusive,
                 repaymentDate: repaymentDate,
                 expectedPrincipalMinor: expectedPrincipalMinor,
                 expectedInterestMinor: expectedInterestMinor,
@@ -16617,8 +16893,11 @@ class $$BillItemsTableTableManager
                 required String id,
                 required String billId,
                 required BillItemType itemType,
+                Value<BillItemBillingState> billingState = const Value.absent(),
                 Value<String?> contractId = const Value.absent(),
                 Value<String?> scheduleId = const Value.absent(),
+                Value<DateTime?> startInclusive = const Value.absent(),
+                Value<DateTime?> endInclusive = const Value.absent(),
                 required DateTime repaymentDate,
                 required int expectedPrincipalMinor,
                 required int expectedInterestMinor,
@@ -16631,8 +16910,11 @@ class $$BillItemsTableTableManager
                 id: id,
                 billId: billId,
                 itemType: itemType,
+                billingState: billingState,
                 contractId: contractId,
                 scheduleId: scheduleId,
+                startInclusive: startInclusive,
+                endInclusive: endInclusive,
                 repaymentDate: repaymentDate,
                 expectedPrincipalMinor: expectedPrincipalMinor,
                 expectedInterestMinor: expectedInterestMinor,
@@ -16851,6 +17133,7 @@ typedef $$BillGenerationSuppressionsTableProcessedTableManager =
 typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
       required String id,
+      Value<String> name,
       Value<String?> productId,
       Value<String?> productName,
       Value<bool> customRules,
@@ -16873,6 +17156,7 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
 typedef $$InstallmentContractsTableUpdateCompanionBuilder =
     InstallmentContractsCompanion Function({
       Value<String> id,
+      Value<String> name,
       Value<String?> productId,
       Value<String?> productName,
       Value<bool> customRules,
@@ -16904,6 +17188,11 @@ class $$InstallmentContractsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17017,6 +17306,11 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get productId => $composableBuilder(
     column: $table.productId,
     builder: (column) => ColumnOrderings(column),
@@ -17114,6 +17408,9 @@ class $$InstallmentContractsTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<String> get productId =>
       $composableBuilder(column: $table.productId, builder: (column) => column);
@@ -17233,6 +17530,7 @@ class $$InstallmentContractsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
                 Value<String?> productId = const Value.absent(),
                 Value<String?> productName = const Value.absent(),
                 Value<bool> customRules = const Value.absent(),
@@ -17253,6 +17551,7 @@ class $$InstallmentContractsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion(
                 id: id,
+                name: name,
                 productId: productId,
                 productName: productName,
                 customRules: customRules,
@@ -17275,6 +17574,7 @@ class $$InstallmentContractsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
+                Value<String> name = const Value.absent(),
                 Value<String?> productId = const Value.absent(),
                 Value<String?> productName = const Value.absent(),
                 Value<bool> customRules = const Value.absent(),
@@ -17295,6 +17595,7 @@ class $$InstallmentContractsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentContractsCompanion.insert(
                 id: id,
+                name: name,
                 productId: productId,
                 productName: productName,
                 customRules: customRules,

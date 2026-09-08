@@ -9,13 +9,13 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
 import 'installment_terms_draft.dart';
+import 'loan_configuration_view_model.dart';
 
 part 'installment_form_view_model.g.dart';
 
@@ -60,13 +60,22 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       ),
       productId: product.id,
       productName: product.name,
-      customRules: false,
+      customRules: true,
     ),
   );
   void setCustomRules(bool value) =>
       _updateLoaded((s) => s.copyWith(customRules: value));
   void setTermsDraft(InstallmentTermsDraft value) =>
       _updateLoaded((s) => s.copyWith(termsDraft: value));
+  void applyConfiguration(InstallmentConfigurationDraft value) => _updateLoaded(
+    (s) => s.copyWith(
+      borrowingDate: value.borrowingDate,
+      termsDraft: value.terms,
+      productId: value.productId,
+      productName: value.productName,
+      customRules: true,
+    ),
+  );
   void setBorrowingDate(DateTime value) => _updateLoaded((s) {
     final stages = s.termsDraft.stages;
     final defaultFirst = IntervalRepaymentDates.addMonthsClamped(
@@ -94,12 +103,6 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   Future<UiActionOutcome<LoanCalculation>> preview(String principalText) =>
       guardUiAction(_logger, 'Preview loan stages', () async {
         final current = state.requireValue as InstallmentFormLoaded;
-        if (current.usesBillingCycle) {
-          throw BusinessException(
-            CreditErrorCode.contractInvalidCommand,
-            message: '信用账户按账期生成计划，创建后可查看',
-          );
-        }
         final principal = _parsePositiveMoney(principalText);
         if (principal == null) {
           throw BusinessException(
@@ -227,10 +230,6 @@ class InstallmentFormLoaded extends InstallmentFormState {
   final String? disbursementAccountId, productId, productName;
   final bool customRules, createDisbursementTransaction, submitting;
   bool get isDisbursement => true;
-  bool get usesBillingCycle =>
-      liability.profileKey == AccountProfileKind.credit.key;
-  bool get canChooseProduct =>
-      liability.profileKey == AccountProfileKind.loan.key;
   InstallmentFormLoaded copyWith({
     DateTime? borrowingDate,
     InstallmentTermsDraft? termsDraft,

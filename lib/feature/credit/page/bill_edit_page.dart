@@ -8,7 +8,6 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_edit_form_state.dart';
@@ -31,7 +30,7 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: current,
-      title: '选择账单起始日',
+      title: '选择消费统计起始日',
     );
     if (picked == null || !mounted) return;
     onSelected(picked);
@@ -44,17 +43,16 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
     final picked = await showAppDatePicker(
       context: context,
       initialDate: current,
-      title: '选择出账日',
+      title: '选择消费统计结束日',
     );
     if (picked == null || !mounted) return;
     onSelected(picked);
   }
 
   Future<void> _submit() async {
-    final outcome =
-        await ref
-            .read(billEditViewModelProvider(widget.billId).notifier)
-            .submit();
+    final outcome = await ref
+        .read(billEditViewModelProvider(widget.billId).notifier)
+        .submit();
     if (!mounted) return;
     switch (outcome) {
       case SubmitSuccess():
@@ -77,13 +75,13 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '编辑账单'),
+            const AppPageHeader(title: '编辑消费统计区间'),
             Expanded(
               child: switch (asyncState) {
                 AsyncData(value: final state) when state.loaded => _buildForm(
                   state,
                 ),
-                AsyncData() => const Center(child: Text('账单不存在或暂不支持调整区间')),
+                AsyncData() => const Center(child: Text('账单不存在或暂无消费明细')),
                 AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
                 _ => const Center(child: CircularProgressIndicator()),
               },
@@ -107,35 +105,28 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
       ),
       children: [
         AppFormSection(
-          title: '账单区间',
-          description: '区间不可与上一期、下一期账单重叠；还款日保持不变。',
+          title: '消费统计区间',
+          description: '使用闭区间，结束日必须仍在原账单月份；分期明细不受此编辑影响。',
           children: [
             DateTimePlainFormRow(
-              label: '起始日',
+              label: '统计起始日',
               dateTime: state.startDate,
               value: formatDateLabel(state.startDate!),
-              onTap:
-                  (onSelected) => _pickStartDate(state.startDate!, onSelected),
+              onTap: (onSelected) =>
+                  _pickStartDate(state.startDate!, onSelected),
               onChanged: (value) {
                 if (value != null) notifier.setStartDate(value);
               },
             ),
             DateTimePlainFormRow(
-              label: '出账日',
+              label: '统计结束日',
               dateTime: state.billingDate,
               value: formatDateLabel(state.billingDate!),
-              onTap:
-                  (onSelected) =>
-                      _pickBillingDate(state.billingDate!, onSelected),
+              onTap: (onSelected) =>
+                  _pickBillingDate(state.billingDate!, onSelected),
               onChanged: (value) {
                 if (value != null) notifier.setBillingDate(value);
               },
-            ),
-            AppPlainFormRow(
-              label: '还款日',
-              child: AppPlainValueText(
-                text: formatDateLabel(state.repaymentDate!),
-              ),
             ),
           ],
         ),

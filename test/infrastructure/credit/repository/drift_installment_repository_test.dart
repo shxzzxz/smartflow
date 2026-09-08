@@ -11,6 +11,20 @@ import '../../../helper/test_app_database.dart';
 
 void main() {
   group('DriftInstallmentRepository', () {
+    test('persists default date name and independent edits', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftInstallmentRepository(database);
+      final contract = _contract();
+      await repository.insertAggregate(contract, []);
+      var loaded = (await repository.findContract(contract.id))!;
+      expect(loaded.name, '20260101');
+      loaded.reviseDetails(name: '家庭贷款', borrowingDate: DateTime(2026, 12, 3));
+      await repository.saveAggregate(loaded, []);
+      loaded = (await repository.findContract(contract.id))!;
+      expect(loaded.name, '家庭贷款');
+      expect(loaded.borrowingDate, DateTime(2026, 12, 3));
+    });
     test('maps missing aggregate save to persistence conflict', () async {
       final database = createTestDatabase();
       addTearDown(database.close);

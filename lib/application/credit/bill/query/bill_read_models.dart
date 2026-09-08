@@ -30,7 +30,8 @@ class BillSummaryReadModel {
   final BillPeriod period;
   final BillStatus status;
 
-  /// 账单窗口：起始日 / 出账日 / 还款日（信用账户账单才有）。
+  /// Legacy nullable fields retained for API compatibility. New projections
+  /// expose the consumption window and repayment date on each bill item.
   final DateTime? windowStartDate;
   final DateTime? windowBillingDate;
   final DateTime? windowRepaymentDate;
@@ -70,6 +71,9 @@ class BillItemReadModel {
     required this.itemType,
     required this.status,
     required this.repaymentDate,
+    this.billingState = BillItemBillingState.billed,
+    this.startInclusive,
+    this.endInclusive,
     required this.expectedPrincipal,
     required this.expectedInterest,
     required this.expectedFee,
@@ -85,6 +89,9 @@ class BillItemReadModel {
   final BillItemType itemType;
   final BillItemStatus status;
   final DateTime repaymentDate;
+  final BillItemBillingState billingState;
+  final DateTime? startInclusive;
+  final DateTime? endInclusive;
   final Money expectedPrincipal;
   final Money expectedInterest;
   final Money expectedFee;
@@ -108,7 +115,9 @@ class BillItemReadModel {
   /// Discounts reduce the amount due even though they are not one of the
   /// expected amount components.
   Money get remainingTotal {
-    if (status == BillItemStatus.paid) return Money.zero();
+    if (status == BillItemStatus.paid || status == BillItemStatus.overpaid) {
+      return Money.zero();
+    }
     final remaining =
         remainingPrincipal.minorUnits +
         remainingInterest.minorUnits +

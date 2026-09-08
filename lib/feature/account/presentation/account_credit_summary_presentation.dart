@@ -53,6 +53,8 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
     amount: bill.pendingAmount,
     amountLabel: null,
     supportingItems: [
+      // Kept for legacy read models; persisted bill summaries no longer
+      // populate a bill-level repayment date.
       if (bill.windowRepaymentDate != null)
         AccountCreditSummarySupportingItem(
           text: _billRepaymentLabel(bill.windowRepaymentDate!),
@@ -66,6 +68,11 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
     ],
     status: status,
   );
+}
+
+String _billRepaymentLabel(DateTime repaymentDate) {
+  return '还款 ${repaymentDate.month.toString().padLeft(2, '0')}-'
+      '${repaymentDate.day.toString().padLeft(2, '0')}';
 }
 
 BillSummaryRowPresentation billAccountSummaryRowPresentation(
@@ -97,7 +104,7 @@ AccountCreditSummaryPresentation installmentAccountCreditSummary(
 }) {
   return AccountCreditSummaryPresentation(
     id: contract.id,
-    title: _fullDate(contract.borrowingDate),
+    title: contract.name,
     amount: contract.principal,
     supportingItems: [
       AccountCreditSummarySupportingItem(
@@ -153,16 +160,6 @@ AccountCreditSummaryStatus _billStatus(BillSummaryReadModel bill) {
 
 String _billTitle(BillPeriod period) {
   return '${period.year}年${period.month.toString().padLeft(2, '0')}月';
-}
-
-String _billRepaymentLabel(DateTime repaymentDate) {
-  return '还款 ${repaymentDate.month.toString().padLeft(2, '0')}-'
-      '${repaymentDate.day.toString().padLeft(2, '0')}';
-}
-
-String _fullDate(DateTime date) {
-  return '${date.year}年${date.month.toString().padLeft(2, '0')}月'
-      '${date.day.toString().padLeft(2, '0')}日';
 }
 
 String _installmentSourceLabel(

@@ -263,7 +263,7 @@ final class StatisticsRangeContentProvider
 }
 
 String _$statisticsRangeContentHash() =>
-    r'ae91415ede01cfb37dd59b82f1f743e986cdb676';
+    r'8e9b19b45e6e49156e918b7cc1af4ddce7a27553';
 
 final class StatisticsRangeContentFamily extends $Family
     with
@@ -510,7 +510,7 @@ final class StatisticsContentProvider
   }
 }
 
-String _$statisticsContentHash() => r'6792df436155aa49f27de7f78f4d82d97600b525';
+String _$statisticsContentHash() => r'13753b0910408280af0cd7c31874da5f0723572e';
 
 final class StatisticsContentFamily extends $Family
     with $FunctionalFamilyOverride<StatisticsContentState, DateTime> {
@@ -763,7 +763,7 @@ final class StatisticsTransactionsContentProvider
 }
 
 String _$statisticsTransactionsContentHash() =>
-    r'178d72f499c4916476ef727688ce6acc453ad512';
+    r'd72ee4e172cd24fca64b7dc2125acd7a3cb7ccde';
 
 final class StatisticsTransactionsContentFamily extends $Family
     with

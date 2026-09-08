@@ -3,21 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
-import '../../../application/credit/credit_query_api.dart';
+import '../../../core/money/money.dart';
+import '../../../domain/credit/valobj/bill_period.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/bill_repayment_allocation.dart';
-import '../presentation/installment_schedule_presentation.dart';
 import '../view_model/bill_conversion_installment_form_view_model.dart';
-import '../widget/installment_plan_summary_card.dart';
-import '../widget/installment_schedule_view.dart';
-import '../widget/installment_terms_editor.dart';
+import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_basic_info_fields.dart';
+import 'loan_configuration_page.dart';
 
 class BillConversionInstallmentFormPage extends ConsumerStatefulWidget {
   const BillConversionInstallmentFormPage({required this.billId, super.key});
@@ -116,6 +116,12 @@ class _BillConversionInstallmentFormPageState
                 borrowingDate: state.borrowingDate,
                 onBorrowingDateChanged: notifier.setBorrowingDate,
               ),
+              AppPlainSelectFormRow<String>(
+                label: '分期配置',
+                value: state.productName ?? '自定义',
+                placeholder: '点击配置',
+                onTap: (_) => _configure(state),
+              ),
               DropdownPlainFormRow<BillRepaymentAllocationMode>(
                 label: '分摊方式',
                 value: state.allocationMode,
@@ -123,16 +129,6 @@ class _BillConversionInstallmentFormPageState
                 onChanged: notifier.setAllocationMode,
               ),
             ],
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          InstallmentTermsEditor(
-            value: state.termsDraft,
-            onChanged: notifier.setTermsDraft,
-            borrowingDate: state.borrowingDate,
-            planAction: AppSubmitButton(
-              label: '预览还款计划',
-              onPressed: () => _preview(notifier),
-            ),
           ),
           const SizedBox(height: AppSpacing.space12),
           AppFormSection(
@@ -149,43 +145,30 @@ class _BillConversionInstallmentFormPageState
     );
   }
 
-  Future<void> _preview(BillConversionInstallmentFormViewModel notifier) async {
-    if (!_formKey.currentState!.validate()) return;
-    final outcome = await notifier.preview(_principalController.text);
-    if (!mounted) return;
-    switch (outcome) {
-      case UiActionFailure(:final error):
-        _showError(error.message);
-      case UiActionSuccess(:final value):
-        await showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (ctx) => SafeArea(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(ctx).height * 0.75,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                children: [
-                  InstallmentPlanSummaryCard(
-                    metrics: value.metrics,
-                    principal: value.totalPrincipal,
-                    periodCount: value.periods.length,
-                    stages: value.stages,
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  InstallmentScheduleView(
-                    items: calculationScheduleItems(
-                      value.periods,
-                      stages: value.stages,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  Future<void> _configure(BillConversionInstallmentLoaded state) async {
+    FocusScope.of(context).unfocus();
+    final initial = InstallmentConfigurationDraft(
+      principal: Money.tryParse(_principalController.text.trim()),
+      borrowingDate: state.borrowingDate,
+      terms: state.termsDraft,
+      productId: state.productId,
+      productName: state.productName,
+    );
+    final configuration = await Navigator.of(context)
+        .push<InstallmentConfigurationDraft>(
+          MaterialPageRoute(
+            builder: (_) => LoanConfigurationPage(installment: initial),
           ),
         );
-    }
+    if (!mounted || configuration == null) return;
+    _principalController.text = configuration.principal!.format();
+    ref
+        .read(
+          billConversionInstallmentFormViewModelProvider(
+            widget.billId,
+          ).notifier,
+        )
+        .applyConfiguration(configuration);
   }
 
   Future<void> _submit(

@@ -466,23 +466,22 @@ List<BillRepaymentAllocationLine> _allocationLines(
       if (item.status == credit.BillItemStatus.pending ||
           item.status == credit.BillItemStatus.partiallyPaid ||
           editingByItem.containsKey(item.id))
-        if (detail.summary.status != credit.BillStatus.open ||
-            item.itemType == credit.BillItemType.consumption)
-          BillRepaymentAllocationLine(
-            billItemId: item.id,
-            itemType: item.itemType,
-            label: billItemLabel(item),
-            expected: credit.RepaymentAmountBreakdown(
-              principal: item.expectedPrincipal,
-              interest: item.expectedInterest,
-              fee: item.expectedFee,
-              discount: Money.zero(),
-            ),
-            alreadyAllocated: _remainingAllocatedAmount(
-              item.allocated,
-              editingByItem[item.id] ?? credit.RepaymentAmountDto.zero,
-            ),
+        BillRepaymentAllocationLine(
+          billItemId: item.id,
+          itemType: item.itemType,
+          repaymentDate: item.repaymentDate,
+          label: billItemLabel(item),
+          expected: credit.RepaymentAmountBreakdown(
+            principal: item.expectedPrincipal,
+            interest: item.expectedInterest,
+            fee: item.expectedFee,
+            discount: Money.zero(),
           ),
+          alreadyAllocated: _remainingAllocatedAmount(
+            item.allocated,
+            editingByItem[item.id] ?? credit.RepaymentAmountDto.zero,
+          ),
+        ),
   ];
 }
 

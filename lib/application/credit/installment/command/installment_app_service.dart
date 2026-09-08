@@ -6,7 +6,6 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
-import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_lifecycle_service.dart';
@@ -58,7 +57,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   InstallmentAppServiceImpl({
     required InstallmentRepository repository,
     required BillRepository bills,
-    required CreditAccountRepository creditAccounts,
     required RepaymentRepository repayments,
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
@@ -71,7 +69,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   }) : _products = products,
        _repository = repository,
        _bills = bills,
-       _creditAccounts = creditAccounts,
        _repayments = repayments,
        _ledger = ledger,
        _runner = transactionRunner,
@@ -93,7 +90,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   final InstallmentRepository _repository;
   final InstallmentProductRepository? _products;
   final BillRepository _bills;
-  final CreditAccountRepository _creditAccounts;
   final RepaymentRepository _repayments;
   final CreditLedgerPort _ledger;
   final TransactionRunner _runner;
@@ -108,9 +104,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   ) async {
-    final creditAccount = await _creditAccounts.findByAccountId(
-      command.liabilityAccountId,
-    );
     return _runner.run<CreateContractResult>(() async {
       final product = command.productId == null
           ? null
@@ -152,7 +145,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       final aggregate = _origination.originateDisbursement(
         contractId: contractId,
         liabilityAccountId: command.liabilityAccountId,
-        creditAccount: creditAccount,
         disbursementAccountId: disbursementAccountId,
         disbursementTransactionId: borrowing?.transactionId,
         terms: InstallmentOriginationTerms(
@@ -237,9 +229,27 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
           message: '阶段结构或期数已改变，请先按参数重算计划',
         );
       }
-      contract.reviseStageTerms(terms, customRules: command.customRules);
+      final product =
+          command.productId == null || command.productId == contract.productId
+          ? null
+          : await _products?.find(command.productId!);
+      if (command.productId != null &&
+          command.productId != contract.productId &&
+          (product == null || product.archived)) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '产品模板不存在或已归档',
+        );
+      }
+      contract.reviseStageTerms(
+        terms,
+        customRules: command.customRules,
+        productId: product?.id,
+        productName: product?.name,
+      );
     }
     contract.reviseDetails(
+      name: command.name,
       borrowingDate: command.borrowingDate,
       note: command.note,
       disbursementAccountId: command.disbursementAccountId,
@@ -398,6 +408,7 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     stages.validate();
     return InstallmentContract(
       id: contract.id,
+      name: contract.name,
       liabilityAccountId: contract.liabilityAccountId,
       sourceType: contract.sourceType,
       principal: contract.principal,

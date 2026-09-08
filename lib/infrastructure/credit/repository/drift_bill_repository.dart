@@ -15,9 +15,9 @@ class DriftBillRepository implements BillRepository {
 
   @override
   Future<Bill?> findBill(String billId) async {
-    final row =
-        await (_database.select(_database.bills)
-          ..where((bill) => bill.id.equals(billId))).getSingleOrNull();
+    final row = await (_database.select(
+      _database.bills,
+    )..where((bill) => bill.id.equals(billId))).getSingleOrNull();
     if (row == null) return null;
     final items = await _listItems({row.id});
     return _mapBill(row, items[row.id] ?? const []);
@@ -30,10 +30,11 @@ class DriftBillRepository implements BillRepository {
   ) async {
     final row =
         await (_database.select(_database.bills)..where(
-          (bill) =>
-              bill.accountId.equals(accountId) &
-              bill.period.equals(period.toInt()),
-        )).getSingleOrNull();
+              (bill) =>
+                  bill.accountId.equals(accountId) &
+                  bill.period.equals(period.toInt()),
+            ))
+            .getSingleOrNull();
     if (row == null) return null;
     final items = await _listItems({row.id});
     return _mapBill(row, items[row.id] ?? const []);
@@ -64,8 +65,9 @@ class DriftBillRepository implements BillRepository {
 
   @override
   Future<void> updateBill(Bill bill) async {
-    await (_database.update(_database.bills)
-      ..where((row) => row.id.equals(bill.id))).write(
+    await (_database.update(
+      _database.bills,
+    )..where((row) => row.id.equals(bill.id))).write(
       BillsCompanion(
         startDate: Value(bill.window?.startDate),
         billingDate: Value(bill.window?.billingDate),
@@ -79,8 +81,9 @@ class DriftBillRepository implements BillRepository {
   @override
   Future<void> replaceBillItems(String billId, List<BillItem> items) async {
     final now = DateTime.now();
-    await (_database.delete(_database.billItems)
-      ..where((item) => item.billId.equals(billId))).go();
+    await (_database.delete(
+      _database.billItems,
+    )..where((item) => item.billId.equals(billId))).go();
     await _database.batch((batch) {
       for (final item in items) {
         batch.insert(_database.billItems, _itemCompanion(item, now));
@@ -91,10 +94,12 @@ class DriftBillRepository implements BillRepository {
   @override
   Future<void> deleteBill(String billId) async {
     await _database.transaction(() async {
-      await (_database.delete(_database.billItems)
-        ..where((item) => item.billId.equals(billId))).go();
-      await (_database.delete(_database.bills)
-        ..where((bill) => bill.id.equals(billId))).go();
+      await (_database.delete(
+        _database.billItems,
+      )..where((item) => item.billId.equals(billId))).go();
+      await (_database.delete(
+        _database.bills,
+      )..where((bill) => bill.id.equals(billId))).go();
     });
   }
 
@@ -157,8 +162,11 @@ class DriftBillRepository implements BillRepository {
       id: item.id,
       billId: item.billId,
       itemType: item.itemType,
+      billingState: Value(item.billingState),
       contractId: Value(item.contractId),
       scheduleId: Value(item.scheduleId),
+      startInclusive: Value(item.startInclusive),
+      endInclusive: Value(item.endInclusive),
       repaymentDate: item.repaymentDate,
       expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
       expectedInterestMinor: item.expectedInterest.minorUnits,
@@ -179,15 +187,14 @@ class DriftBillRepository implements BillRepository {
       id: row.id,
       accountId: row.accountId,
       period: period,
-      window:
-          hasWindow
-              ? BillWindow(
-                period: period,
-                startDate: row.startDate!,
-                billingDate: row.billingDate!,
-                repaymentDate: row.repaymentDate!,
-              )
-              : null,
+      window: hasWindow
+          ? BillWindow(
+              period: period,
+              startDate: row.startDate!,
+              billingDate: row.billingDate!,
+              repaymentDate: row.repaymentDate!,
+            )
+          : null,
       status: row.status,
       items: List.unmodifiable(items),
       createdAt: row.createdAt,
@@ -199,8 +206,11 @@ class DriftBillRepository implements BillRepository {
       id: row.id,
       billId: row.billId,
       itemType: row.itemType,
+      billingState: row.billingState,
       contractId: row.contractId,
       scheduleId: row.scheduleId,
+      startInclusive: row.startInclusive,
+      endInclusive: row.endInclusive,
       repaymentDate: row.repaymentDate,
       expectedPrincipal: Money(minorUnits: row.expectedPrincipalMinor),
       expectedInterest: Money(minorUnits: row.expectedInterestMinor),

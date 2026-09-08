@@ -68,19 +68,16 @@ void main() {
     });
 
     test(
-      'credit account keeps billing-cycle capabilities and rejects arbitrary preview',
+      'credit account accepts the same configurable preview as loan accounts',
       () async {
         final container = _container();
         final args = _args('card');
-        final loaded =
-            await _readState(container, args) as InstallmentFormLoaded;
-        expect(loaded.usesBillingCycle, isTrue);
-        expect(loaded.canChooseProduct, isFalse);
+        await _readState(container, args);
         expect(
           await container
               .read(installmentFormViewModelProvider(args).notifier)
               .preview('100'),
-          isA<UiActionFailure<LoanCalculation>>(),
+          isA<UiActionSuccess<LoanCalculation>>(),
         );
       },
     );

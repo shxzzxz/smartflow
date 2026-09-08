@@ -20,7 +20,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppDetailSummaryCard), findsOneWidget);
-    expect(find.text('分期合同'), findsNWidgets(2));
+    expect(find.text('分期合同'), findsOneWidget);
+    expect(find.text('20260101'), findsOneWidget);
     expect(find.text('待还本金'), findsOneWidget);
     expect(find.text('已还利息'), findsOneWidget);
     expect(find.text('已还手续费'), findsOneWidget);

@@ -61,7 +61,7 @@ void main() {
         accountKind: AccountProfileKind.credit,
       );
 
-      expect(presentation.title, '2026年05月10日');
+      expect(presentation.title, '20260510');
       expect(presentation.amount.minorUnits, 1200000);
       expect(presentation.supportingItems.map((item) => item.text), [
         '现金分期',

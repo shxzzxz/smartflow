@@ -23,21 +23,27 @@ class SettlementJudgementService {
 
   BillStatus projectBillStatus(
     BillStatus current,
-    Iterable<BillItemStatus> itemStatuses,
-  ) {
-    if (current == BillStatus.open) return BillStatus.open;
-    return itemStatuses.any(
-          (status) =>
-              status == BillItemStatus.pending ||
-              status == BillItemStatus.partiallyPaid,
-        )
-        ? BillStatus.billed
-        : BillStatus.settled;
+    Iterable<BillItemStatus> itemStatuses, {
+    bool hasOpenConsumption = false,
+  }) {
+    final statuses = itemStatuses.toList(growable: false);
+    final hasOutstanding = statuses.any(
+      (status) =>
+          status == BillItemStatus.pending ||
+          status == BillItemStatus.partiallyPaid,
+    );
+    if (current == BillStatus.open && hasOpenConsumption) {
+      return BillStatus.open;
+    }
+    if (!hasOutstanding) return BillStatus.settled;
+    if (hasOpenConsumption) return BillStatus.open;
+    return BillStatus.billed;
   }
 
   InstallmentScheduleStatus projectScheduleStatus(BillItemStatus itemStatus) {
     return switch (itemStatus) {
       BillItemStatus.paid => InstallmentScheduleStatus.paid,
+      BillItemStatus.overpaid => InstallmentScheduleStatus.paid,
       BillItemStatus.partiallyPaid => InstallmentScheduleStatus.partiallyPaid,
       BillItemStatus.pending => InstallmentScheduleStatus.pending,
       BillItemStatus.skipped => InstallmentScheduleStatus.skipped,

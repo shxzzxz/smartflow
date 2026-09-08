@@ -461,6 +461,8 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
               ),
           ],
         ),
+        productId: command.productId,
+        productName: command.productName,
         note: command.note,
         createdAt: DateTime.now(),
         newScheduleId: _idGenerator.newId,

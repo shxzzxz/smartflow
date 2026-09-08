@@ -158,6 +158,8 @@ class SchedulePendingPatch {
 class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,
+    this.name,
+    this.productId,
     this.borrowingDate,
     this.disbursementAccountId,
     this.note,
@@ -168,6 +170,8 @@ class UpdateContractCommand {
   });
 
   final String contractId;
+  final String? name;
+  final String? productId;
   final DateTime? borrowingDate;
 
   /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。

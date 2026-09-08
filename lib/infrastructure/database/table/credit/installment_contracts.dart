@@ -5,6 +5,8 @@ import '../../../../domain/credit/valobj/installment_enums.dart';
 @DataClassName('InstallmentContractRow')
 class InstallmentContracts extends Table {
   TextColumn get id => text()();
+  /// 正常创建由合同填入借款日期名称；空值仅供迁移添加列后回填。
+  TextColumn get name => text().withDefault(const Constant(''))();
   TextColumn get productId => text().nullable()();
   TextColumn get productName => text().nullable()();
   BoolColumn get customRules => boolean().withDefault(const Constant(false))();

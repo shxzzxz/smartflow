@@ -2,6 +2,7 @@
 
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
+import '../../../core/time/date_label.dart';
 
 import '../app_database.dart';
 import '../builtin_data.dart';
@@ -42,6 +43,87 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         return;
       }
       _logger.info('Upgrading database schema: v$from -> v$to.');
+      // v33 的表重建使用当前表定义，先补名称列以支持跨版本升级。
+      if (from < 34) {
+        await database.transaction(() async {
+          if (!await _hasColumn(database, 'installment_contracts', 'name')) {
+            await migrator.addColumn(
+              database.installmentContracts,
+              database.installmentContracts.name,
+            );
+          }
+          final contracts = await database
+              .customSelect(
+                "SELECT id, start_date FROM installment_contracts WHERE name = ''",
+              )
+              .get();
+          for (final row in contracts) {
+            final date = DateTime.fromMillisecondsSinceEpoch(
+              row.read<int>('start_date') * 1000,
+            );
+            await database.customStatement(
+              'UPDATE installment_contracts SET name = ? WHERE id = ?',
+              [formatCompactDate(date), row.read<String>('id')],
+            );
+          }
+        });
+      }
+      if (from < 35) {
+        await database.transaction(() async {
+          if (!await _hasColumn(database, 'bill_items', 'billing_state')) {
+            await migrator.addColumn(
+              database.billItems,
+              database.billItems.billingState,
+            );
+          }
+          if (!await _hasColumn(database, 'bill_items', 'start_inclusive')) {
+            await migrator.addColumn(
+              database.billItems,
+              database.billItems.startInclusive,
+            );
+          }
+          if (!await _hasColumn(database, 'bill_items', 'end_inclusive')) {
+            await migrator.addColumn(
+              database.billItems,
+              database.billItems.endInclusive,
+            );
+          }
+          // Existing bill windows are the historical source for consumption
+          // projections.  Keep the legacy bill columns for compatibility, but
+          // move their closed interval onto the consumption item.
+          await database.customStatement('''
+UPDATE bill_items
+SET billing_state = CASE
+      WHEN bills.status = 'open' THEN 'open'
+      ELSE 'billed'
+    END,
+    start_inclusive = CASE
+      WHEN bill_items.item_type = 'consumption' AND bills.start_date IS NOT NULL
+      THEN CASE WHEN cla.billing_day_to_next = 1
+                THEN bills.start_date
+                ELSE bills.start_date + 86400
+           END
+      ELSE NULL
+    END,
+    end_inclusive = CASE
+      WHEN bill_items.item_type = 'consumption' AND bills.billing_date IS NOT NULL
+      THEN CASE WHEN cla.billing_day_to_next = 1
+                THEN bills.billing_date - 86400
+                ELSE bills.billing_date
+           END
+      ELSE NULL
+    END
+FROM bills
+LEFT JOIN credit_liability_accounts AS cla
+  ON cla.account_id = bills.account_id
+WHERE bill_items.bill_id = bills.id
+''');
+          await database.customStatement(
+            "UPDATE bill_items SET billing_state = 'billed' "
+            "WHERE item_type = 'installment'",
+          );
+        });
+      }
       if (from < 20) {
         await database.customStatement(
           'ALTER TABLE transactions ADD COLUMN posted_at INTEGER',

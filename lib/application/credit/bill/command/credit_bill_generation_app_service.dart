@@ -41,6 +41,13 @@ abstract interface class CreditBillGenerationAppService {
     required DateTime startDate,
     required DateTime billingDate,
   });
+
+  Future<void> updateConsumptionWindow({
+    required String billId,
+    required String billItemId,
+    required DateTime startInclusive,
+    required DateTime endInclusive,
+  });
 }
 
 class CreditBillGenerationAppServiceImpl
@@ -160,6 +167,23 @@ class CreditBillGenerationAppServiceImpl
         billId: billId,
         startDate: startDate,
         billingDate: billingDate,
+      );
+    });
+  }
+
+  @override
+  Future<void> updateConsumptionWindow({
+    required String billId,
+    required String billItemId,
+    required DateTime startInclusive,
+    required DateTime endInclusive,
+  }) {
+    return _runner.run<void>(() async {
+      await _generation.updateConsumptionWindow(
+        billId: billId,
+        billItemId: billItemId,
+        startInclusive: startInclusive,
+        endInclusive: endInclusive,
       );
     });
   }

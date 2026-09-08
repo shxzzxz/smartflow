@@ -10,26 +10,21 @@ class InstallmentScheduleViewItem {
     required this.principal,
     required this.interest,
     required this.fee,
-    this.remainingPrincipal,
     this.status,
     this.stageLabel,
-    this.recalculated = false,
   });
   final String id;
   final int periodNo;
   final DateTime date;
   final Money principal, interest, fee;
-  final Money? remainingPrincipal;
   final InstallmentScheduleStatus? status;
   final String? stageLabel;
-  final bool recalculated;
   Money get total => principal + interest + fee;
 }
 
 List<InstallmentScheduleViewItem> calculationScheduleItems(
   List<LoanCalculationPeriod> periods, {
   List<LoanCalculationStage> stages = const [],
-  int? firstRecalculatedPeriodNo,
 }) {
   final starts = {for (final stage in stages) stage.firstPeriodNo: stage};
   return [
@@ -41,13 +36,9 @@ List<InstallmentScheduleViewItem> calculationScheduleItems(
         principal: period.principal,
         interest: period.interest,
         fee: period.fee,
-        remainingPrincipal: period.remainingPrincipal,
         stageLabel: stages.length > 1 && starts.containsKey(period.periodNo)
             ? '阶段 ${starts[period.periodNo]!.index + 1}'
             : null,
-        recalculated:
-            firstRecalculatedPeriodNo != null &&
-            period.periodNo >= firstRecalculatedPeriodNo,
       ),
   ];
 }

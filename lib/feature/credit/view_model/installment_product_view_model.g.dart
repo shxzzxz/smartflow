@@ -116,7 +116,7 @@ final class InstallmentProductEditViewModelProvider
 }
 
 String _$installmentProductEditViewModelHash() =>
-    r'2329ba76049c4bfdaa2edea856abb751ee61a6d3';
+    r'f606ef6416d1e1090f3a769c1811f19128291f8b';
 
 final class InstallmentProductEditViewModelFamily extends $Family
     with

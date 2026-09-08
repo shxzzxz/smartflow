@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
-import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
@@ -14,7 +13,6 @@ import 'package:smartflow/domain/credit/service/installment/installment_lifecycl
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
-import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
@@ -183,29 +181,6 @@ void main() {
 
   group('InstallmentLifecycleService', () {
     const service = InstallmentLifecycleService();
-
-    test(
-      'aligns credit-account disbursement schedules to bill repayment dates',
-      () {
-        final account = CreditLiabilityAccount(
-          id: 'extension',
-          accountId: 'account',
-          kind: CreditLiabilityAccountKind.credit,
-          billingDay: 5,
-          repaymentDay: 25,
-          billingDayToNext: true,
-        );
-
-        final bounds = service.cycleScheduleBoundsForDisbursement(
-          account,
-          borrowingDate: DateTime(2026, 6, 1),
-          totalPeriods: 3,
-        );
-
-        expect(bounds!.first, DateTime(2026, 7, 25));
-        expect(bounds.last, DateTime(2026, 9, 25));
-      },
-    );
 
     test(
       'allows source cleanup but rejects prepayments and paid schedules',

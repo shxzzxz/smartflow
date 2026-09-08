@@ -37,7 +37,10 @@ class BillDetailPage extends ConsumerWidget {
               title: '账单详情',
               actions: switch (detail) {
                 AsyncData(value: final bill?) => [
-                  if (bill.summary.windowStartDate != null)
+                  if (bill.items.any(
+                        (item) => item.itemType == BillItemType.consumption,
+                      ) ||
+                      bill.summary.windowStartDate != null)
                     AppHeaderIconButton(
                       icon: RemixIcons.edit_2_line,
                       tooltip: '编辑区间',
@@ -46,10 +49,9 @@ class BillDetailPage extends ConsumerWidget {
                   AppHeaderIconButton(
                     icon: RemixIcons.delete_bin_line,
                     tooltip: '删除账单',
-                    onPressed:
-                        bill.repayments.isEmpty
-                            ? () => _deleteBill(context, ref)
-                            : null,
+                    onPressed: bill.repayments.isEmpty
+                        ? () => _deleteBill(context, ref)
+                        : null,
                   ),
                 ],
                 _ => const [],
@@ -62,10 +64,10 @@ class BillDetailPage extends ConsumerWidget {
                   onRepay: () => _openRepayment(context, ref),
                   onInstallment: () => _openInstallment(context, ref),
                   onSync: () => _syncProjection(context, ref),
-                  onDeleteRepayment:
-                      (repayment) => _deleteRepayment(context, ref, repayment),
-                  onEditRepayment:
-                      (repayment) => _editRepayment(context, ref, repayment),
+                  onDeleteRepayment: (repayment) =>
+                      _deleteRepayment(context, ref, repayment),
+                  onEditRepayment: (repayment) =>
+                      _editRepayment(context, ref, repayment),
                 ),
                 AsyncData(value: null) => const Center(child: Text('账单不存在')),
                 AsyncError() => const Center(child: Text('账单加载失败，请稍后重试')),
@@ -79,10 +81,9 @@ class BillDetailPage extends ConsumerWidget {
   }
 
   Future<void> _syncProjection(BuildContext context, WidgetRef ref) async {
-    final outcome =
-        await ref
-            .read(billDetailViewModelProvider(billId).notifier)
-            .synchronizeProjection();
+    final outcome = await ref
+        .read(billDetailViewModelProvider(billId).notifier)
+        .synchronizeProjection();
     if (!context.mounted) return;
     _showFailure(context, outcome, action: '同步');
   }
@@ -111,27 +112,25 @@ class BillDetailPage extends ConsumerWidget {
   Future<void> _deleteBill(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('删除账单'),
-            content: const Text('将删除该账单及其全部明细。仅无还款记录的账单可以删除。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除账单'),
+        content: const Text('将删除该账单及其全部明细。仅无还款记录的账单可以删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
-    final outcome =
-        await ref
-            .read(billDetailViewModelProvider(billId).notifier)
-            .deleteBill();
+    final outcome = await ref
+        .read(billDetailViewModelProvider(billId).notifier)
+        .deleteBill();
     if (!context.mounted) return;
     if (outcome case UiActionFailure<void>()) {
       _showFailure(context, outcome, action: '删除');
@@ -160,21 +159,20 @@ class BillDetailPage extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: const Text('删除还款记录'),
-            content: const Text('将删除该还款记录，并回退账单明细与关联计划状态。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除还款记录'),
+        content: const Text('将删除该还款记录，并回退账单明细与关联计划状态。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) return;
     final outcome = await ref
@@ -224,61 +222,56 @@ class _BillDetailContent extends StatelessWidget {
         Text('明细', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space4),
         AppSurface(
-          child:
-              detail.items.isEmpty
-                  ? const Padding(
-                    padding: EdgeInsets.all(AppSpacing.space20),
-                    child: Text('暂无账单明细'),
-                  )
-                  : Column(
-                    children: [
-                      for (var i = 0; i < detail.items.length; i++) ...[
-                        BillItemRow(
-                          presentation: billItemRowPresentation(
-                            detail.items[i],
+          child: detail.items.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(AppSpacing.space20),
+                  child: Text('暂无账单明细'),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < detail.items.length; i++) ...[
+                      BillItemRow(
+                        presentation: billItemRowPresentation(detail.items[i]),
+                        onTap: _itemTap(context, detail.items[i]),
+                      ),
+                      if (i < detail.items.length - 1)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space16,
                           ),
-                          onTap: _itemTap(context, detail.items[i]),
+                          child: Divider(height: 1),
                         ),
-                        if (i < detail.items.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space16,
-                            ),
-                            child: Divider(height: 1),
-                          ),
-                      ],
                     ],
-                  ),
+                  ],
+                ),
         ),
         const SizedBox(height: AppSpacing.space12),
         Text('还款记录', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space4),
         AppSurface(
-          child:
-              detail.repayments.isEmpty
-                  ? const Padding(
-                    padding: EdgeInsets.all(AppSpacing.space20),
-                    child: Text('暂无还款记录'),
-                  )
-                  : Column(
-                    children: [
-                      for (var i = 0; i < detail.repayments.length; i++) ...[
-                        _BillRepaymentRow(
-                          repayment: detail.repayments[i],
-                          onDelete:
-                              () => onDeleteRepayment(detail.repayments[i]),
-                          onEdit: () => onEditRepayment(detail.repayments[i]),
-                        ),
-                        if (i < detail.repayments.length - 1)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space16,
-                            ),
-                            child: Divider(height: 1),
+          child: detail.repayments.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(AppSpacing.space20),
+                  child: Text('暂无还款记录'),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < detail.repayments.length; i++) ...[
+                      _BillRepaymentRow(
+                        repayment: detail.repayments[i],
+                        onDelete: () => onDeleteRepayment(detail.repayments[i]),
+                        onEdit: () => onEditRepayment(detail.repayments[i]),
+                      ),
+                      if (i < detail.repayments.length - 1)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space16,
                           ),
-                      ],
+                          child: Divider(height: 1),
+                        ),
                     ],
-                  ),
+                  ],
+                ),
         ),
       ],
     );
@@ -313,10 +306,9 @@ class _SummarySurface extends StatelessWidget {
         AppDetailSummaryCardItem(
           label: '待还金额',
           value: summary.pendingAmount.format(),
-          valueColor:
-              summary.pendingAmount.minorUnits > 0
-                  ? colors.error
-                  : colors.onSurface,
+          valueColor: summary.pendingAmount.minorUnits > 0
+              ? colors.error
+              : colors.onSurface,
         ),
       ],
       supportingItems: [

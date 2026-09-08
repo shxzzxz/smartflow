@@ -12,7 +12,7 @@ class ContractMetrics {
   const ContractMetrics({
     required this.monthlyIrr,
     required this.nominalApr,
-    required this.effectiveApr,
+    required this.xirr,
     required this.totalRepayment,
     required this.totalInterest,
     required this.totalFee,
@@ -24,7 +24,7 @@ class ContractMetrics {
     return ContractMetrics(
       monthlyIrr: result.monthlyIrr,
       nominalApr: result.nominalApr,
-      effectiveApr: result.effectiveApr,
+      xirr: result.xirr,
       totalRepayment: result.totalRepayment,
       totalInterest: result.totalInterest,
       totalFee: result.totalFee,
@@ -43,7 +43,7 @@ class ContractMetrics {
 
   final double? monthlyIrr;
   final double? nominalApr;
-  final double? effectiveApr;
+  final double? xirr;
   final Money totalRepayment;
   final Money totalInterest;
   final Money totalFee;

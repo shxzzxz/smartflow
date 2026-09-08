@@ -15,7 +15,6 @@ import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
-import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -37,7 +36,6 @@ void main() {
       repository: repository,
       products: products,
       bills: DriftBillRepository(db),
-      creditAccounts: DriftCreditAccountRepository(db),
       repayments: DriftRepaymentRepository(db),
       ledger: _Ledger(),
       transactionRunner: DriftTransactionRunner(db),
@@ -61,6 +59,44 @@ void main() {
     );
   });
   tearDown(() => db.close());
+
+  test(
+    'contract name and selected template persist independently of schedule edits',
+    () async {
+      final created = await service.createDisbursementContract(
+        _command(10000, 12000),
+      );
+      final contract = (await repository.findContract(created.contractId))!;
+      expect(contract.name, '20260101');
+      final before = await repository.listSchedules(contract.id);
+      await service.updateContract(
+        UpdateContractCommand(
+          contractId: contract.id,
+          name: '家庭贷款',
+          productId: 'builtin-loan-interest-first',
+          stageTerms: contract.stageTerms,
+          customRules: true,
+        ),
+      );
+      final saved = (await repository.findContract(contract.id))!;
+      expect(saved.name, '家庭贷款');
+      expect(saved.productId, 'builtin-loan-interest-first');
+      expect(saved.productName, '先息后本');
+      expect(
+        (await repository.listSchedules(
+          contract.id,
+        )).map((s) => s.expectedPrincipal),
+        before.map((s) => s.expectedPrincipal),
+      );
+      await expectLater(
+        service.updateContract(
+          UpdateContractCommand(contractId: contract.id, name: ' '),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      expect((await repository.findContract(contract.id))!.name, '家庭贷款');
+    },
+  );
 
   test(
     'two loans from a product own separate rows and different actual terms',

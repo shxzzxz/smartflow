@@ -4,6 +4,7 @@ import '../../../../core/money/rounding_mode.dart';
 import '../../entity/installment_contract.dart';
 import '../../entity/installment_schedule.dart';
 import '../../valobj/credit_error_code.dart';
+import '../../valobj/installment_contract_terms.dart';
 import '../../valobj/day_count_convention.dart';
 import '../../valobj/equal_installment_amount.dart';
 import '../../valobj/installment_enums.dart';
@@ -69,6 +70,7 @@ class InstallmentRecalculationRow {
     required this.interest,
     required this.fee,
     required this.isPending,
+    this.stageId,
   });
 
   final String id;
@@ -78,6 +80,7 @@ class InstallmentRecalculationRow {
   final Money interest;
   final Money fee;
   final bool isPending;
+  final String? stageId;
 }
 
 /// 按锚点规则重算待还尾部。
@@ -100,30 +103,51 @@ class InstallmentPrepaymentRecalculator {
     DateTime? eventDate,
     bool regenerateDates = false,
   }) {
-    final terms = contract.stageTerms;
-    final timeline = [...schedules]
+    return recalculateStages(
+      terms: contract.stageTerms,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      rows: [
+        for (final row in schedules)
+          InstallmentRecalculationRow(
+            id: row.id,
+            stageId: row.stageId,
+            periodNo: row.periodNo,
+            date: row.expectedRepaymentDate,
+            principal: row.expectedPrincipal,
+            interest: row.expectedInterest,
+            fee: row.expectedFee,
+            isPending: row.status == InstallmentScheduleStatus.pending,
+          ),
+      ],
+      prepaymentPrincipal: Money(minorUnits: prepaymentPrincipalMinor),
+      eventDate: eventDate,
+      regenerateDates: regenerateDates,
+    );
+  }
+
+  /// 合同与无落库试算共用的多阶段重算入口。
+  List<InstallmentScheduleRecalculation> recalculateStages({
+    required InstallmentContractTerms terms,
+    required Money principal,
+    required DateTime borrowingDate,
+    required List<InstallmentRecalculationRow> rows,
+    required Money prepaymentPrincipal,
+    DateTime? eventDate,
+    bool regenerateDates = false,
+  }) {
+    final timeline = [...rows]
       ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    DateTime? anchor = eventDate == null ? null : _dateOnly(eventDate);
-    for (final row in timeline) {
-      if (row.status != InstallmentScheduleStatus.pending &&
-          (anchor == null ||
-              _dateOnly(row.expectedRepaymentDate).isAfter(anchor))) {
-        anchor = _dateOnly(row.expectedRepaymentDate);
-      }
-    }
+    final anchor = _anchorDate(timeline, eventDate);
     final frozen = timeline
-        .where(
-          (r) =>
-              anchor != null &&
-              !_dateOnly(r.expectedRepaymentDate).isAfter(anchor),
-        )
+        .where((r) => anchor != null && !_dateOnly(r.date).isAfter(anchor))
         .toList();
     final frozenIds = frozen.map((r) => r.id).toSet();
     final tail = timeline.where((r) => !frozenIds.contains(r.id)).toList();
     final remaining =
-        contract.principal.minorUnits -
-        prepaymentPrincipalMinor -
-        frozen.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits);
+        principal.minorUnits -
+        prepaymentPrincipal.minorUnits -
+        frozen.fold<int>(0, (sum, r) => sum + r.principal.minorUnits);
     if (remaining < 0 || (tail.isEmpty && remaining != 0)) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
@@ -142,10 +166,10 @@ class InstallmentPrepaymentRecalculator {
         }
       }
     }
-    String stageId(InstallmentSchedule r) =>
+    String stageId(InstallmentRecalculationRow r) =>
         r.stageId ?? generated[r.periodNo]?.stageId ?? terms.stages.first.id;
-    DateTime dateOf(InstallmentSchedule r) {
-      if (!regenerateDates) return r.expectedRepaymentDate;
+    DateTime dateOf(InstallmentRecalculationRow r) {
+      if (!regenerateDates) return r.date;
       final value = generated[r.periodNo];
       if (value == null || value.stageId != stageId(r)) {
         throw BusinessException(
@@ -156,15 +180,13 @@ class InstallmentPrepaymentRecalculator {
       return value.date;
     }
 
-    _validateTimeline(contract.borrowingDate, [
-      for (final r in frozen) r.expectedRepaymentDate,
+    _validateTimeline(borrowingDate, [
+      for (final r in frozen) r.date,
       for (final r in tail) dateOf(r),
     ]);
-    var start = frozen.isEmpty
-        ? contract.borrowingDate
-        : frozen.last.expectedRepaymentDate;
+    var start = frozen.isEmpty ? borrowingDate : frozen.last.date;
     final stages = <InstallmentStage>[];
-    final orderedTail = <InstallmentSchedule>[];
+    final orderedTail = <InstallmentRecalculationRow>[];
     var started = false;
     for (final config in terms.stages) {
       final stage = config.terms;
@@ -182,7 +204,7 @@ class InstallmentPrepaymentRecalculator {
       final stageFrozen = frozen.where((r) => stageId(r) == config.id).toList();
       final frozenFee = stageFrozen.fold<int>(
         0,
-        (sum, r) => sum + r.expectedFee.minorUnits,
+        (sum, r) => sum + r.fee.minorUnits,
       );
       final fee = amortizing.fee.minorUnits - frozenFee;
       stages.add(

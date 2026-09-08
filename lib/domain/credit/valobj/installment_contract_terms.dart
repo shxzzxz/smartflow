@@ -66,7 +66,7 @@ class InstallmentContractTerms {
           _invalid('合同条款使用首期日期、期数与间隔；单期日期调整请编辑还款计划');
         }
         if (dates.count <= 0 || dates.intervalMonths <= 0) {
-          _invalid('期数与各期间隔必须为正整数');
+          _invalid('期数与间隔月数必须为正整数');
         }
         if (fee.minorUnits < 0 ||
             (rate?.ppm ?? 0) < 0 ||

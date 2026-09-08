@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/money_input.dart';
-import '../presentation/installment_schedule_presentation.dart';
 import '../view_model/installment_schedule_draft.dart';
 
 typedef InstallmentScheduleAmountChanged =
@@ -50,45 +48,35 @@ class InstallmentScheduleEditor extends StatelessWidget {
           child: Text('还款计划', style: styles.dateSectionTitle),
         ),
         AppSurface(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: constraints.maxWidth < 620 ? 620 : constraints.maxWidth,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space6,
-                    vertical: AppSpacing.space4,
-                  ),
-                  child: Column(
-                    children: [
-                      _ScheduleHeader(),
-                      Divider(
-                        height: 1,
-                        color: colors.outlineVariant.withValues(alpha: 0.55),
-                      ),
-                      for (var i = 0; i < draft.length; i++) ...[
-                        _ScheduleRow(
-                          key: ValueKey(
-                            draft[i].scheduleId ?? 'draft-${draft[i].periodNo}',
-                          ),
-                          row: draft[i],
-                          edited: manualPatched.contains(draft[i].periodNo),
-                          onApplyAmount: onApplyAmount,
-                          onEditDate: onEditDate,
-                        ),
-                        if (i < draft.length - 1)
-                          Divider(
-                            height: 1,
-                            color: colors.outlineVariant.withValues(
-                              alpha: 0.35,
-                            ),
-                          ),
-                      ],
-                    ],
-                  ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space6,
+              vertical: AppSpacing.space4,
+            ),
+            child: Column(
+              children: [
+                _ScheduleHeader(),
+                Divider(
+                  height: 1,
+                  color: colors.outlineVariant.withValues(alpha: 0.55),
                 ),
-              ),
+                for (var i = 0; i < draft.length; i++) ...[
+                  _ScheduleRow(
+                    key: ValueKey(
+                      draft[i].scheduleId ?? 'draft-${draft[i].periodNo}',
+                    ),
+                    row: draft[i],
+                    edited: manualPatched.contains(draft[i].periodNo),
+                    onApplyAmount: onApplyAmount,
+                    onEditDate: onEditDate,
+                  ),
+                  if (i < draft.length - 1)
+                    Divider(
+                      height: 1,
+                      color: colors.outlineVariant.withValues(alpha: 0.35),
+                    ),
+                ],
+              ],
             ),
           ),
         ),
@@ -132,10 +120,6 @@ class _ScheduleHeader extends StatelessWidget {
           Expanded(
             child: Text('总额', style: labelStyle, textAlign: TextAlign.right),
           ),
-          SizedBox(
-            width: _statusCellWidth,
-            child: Text('状态', style: labelStyle, textAlign: TextAlign.right),
-          ),
         ],
       ),
     );
@@ -143,8 +127,7 @@ class _ScheduleHeader extends StatelessWidget {
 }
 
 const double _periodCellWidth = 28;
-const double _dateCellWidth = 88;
-const double _statusCellWidth = 36;
+const double _dateCellWidth = 56;
 
 class _ScheduleRow extends StatelessWidget {
   const _ScheduleRow({
@@ -165,12 +148,6 @@ class _ScheduleRow extends StatelessWidget {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final pending = row.status == InstallmentScheduleStatus.pending;
-    final statusColor = switch (row.status) {
-      InstallmentScheduleStatus.pending => colors.primary,
-      InstallmentScheduleStatus.partiallyPaid => colors.error,
-      InstallmentScheduleStatus.paid => colors.tertiary,
-      InstallmentScheduleStatus.skipped => colors.outline,
-    };
     final cellStyle = styles.listSupporting.copyWith(
       color: pending ? colors.onSurface : colors.onSurfaceVariant,
     );
@@ -197,7 +174,9 @@ class _ScheduleRow extends StatelessWidget {
           SizedBox(
             width: _dateCellWidth,
             child: _Cell(
-              text: formatDateLabel(row.date),
+              text:
+                  '${row.date.month.toString().padLeft(2, '0')}-'
+                  '${row.date.day.toString().padLeft(2, '0')}',
               style: cellStyle,
               align: TextAlign.left,
               onTap: pending ? () => onEditDate(row) : null,
@@ -242,16 +221,6 @@ class _ScheduleRow extends StatelessWidget {
               style: cellStyle.copyWith(fontWeight: FontWeight.w600),
               align: TextAlign.right,
               onTap: null,
-            ),
-          ),
-          SizedBox(
-            width: _statusCellWidth,
-            child: Text(
-              installmentScheduleStatusLabel(row.status),
-              style: styles.listSupporting.copyWith(color: statusColor),
-              textAlign: TextAlign.right,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

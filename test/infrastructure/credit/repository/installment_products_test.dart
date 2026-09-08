@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, BooleanExpressionOperators;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/product/installment_product_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -91,6 +91,7 @@ void main() {
           {
             'id': 'c',
             'principalMinor': 10000,
+            'borrowingDate': DateTime(2026, 12, 3).millisecondsSinceEpoch,
             'totalPeriods': 999,
             'interestRatePpm': 99999,
             'repaymentMethod': 'equalPrincipal',
@@ -102,6 +103,8 @@ void main() {
       expect(tables['installment_contracts']!.single, {
         'id': 'c',
         'principalMinor': 10000,
+        'borrowingDate': DateTime(2026, 12, 3).millisecondsSinceEpoch,
+        'name': '20261203',
       });
       expect(tables['installment_stage_configs']!.single, same(stage));
     },
@@ -111,7 +114,12 @@ void main() {
     'product rows contain only stable rules and enforce absence of variable data',
     () async {
       await products.save(_product());
-      final rows = await db.select(db.installmentStageConfigs).get();
+      final rows =
+          await (db.select(db.installmentStageConfigs)..where(
+                (s) =>
+                    s.ownerType.equals('product') & s.ownerId.equals('product'),
+              ))
+              .get();
       expect(rows, hasLength(3));
       for (final row in rows) {
         expect([
@@ -164,6 +172,7 @@ void main() {
     () async {
       await products.save(_product());
       final loan = _loan();
+      loan.contract.reviseDetails(name: '保留的合同名称');
       await contracts.insertAggregate(loan.contract, loan.schedules);
       await products.save(
         _product(
@@ -210,6 +219,7 @@ void main() {
         before.map((r) => r.expectedInterest),
       );
       expect(restored.productName, '原产品');
+      expect(restored.name, '保留的合同名称');
     },
   );
 
@@ -249,7 +259,14 @@ void main() {
         isEmpty,
       );
       await service.delete('product');
-      expect(await db.select(db.installmentStageConfigs).get(), isEmpty);
+      expect(
+        await (db.select(db.installmentStageConfigs)..where(
+              (s) =>
+                  s.ownerType.equals('product') & s.ownerId.equals('product'),
+            ))
+            .get(),
+        isEmpty,
+      );
     },
   );
 
@@ -360,6 +377,7 @@ void main() {
                 'productId',
                 'productName',
                 'customRules',
+                'name',
                 'dayCount',
                 'rounding',
                 'tailDifference',

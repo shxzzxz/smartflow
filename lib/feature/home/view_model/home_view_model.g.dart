@@ -93,7 +93,7 @@ final class HomeBatchModeProvider
   }
 }
 
-String _$homeBatchModeHash() => r'14fc3d9657f763cf879009aefbda720de65b5333';
+String _$homeBatchModeHash() => r'ad0622f31647660f31d421452f777335af2f9699';
 
 abstract class _$HomeBatchMode extends $Notifier<bool> {
   bool build();
@@ -250,7 +250,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'd73c723240673baebbbab90fbb1716c5dc0653b1';
+    r'4e96bc2bb6c6186d79d27ab69b6544c761e9452e';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -510,7 +510,7 @@ final class HomeFilterOptionsProvider
   }
 }
 
-String _$homeFilterOptionsHash() => r'ccce923b9a044181a8dc7560d382d02bd89d202d';
+String _$homeFilterOptionsHash() => r'070b2c17418aa3b15673549528fdd70c15ba1d96';
 
 @ProviderFor(homeContent)
 final homeContentProvider = HomeContentFamily._();
@@ -574,7 +574,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'b02c1021b7f0af21de1b5f0d19adb7189e453b7c';
+String _$homeContentHash() => r'f598112a2d29434668029095b58402289b1da26d';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {

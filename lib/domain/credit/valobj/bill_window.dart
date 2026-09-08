@@ -1,5 +1,26 @@
 import 'bill_period.dart';
 
+/// The user-facing, closed consumption interval for a credit bill.
+class ConsumptionWindow {
+  const ConsumptionWindow({
+    required this.startInclusive,
+    required this.endInclusive,
+  });
+
+  final DateTime startInclusive;
+  final DateTime endInclusive;
+
+  @override
+  bool operator ==(Object other) {
+    return other is ConsumptionWindow &&
+        other.startInclusive == startInclusive &&
+        other.endInclusive == endInclusive;
+  }
+
+  @override
+  int get hashCode => Object.hash(startInclusive, endInclusive);
+}
+
 class BillWindow {
   const BillWindow({
     required this.period,

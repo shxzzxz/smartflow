@@ -15,6 +15,8 @@ import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/bill_conversion_installment_form_view_model.dart';
+import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
+import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
 import 'package:smartflow/feature/credit/presentation/bill_repayment_allocation.dart';
 import 'package:smartflow/feature/credit/presentation/bill_repayment_presentation.dart';
 import 'package:smartflow/feature/credit/view_model/bill_repayment_form_view_model.dart';
@@ -542,6 +544,44 @@ void main() {
       const Money(minorUnits: 6000),
     );
   });
+
+  test(
+    'bill conversion applies the shared installment configuration',
+    () async {
+      final repayment = _FakeRepaymentAppService();
+      final container = _container(repaymentAppService: repayment);
+      final provider = billConversionInstallmentFormViewModelProvider('bill');
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+
+      await container.read(provider.future);
+      container
+          .read(provider.notifier)
+          .applyConfiguration(
+            InstallmentConfigurationDraft(
+              principal: const Money(minorUnits: 5000),
+              borrowingDate: DateTime(2026, 9, 10),
+              terms: InstallmentTermsDraft.loan(DateTime(2026, 9, 10)),
+              productId: 'product-1',
+              productName: '等额本金',
+            ),
+          );
+
+      final state =
+          await container.read(provider.future)
+              as BillConversionInstallmentLoaded;
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(principalText: state.principalText, noteText: '');
+
+      expect(outcome, isA<UiActionSuccess<String>>());
+      final command = repayment.billConversionCommands.single;
+      expect(command.productId, 'product-1');
+      expect(command.productName, '等额本金');
+      expect(command.borrowingDate, DateTime(2026, 9, 10));
+      expect(command.stageTerms.firstDate, DateTime(2026, 10, 10));
+    },
+  );
 
   test('unattributed repayment form submits account repayment', () async {
     final repayment = _FakeRepaymentAppService();

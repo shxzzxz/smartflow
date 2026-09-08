@@ -1,12 +1,9 @@
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
-import 'package:smartflow/domain/credit/valobj/bill_period.dart';
-import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
@@ -48,24 +45,6 @@ class InstallmentLifecycleService {
       firstDate: firstDate,
       count: totalPeriods,
     ).getDates().last;
-  }
-
-  ({DateTime first, DateTime last})? cycleScheduleBoundsForDisbursement(
-    CreditLiabilityAccount? account, {
-    required DateTime borrowingDate,
-    required int totalPeriods,
-  }) {
-    if (account == null || account.kind != CreditLiabilityAccountKind.credit) {
-      return null;
-    }
-
-    final currentPeriod = account.creditPeriodForDate(borrowingDate);
-    final firstPeriod = currentPeriod.next();
-    final lastPeriod = _advancePeriod(firstPeriod, totalPeriods - 1);
-    return (
-      first: account.nextCreditBillWindow(firstPeriod).repaymentDate,
-      last: account.nextCreditBillWindow(lastPeriod).repaymentDate,
-    );
   }
 
   List<InstallmentSchedule> schedulesFromEntries({
@@ -136,11 +115,4 @@ class InstallmentLifecycleService {
     }
   }
 
-  BillPeriod _advancePeriod(BillPeriod period, int months) {
-    var result = period;
-    for (var i = 0; i < months; i++) {
-      result = result.next();
-    }
-    return result;
-  }
 }

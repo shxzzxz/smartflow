@@ -240,7 +240,7 @@ class _Header extends StatelessWidget {
       ),
     };
     return AppDetailSummaryCard(
-      title: contract.productName ?? '分期合同',
+      title: contract.name,
       headerTrailing: AppStatusBadge(label: statusLabel, color: statusColor),
       mainItems: [
         AppDetailSummaryCardItem(

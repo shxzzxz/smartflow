@@ -58,7 +58,24 @@ class InstallmentTermsPreview extends StatefulWidget {
 
 class _InstallmentTermsPreviewState extends State<InstallmentTermsPreview> {
   final formKey = GlobalKey<FormState>();
-  var terms = InstallmentTermsDraft.loan(DateTime(2026, 1, 10));
+  var terms = InstallmentTermsDraft(
+    stages: [
+      InstallmentStageDraft(
+        id: 'sample-deferment',
+        deferment: true,
+        untilDate: DateTime(2026, 7, 10),
+      ),
+      InstallmentStageDraft(
+        id: 'sample-repayment',
+        firstDate: DateTime(2026, 8, 10),
+        inputs: const {
+          StageInput.periods: '12',
+          StageInput.interval: '1',
+          StageInput.rate: '3.85',
+        },
+      ),
+    ],
+  );
   var rulesEditable = true;
   var product = false;
   var validated = false;
@@ -126,11 +143,9 @@ class _SampleScheduleView extends StatelessWidget {
           principal: const Money(minorUnits: 600000),
           interest: const Money(minorUnits: 6000),
           fee: Money.zero(),
-          remainingPrincipal: Money(minorUnits: i == 1 ? 600000 : 0),
           status: i == 1
               ? InstallmentScheduleStatus.paid
               : InstallmentScheduleStatus.pending,
-          recalculated: i == 2,
         ),
     ],
   );
@@ -145,7 +160,7 @@ class InstallmentSummaryPreview extends StatelessWidget {
     metrics: ContractMetrics(
       monthlyIrr: null,
       nominalApr: null,
-      effectiveApr: null,
+      xirr: null,
       totalRepayment: Money(minorUnits: 1212000),
       totalInterest: Money(minorUnits: 12000),
       totalFee: Money(minorUnits: 0),

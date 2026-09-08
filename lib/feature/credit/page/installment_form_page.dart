@@ -5,17 +5,17 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
+import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../presentation/installment_schedule_presentation.dart';
 import '../view_model/installment_form_view_model.dart';
-import '../widget/installment_plan_summary_card.dart';
-import '../widget/installment_schedule_view.dart';
-import '../widget/installment_terms_editor.dart';
+import '../view_model/loan_configuration_view_model.dart';
+import 'loan_configuration_page.dart';
 import '../widget/loan_basic_info_fields.dart';
 
 const _installmentSectionPadding = EdgeInsets.symmetric(
@@ -98,7 +98,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
         ),
         children: [
           AppFormSection(
-            title: '贷款',
             padding: _installmentSectionPadding,
             children: [
               AccountPlainFormRow(
@@ -112,13 +111,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 borrowingDate: state.borrowingDate,
                 onBorrowingDateChanged: notifier.setBorrowingDate,
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          AppFormSection(
-            title: '放款信息',
-            padding: _installmentSectionPadding,
-            children: [
               AppPlainSwitchRow(
                 label: '创建放款交易',
                 description: '迁移已有贷款时可关闭，仅创建合同和还款计划',
@@ -144,47 +136,20 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                         ),
                   onChanged: notifier.setDisbursementAccountId,
                 ),
+              NotePlainFormRow(controller: _noteController),
             ],
           ),
-          if (state.canChooseProduct) ...[
-            const SizedBox(height: AppSpacing.space12),
-            AppFormSection(
-              children: [
-                AppPlainFormRow(
-                  label: '分期产品',
-                  child: TextButton(
-                    onPressed: () => _pickProduct(notifier),
-                    child: Text(state.productName ?? '选择产品'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: AppSpacing.space12),
-          AppPlainSwitchRow(
-            label: '自定义本笔贷款',
-            description: '开启后可修改阶段结构和计算规则；关闭保留修改',
-            value: state.customRules,
-            onChanged: notifier.setCustomRules,
-          ),
-          InstallmentTermsEditor(
-            value: state.termsDraft,
-            onChanged: notifier.setTermsDraft,
-            borrowingDate: state.borrowingDate,
-            rulesEditable: state.customRules,
-            usesBillingCycle: state.usesBillingCycle,
-            planAction: state.usesBillingCycle
-                ? null
-                : AppSubmitButton(
-                    label: '预览还款计划',
-                    onPressed: () => _preview(notifier),
-                  ),
-          ),
-          if (state.usesBillingCycle) const Text('信用账户按账期生成单阶段计划，创建后可查看还款明细。'),
           const SizedBox(height: AppSpacing.space12),
           AppFormSection(
             padding: _installmentSectionPadding,
-            children: [NotePlainFormRow(controller: _noteController)],
+            children: [
+              AppPlainSelectFormRow<String>(
+                label: '分期配置',
+                value: state.productName ?? '自定义',
+                placeholder: '点击配置',
+                onTap: (_) => _configure(state),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
@@ -197,83 +162,26 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     );
   }
 
-  Future<void> _pickProduct(InstallmentFormViewModel notifier) async {
-    final outcome = await notifier.loadProducts();
-    if (!mounted) return;
-    final List<InstallmentProductReadModel> products;
-    switch (outcome) {
-      case UiActionSuccess(:final value):
-        products = value;
-      case UiActionFailure(:final error):
-        _showError(error.message);
-        return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final p in products.where((p) => !p.archived))
-              ListTile(
-                title: Text(p.name),
-                onTap: () {
-                  notifier.selectProduct(p);
-                  Navigator.of(sheetContext).pop();
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('管理分期产品'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                context.push('/installment-products');
-              },
-            ),
-          ],
-        ),
-      ),
+  Future<void> _configure(InstallmentFormLoaded state) async {
+    FocusScope.of(context).unfocus();
+    final initial = InstallmentConfigurationDraft(
+      principal: Money.tryParse(_principalController.text.trim()),
+      borrowingDate: state.borrowingDate,
+      terms: state.termsDraft,
+      productId: state.productId,
+      productName: state.productName,
     );
-  }
-
-  Future<void> _preview(InstallmentFormViewModel notifier) async {
-    if (!_formKey.currentState!.validate()) return;
-    final outcome = await notifier.preview(_principalController.text);
-    if (!mounted) return;
-    switch (outcome) {
-      case UiActionFailure(:final error):
-        _showError(error.message);
-      case UiActionSuccess(:final value):
-        await showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (ctx) => SafeArea(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(ctx).height * 0.75,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                children: [
-                  InstallmentPlanSummaryCard(
-                    metrics: value.metrics,
-                    principal: value.totalPrincipal,
-                    periodCount: value.periods.length,
-                    stages: value.stages,
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  InstallmentScheduleView(
-                    items: calculationScheduleItems(
-                      value.periods,
-                      stages: value.stages,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final configuration = await Navigator.of(context)
+        .push<InstallmentConfigurationDraft>(
+          MaterialPageRoute(
+            builder: (_) => LoanConfigurationPage(installment: initial),
           ),
         );
-    }
+    if (!mounted || configuration == null) return;
+    _principalController.text = configuration.principal!.format();
+    ref
+        .read(installmentFormViewModelProvider(_args).notifier)
+        .applyConfiguration(configuration);
   }
 
   Future<void> _pickAccount({

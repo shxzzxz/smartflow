@@ -92,28 +92,18 @@ class InstallmentGuidePage extends StatelessWidget {
                   SizedBox(height: AppSpacing.space16),
                   _GuideSection(
                     title: '关键指标',
-                    description: '衡量"借这笔钱的真实成本"。它们位于合同详情页和编辑页顶部。',
+                    description: '用实际年化（XIRR）衡量不同还款节奏下的资金成本。',
                     items: [
                       _GuideItem(
-                        term: '月 IRR（月内部收益率）',
+                        term: '实际年化（XIRR）',
                         body:
-                            '把"借款入账 → 各期还款"看作一组现金流，求出让现值为 0 的月化收益率。'
-                            '它综合了利息、手续费、时间因素，是最接近"真实月成本"的指标。',
-                      ),
-                      _GuideItem(
-                        term: '名义年化 APR',
-                        body: '月 IRR × 12 的简单年化。**不考虑复利**，常用于机构对外报价。',
-                      ),
-                      _GuideItem(
-                        term: '有效年化 EAR',
-                        body:
-                            '(1 + 月 IRR)¹² − 1，考虑"利上加利"的复利效应。'
-                            'EAR 通常比 APR 略高，反映一整年滚动下来的真实资金成本。',
+                            '按借款与各期还款的实际日期和金额求解年化利率。'
+                            '包含计划中的利息和手续费，现金流时间统一按每年 365 天折算。',
                       ),
                     ],
                     footnote:
-                        '看 IRR / EAR 比看合同里的"名义月利率"更接近真实成本——'
-                        '它会把手续费、不规则天数、提前还款一并算进去。',
+                        '合同指标依据全部计划现金流，不直接纳入实际还款记录。'
+                        '本金不守恒或无法求解时显示指标不可用。',
                   ),
                 ],
               ),

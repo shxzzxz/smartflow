@@ -5,6 +5,22 @@ import 'package:smartflow/domain/credit/service/installment/installment_plan_eng
 
 void main() {
   const calculator = InstallmentMetricsCalculator();
+  test('XIRR uses dated cashflows and includes fees in annual cost', () {
+    final result = calculator.compute(
+      principal: const Money(minorUnits: 100000),
+      borrowingDate: DateTime(2026, 1, 1),
+      plan: [
+        InstallmentSchedulePlanEntry(
+          periodNo: 1,
+          expectedRepaymentDate: DateTime(2027, 1, 1),
+          expectedPrincipal: const Money(minorUnits: 100000),
+          expectedInterest: const Money(minorUnits: 6000),
+          expectedFee: const Money(minorUnits: 4000),
+        ),
+      ],
+    );
+    expect(result.xirr, closeTo(0.1, 1e-9));
+  });
   final principal = const Money(minorUnits: 10000);
   final borrowingDate = DateTime(2026, 1, 1);
 
@@ -27,7 +43,7 @@ void main() {
     expect(metrics.unavailableReason, isNull);
     expect(metrics.monthlyIrr, isNotNull);
     expect(metrics.nominalApr, isNotNull);
-    expect(metrics.effectiveApr, isNotNull);
+    expect(metrics.xirr, isNotNull);
     expect(metrics.totalRepayment, const Money(minorUnits: 10300));
     expect(metrics.totalInterest, const Money(minorUnits: 300));
   });
@@ -46,7 +62,7 @@ void main() {
     );
     expect(metrics.monthlyIrr, isNull);
     expect(metrics.nominalApr, isNull);
-    expect(metrics.effectiveApr, isNull);
+    expect(metrics.xirr, isNull);
   });
 
   test('contract metrics are unavailable when plan principal is excessive', () {
@@ -88,7 +104,7 @@ void main() {
         metrics.unavailableReason,
         ContractMetricsUnavailableReason.noRateSolution,
       );
-      expect(metrics.effectiveApr, isNull);
+      expect(metrics.xirr, isNull);
     },
   );
 

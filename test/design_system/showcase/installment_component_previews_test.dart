@@ -35,6 +35,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      if (entry.key == 'terms') {
+        await tester.ensureVisible(find.byTooltip('展开阶段 2'));
+        await tester.tap(find.byTooltip('展开阶段 2'));
+        await tester.pumpAndSettle();
+      }
       expect(tester.takeException(), isNull);
     });
   }

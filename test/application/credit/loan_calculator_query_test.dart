@@ -225,7 +225,7 @@ void main() {
     );
   }
 
-  test('prepayment simulation rejects multi stage terms and bad inputs', () {
+  test('prepayment simulation supports deferment and rejects bad inputs', () {
     final multiStage = InstallmentPlanTerms(
       principal: const Money(minorUnits: 10000),
       borrowingDate: DateTime(2026, 1, 1),
@@ -241,17 +241,16 @@ void main() {
       ],
     );
 
-    expect(
-      () => query.simulatePrepayment(
-        LoanPrepaymentSimulationRequest(
-          terms: multiStage,
-          paidPeriods: 0,
-          prepaymentDate: DateTime(2026, 6, 15),
-          prepaymentPrincipal: const Money(minorUnits: 1000),
-        ),
+    final deferred = query.simulatePrepayment(
+      LoanPrepaymentSimulationRequest(
+        terms: multiStage,
+        paidPeriods: 0,
+        prepaymentDate: DateTime(2026, 6, 15),
+        prepaymentPrincipal: const Money(minorUnits: 1000),
       ),
-      throwsA(isA<BusinessException>()),
     );
+    expect(deferred.periods.map((p) => p.principal.minorUnits), [4500, 4500]);
+    expect(deferred.periods.last.remainingPrincipal, Money.zero());
     expect(
       () => query.simulatePrepayment(
         LoanPrepaymentSimulationRequest(
@@ -275,4 +274,71 @@ void main() {
       throwsA(isA<BusinessException>()),
     );
   });
+
+  for (final paid in [1, 2]) {
+    test(
+      'prepayment after period $paid retains stage rules, fees and frozen rows',
+      () {
+        final terms = InstallmentPlanTerms(
+          principal: const Money(minorUnits: 120000),
+          borrowingDate: DateTime(2026, 1, 1),
+          stages: [
+            DefermentStage(until: DateTime(2026, 2, 1)),
+            AmortizingStage(
+              dates: IntervalRepaymentDates(
+                firstDate: DateTime(2026, 3, 1),
+                count: 2,
+              ),
+              method: InstallmentRepaymentMethod.interestFirst,
+              rate: onePercentMonthly,
+              fee: const Money(minorUnits: 2000),
+            ),
+            AmortizingStage(
+              dates: IntervalRepaymentDates(
+                firstDate: DateTime(2026, 5, 1),
+                count: 2,
+              ),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              rate: onePercentMonthly,
+              fee: const Money(minorUnits: 4000),
+            ),
+          ],
+        );
+        final result = query.simulatePrepayment(
+          LoanPrepaymentSimulationRequest(
+            terms: terms,
+            paidPeriods: paid,
+            prepaymentDate: DateTime(2026, paid + 2, 2),
+            prepaymentPrincipal: const Money(minorUnits: 30000),
+          ),
+        );
+        expect(result.firstRecalculatedPeriodNo, paid + 1);
+        expect(result.periods.map((p) => p.principal.minorUnits), [
+          0,
+          0,
+          45000,
+          45000,
+        ]);
+        expect(result.periods.map((p) => p.interest.minorUnits), [
+          1200,
+          paid == 1 ? 900 : 1200,
+          900,
+          450,
+        ]);
+        expect(result.periods.map((p) => p.fee.minorUnits), [
+          1000,
+          1000,
+          2000,
+          2000,
+        ]);
+        expect(result.interestSaved.minorUnits, paid == 1 ? 750 : 450);
+        expect(result.totalFee.minorUnits, 6000);
+        expect(result.stages.map((s) => s.index), [1, 2]);
+        expect(result.periods.last.remainingPrincipal, Money.zero());
+        expect(result.periods.map((p) => p.date), [
+          for (var month = 3; month <= 6; month++) DateTime(2026, month, 1),
+        ]);
+      },
+    );
+  }
 }
