@@ -58,7 +58,7 @@ class RepaymentPolicyService {
     required List<BillRepaymentAllocationDraft> allocations,
     required InstallmentContractTerms stageTerms,
   }) {
-    if (bill.status != BillStatus.billed || allocations.isEmpty) {
+    if (bill.status == BillStatus.settled || allocations.isEmpty) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
     }
 

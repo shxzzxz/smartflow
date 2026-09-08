@@ -22,7 +22,7 @@ void main() {
   group('RepaymentPolicyService', () {
     const policy = RepaymentPolicyService();
 
-    test('open bill repayment only accepts consumption item allocations', () {
+    test('open bill repayment accepts the selected bill item allocation', () {
       final bill = _bill(
         status: BillStatus.open,
         items: [
@@ -35,17 +35,14 @@ void main() {
         ],
       );
 
-      expect(
-        () => policy.validateBillRepayment(
-          bill: bill,
-          allocations: [
-            BillRepaymentAllocationDraft(
-              billItemId: 'installment',
-              allocated: _breakdown(principal: 100),
-            ),
-          ],
-        ),
-        throwsA(isA<BusinessException>()),
+      policy.validateBillRepayment(
+        bill: bill,
+        allocations: [
+          BillRepaymentAllocationDraft(
+            billItemId: 'installment',
+            allocated: _breakdown(principal: 100),
+          ),
+        ],
       );
 
       policy.validateBillRepayment(

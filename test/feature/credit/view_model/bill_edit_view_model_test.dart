@@ -29,10 +29,17 @@ void main() {
       final outcome = await notifier.submit();
 
       expect(outcome, isA<SubmitSuccess>());
-      expect(service.updatedWindows, hasLength(1));
-      expect(service.updatedWindows.single.billId, 'bill-1');
-      expect(service.updatedWindows.single.startDate, DateTime(2026, 6, 5));
-      expect(service.updatedWindows.single.billingDate, DateTime(2026, 7, 5));
+      expect(service.updatedConsumptionWindows, hasLength(1));
+      expect(service.updatedConsumptionWindows.single.billId, 'bill-1');
+      expect(service.updatedConsumptionWindows.single.billItemId, 'item-1');
+      expect(
+        service.updatedConsumptionWindows.single.startInclusive,
+        DateTime(2026, 6, 5),
+      );
+      expect(
+        service.updatedConsumptionWindows.single.endInclusive,
+        DateTime(2026, 7, 5),
+      );
     },
   );
 
@@ -59,7 +66,7 @@ void main() {
       (outcome as SubmitFailure).error.code,
       CreditErrorCode.billWindowInvalid.code,
     );
-    expect(service.updatedWindows, isEmpty);
+    expect(service.updatedConsumptionWindows, isEmpty);
   });
 }
 
@@ -80,25 +87,49 @@ BillDetailReadModel _detail() {
       windowBillingDate: DateTime(2026, 7, 5),
       windowRepaymentDate: DateTime(2026, 7, 25),
     ),
-    items: const [],
+    items: [
+      BillItemReadModel(
+        id: 'item-1',
+        itemType: BillItemType.consumption,
+        status: BillItemStatus.pending,
+        billingState: BillItemBillingState.open,
+        repaymentDate: DateTime(2026, 7, 25),
+        startInclusive: DateTime(2026, 6, 5),
+        endInclusive: DateTime(2026, 7, 5),
+        expectedPrincipal: const Money(minorUnits: 1000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        allocated: RepaymentAmountDto.zero,
+        isOverdue: false,
+      ),
+    ],
     repayments: const [],
   );
 }
 
 class _RecordingGenerationService implements CreditBillGenerationAppService {
-  final updatedWindows =
-      <({String billId, DateTime startDate, DateTime billingDate})>[];
+  final updatedConsumptionWindows =
+      <
+        ({
+          String billId,
+          String billItemId,
+          DateTime startInclusive,
+          DateTime endInclusive,
+        })
+      >[];
 
   @override
-  Future<void> updateBillWindow({
+  Future<void> updateConsumptionWindow({
     required String billId,
-    required DateTime startDate,
-    required DateTime billingDate,
+    required String billItemId,
+    required DateTime startInclusive,
+    required DateTime endInclusive,
   }) async {
-    updatedWindows.add((
+    updatedConsumptionWindows.add((
       billId: billId,
-      startDate: startDate,
-      billingDate: billingDate,
+      billItemId: billItemId,
+      startInclusive: startInclusive,
+      endInclusive: endInclusive,
     ));
   }
 

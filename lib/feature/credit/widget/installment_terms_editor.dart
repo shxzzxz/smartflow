@@ -14,12 +14,12 @@ import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
-import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../view_model/installment_terms_draft.dart';
 import 'installment_field_options.dart';
 import 'installment_stage_card.dart';
+import '../presentation/installment_stage_presentation.dart';
 
 enum InstallmentTermsEditorMode { calculator, contract, product }
 
@@ -224,7 +224,13 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
       key: _stageKeys.putIfAbsent(s.id, GlobalKey.new),
       number: index + 1,
       title: s.deferment ? '免还期' : '还款阶段',
-      summary: _summary(s, index),
+      summary: presentInstallmentStageSummary(
+        stage: s,
+        index: index,
+        stages: value.stages,
+        productMode: productMode,
+        borrowingDate: borrowingDate,
+      ).lines,
       expanded: _expanded.contains(s.id),
       onToggle: () => setState(() {
         if (!_expanded.remove(s.id)) _expanded.add(s.id);
@@ -386,72 +392,6 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
               ],
             ],
     );
-  }
-
-  List<String> _summary(InstallmentStageDraft stage, int index) {
-    final String range;
-    if (productMode) {
-      range = '时间范围在本笔贷款中填写';
-    } else {
-      final start = index == 0
-          ? borrowingDate
-          : _endDate(value.stages[index - 1]);
-      final end = _endDate(stage);
-      range =
-          '${start == null ? '起点待确定' : formatDateLabel(start)} → '
-          '${end == null ? '结束日期待确定' : formatDateLabel(end)}';
-    }
-    if (stage.deferment) {
-      return ['不还款、不计息', range];
-    }
-    final method = installmentRepaymentMethodOptions
-        .firstWhere((option) => option.value == stage.method)
-        .label;
-    final flat = stage.method == InstallmentRepaymentMethod.flatFee;
-    final custom = stage.method == InstallmentRepaymentMethod.custom;
-    final unit = interestRatePeriodOptions
-        .firstWhere((option) => option.value == stage.ratePeriod)
-        .label;
-    final rateText = stage.text(StageInput.rate).trim();
-    final rate = rateText.isEmpty ? Decimal.zero : Decimal.tryParse(rateText);
-    return [
-      [
-        flat ? '$method · 单次还款' : method,
-        if (!flat && !custom)
-          productMode
-              ? '$unit利率（本笔填写）'
-              : rate == null || rate < Decimal.zero
-              ? '$unit利率待完善'
-              : '$unit利率 $rate%',
-      ].join(' · '),
-      range,
-    ];
-  }
-
-  DateTime? _endDate(InstallmentStageDraft stage) {
-    if (stage.deferment) return stage.untilDate;
-    if (stage.method == InstallmentRepaymentMethod.flatFee) {
-      return stage.firstDate;
-    }
-    if (stage.lastDate != null) return stage.lastDate;
-    final first = stage.firstDate;
-    final count = int.tryParse(stage.text(StageInput.periods));
-    final interval = int.tryParse(stage.text(StageInput.interval));
-    if (first == null ||
-        count == null ||
-        count <= 0 ||
-        interval == null ||
-        interval <= 0) {
-      return null;
-    }
-    final months = (count - 1) * interval;
-    if (months < 0 || months ~/ interval != count - 1) return null;
-    try {
-      return IntervalRepaymentDates.addMonthsClamped(first, months);
-    } on ArgumentError {
-      // 摘要允许未完成或超出日期范围的输入，提交校验仍由原表单负责。
-      return null;
-    }
   }
 
   Widget _input(

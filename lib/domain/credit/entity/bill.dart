@@ -25,11 +25,15 @@ class Bill {
     this.createdAt,
   }) : _status = status,
        _items = List.of(items) {
-    // Legacy callers did not persist a billing state. Infer it from the
-    // aggregate lifecycle while preserving explicit item projections.
+    // Legacy callers and pre-v35 rows may omit the independent billing state.
+    // Explicit projections are preserved; closed aggregate lifecycles infer
+    // the historical consumption state only when it was not supplied.
     if (status != BillStatus.open) {
       for (final item in _items) {
-        if (item.itemType == BillItemType.consumption) {
+        if (item.itemType == BillItemType.consumption &&
+            item.billingState == BillItemBillingState.open &&
+            item.startInclusive == null &&
+            item.endInclusive == null) {
           item.billingState = BillItemBillingState.billed;
         }
       }

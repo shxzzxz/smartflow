@@ -10,7 +10,7 @@ import 'package:smartflow/feature/credit/page/bill_edit_page.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 
 void main() {
-  testWidgets('shows the bill window fields for a credit bill', (tester) async {
+  testWidgets('shows the consumption item window fields', (tester) async {
     final container = _container();
 
     await tester.pumpWidget(
@@ -21,12 +21,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('起始日'), findsOneWidget);
+    expect(find.text('统计起始日'), findsOneWidget);
     expect(find.text('2026-06-05'), findsOneWidget);
-    expect(find.text('出账日'), findsOneWidget);
-    expect(find.text('2026-07-05'), findsOneWidget);
-    expect(find.text('还款日'), findsOneWidget);
-    expect(find.text('2026-07-25'), findsOneWidget);
+    expect(find.text('统计结束日'), findsOneWidget);
+    expect(find.text('2026-07-04'), findsOneWidget);
     addTearDown(container.dispose);
   });
 
@@ -45,9 +43,8 @@ void main() {
         GoRoute(path: '/', builder: (context, state) => const _HostPage()),
         GoRoute(
           path: '/bills/:billId/edit',
-          builder:
-              (context, state) =>
-                  BillEditPage(billId: state.pathParameters['billId']!),
+          builder: (context, state) =>
+              BillEditPage(billId: state.pathParameters['billId']!),
         ),
       ],
     );
@@ -64,8 +61,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('host'), findsOneWidget);
-    expect(service.updatedWindows.single.billId, 'bill-1');
-    expect(service.updatedWindows.single.billingDate, DateTime(2026, 7, 5));
+    expect(service.updatedConsumptionWindows.single.billId, 'bill-1');
+    expect(service.updatedConsumptionWindows.single.billItemId, 'item-1');
+    expect(
+      service.updatedConsumptionWindows.single.endInclusive,
+      DateTime(2026, 7, 4),
+    );
   });
 }
 
@@ -90,11 +91,23 @@ BillDetailReadModel _detail() {
       pendingPrincipal: Money.zero(),
       itemCount: 0,
       overdueItemCount: 0,
-      windowStartDate: DateTime(2026, 6, 5),
-      windowBillingDate: DateTime(2026, 7, 5),
-      windowRepaymentDate: DateTime(2026, 7, 25),
     ),
-    items: const [],
+    items: [
+      BillItemReadModel(
+        id: 'item-1',
+        itemType: BillItemType.consumption,
+        status: BillItemStatus.pending,
+        billingState: BillItemBillingState.open,
+        repaymentDate: DateTime(2026, 7, 25),
+        startInclusive: DateTime(2026, 6, 5),
+        endInclusive: DateTime(2026, 7, 4),
+        expectedPrincipal: const Money(minorUnits: 1000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        allocated: RepaymentAmountDto.zero,
+        isOverdue: false,
+      ),
+    ],
     repayments: const [],
   );
 }
@@ -120,19 +133,28 @@ class _HostPageState extends State<_HostPage> {
 }
 
 class _RecordingGenerationService implements CreditBillGenerationAppService {
-  final updatedWindows =
-      <({String billId, DateTime startDate, DateTime billingDate})>[];
+  final updatedConsumptionWindows =
+      <
+        ({
+          String billId,
+          String billItemId,
+          DateTime startInclusive,
+          DateTime endInclusive,
+        })
+      >[];
 
   @override
-  Future<void> updateBillWindow({
+  Future<void> updateConsumptionWindow({
     required String billId,
-    required DateTime startDate,
-    required DateTime billingDate,
+    required String billItemId,
+    required DateTime startInclusive,
+    required DateTime endInclusive,
   }) async {
-    updatedWindows.add((
+    updatedConsumptionWindows.add((
       billId: billId,
-      startDate: startDate,
-      billingDate: billingDate,
+      billItemId: billItemId,
+      startInclusive: startInclusive,
+      endInclusive: endInclusive,
     ));
   }
 

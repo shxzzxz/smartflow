@@ -30,7 +30,7 @@ class BillConversionInstallmentFormViewModel
     if (detail == null) {
       return const BillConversionInstallmentFormState.notFound();
     }
-    if (detail.summary.status != credit.BillStatus.billed) {
+    if (detail.summary.status == credit.BillStatus.settled) {
       return BillConversionInstallmentFormState.notEligible(
         summary: detail.summary,
       );

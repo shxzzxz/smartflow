@@ -27,16 +27,16 @@ class SettlementJudgementService {
     bool hasOpenConsumption = false,
   }) {
     final statuses = itemStatuses.toList(growable: false);
+    // Billing lifecycle is independent from settlement. An open consumption
+    // projection keeps the aggregate open even when its amount is zero,
+    // paid, or overpaid.
+    if (hasOpenConsumption) return BillStatus.open;
     final hasOutstanding = statuses.any(
       (status) =>
           status == BillItemStatus.pending ||
           status == BillItemStatus.partiallyPaid,
     );
-    if (current == BillStatus.open && hasOpenConsumption) {
-      return BillStatus.open;
-    }
     if (!hasOutstanding) return BillStatus.settled;
-    if (hasOpenConsumption) return BillStatus.open;
     return BillStatus.billed;
   }
 

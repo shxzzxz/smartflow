@@ -481,7 +481,7 @@ void main() {
     expect(allocations[1].allocated.principal, const Money(minorUnits: 4000));
   });
 
-  test('open bill repayment only allocates consumption items', () async {
+  test('open bill repayment allocates all selected bill items', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(
       repaymentAppService: repayment,
@@ -504,13 +504,18 @@ void main() {
           noteText: state.noteText,
         );
 
-    expect(state.principalText, '30.00');
+    expect(state.principalText, '80.00');
     expect(outcome, isA<SubmitSuccess>());
     final command = repayment.billRepaymentCommands.single;
-    expect(command.allocations, hasLength(1));
-    expect(command.allocations.single.billItemId, 'consumption-item');
+    expect(command.allocations, hasLength(2));
+    expect(command.allocations[0].billItemId, 'installment-item');
     expect(
-      command.allocations.single.allocated.principal,
+      command.allocations[0].allocated.principal,
+      const Money(minorUnits: 5000),
+    );
+    expect(command.allocations[1].billItemId, 'consumption-item');
+    expect(
+      command.allocations[1].allocated.principal,
       const Money(minorUnits: 3000),
     );
   });

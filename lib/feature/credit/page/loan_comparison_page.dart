@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../presentation/loan_calculator_presentation.dart';
+import '../presentation/loan_comparison_presentation.dart';
 import '../view_model/loan_comparison_view_model.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_configuration_entry.dart';
@@ -96,63 +95,7 @@ class _ComparisonTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
-    final rows =
-        <
-          (
-            String,
-            String Function(LoanConfiguration),
-            String Function(LoanConfiguration, LoanConfiguration)?,
-          )
-        >[
-          (
-            '总还款',
-            (c) => c.calculation.totalRepayment.format(),
-            (a, b) =>
-                (a.calculation.totalRepayment - b.calculation.totalRepayment)
-                    .format(),
-          ),
-          (
-            '总利息',
-            (c) => c.calculation.totalInterest.format(),
-            (a, b) =>
-                (a.calculation.totalInterest - b.calculation.totalInterest)
-                    .format(),
-          ),
-          (
-            '总手续费',
-            (c) => c.calculation.totalFee.format(),
-            (a, b) =>
-                (a.calculation.totalFee - b.calculation.totalFee).format(),
-          ),
-          (
-            '实际年化（XIRR）',
-            (c) => formatRatePercent(c.calculation.metrics.xirr),
-            (a, b) {
-              final firstRate = a.calculation.metrics.xirr;
-              final secondRate = b.calculation.metrics.xirr;
-              return firstRate == null || secondRate == null
-                  ? '—'
-                  : formatRatePercent(firstRate - secondRate);
-            },
-          ),
-          (
-            '本金',
-            (c) => c.principal.format(),
-            (a, b) => (a.principal - b.principal).format(),
-          ),
-          ('借款日期', (c) => formatDateLabel(c.borrowingDate), null),
-          (
-            '还款期数',
-            (c) => '${c.calculation.periods.length} 期',
-            (a, b) =>
-                '${a.calculation.periods.length - b.calculation.periods.length} 期',
-          ),
-          (
-            '末期还款日',
-            (c) => formatDateLabel(c.calculation.periods.last.date),
-            null,
-          ),
-        ];
+    final rows = presentLoanComparison(first: first, second: second);
     Widget cell(String text, {bool header = false}) => Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space8,
@@ -183,17 +126,13 @@ class _ComparisonTable extends StatelessWidget {
               cell('差值', header: true),
             ],
           ),
-          for (final (label, value, difference) in rows)
+          for (final row in rows)
             TableRow(
               children: [
-                cell(label, header: true),
-                cell(first == null ? '待配置' : value(first!)),
-                cell(second == null ? '待配置' : value(second!)),
-                cell(
-                  first == null || second == null || difference == null
-                      ? '—'
-                      : difference(first!, second!),
-                ),
+                cell(row.label, header: true),
+                cell(row.firstValue),
+                cell(row.secondValue),
+                cell(row.difference),
               ],
             ),
         ],

@@ -5,7 +5,6 @@ import '../../../domain/credit/entity/bill.dart';
 import '../../../domain/credit/port/bill_repository.dart';
 import '../../../domain/credit/valobj/bill_enums.dart';
 import '../../../domain/credit/valobj/bill_period.dart';
-import '../../../domain/credit/valobj/bill_window.dart';
 import '../../database/app_database.dart';
 
 class DriftBillRepository implements BillRepository {
@@ -69,9 +68,6 @@ class DriftBillRepository implements BillRepository {
       _database.bills,
     )..where((row) => row.id.equals(bill.id))).write(
       BillsCompanion(
-        startDate: Value(bill.window?.startDate),
-        billingDate: Value(bill.window?.billingDate),
-        repaymentDate: Value(bill.window?.repaymentDate),
         status: Value(bill.status),
         updatedAt: Value(DateTime.now()),
       ),
@@ -148,9 +144,6 @@ class DriftBillRepository implements BillRepository {
       id: bill.id,
       accountId: bill.accountId,
       period: bill.period.toInt(),
-      startDate: Value(bill.window?.startDate),
-      billingDate: Value(bill.window?.billingDate),
-      repaymentDate: Value(bill.window?.repaymentDate),
       status: bill.status,
       createdAt: Value(now),
       updatedAt: Value(now),
@@ -179,22 +172,10 @@ class DriftBillRepository implements BillRepository {
 
   Bill _mapBill(BillRow row, List<BillItem> items) {
     final period = BillPeriod.fromInt(row.period);
-    final hasWindow =
-        row.startDate != null &&
-        row.billingDate != null &&
-        row.repaymentDate != null;
     return Bill(
       id: row.id,
       accountId: row.accountId,
       period: period,
-      window: hasWindow
-          ? BillWindow(
-              period: period,
-              startDate: row.startDate!,
-              billingDate: row.billingDate!,
-              repaymentDate: row.repaymentDate!,
-            )
-          : null,
       status: row.status,
       items: List.unmodifiable(items),
       createdAt: row.createdAt,

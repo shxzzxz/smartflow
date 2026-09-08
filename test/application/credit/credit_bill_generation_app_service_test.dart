@@ -721,7 +721,7 @@ void main() {
         final june = (await fixture.billRepository.listBillsByAccount(
           account.id,
         )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202606));
-        final originalRepayment = june.window!.repaymentDate;
+        final originalRepayment = june.items.single.repaymentDate;
 
         await fixture.generation.updateBillWindow(
           billId: june.id,
@@ -730,9 +730,9 @@ void main() {
         );
 
         final updated = (await fixture.billRepository.findBill(june.id))!;
-        expect(updated.window!.startDate, DateTime(2026, 6, 10));
-        expect(updated.window!.billingDate, DateTime(2026, 6, 20));
-        expect(updated.window!.repaymentDate, originalRepayment);
+        expect(updated.items.single.startInclusive, DateTime(2026, 6, 10));
+        expect(updated.items.single.endInclusive, DateTime(2026, 6, 19));
+        expect(updated.items.single.repaymentDate, originalRepayment);
         expect(
           updated.items.single.expectedPrincipal,
           const Money(minorUnits: 10000),
