@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import '../../../core/error/app_exception.dart';
+import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/entity/installment_repricing.dart';
 import '../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
@@ -71,31 +73,21 @@ class DriftInstallmentRepricingRepository
   }
 
   @override
-  Future<void> markApplied(String id) async {
-    await (database.update(
-      database.installmentRepricingRecords,
-    )..where((r) => r.id.equals(id) & r.status.equals('pending'))).write(
-      const InstallmentRepricingRecordsCompanion(status: Value('applied')),
-    );
-  }
-
-  @override
-  Future<void> markUserConfirmed(
-    String contractId,
-    Set<String> recordIds,
-  ) async {
-    if (recordIds.isEmpty) return;
-    await (database.update(database.installmentRepricingRecords)..where(
-          (r) =>
-              r.contractId.equals(contractId) &
-              r.id.isIn(recordIds) &
-              r.status.equals('applied'),
-        ))
-        .write(
-          const InstallmentRepricingRecordsCompanion(
-            status: Value('userConfirmed'),
-          ),
-        );
+  Future<void> update(InstallmentRepricing record) async {
+    final updated =
+        await (database.update(database.installmentRepricingRecords)..where(
+              (r) =>
+                  r.id.equals(record.id) &
+                  r.contractId.equals(record.contractId),
+            ))
+            .write(
+              InstallmentRepricingRecordsCompanion(
+                status: Value(record.status.name),
+              ),
+            );
+    if (updated == 0) {
+      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
+    }
   }
 
   @override

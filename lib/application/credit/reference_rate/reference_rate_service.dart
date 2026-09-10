@@ -1,3 +1,5 @@
+import 'package:logging/logging.dart';
+
 import '../../shared/transaction_runner.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../domain/credit/port/reference_rate_repository.dart';
@@ -209,7 +211,8 @@ class ReferenceRateService {
       Map<ReferenceRateType, List<ReferenceRate>> histories;
       try {
         histories = await source.fetch(types, from: from, through: through);
-      } on Exception {
+      } on Exception catch (error, stack) {
+        _logFallback(source.key, 'request failed', error, stack);
         continue;
       }
       for (final type in types) {
@@ -226,9 +229,17 @@ class ReferenceRateService {
           if (anchor != null &&
               !anchor.date.isBefore(from) &&
               !rows.any((row) => row.date == anchor.date)) {
-            continue;
+            throw const FormatException(
+              'Reference rate history omits the stored anchor.',
+            );
           }
-        } on FormatException {
+        } on FormatException catch (error, stack) {
+          _logFallback(
+            source.key,
+            'history validation failed for ${type.name}',
+            error,
+            stack,
+          );
           continue;
         }
         if (rows.isEmpty) {
@@ -239,8 +250,14 @@ class ReferenceRateService {
         }
         try {
           await runner.run(() => repository.merge(type, rows));
-        } on AppException catch (error) {
+        } on AppException catch (error, stack) {
           if (error.code != ReferenceRateErrorCode.conflict.code) rethrow;
+          _logFallback(
+            source.key,
+            'history conflict for ${type.name}',
+            error,
+            stack,
+          );
           results[type] = ReferenceRateMissingReason.dataConflict;
           continue;
         }
@@ -252,6 +269,27 @@ class ReferenceRateService {
     return results;
   }
 
+  void _logFallback(
+    String source,
+    String operation,
+    Exception error,
+    StackTrace stack,
+  ) {
+    final appError = error is AppException ? error : null;
+    final cause = appError?.cause ?? error;
+    // JSON decoding FormatException.source may contain the full response.
+    final safeCause = cause is FormatException && cause.source != null
+        ? FormatException(cause.message)
+        : cause;
+    Logger('application.credit.reference_rate').warning(
+      'Reference rate $operation from $source'
+      '${appError == null ? '' : ' [${appError.code}]'}; '
+      'trying remaining sources, otherwise returning a missing result.',
+      safeCause,
+      appError?.stackTrace ?? stack,
+    );
+  }
+
   void _validate(
     List<ReferenceRate> rows,
     ReferenceRateType type,
@@ -261,15 +299,30 @@ class ReferenceRateService {
   ) {
     final dates = <DateTime>{};
     for (final row in rows) {
-      if (row.type != type ||
-          row.source != source ||
-          row.ratePpm < 0 ||
-          row.date != referenceDate(row.date) ||
-          row.date.isBefore(from) ||
+      if (row.type != type || row.source != source) {
+        throw const FormatException(
+          'Reference rate type or source does not match the request.',
+        );
+      }
+      if (row.ratePpm < 0) {
+        throw const FormatException('Reference rate must not be negative.');
+      }
+      if (row.date != referenceDate(row.date)) {
+        throw const FormatException(
+          'Reference rate date must be a UTC calendar date.',
+        );
+      }
+      if (row.date.isBefore(from) ||
           row.date.isBefore(type.historyStart) ||
-          row.date.isAfter(through) ||
-          !dates.add(row.date)) {
-        throw const FormatException('Invalid reference rate history.');
+          row.date.isAfter(through)) {
+        throw const FormatException(
+          'Reference rate date is outside the requested history range.',
+        );
+      }
+      if (!dates.add(row.date)) {
+        throw const FormatException(
+          'Reference rate history contains duplicate dates.',
+        );
       }
     }
   }

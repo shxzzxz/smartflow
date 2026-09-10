@@ -7,7 +7,6 @@ import '../../valobj/installment_plan_terms.dart';
 import '../../valobj/installment_plan_change.dart';
 import '../../valobj/installment_contract_terms.dart';
 import '../../valobj/repayment_dates_strategy.dart';
-import '../../valobj/repricing_principal_source.dart';
 import 'interest_accrual_policy.dart';
 import 'floating_rate_calculator.dart';
 import 'repayment_method_calculator.dart';
@@ -60,7 +59,7 @@ class InstallmentPlan {
   final List<InstallmentStagePlan> stages;
 }
 
-/// 计划生成与变更的纯计算入口。冻结范围、期次结构、利率和本金来源均在内部确定。
+/// 计划生成与变更的纯计算入口。冻结范围、期次结构、利率和本金分配均在内部确定。
 /// 返回不可变结果；不读取数据库、不分配持久化身份、不修改传入实体。
 class InstallmentPlanEngine {
   const InstallmentPlanEngine({
@@ -107,7 +106,6 @@ class InstallmentPlanEngine {
     final window = _selectWindow(original, eventDate);
     var terms = context.terms;
     var tail = window.tail;
-    final principalSources = <String, RepricingPrincipalSource>{};
     switch (change) {
       case RecalculateFromTerms(terms: final revisedTerms):
         terms = revisedTerms;
@@ -145,21 +143,10 @@ class InstallmentPlanEngine {
       case ApplyInstallmentRepricing(:final record):
         if (record.applied) throw _invalid('重定价结果已应用');
         terms = context.terms.withRepricing(record.stageId, record.change);
-        principalSources[record.stageId] =
-            RepricingPrincipalSource.scheduleSnapshot({
-              for (final row in original) row.date: row.principal,
-            });
       case RecalculateAfterPrepayment():
         break;
     }
-    return _recalculateTail(
-      context,
-      change,
-      terms,
-      window.frozen,
-      tail,
-      principalSources,
-    );
+    return _recalculateTail(context, change, terms, window.frozen, tail);
   }
 
   InstallmentPlanChangeSet _recalculateTail(
@@ -168,7 +155,6 @@ class InstallmentPlanEngine {
     InstallmentContractTerms terms,
     List<InstallmentPlanRow> frozen,
     List<InstallmentPlanRow> tail,
-    Map<String, RepricingPrincipalSource> principalSources,
   ) {
     final input = _buildTailInput(
       terms: terms,
@@ -176,15 +162,13 @@ class InstallmentPlanEngine {
       borrowingDate: context.borrowingDate,
       prepaymentPrincipal: context.prepaymentPrincipal,
       window: _RecalculationWindow(frozen: frozen, tail: tail),
-      repricingPrincipalSources: principalSources,
     );
     final entries = input == null
         ? <InstallmentSchedulePlanEntry>[]
         : _calculate(
-            input.terms,
+            input,
             firstPeriodNo: tail.first.periodNo,
             capEndPrincipal: true,
-            repricingPrincipalSources: input.repricingPrincipalSources,
           ).entries;
     if (entries.length != tail.length) throw _invalid('计算结果与期次结构不一致');
     final result = <InstallmentPlanRow>[
@@ -248,13 +232,12 @@ class InstallmentPlanEngine {
     return _RecalculationWindow(frozen: frozen, tail: tail);
   }
 
-  _TailCalculationInput? _buildTailInput({
+  InstallmentPlanTerms? _buildTailInput({
     required InstallmentContractTerms terms,
     required Money principal,
     required DateTime borrowingDate,
     required Money prepaymentPrincipal,
     required _RecalculationWindow window,
-    required Map<String, RepricingPrincipalSource> repricingPrincipalSources,
   }) {
     final frozen = window.frozen;
     final tail = window.tail;
@@ -282,7 +265,6 @@ class InstallmentPlanEngine {
     ]);
     var accrualStartDate = frozen.isEmpty ? borrowingDate : frozen.last.date;
     final stages = <InstallmentStage>[];
-    final sourcesByStageIndex = <int, RepricingPrincipalSource>{};
     final orderedTail = <InstallmentPlanRow>[];
     var started = false;
     for (final config in terms.stages) {
@@ -306,9 +288,6 @@ class InstallmentPlanEngine {
         (sum, r) => sum + r.fee.minorUnits,
       );
       final fee = amortizing.fee.minorUnits - frozenFee;
-      if (repricingPrincipalSources[config.id] case final source?) {
-        sourcesByStageIndex[stages.length] = source;
-      }
       stages.add(
         AmortizingStage(
           dates: ExplicitRepaymentDates([
@@ -338,16 +317,13 @@ class InstallmentPlanEngine {
         message: '计划与合同阶段的归属不一致',
       );
     }
-    return _TailCalculationInput(
-      terms: InstallmentPlanTerms(
-        principal: Money(minorUnits: remaining),
-        borrowingDate: accrualStartDate,
-        stages: stages,
-        dayCount: terms.dayCount,
-        rounding: terms.rounding,
-        tailDifference: terms.tailDifference,
-      ),
-      repricingPrincipalSources: sourcesByStageIndex,
+    return InstallmentPlanTerms(
+      principal: Money(minorUnits: remaining),
+      borrowingDate: accrualStartDate,
+      stages: stages,
+      dayCount: terms.dayCount,
+      rounding: terms.rounding,
+      tailDifference: terms.tailDifference,
     );
   }
 
@@ -370,8 +346,6 @@ class InstallmentPlanEngine {
     InstallmentPlanTerms terms, {
     int firstPeriodNo = 1,
     bool capEndPrincipal = false,
-    // 本次计算的本金来源按 terms.stages 下标匹配；缺省采用本次投影。
-    Map<int, RepricingPrincipalSource> repricingPrincipalSources = const {},
   }) {
     if (terms.principal.minorUnits < 0) {
       throw _invalid('Principal must not be negative.');
@@ -408,9 +382,6 @@ class InstallmentPlanEngine {
             timelineDate: timelineDate,
             isLastStage: isLastStage,
             firstPeriodNo: periodNo,
-            repricingPrincipalSource:
-                repricingPrincipalSources[index] ??
-                const RepricingPrincipalSource.projection(),
           );
           entries.addAll(result.entries);
           stagePlans.add(result.summary);
@@ -448,7 +419,6 @@ class InstallmentPlanEngine {
     required DateTime timelineDate,
     required bool isLastStage,
     required int firstPeriodNo,
-    required RepricingPrincipalSource repricingPrincipalSource,
   }) {
     final dates = stage.dates.getDates();
     stage.validateFloatingRate();
@@ -522,7 +492,6 @@ class InstallmentPlanEngine {
             opening: openingPrincipal,
             end: endPrincipal,
             rounding: rounding,
-            principalSource: repricingPrincipalSource,
           )
         : effectiveCalculator.calculate(
             RepaymentMethodCalculationInput(
@@ -634,16 +603,4 @@ class _RecalculationWindow {
 
   final List<InstallmentPlanRow> frozen;
   final List<InstallmentPlanRow> tail;
-}
-
-class _TailCalculationInput {
-  _TailCalculationInput({
-    required this.terms,
-    required Map<int, RepricingPrincipalSource> repricingPrincipalSources,
-  }) : repricingPrincipalSources = Map.unmodifiable(repricingPrincipalSources);
-
-  final InstallmentPlanTerms terms;
-
-  /// 从合同阶段 ID 转换为裁剪后计划中的阶段下标，包含免还阶段的位置。
-  final Map<int, RepricingPrincipalSource> repricingPrincipalSources;
 }

@@ -9,7 +9,6 @@ import '../../valobj/installment_enums.dart';
 import '../../valobj/installment_plan_terms.dart';
 import '../../valobj/interest_rate.dart';
 import '../../valobj/reference_rate.dart';
-import '../../valobj/repricing_principal_source.dart';
 import 'interest_accrual_policy.dart';
 import 'repayment_method_calculator.dart';
 
@@ -27,8 +26,6 @@ class FloatingRateCalculator {
     required Money opening,
     required Money end,
     required RoundingMode rounding,
-    RepricingPrincipalSource principalSource =
-        const RepricingPrincipalSource.projection(),
   }) {
     final changes = [...stage.rateChanges]
       ..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate));
@@ -106,12 +103,9 @@ class FloatingRateCalculator {
             stage.floatingRate!.paymentTiming ==
                 RepricingPaymentTiming.nextPeriod;
         if (recastNextPeriod) {
-          // 本期按显式来源取本金、按混合利率计息；下期才重新求固定额。
+          // 本期沿用本次按调息前利率预测的正常摊还本金；下期再求固定额。
           allocation = _transitionAllocation(
-            principal: principalSource.principalFor(
-              date: until,
-              projected: allocation.principal,
-            ),
+            principal: allocation.principal,
             balance: balance,
             end: end,
             rate: firstRate,
@@ -193,7 +187,7 @@ class FloatingRateCalculator {
         principal.minorUnits > balance.minorUnits - end.minorUnits) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
-        message: '保留的当期本金超出剩余可摊还本金，请核对计划',
+        message: '预测的当期本金超出剩余可摊还本金，请核对计划',
       );
     }
     return InstallmentAmountAllocation(

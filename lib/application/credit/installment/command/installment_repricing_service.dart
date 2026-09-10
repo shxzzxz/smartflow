@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_repricing.dart';
+import '../../../../domain/credit/entity/installment_schedule.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
@@ -41,7 +42,8 @@ class InstallmentRepricingService {
     }
     var complete = true;
     final existing = await records.list(contractId);
-    final pending = _pendingResets(contract, existing, now);
+    final schedules = await installments.listSchedules(contractId);
+    final pending = _pendingResets(contract, existing, schedules, now);
     final resolved = resolvedRates ?? await _resolvePending(pending);
     for (final entry in pending) {
       final rule = entry.rule;
@@ -112,7 +114,8 @@ class InstallmentRepricingService {
       contractId,
       ApplyInstallmentRepricing(record),
     );
-    await records.markApplied(record.id);
+    record.markApplied();
+    await records.update(record);
     return true;
   });
 
@@ -122,13 +125,17 @@ class InstallmentRepricingService {
       final current = {
         for (final record in await records.list(contractId)) record.id: record,
       };
-      if (recordIds.any((id) => current[id]?.applied != true)) {
+      if (recordIds.any((id) => current[id]?.contractId != contractId)) {
         throw BusinessException(
           CreditErrorCode.contractPersistenceConflict,
           message: '重定价记录已变化，请刷新后重试',
         );
       }
-      await records.markUserConfirmed(contractId, recordIds);
+      for (final id in recordIds) {
+        final record = current[id]!;
+        record.confirm();
+        await records.update(record);
+      }
     },
   );
 
@@ -146,7 +153,8 @@ class InstallmentRepricingService {
           continue;
         }
         final existing = await records.list(id);
-        pending.addAll(_pendingResets(contract, existing, now));
+        final schedules = await installments.listSchedules(id);
+        pending.addAll(_pendingResets(contract, existing, schedules, now));
         eligibleIds.add(id);
       } on Exception catch (error, stack) {
         needsRetry = true;
@@ -180,6 +188,7 @@ class InstallmentRepricingService {
   List<_PendingReset> _pendingResets(
     InstallmentContract contract,
     List<InstallmentRepricing> existing,
+    List<InstallmentSchedule> schedules,
     DateTime now,
   ) {
     final pending = <_PendingReset>[];
@@ -189,7 +198,12 @@ class InstallmentRepricingService {
       final rule = terms.floatingRate;
       if (rule == null) continue;
       terms.validateFloatingRate();
-      final end = referenceDate(terms.dates.getDates().last);
+      final stageSchedules = schedules.where((row) => row.stageId == stage.id);
+      if (stageSchedules.isEmpty) continue;
+      final last = stageSchedules.reduce(
+        (a, b) => a.periodNo > b.periodNo ? a : b,
+      );
+      final end = referenceDate(last.expectedRepaymentDate);
       final indices = <int>[];
       for (
         var i = 0;

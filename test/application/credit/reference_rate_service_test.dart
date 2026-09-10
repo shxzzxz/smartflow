@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
 import 'package:smartflow/domain/credit/port/reference_rate_source.dart';
 import 'package:smartflow/infrastructure/credit/adapter/chinamoney_reference_rate_source.dart';
@@ -27,6 +29,83 @@ void main() {
   late _Fixture f;
   setUp(() => f = _Fixture());
   tearDown(() => f.db.close());
+
+  for (final failure in ['request', 'validation', 'anchor', 'conflict']) {
+    test(
+      '$failure logs one warning per attempt and preserves fallback',
+      () async {
+        final logs = <LogRecord>[];
+        final subscription = Logger.root.onRecord.listen(logs.add);
+        addTearDown(subscription.cancel);
+        f.source.fail = failure == 'request';
+        f.source.rows = [
+          _rate('2026-02-20', failure == 'validation' ? -1 : 29000),
+        ];
+        if (failure == 'conflict' || failure == 'anchor') {
+          await f.seed([_rate('2026-02-20', 30000)]);
+        }
+        if (failure == 'anchor') f.source.rows = [_rate('2026-03-01', 29000)];
+        final fallback = _Source(key: 'fallback', order: 200)
+          ..rows = [_rate('2026-02-20', 30000)];
+        f.sources.add(fallback);
+
+        for (var attempt = 1; attempt <= 2; attempt++) {
+          final results = await Future.wait([
+            f.service.resolveOne(_type, DateTime(2026, 3, 2)),
+            f.service.resolveOne(_type, DateTime(2026, 3, 2)),
+          ]);
+          expect(results.every((r) => r.rate?.ratePpm == 30000), isTrue);
+          final failures = logs
+              .where((r) => r.loggerName == 'application.credit.reference_rate')
+              .toList();
+          expect(failures, hasLength(attempt));
+          final log = failures.last;
+          expect(log.level, Level.WARNING);
+          expect(log.message, contains('fixture'));
+          if (failure == 'conflict') {
+            expect(log.message, contains(ReferenceRateErrorCode.conflict.code));
+            expect(log.error, isA<AppException>());
+          } else {
+            expect(log.error, isA<FormatException>());
+          }
+          expect(log.stackTrace, isNotNull);
+        }
+        expect(fallback.calls, hasLength(2));
+      },
+    );
+  }
+
+  test(
+    'source parse failure logs its cause and stack without response content',
+    () async {
+      const response = '<html>full upstream response marker</html>';
+      final failure = FormatException('Unexpected token', response, 0);
+      final stack = StackTrace.fromString('reference source decoder');
+      f.source.failure = failure;
+      f.source.failureStack = stack;
+      final logs = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen(logs.add);
+      addTearDown(subscription.cancel);
+      final result = await f.service.resolveOne(_type, DateTime(2026, 3, 2));
+      expect(result.reason, ReferenceRateMissingReason.sourceUnavailable);
+      final log = logs
+          .where((r) => r.loggerName == 'application.credit.reference_rate')
+          .single;
+      expect(log.stackTrace, same(stack));
+      expect(
+        log.error,
+        isA<FormatException>().having(
+          (e) => e.message,
+          'cause',
+          failure.message,
+        ),
+      );
+      expect(
+        '${log.message} ${log.error} ${log.stackTrace}',
+        isNot(contains(response)),
+      );
+    },
+  );
 
   test(
     'today lookup uses the latest available quote before and after publication',
@@ -649,6 +728,8 @@ class _Source implements ReferenceRateSource {
   Set<ReferenceRateType> get supportedTypes => supported;
   List<ReferenceRate> rows = [];
   bool fail = false;
+  Exception? failure;
+  StackTrace? failureStack;
   Completer<void>? gate;
   final started = Completer<void>();
   Set<ReferenceRateType> omitted = {};
@@ -663,6 +744,7 @@ class _Source implements ReferenceRateSource {
     calls.add((types: types, from: from, through: through));
     if (!started.isCompleted) started.complete();
     await gate?.future;
+    if (failure != null) Error.throwWithStackTrace(failure!, failureStack!);
     if (fail) throw const FormatException('invalid source');
     return {
       for (final type in types)

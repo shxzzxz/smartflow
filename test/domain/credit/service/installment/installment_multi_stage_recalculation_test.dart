@@ -16,7 +16,7 @@ import 'package:smartflow/domain/credit/entity/installment_repricing.dart';
 void main() {
   const recalculator = InstallmentPlanEngine();
   test(
-    'repricing principal follows its stage after frozen and deferment stages are trimmed',
+    'repricing projects principal and preserves time after frozen and deferment stages are trimmed',
     () {
       final effective = DateTime.utc(2026, 1, 1);
       final change = RateChange(
@@ -105,7 +105,18 @@ void main() {
       expect(updates.map((r) => r.periodNo), [2, 3, 4]);
       expect(
         updates.map((r) => (r.principal.minorUnits, r.interest.minorUnits)),
-        [(2000000, 28000), (2995507, 18000), (3004493, 9013)],
+        // First payment: 80000 * .004 / (1 - 1.004^-3) = 26880.28.
+        // Principal = 26880.28 - 320; subsequent payments use 3.6%.
+        [(2656028, 28000), (2667984, 16032), (2675988, 8028)],
+      );
+      expect(updates.map((r) => r.stageId), everyElement('floating'));
+      expect(
+        updates.map((r) => r.date),
+        loan.schedules.skip(1).map((r) => r.expectedRepaymentDate),
+      );
+      expect(
+        updates.fold<int>(0, (sum, r) => sum + r.principal.minorUnits),
+        8000000,
       );
       expect(loan.schedules.first.expectedPrincipal.minorUnits, 2000000);
       expect(loan.schedules.first.status, InstallmentScheduleStatus.paid);
