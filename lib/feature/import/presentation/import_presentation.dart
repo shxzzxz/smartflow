@@ -5,29 +5,23 @@ import '../../../core/money/money_formatter.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
 
-enum ImportEntrySource { yimu, wechat, alipay, unionPay, generic }
+enum ImportEntrySource { yimu, unionPay, generic }
 
 extension ImportEntrySourcePresentation on ImportEntrySource {
   String get routeValue => switch (this) {
     ImportEntrySource.yimu => 'yimu',
-    ImportEntrySource.wechat => 'wechat',
-    ImportEntrySource.alipay => 'alipay',
     ImportEntrySource.unionPay => 'union-pay',
     ImportEntrySource.generic => 'generic',
   };
 
   String get label => switch (this) {
     ImportEntrySource.yimu => '一木记账',
-    ImportEntrySource.wechat => '微信账单',
-    ImportEntrySource.alipay => '支付宝账单',
     ImportEntrySource.unionPay => '云闪付账单',
     ImportEntrySource.generic => '其他格式',
   };
 
   String get description => switch (this) {
     ImportEntrySource.yimu => '从一木记账备份文件导入',
-    ImportEntrySource.wechat => '导入微信支付交易记录',
-    ImportEntrySource.alipay => '导入支付宝交易记录',
     ImportEntrySource.unionPay => '导入云闪付交易记录',
     ImportEntrySource.generic => '支持 CSV、Excel 等格式文件',
   };
@@ -37,8 +31,6 @@ extension ImportEntrySourcePresentation on ImportEntrySource {
 
 ImportEntrySource importEntrySourceFromRoute(String? value) {
   return switch (value) {
-    'wechat' => ImportEntrySource.wechat,
-    'alipay' => ImportEntrySource.alipay,
     'union-pay' => ImportEntrySource.unionPay,
     'generic' => ImportEntrySource.generic,
     _ => ImportEntrySource.yimu,

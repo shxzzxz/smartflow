@@ -15,6 +15,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
   static const _calendarHeatmapEnabledKey = 'settings.calendar_heatmap_enabled';
   static const _calendarHeatMetricKey = 'settings.calendar_heat_metric';
   static const _cashflowPeriodMetricKey = 'settings.cashflow_period_metric';
+  static const _accountIconStyleKey = 'settings.account_icon_style';
+  static const _categoryIconStyleKey = 'settings.category_icon_style';
 
   final AppDatabase _database;
 
@@ -22,19 +24,26 @@ class DriftAppSettingsStore implements AppSettingsStore {
   Future<AppSettings> read() async {
     final rows =
         await (_database.select(_database.appMetadata)..where(
-          (table) => table.key.isIn(const [
-            _showAddTransactionFabKey,
-            _showBottomNavLabelsKey,
-            _pullToCreateSensitivityKey,
-            _copyPreviousMonthBudgetsKey,
-            _calendarHeatmapEnabledKey,
-            _calendarHeatMetricKey,
-            _cashflowPeriodMetricKey,
-          ]),
-        )).get();
+              (table) => table.key.isIn(const [
+                _showAddTransactionFabKey,
+                _showBottomNavLabelsKey,
+                _pullToCreateSensitivityKey,
+                _copyPreviousMonthBudgetsKey,
+                _calendarHeatmapEnabledKey,
+                _calendarHeatMetricKey,
+                _cashflowPeriodMetricKey,
+                _accountIconStyleKey,
+                _categoryIconStyleKey,
+              ]),
+            ))
+            .get();
     final values = {for (final row in rows) row.key: row.value};
     const defaults = AppSettings();
     return AppSettings(
+      accountIconStyle:
+          values[_accountIconStyleKey] ?? defaults.accountIconStyle,
+      categoryIconStyle:
+          values[_categoryIconStyleKey] ?? defaults.categoryIconStyle,
       showAddTransactionFab:
           _parseBool(values[_showAddTransactionFabKey]) ??
           defaults.showAddTransactionFab,
@@ -67,6 +76,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
   Future<void> save(AppSettings settings) {
     return _database.batch((batch) {
       batch.insertAllOnConflictUpdate(_database.appMetadata, [
+        _entry(_accountIconStyleKey, settings.accountIconStyle),
+        _entry(_categoryIconStyleKey, settings.categoryIconStyle),
         _entry(_showAddTransactionFabKey, settings.showAddTransactionFab),
         _entry(_showBottomNavLabelsKey, settings.showBottomNavLabels),
         _entry(

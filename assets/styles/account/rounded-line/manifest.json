@@ -1,0 +1,273 @@
+{
+  "color": "foreground",
+  "icons": [
+    {
+      "key": "bank-account",
+      "label": "资金账户",
+      "keywords": [
+        "资金"
+      ]
+    },
+    {
+      "key": "cash",
+      "label": "现金"
+    },
+    {
+      "key": "bank-card",
+      "label": "银行卡"
+    },
+    {
+      "key": "savings-account",
+      "label": "储蓄账户"
+    },
+    {
+      "key": "digital-wallet",
+      "label": "数字钱包"
+    },
+    {
+      "key": "prepaid-card",
+      "label": "预付卡",
+      "keywords": [
+        "储值卡"
+      ]
+    },
+    {
+      "key": "loan_out",
+      "label": "应收账户",
+      "keywords": [
+        "应收",
+        "借出"
+      ]
+    },
+    {
+      "key": "reimburse",
+      "label": "报销账户",
+      "keywords": [
+        "报销垫付"
+      ]
+    },
+    {
+      "key": "investment-account",
+      "label": "投资账户"
+    },
+    {
+      "key": "credit-card",
+      "label": "信用卡"
+    },
+    {
+      "key": "loan_in",
+      "label": "应付账户",
+      "keywords": [
+        "应付",
+        "欠款"
+      ]
+    },
+    {
+      "key": "loan",
+      "label": "贷款账户",
+      "keywords": [
+        "借款",
+        "贷款"
+      ]
+    },
+    {
+      "key": "mortgage-account",
+      "label": "房贷账户",
+      "keywords": [
+        "房贷"
+      ]
+    },
+    {
+      "key": "car-loan-account",
+      "label": "车贷账户",
+      "keywords": [
+        "车贷"
+      ]
+    },
+    {
+      "key": "student-loan-account",
+      "label": "助学贷款账户",
+      "keywords": [
+        "助学贷款"
+      ]
+    },
+    {
+      "key": "coins",
+      "label": "金币",
+      "keywords": [
+        "硬币",
+        "零钱"
+      ]
+    },
+    {
+      "key": "gold",
+      "label": "黄金",
+      "keywords": [
+        "金条",
+        "贵金属"
+      ]
+    },
+    {
+      "key": "stock-account",
+      "label": "股票",
+      "keywords": [
+        "证券",
+        "持仓",
+        "K线"
+      ]
+    },
+    {
+      "key": "fund-account",
+      "label": "基金",
+      "keywords": [
+        "理财",
+        "组合"
+      ]
+    },
+    {
+      "key": "alipay",
+      "label": "支付宝",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "wechat_pay",
+      "label": "微信支付",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "icbc",
+      "label": "中国工商银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "ccb",
+      "label": "中国建设银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "cmb_credit_card",
+      "label": "招商银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "boc_debit_card",
+      "label": "中国银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "abc",
+      "label": "农业银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "bocom",
+      "label": "交通银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "psbc",
+      "label": "邮储银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "citic",
+      "label": "中信银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "ceb",
+      "label": "光大银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "cmbc",
+      "label": "民生银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "cib",
+      "label": "兴业银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "spdb",
+      "label": "浦发银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "pab",
+      "label": "平安银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "cgb",
+      "label": "广发银行",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "huabei",
+      "label": "花呗",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "jiebei",
+      "label": "借呗",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "jd_baitiao",
+      "label": "京东白条",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "jd",
+      "label": "京东",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "meituan",
+      "label": "美团",
+      "brand": true,
+      "color": "original"
+    },
+    {
+      "key": "duxiaoman",
+      "label": "度小满",
+      "brand": true,
+      "keywords": [
+        "有钱花"
+      ],
+      "color": "original"
+    },
+    {
+      "key": "china_development_bank",
+      "label": "国家开发银行",
+      "brand": true,
+      "keywords": [
+        "国开行",
+        "开发银行"
+      ],
+      "color": "original"
+    }
+  ]
+}

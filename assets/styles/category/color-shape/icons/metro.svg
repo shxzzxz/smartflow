@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>地铁 · 彩色面形</title>
+  <g fill="#1782E5" stroke="#1782E5"><rect x="5" y="3" width="14" height="16" rx="4"/></g>
+  <g fill="#D1E6FA" stroke="#1782E5"><rect x="8" y="6" width="8" height="6" rx="1.5"/></g>
+  <g fill="none" stroke="#FFFFFF"><path d="M8 16h1m6 0h1"/></g>
+  <g fill="none" stroke="#1782E5"><path d="M8 19l-2 2m10-2 2 2"/></g>
+</svg>

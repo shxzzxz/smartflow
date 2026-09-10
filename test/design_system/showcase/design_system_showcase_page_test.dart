@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/showcase/design_system_showcase_page.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -40,6 +41,12 @@ const _showcaseCategoryLabels = [
 ];
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late BusinessIconCatalog iconCatalog;
+  setUpAll(() async {
+    iconCatalog = await BusinessIconCatalog.load(rootBundle);
+  });
+
   Future<void> pumpShowcase(
     WidgetTester tester, {
     Size surfaceSize = const Size(360, 800),
@@ -59,7 +66,10 @@ void main() {
               data: MediaQuery.of(context).copyWith(textScaler: textScaler),
               child: child!,
             ),
-        home: const DesignSystemShowcasePage(),
+        home: BusinessIconScope(
+          catalog: iconCatalog,
+          child: const DesignSystemShowcasePage(),
+        ),
       ),
     );
   }

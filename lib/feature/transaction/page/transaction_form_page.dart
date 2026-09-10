@@ -1229,13 +1229,7 @@ class _MainFeeInputTile extends StatelessWidget {
           children: [
             const SizedBox(
               width: AppSpacing.space32,
-              child: Center(
-                child: BusinessIcon(
-                  iconKey: 'swap-box-line',
-                  size: 28,
-                  usage: BusinessIconUsage.system,
-                ),
-              ),
+              child: Center(child: Icon(RemixIcons.swap_box_line, size: 28)),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(

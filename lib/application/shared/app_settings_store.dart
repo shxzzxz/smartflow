@@ -70,6 +70,8 @@ class AppSettings {
     this.calendarHeatmapEnabled = false,
     this.calendarHeatMetric = CalendarHeatMetric.expense,
     this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
+    this.accountIconStyle = '',
+    this.categoryIconStyle = '',
   });
 
   final bool showAddTransactionFab;
@@ -79,6 +81,9 @@ class AppSettings {
   final bool calendarHeatmapEnabled;
   final CalendarHeatMetric calendarHeatMetric;
   final CashflowPeriodMetric cashflowPeriodMetric;
+  // Empty selects the first style declared in that type's manifest.
+  final String accountIconStyle;
+  final String categoryIconStyle;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
@@ -88,6 +93,8 @@ class AppSettings {
     bool? calendarHeatmapEnabled,
     CalendarHeatMetric? calendarHeatMetric,
     CashflowPeriodMetric? cashflowPeriodMetric,
+    String? accountIconStyle,
+    String? categoryIconStyle,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -101,6 +108,8 @@ class AppSettings {
           calendarHeatmapEnabled ?? this.calendarHeatmapEnabled,
       calendarHeatMetric: calendarHeatMetric ?? this.calendarHeatMetric,
       cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
+      accountIconStyle: accountIconStyle ?? this.accountIconStyle,
+      categoryIconStyle: categoryIconStyle ?? this.categoryIconStyle,
     );
   }
 }

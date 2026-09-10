@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>储蓄账户 · 彩色面形</title>
+  <g fill="#156CE5" stroke="#156CE5"><rect x="3" y="4" width="18" height="17" rx="3"/></g>
+  <g fill="#D0E2FA" stroke="#156CE5"><circle cx="12" cy="12.5" r="4.5"/></g>
+  <g fill="none" stroke="#156CE5"><path d="M12 10v5m-2.5-2.5h5M7 2h10"/></g>
+</svg>

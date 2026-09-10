@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>音乐演出 · 圆角线性</title>
+  <g fill="none" stroke="#101827"><path d="M8 17V6l12-3v11"/></g>
+  <g fill="none" stroke="#101827"><path d="M8 6v4l12-3V3Z"/></g>
+  <g fill="none" stroke="#101827"><circle cx="5" cy="18" r="3"/></g>
+  <g fill="none" stroke="#101827"><circle cx="17" cy="15" r="3"/></g>
+</svg>

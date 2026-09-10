@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -15,7 +16,6 @@ import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
-import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 
 void main() {
@@ -379,11 +379,13 @@ void main() {
       expect(find.text('手续费'), findsOneWidget);
       expect(find.text('转出账户'), findsOneWidget);
       expect(find.text('转入账户'), findsOneWidget);
-      final feeIcon = tester.widget<BusinessIcon>(
-        find.descendant(of: feeInput, matching: find.byType(BusinessIcon)),
+      expect(
+        find.descendant(
+          of: feeInput,
+          matching: find.byIcon(RemixIcons.swap_box_line),
+        ),
+        findsOneWidget,
       );
-      expect(feeIcon.iconKey, 'swap-box-line');
-      expect(feeIcon.usage, BusinessIconUsage.system);
       expect(
         find.descendant(of: feeInput, matching: find.text('0.00')),
         findsOneWidget,

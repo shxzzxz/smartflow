@@ -1447,9 +1447,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _iconChoiceGridPreview() {
-    final specs = businessIconSpecsForUsage(
-      BusinessIconUsage.expenseCategory,
-    ).take(10);
+    final specs = BusinessIconScope.of(
+      context,
+    ).search(usage: BusinessIconUsage.expenseCategory).take(10);
     return IconChoiceGrid(
       choices: [
         for (final spec in specs)
@@ -2097,14 +2097,18 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       children: [
         _ShowcaseState(
           inline: true,
-          label: '图标（Remix 与 SVG 资源）',
+          label: '业务图标（SVG 风格资源）',
           child: Wrap(
             spacing: AppSpacing.space12,
             children: [
               BusinessIcon(iconKey: 'meal', size: 28),
               BusinessIcon(iconKey: 'metro', size: 28),
               BusinessIcon(iconKey: 'salary', size: 28),
-              BusinessIcon(iconKey: 'alipay', size: 28),
+              BusinessIcon(
+                iconKey: 'alipay',
+                usage: BusinessIconUsage.account,
+                size: 28,
+              ),
             ],
           ),
         ),

@@ -1,0 +1,16 @@
+{
+  "styles": [
+    {
+      "id": "rounded-line",
+      "name": "圆角线性"
+    },
+    {
+      "id": "soft-duotone",
+      "name": "柔和双色"
+    },
+    {
+      "id": "color-shape",
+      "name": "彩色面形"
+    }
+  ]
+}

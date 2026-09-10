@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SmartFlow 图标预览</title>
+  <style>
+    :root { color-scheme:light; --bg:#f6f8fc; --surface:#fff; --text:#101827; --muted:#68718a; --border:#e6eaf0; --primary:#1677ff; --size:32px; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 "Segoe UI","Microsoft YaHei",sans-serif; }
+    main { max-width:1440px; margin:auto; padding:24px; }
+    h1 { font-size:22px; margin:0 0 18px; } h2 { font-size:16px; margin:0; }
+    nav { display:flex; flex-wrap:wrap; gap:14px; padding-bottom:18px; }
+    label { display:flex; align-items:center; gap:8px; }
+    select,button { font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); padding:7px 10px; border-radius:6px; }
+    button { cursor:pointer; }
+    a { color:var(--primary); }
+    :focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+    #panels { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:16px; }
+    section { min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
+    .heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; }
+    .heading a { font-size:12px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:14px 8px; }
+    .icon { display:flex; flex-direction:column; align-items:center; min-width:0; padding:8px 2px; text-decoration:none; color:var(--text); border-radius:6px; }
+    .icon:hover { background:var(--bg); }
+    .art { height:64px; display:grid; place-items:center; }
+    .art svg { display:block; width:var(--size); height:var(--size); }
+    .art.primary { color:var(--primary); }
+    .label { margin-top:8px; font-size:12px; text-align:center; }
+    .key { margin-top:3px; width:100%; font-size:10px; color:var(--muted); text-align:center; overflow-wrap:anywhere; }
+    #status,footer,.empty { color:var(--muted); font-size:12px; }
+    #status { margin:0 0 14px; } footer { margin-top:20px; }
+    body.dark { color-scheme:dark; --bg:#101827; --surface:#1a2538; --text:#f0f4fa; --muted:#a0abc0; --border:#303b51; --primary:#9ccaff; }
+    @media(max-width:600px) { main { padding:16px; } section { padding:14px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SmartFlow 图标预览</h1>
+    <nav aria-label="预览设置">
+      <label>类型 <select id="type"><option value="account">账户</option><option value="category">分类</option></select></label>
+      <label>风格 <select id="style" disabled></select></label>
+      <label>图标 <select id="filter"></select></label>
+      <label>尺寸 <select id="size"><option>14</option><option>20</option><option>24</option><option selected>32</option><option>48</option></select>px</label>
+      <button id="theme" aria-pressed="false">深色背景</button>
+    </nav>
+    <p id="status" role="status"></p>
+    <div id="panels"></div>
+    <footer>点击图标打开 SVG。账户、分类分别选择风格；图标直接读取本目录 JSON 与 SVG，无需生成预览。</footer>
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const selectedStyles = {account:'all',category:'all'};
+    const jsonCache = new Map();
+    const svgCache = new Map();
+    let revision = 0;
+    const node = (tag, className='', text) => {
+      const el = document.createElement(tag);
+      el.className=className;
+      if (text !== undefined) el.textContent=text;
+      return el;
+    };
+    async function read(path, cache, json) {
+      if (!cache.has(path)) {
+        cache.set(path, fetch(path).then(response => {
+          if (!response.ok) throw new Error(`${path}：HTTP ${response.status}`);
+          return json ? response.json() : response.text();
+        }).catch(error => { cache.delete(path); throw error; }));
+      }
+      return cache.get(path);
+    }
+    const identifier = value => {
+      if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(value)) throw new Error('图标标识无效');
+      return value;
+    };
+    function setFilters(type) {
+      $('filter').replaceChildren();
+      const options = type==='account'
+        ? [['all','全部'],['generic','通用账户'],['brand','品牌账户']]
+        : [['all','全部'],['expenseCategory','支出分类'],['incomeCategory','收入分类']];
+      options.forEach(([value,label])=>$('filter').add(new Option(label,value)));
+    }
+    async function render() {
+      const current = ++revision;
+      const type = $('type').value;
+      const filter = $('filter').value;
+      $('status').textContent='正在加载…';
+      $('panels').replaceChildren();
+      $('style').disabled=true;
+      try {
+        const index = await read(`${type}/manifest.json`,jsonCache,true);
+        if (current!==revision) return;
+        const options = [{id:'all',name:'全部风格'},...index.styles];
+        if (!options.some(s=>s.id===selectedStyles[type])) selectedStyles[type]='all';
+        $('style').replaceChildren();
+        options.forEach(s=>$('style').add(new Option(s.name,s.id,false,s.id===selectedStyles[type])));
+        $('style').disabled=false;
+        const styles = index.styles.filter(s=>selectedStyles[type]==='all' || s.id===selectedStyles[type]);
+        const panels = await Promise.all(styles.map(async style=> {
+          const base = `${type}/${identifier(style.id)}`;
+          const manifest = await read(`${base}/manifest.json`,jsonCache,true);
+          const icons = manifest.icons.filter(i=>filter==='all' || (filter==='brand' ? i.brand : filter==='generic' ? !i.brand : i.usage===filter));
+          const panel=node('section');
+          const heading=node('div','heading');
+          const link=node('a','','元数据'); link.href=`${base}/manifest.json`;
+          heading.append(node('h2','',`${style.name} · ${icons.length}`),link);
+          const grid=node('div','grid');
+          const tiles=await Promise.all(icons.map(async icon=> {
+            const path=`${base}/icons/${identifier(icon.key)}.svg`;
+            const tile=node('a','icon'); tile.href=path; tile.title=icon.label;
+            const mode=icon.color ?? manifest.color ?? 'original';
+            const art=node('span','art '+mode); art.setAttribute('aria-hidden','true');
+            try {
+              const source=await read(path,svgCache,false);
+              const doc=new DOMParser().parseFromString(source,'image/svg+xml');
+              if (doc.querySelector('parsererror') || doc.documentElement.localName!=='svg') throw new Error('无效 SVG');
+              const svg=document.importNode(doc.documentElement,true);
+              if (mode!=='original') svg.querySelectorAll('[fill],[stroke]').forEach(el=> {
+                ['fill','stroke'].forEach(attr=> { if (el.hasAttribute(attr) && el.getAttribute(attr)!=='none') el.setAttribute(attr,'currentColor'); });
+              });
+              art.append(svg);
+            } catch (error) { art.textContent='加载失败'; tile.title=error.message; }
+            tile.append(art,node('span','label',icon.label),node('span','key',icon.key));
+            return tile;
+          }));
+          grid.append(...tiles);
+          if (!icons.length) grid.append(node('p','empty','暂无此类型图标'));
+          panel.append(heading,grid);
+          return panel;
+        }));
+        if (current!==revision) return;
+        $('panels').append(...panels);
+        $('status').textContent='';
+      } catch(error) {
+        if (current===revision) $('status').textContent=`加载失败：${error.message}。请通过本地静态服务器打开，例如 VS Code Live Server。`;
+      }
+    }
+    $('type').addEventListener('change',()=>{setFilters($('type').value);render();});
+    $('style').addEventListener('change',()=>{selectedStyles[$('type').value]=$('style').value;render();});
+    $('filter').addEventListener('change',render);
+    $('size').addEventListener('change',()=>document.documentElement.style.setProperty('--size',$('size').value+'px'));
+    $('theme').addEventListener('click',()=>{
+      const dark=document.body.classList.toggle('dark');
+      $('theme').setAttribute('aria-pressed',String(dark));
+      $('theme').textContent=dark?'浅色背景':'深色背景';
+    });
+    setFilters('account');
+    if (location.protocol==='file:') $('status').textContent='请通过本地静态服务器打开此页面，例如 VS Code Live Server。';
+    else render();
+  </script>
+</body>
+</html>

@@ -58,6 +58,20 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return _save((settings) => settings.copyWith(cashflowPeriodMetric: value));
   }
 
+  Future<UiActionOutcome<void>> setAccountIconStyle(String value) =>
+      guardUiAction(
+        _logger,
+        'set account icon style',
+        () => _save((settings) => settings.copyWith(accountIconStyle: value)),
+      );
+
+  Future<UiActionOutcome<void>> setCategoryIconStyle(String value) =>
+      guardUiAction(
+        _logger,
+        'set category icon style',
+        () => _save((settings) => settings.copyWith(categoryIconStyle: value)),
+      );
+
   Future<void> _save(AppSettings Function(AppSettings settings) change) async {
     final previous = state.value ?? const AppSettings();
     final next = change(previous);

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>聚餐 · 柔和双色</title>
+  <g fill="#1677FF" stroke="#1677FF" fill-opacity="0.30"><circle cx="8" cy="5" r="2"/></g>
+  <g fill="#1677FF" stroke="#1677FF" fill-opacity="0.30"><circle cx="16" cy="5" r="2"/></g>
+  <g fill="#1677FF" stroke="#1677FF" fill-opacity="0.14"><path d="M4 17a8 8 0 0 1 16 0Z"/></g>
+  <g fill="none" stroke="#1677FF"><path d="M2 20h20M12 9V7"/></g>
+  <g fill="none" stroke="#1677FF"><path d="M8 13a4 4 0 0 1 4-2"/></g>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>游戏 · 彩色面形</title>
+  <g fill="#E2B03A" stroke="#E2B03A"><path d="M7 7h10c2 0 3 2 3.5 4l1 6c.5 3-2 4-4 2l-2-2h-7l-2 2c-2 2-4.5 1-4-2l1-6C4 9 5 7 7 7Z"/></g>
+  <g fill="none" stroke="#FFFFFF"><path d="M7.5 10v5M5 12.5h5"/></g>
+  <g fill="#FFFFFF" stroke="none"><circle cx="15.5" cy="11" r="0.9"/></g>
+  <g fill="#FFFFFF" stroke="none"><circle cx="18" cy="13.5" r="0.9"/></g>
+</svg>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -193,10 +194,13 @@ void main() {
         find.descendant(of: categoryCard, matching: find.text('多分类')),
         findsOneWidget,
       );
-      final heroIcon = tester.widget<BusinessIcon>(
-        find.descendant(of: categoryCard, matching: find.byType(BusinessIcon)),
+      expect(
+        find.descendant(
+          of: categoryCard,
+          matching: find.byIcon(RemixIcons.more_line),
+        ),
+        findsOneWidget,
       );
-      expect(resolveBusinessIconSpec(heroIcon.iconKey).iconKey, 'more-line');
       expect(find.text('分类构成'), findsOneWidget);
       expect(
         find.descendant(

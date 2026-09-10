@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:remixicon/remixicon.dart';
@@ -6,8 +7,43 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/settings_page.dart';
+import 'package:smartflow/widget/business/icon/business_icon_scope.dart';
 
 void main() {
+  testWidgets(
+    'account and category styles can be selected independently from JSON choices',
+    (tester) async {
+      final store = _InMemoryAppSettingsStore();
+      final catalog = await tester.runAsync(
+        () => BusinessIconCatalog.load(rootBundle),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appSettingsStoreProvider.overrideWithValue(store)],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: BusinessIconScope(
+              catalog: catalog!,
+              child: const SettingsPage(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('账户图标风格'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('彩色面形'));
+      await tester.pumpAndSettle();
+      expect((await store.read()).accountIconStyle, 'color-shape');
+      expect((await store.read()).categoryIconStyle, isEmpty);
+      await tester.tap(find.text('分类图标风格'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('柔和双色'));
+      await tester.pumpAndSettle();
+      expect((await store.read()).accountIconStyle, 'color-shape');
+      expect((await store.read()).categoryIconStyle, 'soft-duotone');
+    },
+  );
   testWidgets('user can change interface settings from compact rows', (
     tester,
   ) async {

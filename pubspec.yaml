@@ -91,8 +91,20 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/branding/
-    - assets/icons/account/
-    - assets/icons/category/
+    - assets/styles/account/manifest.json
+    - assets/styles/account/rounded-line/manifest.json
+    - assets/styles/account/rounded-line/icons/
+    - assets/styles/account/soft-duotone/manifest.json
+    - assets/styles/account/soft-duotone/icons/
+    - assets/styles/account/color-shape/manifest.json
+    - assets/styles/account/color-shape/icons/
+    - assets/styles/category/manifest.json
+    - assets/styles/category/rounded-line/manifest.json
+    - assets/styles/category/rounded-line/icons/
+    - assets/styles/category/soft-duotone/manifest.json
+    - assets/styles/category/soft-duotone/icons/
+    - assets/styles/category/color-shape/manifest.json
+    - assets/styles/category/color-shape/icons/
     - assets/manual/
 
   # An image asset can refer to one or more resolution-specific "variants", see

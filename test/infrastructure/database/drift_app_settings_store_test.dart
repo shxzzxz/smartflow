@@ -7,6 +7,27 @@ import '../../helper/test_app_database.dart';
 void main() {
   group('DriftAppSettingsStore', () {
     test(
+      'persists independent icon styles and preserves them when another setting changes',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final store = DriftAppSettingsStore(database);
+        expect((await store.read()).accountIconStyle, isEmpty);
+        await store.save(
+          const AppSettings(
+            accountIconStyle: 'color-shape',
+            categoryIconStyle: 'soft-duotone',
+          ),
+        );
+        final loaded = await store.read();
+        await store.save(loaded.copyWith(showBottomNavLabels: false));
+        final restored = await store.read();
+        expect(restored.accountIconStyle, 'color-shape');
+        expect(restored.categoryIconStyle, 'soft-duotone');
+        expect(restored.showBottomNavLabels, isFalse);
+      },
+    );
+    test(
       'read returns the standard pull-to-create sensitivity by default',
       () async {
         final database = createTestDatabase();

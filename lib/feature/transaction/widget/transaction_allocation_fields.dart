@@ -19,12 +19,14 @@ class TransactionAllocationOption {
     required this.label,
     this.iconKey,
     this.supportingText,
+    this.iconUsage = BusinessIconUsage.expenseCategory,
   });
 
   final String accountId;
   final String label;
   final String? iconKey;
   final String? supportingText;
+  final BusinessIconUsage iconUsage;
 }
 
 List<TransactionAllocationOption> transactionAllocationOptionsForAccounts(
@@ -36,6 +38,7 @@ List<TransactionAllocationOption> transactionAllocationOptionsForAccounts(
         accountId: account.id,
         label: account.name,
         iconKey: account.iconKey,
+        iconUsage: BusinessIconUsage.account,
       ),
   ];
 }
@@ -494,7 +497,11 @@ class _AllocationAmountRowState extends State<_AllocationAmountRow> {
       ),
       child: Row(
         children: [
-          BusinessIcon(iconKey: widget.option.iconKey, size: 20),
+          BusinessIcon(
+            iconKey: widget.option.iconKey,
+            usage: widget.option.iconUsage,
+            size: 20,
+          ),
           const SizedBox(width: AppSpacing.space8),
           Expanded(
             child: Text(

@@ -31,14 +31,19 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final specs = searchBusinessIconSpecs(usage: widget.usage, query: _query);
+    final specs = BusinessIconScope.of(
+      context,
+    ).search(usage: widget.usage, query: _query);
     final choices = [
       for (final spec in specs)
         IconChoiceGridItem(
           iconKey: spec.iconKey,
           label: spec.label,
-          iconBuilder: (context, size) =>
-              BusinessIcon(iconKey: spec.iconKey, size: size),
+          iconBuilder: (context, size) => BusinessIcon(
+            iconKey: spec.iconKey,
+            usage: widget.usage,
+            size: size,
+          ),
         ),
     ];
 

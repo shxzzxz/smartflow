@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>数字钱包 · 圆角线性</title>
+  <g fill="none" stroke="#101827"><path d="M5 7V5a2 2 0 0 1 2-2h11v5"/></g>
+  <g fill="none" stroke="#101827"><rect x="3" y="7" width="18" height="14" rx="3"/></g>
+  <g fill="none" stroke="#101827"><rect x="14" y="11" width="7" height="6" rx="2"/></g>
+  <g fill="#101827" stroke="none"><circle cx="17" cy="14" r="0.7"/></g>
+</svg>

@@ -54,8 +54,8 @@ void main() {
 
     expect(find.text('数据导入'), findsOneWidget);
     expect(find.text('一木记账'), findsOneWidget);
-    expect(find.text('微信账单'), findsOneWidget);
-    expect(find.text('支付宝账单'), findsOneWidget);
+    expect(find.text('微信账单'), findsNothing);
+    expect(find.text('支付宝账单'), findsNothing);
     expect(find.text('云闪付账单'), findsOneWidget);
     expect(find.text('其他格式'), findsOneWidget);
     expect(find.text('查看全部'), findsOneWidget);

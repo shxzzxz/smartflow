@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
@@ -1140,20 +1139,6 @@ class _ImportSourceIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (source == ImportEntrySource.wechat ||
-        source == ImportEntrySource.alipay) {
-      final asset = source == ImportEntrySource.wechat
-          ? 'assets/icons/account/wechat_pay.svg'
-          : 'assets/icons/account/alipay.svg';
-      return SizedBox.square(
-        dimension: size,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space4),
-          child: SvgPicture.asset(asset),
-        ),
-      );
-    }
-
     final colors = Theme.of(context).colorScheme;
     final palette = switch (source) {
       ImportEntrySource.yimu => (
@@ -1168,17 +1153,11 @@ class _ImportSourceIcon extends StatelessWidget {
         background: colors.tertiaryContainer,
         foreground: colors.onTertiaryContainer,
       ),
-      ImportEntrySource.wechat || ImportEntrySource.alipay => (
-        background: colors.surfaceContainerHighest,
-        foreground: colors.onSurfaceVariant,
-      ),
     };
     final icon = switch (source) {
       ImportEntrySource.yimu => Icons.energy_savings_leaf_rounded,
       ImportEntrySource.unionPay => RemixIcons.bank_card_line,
       ImportEntrySource.generic => RemixIcons.file_excel_2_line,
-      ImportEntrySource.wechat ||
-      ImportEntrySource.alipay => RemixIcons.file_list_3_line,
     };
     return Container(
       width: size,

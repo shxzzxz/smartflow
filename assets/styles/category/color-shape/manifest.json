@@ -1,0 +1,580 @@
+{
+  "color": "original",
+  "icons": [
+    {
+      "key": "meal",
+      "label": "餐饮",
+      "usage": "expenseCategory",
+      "keywords": [
+        "食品餐饮",
+        "吃饭"
+      ]
+    },
+    {
+      "key": "breakfast",
+      "label": "早餐",
+      "usage": "expenseCategory",
+      "keywords": [
+        "早饭"
+      ]
+    },
+    {
+      "key": "bowl-line",
+      "label": "午餐",
+      "usage": "expenseCategory",
+      "keywords": [
+        "午饭"
+      ]
+    },
+    {
+      "key": "dinner",
+      "label": "晚餐",
+      "usage": "expenseCategory",
+      "keywords": [
+        "晚饭"
+      ]
+    },
+    {
+      "key": "takeout",
+      "label": "外卖",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "service-bell-line",
+      "label": "聚餐",
+      "usage": "expenseCategory",
+      "keywords": [
+        "请客吃饭",
+        "朋友聚餐"
+      ]
+    },
+    {
+      "key": "drinks-line",
+      "label": "茶饮",
+      "usage": "expenseCategory",
+      "keywords": [
+        "奶茶",
+        "饮料"
+      ]
+    },
+    {
+      "key": "cup-line",
+      "label": "咖啡",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "snack",
+      "label": "零食",
+      "usage": "expenseCategory",
+      "keywords": [
+        "休闲零食"
+      ]
+    },
+    {
+      "key": "dessert",
+      "label": "甜点",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "fruit",
+      "label": "水果",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "vegetables",
+      "label": "蔬菜",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "fresh-food",
+      "label": "食材生鲜",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "rice",
+      "label": "粮油调味",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "drink",
+      "label": "酒水",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "shopping",
+      "label": "购物消费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "daily-supplies",
+      "label": "日用品",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "t-shirt-line",
+      "label": "服装",
+      "usage": "expenseCategory",
+      "keywords": [
+        "衣物",
+        "衣服"
+      ]
+    },
+    {
+      "key": "shoes",
+      "label": "鞋靴",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "handbag",
+      "label": "箱包",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "phone",
+      "label": "手机数码",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "home",
+      "label": "居家生活",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "home-office-line",
+      "label": "房租",
+      "usage": "expenseCategory",
+      "keywords": [
+        "租房"
+      ]
+    },
+    {
+      "key": "building-2-line",
+      "label": "物业费",
+      "usage": "expenseCategory",
+      "keywords": [
+        "物业"
+      ]
+    },
+    {
+      "key": "water-bill",
+      "label": "水费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "electricity-bill",
+      "label": "电费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "gas-bill",
+      "label": "燃气费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "heating",
+      "label": "供暖费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "furniture",
+      "label": "家具",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "appliances",
+      "label": "家电",
+      "usage": "expenseCategory",
+      "keywords": [
+        "电器",
+        "厨电"
+      ]
+    },
+    {
+      "key": "home-repair",
+      "label": "家居维修",
+      "usage": "expenseCategory",
+      "keywords": [
+        "维修"
+      ]
+    },
+    {
+      "key": "housekeeping",
+      "label": "家政清洁",
+      "usage": "expenseCategory",
+      "keywords": [
+        "保洁"
+      ]
+    },
+    {
+      "key": "traffic-light-line",
+      "label": "交通出行",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "bus-2-line",
+      "label": "公交",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "metro",
+      "label": "地铁",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "taxi",
+      "label": "打车",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "drive",
+      "label": "自驾",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "cycling",
+      "label": "骑行",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "fuel",
+      "label": "加油",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "charging",
+      "label": "充电",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "parking",
+      "label": "停车费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "toll",
+      "label": "路桥费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "train",
+      "label": "火车",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "flight",
+      "label": "飞机",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "travel",
+      "label": "旅行",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "hotel",
+      "label": "住宿",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "tickets",
+      "label": "景点门票",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "sim-card",
+      "label": "话费流量",
+      "usage": "expenseCategory",
+      "keywords": [
+        "通讯",
+        "话费",
+        "流量"
+      ]
+    },
+    {
+      "key": "internet",
+      "label": "网络",
+      "usage": "expenseCategory",
+      "keywords": [
+        "宽带",
+        "网络服务"
+      ]
+    },
+    {
+      "key": "subscription",
+      "label": "软件订阅",
+      "usage": "expenseCategory",
+      "keywords": [
+        "应用",
+        "订阅"
+      ]
+    },
+    {
+      "key": "membership",
+      "label": "会员服务",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "ai-tools",
+      "label": "AI 工具",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "book",
+      "label": "书籍",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "education",
+      "label": "教育培训",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "office-supplies",
+      "label": "文具办公",
+      "usage": "expenseCategory",
+      "keywords": [
+        "办公用品"
+      ]
+    },
+    {
+      "key": "movie",
+      "label": "电影",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "music",
+      "label": "音乐演出",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "gamepad-line",
+      "label": "游戏",
+      "usage": "expenseCategory",
+      "keywords": [
+        "休闲娱乐"
+      ]
+    },
+    {
+      "key": "dice-5-line",
+      "label": "棋牌桌游",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "sport",
+      "label": "运动健身",
+      "usage": "expenseCategory",
+      "keywords": [
+        "健身",
+        "运动"
+      ]
+    },
+    {
+      "key": "health",
+      "label": "医疗",
+      "usage": "expenseCategory",
+      "keywords": [
+        "就医",
+        "医院"
+      ]
+    },
+    {
+      "key": "medicine",
+      "label": "药品",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "checkup",
+      "label": "体检",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "insurance",
+      "label": "保险",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "haircut",
+      "label": "理发",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "skincare",
+      "label": "护肤美妆",
+      "usage": "expenseCategory",
+      "keywords": [
+        "美容",
+        "化妆"
+      ]
+    },
+    {
+      "key": "team-line",
+      "label": "人情社交",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "gift",
+      "label": "礼物",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "red-packet",
+      "label": "红包",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "elders",
+      "label": "孝敬长辈",
+      "usage": "expenseCategory",
+      "keywords": [
+        "长辈",
+        "父母"
+      ]
+    },
+    {
+      "key": "hand-heart-line",
+      "label": "慈善捐助",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "baby",
+      "label": "育儿",
+      "usage": "expenseCategory",
+      "keywords": [
+        "母婴",
+        "孩子"
+      ]
+    },
+    {
+      "key": "pet",
+      "label": "宠物",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "money-cny-circle-line",
+      "label": "利息支出",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "swap-box-line",
+      "label": "手续费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "tax",
+      "label": "税费",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "close-circle-line",
+      "label": "坏账损失",
+      "usage": "expenseCategory",
+      "keywords": [
+        "坏账"
+      ]
+    },
+    {
+      "key": "more-line",
+      "label": "其他支出",
+      "usage": "expenseCategory"
+    },
+    {
+      "key": "salary",
+      "label": "工资",
+      "usage": "incomeCategory",
+      "keywords": [
+        "工资收入",
+        "薪水"
+      ]
+    },
+    {
+      "key": "trophy-line",
+      "label": "奖金",
+      "usage": "incomeCategory"
+    },
+    {
+      "key": "rest-time-line",
+      "label": "兼职劳务",
+      "usage": "incomeCategory",
+      "keywords": [
+        "兼职",
+        "劳务"
+      ]
+    },
+    {
+      "key": "sale-income",
+      "label": "经营收入",
+      "usage": "incomeCategory",
+      "keywords": [
+        "经营",
+        "销售"
+      ]
+    },
+    {
+      "key": "rental-income",
+      "label": "租金收入",
+      "usage": "incomeCategory",
+      "keywords": [
+        "租金"
+      ]
+    },
+    {
+      "key": "funds-line",
+      "label": "投资收益",
+      "usage": "incomeCategory",
+      "keywords": [
+        "投资",
+        "分红"
+      ]
+    },
+    {
+      "key": "interest-income",
+      "label": "利息收入",
+      "usage": "incomeCategory"
+    },
+    {
+      "key": "red-packet-income",
+      "label": "红包礼金",
+      "usage": "incomeCategory"
+    },
+    {
+      "key": "secondhand-income",
+      "label": "二手出售",
+      "usage": "incomeCategory",
+      "keywords": [
+        "闲置",
+        "二手"
+      ]
+    },
+    {
+      "key": "coupon-3-line",
+      "label": "优惠返现",
+      "usage": "incomeCategory",
+      "keywords": [
+        "优惠",
+        "返现"
+      ]
+    },
+    {
+      "key": "currency-line",
+      "label": "报销差额收入",
+      "usage": "incomeCategory",
+      "keywords": [
+        "报销收入",
+        "报销差额"
+      ]
+    },
+    {
+      "key": "hand-coin-line",
+      "label": "债务减免",
+      "usage": "incomeCategory",
+      "keywords": [
+        "债务豁免"
+      ]
+    },
+    {
+      "key": "more-2-line",
+      "label": "其他收入",
+      "usage": "incomeCategory"
+    }
+  ]
+}

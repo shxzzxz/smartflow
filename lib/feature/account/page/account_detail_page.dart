@@ -14,7 +14,6 @@ import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
-import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import '../presentation/account_credit_summary_presentation.dart';
 import '../view_model/account_detail_view_model.dart';
@@ -83,15 +82,11 @@ class AccountDetailPage extends ConsumerWidget {
                     contracts: contracts,
                     bills: bills,
                     creditOverview: creditOverview,
-                    onLoadMoreTransactions:
-                        () =>
-                            ref
-                                .read(
-                                  accountDetailViewModelProvider(
-                                    accountId,
-                                  ).notifier,
-                                )
-                                .loadMoreTransactions(),
+                    onLoadMoreTransactions: () => ref
+                        .read(
+                          accountDetailViewModelProvider(accountId).notifier,
+                        )
+                        .loadMoreTransactions(),
                   ),
                 AccountDetailNotFound() => const Center(child: Text('账户不存在')),
                 AccountDetailError(:final message) => Center(
@@ -109,10 +104,9 @@ class AccountDetailPage extends ConsumerWidget {
   }
 
   Future<void> _restore(BuildContext context, WidgetRef ref) async {
-    final outcome =
-        await ref
-            .read(accountDetailViewModelProvider(accountId).notifier)
-            .restoreAccount();
+    final outcome = await ref
+        .read(accountDetailViewModelProvider(accountId).notifier)
+        .restoreAccount();
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():
@@ -148,10 +142,9 @@ class AccountDetailPage extends ConsumerWidget {
     );
     if (!context.mounted || confirmed != true) return;
 
-    final outcome =
-        await ref
-            .read(accountDetailViewModelProvider(accountId).notifier)
-            .archiveAccount();
+    final outcome = await ref
+        .read(accountDetailViewModelProvider(accountId).notifier)
+        .archiveAccount();
     if (!context.mounted) return;
 
     switch (outcome) {
@@ -193,10 +186,9 @@ class AccountDetailPage extends ConsumerWidget {
     );
     if (!context.mounted || confirmed != true) return;
 
-    final outcome =
-        await ref
-            .read(accountDetailViewModelProvider(accountId).notifier)
-            .deletePermanently();
+    final outcome = await ref
+        .read(accountDetailViewModelProvider(accountId).notifier)
+        .deletePermanently();
     if (!context.mounted) return;
 
     switch (outcome) {
@@ -209,6 +201,7 @@ class AccountDetailPage extends ConsumerWidget {
     }
   }
 }
+
 class _AccountDetailContent extends StatelessWidget {
   const _AccountDetailContent({
     required this.account,
@@ -462,7 +455,16 @@ class _AccountActionBar extends StatelessWidget {
       children: [
         for (final action in actions)
           _ActionButton(
-            iconKey: action.iconKey,
+            icon: switch (action.iconKey) {
+              'logout-box-r-line' => RemixIcons.logout_box_r_line,
+              'refund-income' => RemixIcons.refund_2_line,
+              'money-cny-circle-line' => RemixIcons.money_cny_circle_line,
+              'hand-coin-line' => RemixIcons.hand_coin_line,
+              'loan' => RemixIcons.bank_line,
+              'hand-heart-line' => RemixIcons.hand_heart_line,
+              'transfer' => RemixIcons.arrow_left_right_line,
+              _ => RemixIcons.wallet_line,
+            },
             label: action.label,
             onTap: () => context.push(action.route),
           ),
@@ -497,12 +499,12 @@ class _ActionRow extends StatelessWidget {
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
-    required this.iconKey,
+    required this.icon,
     required this.label,
     required this.onTap,
   });
 
-  final String iconKey;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
 
@@ -523,11 +525,7 @@ class _ActionButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            BusinessIcon(
-              iconKey: iconKey,
-              color: colors.primary,
-              size: AppSpacing.space20,
-            ),
+            Icon(icon, color: colors.primary, size: AppSpacing.space20),
             const SizedBox(width: AppSpacing.space6),
             Flexible(
               child: Text(
@@ -559,7 +557,10 @@ class _OverviewSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [_OverviewHeader(title: title, onViewAll: onViewAll), child],
+      children: [
+        _OverviewHeader(title: title, onViewAll: onViewAll),
+        child,
+      ],
     );
   }
 }

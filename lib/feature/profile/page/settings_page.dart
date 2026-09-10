@@ -7,9 +7,12 @@ import '../../../design_system/token/list.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_settings_row.dart';
+import '../../../design_system/widget/app_select.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../widget/business/icon/business_icon_scope.dart';
 import '../../shared/presentation/pull_to_create_sensitivity_options.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -20,6 +23,7 @@ class SettingsPage extends ConsumerWidget {
     final settings =
         ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final notifier = ref.read(appSettingsViewModelProvider.notifier);
+    final catalog = BusinessIconScope.of(context).catalog;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -55,6 +59,56 @@ class SettingsPage extends ConsumerWidget {
                         value: settings.showBottomNavLabels,
                         onChanged: notifier.setShowBottomNavLabels,
                       ),
+                      if (catalog
+                          .stylesFor(BusinessIconType.account)
+                          .isNotEmpty)
+                        AppSettingsSelectRow<String>(
+                          label: '账户图标风格',
+                          value: catalog
+                              .styleFor(
+                                BusinessIconType.account,
+                                settings.accountIconStyle,
+                              )!
+                              .id,
+                          options: [
+                            for (final style in catalog.stylesFor(
+                              BusinessIconType.account,
+                            ))
+                              AppSelectOption(
+                                value: style.id,
+                                label: style.name,
+                              ),
+                          ],
+                          onChanged: (value) => _saveIconStyle(
+                            context,
+                            notifier.setAccountIconStyle(value),
+                          ),
+                        ),
+                      if (catalog
+                          .stylesFor(BusinessIconType.category)
+                          .isNotEmpty)
+                        AppSettingsSelectRow<String>(
+                          label: '分类图标风格',
+                          value: catalog
+                              .styleFor(
+                                BusinessIconType.category,
+                                settings.categoryIconStyle,
+                              )!
+                              .id,
+                          options: [
+                            for (final style in catalog.stylesFor(
+                              BusinessIconType.category,
+                            ))
+                              AppSelectOption(
+                                value: style.id,
+                                label: style.name,
+                              ),
+                          ],
+                          onChanged: (value) => _saveIconStyle(
+                            context,
+                            notifier.setCategoryIconStyle(value),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -64,6 +118,19 @@ class SettingsPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _saveIconStyle(
+    BuildContext context,
+    Future<UiActionOutcome<void>> action,
+  ) async {
+    final outcome = await action;
+    if (!context.mounted) return;
+    if (outcome case UiActionFailure(:final error)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 }
 

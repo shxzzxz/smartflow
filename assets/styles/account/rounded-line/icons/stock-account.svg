@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>股票 · 圆角线性</title>
+  <g fill="none" stroke="#101827"><path d="M5 7v14m7-18v14m7-10v14"/></g>
+  <g fill="none" stroke="#101827"><rect x="3" y="11" width="4" height="6" rx="0.7"/></g>
+  <g fill="none" stroke="#101827"><rect x="10" y="5" width="4" height="6" rx="0.7"/></g>
+  <g fill="none" stroke="#101827"><rect x="17" y="10" width="4" height="6" rx="0.7"/></g>
+</svg>

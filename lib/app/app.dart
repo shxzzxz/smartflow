@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
 import '../design_system/theme/app_theme.dart';
+import '../application/shared/app_settings_store.dart';
+import '../feature/shared/view_model/app_settings_view_model.dart';
+import '../widget/business/icon/business_icon_scope.dart';
+import 'business_icon_provider.dart';
 import 'app_error_boundary.dart';
 import 'provider.dart';
 import 'router.dart';
@@ -62,6 +66,9 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   Widget build(BuildContext context) {
+    final iconCatalog = ref.watch(businessIconCatalogProvider);
+    final settings =
+        ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     return MaterialApp.router(
       title: 'SmartFlow',
       debugShowCheckedModeBanner: false,
@@ -70,12 +77,16 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       builder: (context, child) {
-        ErrorWidget.builder =
-            AppGlobalErrorHandler(
-              scaffoldMessengerKey:
-                  widget.scaffoldMessengerKey ?? appScaffoldMessengerKey,
-            ).buildErrorWidget;
-        return child ?? const SizedBox.shrink();
+        ErrorWidget.builder = AppGlobalErrorHandler(
+          scaffoldMessengerKey:
+              widget.scaffoldMessengerKey ?? appScaffoldMessengerKey,
+        ).buildErrorWidget;
+        return BusinessIconScope(
+          catalog: iconCatalog,
+          accountStyle: settings.accountIconStyle,
+          categoryStyle: settings.categoryIconStyle,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
       routerConfig: appRouter,
     );

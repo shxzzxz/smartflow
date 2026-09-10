@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <title>黄金 · 彩色面形</title>
+  <g fill="#F8EFD8" stroke="#DAAF3A"><path d="M9 3.5h6l2 6.5H7Z"/></g>
+  <g fill="#DAAF3A" stroke="#DAAF3A"><path d="M5 12h5l2 8H3Z"/></g>
+  <g fill="#DAAF3A" stroke="#DAAF3A"><path d="M14 12h5l2 8h-9Z"/></g>
+  <g fill="none" stroke="#DAAF3A"><path d="M9.5 7h4"/></g>
+  <g fill="none" stroke="#FFFFFF"><path d="M5.5 16h3M15 16h3"/></g>
+</svg>
