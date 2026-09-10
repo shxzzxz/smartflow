@@ -8,7 +8,9 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/settings_page.dart';
 
 void main() {
-  testWidgets('user can change pull-to-create sensitivity', (tester) async {
+  testWidgets('user can change interface settings from compact rows', (
+    tester,
+  ) async {
     final store = _InMemoryAppSettingsStore();
     await tester.pumpWidget(
       ProviderScope(
@@ -18,6 +20,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('设置'), findsOneWidget);
+    expect(find.text('界面设置'), findsOneWidget);
+    expect(find.text('在右下角显示快速记账按钮'), findsNothing);
+    expect(find.text('调整首页下拉新增交易的距离灵敏度'), findsNothing);
+    expect(find.text('在底部导航图标下方显示文字标签'), findsNothing);
     expect(find.text('下拉灵敏度'), findsOneWidget);
     expect(find.text('下拉新增交易灵敏度'), findsNothing);
     expect(find.byIcon(RemixIcons.arrow_right_s_line), findsOneWidget);
@@ -35,6 +42,24 @@ void main() {
       (await store.read()).pullToCreateSensitivity,
       PullToCreateSensitivity.sensitive,
     );
+
+    final beforeToggle = await store.read();
+    await tester.tap(find.text('记账悬浮按钮'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导航栏文字'));
+    await tester.pumpAndSettle();
+
+    final afterToggle = await store.read();
+    expect(
+      afterToggle.showAddTransactionFab,
+      !beforeToggle.showAddTransactionFab,
+    );
+    expect(afterToggle.showBottomNavLabels, !beforeToggle.showBottomNavLabels);
+    expect(
+      afterToggle.pullToCreateSensitivity,
+      PullToCreateSensitivity.sensitive,
+    );
+    expect(tester.takeException(), isNull);
   });
 }
 

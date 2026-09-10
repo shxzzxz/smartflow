@@ -6,11 +6,13 @@ import 'package:remixicon/remixicon.dart';
 import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/list.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../widget/business/icon/business_icon_bubble.dart';
 
 final _logger = Logger('feature.profile');
 
@@ -73,111 +75,95 @@ class _ProfilePageState extends State<ProfilePage> {
                   AppSpacing.space24,
                 ),
                 children: [
+                  AppSurface(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ProfileShortcut(
+                          icon: RemixIcons.apps_2_line,
+                          label: '分类管理',
+                          onTap: () => context.push('/category'),
+                        ),
+                        _ProfileShortcut(
+                          icon: RemixIcons.price_tag_3_line,
+                          label: '标签管理',
+                          onTap: () => context.push('/tags'),
+                        ),
+                        _ProfileShortcut(
+                          icon: RemixIcons.calculator_line,
+                          label: '贷款计算器',
+                          onTap: () => context.push('/profile/loan-calculator'),
+                        ),
+                        _ProfileShortcut(
+                          icon: RemixIcons.settings_3_line,
+                          label: '设置',
+                          onTap: () => context.push('/profile/settings'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
                   _ProfileActionSection(
-                    title: '账务管理',
                     actions: [
-                      _ProfileActionRow(
-                        icon: RemixIcons.apps_2_line,
-                        label: '分类管理',
-                        description: '维护收入与支出分类',
-                        onTap: () => context.push('/category'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.price_tag_3_line,
-                        label: '标签管理',
-                        description: '维护交易标签词表',
-                        onTap: () => context.push('/tags'),
-                      ),
                       _ProfileActionRow(
                         icon: RemixIcons.file_list_3_line,
                         label: '分期产品',
-                        description: '管理常用贷款的阶段和计算规则',
                         onTap: () => context.push('/installment-products'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.calculator_line,
-                        label: '贷款计算器',
-                        description: '试算还款计划、利息与年化利率，不写入数据',
-                        onTap: () => context.push('/profile/loan-calculator'),
                       ),
                       _ProfileActionRow(
                         icon: RemixIcons.percent_line,
                         label: '参考利率',
-                        description: 'LPR、贷款基准利率',
                         onTap: () => context.push('/profile/reference-rates'),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space16),
                   _ProfileActionSection(
-                    title: '数据管理',
                     actions: [
                       _ProfileActionRow(
                         icon: RemixIcons.file_excel_2_line,
                         label: '数据导入',
-                        description: '从外部账单或记账应用导入交易',
                         onTap: () => context.push('/profile/import'),
                       ),
                       _ProfileActionRow(
                         icon: RemixIcons.delete_bin_6_line,
                         label: '数据清理',
-                        description: '按分类、账户、时间批量清理交易',
                         onTap: () => context.push('/profile/data-cleanup'),
                       ),
                       _ProfileActionRow(
                         icon: RemixIcons.shield_check_line,
                         label: '数据备份',
-                        description: '导出或恢复完整账本快照',
                         onTap: () => context.push('/profile/backup'),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space16),
                   _ProfileActionSection(
-                    title: '偏好设置',
-                    actions: [
-                      _ProfileActionRow(
-                        icon: RemixIcons.settings_3_line,
-                        label: '界面设置',
-                        description: '记账悬浮按钮、导航栏文字显示',
-                        onTap: () => context.push('/profile/settings'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _ProfileActionSection(
-                    title: '帮助与关于',
                     actions: [
                       _ProfileActionRow(
                         icon: RemixIcons.book_open_line,
                         label: '使用手册',
-                        description: '了解记账、账单、分期与关键指标',
                         onTap: () => context.push('/profile/manual'),
                       ),
                       _ProfileActionRow(
                         icon: RemixIcons.download_cloud_2_line,
                         label: '软件版本',
-                        description: versionInfo == null
-                            ? '正在读取当前版本'
-                            : versionInfo.versionName,
+                        value: versionInfo?.versionName ?? '读取中',
                         onTap: () => context.push('/profile/software-version'),
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space16),
                   _ProfileActionSection(
-                    title: '开发工具',
                     actions: [
                       _ProfileActionRow(
                         icon: Icons.widgets_outlined,
                         label: '组件示例',
-                        description: '查看设计规范与组件交互状态',
                         onTap: () => context.push('/dev/design-system'),
                       ),
                       _ProfileActionRow(
                         icon: RemixIcons.file_list_3_line,
                         label: '日志',
-                        description: '浏览与搜索应用运行日志',
                         onTap: () => context.push('/dev/logs'),
                       ),
                     ],
@@ -192,39 +178,71 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class _ProfileActionSection extends StatelessWidget {
-  const _ProfileActionSection({required this.title, required this.actions});
+class _ProfileShortcut extends StatelessWidget {
+  const _ProfileShortcut({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
-  final String title;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Expanded(
+      child: LayoutBuilder(
+        builder: (context, constraints) => Semantics(
+          button: true,
+          child: BusinessIconTile(
+            extent: constraints.maxWidth,
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4,
+                vertical: AppSpacing.space12,
+              ),
+              child: BusinessIconBubble(
+                size: AppSpacing.space40,
+                label: label,
+                labelSpacing: AppSpacing.space8,
+                bubbleColor: colors.primary.withValues(
+                  alpha: AppComponentTokens.selectedContainerOpacity,
+                ),
+                iconColor: colors.primary,
+                child: Icon(icon, size: AppSpacing.space24),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileActionSection extends StatelessWidget {
+  const _ProfileActionSection({required this.actions});
+
   final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-          child: Text(title, style: context.appTextStyles.groupTitle),
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var index = 0; index < actions.length; index++) ...[
-                actions[index],
-                if (index < actions.length - 1)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
-                    ),
-                    child: Divider(height: AppListTokens.dividerThickness),
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ],
+    return AppSurface(
+      child: Column(
+        children: [
+          for (var index = 0; index < actions.length; index++) ...[
+            actions[index],
+            if (index < actions.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+                child: Divider(height: AppListTokens.dividerThickness),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -233,13 +251,13 @@ class _ProfileActionRow extends StatelessWidget {
   const _ProfileActionRow({
     required this.icon,
     required this.label,
-    required this.description,
     required this.onTap,
+    this.value,
   });
 
   final IconData icon;
   final String label;
-  final String description;
+  final String? value;
   final VoidCallback onTap;
 
   @override
@@ -252,36 +270,40 @@ class _ProfileActionRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space14,
+          vertical: AppSpacing.space10,
         ),
         child: Row(
           children: [
-            Container(
-              width: AppSpacing.space48 - AppSpacing.space8,
-              height: AppSpacing.space48 - AppSpacing.space8,
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
+            BusinessIconBubble(
+              size: AppSpacing.space32,
+              bubbleColor: colors.primary.withValues(
+                alpha: AppComponentTokens.selectedContainerOpacity,
               ),
-              child: Icon(icon, color: colors.primary, size: 22),
+              iconColor: colors.primary,
+              child: Icon(icon, size: AppSpacing.space24),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: context.appTextStyles.listTitle),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    description,
-                    style: context.appTextStyles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+              child: Text(label, style: context.appTextStyles.listTitle),
             ),
-            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
+            if (value != null) ...[
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Text(
+                  value!,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextStyles.listSupporting,
+                ),
+              ),
+            ],
+            const SizedBox(width: AppSpacing.space4),
+            Icon(
+              RemixIcons.arrow_right_s_line,
+              size: AppSpacing.space20,
+              color: colors.onSurfaceVariant,
+            ),
           ],
         ),
       ),

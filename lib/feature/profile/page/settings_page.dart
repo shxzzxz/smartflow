@@ -26,35 +26,32 @@ class SettingsPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '界面设置'),
+            const AppPageHeader(title: '设置'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.space20,
-                  AppSpacing.space24,
-                  AppSpacing.space20,
+                  AppSpacing.space16,
+                  AppSpacing.space8,
+                  AppSpacing.space16,
                   AppSpacing.space24,
                 ),
                 children: [
                   _SettingsSection(
-                    title: '界面显示',
+                    title: '界面设置',
                     rows: [
                       AppSettingsSwitchRow(
                         label: '记账悬浮按钮',
-                        description: '在右下角显示快速记账按钮',
                         value: settings.showAddTransactionFab,
                         onChanged: notifier.setShowAddTransactionFab,
                       ),
                       AppSettingsSelectRow<PullToCreateSensitivity>(
                         label: '下拉灵敏度',
-                        description: '调整首页下拉新增交易的距离灵敏度',
                         value: settings.pullToCreateSensitivity,
                         options: pullToCreateSensitivityOptions,
                         onChanged: notifier.setPullToCreateSensitivity,
                       ),
                       AppSettingsSwitchRow(
                         label: '导航栏文字',
-                        description: '在底部导航图标下方显示文字标签',
                         value: settings.showBottomNavLabels,
                         onChanged: notifier.setShowBottomNavLabels,
                       ),
