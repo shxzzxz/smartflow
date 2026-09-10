@@ -43,6 +43,9 @@ jobs:
         with:
           problem-matcher: true
 
+      - name: Remove unused pub.dev publishing credentials
+        run: dart pub token remove https://pub.dev
+
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 
