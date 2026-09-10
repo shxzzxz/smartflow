@@ -29,6 +29,21 @@ void main() {
   tearDown(() => f.db.close());
 
   test(
+    'today lookup uses the latest available quote before and after publication',
+    () async {
+      f.source.rows = [_rate('2026-02-20', 30000)];
+      final before = await f.service.resolveOne(_type, DateTime(2026, 3, 2));
+      expect(before.rate?.ratePpm, 30000);
+      expect(before.reason, isNull);
+
+      f.source.rows.add(_rate('2026-03-02', 29000));
+      final after = await f.service.resolveOne(_type, DateTime(2026, 3, 2));
+      expect(after.rate?.ratePpm, 29000);
+      expect(after.reason, isNull);
+    },
+  );
+
+  test(
     'history emits local records before the network completes and keeps them on failure',
     () async {
       await f.seed([_rate('2026-01-20', 30000)]);

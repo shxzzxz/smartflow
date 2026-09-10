@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
 import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/task/installment_repricing_task.dart';
+import 'package:smartflow/application/shared/task/app_task.dart';
 import 'package:smartflow/domain/credit/port/reference_rate_source.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_reference_rate_repository.dart';
 import 'package:smartflow/core/error/app_exception.dart';
@@ -39,6 +41,96 @@ void main() {
     await f.seed();
   });
   tearDown(() => f.db.close());
+
+  for (final now in [DateTime(2025, 12, 20), DateTime(2026, 1, 5)]) {
+    test('repricing at $now excludes the reset day quote', () async {
+      f.currentDate = now;
+      f.source.rates.add(
+        ReferenceRate(
+          type: ReferenceRateType.lprFiveYearPlus,
+          date: DateTime.utc(2025, 12, 20),
+          ratePpm: 30000,
+          source: f.source.key,
+        ),
+      );
+      await f.service.prepare('loan', now);
+      final change = (await f.records.list('loan')).single.change;
+      expect(referenceDate(change.resetDate), DateTime.utc(2025, 12, 20));
+      expect(
+        referenceDate(change.referenceRate.date),
+        DateTime.utc(2025, 12, 19),
+      );
+      expect(change.rate.ppm, 36000);
+      // General loan rate lookup still includes a published quote on the day.
+      final inclusive = await f.referenceRates.resolveOne(
+        ReferenceRateType.lprFiveYearPlus,
+        DateTime(2025, 12, 20),
+      );
+      expect(inclusive.rate?.ratePpm, 30000);
+    });
+  }
+
+  test(
+    'a quote only on the reset day cannot create a repricing fact',
+    () async {
+      f.source.rates
+        ..clear()
+        ..add(
+          ReferenceRate(
+            type: ReferenceRateType.lprFiveYearPlus,
+            date: DateTime.utc(2025, 12, 20),
+            ratePpm: 30000,
+            source: f.source.key,
+          ),
+        );
+      expect(await f.service.runDue(DateTime(2025, 12, 20)), (
+        changed: false,
+        needsRetry: true,
+      ));
+      expect(await f.records.list('loan'), isEmpty);
+    },
+  );
+
+  test(
+    'missing later quotes do not block preview of the earliest candidate',
+    () async {
+      await f.service.prepare('loan', DateTime(2026, 1, 5));
+      f.currentDate = DateTime(2026, 3, 20);
+      f.source.omitted.add(ReferenceRateType.lprFiveYearPlus);
+      final preview = await f.service.preparePreview('loan', f.currentDate);
+      expect(preview?.recordId, (await f.records.list('loan')).single.id);
+      await f.service.apply(preview!);
+      expect((await f.records.list('loan')).single.applied, isTrue);
+    },
+  );
+
+  test(
+    'one failed contract requests retry without blocking healthy contracts',
+    () async {
+      await f.seed(id: 'other');
+      await f.db.customStatement(
+        "CREATE TRIGGER reject_repricing BEFORE UPDATE ON installment_repricing_records "
+        "WHEN NEW.contract_id = 'loan' BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+      );
+      final before = await f.installments.listSchedules('loan');
+      expect(await f.service.runDue(DateTime(2026, 1, 5)), (
+        changed: true,
+        needsRetry: true,
+      ));
+      expect((await f.records.list('loan')).single.applied, isFalse);
+      expect((await f.records.list('other')).single.applied, isTrue);
+      expect(
+        (await f.installments.listSchedules('loan')).first.expectedInterest,
+        before.first.expectedInterest,
+      );
+      await f.db.customStatement('DROP TRIGGER reject_repricing');
+      expect(await f.service.runDue(DateTime(2026, 1, 5)), (
+        changed: true,
+        needsRetry: false,
+      ));
+      expect((await f.records.list('loan')).single.applied, isTrue);
+    },
+  );
 
   test(
     'terms preview cannot rewrite the rate behind applied repricing facts',
@@ -219,7 +311,7 @@ void main() {
     () async {
       await f.seed(id: 'other', type: ReferenceRateType.lprOneYear);
       final result = await f.service.runDue(DateTime(2026, 1, 5));
-      expect(result, (changed: true, waiting: false));
+      expect(result, (changed: true, needsRetry: false));
       expect(
         f.source.calls.single,
         unorderedEquals([
@@ -239,14 +331,14 @@ void main() {
       f.source.omitted.add(ReferenceRateType.lprOneYear);
       expect(await f.service.runDue(DateTime(2026, 1, 5)), (
         changed: true,
-        waiting: true,
+        needsRetry: true,
       ));
       expect((await f.records.list('loan')).single.applied, isTrue);
       expect(await f.records.list('other'), isEmpty);
       f.source.omitted.clear();
       expect(await f.service.runDue(DateTime(2026, 1, 5)), (
         changed: true,
-        waiting: false,
+        needsRetry: false,
       ));
       expect(f.source.calls.last, [ReferenceRateType.lprOneYear]);
       expect((await f.records.list('other')).single.applied, isTrue);
@@ -261,7 +353,7 @@ void main() {
         addTearDown(fixture.db.close);
         await fixture.seed(type: type);
         final outcome = await fixture.service.runDue(DateTime(2026, 1, 5));
-        expect(outcome, (changed: true, waiting: false));
+        expect(outcome, (changed: true, needsRetry: false));
         final snapshot = await DriftBackupGateway(fixture.db).readSnapshot();
         BackupService.validateSnapshot(snapshot);
         final target = createTestDatabase();
@@ -352,7 +444,7 @@ void main() {
   );
 
   test(
-    'issued bill waits for review and keeps its original projected amounts after apply',
+    'issued bill allows automatic repricing and retains its projected amounts',
     () async {
       final before = (await f.installments.listSchedules('loan')).first;
       await f.db.customStatement(
@@ -368,11 +460,12 @@ void main() {
           before.expectedInterest.minorUnits,
         ],
       );
-      await f.service.runDue(DateTime(2026, 1, 5));
+      await f.service.prepare('loan', DateTime(2026, 1, 5));
       final preview = (await f.service.preview('loan'))!;
       expect(preview.hasIssuedBills, isTrue);
-      expect((await f.records.list('loan')).single.applied, isFalse);
-      await f.service.apply(preview);
+      expect(preview.requiresReview, isFalse);
+      await f.service.runDue(DateTime(2026, 1, 5));
+      expect((await f.records.list('loan')).single.applied, isTrue);
       final item = await f.db.select(f.db.billItems).getSingle();
       expect(item.expectedPrincipalMinor, before.expectedPrincipal.minorUnits);
       expect(item.expectedInterestMinor, before.expectedInterest.minorUnits);
@@ -439,7 +532,10 @@ void main() {
         (await f.installments.findContract('loan'))!,
         rows,
       );
-      await f.service.runDue(DateTime(2026, 1, 5));
+      expect(await f.service.runDue(DateTime(2026, 1, 5)), (
+        changed: false,
+        needsRetry: false,
+      ));
       expect((await f.records.list('loan')).single.applied, isFalse);
       final preview = (await f.service.preview('loan'))!;
       expect(preview.requiresReview, isTrue);
@@ -460,7 +556,7 @@ void main() {
   );
 
   test(
-    'late repricing freezes paid prefix and only revises pending tail',
+    'late repricing automatically revises pending tail and freezes paid prefix',
     () async {
       final rows = await f.installments.listSchedules('loan');
       rows.first.markPaid();
@@ -468,11 +564,13 @@ void main() {
         (await f.installments.findContract('loan'))!,
         rows,
       );
-      await f.service.runDue(DateTime(2026, 2, 1));
+      await f.service.prepare('loan', DateTime(2026, 2, 1));
       final preview = (await f.service.preview('loan'))!;
       expect(preview.hasFrozenPeriods, isTrue);
+      expect(preview.requiresReview, isFalse);
       expect(preview.differences.every((d) => d.periodNo > 1), isTrue);
-      await f.service.apply(preview);
+      await f.service.runDue(DateTime(2026, 2, 1));
+      expect((await f.records.list('loan')).single.applied, isTrue);
       final saved = await f.installments.listSchedules('loan');
       expect(saved.first.status, InstallmentScheduleStatus.paid);
       expect(saved.first.expectedPrincipal, rows.first.expectedPrincipal);
@@ -485,7 +583,7 @@ void main() {
     () async {
       f.source.rates.clear();
       final outcome = await f.service.runDue(DateTime(2026, 1, 5));
-      expect(outcome.waiting, isTrue);
+      expect(outcome.needsRetry, isTrue);
       expect(outcome.changed, isFalse);
       await expectLater(
         f.service.preparePreview('loan', DateTime(2026, 1, 5)),
@@ -503,11 +601,9 @@ void main() {
       final saved = f.source.rates.toList();
       f.source.rates.clear();
       final task = InstallmentRepricingTask(f.service);
-      await task.run(DateTime(2026, 1, 5));
-      expect(task.needsRetry, isTrue);
+      expect(await task.run(DateTime(2026, 1, 5)), AppTaskOutcome.retryLater);
       f.source.rates.addAll(saved);
-      await task.run(DateTime(2026, 1, 5));
-      expect(task.needsRetry, isFalse);
+      expect(await task.run(DateTime(2026, 1, 5)), AppTaskOutcome.completed);
       expect((await f.records.list('loan')).single.applied, isTrue);
     },
   );
@@ -619,7 +715,7 @@ class _Source implements ReferenceRateSource {
   final rates = [
     ReferenceRate(
       type: ReferenceRateType.lprFiveYearPlus,
-      date: DateTime.utc(2025, 12, 20),
+      date: DateTime.utc(2025, 12, 19),
       ratePpm: 39000,
       source: 'fixture',
     ),
@@ -649,6 +745,7 @@ class _Source implements ReferenceRateSource {
 
 class _Fixture {
   final AppDatabase db = createTestDatabase();
+  DateTime currentDate = DateTime(2026, 2, 20);
   late final installments = DriftInstallmentRepository(db);
   late final records = DriftInstallmentRepricingRepository(db);
   final source = _Source();
@@ -656,7 +753,7 @@ class _Fixture {
     repository: DriftReferenceRateRepository(db),
     sources: [source],
     runner: DriftTransactionRunner(db),
-    clock: () => DateTime(2026, 2, 20),
+    clock: () => currentDate,
   );
   late final service = InstallmentRepricingService(
     installments: installments,
@@ -685,7 +782,7 @@ class _Fixture {
       ..add(
         ReferenceRate(
           type: type,
-          date: DateTime.utc(2025, 12, 20),
+          date: DateTime.utc(2025, 12, 19),
           ratePpm: 39000,
           source: source.key,
         ),

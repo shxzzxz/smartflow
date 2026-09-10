@@ -430,7 +430,7 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                       onChanged: (v) =>
                           update(s.copyWith(repricingPaymentTiming: v)),
                     ),
-                  const Text('按重定价日（含当日）最近报价取值。尚未确定的未来利率沿用已知利率预测。'),
+                  const Text('按重定价日前最近报价取值，不含重定价日当天。尚未确定的未来利率沿用已知利率预测。'),
                 ],
               ],
               if (!flat && !custom)

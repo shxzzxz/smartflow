@@ -151,7 +151,7 @@ class InstallmentDetailPage extends ConsumerWidget {
                   if (value.hasIssuedBills)
                     const Text('已出账账单保持原样，确认后请按需在账单详情刷新。'),
                   if (value.requiresReview)
-                    const Text('请核对人工调整及冻结期次。确认将应用以下金额变化。'),
+                    const Text('受影响计划包含人工修改，请核对后确认以下金额变化。'),
                   for (final d in value.differences)
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.space12),

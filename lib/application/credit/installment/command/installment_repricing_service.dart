@@ -12,7 +12,6 @@ import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
-import '../../../shared/app_task.dart';
 import '../../../shared/transaction_runner.dart';
 import '../../reference_rate/reference_rate_service.dart';
 
@@ -65,7 +64,7 @@ class InstallmentRepricingService {
   final InstallmentPlanService plans;
   final TransactionRunner runner;
 
-  /// 仅解析截至 now 已到取值日的参考利率；缺少记录时继续等待。
+  /// 补齐截至 now 已到重定价日的结果；参考利率严格早于重定价日。
   Future<bool> prepare(
     String contractId,
     DateTime now, {
@@ -88,7 +87,7 @@ class InstallmentRepricingService {
       for (var index = 0; index < indices.length; index++) {
         final i = indices[index];
         final reset = dates[index];
-        final rate = resolved[(type, reset)];
+        final rate = resolved[(type, _rateThrough(reset))];
         if (rate == null) {
           complete = false;
           break;
@@ -100,7 +99,7 @@ class InstallmentRepricingService {
           spreadBp: rule.spreadBp,
         );
         if (rate.type != type ||
-            referenceDate(rate.date).isAfter(reset) ||
+            !referenceDate(rate.date).isBefore(reset) ||
             rate.ratePpm < 0 ||
             change.rate.ppm < 0) {
           throw BusinessException(
@@ -142,13 +141,15 @@ class InstallmentRepricingService {
     String contractId,
     DateTime now,
   ) async {
-    if (!await prepare(contractId, now)) {
+    final complete = await prepare(contractId, now);
+    final next = await preview(contractId);
+    if (next == null && !complete) {
       throw BusinessException(
         ReferenceRateErrorCode.unavailable,
         message: '参考利率尚未确定，请稍后重试',
       );
     }
-    return preview(contractId);
+    return next;
   }
 
   Future<RepricingPreview?> _preview(String contractId) async {
@@ -213,24 +214,31 @@ class InstallmentRepricingService {
         await records.markApplied(pending.first.id);
       });
 
-  Future<({bool changed, bool waiting})> runDue(DateTime now) async {
+  Future<({bool changed, bool needsRetry})> runDue(DateTime now) async {
     var changed = false;
-    var waiting = false;
+    var needsRetry = false;
     final ids = await records.activeContractIds();
+    final eligibleIds = <String>[];
     final pending = <_PendingReset>[];
     for (final id in ids) {
-      final contract = await installments.findContract(id);
-      if (contract == null ||
-          contract.status != InstallmentContractStatus.active) {
-        continue;
+      try {
+        final contract = await installments.findContract(id);
+        if (contract == null ||
+            contract.status != InstallmentContractStatus.active) {
+          continue;
+        }
+        final existing = await records.list(id);
+        pending.addAll(_pendingResets(contract, existing, now));
+        eligibleIds.add(id);
+      } on Exception catch (error, stack) {
+        needsRetry = true;
+        _logFailure(error, stack);
       }
-      final existing = await records.list(id);
-      pending.addAll(_pendingResets(contract, existing, now));
     }
     final resolved = await _resolvePending(pending);
-    for (final id in ids) {
+    for (final id in eligibleIds) {
       try {
-        if (!await prepare(id, now, resolvedRates: resolved)) waiting = true;
+        if (!await prepare(id, now, resolvedRates: resolved)) needsRetry = true;
         while (true) {
           final next = await preview(id);
           if (next == null || next.requiresReview) break;
@@ -238,12 +246,20 @@ class InstallmentRepricingService {
           changed = true;
         }
       } on Exception catch (error, stack) {
-        Logger(
-          'application.credit.repricing',
-        ).warning('Loan repricing requires review.', error, stack);
+        needsRetry = true;
+        _logFailure(error, stack);
       }
     }
-    return (changed: changed, waiting: waiting);
+    return (changed: changed, needsRetry: needsRetry);
+  }
+
+  void _logFailure(Exception error, StackTrace stack) {
+    Logger('application.credit.repricing').log(
+      error is BusinessException ? Level.WARNING : Level.SEVERE,
+      'Loan repricing failed; it will retry after its cooldown.',
+      error,
+      stack,
+    );
   }
 
   List<_PendingReset> _pendingResets(
@@ -287,7 +303,8 @@ class InstallmentRepricingService {
     final types = {for (final entry in pending) entry.rule.referenceRateType};
     final dates = {
       for (final entry in pending)
-        for (final index in entry.indices) entry.rule.resetDate(index),
+        for (final index in entry.indices)
+          _rateThrough(entry.rule.resetDate(index)),
     };
     final results = await referenceRates.resolveMany(
       types.toList(),
@@ -298,6 +315,9 @@ class InstallmentRepricingService {
         for (final result in entry.value) (entry.key, result.date): result.rate,
     };
   }
+
+  DateTime _rateThrough(DateTime reset) =>
+      referenceDate(reset).subtract(const Duration(days: 1));
 }
 
 class _PendingReset {
@@ -305,20 +325,4 @@ class _PendingReset {
   final String stageId;
   final FloatingRateRule rule;
   final List<int> indices;
-}
-
-class InstallmentRepricingTask implements AppTask, RetryableAppTask {
-  InstallmentRepricingTask(this.service, {this.onChanged});
-  final InstallmentRepricingService service;
-  final void Function()? onChanged;
-  @override
-  String get key => 'credit.repricing';
-  @override
-  bool needsRetry = false;
-  @override
-  Future<void> run(DateTime now) async {
-    final result = await service.runDue(now);
-    needsRetry = result.waiting;
-    if (result.changed) onChanged?.call();
-  }
 }

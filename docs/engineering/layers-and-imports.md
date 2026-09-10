@@ -103,11 +103,13 @@ lib/
 ├── core/                                 # 无业务语义、无 UI 的基础能力（money / time / result / errors / patch 等）
 ├── application/                          # 用例编排层
 │   ├── <domain>/                         # ledger / credit ...
+│   │   ├── task/                        # 本域时间驱动任务；调用域内用例
 │   │   └── <capability>/                # account / category / transaction / metrics ...
 │   │       ├── command/                 # 写用例 + command model；无写侧时可省略
 │   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
 │   │           └── port/                # 读侧 application port；无 port 时可省略
 │   └── shared/                          # 事务执行抽象等 application 共享能力
+│       └── task/                        # Task 定义、调度器、重试策略分别存放
 ├── domain/                               # 领域层：按业务域分子目录
 │   ├── <domain>/
 │   │   ├── entity/

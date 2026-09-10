@@ -31,8 +31,7 @@ class InstallmentPlanPreview {
   final InstallmentPlanChangeSet change;
   final String token;
   final bool hasFrozenPeriods, hasIssuedBills;
-  bool get requiresReview =>
-      hasFrozenPeriods || hasIssuedBills || change.affectsManualAdjustments;
+  bool get requiresReview => change.affectsManualAdjustments;
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。

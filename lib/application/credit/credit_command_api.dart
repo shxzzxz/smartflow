@@ -20,7 +20,7 @@ export '../../domain/credit/valobj/repayment_enums.dart';
 export 'account/command/credit_account_app_service.dart';
 export 'account/command/credit_account_command.dart';
 export 'bill/command/credit_bill_generation_app_service.dart';
-export 'bill/command/credit_bill_generation_task.dart';
+export 'task/credit_bill_generation_task.dart';
 export 'installment/command/installment_app_service.dart';
 export 'installment/command/installment_command.dart';
 export 'installment/command/installment_status_repair_app_service.dart';
