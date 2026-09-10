@@ -3,7 +3,8 @@ import '../../../../core/money/money.dart';
 import '../../../../domain/credit/service/installment/installment_metrics.dart'
     show InstallmentMetricsCalculator;
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
-import '../../../../domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import '../../../../domain/credit/valobj/installment_plan_change.dart';
+import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
@@ -39,22 +40,21 @@ abstract interface class LoanCalculatorQuery {
 class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
   const LoanCalculatorQueryImpl({
     InstallmentPlanEngine engine = const InstallmentPlanEngine(),
-    InstallmentPrepaymentRecalculator recalculator =
-        const InstallmentPrepaymentRecalculator(),
     InstallmentMetricsCalculator metrics = const InstallmentMetricsCalculator(),
   }) : _engine = engine,
-       _recalculator = recalculator,
        _metrics = metrics;
 
   final InstallmentPlanEngine _engine;
-  final InstallmentPrepaymentRecalculator _recalculator;
   final InstallmentMetricsCalculator _metrics;
 
   @override
   LoanCalculation calculate(InstallmentPlanTerms terms) {
-    final plan = _engine.plan(terms);
+    final plan = _engine.generate(terms);
     final periods = _periods(terms.principal, plan.entries);
     return LoanCalculation(
+      isRateProjection: terms.stages.whereType<AmortizingStage>().any(
+        (s) => s.floatingRate != null,
+      ),
       periods: periods,
       stages: _stages(terms, plan),
       totalPrincipal: _sum(periods, (period) => period.principal),
@@ -75,7 +75,7 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
     LoanPrepaymentSimulationRequest request,
   ) {
     final terms = request.terms;
-    final base = _engine.plan(terms);
+    final base = _engine.generate(terms);
     if (request.paidPeriods < 0 || request.paidPeriods >= base.entries.length) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
@@ -103,25 +103,31 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
       rounding: terms.rounding,
       tailDifference: terms.tailDifference,
     );
-    final recalculations = _recalculator.recalculateStages(
-      terms: contractTerms,
-      principal: terms.principal,
-      borrowingDate: terms.borrowingDate,
-      rows: [
-        for (final entry in base.entries)
-          InstallmentRecalculationRow(
-            id: '${entry.periodNo}',
-            periodNo: entry.periodNo,
-            date: entry.expectedRepaymentDate,
-            principal: entry.expectedPrincipal,
-            interest: entry.expectedInterest,
-            fee: entry.expectedFee,
-            isPending: entry.periodNo > request.paidPeriods,
-          ),
-      ],
-      prepaymentPrincipal: request.prepaymentPrincipal,
-      eventDate: request.prepaymentDate,
+    final change = _engine.recalculate(
+      InstallmentPlanContext(
+        terms: contractTerms,
+        principal: terms.principal,
+        borrowingDate: terms.borrowingDate,
+        rows: [
+          for (final entry in base.entries)
+            InstallmentPlanRow(
+              id: '${entry.periodNo}',
+              stageId: 'stage-${entry.stageIndex}',
+              periodNo: entry.periodNo,
+              date: entry.expectedRepaymentDate,
+              principal: entry.expectedPrincipal,
+              interest: entry.expectedInterest,
+              fee: entry.expectedFee,
+              status: entry.periodNo > request.paidPeriods
+                  ? InstallmentScheduleStatus.pending
+                  : InstallmentScheduleStatus.paid,
+            ),
+        ],
+        prepaymentPrincipal: request.prepaymentPrincipal,
+      ),
+      RecalculateAfterPrepayment(request.prepaymentDate),
     );
+    final recalculations = change.recalculatedRows;
     final recalculatedByPeriodNo = {
       for (final recalculation in recalculations)
         recalculation.periodNo: recalculation,
@@ -132,10 +138,10 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
           null => entry,
           final recalculation => InstallmentSchedulePlanEntry(
             periodNo: recalculation.periodNo,
-            expectedRepaymentDate: recalculation.expectedRepaymentDate,
-            expectedPrincipal: recalculation.expectedPrincipal,
-            expectedInterest: recalculation.expectedInterest,
-            expectedFee: recalculation.expectedFee,
+            expectedRepaymentDate: recalculation.date,
+            expectedPrincipal: recalculation.principal,
+            expectedInterest: recalculation.interest,
+            expectedFee: recalculation.fee,
           ),
         },
     ];
@@ -154,6 +160,9 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
     final baseFee = _sum(base.entries, (entry) => entry.expectedFee);
     final totalInterest = _sum(periods, (period) => period.interest);
     return LoanPrepaymentSimulation(
+      isRateProjection: request.terms.stages.whereType<AmortizingStage>().any(
+        (s) => s.floatingRate != null,
+      ),
       periods: periods,
       stages: _stages(terms, base),
       prepaymentPrincipal: request.prepaymentPrincipal,

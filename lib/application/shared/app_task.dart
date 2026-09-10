@@ -8,6 +8,11 @@ abstract interface class AppTask {
   Future<void> run(DateTime now);
 }
 
+/// Incomplete external facts must not advance the scheduler's daily watermark.
+abstract interface class RetryableAppTask {
+  bool get needsRetry;
+}
+
 class PullTaskScheduler {
   PullTaskScheduler({required List<AppTask> tasks}) : _tasks = tasks;
 
@@ -29,6 +34,10 @@ class PullTaskScheduler {
           error,
           stackTrace,
         );
+        continue;
+      }
+      if (task is RetryableAppTask && (task as RetryableAppTask).needsRetry) {
+        _logger.info('Task ${task.key} is waiting for data.');
         continue;
       }
       _lastRunDayByTask[task.key] = day;

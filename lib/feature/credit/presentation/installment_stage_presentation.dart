@@ -4,6 +4,7 @@ import '../../../core/time/date_label.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../view_model/installment_terms_draft.dart';
+import '../../shared/presentation/reference_rate_presentation.dart';
 
 class InstallmentStageSummaryPresentation {
   const InstallmentStageSummaryPresentation({
@@ -59,6 +60,8 @@ InstallmentStageSummaryPresentation presentInstallmentStageSummary({
               ? '$unit利率待完善'
               : '$unit利率 $rate%',
       ].join(' · '),
+      if (stage.floating)
+        '${referenceRateTypeLabel(stage.referenceRateType)} ${stage.text(StageInput.spreadBp)} BP · 每 ${stage.repricingCycleMonths} 个月重定价',
       range,
     ],
     endDate: endDate,

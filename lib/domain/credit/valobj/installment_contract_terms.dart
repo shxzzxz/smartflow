@@ -9,6 +9,7 @@ import 'installment_plan_terms.dart';
 import 'interest_rate.dart';
 import 'repayment_dates_strategy.dart';
 import 'tail_difference_policy.dart';
+import 'floating_rate.dart';
 
 /// 阶段身份与条款分开：规则修改后仍可识别原有计划所属的阶段。
 class InstallmentContractStage {
@@ -30,6 +31,95 @@ class InstallmentContractTerms {
   final RoundingMode rounding;
   final TailDifferencePolicy tailDifference;
 
+  bool hasSameLayout(InstallmentContractTerms other) {
+    if (stages.length != other.stages.length) return false;
+    for (var i = 0; i < stages.length; i++) {
+      final left = stages[i], right = other.stages[i];
+      if (left.id != right.id ||
+          left.terms.runtimeType != right.terms.runtimeType) {
+        return false;
+      }
+      if (left.terms is AmortizingStage &&
+          (left.terms as AmortizingStage).dates.getDates().length !=
+              (right.terms as AmortizingStage).dates.getDates().length) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// 编辑只能保留已有利率事实；追加事实必须通过应用重定价。
+  void validateReplacementOf(InstallmentContractTerms previous) {
+    validate();
+    for (final oldStage in previous.stages) {
+      if (oldStage.terms is! AmortizingStage) continue;
+      final old = oldStage.terms as AmortizingStage;
+      final replacement = stages
+          .where((s) => s.id == oldStage.id)
+          .firstOrNull
+          ?.terms;
+      if (old.rateChanges.isNotEmpty &&
+          (replacement is! AmortizingStage ||
+              replacement.rate != old.rate ||
+              replacement.floatingRate != old.floatingRate)) {
+        _invalid('已有重定价结果的利率规则不能改写');
+      }
+    }
+    for (final stage in stages) {
+      if (stage.terms is! AmortizingStage) continue;
+      final next = stage.terms as AmortizingStage;
+      final old = previous.stages
+          .where((s) => s.id == stage.id)
+          .firstOrNull
+          ?.terms;
+      final changes = old is AmortizingStage ? old.rateChanges : <RateChange>[];
+      if (changes.length != next.rateChanges.length ||
+          List.generate(
+            changes.length,
+            (i) => !_sameRateChange(changes[i], next.rateChanges[i]),
+          ).any((v) => v)) {
+        _invalid('已有重定价结果不能通过合同编辑改写，请重新打开合同');
+      }
+    }
+  }
+
+  InstallmentContractTerms withRepricing(String stageId, RateChange change) {
+    final stage = stages.where((s) => s.id == stageId).firstOrNull?.terms;
+    if (stage is! AmortizingStage || stage.floatingRate == null) {
+      _invalid('重定价所属阶段已改变，请核对合同');
+    }
+    final next = AmortizingStage(
+      dates: stage.dates,
+      method: stage.method,
+      accrualStartDate: stage.accrualStartDate,
+      rate: stage.rate,
+      accrual: stage.accrual,
+      floatingRate: stage.floatingRate,
+      rateChanges: List.unmodifiable([...stage.rateChanges, change]),
+      endPrincipal: stage.endPrincipal,
+      fee: stage.fee,
+      installmentAmount: stage.installmentAmount,
+    );
+    next.validateFloatingRate();
+    return InstallmentContractTerms(
+      dayCount: dayCount,
+      rounding: rounding,
+      tailDifference: tailDifference,
+      stages: [
+        for (final s in stages)
+          s.id == stageId ? InstallmentContractStage(id: s.id, terms: next) : s,
+      ],
+    );
+  }
+
+  static bool _sameRateChange(RateChange a, RateChange b) =>
+      a.resetDate == b.resetDate &&
+      a.effectiveDate == b.effectiveDate &&
+      a.spreadBp == b.spreadBp &&
+      a.referenceRate.type == b.referenceRate.type &&
+      a.referenceRate.date == b.referenceRate.date &&
+      a.referenceRate.ratePpm == b.referenceRate.ratePpm;
+
   InstallmentPlanTerms planTerms(Money principal, DateTime borrowingDate) =>
       InstallmentPlanTerms(
         principal: principal,
@@ -47,6 +137,9 @@ class InstallmentContractTerms {
     final ids = <String>{};
     DateTime? previousDate;
     for (final stage in stages) {
+      if (stage.terms case final AmortizingStage repayment) {
+        repayment.validateFloatingRate();
+      }
       if (stage.id.isEmpty || !ids.add(stage.id)) _invalid('阶段标识必须唯一');
       if (stage.terms case DefermentStage(:final until)) {
         if (previousDate != null && !until.isAfter(previousDate)) {

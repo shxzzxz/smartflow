@@ -4,6 +4,44 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_select.dart';
 
 void main() {
+  for (final behavior in AppSelectMenuBehavior.values) {
+    testWidgets(
+      'nullable option is selectable and dismissal does not change it: $behavior',
+      (tester) async {
+        final changes = <int?>[];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: AppSelectMenu<int?>(
+                  value: 2026,
+                  options: const [
+                    AppSelectOption(value: null, label: '不限'),
+                    AppSelectOption(value: 2026, label: '2026 年'),
+                  ],
+                  tooltip: '年份',
+                  behavior: behavior,
+                  onChanged: changes.add,
+                  triggerBuilder: (context, option) => Text(option.label),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.byTooltip('年份'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('不限'));
+        await tester.pumpAndSettle();
+        expect(changes, [null]);
+        await tester.tap(find.byTooltip('年份'));
+        await tester.pumpAndSettle();
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+        expect(changes, [null]);
+      },
+    );
+  }
+
   testWidgets('select menu exposes the current value and updates it', (
     tester,
   ) async {

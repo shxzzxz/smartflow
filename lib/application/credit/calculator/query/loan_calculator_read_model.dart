@@ -52,6 +52,7 @@ class LoanCalculation {
     required this.totalInterest,
     required this.totalFee,
     required this.metrics,
+    this.isRateProjection = false,
   });
 
   final List<LoanCalculationPeriod> periods;
@@ -60,6 +61,7 @@ class LoanCalculation {
   final Money totalInterest;
   final Money totalFee;
   final ContractMetrics metrics;
+  final bool isRateProjection;
 
   Money get totalRepayment => totalPrincipal + totalInterest + totalFee;
 }
@@ -76,6 +78,7 @@ class LoanPrepaymentSimulation {
     this.paidPeriods = 0,
     this.beforeTotalInterest = const Money(minorUnits: 0),
     this.beforeTotalFee = const Money(minorUnits: 0),
+    this.isRateProjection = false,
   });
 
   /// 锚点前沿用原计划、锚点后按剩余本金重算的完整计划。
@@ -97,6 +100,7 @@ class LoanPrepaymentSimulation {
   /// 提前还款前的计划息费，用于结果概览。
   final Money beforeTotalInterest;
   final Money beforeTotalFee;
+  final bool isRateProjection;
 
   Money get beforeCharges => beforeTotalInterest + beforeTotalFee;
   Money get afterCharges => totalInterest + totalFee;

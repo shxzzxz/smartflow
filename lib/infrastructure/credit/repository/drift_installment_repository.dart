@@ -209,6 +209,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
   @override
   Future<void> deleteContract(String contractId) async {
     await (_database.delete(
+      _database.installmentRepricingRecords,
+    )..where((r) => r.contractId.equals(contractId))).go();
+    await (_database.delete(
       _database.installmentSchedules,
     )..where((s) => s.contractId.equals(contractId))).go();
     await (_database.delete(_database.installmentStageConfigs)..where(
@@ -232,6 +235,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       expectedFeeMinor: Value(schedule.expectedFee.minorUnits),
       status: schedule.status,
       note: Value(schedule.note),
+      manuallyAdjusted: Value(schedule.manuallyAdjusted),
       createdAt: Value(schedule.createdAt),
       updatedAt: Value(DateTime.now()),
     );
@@ -270,6 +274,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
       createdAt: row.createdAt,
       stageTerms: decodeContractTerms(
         stages,
+        repricings: await (_database.select(
+          _database.installmentRepricingRecords,
+        )..where((r) => r.contractId.equals(row.id))).get(),
         dayCount: row.dayCount,
         rounding: row.rounding,
       ),
@@ -281,6 +288,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       id: row.id,
       contractId: row.contractId,
       stageId: row.stageId,
+      manuallyAdjusted: row.manuallyAdjusted,
       periodNo: row.periodNo,
       expectedRepaymentDate: row.expectedRepaymentDate,
       expectedPrincipal: Money(minorUnits: row.expectedPrincipalMinor),

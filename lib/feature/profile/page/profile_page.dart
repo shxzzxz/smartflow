@@ -100,6 +100,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         description: '试算还款计划、利息与年化利率，不写入数据',
                         onTap: () => context.push('/profile/loan-calculator'),
                       ),
+                      _ProfileActionRow(
+                        icon: RemixIcons.percent_line,
+                        label: '参考利率',
+                        description: 'LPR、贷款基准利率',
+                        onTap: () => context.push('/profile/reference-rates'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space16),

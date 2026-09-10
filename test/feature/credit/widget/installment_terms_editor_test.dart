@@ -3,10 +3,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
+import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
 
 void main() {
+  testWidgets(
+    'floating loan exposes reset dates, signed BP and payment timing',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(600, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var draft = InstallmentTermsDraft(
+        stages: [
+          InstallmentStageDraft(
+            id: 'floating',
+            floating: true,
+            firstDate: DateTime(2026, 1, 20),
+            firstResetDate: DateTime(2025, 12, 20),
+            firstEffectiveDate: DateTime(2026, 1, 1),
+            inputs: const {
+              StageInput.rate: '3.2',
+              StageInput.spreadBp: '-30',
+              StageInput.periods: '120',
+              StageInput.interval: '1',
+            },
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, update) => SingleChildScrollView(
+                child: Form(
+                  child: InstallmentTermsEditor(
+                    value: draft,
+                    onChanged: (next) => update(() => draft = next),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('首次重定价日'), findsOneWidget);
+      expect(find.text('首次生效日'), findsOneWidget);
+      await tester.tap(
+        find.byType(AppPlainSelectMenuFormRow<ReferenceRateType>),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('中长期贷款基准利率').last);
+      await tester.pumpAndSettle();
+      expect(
+        draft.contractTerms().repayments.single.floatingRate!.referenceRateType,
+        ReferenceRateType.loanBenchmarkLongTerm,
+      );
+      final field = find.descendant(
+        of: find.widgetWithText(AppPlainTextFormRow, '加减基点'),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(field, '-45');
+      await tester.pump();
+      expect(draft.stages.single.text(StageInput.spreadBp), '-45');
+      final timing = tester
+          .widget<AppPlainSelectMenuFormRow<RepricingPaymentTiming>>(
+            find.byType(AppPlainSelectMenuFormRow<RepricingPaymentTiming>),
+          );
+      expect(timing.value, RepricingPaymentTiming.nextPeriod);
+      expect(
+        draft.contractTerms().repayments.single.floatingRate!.spreadBp,
+        -45,
+      );
+    },
+  );
   testWidgets(
     'cash installment configuration keeps dates and structure editable',
     (tester) async {

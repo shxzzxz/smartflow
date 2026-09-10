@@ -1,4 +1,10 @@
+import '../application/credit/installment/command/installment_plan_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../infrastructure/credit/adapter/chinamoney_reference_rate_source.dart';
+import '../infrastructure/credit/adapter/eastmoney_reference_rate_source.dart';
+import '../infrastructure/credit/repository/drift_reference_rate_repository.dart';
+import '../infrastructure/credit/repository/drift_installment_repricing_repository.dart';
+import '../application/credit/installment/command/installment_repricing_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 
 import '../core/logging/app_log_file_sink.dart';
@@ -549,6 +555,7 @@ CreditLedgerPort creditLedgerPort(Ref ref) {
 @Riverpod(keepAlive: true)
 RepaymentAppService repaymentAppService(Ref ref) {
   return RepaymentAppServiceImpl(
+    plans: ref.watch(installmentPlanServiceProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
@@ -561,13 +568,27 @@ RepaymentAppService repaymentAppService(Ref ref) {
 @Riverpod(keepAlive: true)
 InstallmentAppService installmentAppService(Ref ref) {
   return InstallmentAppServiceImpl(
+    plans: ref.watch(installmentPlanServiceProvider),
     repository: ref.watch(installmentRepositoryProvider),
+    repricings: DriftInstallmentRepricingRepository(
+      ref.watch(appDatabaseProvider),
+    ),
     products: ref.watch(installmentProductRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InstallmentStatusRepairAppService installmentStatusRepairAppService(Ref ref) {
+  return InstallmentStatusRepairAppService(
+    installments: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 
@@ -622,9 +643,48 @@ CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
 @Riverpod(keepAlive: true)
 PullTaskScheduler pullTaskScheduler(Ref ref) {
   return PullTaskScheduler(
-    tasks: [ref.watch(creditBillGenerationTaskProvider)],
+    tasks: [
+      ref.watch(creditBillGenerationTaskProvider),
+      InstallmentRepricingTask(
+        ref.watch(installmentRepricingServiceProvider),
+        onChanged: () {
+          ref.invalidate(installmentQueryServiceProvider);
+          ref.invalidate(contractMetricsQueryProvider);
+          ref.invalidate(creditAccountQueryServiceProvider);
+        },
+      ),
+    ],
   );
 }
+
+@Riverpod(keepAlive: true)
+ReferenceRateService referenceRateService(Ref ref) => ReferenceRateService(
+  repository: DriftReferenceRateRepository(ref.watch(appDatabaseProvider)),
+  sources: [EastmoneyReferenceRateSource(), ChinamoneyReferenceRateSource()],
+  runner: ref.watch(transactionRunnerProvider),
+);
+
+@Riverpod(keepAlive: true)
+InstallmentPlanService installmentPlanService(Ref ref) =>
+    InstallmentPlanService(
+      installments: ref.watch(installmentRepositoryProvider),
+      repayments: ref.watch(repaymentRepositoryProvider),
+      bills: ref.watch(billRepositoryProvider),
+      runner: ref.watch(transactionRunnerProvider),
+      idGenerator: ref.watch(idGeneratorProvider),
+    );
+
+@Riverpod(keepAlive: true)
+InstallmentRepricingService installmentRepricingService(Ref ref) =>
+    InstallmentRepricingService(
+      installments: ref.watch(installmentRepositoryProvider),
+      records: DriftInstallmentRepricingRepository(
+        ref.watch(appDatabaseProvider),
+      ),
+      referenceRates: ref.watch(referenceRateServiceProvider),
+      plans: ref.watch(installmentPlanServiceProvider),
+      runner: ref.watch(transactionRunnerProvider),
+    );
 
 @Riverpod(keepAlive: true)
 BillQueryService billQueryService(Ref ref) {

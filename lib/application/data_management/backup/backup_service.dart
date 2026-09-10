@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
 
 import 'backup_models.dart';
 import 'installment_backup_migration.dart';
@@ -512,8 +513,45 @@ class BackupService {
       'firstDate',
       'lastDate',
       'accrualStartDate',
+      'referenceRateType',
+      'spreadBp',
+      'firstResetDate',
+      'firstEffectiveDate',
+      'repricingCycleMonths',
+      'repricingPaymentTiming',
     ];
     final positions = <String>{};
+    final resetKeys = <String>{};
+    final referenceRateKeys = {
+      for (final rate in snapshot.rows('reference_rates'))
+        '${rate['rateDate']}:${rate['type']}',
+    };
+    for (final row in snapshot.rows('installment_repricing_records')) {
+      final stage = stages[row['stageId']];
+      if (!contracts.containsKey(row['contractId']) ||
+          stage == null ||
+          stage['ownerType'] != 'contract' ||
+          stage['ownerId'] != row['contractId'] ||
+          stage['referenceRateType'] != row['referenceRateType'] ||
+          !referenceRateKeys.contains(
+            '${row['referenceRateDate']}:${row['referenceRateType']}',
+          ) ||
+          row['resetDate'] is! int ||
+          row['effectiveDate'] is! int ||
+          row['referenceRateDate'] is! int ||
+          (row['referenceRateDate'] as int) > (row['resetDate'] as int) ||
+          (row['resetDate'] as int) > (row['effectiveDate'] as int) ||
+          row['referenceRatePpm'] is! int ||
+          row['spreadBp'] is! int ||
+          (row['referenceRatePpm'] as int) < 0 ||
+          (row['referenceRatePpm'] as int) + (row['spreadBp'] as int) * 100 <
+              0 ||
+          !resetKeys.add(
+            '${row['contractId']}:${row['stageId']}:${row['resetDate']}',
+          )) {
+        throw const BackupValidationException('重定价结果的合同、阶段或日期归属无效');
+      }
+    }
     if (stages.length != snapshot.rows('installment_stage_configs').length ||
         products.length != snapshot.rows('installment_products').length) {
       throw const BackupValidationException('分期产品或阶段标识重复');
@@ -540,6 +578,38 @@ class BackupService {
     }
     for (final row in stages.values) {
       final owner = row['ownerType'];
+      const floatingFields = [
+        'referenceRateType',
+        'spreadBp',
+        'firstResetDate',
+        'firstEffectiveDate',
+        'repricingCycleMonths',
+        'repricingPaymentTiming',
+      ];
+      if (floatingFields.any((f) => row[f] != null)) {
+        if (owner != 'contract' ||
+            row['stageKind'] != 'repayment' ||
+            floatingFields.any((f) => row[f] == null) ||
+            !ReferenceRateType.values
+                .map((type) => type.name)
+                .contains(row['referenceRateType']) ||
+            row['spreadBp'] is! int ||
+            !const {3, 6, 12}.contains(row['repricingCycleMonths']) ||
+            row['firstResetDate'] is! int ||
+            row['firstEffectiveDate'] is! int ||
+            (row['firstResetDate'] as int) >
+                (row['firstEffectiveDate'] as int) ||
+            !const {
+              'nextPeriod',
+              'currentPeriod',
+            }.contains(row['repricingPaymentTiming']) ||
+            row['ratePeriod'] != 'annual' ||
+            row['ratePpm'] is! int ||
+            const {'flatFee', 'custom'}.contains(row['repaymentMethod']) ||
+            row['amountAlgorithm'] == 'fixed') {
+          throw const BackupValidationException('浮动利率条款无效或不完整');
+        }
+      }
       if (owner != 'product' && owner != 'contract') {
         throw const BackupValidationException('阶段归属类型无效');
       }
@@ -842,6 +912,15 @@ class BackupService {
             row['period'] is! int) {
           throw BackupValidationException('表 $table 存在无效复合主键。');
         }
+      } else if (table == 'reference_rates') {
+        if (row['rateDate'] is! int ||
+            !ReferenceRateType.values.any((t) => t.name == row['type']) ||
+            row['ratePpm'] is! int ||
+            (row['ratePpm'] as int) < 0 ||
+            row['source'] is! String ||
+            row['source'] == '') {
+          throw const BackupValidationException('参考利率日期、类型或数值无效');
+        }
       } else if (row['id'] is! String || row['id'] == '') {
         throw BackupValidationException('表 $table 存在无效主键。');
       }
@@ -849,6 +928,8 @@ class BackupService {
           ? '${row['transactionId']}\u0000${row['tagId']}'
           : table == 'bill_generation_suppressions'
           ? '${row['accountId']}\u0000${row['period']}'
+          : table == 'reference_rates'
+          ? '${row['rateDate']}\u0000${row['type']}'
           : '${row['id']}';
       if (result.containsKey(identity)) {
         throw BackupValidationException('表 $table 存在重复主键。');

@@ -138,9 +138,13 @@ void main() {
       expect(service.restoreCommands.single.scheduleId, 'schedule-1');
     });
 
-    test('status validation delegates to command service', () async {
-      final service = _FakeInstallmentAppService();
-      final container = _container(contract: _contract(), service: service);
+    test('status validation delegates to the status repair use case', () async {
+      const result = ContractStatusValidationResult(
+        repairedScheduleCount: 2,
+        contractStatusChanged: true,
+      );
+      final repair = _FakeStatusRepairAppService(validationResult: result);
+      final container = _container(contract: _contract(), statusRepair: repair);
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
       );
@@ -150,7 +154,31 @@ void main() {
           .validateContractStatuses();
 
       expect(outcome, isA<UiActionSuccess<ContractStatusValidationResult>>());
-      expect(service.validationCommands.single.contractId, 'contract-1');
+      expect(
+        (outcome as UiActionSuccess<ContractStatusValidationResult>).value,
+        same(result),
+      );
+      expect(repair.contractIds.single, 'contract-1');
+    });
+
+    test('status repair failures are returned as UI failures', () async {
+      final repair = _FakeStatusRepairAppService(
+        exception: BusinessException(CreditErrorCode.contractNotFound),
+      );
+      final container = _container(contract: _contract(), statusRepair: repair);
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .validateContractStatuses();
+
+      expect(outcome, isA<UiActionFailure<ContractStatusValidationResult>>());
+      expect(
+        (outcome as UiActionFailure<ContractStatusValidationResult>).error.code,
+        CreditErrorCode.contractNotFound.code,
+      );
     });
 
     test('maps AppException to UI failure', () async {
@@ -206,9 +234,13 @@ ProviderContainer _container({
   List<ContractRepayment> cashflows = const [],
   _FakeInstallmentAppService? service,
   _FakeRepaymentAppService? repaymentAppService,
+  _FakeStatusRepairAppService? statusRepair,
 }) {
   final container = ProviderContainer(
     overrides: [
+      installmentStatusRepairAppServiceProvider.overrideWithValue(
+        statusRepair ?? _FakeStatusRepairAppService(),
+      ),
       installmentContractProvider.overrideWith(
         (ref, contractId) async => contract,
       ),
@@ -289,7 +321,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   final deleteCommands = <DeleteContractCommand>[];
   final skipCommands = <SkipInstallmentScheduleCommand>[];
   final restoreCommands = <RestoreInstallmentScheduleCommand>[];
-  final validationCommands = <ValidateContractStatusesCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
@@ -311,17 +342,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  ) async {
-    validationCommands.add(command);
-    return const ContractStatusValidationResult(
-      repairedScheduleCount: 0,
-      contractStatusChanged: false,
-    );
-  }
-
-  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -336,6 +356,33 @@ class _FakeRepaymentAppService implements RepaymentAppService {
     deleteCommands.add(command);
     final exception = deleteException;
     if (exception != null) throw exception;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeStatusRepairAppService implements InstallmentStatusRepairAppService {
+  _FakeStatusRepairAppService({
+    this.validationResult = const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    ),
+    this.exception,
+  });
+
+  final ContractStatusValidationResult validationResult;
+  final Object? exception;
+  final contractIds = <String>[];
+
+  @override
+  Future<ContractStatusValidationResult> validateAndRepair(
+    String contractId,
+  ) async {
+    contractIds.add(contractId);
+    final error = exception;
+    if (error != null) throw error;
+    return validationResult;
   }
 
   @override

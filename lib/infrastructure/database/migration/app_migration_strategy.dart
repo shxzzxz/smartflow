@@ -304,6 +304,120 @@ WHERE NOT EXISTS (
           );
         });
       }
+      if (from < 36) {
+        await database.transaction(() async {
+          final stages = database.installmentStageConfigs;
+          for (final column in [
+            stages.referenceRateType,
+            stages.spreadBp,
+            stages.firstResetDate,
+            stages.firstEffectiveDate,
+            stages.repricingCycleMonths,
+            stages.repricingPaymentTiming,
+          ]) {
+            if (!await _hasColumn(
+              database,
+              stages.actualTableName,
+              column.$name,
+            )) {
+              await migrator.addColumn(stages, column);
+            }
+          }
+          if (!await _hasColumn(
+            database,
+            'installment_schedules',
+            'manually_adjusted',
+          )) {
+            await migrator.addColumn(
+              database.installmentSchedules,
+              database.installmentSchedules.manuallyAdjusted,
+            );
+            // 旧计划未记录人工修正来源，保守要求首次自动重定价经过预览。
+            await database.customStatement(
+              "UPDATE installment_schedules SET manually_adjusted = 1 WHERE status = 'pending'",
+            );
+          }
+          for (final table in <TableInfo<Table, dynamic>>[
+            database.installmentRepricingRecords,
+          ]) {
+            final exists = await database
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                  variables: [Variable<String>(table.actualTableName)],
+                )
+                .get();
+            if (exists.isEmpty) await migrator.createTable(table);
+          }
+        });
+      }
+      if (from < 37) {
+        await database.transaction(() async {
+          for (final table in <TableInfo<Table, dynamic>>[
+            database.referenceRates,
+          ]) {
+            final exists = await database
+                .customSelect(
+                  "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                  variables: [Variable<String>(table.actualTableName)],
+                )
+                .get();
+            if (exists.isEmpty) await migrator.createTable(table);
+          }
+          final legacy = await database
+              .customSelect(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'lpr_quotes'",
+              )
+              .get();
+          if (legacy.isNotEmpty) {
+            await database.customStatement('''
+              INSERT OR IGNORE INTO reference_rates (type, rate_date, rate_ppm, source, created_at)
+              SELECT CASE tenor WHEN 'oneYear' THEN 'lprOneYear' WHEN 'fiveYearPlus' THEN 'lprFiveYearPlus' ELSE tenor END,
+                     quote_date, rate_ppm, source, created_at FROM lpr_quotes
+            ''');
+            await database.customStatement('DROP TABLE lpr_quotes');
+          }
+        });
+      }
+      if (from < 38) {
+        await database.transaction(() async {
+          // v36/v37 used LPR-only terms and snapshots. Older upgrades may
+          // already have created these tables with the current column names.
+          final stages = database.installmentStageConfigs;
+          if (await _hasColumn(database, stages.actualTableName, 'lpr_tenor')) {
+            await migrator.alterTable(
+              TableMigration(
+                stages,
+                columnTransformer: {
+                  stages.referenceRateType: const CustomExpression<String>(
+                    "CASE lpr_tenor WHEN 'oneYear' THEN 'lprOneYear' "
+                    "WHEN 'fiveYearPlus' THEN 'lprFiveYearPlus' ELSE lpr_tenor END",
+                  ),
+                },
+              ),
+            );
+          }
+          final records = database.installmentRepricingRecords;
+          if (await _hasColumn(database, records.actualTableName, 'tenor')) {
+            await migrator.alterTable(
+              TableMigration(
+                records,
+                columnTransformer: {
+                  records.referenceRateType: const CustomExpression<String>(
+                    "CASE tenor WHEN 'oneYear' THEN 'lprOneYear' "
+                    "WHEN 'fiveYearPlus' THEN 'lprFiveYearPlus' ELSE tenor END",
+                  ),
+                  records.referenceRateDate: const CustomExpression<DateTime>(
+                    'quote_date',
+                  ),
+                  records.referenceRatePpm: const CustomExpression<int>(
+                    'lpr_ppm',
+                  ),
+                },
+              ),
+            );
+          }
+        });
+      }
     },
   );
 }

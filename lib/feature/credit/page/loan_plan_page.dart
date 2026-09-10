@@ -42,6 +42,11 @@ class LoanPlanPage extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.space16),
                 children: [
+                  if ((calculation?.isRateProjection ?? false) ||
+                      (repayment?.isRateProjection ?? false)) ...[
+                    const Text('浮动利率预测：尚未确定的未来利率沿用已知利率，总利息与年化成本会随重定价变化。'),
+                    const SizedBox(height: AppSpacing.space12),
+                  ],
                   if (repayment == null)
                     InstallmentPlanSummaryCard(
                       title: '试算概览',

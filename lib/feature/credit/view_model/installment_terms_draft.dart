@@ -11,9 +11,19 @@ import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
 import '../../../domain/credit/valobj/interest_rate.dart';
+import '../../../domain/credit/valobj/floating_rate.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 
-enum StageInput { periods, interval, rate, endPrincipal, fixedAmount, fee }
+enum StageInput {
+  periods,
+  interval,
+  rate,
+  endPrincipal,
+  fixedAmount,
+  fee,
+  spreadBp,
+}
 
 class InstallmentStageDraft {
   InstallmentStageDraft({
@@ -27,6 +37,13 @@ class InstallmentStageDraft {
     this.lastDate,
     this.untilDate,
     this.accrualStartDate,
+    this.floating = false,
+    this.referenceRateType = ReferenceRateType.lprFiveYearPlus,
+    this.repricingCycleMonths = 12,
+    this.repricingPaymentTiming = RepricingPaymentTiming.nextPeriod,
+    this.firstResetDate,
+    this.firstEffectiveDate,
+    this.rateChanges = const [],
     Map<StageInput, String> inputs = const {StageInput.interval: '1'},
   }) : inputs = Map.unmodifiable(inputs);
   final String id;
@@ -37,6 +54,12 @@ class InstallmentStageDraft {
   final InstallmentAmountAlgorithm algorithm;
   final DateTime? firstDate, lastDate, untilDate, accrualStartDate;
   final Map<StageInput, String> inputs;
+  final bool floating;
+  final ReferenceRateType referenceRateType;
+  final int repricingCycleMonths;
+  final RepricingPaymentTiming repricingPaymentTiming;
+  final DateTime? firstResetDate, firstEffectiveDate;
+  final List<RateChange> rateChanges;
   String text(StageInput field) => inputs[field] ?? '';
 
   InstallmentStageDraft copyWith({
@@ -49,6 +72,12 @@ class InstallmentStageDraft {
     Object? lastDate = _unchanged,
     DateTime? untilDate,
     Map<StageInput, String>? inputs,
+    bool? floating,
+    ReferenceRateType? referenceRateType,
+    int? repricingCycleMonths,
+    RepricingPaymentTiming? repricingPaymentTiming,
+    DateTime? firstResetDate,
+    DateTime? firstEffectiveDate,
   }) => InstallmentStageDraft(
     id: id,
     deferment: deferment ?? this.deferment,
@@ -61,6 +90,14 @@ class InstallmentStageDraft {
     untilDate: untilDate ?? this.untilDate,
     accrualStartDate: accrualStartDate,
     inputs: inputs ?? this.inputs,
+    floating: floating ?? this.floating,
+    referenceRateType: referenceRateType ?? this.referenceRateType,
+    repricingCycleMonths: repricingCycleMonths ?? this.repricingCycleMonths,
+    repricingPaymentTiming:
+        repricingPaymentTiming ?? this.repricingPaymentTiming,
+    firstResetDate: firstResetDate ?? this.firstResetDate,
+    firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
+    rateChanges: rateChanges,
   );
 
   InstallmentStageDraft setInput(StageInput field, String value) =>
@@ -71,6 +108,7 @@ class InstallmentStageDraft {
     final custom = value == InstallmentRepaymentMethod.custom;
     return copyWith(
       method: value,
+      floating: flat || custom ? false : floating,
       lastDate: flat ? null : lastDate,
       algorithm: value == InstallmentRepaymentMethod.equalInstallment
           ? algorithm
@@ -122,6 +160,25 @@ class InstallmentStageDraft {
       );
     }
     if (firstDate == null) _invalid('请选择首期还款日');
+    FloatingRateRule? floatingRule;
+    if (floating) {
+      final spread = int.tryParse(text(StageInput.spreadBp).trim());
+      if (spread == null ||
+          firstResetDate == null ||
+          firstEffectiveDate == null ||
+          text(StageInput.rate).trim().isEmpty) {
+        _invalid('请填写初始执行年利率、加减基点和首次重定价日期');
+      }
+      floatingRule = FloatingRateRule(
+        referenceRateType: referenceRateType,
+        spreadBp: spread,
+        firstResetDate: firstResetDate!,
+        firstEffectiveDate: firstEffectiveDate!,
+        cycleMonths: repricingCycleMonths,
+        paymentTiming: repricingPaymentTiming,
+      );
+      floatingRule.validate();
+    }
     final flat = method == InstallmentRepaymentMethod.flatFee;
     final hasInterest = !flat && method != InstallmentRepaymentMethod.custom;
     // 零利率仍保留所选单位，重新打开合同后规则不会漂移。
@@ -152,6 +209,8 @@ class InstallmentStageDraft {
         method: method,
         accrual: accrual,
         rate: rate,
+        floatingRate: floatingRule,
+        rateChanges: floating ? rateChanges : const [],
         accrualStartDate: accrualStartDate,
         endPrincipal: _money(text(StageInput.endPrincipal), '期末本金'),
         fee: _money(text(StageInput.fee), '手续费') ?? Money.zero(),
@@ -330,6 +389,17 @@ class InstallmentTermsDraft {
               ),
               AmortizingStage s => InstallmentStageDraft(
                 id: config.id,
+                floating: s.floatingRate != null,
+                referenceRateType:
+                    s.floatingRate?.referenceRateType ??
+                    ReferenceRateType.lprFiveYearPlus,
+                repricingCycleMonths: s.floatingRate?.cycleMonths ?? 12,
+                repricingPaymentTiming:
+                    s.floatingRate?.paymentTiming ??
+                    RepricingPaymentTiming.nextPeriod,
+                firstResetDate: s.floatingRate?.firstResetDate,
+                firstEffectiveDate: s.floatingRate?.firstEffectiveDate,
+                rateChanges: s.rateChanges,
                 method: s.method,
                 firstDate: s.dates.getDates().first,
                 lastDate: s.dates is IntervalRepaymentDates
@@ -347,6 +417,7 @@ class InstallmentTermsDraft {
                 },
                 inputs: {
                   StageInput.interval: '${s.dates.intervalMonths}',
+                  StageInput.spreadBp: '${s.floatingRate?.spreadBp ?? 0}',
                   StageInput.periods: '${s.dates.getDates().length}',
                   StageInput.rate: s.rate == null
                       ? ''

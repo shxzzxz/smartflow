@@ -5,6 +5,10 @@ import 'package:smartflow/application/credit/installment/command/installment_com
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/installment_product.dart';
+import 'package:smartflow/domain/credit/entity/installment_repricing.dart';
+import 'package:smartflow/domain/credit/port/installment_product_repository.dart';
+import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
+import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
@@ -14,6 +18,7 @@ import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_installment_repricing_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -22,6 +27,8 @@ import '../../helper/test_app_database.dart';
 import '../../helper/sequential_id_generator.dart';
 
 class _Ledger extends Mock implements CreditLedgerPort {}
+
+class _Products extends Mock implements InstallmentProductRepository {}
 
 void main() {
   late AppDatabase db;
@@ -59,6 +66,135 @@ void main() {
     );
   });
   tearDown(() => db.close());
+
+  for (final rejectProduct in [false, true]) {
+    test(
+      rejectProduct
+          ? 'failed contract edit restores the written plan and discarded repricing candidate'
+          : 'contract edit commits rebuilt plan, details and candidate cleanup together',
+      () async {
+        final rule = FloatingRateRule(
+          referenceRateType: ReferenceRateType.lprFiveYearPlus,
+          spreadBp: 0,
+          firstResetDate: DateTime(2026, 1, 10),
+          firstEffectiveDate: DateTime(2026, 1, 15),
+        );
+        final created = await service.createDisbursementContract(
+          _command(10000, 12000, floatingRate: rule),
+        );
+        final original = (await repository.findContract(created.contractId))!;
+        final before = await repository.listSchedules(original.id);
+        final records = DriftInstallmentRepricingRepository(db);
+        await records.insert(
+          InstallmentRepricing(
+            id: 'pending-reset',
+            contractId: original.id,
+            stageId: original.stageTerms.stages.single.id,
+            change: RateChange(
+              resetDate: rule.firstResetDate,
+              effectiveDate: rule.firstEffectiveDate,
+              referenceRate: ReferenceRate(
+                type: rule.referenceRateType,
+                date: DateTime(2026, 1, 1),
+                ratePpm: 15000,
+                source: 'test',
+              ),
+              spreadBp: 0,
+            ),
+          ),
+        );
+        final terms = InstallmentContractTerms(
+          stages: [
+            InstallmentContractStage(
+              id: original.stageTerms.stages.single.id,
+              terms: AmortizingStage(
+                dates: original.stageTerms.repayments.single.dates,
+                method: InstallmentRepaymentMethod.interestFirst,
+                rate: const InterestRate(
+                  ppm: 24000,
+                  period: InterestRatePeriod.annual,
+                ),
+                floatingRate: rule,
+              ),
+            ),
+          ],
+        );
+        final rejectedProducts = _Products();
+        when(() => rejectedProducts.find('missing-product')).thenAnswer((
+          _,
+        ) async {
+          // 后续产品校验失败前，重算和候选清理已经实际写入数据库。
+          expect(
+            (await repository.findContract(
+              original.id,
+            ))!.stageTerms.repayments.single.rate!.ppm,
+            24000,
+          );
+          expect(
+            (await repository.listSchedules(
+              original.id,
+            )).first.expectedInterest,
+            isNot(before.first.expectedInterest),
+          );
+          expect(await records.list(original.id), isEmpty);
+          return null;
+        });
+        final editing = InstallmentAppServiceImpl(
+          repository: repository,
+          products: rejectProduct ? rejectedProducts : products,
+          repricings: records,
+          bills: DriftBillRepository(db),
+          repayments: DriftRepaymentRepository(db),
+          ledger: _Ledger(),
+          transactionRunner: DriftTransactionRunner(db),
+          idGenerator: SequentialIdGenerator(),
+        );
+        final preview = await editing.previewContractRecalculation(
+          PreviewContractRecalculationCommand(
+            contractId: original.id,
+            stageTerms: terms,
+          ),
+        );
+        final command = UpdateContractCommand(
+          contractId: original.id,
+          name: 'Updated loan',
+          productId: rejectProduct ? 'missing-product' : null,
+          stageTerms: terms,
+          regeneratePlan: true,
+          planPreviewToken: preview.token,
+        );
+
+        if (rejectProduct) {
+          await expectLater(
+            editing.updateContract(command),
+            throwsA(isA<BusinessException>()),
+          );
+          verify(() => rejectedProducts.find('missing-product')).called(1);
+        } else {
+          await editing.updateContract(command);
+        }
+
+        final saved = (await repository.findContract(original.id))!;
+        final rows = await repository.listSchedules(original.id);
+        expect(saved.name, rejectProduct ? original.name : 'Updated loan');
+        expect(
+          saved.stageTerms.repayments.single.rate!.ppm,
+          rejectProduct ? 12000 : 24000,
+        );
+        expect(rows.map((r) => r.id), before.map((r) => r.id));
+        expect(
+          rows.map((r) => r.expectedInterest),
+          rejectProduct
+              ? before.map((r) => r.expectedInterest)
+              : preview.schedules.map((r) => r.expectedInterest),
+        );
+        expect(
+          (await records.list(original.id)).map((r) => r.id),
+          rejectProduct ? ['pending-reset'] : isEmpty,
+        );
+      },
+    );
+  }
 
   test(
     'contract name and selected template persist independently of schedule edits',
@@ -165,12 +301,12 @@ void main() {
         ],
       );
       final preview = await service.previewContractRecalculation(
-        RecalculateContractSchedulesCommand(
+        PreviewContractRecalculationCommand(
           contractId: original.id,
           stageTerms: changed,
         ),
       );
-      expect(preview, hasLength(4));
+      expect(preview.schedules, hasLength(4));
       expect(
         (await repository.findContract(original.id))!.stageTerms.stages,
         hasLength(1),
@@ -188,6 +324,7 @@ void main() {
           stageTerms: changed,
           customRules: true,
           regeneratePlan: true,
+          planPreviewToken: preview.token,
         ),
       );
       final rows = await repository.listSchedules(original.id);
@@ -221,6 +358,15 @@ void main() {
         ],
       );
       await expectLater(
+        service.previewContractRecalculation(
+          PreviewContractRecalculationCommand(
+            contractId: original.id,
+            stageTerms: changed,
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      await expectLater(
         service.updateContract(
           UpdateContractCommand(
             contractId: original.id,
@@ -243,25 +389,26 @@ void main() {
   );
 }
 
-CreateDisbursementContractCommand _command(int principal, int rate) =>
-    CreateDisbursementContractCommand(
-      liabilityAccountId: 'loan-account',
-      principal: Money(minorUnits: principal),
-      borrowingDate: DateTime(2026),
-      productId: 'p',
-      stageTerms: InstallmentContractTerms(
-        stages: [
-          InstallmentContractStage(
-            id: 'p-stage',
-            terms: AmortizingStage(
-              method: InstallmentRepaymentMethod.interestFirst,
-              dates: IntervalRepaymentDates(
-                firstDate: DateTime(2026, 2),
-                count: 2,
-              ),
-              rate: InterestRate(ppm: rate, period: InterestRatePeriod.annual),
-            ),
-          ),
-        ],
+CreateDisbursementContractCommand _command(
+  int principal,
+  int rate, {
+  FloatingRateRule? floatingRate,
+}) => CreateDisbursementContractCommand(
+  liabilityAccountId: 'loan-account',
+  principal: Money(minorUnits: principal),
+  borrowingDate: DateTime(2026),
+  productId: 'p',
+  stageTerms: InstallmentContractTerms(
+    stages: [
+      InstallmentContractStage(
+        id: 'p-stage',
+        terms: AmortizingStage(
+          method: InstallmentRepaymentMethod.interestFirst,
+          dates: IntervalRepaymentDates(firstDate: DateTime(2026, 2), count: 2),
+          rate: InterestRate(ppm: rate, period: InterestRatePeriod.annual),
+          floatingRate: floatingRate,
+        ),
       ),
-    );
+    ],
+  ),
+);

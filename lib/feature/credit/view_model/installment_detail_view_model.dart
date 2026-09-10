@@ -55,6 +55,20 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     });
   }
 
+  Future<UiActionOutcome<RepricingPreview?>> previewRepricing() =>
+      guardUiAction(_logger, 'Loan repricing preview', () async {
+        return ref
+            .read(installmentRepricingServiceProvider)
+            .preparePreview(contractId, DateTime.now());
+      });
+
+  Future<UiActionOutcome<void>> applyRepricing(RepricingPreview preview) =>
+      guardUiAction(_logger, 'Loan repricing apply', () async {
+        await ref.read(installmentRepricingServiceProvider).apply(preview);
+        final loaded = _loadedOrNull();
+        if (loaded != null) _invalidateContract(loaded.contract);
+      });
+
   Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('合同尚未加载');
@@ -113,10 +127,8 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     }
     return guardUiAction(_logger, 'Contract status validation', () async {
       final result = await ref
-          .read(installmentAppServiceProvider)
-          .validateContractStatuses(
-            ValidateContractStatusesCommand(contractId: loaded.contract.id),
-          );
+          .read(installmentStatusRepairAppServiceProvider)
+          .validateAndRepair(loaded.contract.id);
       _invalidateContract(loaded.contract);
       return result;
     });

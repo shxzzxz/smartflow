@@ -42,6 +42,7 @@ import '../feature/profile/page/data_cleanup_page.dart';
 import '../feature/profile/page/backup_page.dart';
 import '../feature/profile/page/log_viewer_page.dart';
 import '../feature/profile/page/profile_page.dart';
+import '../feature/profile/page/reference_rates_page.dart';
 import '../feature/profile/page/settings_page.dart';
 import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
@@ -392,6 +393,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile/settings',
       builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(
+      path: '/profile/reference-rates',
+      builder: (context, state) => const ReferenceRatesPage(),
     ),
     GoRoute(
       path: '/profile/software-version',

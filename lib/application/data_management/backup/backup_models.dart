@@ -22,6 +22,8 @@ class BackupTables {
     'installment_stage_configs',
     'installment_contracts',
     'installment_schedules',
+    'reference_rates',
+    'installment_repricing_records',
     'repayments',
     'repayment_items',
     'import_entity_mappings',
@@ -51,6 +53,8 @@ class BackupTables {
       'installment_stage_configs',
       'installment_contracts',
       'installment_schedules',
+      'reference_rates',
+      'installment_repricing_records',
       'repayments',
       'repayment_items',
     }.contains(table)) {
@@ -145,7 +149,9 @@ class BackupFileDescriptor {
     final map = _stringMap(value, 'Invalid backup file entry.');
     final path = _requiredString(map, 'path');
     final table = _requiredString(map, 'table');
-    if (table != 'preferences' && !BackupTables.all.contains(table) ||
+    if (table != 'preferences' &&
+            table != 'lpr_quotes' &&
+            !BackupTables.all.contains(table) ||
         path.contains('..') ||
         path.contains('\u0000') ||
         path.startsWith('/') ||
@@ -322,6 +328,8 @@ class BackupDiff {
       if (table == 'bills' || table == 'bill_items') return '账单';
       if (table == 'installment_products') return '分期产品';
       if (table == 'installment_stage_configs') return '分期阶段';
+      if (table == 'reference_rates') return '参考利率历史';
+      if (table == 'installment_repricing_records') return '贷款重定价';
       if (table == 'installment_contracts' ||
           table == 'installment_schedules' ||
           table == 'repayments' ||
@@ -474,6 +482,9 @@ Map<String, BackupJson> _indexRows(Iterable<BackupJson> rows, String table) {
 }
 
 String _rowIdentity(BackupJson row, String table) {
+  if (table == 'reference_rates') {
+    return '${row['rateDate']}\u0000${row['type']}';
+  }
   if (table == 'preferences') return '${row['key']}';
   if (table == 'transaction_tags') {
     return '${row['transactionId']}\u0000${row['tagId']}';

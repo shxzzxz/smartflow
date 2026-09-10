@@ -120,10 +120,10 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed,  String? planPreviewToken)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
-return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound() when notFound != null:
+return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed,_that.planPreviewToken);case InstallmentContractEditNotFound() when notFound != null:
 return notFound();case _:
   return orElse();
 
@@ -142,10 +142,10 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed,  String? planPreviewToken)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded():
-return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound():
+return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed,_that.planPreviewToken);case InstallmentContractEditNotFound():
 return notFound();}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -160,10 +160,10 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( InstallmentContractReadModel contract,  String? productId,  String? productName,  ContractMetrics? metrics,  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos,  bool submitting,  InstallmentTermsDraft stageDraft,  bool customRules,  bool stagePlanPreviewed,  String? planPreviewToken)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case InstallmentContractEditLoaded() when loaded != null:
-return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed);case InstallmentContractEditNotFound() when notFound != null:
+return loaded(_that.contract,_that.productId,_that.productName,_that.metrics,_that.draft,_that.manualPatchedPeriodNos,_that.submitting,_that.stageDraft,_that.customRules,_that.stagePlanPreviewed,_that.planPreviewToken);case InstallmentContractEditNotFound() when notFound != null:
 return notFound();case _:
   return null;
 
@@ -176,7 +176,7 @@ return notFound();case _:
 
 
 class InstallmentContractEditLoaded implements InstallmentContractEditState {
-  const InstallmentContractEditLoaded({required this.contract, this.productId, this.productName, this.metrics, required  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false, required this.stageDraft, this.customRules = false, this.stagePlanPreviewed = false}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
+  const InstallmentContractEditLoaded({required this.contract, this.productId, this.productName, this.metrics, required  List<InstallmentContractDraftRow> draft,  Set<int> manualPatchedPeriodNos = const {}, this.submitting = false, required this.stageDraft, this.customRules = false, this.stagePlanPreviewed = false, this.planPreviewToken}): _draft = draft,_manualPatchedPeriodNos = manualPatchedPeriodNos;
   
 
  final  InstallmentContractReadModel contract;
@@ -201,6 +201,7 @@ class InstallmentContractEditLoaded implements InstallmentContractEditState {
  final  InstallmentTermsDraft stageDraft;
 @JsonKey() final  bool customRules;
 @JsonKey() final  bool stagePlanPreviewed;
+ final  String? planPreviewToken;
 
 /// Create a copy of InstallmentContractEditState
 /// with the given fields replaced by the non-null parameter values.
@@ -212,16 +213,16 @@ $InstallmentContractEditLoadedCopyWith<InstallmentContractEditLoaded> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstallmentContractEditLoaded&&(identical(other.contract, contract) || other.contract == contract)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.metrics, metrics) || other.metrics == metrics)&&const DeepCollectionEquality().equals(other._draft, _draft)&&const DeepCollectionEquality().equals(other._manualPatchedPeriodNos, _manualPatchedPeriodNos)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.stageDraft, stageDraft) || other.stageDraft == stageDraft)&&(identical(other.customRules, customRules) || other.customRules == customRules)&&(identical(other.stagePlanPreviewed, stagePlanPreviewed) || other.stagePlanPreviewed == stagePlanPreviewed));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstallmentContractEditLoaded&&(identical(other.contract, contract) || other.contract == contract)&&(identical(other.productId, productId) || other.productId == productId)&&(identical(other.productName, productName) || other.productName == productName)&&(identical(other.metrics, metrics) || other.metrics == metrics)&&const DeepCollectionEquality().equals(other._draft, _draft)&&const DeepCollectionEquality().equals(other._manualPatchedPeriodNos, _manualPatchedPeriodNos)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.stageDraft, stageDraft) || other.stageDraft == stageDraft)&&(identical(other.customRules, customRules) || other.customRules == customRules)&&(identical(other.stagePlanPreviewed, stagePlanPreviewed) || other.stagePlanPreviewed == stagePlanPreviewed)&&(identical(other.planPreviewToken, planPreviewToken) || other.planPreviewToken == planPreviewToken));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,contract,productId,productName,metrics,const DeepCollectionEquality().hash(_draft),const DeepCollectionEquality().hash(_manualPatchedPeriodNos),submitting,stageDraft,customRules,stagePlanPreviewed);
+int get hashCode => Object.hash(runtimeType,contract,productId,productName,metrics,const DeepCollectionEquality().hash(_draft),const DeepCollectionEquality().hash(_manualPatchedPeriodNos),submitting,stageDraft,customRules,stagePlanPreviewed,planPreviewToken);
 
 @override
 String toString() {
-  return 'InstallmentContractEditState.loaded(contract: $contract, productId: $productId, productName: $productName, metrics: $metrics, draft: $draft, manualPatchedPeriodNos: $manualPatchedPeriodNos, submitting: $submitting, stageDraft: $stageDraft, customRules: $customRules, stagePlanPreviewed: $stagePlanPreviewed)';
+  return 'InstallmentContractEditState.loaded(contract: $contract, productId: $productId, productName: $productName, metrics: $metrics, draft: $draft, manualPatchedPeriodNos: $manualPatchedPeriodNos, submitting: $submitting, stageDraft: $stageDraft, customRules: $customRules, stagePlanPreviewed: $stagePlanPreviewed, planPreviewToken: $planPreviewToken)';
 }
 
 
@@ -232,7 +233,7 @@ abstract mixin class $InstallmentContractEditLoadedCopyWith<$Res> implements $In
   factory $InstallmentContractEditLoadedCopyWith(InstallmentContractEditLoaded value, $Res Function(InstallmentContractEditLoaded) _then) = _$InstallmentContractEditLoadedCopyWithImpl;
 @useResult
 $Res call({
- InstallmentContractReadModel contract, String? productId, String? productName, ContractMetrics? metrics, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting, InstallmentTermsDraft stageDraft, bool customRules, bool stagePlanPreviewed
+ InstallmentContractReadModel contract, String? productId, String? productName, ContractMetrics? metrics, List<InstallmentContractDraftRow> draft, Set<int> manualPatchedPeriodNos, bool submitting, InstallmentTermsDraft stageDraft, bool customRules, bool stagePlanPreviewed, String? planPreviewToken
 });
 
 
@@ -249,7 +250,7 @@ class _$InstallmentContractEditLoadedCopyWithImpl<$Res>
 
 /// Create a copy of InstallmentContractEditState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? contract = null,Object? productId = freezed,Object? productName = freezed,Object? metrics = freezed,Object? draft = null,Object? manualPatchedPeriodNos = null,Object? submitting = null,Object? stageDraft = null,Object? customRules = null,Object? stagePlanPreviewed = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? contract = null,Object? productId = freezed,Object? productName = freezed,Object? metrics = freezed,Object? draft = null,Object? manualPatchedPeriodNos = null,Object? submitting = null,Object? stageDraft = null,Object? customRules = null,Object? stagePlanPreviewed = null,Object? planPreviewToken = freezed,}) {
   return _then(InstallmentContractEditLoaded(
 contract: null == contract ? _self.contract : contract // ignore: cast_nullable_to_non_nullable
 as InstallmentContractReadModel,productId: freezed == productId ? _self.productId : productId // ignore: cast_nullable_to_non_nullable
@@ -261,7 +262,8 @@ as Set<int>,submitting: null == submitting ? _self.submitting : submitting // ig
 as bool,stageDraft: null == stageDraft ? _self.stageDraft : stageDraft // ignore: cast_nullable_to_non_nullable
 as InstallmentTermsDraft,customRules: null == customRules ? _self.customRules : customRules // ignore: cast_nullable_to_non_nullable
 as bool,stagePlanPreviewed: null == stagePlanPreviewed ? _self.stagePlanPreviewed : stagePlanPreviewed // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,planPreviewToken: freezed == planPreviewToken ? _self.planPreviewToken : planPreviewToken // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

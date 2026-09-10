@@ -2,6 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/shared/app_task.dart';
 
 void main() {
+  test('a task waiting for reference rates retries on the same day', () async {
+    final task = _WaitingTask();
+    final scheduler = PullTaskScheduler(tasks: [task]);
+    final now = DateTime(2026, 9, 20);
+    await scheduler.trigger(now: now);
+    await scheduler.trigger(now: now);
+    await scheduler.trigger(now: now);
+    expect(task.runCount, 2);
+  });
   test('records a task run only after it succeeds', () async {
     final task = _FailOnceTask(StateError('transient failure'));
     final scheduler = PullTaskScheduler(tasks: [task]);
@@ -31,6 +40,19 @@ void main() {
     expect(failing.runCount, 2, reason: '失败任务应在下次触发时重试');
     expect(healthy.runCount, 1, reason: '成功任务当天不再重复执行');
   });
+}
+
+class _WaitingTask implements AppTask, RetryableAppTask {
+  @override
+  String get key => 'waiting';
+  @override
+  bool needsRetry = true;
+  int runCount = 0;
+  @override
+  Future<void> run(DateTime now) async {
+    runCount++;
+    needsRetry = runCount == 1;
+  }
 }
 
 class _FailOnceTask implements AppTask {

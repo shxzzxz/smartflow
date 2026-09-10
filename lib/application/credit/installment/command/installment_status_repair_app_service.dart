@@ -9,22 +9,32 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-import 'installment_command.dart';
+import '../../../shared/transaction_runner.dart';
+import 'contract_status_validation_result.dart';
 
-class InstallmentStatusValidationCoordinator {
-  const InstallmentStatusValidationCoordinator({
+/// 用户显式触发的状态校验与修复；事实加载、修复和保存处于同一事务。
+class InstallmentStatusRepairAppService {
+  const InstallmentStatusRepairAppService({
     required InstallmentRepository installments,
     required BillRepository bills,
     required RepaymentRepository repayments,
+    required TransactionRunner transactionRunner,
   }) : _installments = installments,
        _bills = bills,
-       _repayments = repayments;
+       _repayments = repayments,
+       _runner = transactionRunner;
 
   final InstallmentRepository _installments;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
+  final TransactionRunner _runner;
 
-  Future<ContractStatusValidationResult> validate(String contractId) async {
+  Future<ContractStatusValidationResult> validateAndRepair(String contractId) =>
+      _runner.run(() => _validateAndRepair(contractId));
+
+  Future<ContractStatusValidationResult> _validateAndRepair(
+    String contractId,
+  ) async {
     final contract = await _installments.findContract(contractId);
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
@@ -197,9 +207,8 @@ class InstallmentStatusValidationCoordinator {
           _addIssue(
             issues,
             ContractStatusValidationIssue(
-              type:
-                  ContractStatusValidationIssueType
-                      .skippedScheduleHasAllocation,
+              type: ContractStatusValidationIssueType
+                  .skippedScheduleHasAllocation,
               message: '已跳过的还款计划存在还款分摊。',
               scheduleId: schedule.id,
             ),

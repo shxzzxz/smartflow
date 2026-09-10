@@ -17,12 +17,14 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
+import '../../../../domain/credit/port/installment_repricing_repository.dart';
+import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/port/installment_product_repository.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
+import 'installment_plan_service.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
-import '../../../../domain/credit/service/installment/installment_stage_schedule_editor.dart';
-import 'installment_status_validation_coordinator.dart';
-import '../../settlement/credit_settlement_coordinator.dart';
+import '../../../../domain/credit/valobj/installment_plan_change.dart';
+import '../../settlement/settlement_app_service.dart';
 
 abstract interface class InstallmentAppService {
   Future<CreateContractResult> createDisbursementContract(
@@ -31,23 +33,14 @@ abstract interface class InstallmentAppService {
 
   Future<void> updateContract(UpdateContractCommand command);
 
-  /// 预览按当前合同参数重算后的 pending 金额；日期保持现有 schedule 日期不变。
-  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
-    RecalculateContractSchedulesCommand command,
-  );
-
-  /// 确认显式重算：只覆盖 pending 行金额，日期和 paid / skipped 行保持不变。
-  Future<void> recalculateContractSchedules(
-    RecalculateContractSchedulesCommand command,
+  /// 预览按候选条款重建待还尾部，返回确认所需的事实指纹。
+  Future<ContractRecalculationPreview> previewContractRecalculation(
+    PreviewContractRecalculationCommand command,
   );
 
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command);
 
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command);
-
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  );
 
   /// 删除合同：仅允许无提前还款且所有计划均未发生还款的合同。
   Future<void> deleteContract(DeleteContractCommand command);
@@ -61,12 +54,24 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
+    InstallmentPlanService? plans,
     InstallmentProductRepository? products,
+    InstallmentRepricingRepository? repricings,
     InstallmentOriginationService origination =
         const InstallmentOriginationService(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
     RepaymentPolicyService repaymentPolicy = const RepaymentPolicyService(),
-  }) : _products = products,
+  }) : _plans =
+           plans ??
+           InstallmentPlanService(
+             installments: repository,
+             repayments: repayments,
+             bills: bills,
+             runner: transactionRunner,
+             idGenerator: idGenerator,
+           ),
+       _repricings = repricings,
+       _products = products,
        _repository = repository,
        _bills = bills,
        _repayments = repayments,
@@ -76,18 +81,15 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
        _origination = origination,
        _lifecycle = lifecycle,
        _repaymentPolicy = repaymentPolicy,
-       _statusValidation = InstallmentStatusValidationCoordinator(
-         installments: repository,
-         bills: bills,
-         repayments: repayments,
-       ),
-       _repaymentSettlement = CreditSettlementCoordinator(
+       _repaymentSettlement = SettlementAppService(
          bills: bills,
          repayments: repayments,
          installments: repository,
        );
 
+  final InstallmentPlanService _plans;
   final InstallmentRepository _repository;
+  final InstallmentRepricingRepository? _repricings;
   final InstallmentProductRepository? _products;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
@@ -97,8 +99,7 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   final InstallmentOriginationService _origination;
   final InstallmentLifecycleService _lifecycle;
   final RepaymentPolicyService _repaymentPolicy;
-  final InstallmentStatusValidationCoordinator _statusValidation;
-  final CreditSettlementCoordinator _repaymentSettlement;
+  final SettlementAppService _repaymentSettlement;
 
   @override
   Future<CreateContractResult> createDisbursementContract(
@@ -184,69 +185,17 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       _runner.run(() => _updateContract(command));
 
   Future<void> _updateContract(UpdateContractCommand command) async {
-    final contract = await _repository.findContract(command.contractId);
-    if (contract == null) {
-      throw BusinessException(
-        CreditErrorCode.contractNotFound,
-        message: 'Installment contract does not exist.',
-      );
-    }
-    var schedules = await _repository.listSchedules(command.contractId);
-    if (command.stageTerms case final input?) {
-      input.validate();
-      final owned = contract.stageTerms.stages.map((s) => s.id).toSet();
-      final terms = InstallmentContractTerms(
-        dayCount: input.dayCount,
-        rounding: input.rounding,
-        tailDifference: input.tailDifference,
-        stages: [
-          for (final stage in input.stages)
-            InstallmentContractStage(
-              id: owned.contains(stage.id) ? stage.id : _idGenerator.newId(),
-              terms: stage.terms,
-            ),
-        ],
-      );
-      terms.validate();
-      const InstallmentPlanEngine().plan(
-        terms.planTerms(
-          contract.principal,
-          command.borrowingDate ?? contract.borrowingDate,
-        ),
-      );
-      const InstallmentStageScheduleEditor().validateRevision(
-        contract,
+    final prepared = await _prepareContractUpdate(command);
+    final contract = prepared.contract;
+    final schedules = prepared.schedules;
+    final terms = command.stageTerms;
+    if (terms != null) {
+      await _discardChangedRateCandidates(
+        contract.id,
+        prepared.previousTerms,
         terms,
-        schedules,
       );
-      if (!command.regeneratePlan &&
-          !const InstallmentStageScheduleEditor().sameLayout(
-            contract.stageTerms,
-            terms,
-          )) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '阶段结构或期数已改变，请先按参数重算计划',
-        );
-      }
-      final product =
-          command.productId == null || command.productId == contract.productId
-          ? null
-          : await _products?.find(command.productId!);
-      if (command.productId != null &&
-          command.productId != contract.productId &&
-          (product == null || product.archived)) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '产品模板不存在或已归档',
-        );
-      }
-      contract.reviseStageTerms(
-        terms,
-        customRules: command.customRules,
-        productId: product?.id,
-        productName: product?.name,
-      );
+      await _reviseContractTerms(contract, command, terms);
     }
     contract.reviseDetails(
       name: command.name,
@@ -254,14 +203,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       note: command.note,
       disbursementAccountId: command.disbursementAccountId,
     );
-    if (command.regeneratePlan) {
-      schedules = const InstallmentStageScheduleEditor().rebuild(
-        contract: contract,
-        existing: schedules,
-        prepaymentMinor: await _prepaymentSumMinor(contract.id),
-        newId: _idGenerator.newId,
-      );
-    }
     contract.reviseSchedules(
       schedules: schedules,
       revisions: [
@@ -276,61 +217,164 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       ],
     );
 
-    await _runner.run<void>(() async {
-      // 联动放款交易（仅对放款合同存在 disbursement transaction）。
-      if (contract.sourceType == InstallmentSourceType.disbursement) {
-        final txId = contract.disbursementTransactionId;
-        if (txId != null) {
-          if (command.disbursementAccountId != null ||
-              command.borrowingDate != null) {
-            await _ledger.editBorrowing(
-              CreditLedgerEditBorrowingCommand(
-                transactionId: txId,
-                receiveAccountId: command.disbursementAccountId,
-                occurredAt: command.borrowingDate,
-              ),
-            );
-          }
-          if (command.note != null) {
-            await _ledger.updateBasicInfo(
-              CreditLedgerUpdateBasicInfoCommand(
-                transactionId: txId,
-                note: _nullableStringPatch(command.note),
-              ),
-            );
-          }
-        }
-      }
-
-      await _repository.saveAggregate(contract, schedules);
-    });
+    await _synchronizeBorrowing(contract, command);
+    await _repository.saveAggregate(contract, schedules);
   }
 
-  @override
-  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
-    RecalculateContractSchedulesCommand command,
-  ) {
-    return _buildPendingRecalculationPreview(command);
-  }
-
-  @override
-  Future<void> recalculateContractSchedules(
-    RecalculateContractSchedulesCommand command,
-  ) {
-    return _runner.run(() async {
-      final contract = await _repository.findContract(command.contractId);
-      if (contract == null) {
-        throw BusinessException(CreditErrorCode.contractNotFound);
+  Future<
+    ({
+      InstallmentContract contract,
+      List<InstallmentSchedule> schedules,
+      InstallmentContractTerms previousTerms,
+    })
+  >
+  _prepareContractUpdate(UpdateContractCommand command) async {
+    var contract =
+        await _repository.findContract(command.contractId) ??
+        (throw BusinessException(CreditErrorCode.contractNotFound));
+    contract.ensureEditable();
+    var schedules = await _repository.listSchedules(command.contractId);
+    final previousTerms = contract.stageTerms;
+    final terms = command.stageTerms ?? previousTerms;
+    terms.validateReplacementOf(previousTerms);
+    if (command.regeneratePlan) {
+      final token = command.planPreviewToken;
+      if (token == null ||
+          (command.borrowingDate != null &&
+              command.borrowingDate != contract.borrowingDate)) {
+        throw BusinessException(
+          CreditErrorCode.contractPersistenceConflict,
+          message: '请按当前借款日期重新预览计划后保存',
+        );
       }
-      await updateContract(
-        UpdateContractCommand(
-          contractId: command.contractId,
-          stageTerms: command.stageTerms ?? contract.stageTerms,
-          regeneratePlan: true,
+      await _plans.confirmChange(
+        contract.id,
+        RecalculateFromTerms(terms),
+        token: token,
+      );
+      contract = (await _repository.findContract(command.contractId))!;
+      schedules = await _repository.listSchedules(command.contractId);
+    } else if (!terms.hasSameLayout(previousTerms)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '阶段结构或期数已改变，请先按参数重算计划',
+      );
+    } else if (command.stageTerms != null || command.borrowingDate != null) {
+      const InstallmentPlanEngine().generate(
+        terms.planTerms(
+          contract.principal,
+          command.borrowingDate ?? contract.borrowingDate,
         ),
       );
-    });
+    }
+    return (
+      contract: contract,
+      schedules: schedules,
+      previousTerms: previousTerms,
+    );
   }
+
+  Future<void> _discardChangedRateCandidates(
+    String contractId,
+    InstallmentContractTerms previousTerms,
+    InstallmentContractTerms terms,
+  ) async {
+    final changedRateStages = <String>{};
+    for (final previous in previousTerms.stages) {
+      if (previous.terms is! AmortizingStage) continue;
+      final old = previous.terms as AmortizingStage;
+      final next = terms.stages
+          .where((s) => s.id == previous.id)
+          .firstOrNull
+          ?.terms;
+      if (next is! AmortizingStage ||
+          next.floatingRate != old.floatingRate ||
+          next.rate != old.rate) {
+        changedRateStages.add(previous.id);
+      }
+    }
+    await _repricings?.discardPending(contractId, changedRateStages);
+  }
+
+  Future<void> _reviseContractTerms(
+    InstallmentContract contract,
+    UpdateContractCommand command,
+    InstallmentContractTerms terms,
+  ) async {
+    final product =
+        command.productId == null || command.productId == contract.productId
+        ? null
+        : await _products?.find(command.productId!);
+    if (command.productId != null &&
+        command.productId != contract.productId &&
+        (product == null || product.archived)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '产品模板不存在或已归档',
+      );
+    }
+    contract.reviseStageTerms(
+      command.regeneratePlan ? contract.stageTerms : terms,
+      customRules: command.customRules,
+      productId: product?.id,
+      productName: product?.name,
+    );
+  }
+
+  Future<void> _synchronizeBorrowing(
+    InstallmentContract contract,
+    UpdateContractCommand command,
+  ) async {
+    if (contract.sourceType != InstallmentSourceType.disbursement) return;
+    final txId = contract.disbursementTransactionId;
+    if (txId == null) return;
+    if (command.disbursementAccountId != null ||
+        command.borrowingDate != null) {
+      await _ledger.editBorrowing(
+        CreditLedgerEditBorrowingCommand(
+          transactionId: txId,
+          receiveAccountId: command.disbursementAccountId,
+          occurredAt: command.borrowingDate,
+        ),
+      );
+    }
+    if (command.note != null) {
+      await _ledger.updateBasicInfo(
+        CreditLedgerUpdateBasicInfoCommand(
+          transactionId: txId,
+          note: _nullableStringPatch(command.note),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<ContractRecalculationPreview> previewContractRecalculation(
+    PreviewContractRecalculationCommand command,
+  ) => _runner.run(() async {
+    final contract = await _repository.findContract(command.contractId);
+    if (contract == null) {
+      throw BusinessException(CreditErrorCode.contractNotFound);
+    }
+    final preview = await _plans.previewChange(
+      contract.id,
+      RecalculateFromTerms(command.stageTerms ?? contract.stageTerms),
+    );
+    return ContractRecalculationPreview(
+      token: preview.token,
+      schedules: List.unmodifiable([
+        for (final row in preview.change.rows)
+          RecalculatedSchedulePreview(
+            scheduleId: row.id,
+            periodNo: row.periodNo,
+            expectedRepaymentDate: row.date,
+            expectedPrincipal: row.principal,
+            expectedInterest: row.interest,
+            expectedFee: row.fee,
+          ),
+      ]),
+    );
+  });
 
   @override
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
@@ -354,71 +398,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     );
     await _runner.run<void>(
       () => _repository.saveAggregate(aggregate.contract, aggregate.schedules),
-    );
-  }
-
-  @override
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  ) {
-    return _runner.run(() => _statusValidation.validate(command.contractId));
-  }
-
-  Future<List<RecalculatedSchedulePreview>> _buildPendingRecalculationPreview(
-    RecalculateContractSchedulesCommand command,
-  ) async {
-    final contractId = command.contractId;
-    final contract = await _repository.findContract(contractId);
-    if (contract == null) {
-      throw BusinessException(
-        CreditErrorCode.contractNotFound,
-        message: 'Installment contract does not exist.',
-      );
-    }
-    contract.ensureEditable();
-
-    final schedules = await _repository.listSchedules(contractId);
-    final prepaymentPrincipalMinor = await _prepaymentSumMinor(contractId);
-    final calculationContract = _contractForRecalculation(contract, command);
-    final rows = const InstallmentStageScheduleEditor().rebuild(
-      contract: calculationContract,
-      existing: schedules,
-      prepaymentMinor: prepaymentPrincipalMinor,
-      newId: _idGenerator.newId,
-    );
-    return [
-      for (final row in rows)
-        RecalculatedSchedulePreview(
-          scheduleId: row.id,
-          periodNo: row.periodNo,
-          expectedRepaymentDate: row.expectedRepaymentDate,
-          expectedPrincipal: row.expectedPrincipal,
-          expectedInterest: row.expectedInterest,
-          expectedFee: row.expectedFee,
-        ),
-    ];
-  }
-
-  InstallmentContract _contractForRecalculation(
-    InstallmentContract contract,
-    RecalculateContractSchedulesCommand command,
-  ) {
-    final stages = command.stageTerms;
-    if (stages == null) return contract;
-    stages.validate();
-    return InstallmentContract(
-      id: contract.id,
-      name: contract.name,
-      liabilityAccountId: contract.liabilityAccountId,
-      sourceType: contract.sourceType,
-      principal: contract.principal,
-      borrowingDate: contract.borrowingDate,
-      status: contract.status,
-      createdAt: contract.createdAt,
-      stageTerms: stages,
-      productId: contract.productId,
-      productName: contract.productName,
-      customRules: contract.customRules,
     );
   }
 
@@ -516,14 +495,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       }
       await _bills.updateBill(bill);
     }
-  }
-
-  Future<int> _prepaymentSumMinor(String contractId) async {
-    final repayments = await _repayments.listByTarget(
-      RepaymentTargetType.contract,
-      contractId,
-    );
-    return _lifecycle.prepaymentPrincipalMinor(repayments);
   }
 
   CreditLedgerOwnership _installmentOwnership(

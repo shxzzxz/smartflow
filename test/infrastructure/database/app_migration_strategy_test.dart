@@ -7,6 +7,220 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
 void main() {
+  for (final version in [36, 37]) {
+    test(
+      'v$version migrates LPR terms and repricing snapshots without losing evidence',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'smartflow-reference-terms-',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File('${directory.path}/smartflow.sqlite');
+        final old = _openDatabase(file);
+        await old.customSelect('SELECT 1').get();
+        await old.customStatement(
+          'ALTER TABLE installment_stage_configs RENAME COLUMN reference_rate_type TO lpr_tenor',
+        );
+        await old.customStatement('DROP TABLE installment_repricing_records');
+        await old.customStatement(
+          '''CREATE TABLE installment_repricing_records (
+        id TEXT PRIMARY KEY, contract_id TEXT NOT NULL, stage_id TEXT NOT NULL,
+        reset_date INTEGER NOT NULL, effective_date INTEGER NOT NULL,
+        quote_date INTEGER NOT NULL, tenor TEXT NOT NULL, lpr_ppm INTEGER NOT NULL,
+        spread_bp INTEGER NOT NULL, source TEXT NOT NULL, applied INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        UNIQUE (contract_id, stage_id, reset_date),
+        CHECK (tenor IN ('oneYear', 'fiveYearPlus')),
+        CHECK (lpr_ppm >= 0 AND lpr_ppm + spread_bp * 100 >= 0),
+        CHECK (quote_date <= reset_date AND reset_date <= effective_date))''',
+        );
+        for (final (index, tenor) in ['oneYear', 'fiveYearPlus'].indexed) {
+          await old.customStatement(
+            '''INSERT INTO installment_stage_configs
+          (id, owner_type, owner_id, position, stage_kind, repayment_method,
+           rate_period, rate_ppm, lpr_tenor, spread_bp, first_reset_date,
+           first_effective_date, repricing_cycle_months, repricing_payment_timing)
+          VALUES (?, 'contract', 'loan', ?, 'repayment', 'equalPrincipal',
+                  'annual', 45000, ?, -30, 1703030400, 1704067200, 12, 'nextPeriod')''',
+            ['stage-$index', index, tenor],
+          );
+          await old.customStatement(
+            '''INSERT INTO installment_repricing_records
+          VALUES (?, 'loan', ?, 1703030400, 1704067200, 1703030400, ?, 42000,
+                  -30, 'legacy', ?, 1703030401)''',
+            ['record-$index', 'stage-$index', tenor, index],
+          );
+        }
+        await old.customStatement('PRAGMA user_version = $version');
+        await old.close();
+        final db = _openDatabase(file);
+        addTearDown(db.close);
+        final stages =
+            await (db.select(db.installmentStageConfigs)
+                  ..where(
+                    (s) =>
+                        s.ownerType.equals('contract') &
+                        s.ownerId.equals('loan'),
+                  )
+                  ..orderBy([(s) => OrderingTerm.asc(s.position)]))
+                .get();
+        final records = await (db.select(
+          db.installmentRepricingRecords,
+        )..orderBy([(r) => OrderingTerm.asc(r.id)])).get();
+        expect(stages.map((s) => s.referenceRateType), [
+          'lprOneYear',
+          'lprFiveYearPlus',
+        ]);
+        expect(
+          stages.every(
+            (s) =>
+                s.spreadBp == -30 &&
+                s.ratePpm == 45000 &&
+                s.repricingCycleMonths == 12,
+          ),
+          isTrue,
+        );
+        expect(records.map((r) => r.referenceRateType), [
+          'lprOneYear',
+          'lprFiveYearPlus',
+        ]);
+        expect(records.map((r) => r.applied), [false, true]);
+        for (final record in records) {
+          expect(record.referenceRatePpm, 42000);
+          expect(record.spreadBp, -30);
+          expect(record.source, 'legacy');
+          expect(
+            record.referenceRateDate.millisecondsSinceEpoch ~/ 1000,
+            1703030400,
+          );
+          expect(record.resetDate.millisecondsSinceEpoch ~/ 1000, 1703030400);
+          expect(
+            record.effectiveDate.millisecondsSinceEpoch ~/ 1000,
+            1704067200,
+          );
+          expect(record.createdAt.millisecondsSinceEpoch ~/ 1000, 1703030401);
+        }
+        for (final table in [
+          'installment_stage_configs',
+          'installment_repricing_records',
+        ]) {
+          final columns = await db
+              .customSelect('PRAGMA table_info($table)')
+              .get();
+          expect(
+            columns.map((c) => c.read<String>('name')),
+            isNot(
+              anyOf(
+                contains('lpr_tenor'),
+                contains('tenor'),
+                contains('lpr_ppm'),
+                contains('quote_date'),
+              ),
+            ),
+          );
+          expect(
+            await db.customSelect('PRAGMA foreign_key_list($table)').get(),
+            isEmpty,
+          );
+        }
+      },
+    );
+  }
+  test(
+    'v36 preserves legacy LPR records in the reference rate table without sync state',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-v36-rates-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final old = _openDatabase(file);
+      await old.customSelect('SELECT 1').get();
+      await old.customStatement('DROP TABLE reference_rates');
+      await old.customStatement('''CREATE TABLE lpr_quotes (
+      quote_date INTEGER NOT NULL, tenor TEXT NOT NULL, rate_ppm INTEGER NOT NULL,
+      source TEXT NOT NULL, created_at INTEGER NOT NULL,
+      PRIMARY KEY (quote_date, tenor))''');
+      await old.customStatement(
+        "INSERT INTO lpr_quotes VALUES (1703030400, 'oneYear', 34500, 'legacy', 1703030401)",
+      );
+      await old.customStatement('PRAGMA user_version = 36');
+      await old.close();
+      final db = _openDatabase(file);
+      addTearDown(db.close);
+      final row = await db.select(db.referenceRates).getSingle();
+      expect(row.type, 'lprOneYear');
+      expect(row.ratePpm, 34500);
+      expect(row.source, 'legacy');
+      expect(row.rateDate.millisecondsSinceEpoch ~/ 1000, 1703030400);
+      expect(row.createdAt.millisecondsSinceEpoch ~/ 1000, 1703030401);
+      expect(
+        await db.customSelect('PRAGMA foreign_key_list(reference_rates)').get(),
+        isEmpty,
+      );
+      expect(
+        await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE name IN ('lpr_quotes', 'reference_rate_sync_states')",
+            )
+            .get(),
+        isEmpty,
+      );
+    },
+  );
+  test(
+    'v35 migration preserves existing plans and requires review of untracked manual edits',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-v35-floating-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final old = _openDatabase(file);
+      await old.customSelect('SELECT 1').get();
+      await old.customStatement('DROP TABLE installment_repricing_records');
+      await old.customStatement('DROP TABLE reference_rates');
+      for (final name in [
+        'reference_rate_type',
+        'spread_bp',
+        'first_reset_date',
+        'first_effective_date',
+        'repricing_cycle_months',
+        'repricing_payment_timing',
+      ]) {
+        await old.customStatement(
+          'ALTER TABLE installment_stage_configs DROP COLUMN $name',
+        );
+      }
+      await old.customStatement(
+        'ALTER TABLE installment_schedules DROP COLUMN manually_adjusted',
+      );
+      await old.customStatement(
+        "INSERT INTO installment_schedules "
+        "(id, contract_id, stage_id, period_no, expected_repayment_date, expected_principal_minor, expected_interest_minor, status) "
+        "VALUES ('existing', 'loan', 'stage', 1, 1703000000, 87654, 1234, 'pending')",
+      );
+      await old.customStatement('PRAGMA user_version = 35');
+      await old.close();
+      final db = _openDatabase(file);
+      addTearDown(db.close);
+      final row = await db.select(db.installmentSchedules).getSingle();
+      expect(row.id, 'existing');
+      expect(row.expectedPrincipalMinor, 87654);
+      expect(row.expectedInterestMinor, 1234);
+      expect(row.manuallyAdjusted, isTrue);
+      expect(await db.select(db.referenceRates).get(), isEmpty);
+      expect(await db.select(db.installmentRepricingRecords).get(), isEmpty);
+      expect(
+        await db
+            .customSelect(
+              'PRAGMA foreign_key_list(installment_repricing_records)',
+            )
+            .get(),
+        isEmpty,
+      );
+    },
+  );
   test(
     'v33 backfills contract names from local borrowing dates without changing plans',
     () async {
@@ -335,7 +549,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 35);
+    expect(version.read<int>('user_version'), 38);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -374,7 +588,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 35);
+      expect(version.read<int>('user_version'), 38);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -428,7 +642,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 35);
+      expect(version.read<int>('user_version'), 38);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -539,7 +753,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 35);
+      expect(version.read<int>('user_version'), 38);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -706,7 +920,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 35);
+      expect(version.read<int>('user_version'), 38);
 
       for (final table in [
         'import_entity_mappings',

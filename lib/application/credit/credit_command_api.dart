@@ -23,6 +23,13 @@ export 'bill/command/credit_bill_generation_app_service.dart';
 export 'bill/command/credit_bill_generation_task.dart';
 export 'installment/command/installment_app_service.dart';
 export 'installment/command/installment_command.dart';
+export 'installment/command/installment_status_repair_app_service.dart';
+export 'installment/command/contract_status_validation_result.dart';
 export 'repayment/command/repayment_app_service.dart';
 export 'repayment/command/repayment_command.dart';
 export 'repayment/repayment_amount_dto.dart';
+export 'installment/command/installment_repricing_service.dart'
+    show RepricingPreview, RepricingScheduleDifference;
+export 'reference_rate/reference_rate_service.dart'
+    show ReferenceRateService, ReferenceRateHistory;
+export '../../domain/credit/valobj/reference_rate.dart';

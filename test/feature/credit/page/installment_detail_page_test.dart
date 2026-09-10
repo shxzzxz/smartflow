@@ -85,7 +85,7 @@ void main() {
   testWidgets(
     'settled contract exposes status validation with result summary',
     (tester) async {
-      final service = _FakeInstallmentAppService(
+      final repair = _FakeStatusRepairAppService(
         validationResult: const ContractStatusValidationResult(
           repairedScheduleCount: 2,
           contractStatusChanged: true,
@@ -100,7 +100,8 @@ void main() {
       );
       await tester.pumpWidget(
         _app(
-          service: service,
+          service: _FakeInstallmentAppService(),
+          statusRepair: repair,
           scheduleStatus: InstallmentScheduleStatus.paid,
           contractStatus: InstallmentContractStatus.settled,
         ),
@@ -113,7 +114,7 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, '校验'));
       await tester.pumpAndSettle();
 
-      expect(service.validationCommands.single.contractId, 'contract-1');
+      expect(repair.contractIds.single, 'contract-1');
       expect(find.text('校验完成，已修复 2 个还款计划及合同状态，另有 1 项数据冲突未处理'), findsOneWidget);
     },
   );
@@ -150,11 +151,15 @@ Widget _app({
   required InstallmentScheduleStatus scheduleStatus,
   InstallmentContractStatus contractStatus = InstallmentContractStatus.active,
   _FakeRepaymentAppService? repaymentService,
+  _FakeStatusRepairAppService? statusRepair,
   int scheduleCount = 1,
   List<ContractRepayment> repayments = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
+      installmentStatusRepairAppServiceProvider.overrideWithValue(
+        statusRepair ?? _FakeStatusRepairAppService(),
+      ),
       installmentContractProvider.overrideWith(
         (ref, contractId) async => _contract(status: contractStatus),
       ),
@@ -234,17 +239,8 @@ ContractRepayment _repayment(String id) {
 }
 
 class _FakeInstallmentAppService implements InstallmentAppService {
-  _FakeInstallmentAppService({
-    this.validationResult = const ContractStatusValidationResult(
-      repairedScheduleCount: 0,
-      contractStatusChanged: false,
-    ),
-  });
-
-  final ContractStatusValidationResult validationResult;
   final skipCommands = <SkipInstallmentScheduleCommand>[];
   final restoreCommands = <RestoreInstallmentScheduleCommand>[];
-  final validationCommands = <ValidateContractStatusesCommand>[];
 
   @override
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
@@ -259,14 +255,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  ) async {
-    validationCommands.add(command);
-    return validationResult;
-  }
-
-  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -276,6 +264,29 @@ class _FakeRepaymentAppService implements RepaymentAppService {
   @override
   Future<void> deleteRepayment(DeleteCreditRepaymentCommand command) async {
     deleteCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeStatusRepairAppService implements InstallmentStatusRepairAppService {
+  _FakeStatusRepairAppService({
+    this.validationResult = const ContractStatusValidationResult(
+      repairedScheduleCount: 0,
+      contractStatusChanged: false,
+    ),
+  });
+
+  final ContractStatusValidationResult validationResult;
+  final contractIds = <String>[];
+
+  @override
+  Future<ContractStatusValidationResult> validateAndRepair(
+    String contractId,
+  ) async {
+    contractIds.add(contractId);
+    return validationResult;
   }
 
   @override

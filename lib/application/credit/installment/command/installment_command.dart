@@ -37,56 +37,23 @@ class DeleteContractCommand {
   final String contractId;
 }
 
-class ValidateContractStatusesCommand {
-  const ValidateContractStatusesCommand({required this.contractId});
-
-  final String contractId;
-}
-
-class ContractStatusValidationResult {
-  const ContractStatusValidationResult({
-    required this.repairedScheduleCount,
-    required this.contractStatusChanged,
-    this.issues = const [],
-  });
-
-  final int repairedScheduleCount;
-  final bool contractStatusChanged;
-  final List<ContractStatusValidationIssue> issues;
-
-  bool get hasChanges => repairedScheduleCount > 0 || contractStatusChanged;
-}
-
-class ContractStatusValidationIssue {
-  const ContractStatusValidationIssue({
-    required this.type,
-    required this.message,
-    this.scheduleId,
-  });
-
-  final ContractStatusValidationIssueType type;
-  final String message;
-  final String? scheduleId;
-}
-
-enum ContractStatusValidationIssueType {
-  skippedScheduleHasAllocation,
-  repaymentMissing,
-  zeroAllocation,
-  noSchedules,
-  scheduleMissing,
-  repaymentTargetMismatch,
-  billItemMissing,
-  billItemReferenceMismatch,
-}
-
-class RecalculateContractSchedulesCommand {
-  const RecalculateContractSchedulesCommand({
+/// 只生成重算预览；确认通过 [UpdateContractCommand] 提交预览指纹。
+class PreviewContractRecalculationCommand {
+  const PreviewContractRecalculationCommand({
     required this.contractId,
     this.stageTerms,
   });
   final String contractId;
   final InstallmentContractTerms? stageTerms;
+}
+
+class ContractRecalculationPreview {
+  const ContractRecalculationPreview({
+    required this.schedules,
+    required this.token,
+  });
+  final List<RecalculatedSchedulePreview> schedules;
+  final String token;
 }
 
 class RecalculatedSchedulePreview {
@@ -99,7 +66,7 @@ class RecalculatedSchedulePreview {
     required this.expectedFee,
   });
 
-  final String scheduleId;
+  final String? scheduleId;
   final int periodNo;
   final DateTime expectedRepaymentDate;
   final Money expectedPrincipal;
@@ -148,7 +115,7 @@ class SchedulePendingPatch {
 ///
 /// 编辑范围由 service 校验：
 /// - 借款日期可以改；若有放款交易，会联动 disbursement 交易的 occurredAt。
-/// - 参数字段只写回合同快照，不会自动重算 schedule。
+/// - 默认只更新参数快照；[regeneratePlan] 为 true 时用 [planPreviewToken] 确认重算。
 /// - [schedulePatches] 只覆盖对应 pending 行；paid / skipped 行不可编辑。
 ///
 /// Partial update 约定：
@@ -167,6 +134,7 @@ class UpdateContractCommand {
     this.stageTerms,
     this.customRules,
     this.regeneratePlan = false,
+    this.planPreviewToken,
   });
 
   final String contractId;
@@ -183,6 +151,7 @@ class UpdateContractCommand {
   final InstallmentContractTerms? stageTerms;
   final bool? customRules;
   final bool regeneratePlan;
+  final String? planPreviewToken;
 }
 
 class CreateContractResult {

@@ -1,14 +1,16 @@
+import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
+import 'package:smartflow/domain/credit/valobj/equal_installment_amount.dart';
+import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/core/money/money.dart';
 
 void main() {
-  const planner = InstallmentPlanEngine();
-
   group('InstallmentPlanEngine.generateDates', () {
     test('totalPeriods=1 时返回末期日', () {
-      final dates = planner.generateDates(
+      final dates = _dates(
         firstRepaymentDate: DateTime(2026, 2, 10),
         lastRepaymentDate: DateTime(2026, 12, 10),
         totalPeriods: 1,
@@ -17,7 +19,7 @@ void main() {
     });
 
     test('中间期 = 首期 + (i-1) 月，末期为末期还款日', () {
-      final dates = planner.generateDates(
+      final dates = _dates(
         firstRepaymentDate: DateTime(2026, 1, 15),
         lastRepaymentDate: DateTime(2026, 12, 20),
         totalPeriods: 12,
@@ -33,7 +35,7 @@ void main() {
 
     test('期数 <= 0 抛错', () {
       expect(
-        () => planner.generateDates(
+        () => _dates(
           firstRepaymentDate: DateTime(2026, 1, 1),
           lastRepaymentDate: DateTime(2026, 6, 1),
           totalPeriods: 0,
@@ -45,7 +47,7 @@ void main() {
 
   group('InstallmentPlanEngine.generate (整体)', () {
     test('equalInstallment：本金累计等于合同本金', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1200000),
         borrowingDate: DateTime(2026, 5, 10),
         firstRepaymentDate: DateTime(2026, 6, 10),
@@ -65,7 +67,7 @@ void main() {
     });
 
     test('equalInstallment 零利率退化为等额本金', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
@@ -85,7 +87,7 @@ void main() {
     });
 
     test('equalPrincipal 本金均分，末期吸收误差', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
@@ -102,7 +104,7 @@ void main() {
     });
 
     test('interestFirst 前 N-1 期只付息，末期付本金', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 100000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
@@ -120,7 +122,7 @@ void main() {
     });
 
     test('flatFee 本金 + 手续费均分', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 500000),
         borrowingDate: DateTime(2026, 5, 9),
         firstRepaymentDate: DateTime(2026, 6, 9),
@@ -143,7 +145,7 @@ void main() {
     });
 
     test('custom 返回 N 个全零草稿，日期由 generateDates 决定', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 9999),
         borrowingDate: DateTime(2025, 12, 15),
         firstRepaymentDate: DateTime(2026, 1, 15),
@@ -163,7 +165,7 @@ void main() {
     test('daily + equalPrincipal 不规则首期：首期跨 45 天，利息按天数比例放大', () {
       // 借款 2026-01-01，首期 2026-02-15（45 天），末期 2026-05-15
       // 首期天数比 30 天多 15 天，利息应明显大于标准月供利息
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15),
@@ -183,7 +185,7 @@ void main() {
 
     test('daily + interestFirst 不规则末期：末期天数缩短，利息按比例缩小', () {
       // 借款 2026-01-01，首期 2026-02-01，末期 2026-04-15（仅 14 天 vs 30 天）
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 1),
@@ -205,7 +207,7 @@ void main() {
     });
 
     test('monthly + equalInstallment：各期 total 严格相等（末期容差 ≤ 10 minor）', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1200000),
         borrowingDate: DateTime(2026, 5, 10),
         firstRepaymentDate: DateTime(2026, 6, 10),
@@ -242,7 +244,7 @@ void main() {
 
     test('monthly + equalPrincipal：不规则天数不影响利息', () {
       // 借款 2026-01-01，首期 2026-02-15（45 天），中间 2026-03-15（28 天），末期 2026-04-15（31 天）
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 1000000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15),
@@ -264,7 +266,7 @@ void main() {
     });
 
     test('monthly + interestFirst：各期利息严格相等 = P × r', () {
-      final drafts = planner.generate(
+      final drafts = _generate(
         principal: const Money(minorUnits: 100000),
         borrowingDate: DateTime(2026, 1, 1),
         firstRepaymentDate: DateTime(2026, 2, 15), // 不规则首期
@@ -287,7 +289,7 @@ void main() {
 
   group('InstallmentPlanEngine.allocate (按 dates 重算)', () {
     test('给定 anchor + dates 分配等额本金', () {
-      final allocs = planner.allocate(
+      final allocs = _allocate(
         remainingPrincipal: const Money(minorUnits: 600000),
         anchorDate: DateTime(2026, 3, 10),
         pendingDates: [
@@ -307,7 +309,7 @@ void main() {
 
     test('pendingDates 为空抛错', () {
       expect(
-        () => planner.allocate(
+        () => _allocate(
           remainingPrincipal: const Money(minorUnits: 1000),
           anchorDate: DateTime(2026, 1, 1),
           pendingDates: const [],
@@ -330,7 +332,7 @@ void main() {
       //           principal = 3417 - 67 = 3350; new balance = 3383
       // Period 3 (last): principal = 10000 - 3267 - 3350 = 3383
       //                  interest = round(3383·0.01·30/30) = 34
-      final allocs = planner.allocate(
+      final allocs = _allocate(
         remainingPrincipal: const Money(minorUnits: 10000),
         anchorDate: DateTime(2026, 1, 1),
         pendingDates: [
@@ -360,7 +362,7 @@ void main() {
       final dates = [
         for (var i = 1; i <= 12; i++) anchor.add(Duration(days: 30 * i)),
       ];
-      final dailyAllocs = planner.allocate(
+      final dailyAllocs = _allocate(
         remainingPrincipal: const Money(minorUnits: 1200000),
         anchorDate: anchor,
         pendingDates: dates,
@@ -369,7 +371,7 @@ void main() {
         ratePeriod: InterestRatePeriod.monthly,
         ratePpm: 10000,
       );
-      final monthlyAllocs = planner.allocate(
+      final monthlyAllocs = _allocate(
         remainingPrincipal: const Money(minorUnits: 1200000),
         anchorDate: anchor,
         pendingDates: dates,
@@ -393,3 +395,106 @@ void main() {
     });
   });
 }
+
+List<DateTime> _dates({
+  required DateTime firstRepaymentDate,
+  required DateTime lastRepaymentDate,
+  required int totalPeriods,
+}) => IntervalRepaymentDates(
+  firstDate: firstRepaymentDate,
+  lastDate: lastRepaymentDate,
+  count: totalPeriods,
+).getDates();
+
+List<InstallmentSchedulePlanEntry> _generate({
+  required Money principal,
+  required DateTime borrowingDate,
+  required DateTime firstRepaymentDate,
+  required DateTime lastRepaymentDate,
+  required int totalPeriods,
+  required InstallmentRepaymentMethod method,
+  required InterestAccrualMethod accrualMethod,
+  InterestRatePeriod? ratePeriod,
+  int? ratePpm,
+  int totalFeeMinor = 0,
+  int? equalInstallmentOverrideMinor,
+}) => const InstallmentPlanEngine()
+    .generate(
+      _terms(
+        principal: principal,
+        start: borrowingDate,
+        dates: IntervalRepaymentDates(
+          firstDate: firstRepaymentDate,
+          lastDate: lastRepaymentDate,
+          count: totalPeriods,
+        ),
+        method: method,
+        accrual: accrualMethod,
+        ratePeriod: ratePeriod,
+        ratePpm: ratePpm,
+        fee: totalFeeMinor,
+        fixed: equalInstallmentOverrideMinor,
+      ),
+    )
+    .entries;
+
+List<({Money principal, Money interest, Money fee})> _allocate({
+  required Money remainingPrincipal,
+  required DateTime anchorDate,
+  required List<DateTime> pendingDates,
+  required InstallmentRepaymentMethod method,
+  required InterestAccrualMethod accrualMethod,
+  InterestRatePeriod? ratePeriod,
+  int? ratePpm,
+  int remainingFeeMinor = 0,
+  int? equalInstallmentOverrideMinor,
+}) => [
+  for (final row
+      in const InstallmentPlanEngine()
+          .generate(
+            _terms(
+              principal: remainingPrincipal,
+              start: anchorDate,
+              dates: ExplicitRepaymentDates(pendingDates),
+              method: method,
+              accrual: accrualMethod,
+              ratePeriod: ratePeriod,
+              ratePpm: ratePpm,
+              fee: remainingFeeMinor,
+              fixed: equalInstallmentOverrideMinor,
+            ),
+          )
+          .entries)
+    (
+      principal: row.expectedPrincipal,
+      interest: row.expectedInterest,
+      fee: row.expectedFee,
+    ),
+];
+
+InstallmentPlanTerms _terms({
+  required Money principal,
+  required DateTime start,
+  required RepaymentDatesStrategy dates,
+  required InstallmentRepaymentMethod method,
+  required InterestAccrualMethod accrual,
+  InterestRatePeriod? ratePeriod,
+  int? ratePpm,
+  required int fee,
+  int? fixed,
+}) => InstallmentPlanTerms(
+  principal: principal,
+  borrowingDate: start,
+  stages: [
+    AmortizingStage(
+      dates: dates,
+      method: method,
+      accrual: accrual,
+      rate: InterestRate.maybe(ratePeriod, ratePpm),
+      fee: Money(minorUnits: fee),
+      installmentAmount: fixed != null && fixed > 0
+          ? EqualInstallmentAmount.fixed(Money(minorUnits: fixed))
+          : const EqualInstallmentAmount.actualRate(),
+    ),
+  ],
+);

@@ -789,6 +789,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
         final recalculated = await fixture.installments.listSchedules(
           contractId,
         );
+        expect(recalculated.every((row) => !row.manuallyAdjusted), isTrue);
         expect(
           recalculated[0].expectedPrincipal,
           const Money(minorUnits: 40000),

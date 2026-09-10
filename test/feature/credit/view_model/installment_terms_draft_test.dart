@@ -4,9 +4,52 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
+import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
+import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 
 void main() {
+  test(
+    'floating configuration round trip preserves signed BP, timing and calendar anchors',
+    () {
+      final draft = InstallmentStageDraft(
+        id: 'floating',
+        floating: true,
+        referenceRateType: ReferenceRateType.loanBenchmarkLongTerm,
+        firstDate: DateTime(2026, 1, 20),
+        firstResetDate: DateTime(2025, 12, 20),
+        firstEffectiveDate: DateTime(2026, 1, 1),
+        repricingCycleMonths: 6,
+        inputs: const {
+          StageInput.rate: '3.2',
+          StageInput.spreadBp: '-30',
+          StageInput.interval: '1',
+          StageInput.periods: '120',
+        },
+      );
+      final terms = InstallmentTermsDraft(stages: [draft]).contractTerms();
+      final reopened = InstallmentTermsDraft.contract(terms).stages.single;
+      expect(reopened.floating, isTrue);
+      expect(
+        reopened.referenceRateType,
+        ReferenceRateType.loanBenchmarkLongTerm,
+      );
+      expect(reopened.text(StageInput.spreadBp), '-30');
+      expect(reopened.repricingCycleMonths, 6);
+      expect(
+        reopened.repricingPaymentTiming,
+        RepricingPaymentTiming.nextPeriod,
+      );
+      expect(reopened.firstEffectiveDate, DateTime(2026, 1, 1));
+      expect(reopened.toContractStage().terms, isA<AmortizingStage>());
+      final flat = reopened.changeMethod(InstallmentRepaymentMethod.flatFee);
+      expect(flat.floating, isFalse);
+      expect(
+        (flat.toContractStage().terms as AmortizingStage).floatingRate,
+        isNull,
+      );
+    },
+  );
   test('adding a stage follows the actual last date and clamps month ends', () {
     final draft = InstallmentTermsDraft.loan(DateTime(2026, 1, 31));
     expect(draft.stages.single.firstDate, DateTime(2026, 2, 28));

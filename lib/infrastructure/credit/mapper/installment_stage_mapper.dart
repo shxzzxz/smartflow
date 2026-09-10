@@ -8,6 +8,8 @@ import '../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
 import '../../../domain/credit/valobj/equal_installment_amount.dart';
 import '../../../domain/credit/valobj/interest_rate.dart';
+import '../../../domain/credit/valobj/floating_rate.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../database/app_database.dart';
 
@@ -23,6 +25,7 @@ InstallmentContractTerms decodeContractTerms(
   List<InstallmentStageConfigRow> rows, {
   required String dayCount,
   required String rounding,
+  List<InstallmentRepricingRow> repricings = const [],
 }) => InstallmentContractTerms(
   dayCount: decodeDayCount(dayCount),
   rounding: RoundingMode.values.byName(rounding),
@@ -33,6 +36,24 @@ InstallmentContractTerms decodeContractTerms(
         terms: row.stageKind == 'deferment'
             ? DefermentStage(until: row.untilDate!)
             : AmortizingStage(
+                floatingRate: row.referenceRateType == null
+                    ? null
+                    : FloatingRateRule(
+                        referenceRateType: ReferenceRateType.values.byName(
+                          row.referenceRateType!,
+                        ),
+                        spreadBp: row.spreadBp!,
+                        firstResetDate: row.firstResetDate!,
+                        firstEffectiveDate: row.firstEffectiveDate!,
+                        cycleMonths: row.repricingCycleMonths!,
+                        paymentTiming: RepricingPaymentTiming.values.byName(
+                          row.repricingPaymentTiming!,
+                        ),
+                      ),
+                rateChanges: [
+                  for (final r in repricings)
+                    if (r.stageId == row.id && r.applied) decodeRateChange(r),
+                ],
                 dates: IntervalRepaymentDates(
                   firstDate: row.firstDate!,
                   count: row.periods!,
@@ -143,6 +164,12 @@ InstallmentStageConfigsCompanion encodeContractStage(
     accrualStartDate: Value(repayment.accrualStartDate),
     ratePeriod: Value(repayment.rate?.period.name),
     ratePpm: Value(repayment.rate?.ppm),
+    referenceRateType: Value(repayment.floatingRate?.referenceRateType.name),
+    spreadBp: Value(repayment.floatingRate?.spreadBp),
+    firstResetDate: Value(repayment.floatingRate?.firstResetDate),
+    firstEffectiveDate: Value(repayment.floatingRate?.firstEffectiveDate),
+    repricingCycleMonths: Value(repayment.floatingRate?.cycleMonths),
+    repricingPaymentTiming: Value(repayment.floatingRate?.paymentTiming.name),
     accrual: Value(repayment.accrual.name),
     feeMinor: Value(repayment.fee.minorUnits),
     endPrincipalMinor: Value(repayment.endPrincipal?.minorUnits),
@@ -164,3 +191,15 @@ InstallmentStageConfigsCompanion encodeContractStage(
     ),
   );
 }
+
+RateChange decodeRateChange(InstallmentRepricingRow row) => RateChange(
+  resetDate: row.resetDate,
+  effectiveDate: row.effectiveDate,
+  spreadBp: row.spreadBp,
+  referenceRate: ReferenceRate(
+    date: row.referenceRateDate,
+    type: ReferenceRateType.values.byName(row.referenceRateType),
+    ratePpm: row.referenceRatePpm,
+    source: row.source,
+  ),
+);

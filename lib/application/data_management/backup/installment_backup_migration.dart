@@ -7,6 +7,30 @@ void migrateInstallmentBackup(
   required int schemaVersion,
   required int formatVersion,
 }) {
+  if (schemaVersion < 36) {
+    tables.putIfAbsent('lpr_quotes', () => <BackupJson>[]);
+    tables.putIfAbsent('installment_repricing_records', () => <BackupJson>[]);
+    tables['installment_schedules'] = [
+      for (final row in tables['installment_schedules'] ?? <BackupJson>[])
+        {
+          ...row,
+          'manuallyAdjusted':
+              row['manuallyAdjusted'] ?? row['status'] == 'pending',
+        },
+    ];
+  }
+  if (schemaVersion < 37) {
+    tables['reference_rates'] = [
+      for (final row in tables.remove('lpr_quotes') ?? <BackupJson>[])
+        {
+            ...row,
+            'type': _legacyReferenceRateType(row['tenor']),
+            'rateDate': row['quoteDate'],
+          }
+          ..remove('tenor')
+          ..remove('quoteDate'),
+    ];
+  }
   if (schemaVersion < 34) {
     tables['installment_contracts'] = [
       for (final row in tables['installment_contracts'] ?? <BackupJson>[])
@@ -65,7 +89,40 @@ void migrateInstallmentBackup(
         ),
     ];
   }
+  if (schemaVersion < 38) {
+    tables['installment_stage_configs'] = [
+      for (final row in tables['installment_stage_configs'] ?? <BackupJson>[])
+        if (row.containsKey('lprTenor'))
+          {
+            ...row,
+            'referenceRateType': row['lprTenor'] == null
+                ? null
+                : _legacyReferenceRateType(row['lprTenor']),
+          }..remove('lprTenor')
+        else
+          row,
+    ];
+    tables['installment_repricing_records'] = [
+      for (final row
+          in tables['installment_repricing_records'] ?? <BackupJson>[])
+        {
+            ...row,
+            'referenceRateType': _legacyReferenceRateType(row['tenor']),
+            'referenceRateDate': row['quoteDate'],
+            'referenceRatePpm': row['lprPpm'],
+          }
+          ..remove('tenor')
+          ..remove('quoteDate')
+          ..remove('lprPpm'),
+    ];
+  }
 }
+
+String _legacyReferenceRateType(Object? tenor) => switch (tenor) {
+  'oneYear' => 'lprOneYear',
+  'fiveYearPlus' => 'lprFiveYearPlus',
+  _ => throw const BackupValidationException('旧 LPR 品种无效'),
+};
 
 String _contractDateName(BackupJson row) {
   final value = row['borrowingDate'];

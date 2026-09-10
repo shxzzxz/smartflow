@@ -14,6 +14,12 @@ class InstallmentStageConfigs extends Table {
   TextColumn get amountAlgorithm => text().nullable()();
   IntColumn get periods => integer().nullable()();
   IntColumn get ratePpm => integer().nullable()();
+  TextColumn get referenceRateType => text().nullable()();
+  IntColumn get spreadBp => integer().nullable()();
+  DateTimeColumn get firstResetDate => dateTime().nullable()();
+  DateTimeColumn get firstEffectiveDate => dateTime().nullable()();
+  IntColumn get repricingCycleMonths => integer().nullable()();
+  TextColumn get repricingPaymentTiming => text().nullable()();
   IntColumn get endPrincipalMinor => integer().nullable()();
   IntColumn get fixedAmountMinor => integer().nullable()();
   IntColumn get feeMinor => integer().nullable()();

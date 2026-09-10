@@ -16,6 +16,7 @@ import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../shared/presentation/reference_rate_presentation.dart';
 import '../presentation/contract_status_validation_presentation.dart';
 import '../presentation/installment_schedule_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
@@ -44,6 +45,17 @@ class InstallmentDetailPage extends ConsumerWidget {
             AppPageHeader(
               title: '分期合同',
               actions: [
+                if (loaded != null &&
+                    loaded.contract.status ==
+                        InstallmentContractStatus.active &&
+                    loaded.contract.stageTerms.repayments.any(
+                      (s) => s.floatingRate != null,
+                    ))
+                  AppHeaderIconButton(
+                    onPressed: () => _previewRepricing(context, ref),
+                    icon: RemixIcons.percent_line,
+                    tooltip: '重定价预览',
+                  ),
                 if (loaded != null)
                   AppHeaderIconButton(
                     onPressed: () => _confirmDelete(context, ref),
@@ -101,6 +113,82 @@ class InstallmentDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('删除失败：${error.message}')));
+    }
+  }
+
+  Future<void> _previewRepricing(BuildContext context, WidgetRef ref) async {
+    final vm = ref.read(
+      installmentDetailViewModelProvider(contractId).notifier,
+    );
+    final outcome = await vm.previewRepricing();
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionFailure<RepricingPreview?>(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      case UiActionSuccess<RepricingPreview?>(:final value):
+        if (value == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('暂无可应用的重定价结果；未确定的报价继续按已知利率预测。')),
+          );
+          return;
+        }
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('重定价差异预览'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${formatDateLabel(value.effectiveDate)} 起，执行年利率 ${value.ratePpm / 10000}%',
+                  ),
+                  if (value.hasFrozenPeriods)
+                    const Text('部分受影响期次已冻结，金额保持原样，请核对历史利息。'),
+                  if (value.hasIssuedBills)
+                    const Text('已出账账单保持原样，确认后请按需在账单详情刷新。'),
+                  if (value.requiresReview)
+                    const Text('请核对人工调整及冻结期次。确认将应用以下金额变化。'),
+                  for (final d in value.differences)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.space12),
+                      child: Text(
+                        '第 ${d.periodNo} 期 · ${formatDateLabel(d.date)}\n'
+                        '本金 ${d.oldPrincipal.format()} → ${d.principal.format()}\n'
+                        '利息 ${d.oldInterest.format()} → ${d.interest.format()}',
+                      ),
+                    ),
+                  if (value.differences.isEmpty)
+                    const Text('待还计划金额无变化，仍会记录本次重定价。'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('确认应用'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true || !context.mounted) return;
+        final applied = await vm.applyRepricing(value);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(switch (applied) {
+              UiActionSuccess<void>() => '已应用本次重定价',
+              UiActionFailure<void>(:final error) => error.message,
+            }),
+          ),
+        );
     }
   }
 
@@ -173,6 +261,18 @@ class _Body extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space8),
         _ActionBar(contract: contract, onValidate: onValidate),
+        if (contract.stageTerms.repayments.any(
+          (s) => s.floatingRate != null,
+        )) ...[
+          const SizedBox(height: AppSpacing.space12),
+          const Text('浮动利率计划：尚未确定的未来利率沿用已知利率预测，总利息与年化成本会随重定价变化。'),
+          for (final stage in contract.stageTerms.repayments)
+            for (final change in stage.rateChanges)
+              Text(
+                '${formatDateLabel(change.effectiveDate)} 起 ${change.rate.ppm / 10000}% · '
+                '${referenceRateTypeLabel(change.referenceRate.type)} ${referenceRatePercent(change.referenceRate.ratePpm)} ${change.spreadBp >= 0 ? '+' : ''}${change.spreadBp} BP',
+              ),
+        ],
         const SizedBox(height: AppSpacing.space12),
         Text('还款计划', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
@@ -294,8 +394,12 @@ class _Header extends StatelessWidget {
           value: contract.stageTerms.stages.length > 1
               ? '按各阶段条款'
               : _formatRate(
-                  contract.stageTerms.repayments.first.rate?.period,
-                  contract.stageTerms.repayments.first.rate?.ppm,
+                  contract.stageTerms.repayments.first
+                      .rateOn(DateTime.now())
+                      ?.period,
+                  contract.stageTerms.repayments.first
+                      .rateOn(DateTime.now())
+                      ?.ppm,
                 ),
         ),
       ],

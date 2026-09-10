@@ -3,7 +3,8 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
 void main() {
@@ -193,24 +194,28 @@ void main() {
             prepaymentPrincipal: Money(minorUnits: prepaymentMinor),
           ),
         );
-        final actual = const InstallmentPrepaymentRecalculator().recalculate(
-          contract: loan.contract,
-          schedules: loan.schedules,
-          prepaymentPrincipalMinor: prepaymentMinor,
-          eventDate: date,
-        );
+        final actual = const InstallmentPlanEngine()
+            .recalculate(
+              InstallmentPlanContext.fromContract(
+                contract: loan.contract,
+                schedules: loan.schedules,
+                prepaymentPrincipal: Money(minorUnits: prepaymentMinor),
+              ),
+              RecalculateAfterPrepayment(date),
+            )
+            .recalculatedRows;
 
         expect(
           simulation.periods.map((r) => r.principal),
-          actual.map((r) => r.expectedPrincipal),
+          actual.map((r) => r.principal),
         );
         expect(
           simulation.periods.map((r) => r.interest),
-          actual.map((r) => r.expectedInterest),
+          actual.map((r) => r.interest),
         );
         expect(
           simulation.periods.map((r) => r.date),
-          actual.map((r) => r.expectedRepaymentDate),
+          actual.map((r) => r.date),
         );
         expect(simulation.periods.last.remainingPrincipal, Money.zero());
         expect(

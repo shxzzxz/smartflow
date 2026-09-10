@@ -21,6 +21,7 @@ sealed class InstallmentContractEditState with _$InstallmentContractEditState {
     required InstallmentTermsDraft stageDraft,
     @Default(false) bool customRules,
     @Default(false) bool stagePlanPreviewed,
+    String? planPreviewToken,
   }) = InstallmentContractEditLoaded;
 
   const factory InstallmentContractEditState.notFound() =

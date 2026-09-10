@@ -4,11 +4,12 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
-  const recalculator = InstallmentPrepaymentRecalculator();
+  const recalculator = InstallmentPlanEngine();
 
   group('anchor', () {
     test('freezes every schedule up to the last non-pending period and only '
@@ -42,18 +43,25 @@ void main() {
         ),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 4),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 0,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 4),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 0),
+            ),
+            RecalculateAfterPrepayment(
+              _dailyInterestContract(totalPeriods: 4).borrowingDate,
+            ),
+          )
+          .recalculatedRows;
 
       // 锚点 = 第 3 期（最后一个非待还），第 2 期虽待还但日期在锚点前，保持旧值。
-      expect(result.map((item) => item.scheduleId), ['pending-4']);
-      expect(result.single.expectedPrincipal.minorUnits, 5000);
+      expect(result.map((item) => item.id), ['pending-4']);
+      expect(result.single.principal.minorUnits, 5000);
       // 剩余本金 10000 − 2000 − 0 − 3000 = 5000，从第 3 期日期起计 30 天。
-      expect(result.single.expectedInterest.minorUnits, 150);
-      expect(result.single.expectedRepaymentDate, DateTime(2026, 5, 1));
+      expect(result.single.interest.minorUnits, 150);
+      expect(result.single.date, DateTime(2026, 5, 1));
     });
 
     test('accrues the tail from the last frozen schedule date', () {
@@ -79,16 +87,23 @@ void main() {
         ),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 3),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 0,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 3),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 0),
+            ),
+            RecalculateAfterPrepayment(
+              _dailyInterestContract(totalPeriods: 3).borrowingDate,
+            ),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.scheduleId), ['pending-3']);
+      expect(result.map((item) => item.id), ['pending-3']);
       // 6000 × 3% × 31 / 30
-      expect(result.single.expectedInterest.minorUnits, 186);
-      expect(result.single.expectedPrincipal.minorUnits, 6000);
+      expect(result.single.interest.minorUnits, 186);
+      expect(result.single.principal.minorUnits, 6000);
     });
 
     test('uses the borrowing date when nothing is frozen', () {
@@ -98,17 +113,20 @@ void main() {
         _schedule(id: 'pending-3', periodNo: 3, principal: 10000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 3),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 0,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 3),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 0),
+            ),
+            RecalculateAfterPrepayment(
+              _dailyInterestContract(totalPeriods: 3).borrowingDate,
+            ),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.expectedInterest.minorUnits), [
-        310,
-        280,
-        310,
-      ]);
+      expect(result.map((item) => item.interest.minorUnits), [310, 280, 310]);
     });
 
     test('pending schedule accrues from the previous non-pending date', () {
@@ -128,15 +146,22 @@ void main() {
         ),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 2),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 0,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 2),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 0),
+            ),
+            RecalculateAfterPrepayment(
+              _dailyInterestContract(totalPeriods: 2).borrowingDate,
+            ),
+          )
+          .recalculatedRows;
 
       // 7500 × 3% × 19 / 30 = 142.5 → 143
-      expect(result.single.expectedInterest.minorUnits, 143);
-      expect(result.single.expectedPrincipal.minorUnits, 7500);
+      expect(result.single.interest.minorUnits, 143);
+      expect(result.single.principal.minorUnits, 7500);
     });
 
     test('event date later than the last paid period freezes pending rows '
@@ -146,17 +171,21 @@ void main() {
         _schedule(id: 'pending-2', periodNo: 2, principal: 10000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 2),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 2000,
-        eventDate: DateTime(2026, 2, 15, 14, 30),
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 2),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 2000),
+            ),
+            RecalculateAfterPrepayment(DateTime(2026, 2, 15, 14, 30)),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.scheduleId), ['pending-2']);
+      expect(result.map((item) => item.id), ['pending-2']);
       // 计息起点为第 1 期日期 2026-02-01，28 天：8000 × 3% × 28 / 30
-      expect(result.single.expectedInterest.minorUnits, 224);
-      expect(result.single.expectedPrincipal.minorUnits, 8000);
+      expect(result.single.interest.minorUnits, 224);
+      expect(result.single.principal.minorUnits, 8000);
     });
 
     test('event date on a schedule date freezes that schedule', () {
@@ -165,18 +194,22 @@ void main() {
         _schedule(id: 'pending-2', periodNo: 2, principal: 5000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(
-          totalPeriods: 2,
-          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-        ),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 1000,
-        eventDate: DateTime(2026, 2, 1, 9),
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(
+                totalPeriods: 2,
+                repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+              ),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 1000),
+            ),
+            RecalculateAfterPrepayment(DateTime(2026, 2, 1, 9)),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.scheduleId), ['pending-2']);
-      expect(result.single.expectedPrincipal.minorUnits, 4000);
+      expect(result.map((item) => item.id), ['pending-2']);
+      expect(result.single.principal.minorUnits, 4000);
     });
   });
 
@@ -190,21 +223,27 @@ void main() {
           _schedule(id: 'pending-3', periodNo: 3, principal: 10000),
         ];
 
-        final result = recalculator.recalculate(
-          contract: _dailyInterestContract(
-            totalPeriods: 3,
-            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          ),
-          schedules: schedules,
-          prepaymentPrincipalMinor: 0,
-        );
+        final result = recalculator
+            .recalculate(
+              InstallmentPlanContext.fromContract(
+                contract: _dailyInterestContract(
+                  totalPeriods: 3,
+                  repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+                ),
+                schedules: schedules,
+                prepaymentPrincipal: Money(minorUnits: 0),
+              ),
+              RecalculateAfterPrepayment(
+                _dailyInterestContract(
+                  totalPeriods: 3,
+                  repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+                ).borrowingDate,
+              ),
+            )
+            .recalculatedRows;
 
-        expect(result.map((item) => item.expectedInterest.minorUnits), [
-          310,
-          187,
-          103,
-        ]);
-        expect(result.map((item) => item.expectedPrincipal.minorUnits), [
+        expect(result.map((item) => item.interest.minorUnits), [310, 187, 103]);
+        expect(result.map((item) => item.principal.minorUnits), [
           3333,
           3333,
           3334,
@@ -218,20 +257,21 @@ void main() {
         _schedule(id: 'pending-2', periodNo: 2, principal: 10000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _dailyInterestContract(totalPeriods: 2),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 2000,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _dailyInterestContract(totalPeriods: 2),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 2000),
+            ),
+            RecalculateAfterPrepayment(
+              _dailyInterestContract(totalPeriods: 2).borrowingDate,
+            ),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.expectedInterest.minorUnits), [
-        248,
-        224,
-      ]);
-      expect(result.map((item) => item.expectedPrincipal.minorUnits), [
-        0,
-        8000,
-      ]);
+      expect(result.map((item) => item.interest.minorUnits), [248, 224]);
+      expect(result.map((item) => item.principal.minorUnits), [0, 8000]);
     });
 
     test('prepayment recalculates every pending schedule after all non-pending '
@@ -259,21 +299,23 @@ void main() {
         _schedule(id: 'pending-5', periodNo: 5, principal: 3000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _contract(),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 1000,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _contract(),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 1000),
+            ),
+            RecalculateAfterPrepayment(_contract().borrowingDate),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.scheduleId), ['pending-4', 'pending-5']);
+      expect(result.map((item) => item.id), ['pending-4', 'pending-5']);
       expect(
-        result.fold<int>(
-          0,
-          (sum, item) => sum + item.expectedPrincipal.minorUnits,
-        ),
+        result.fold<int>(0, (sum, item) => sum + item.principal.minorUnits),
         5000,
       );
-      expect(result.map((item) => item.expectedRepaymentDate), [
+      expect(result.map((item) => item.date), [
         schedules[3].expectedRepaymentDate,
         schedules[4].expectedRepaymentDate,
       ]);
@@ -294,23 +336,25 @@ void main() {
         _schedule(id: 'pending-5', periodNo: 5, principal: 2000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _contract(),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 1000,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _contract(),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 1000),
+            ),
+            RecalculateAfterPrepayment(_contract().borrowingDate),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.scheduleId), [
+      expect(result.map((item) => item.id), [
         'pending-2',
         'pending-3',
         'pending-4',
         'pending-5',
       ]);
       expect(
-        result.fold<int>(
-          0,
-          (sum, item) => sum + item.expectedPrincipal.minorUnits,
-        ),
+        result.fold<int>(0, (sum, item) => sum + item.principal.minorUnits),
         7000,
       );
     });
@@ -321,14 +365,19 @@ void main() {
         _schedule(id: 'pending-2', periodNo: 2, principal: 5000),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _contract(),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 10000,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _contract(),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 10000),
+            ),
+            RecalculateAfterPrepayment(_contract().borrowingDate),
+          )
+          .recalculatedRows;
 
-      expect(result.map((item) => item.expectedPrincipal.minorUnits), [0, 0]);
-      expect(result.map((item) => item.expectedInterest.minorUnits), [0, 0]);
+      expect(result.map((item) => item.principal.minorUnits), [0, 0]);
+      expect(result.map((item) => item.interest.minorUnits), [0, 0]);
     });
   });
 
@@ -345,11 +394,16 @@ void main() {
       ];
 
       expect(
-        () => recalculator.recalculate(
-          contract: _contract(),
-          schedules: schedules,
-          prepaymentPrincipalMinor: 5000,
-        ),
+        () => recalculator
+            .recalculate(
+              InstallmentPlanContext.fromContract(
+                contract: _contract(),
+                schedules: schedules,
+                prepaymentPrincipal: Money(minorUnits: 5000),
+              ),
+              RecalculateAfterPrepayment(_contract().borrowingDate),
+            )
+            .recalculatedRows,
         throwsA(_invalidCommand(contains('negative'))),
       );
     });
@@ -373,11 +427,16 @@ void main() {
         ];
 
         expect(
-          () => recalculator.recalculate(
-            contract: _contract(),
-            schedules: schedules,
-            prepaymentPrincipalMinor: 0,
-          ),
+          () => recalculator
+              .recalculate(
+                InstallmentPlanContext.fromContract(
+                  contract: _contract(),
+                  schedules: schedules,
+                  prepaymentPrincipal: Money(minorUnits: 0),
+                ),
+                RecalculateAfterPrepayment(_contract().borrowingDate),
+              )
+              .recalculatedRows,
           throwsA(_invalidCommand(contains('restore skipped'))),
         );
       },
@@ -399,11 +458,16 @@ void main() {
         ),
       ];
 
-      final result = recalculator.recalculate(
-        contract: _contract(),
-        schedules: schedules,
-        prepaymentPrincipalMinor: 0,
-      );
+      final result = recalculator
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: _contract(),
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 0),
+            ),
+            RecalculateAfterPrepayment(_contract().borrowingDate),
+          )
+          .recalculatedRows;
 
       expect(result, isEmpty);
     });
@@ -426,11 +490,18 @@ void main() {
         ];
 
         expect(
-          () => recalculator.recalculate(
-            contract: _dailyInterestContract(totalPeriods: 2),
-            schedules: schedules,
-            prepaymentPrincipalMinor: 0,
-          ),
+          () => recalculator
+              .recalculate(
+                InstallmentPlanContext.fromContract(
+                  contract: _dailyInterestContract(totalPeriods: 2),
+                  schedules: schedules,
+                  prepaymentPrincipal: Money(minorUnits: 0),
+                ),
+                RecalculateAfterPrepayment(
+                  _dailyInterestContract(totalPeriods: 2).borrowingDate,
+                ),
+              )
+              .recalculatedRows,
           throwsA(_invalidCommand(contains('strictly increasing'))),
         );
       }
@@ -487,15 +558,19 @@ void main() {
           ),
         ];
 
-        final result = recalculator.recalculate(
-          contract: contract,
-          schedules: schedules,
-          prepaymentPrincipalMinor: 0,
-          regenerateDates: true,
-        );
+        final result = recalculator
+            .recalculate(
+              InstallmentPlanContext.fromContract(
+                contract: contract,
+                schedules: schedules,
+                prepaymentPrincipal: Money(minorUnits: 0),
+              ),
+              RecalculateFromTerms(contract.stageTerms),
+            )
+            .recalculatedRows;
 
         expect(schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
-        expect(result.map((item) => item.expectedRepaymentDate), [
+        expect(result.map((item) => item.date), [
           DateTime(2026, 4, 1),
           DateTime(2026, 5, 1),
           DateTime(2026, 6, 1),
@@ -503,7 +578,7 @@ void main() {
       },
     );
 
-    test('rejects pending periods outside the regenerated terms', () {
+    test('removes pending periods outside the revised terms', () {
       final contract = InstallmentContract(
         id: 'contract',
         liabilityAccountId: 'liability',
@@ -523,17 +598,32 @@ void main() {
         ),
       );
 
+      final schedules = [
+        _schedule(id: 'pending-1', periodNo: 1, principal: 5000),
+        _schedule(id: 'pending-2', periodNo: 2, principal: 5000),
+      ];
+      final result = recalculator.recalculate(
+        InstallmentPlanContext.fromContract(
+          contract: contract,
+          schedules: schedules,
+          prepaymentPrincipal: Money.zero(),
+        ),
+        RecalculateFromTerms(contract.stageTerms),
+      );
+      expect(result.rows.single.principal.minorUnits, 10000);
+      expect(result.rows.single.id, 'pending-1');
+      expect(result.removed.single.id, 'pending-2');
+      schedules.last.markPaid();
       expect(
         () => recalculator.recalculate(
-          contract: contract,
-          schedules: [
-            _schedule(id: 'pending-1', periodNo: 1, principal: 5000),
-            _schedule(id: 'pending-2', periodNo: 2, principal: 5000),
-          ],
-          prepaymentPrincipalMinor: 0,
-          regenerateDates: true,
+          InstallmentPlanContext.fromContract(
+            contract: contract,
+            schedules: schedules,
+            prepaymentPrincipal: Money.zero(),
+          ),
+          RecalculateFromTerms(contract.stageTerms),
         ),
-        throwsA(_invalidCommand(contains('outside the contract terms'))),
+        throwsA(isA<BusinessException>()),
       );
     });
   });

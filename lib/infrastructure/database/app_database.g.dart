@@ -9005,6 +9005,73 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _referenceRateTypeMeta = const VerificationMeta(
+    'referenceRateType',
+  );
+  @override
+  late final GeneratedColumn<String> referenceRateType =
+      GeneratedColumn<String>(
+        'reference_rate_type',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _spreadBpMeta = const VerificationMeta(
+    'spreadBp',
+  );
+  @override
+  late final GeneratedColumn<int> spreadBp = GeneratedColumn<int>(
+    'spread_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _firstResetDateMeta = const VerificationMeta(
+    'firstResetDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstResetDate =
+      GeneratedColumn<DateTime>(
+        'first_reset_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _firstEffectiveDateMeta =
+      const VerificationMeta('firstEffectiveDate');
+  @override
+  late final GeneratedColumn<DateTime> firstEffectiveDate =
+      GeneratedColumn<DateTime>(
+        'first_effective_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _repricingCycleMonthsMeta =
+      const VerificationMeta('repricingCycleMonths');
+  @override
+  late final GeneratedColumn<int> repricingCycleMonths = GeneratedColumn<int>(
+    'repricing_cycle_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repricingPaymentTimingMeta =
+      const VerificationMeta('repricingPaymentTiming');
+  @override
+  late final GeneratedColumn<String> repricingPaymentTiming =
+      GeneratedColumn<String>(
+        'repricing_payment_timing',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _endPrincipalMinorMeta = const VerificationMeta(
     'endPrincipalMinor',
   );
@@ -9121,6 +9188,12 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     amountAlgorithm,
     periods,
     ratePpm,
+    referenceRateType,
+    spreadBp,
+    firstResetDate,
+    firstEffectiveDate,
+    repricingCycleMonths,
+    repricingPaymentTiming,
     endPrincipalMinor,
     fixedAmountMinor,
     feeMinor,
@@ -9229,6 +9302,57 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
       context.handle(
         _ratePpmMeta,
         ratePpm.isAcceptableOrUnknown(data['rate_ppm']!, _ratePpmMeta),
+      );
+    }
+    if (data.containsKey('reference_rate_type')) {
+      context.handle(
+        _referenceRateTypeMeta,
+        referenceRateType.isAcceptableOrUnknown(
+          data['reference_rate_type']!,
+          _referenceRateTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('spread_bp')) {
+      context.handle(
+        _spreadBpMeta,
+        spreadBp.isAcceptableOrUnknown(data['spread_bp']!, _spreadBpMeta),
+      );
+    }
+    if (data.containsKey('first_reset_date')) {
+      context.handle(
+        _firstResetDateMeta,
+        firstResetDate.isAcceptableOrUnknown(
+          data['first_reset_date']!,
+          _firstResetDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('first_effective_date')) {
+      context.handle(
+        _firstEffectiveDateMeta,
+        firstEffectiveDate.isAcceptableOrUnknown(
+          data['first_effective_date']!,
+          _firstEffectiveDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repricing_cycle_months')) {
+      context.handle(
+        _repricingCycleMonthsMeta,
+        repricingCycleMonths.isAcceptableOrUnknown(
+          data['repricing_cycle_months']!,
+          _repricingCycleMonthsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repricing_payment_timing')) {
+      context.handle(
+        _repricingPaymentTimingMeta,
+        repricingPaymentTiming.isAcceptableOrUnknown(
+          data['repricing_payment_timing']!,
+          _repricingPaymentTimingMeta,
+        ),
       );
     }
     if (data.containsKey('end_principal_minor')) {
@@ -9354,6 +9478,30 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         DriftSqlType.int,
         data['${effectivePrefix}rate_ppm'],
       ),
+      referenceRateType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference_rate_type'],
+      ),
+      spreadBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spread_bp'],
+      ),
+      firstResetDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_reset_date'],
+      ),
+      firstEffectiveDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_effective_date'],
+      ),
+      repricingCycleMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repricing_cycle_months'],
+      ),
+      repricingPaymentTiming: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repricing_payment_timing'],
+      ),
       endPrincipalMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}end_principal_minor'],
@@ -9413,6 +9561,12 @@ class InstallmentStageConfigRow extends DataClass
   final String? amountAlgorithm;
   final int? periods;
   final int? ratePpm;
+  final String? referenceRateType;
+  final int? spreadBp;
+  final DateTime? firstResetDate;
+  final DateTime? firstEffectiveDate;
+  final int? repricingCycleMonths;
+  final String? repricingPaymentTiming;
   final int? endPrincipalMinor;
   final int? fixedAmountMinor;
   final int? feeMinor;
@@ -9435,6 +9589,12 @@ class InstallmentStageConfigRow extends DataClass
     this.amountAlgorithm,
     this.periods,
     this.ratePpm,
+    this.referenceRateType,
+    this.spreadBp,
+    this.firstResetDate,
+    this.firstEffectiveDate,
+    this.repricingCycleMonths,
+    this.repricingPaymentTiming,
     this.endPrincipalMinor,
     this.fixedAmountMinor,
     this.feeMinor,
@@ -9473,6 +9633,26 @@ class InstallmentStageConfigRow extends DataClass
     }
     if (!nullToAbsent || ratePpm != null) {
       map['rate_ppm'] = Variable<int>(ratePpm);
+    }
+    if (!nullToAbsent || referenceRateType != null) {
+      map['reference_rate_type'] = Variable<String>(referenceRateType);
+    }
+    if (!nullToAbsent || spreadBp != null) {
+      map['spread_bp'] = Variable<int>(spreadBp);
+    }
+    if (!nullToAbsent || firstResetDate != null) {
+      map['first_reset_date'] = Variable<DateTime>(firstResetDate);
+    }
+    if (!nullToAbsent || firstEffectiveDate != null) {
+      map['first_effective_date'] = Variable<DateTime>(firstEffectiveDate);
+    }
+    if (!nullToAbsent || repricingCycleMonths != null) {
+      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths);
+    }
+    if (!nullToAbsent || repricingPaymentTiming != null) {
+      map['repricing_payment_timing'] = Variable<String>(
+        repricingPaymentTiming,
+      );
     }
     if (!nullToAbsent || endPrincipalMinor != null) {
       map['end_principal_minor'] = Variable<int>(endPrincipalMinor);
@@ -9528,6 +9708,24 @@ class InstallmentStageConfigRow extends DataClass
       ratePpm: ratePpm == null && nullToAbsent
           ? const Value.absent()
           : Value(ratePpm),
+      referenceRateType: referenceRateType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceRateType),
+      spreadBp: spreadBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spreadBp),
+      firstResetDate: firstResetDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstResetDate),
+      firstEffectiveDate: firstEffectiveDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstEffectiveDate),
+      repricingCycleMonths: repricingCycleMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repricingCycleMonths),
+      repricingPaymentTiming: repricingPaymentTiming == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repricingPaymentTiming),
       endPrincipalMinor: endPrincipalMinor == null && nullToAbsent
           ? const Value.absent()
           : Value(endPrincipalMinor),
@@ -9572,6 +9770,20 @@ class InstallmentStageConfigRow extends DataClass
       amountAlgorithm: serializer.fromJson<String?>(json['amountAlgorithm']),
       periods: serializer.fromJson<int?>(json['periods']),
       ratePpm: serializer.fromJson<int?>(json['ratePpm']),
+      referenceRateType: serializer.fromJson<String?>(
+        json['referenceRateType'],
+      ),
+      spreadBp: serializer.fromJson<int?>(json['spreadBp']),
+      firstResetDate: serializer.fromJson<DateTime?>(json['firstResetDate']),
+      firstEffectiveDate: serializer.fromJson<DateTime?>(
+        json['firstEffectiveDate'],
+      ),
+      repricingCycleMonths: serializer.fromJson<int?>(
+        json['repricingCycleMonths'],
+      ),
+      repricingPaymentTiming: serializer.fromJson<String?>(
+        json['repricingPaymentTiming'],
+      ),
       endPrincipalMinor: serializer.fromJson<int?>(json['endPrincipalMinor']),
       fixedAmountMinor: serializer.fromJson<int?>(json['fixedAmountMinor']),
       feeMinor: serializer.fromJson<int?>(json['feeMinor']),
@@ -9601,6 +9813,14 @@ class InstallmentStageConfigRow extends DataClass
       'amountAlgorithm': serializer.toJson<String?>(amountAlgorithm),
       'periods': serializer.toJson<int?>(periods),
       'ratePpm': serializer.toJson<int?>(ratePpm),
+      'referenceRateType': serializer.toJson<String?>(referenceRateType),
+      'spreadBp': serializer.toJson<int?>(spreadBp),
+      'firstResetDate': serializer.toJson<DateTime?>(firstResetDate),
+      'firstEffectiveDate': serializer.toJson<DateTime?>(firstEffectiveDate),
+      'repricingCycleMonths': serializer.toJson<int?>(repricingCycleMonths),
+      'repricingPaymentTiming': serializer.toJson<String?>(
+        repricingPaymentTiming,
+      ),
       'endPrincipalMinor': serializer.toJson<int?>(endPrincipalMinor),
       'fixedAmountMinor': serializer.toJson<int?>(fixedAmountMinor),
       'feeMinor': serializer.toJson<int?>(feeMinor),
@@ -9626,6 +9846,12 @@ class InstallmentStageConfigRow extends DataClass
     Value<String?> amountAlgorithm = const Value.absent(),
     Value<int?> periods = const Value.absent(),
     Value<int?> ratePpm = const Value.absent(),
+    Value<String?> referenceRateType = const Value.absent(),
+    Value<int?> spreadBp = const Value.absent(),
+    Value<DateTime?> firstResetDate = const Value.absent(),
+    Value<DateTime?> firstEffectiveDate = const Value.absent(),
+    Value<int?> repricingCycleMonths = const Value.absent(),
+    Value<String?> repricingPaymentTiming = const Value.absent(),
     Value<int?> endPrincipalMinor = const Value.absent(),
     Value<int?> fixedAmountMinor = const Value.absent(),
     Value<int?> feeMinor = const Value.absent(),
@@ -9654,6 +9880,22 @@ class InstallmentStageConfigRow extends DataClass
         : this.amountAlgorithm,
     periods: periods.present ? periods.value : this.periods,
     ratePpm: ratePpm.present ? ratePpm.value : this.ratePpm,
+    referenceRateType: referenceRateType.present
+        ? referenceRateType.value
+        : this.referenceRateType,
+    spreadBp: spreadBp.present ? spreadBp.value : this.spreadBp,
+    firstResetDate: firstResetDate.present
+        ? firstResetDate.value
+        : this.firstResetDate,
+    firstEffectiveDate: firstEffectiveDate.present
+        ? firstEffectiveDate.value
+        : this.firstEffectiveDate,
+    repricingCycleMonths: repricingCycleMonths.present
+        ? repricingCycleMonths.value
+        : this.repricingCycleMonths,
+    repricingPaymentTiming: repricingPaymentTiming.present
+        ? repricingPaymentTiming.value
+        : this.repricingPaymentTiming,
     endPrincipalMinor: endPrincipalMinor.present
         ? endPrincipalMinor.value
         : this.endPrincipalMinor,
@@ -9694,6 +9936,22 @@ class InstallmentStageConfigRow extends DataClass
           : this.amountAlgorithm,
       periods: data.periods.present ? data.periods.value : this.periods,
       ratePpm: data.ratePpm.present ? data.ratePpm.value : this.ratePpm,
+      referenceRateType: data.referenceRateType.present
+          ? data.referenceRateType.value
+          : this.referenceRateType,
+      spreadBp: data.spreadBp.present ? data.spreadBp.value : this.spreadBp,
+      firstResetDate: data.firstResetDate.present
+          ? data.firstResetDate.value
+          : this.firstResetDate,
+      firstEffectiveDate: data.firstEffectiveDate.present
+          ? data.firstEffectiveDate.value
+          : this.firstEffectiveDate,
+      repricingCycleMonths: data.repricingCycleMonths.present
+          ? data.repricingCycleMonths.value
+          : this.repricingCycleMonths,
+      repricingPaymentTiming: data.repricingPaymentTiming.present
+          ? data.repricingPaymentTiming.value
+          : this.repricingPaymentTiming,
       endPrincipalMinor: data.endPrincipalMinor.present
           ? data.endPrincipalMinor.value
           : this.endPrincipalMinor,
@@ -9727,6 +9985,12 @@ class InstallmentStageConfigRow extends DataClass
           ..write('amountAlgorithm: $amountAlgorithm, ')
           ..write('periods: $periods, ')
           ..write('ratePpm: $ratePpm, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('firstResetDate: $firstResetDate, ')
+          ..write('firstEffectiveDate: $firstEffectiveDate, ')
+          ..write('repricingCycleMonths: $repricingCycleMonths, ')
+          ..write('repricingPaymentTiming: $repricingPaymentTiming, ')
           ..write('endPrincipalMinor: $endPrincipalMinor, ')
           ..write('fixedAmountMinor: $fixedAmountMinor, ')
           ..write('feeMinor: $feeMinor, ')
@@ -9754,6 +10018,12 @@ class InstallmentStageConfigRow extends DataClass
     amountAlgorithm,
     periods,
     ratePpm,
+    referenceRateType,
+    spreadBp,
+    firstResetDate,
+    firstEffectiveDate,
+    repricingCycleMonths,
+    repricingPaymentTiming,
     endPrincipalMinor,
     fixedAmountMinor,
     feeMinor,
@@ -9780,6 +10050,12 @@ class InstallmentStageConfigRow extends DataClass
           other.amountAlgorithm == this.amountAlgorithm &&
           other.periods == this.periods &&
           other.ratePpm == this.ratePpm &&
+          other.referenceRateType == this.referenceRateType &&
+          other.spreadBp == this.spreadBp &&
+          other.firstResetDate == this.firstResetDate &&
+          other.firstEffectiveDate == this.firstEffectiveDate &&
+          other.repricingCycleMonths == this.repricingCycleMonths &&
+          other.repricingPaymentTiming == this.repricingPaymentTiming &&
           other.endPrincipalMinor == this.endPrincipalMinor &&
           other.fixedAmountMinor == this.fixedAmountMinor &&
           other.feeMinor == this.feeMinor &&
@@ -9805,6 +10081,12 @@ class InstallmentStageConfigsCompanion
   final Value<String?> amountAlgorithm;
   final Value<int?> periods;
   final Value<int?> ratePpm;
+  final Value<String?> referenceRateType;
+  final Value<int?> spreadBp;
+  final Value<DateTime?> firstResetDate;
+  final Value<DateTime?> firstEffectiveDate;
+  final Value<int?> repricingCycleMonths;
+  final Value<String?> repricingPaymentTiming;
   final Value<int?> endPrincipalMinor;
   final Value<int?> fixedAmountMinor;
   final Value<int?> feeMinor;
@@ -9828,6 +10110,12 @@ class InstallmentStageConfigsCompanion
     this.amountAlgorithm = const Value.absent(),
     this.periods = const Value.absent(),
     this.ratePpm = const Value.absent(),
+    this.referenceRateType = const Value.absent(),
+    this.spreadBp = const Value.absent(),
+    this.firstResetDate = const Value.absent(),
+    this.firstEffectiveDate = const Value.absent(),
+    this.repricingCycleMonths = const Value.absent(),
+    this.repricingPaymentTiming = const Value.absent(),
     this.endPrincipalMinor = const Value.absent(),
     this.fixedAmountMinor = const Value.absent(),
     this.feeMinor = const Value.absent(),
@@ -9852,6 +10140,12 @@ class InstallmentStageConfigsCompanion
     this.amountAlgorithm = const Value.absent(),
     this.periods = const Value.absent(),
     this.ratePpm = const Value.absent(),
+    this.referenceRateType = const Value.absent(),
+    this.spreadBp = const Value.absent(),
+    this.firstResetDate = const Value.absent(),
+    this.firstEffectiveDate = const Value.absent(),
+    this.repricingCycleMonths = const Value.absent(),
+    this.repricingPaymentTiming = const Value.absent(),
     this.endPrincipalMinor = const Value.absent(),
     this.fixedAmountMinor = const Value.absent(),
     this.feeMinor = const Value.absent(),
@@ -9880,6 +10174,12 @@ class InstallmentStageConfigsCompanion
     Expression<String>? amountAlgorithm,
     Expression<int>? periods,
     Expression<int>? ratePpm,
+    Expression<String>? referenceRateType,
+    Expression<int>? spreadBp,
+    Expression<DateTime>? firstResetDate,
+    Expression<DateTime>? firstEffectiveDate,
+    Expression<int>? repricingCycleMonths,
+    Expression<String>? repricingPaymentTiming,
     Expression<int>? endPrincipalMinor,
     Expression<int>? fixedAmountMinor,
     Expression<int>? feeMinor,
@@ -9904,6 +10204,15 @@ class InstallmentStageConfigsCompanion
       if (amountAlgorithm != null) 'amount_algorithm': amountAlgorithm,
       if (periods != null) 'periods': periods,
       if (ratePpm != null) 'rate_ppm': ratePpm,
+      if (referenceRateType != null) 'reference_rate_type': referenceRateType,
+      if (spreadBp != null) 'spread_bp': spreadBp,
+      if (firstResetDate != null) 'first_reset_date': firstResetDate,
+      if (firstEffectiveDate != null)
+        'first_effective_date': firstEffectiveDate,
+      if (repricingCycleMonths != null)
+        'repricing_cycle_months': repricingCycleMonths,
+      if (repricingPaymentTiming != null)
+        'repricing_payment_timing': repricingPaymentTiming,
       if (endPrincipalMinor != null) 'end_principal_minor': endPrincipalMinor,
       if (fixedAmountMinor != null) 'fixed_amount_minor': fixedAmountMinor,
       if (feeMinor != null) 'fee_minor': feeMinor,
@@ -9930,6 +10239,12 @@ class InstallmentStageConfigsCompanion
     Value<String?>? amountAlgorithm,
     Value<int?>? periods,
     Value<int?>? ratePpm,
+    Value<String?>? referenceRateType,
+    Value<int?>? spreadBp,
+    Value<DateTime?>? firstResetDate,
+    Value<DateTime?>? firstEffectiveDate,
+    Value<int?>? repricingCycleMonths,
+    Value<String?>? repricingPaymentTiming,
     Value<int?>? endPrincipalMinor,
     Value<int?>? fixedAmountMinor,
     Value<int?>? feeMinor,
@@ -9954,6 +10269,13 @@ class InstallmentStageConfigsCompanion
       amountAlgorithm: amountAlgorithm ?? this.amountAlgorithm,
       periods: periods ?? this.periods,
       ratePpm: ratePpm ?? this.ratePpm,
+      referenceRateType: referenceRateType ?? this.referenceRateType,
+      spreadBp: spreadBp ?? this.spreadBp,
+      firstResetDate: firstResetDate ?? this.firstResetDate,
+      firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
+      repricingCycleMonths: repricingCycleMonths ?? this.repricingCycleMonths,
+      repricingPaymentTiming:
+          repricingPaymentTiming ?? this.repricingPaymentTiming,
       endPrincipalMinor: endPrincipalMinor ?? this.endPrincipalMinor,
       fixedAmountMinor: fixedAmountMinor ?? this.fixedAmountMinor,
       feeMinor: feeMinor ?? this.feeMinor,
@@ -10006,6 +10328,28 @@ class InstallmentStageConfigsCompanion
     if (ratePpm.present) {
       map['rate_ppm'] = Variable<int>(ratePpm.value);
     }
+    if (referenceRateType.present) {
+      map['reference_rate_type'] = Variable<String>(referenceRateType.value);
+    }
+    if (spreadBp.present) {
+      map['spread_bp'] = Variable<int>(spreadBp.value);
+    }
+    if (firstResetDate.present) {
+      map['first_reset_date'] = Variable<DateTime>(firstResetDate.value);
+    }
+    if (firstEffectiveDate.present) {
+      map['first_effective_date'] = Variable<DateTime>(
+        firstEffectiveDate.value,
+      );
+    }
+    if (repricingCycleMonths.present) {
+      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths.value);
+    }
+    if (repricingPaymentTiming.present) {
+      map['repricing_payment_timing'] = Variable<String>(
+        repricingPaymentTiming.value,
+      );
+    }
     if (endPrincipalMinor.present) {
       map['end_principal_minor'] = Variable<int>(endPrincipalMinor.value);
     }
@@ -10054,6 +10398,12 @@ class InstallmentStageConfigsCompanion
           ..write('amountAlgorithm: $amountAlgorithm, ')
           ..write('periods: $periods, ')
           ..write('ratePpm: $ratePpm, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('firstResetDate: $firstResetDate, ')
+          ..write('firstEffectiveDate: $firstEffectiveDate, ')
+          ..write('repricingCycleMonths: $repricingCycleMonths, ')
+          ..write('repricingPaymentTiming: $repricingPaymentTiming, ')
           ..write('endPrincipalMinor: $endPrincipalMinor, ')
           ..write('fixedAmountMinor: $fixedAmountMinor, ')
           ..write('feeMinor: $feeMinor, ')
@@ -10183,6 +10533,21 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _manuallyAdjustedMeta = const VerificationMeta(
+    'manuallyAdjusted',
+  );
+  @override
+  late final GeneratedColumn<bool> manuallyAdjusted = GeneratedColumn<bool>(
+    'manually_adjusted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("manually_adjusted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -10219,6 +10584,7 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
     expectedFeeMinor,
     status,
     note,
+    manuallyAdjusted,
     createdAt,
     updatedAt,
   ];
@@ -10305,6 +10671,15 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('manually_adjusted')) {
+      context.handle(
+        _manuallyAdjustedMeta,
+        manuallyAdjusted.isAcceptableOrUnknown(
+          data['manually_adjusted']!,
+          _manuallyAdjustedMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -10368,6 +10743,10 @@ class $InstallmentSchedulesTable extends InstallmentSchedules
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      manuallyAdjusted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}manually_adjusted'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -10402,6 +10781,7 @@ class InstallmentScheduleRow extends DataClass
   final int expectedFeeMinor;
   final InstallmentScheduleStatus status;
   final String? note;
+  final bool manuallyAdjusted;
   final DateTime createdAt;
   final DateTime updatedAt;
   const InstallmentScheduleRow({
@@ -10415,6 +10795,7 @@ class InstallmentScheduleRow extends DataClass
     required this.expectedFeeMinor,
     required this.status,
     this.note,
+    required this.manuallyAdjusted,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -10439,6 +10820,7 @@ class InstallmentScheduleRow extends DataClass
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    map['manually_adjusted'] = Variable<bool>(manuallyAdjusted);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -10458,6 +10840,7 @@ class InstallmentScheduleRow extends DataClass
       expectedFeeMinor: Value(expectedFeeMinor),
       status: Value(status),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      manuallyAdjusted: Value(manuallyAdjusted),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -10487,6 +10870,7 @@ class InstallmentScheduleRow extends DataClass
         serializer.fromJson<String>(json['status']),
       ),
       note: serializer.fromJson<String?>(json['note']),
+      manuallyAdjusted: serializer.fromJson<bool>(json['manuallyAdjusted']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -10509,6 +10893,7 @@ class InstallmentScheduleRow extends DataClass
         $InstallmentSchedulesTable.$converterstatus.toJson(status),
       ),
       'note': serializer.toJson<String?>(note),
+      'manuallyAdjusted': serializer.toJson<bool>(manuallyAdjusted),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -10525,6 +10910,7 @@ class InstallmentScheduleRow extends DataClass
     int? expectedFeeMinor,
     InstallmentScheduleStatus? status,
     Value<String?> note = const Value.absent(),
+    bool? manuallyAdjusted,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => InstallmentScheduleRow(
@@ -10539,6 +10925,7 @@ class InstallmentScheduleRow extends DataClass
     expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
     status: status ?? this.status,
     note: note.present ? note.value : this.note,
+    manuallyAdjusted: manuallyAdjusted ?? this.manuallyAdjusted,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -10564,6 +10951,9 @@ class InstallmentScheduleRow extends DataClass
           : this.expectedFeeMinor,
       status: data.status.present ? data.status.value : this.status,
       note: data.note.present ? data.note.value : this.note,
+      manuallyAdjusted: data.manuallyAdjusted.present
+          ? data.manuallyAdjusted.value
+          : this.manuallyAdjusted,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -10582,6 +10972,7 @@ class InstallmentScheduleRow extends DataClass
           ..write('expectedFeeMinor: $expectedFeeMinor, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
+          ..write('manuallyAdjusted: $manuallyAdjusted, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -10600,6 +10991,7 @@ class InstallmentScheduleRow extends DataClass
     expectedFeeMinor,
     status,
     note,
+    manuallyAdjusted,
     createdAt,
     updatedAt,
   );
@@ -10617,6 +11009,7 @@ class InstallmentScheduleRow extends DataClass
           other.expectedFeeMinor == this.expectedFeeMinor &&
           other.status == this.status &&
           other.note == this.note &&
+          other.manuallyAdjusted == this.manuallyAdjusted &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -10633,6 +11026,7 @@ class InstallmentSchedulesCompanion
   final Value<int> expectedFeeMinor;
   final Value<InstallmentScheduleStatus> status;
   final Value<String?> note;
+  final Value<bool> manuallyAdjusted;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -10647,6 +11041,7 @@ class InstallmentSchedulesCompanion
     this.expectedFeeMinor = const Value.absent(),
     this.status = const Value.absent(),
     this.note = const Value.absent(),
+    this.manuallyAdjusted = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -10662,6 +11057,7 @@ class InstallmentSchedulesCompanion
     this.expectedFeeMinor = const Value.absent(),
     required InstallmentScheduleStatus status,
     this.note = const Value.absent(),
+    this.manuallyAdjusted = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -10681,6 +11077,7 @@ class InstallmentSchedulesCompanion
     Expression<int>? expectedFeeMinor,
     Expression<String>? status,
     Expression<String>? note,
+    Expression<bool>? manuallyAdjusted,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -10699,6 +11096,7 @@ class InstallmentSchedulesCompanion
       if (expectedFeeMinor != null) 'expected_fee_minor': expectedFeeMinor,
       if (status != null) 'status': status,
       if (note != null) 'note': note,
+      if (manuallyAdjusted != null) 'manually_adjusted': manuallyAdjusted,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -10716,6 +11114,7 @@ class InstallmentSchedulesCompanion
     Value<int>? expectedFeeMinor,
     Value<InstallmentScheduleStatus>? status,
     Value<String?>? note,
+    Value<bool>? manuallyAdjusted,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -10734,6 +11133,7 @@ class InstallmentSchedulesCompanion
       expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
       status: status ?? this.status,
       note: note ?? this.note,
+      manuallyAdjusted: manuallyAdjusted ?? this.manuallyAdjusted,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -10781,6 +11181,9 @@ class InstallmentSchedulesCompanion
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (manuallyAdjusted.present) {
+      map['manually_adjusted'] = Variable<bool>(manuallyAdjusted.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -10806,8 +11209,1106 @@ class InstallmentSchedulesCompanion
           ..write('expectedFeeMinor: $expectedFeeMinor, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
+          ..write('manuallyAdjusted: $manuallyAdjusted, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ReferenceRatesTable extends ReferenceRates
+    with TableInfo<$ReferenceRatesTable, ReferenceRateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReferenceRatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateDateMeta = const VerificationMeta(
+    'rateDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> rateDate = GeneratedColumn<DateTime>(
+    'rate_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ratePpmMeta = const VerificationMeta(
+    'ratePpm',
+  );
+  @override
+  late final GeneratedColumn<int> ratePpm = GeneratedColumn<int>(
+    'rate_ppm',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    type,
+    rateDate,
+    ratePpm,
+    source,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reference_rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReferenceRateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('rate_date')) {
+      context.handle(
+        _rateDateMeta,
+        rateDate.isAcceptableOrUnknown(data['rate_date']!, _rateDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rateDateMeta);
+    }
+    if (data.containsKey('rate_ppm')) {
+      context.handle(
+        _ratePpmMeta,
+        ratePpm.isAcceptableOrUnknown(data['rate_ppm']!, _ratePpmMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ratePpmMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {type, rateDate};
+  @override
+  ReferenceRateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReferenceRateRow(
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      rateDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}rate_date'],
+      )!,
+      ratePpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_ppm'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReferenceRatesTable createAlias(String alias) {
+    return $ReferenceRatesTable(attachedDatabase, alias);
+  }
+}
+
+class ReferenceRateRow extends DataClass
+    implements Insertable<ReferenceRateRow> {
+  final String type;
+  final DateTime rateDate;
+  final int ratePpm;
+  final String source;
+  final DateTime createdAt;
+  const ReferenceRateRow({
+    required this.type,
+    required this.rateDate,
+    required this.ratePpm,
+    required this.source,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['type'] = Variable<String>(type);
+    map['rate_date'] = Variable<DateTime>(rateDate);
+    map['rate_ppm'] = Variable<int>(ratePpm);
+    map['source'] = Variable<String>(source);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ReferenceRatesCompanion toCompanion(bool nullToAbsent) {
+    return ReferenceRatesCompanion(
+      type: Value(type),
+      rateDate: Value(rateDate),
+      ratePpm: Value(ratePpm),
+      source: Value(source),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ReferenceRateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReferenceRateRow(
+      type: serializer.fromJson<String>(json['type']),
+      rateDate: serializer.fromJson<DateTime>(json['rateDate']),
+      ratePpm: serializer.fromJson<int>(json['ratePpm']),
+      source: serializer.fromJson<String>(json['source']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'type': serializer.toJson<String>(type),
+      'rateDate': serializer.toJson<DateTime>(rateDate),
+      'ratePpm': serializer.toJson<int>(ratePpm),
+      'source': serializer.toJson<String>(source),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ReferenceRateRow copyWith({
+    String? type,
+    DateTime? rateDate,
+    int? ratePpm,
+    String? source,
+    DateTime? createdAt,
+  }) => ReferenceRateRow(
+    type: type ?? this.type,
+    rateDate: rateDate ?? this.rateDate,
+    ratePpm: ratePpm ?? this.ratePpm,
+    source: source ?? this.source,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ReferenceRateRow copyWithCompanion(ReferenceRatesCompanion data) {
+    return ReferenceRateRow(
+      type: data.type.present ? data.type.value : this.type,
+      rateDate: data.rateDate.present ? data.rateDate.value : this.rateDate,
+      ratePpm: data.ratePpm.present ? data.ratePpm.value : this.ratePpm,
+      source: data.source.present ? data.source.value : this.source,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReferenceRateRow(')
+          ..write('type: $type, ')
+          ..write('rateDate: $rateDate, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(type, rateDate, ratePpm, source, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReferenceRateRow &&
+          other.type == this.type &&
+          other.rateDate == this.rateDate &&
+          other.ratePpm == this.ratePpm &&
+          other.source == this.source &&
+          other.createdAt == this.createdAt);
+}
+
+class ReferenceRatesCompanion extends UpdateCompanion<ReferenceRateRow> {
+  final Value<String> type;
+  final Value<DateTime> rateDate;
+  final Value<int> ratePpm;
+  final Value<String> source;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const ReferenceRatesCompanion({
+    this.type = const Value.absent(),
+    this.rateDate = const Value.absent(),
+    this.ratePpm = const Value.absent(),
+    this.source = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReferenceRatesCompanion.insert({
+    required String type,
+    required DateTime rateDate,
+    required int ratePpm,
+    required String source,
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : type = Value(type),
+       rateDate = Value(rateDate),
+       ratePpm = Value(ratePpm),
+       source = Value(source);
+  static Insertable<ReferenceRateRow> custom({
+    Expression<String>? type,
+    Expression<DateTime>? rateDate,
+    Expression<int>? ratePpm,
+    Expression<String>? source,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (type != null) 'type': type,
+      if (rateDate != null) 'rate_date': rateDate,
+      if (ratePpm != null) 'rate_ppm': ratePpm,
+      if (source != null) 'source': source,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReferenceRatesCompanion copyWith({
+    Value<String>? type,
+    Value<DateTime>? rateDate,
+    Value<int>? ratePpm,
+    Value<String>? source,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ReferenceRatesCompanion(
+      type: type ?? this.type,
+      rateDate: rateDate ?? this.rateDate,
+      ratePpm: ratePpm ?? this.ratePpm,
+      source: source ?? this.source,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (rateDate.present) {
+      map['rate_date'] = Variable<DateTime>(rateDate.value);
+    }
+    if (ratePpm.present) {
+      map['rate_ppm'] = Variable<int>(ratePpm.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReferenceRatesCompanion(')
+          ..write('type: $type, ')
+          ..write('rateDate: $rateDate, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
+    with TableInfo<$InstallmentRepricingRecordsTable, InstallmentRepricingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentRepricingRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageIdMeta = const VerificationMeta(
+    'stageId',
+  );
+  @override
+  late final GeneratedColumn<String> stageId = GeneratedColumn<String>(
+    'stage_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resetDateMeta = const VerificationMeta(
+    'resetDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resetDate = GeneratedColumn<DateTime>(
+    'reset_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _effectiveDateMeta = const VerificationMeta(
+    'effectiveDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> effectiveDate =
+      GeneratedColumn<DateTime>(
+        'effective_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _referenceRateDateMeta = const VerificationMeta(
+    'referenceRateDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> referenceRateDate =
+      GeneratedColumn<DateTime>(
+        'reference_rate_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _referenceRateTypeMeta = const VerificationMeta(
+    'referenceRateType',
+  );
+  @override
+  late final GeneratedColumn<String> referenceRateType =
+      GeneratedColumn<String>(
+        'reference_rate_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _referenceRatePpmMeta = const VerificationMeta(
+    'referenceRatePpm',
+  );
+  @override
+  late final GeneratedColumn<int> referenceRatePpm = GeneratedColumn<int>(
+    'reference_rate_ppm',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _spreadBpMeta = const VerificationMeta(
+    'spreadBp',
+  );
+  @override
+  late final GeneratedColumn<int> spreadBp = GeneratedColumn<int>(
+    'spread_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appliedMeta = const VerificationMeta(
+    'applied',
+  );
+  @override
+  late final GeneratedColumn<bool> applied = GeneratedColumn<bool>(
+    'applied',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("applied" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    stageId,
+    resetDate,
+    effectiveDate,
+    referenceRateDate,
+    referenceRateType,
+    referenceRatePpm,
+    spreadBp,
+    source,
+    applied,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_repricing_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentRepricingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('stage_id')) {
+      context.handle(
+        _stageIdMeta,
+        stageId.isAcceptableOrUnknown(data['stage_id']!, _stageIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stageIdMeta);
+    }
+    if (data.containsKey('reset_date')) {
+      context.handle(
+        _resetDateMeta,
+        resetDate.isAcceptableOrUnknown(data['reset_date']!, _resetDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resetDateMeta);
+    }
+    if (data.containsKey('effective_date')) {
+      context.handle(
+        _effectiveDateMeta,
+        effectiveDate.isAcceptableOrUnknown(
+          data['effective_date']!,
+          _effectiveDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_effectiveDateMeta);
+    }
+    if (data.containsKey('reference_rate_date')) {
+      context.handle(
+        _referenceRateDateMeta,
+        referenceRateDate.isAcceptableOrUnknown(
+          data['reference_rate_date']!,
+          _referenceRateDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_referenceRateDateMeta);
+    }
+    if (data.containsKey('reference_rate_type')) {
+      context.handle(
+        _referenceRateTypeMeta,
+        referenceRateType.isAcceptableOrUnknown(
+          data['reference_rate_type']!,
+          _referenceRateTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_referenceRateTypeMeta);
+    }
+    if (data.containsKey('reference_rate_ppm')) {
+      context.handle(
+        _referenceRatePpmMeta,
+        referenceRatePpm.isAcceptableOrUnknown(
+          data['reference_rate_ppm']!,
+          _referenceRatePpmMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_referenceRatePpmMeta);
+    }
+    if (data.containsKey('spread_bp')) {
+      context.handle(
+        _spreadBpMeta,
+        spreadBp.isAcceptableOrUnknown(data['spread_bp']!, _spreadBpMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spreadBpMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('applied')) {
+      context.handle(
+        _appliedMeta,
+        applied.isAcceptableOrUnknown(data['applied']!, _appliedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentRepricingRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentRepricingRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      )!,
+      stageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stage_id'],
+      )!,
+      resetDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reset_date'],
+      )!,
+      effectiveDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}effective_date'],
+      )!,
+      referenceRateDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reference_rate_date'],
+      )!,
+      referenceRateType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference_rate_type'],
+      )!,
+      referenceRatePpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reference_rate_ppm'],
+      )!,
+      spreadBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spread_bp'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      applied: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}applied'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentRepricingRecordsTable createAlias(String alias) {
+    return $InstallmentRepricingRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentRepricingRow extends DataClass
+    implements Insertable<InstallmentRepricingRow> {
+  final String id;
+  final String contractId;
+  final String stageId;
+  final DateTime resetDate;
+  final DateTime effectiveDate;
+  final DateTime referenceRateDate;
+  final String referenceRateType;
+  final int referenceRatePpm;
+  final int spreadBp;
+  final String source;
+  final bool applied;
+  final DateTime createdAt;
+  const InstallmentRepricingRow({
+    required this.id,
+    required this.contractId,
+    required this.stageId,
+    required this.resetDate,
+    required this.effectiveDate,
+    required this.referenceRateDate,
+    required this.referenceRateType,
+    required this.referenceRatePpm,
+    required this.spreadBp,
+    required this.source,
+    required this.applied,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
+    map['stage_id'] = Variable<String>(stageId);
+    map['reset_date'] = Variable<DateTime>(resetDate);
+    map['effective_date'] = Variable<DateTime>(effectiveDate);
+    map['reference_rate_date'] = Variable<DateTime>(referenceRateDate);
+    map['reference_rate_type'] = Variable<String>(referenceRateType);
+    map['reference_rate_ppm'] = Variable<int>(referenceRatePpm);
+    map['spread_bp'] = Variable<int>(spreadBp);
+    map['source'] = Variable<String>(source);
+    map['applied'] = Variable<bool>(applied);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InstallmentRepricingRecordsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentRepricingRecordsCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      stageId: Value(stageId),
+      resetDate: Value(resetDate),
+      effectiveDate: Value(effectiveDate),
+      referenceRateDate: Value(referenceRateDate),
+      referenceRateType: Value(referenceRateType),
+      referenceRatePpm: Value(referenceRatePpm),
+      spreadBp: Value(spreadBp),
+      source: Value(source),
+      applied: Value(applied),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InstallmentRepricingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentRepricingRow(
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
+      stageId: serializer.fromJson<String>(json['stageId']),
+      resetDate: serializer.fromJson<DateTime>(json['resetDate']),
+      effectiveDate: serializer.fromJson<DateTime>(json['effectiveDate']),
+      referenceRateDate: serializer.fromJson<DateTime>(
+        json['referenceRateDate'],
+      ),
+      referenceRateType: serializer.fromJson<String>(json['referenceRateType']),
+      referenceRatePpm: serializer.fromJson<int>(json['referenceRatePpm']),
+      spreadBp: serializer.fromJson<int>(json['spreadBp']),
+      source: serializer.fromJson<String>(json['source']),
+      applied: serializer.fromJson<bool>(json['applied']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
+      'stageId': serializer.toJson<String>(stageId),
+      'resetDate': serializer.toJson<DateTime>(resetDate),
+      'effectiveDate': serializer.toJson<DateTime>(effectiveDate),
+      'referenceRateDate': serializer.toJson<DateTime>(referenceRateDate),
+      'referenceRateType': serializer.toJson<String>(referenceRateType),
+      'referenceRatePpm': serializer.toJson<int>(referenceRatePpm),
+      'spreadBp': serializer.toJson<int>(spreadBp),
+      'source': serializer.toJson<String>(source),
+      'applied': serializer.toJson<bool>(applied),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InstallmentRepricingRow copyWith({
+    String? id,
+    String? contractId,
+    String? stageId,
+    DateTime? resetDate,
+    DateTime? effectiveDate,
+    DateTime? referenceRateDate,
+    String? referenceRateType,
+    int? referenceRatePpm,
+    int? spreadBp,
+    String? source,
+    bool? applied,
+    DateTime? createdAt,
+  }) => InstallmentRepricingRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    stageId: stageId ?? this.stageId,
+    resetDate: resetDate ?? this.resetDate,
+    effectiveDate: effectiveDate ?? this.effectiveDate,
+    referenceRateDate: referenceRateDate ?? this.referenceRateDate,
+    referenceRateType: referenceRateType ?? this.referenceRateType,
+    referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
+    spreadBp: spreadBp ?? this.spreadBp,
+    source: source ?? this.source,
+    applied: applied ?? this.applied,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InstallmentRepricingRow copyWithCompanion(
+    InstallmentRepricingRecordsCompanion data,
+  ) {
+    return InstallmentRepricingRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
+      stageId: data.stageId.present ? data.stageId.value : this.stageId,
+      resetDate: data.resetDate.present ? data.resetDate.value : this.resetDate,
+      effectiveDate: data.effectiveDate.present
+          ? data.effectiveDate.value
+          : this.effectiveDate,
+      referenceRateDate: data.referenceRateDate.present
+          ? data.referenceRateDate.value
+          : this.referenceRateDate,
+      referenceRateType: data.referenceRateType.present
+          ? data.referenceRateType.value
+          : this.referenceRateType,
+      referenceRatePpm: data.referenceRatePpm.present
+          ? data.referenceRatePpm.value
+          : this.referenceRatePpm,
+      spreadBp: data.spreadBp.present ? data.spreadBp.value : this.spreadBp,
+      source: data.source.present ? data.source.value : this.source,
+      applied: data.applied.present ? data.applied.value : this.applied,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepricingRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
+          ..write('resetDate: $resetDate, ')
+          ..write('effectiveDate: $effectiveDate, ')
+          ..write('referenceRateDate: $referenceRateDate, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('referenceRatePpm: $referenceRatePpm, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('source: $source, ')
+          ..write('applied: $applied, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    stageId,
+    resetDate,
+    effectiveDate,
+    referenceRateDate,
+    referenceRateType,
+    referenceRatePpm,
+    spreadBp,
+    source,
+    applied,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentRepricingRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.stageId == this.stageId &&
+          other.resetDate == this.resetDate &&
+          other.effectiveDate == this.effectiveDate &&
+          other.referenceRateDate == this.referenceRateDate &&
+          other.referenceRateType == this.referenceRateType &&
+          other.referenceRatePpm == this.referenceRatePpm &&
+          other.spreadBp == this.spreadBp &&
+          other.source == this.source &&
+          other.applied == this.applied &&
+          other.createdAt == this.createdAt);
+}
+
+class InstallmentRepricingRecordsCompanion
+    extends UpdateCompanion<InstallmentRepricingRow> {
+  final Value<String> id;
+  final Value<String> contractId;
+  final Value<String> stageId;
+  final Value<DateTime> resetDate;
+  final Value<DateTime> effectiveDate;
+  final Value<DateTime> referenceRateDate;
+  final Value<String> referenceRateType;
+  final Value<int> referenceRatePpm;
+  final Value<int> spreadBp;
+  final Value<String> source;
+  final Value<bool> applied;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const InstallmentRepricingRecordsCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.stageId = const Value.absent(),
+    this.resetDate = const Value.absent(),
+    this.effectiveDate = const Value.absent(),
+    this.referenceRateDate = const Value.absent(),
+    this.referenceRateType = const Value.absent(),
+    this.referenceRatePpm = const Value.absent(),
+    this.spreadBp = const Value.absent(),
+    this.source = const Value.absent(),
+    this.applied = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentRepricingRecordsCompanion.insert({
+    required String id,
+    required String contractId,
+    required String stageId,
+    required DateTime resetDate,
+    required DateTime effectiveDate,
+    required DateTime referenceRateDate,
+    required String referenceRateType,
+    required int referenceRatePpm,
+    required int spreadBp,
+    required String source,
+    this.applied = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
+       stageId = Value(stageId),
+       resetDate = Value(resetDate),
+       effectiveDate = Value(effectiveDate),
+       referenceRateDate = Value(referenceRateDate),
+       referenceRateType = Value(referenceRateType),
+       referenceRatePpm = Value(referenceRatePpm),
+       spreadBp = Value(spreadBp),
+       source = Value(source);
+  static Insertable<InstallmentRepricingRow> custom({
+    Expression<String>? id,
+    Expression<String>? contractId,
+    Expression<String>? stageId,
+    Expression<DateTime>? resetDate,
+    Expression<DateTime>? effectiveDate,
+    Expression<DateTime>? referenceRateDate,
+    Expression<String>? referenceRateType,
+    Expression<int>? referenceRatePpm,
+    Expression<int>? spreadBp,
+    Expression<String>? source,
+    Expression<bool>? applied,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (stageId != null) 'stage_id': stageId,
+      if (resetDate != null) 'reset_date': resetDate,
+      if (effectiveDate != null) 'effective_date': effectiveDate,
+      if (referenceRateDate != null) 'reference_rate_date': referenceRateDate,
+      if (referenceRateType != null) 'reference_rate_type': referenceRateType,
+      if (referenceRatePpm != null) 'reference_rate_ppm': referenceRatePpm,
+      if (spreadBp != null) 'spread_bp': spreadBp,
+      if (source != null) 'source': source,
+      if (applied != null) 'applied': applied,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentRepricingRecordsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? contractId,
+    Value<String>? stageId,
+    Value<DateTime>? resetDate,
+    Value<DateTime>? effectiveDate,
+    Value<DateTime>? referenceRateDate,
+    Value<String>? referenceRateType,
+    Value<int>? referenceRatePpm,
+    Value<int>? spreadBp,
+    Value<String>? source,
+    Value<bool>? applied,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentRepricingRecordsCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      stageId: stageId ?? this.stageId,
+      resetDate: resetDate ?? this.resetDate,
+      effectiveDate: effectiveDate ?? this.effectiveDate,
+      referenceRateDate: referenceRateDate ?? this.referenceRateDate,
+      referenceRateType: referenceRateType ?? this.referenceRateType,
+      referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
+      spreadBp: spreadBp ?? this.spreadBp,
+      source: source ?? this.source,
+      applied: applied ?? this.applied,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (stageId.present) {
+      map['stage_id'] = Variable<String>(stageId.value);
+    }
+    if (resetDate.present) {
+      map['reset_date'] = Variable<DateTime>(resetDate.value);
+    }
+    if (effectiveDate.present) {
+      map['effective_date'] = Variable<DateTime>(effectiveDate.value);
+    }
+    if (referenceRateDate.present) {
+      map['reference_rate_date'] = Variable<DateTime>(referenceRateDate.value);
+    }
+    if (referenceRateType.present) {
+      map['reference_rate_type'] = Variable<String>(referenceRateType.value);
+    }
+    if (referenceRatePpm.present) {
+      map['reference_rate_ppm'] = Variable<int>(referenceRatePpm.value);
+    }
+    if (spreadBp.present) {
+      map['spread_bp'] = Variable<int>(spreadBp.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (applied.present) {
+      map['applied'] = Variable<bool>(applied.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepricingRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
+          ..write('resetDate: $resetDate, ')
+          ..write('effectiveDate: $effectiveDate, ')
+          ..write('referenceRateDate: $referenceRateDate, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('referenceRatePpm: $referenceRatePpm, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('source: $source, ')
+          ..write('applied: $applied, ')
+          ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -13493,6 +14994,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentStageConfigsTable(this);
   late final $InstallmentSchedulesTable installmentSchedules =
       $InstallmentSchedulesTable(this);
+  late final $ReferenceRatesTable referenceRates = $ReferenceRatesTable(this);
+  late final $InstallmentRepricingRecordsTable installmentRepricingRecords =
+      $InstallmentRepricingRecordsTable(this);
   late final $RepaymentsTable repayments = $RepaymentsTable(this);
   late final $RepaymentItemsTable repaymentItems = $RepaymentItemsTable(this);
   late final $ImportEntityMappingsTable importEntityMappings =
@@ -13523,6 +15027,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentProducts,
     installmentStageConfigs,
     installmentSchedules,
+    referenceRates,
+    installmentRepricingRecords,
     repayments,
     repaymentItems,
     importEntityMappings,
@@ -17933,6 +19439,12 @@ typedef $$InstallmentStageConfigsTableCreateCompanionBuilder =
       Value<String?> amountAlgorithm,
       Value<int?> periods,
       Value<int?> ratePpm,
+      Value<String?> referenceRateType,
+      Value<int?> spreadBp,
+      Value<DateTime?> firstResetDate,
+      Value<DateTime?> firstEffectiveDate,
+      Value<int?> repricingCycleMonths,
+      Value<String?> repricingPaymentTiming,
       Value<int?> endPrincipalMinor,
       Value<int?> fixedAmountMinor,
       Value<int?> feeMinor,
@@ -17958,6 +19470,12 @@ typedef $$InstallmentStageConfigsTableUpdateCompanionBuilder =
       Value<String?> amountAlgorithm,
       Value<int?> periods,
       Value<int?> ratePpm,
+      Value<String?> referenceRateType,
+      Value<int?> spreadBp,
+      Value<DateTime?> firstResetDate,
+      Value<DateTime?> firstEffectiveDate,
+      Value<int?> repricingCycleMonths,
+      Value<String?> repricingPaymentTiming,
       Value<int?> endPrincipalMinor,
       Value<int?> fixedAmountMinor,
       Value<int?> feeMinor,
@@ -18036,6 +19554,36 @@ class $$InstallmentStageConfigsTableFilterComposer
 
   ColumnFilters<int> get ratePpm => $composableBuilder(
     column: $table.ratePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repricingPaymentTiming => $composableBuilder(
+    column: $table.repricingPaymentTiming,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18154,6 +19702,36 @@ class $$InstallmentStageConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repricingPaymentTiming => $composableBuilder(
+    column: $table.repricingPaymentTiming,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get endPrincipalMinor => $composableBuilder(
     column: $table.endPrincipalMinor,
     builder: (column) => ColumnOrderings(column),
@@ -18253,6 +19831,34 @@ class $$InstallmentStageConfigsTableAnnotationComposer
   GeneratedColumn<int> get ratePpm =>
       $composableBuilder(column: $table.ratePpm, builder: (column) => column);
 
+  GeneratedColumn<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get spreadBp =>
+      $composableBuilder(column: $table.spreadBp, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get repricingPaymentTiming => $composableBuilder(
+    column: $table.repricingPaymentTiming,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get endPrincipalMinor => $composableBuilder(
     column: $table.endPrincipalMinor,
     builder: (column) => column,
@@ -18345,6 +19951,12 @@ class $$InstallmentStageConfigsTableTableManager
                 Value<String?> amountAlgorithm = const Value.absent(),
                 Value<int?> periods = const Value.absent(),
                 Value<int?> ratePpm = const Value.absent(),
+                Value<String?> referenceRateType = const Value.absent(),
+                Value<int?> spreadBp = const Value.absent(),
+                Value<DateTime?> firstResetDate = const Value.absent(),
+                Value<DateTime?> firstEffectiveDate = const Value.absent(),
+                Value<int?> repricingCycleMonths = const Value.absent(),
+                Value<String?> repricingPaymentTiming = const Value.absent(),
                 Value<int?> endPrincipalMinor = const Value.absent(),
                 Value<int?> fixedAmountMinor = const Value.absent(),
                 Value<int?> feeMinor = const Value.absent(),
@@ -18368,6 +19980,12 @@ class $$InstallmentStageConfigsTableTableManager
                 amountAlgorithm: amountAlgorithm,
                 periods: periods,
                 ratePpm: ratePpm,
+                referenceRateType: referenceRateType,
+                spreadBp: spreadBp,
+                firstResetDate: firstResetDate,
+                firstEffectiveDate: firstEffectiveDate,
+                repricingCycleMonths: repricingCycleMonths,
+                repricingPaymentTiming: repricingPaymentTiming,
                 endPrincipalMinor: endPrincipalMinor,
                 fixedAmountMinor: fixedAmountMinor,
                 feeMinor: feeMinor,
@@ -18393,6 +20011,12 @@ class $$InstallmentStageConfigsTableTableManager
                 Value<String?> amountAlgorithm = const Value.absent(),
                 Value<int?> periods = const Value.absent(),
                 Value<int?> ratePpm = const Value.absent(),
+                Value<String?> referenceRateType = const Value.absent(),
+                Value<int?> spreadBp = const Value.absent(),
+                Value<DateTime?> firstResetDate = const Value.absent(),
+                Value<DateTime?> firstEffectiveDate = const Value.absent(),
+                Value<int?> repricingCycleMonths = const Value.absent(),
+                Value<String?> repricingPaymentTiming = const Value.absent(),
                 Value<int?> endPrincipalMinor = const Value.absent(),
                 Value<int?> fixedAmountMinor = const Value.absent(),
                 Value<int?> feeMinor = const Value.absent(),
@@ -18416,6 +20040,12 @@ class $$InstallmentStageConfigsTableTableManager
                 amountAlgorithm: amountAlgorithm,
                 periods: periods,
                 ratePpm: ratePpm,
+                referenceRateType: referenceRateType,
+                spreadBp: spreadBp,
+                firstResetDate: firstResetDate,
+                firstEffectiveDate: firstEffectiveDate,
+                repricingCycleMonths: repricingCycleMonths,
+                repricingPaymentTiming: repricingPaymentTiming,
                 endPrincipalMinor: endPrincipalMinor,
                 fixedAmountMinor: fixedAmountMinor,
                 feeMinor: feeMinor,
@@ -18468,6 +20098,7 @@ typedef $$InstallmentSchedulesTableCreateCompanionBuilder =
       Value<int> expectedFeeMinor,
       required InstallmentScheduleStatus status,
       Value<String?> note,
+      Value<bool> manuallyAdjusted,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -18484,6 +20115,7 @@ typedef $$InstallmentSchedulesTableUpdateCompanionBuilder =
       Value<int> expectedFeeMinor,
       Value<InstallmentScheduleStatus> status,
       Value<String?> note,
+      Value<bool> manuallyAdjusted,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -18550,6 +20182,11 @@ class $$InstallmentSchedulesTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get manuallyAdjusted => $composableBuilder(
+    column: $table.manuallyAdjusted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18623,6 +20260,11 @@ class $$InstallmentSchedulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get manuallyAdjusted => $composableBuilder(
+    column: $table.manuallyAdjusted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -18684,6 +20326,11 @@ class $$InstallmentSchedulesTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<bool> get manuallyAdjusted => $composableBuilder(
+    column: $table.manuallyAdjusted,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -18744,6 +20391,7 @@ class $$InstallmentSchedulesTableTableManager
                 Value<int> expectedFeeMinor = const Value.absent(),
                 Value<InstallmentScheduleStatus> status = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<bool> manuallyAdjusted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -18758,6 +20406,7 @@ class $$InstallmentSchedulesTableTableManager
                 expectedFeeMinor: expectedFeeMinor,
                 status: status,
                 note: note,
+                manuallyAdjusted: manuallyAdjusted,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -18774,6 +20423,7 @@ class $$InstallmentSchedulesTableTableManager
                 Value<int> expectedFeeMinor = const Value.absent(),
                 required InstallmentScheduleStatus status,
                 Value<String?> note = const Value.absent(),
+                Value<bool> manuallyAdjusted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -18788,6 +20438,7 @@ class $$InstallmentSchedulesTableTableManager
                 expectedFeeMinor: expectedFeeMinor,
                 status: status,
                 note: note,
+                manuallyAdjusted: manuallyAdjusted,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -18819,6 +20470,574 @@ typedef $$InstallmentSchedulesTableProcessedTableManager =
         >,
       ),
       InstallmentScheduleRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ReferenceRatesTableCreateCompanionBuilder =
+    ReferenceRatesCompanion Function({
+      required String type,
+      required DateTime rateDate,
+      required int ratePpm,
+      required String source,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$ReferenceRatesTableUpdateCompanionBuilder =
+    ReferenceRatesCompanion Function({
+      Value<String> type,
+      Value<DateTime> rateDate,
+      Value<int> ratePpm,
+      Value<String> source,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$ReferenceRatesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReferenceRatesTable> {
+  $$ReferenceRatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get rateDate => $composableBuilder(
+    column: $table.rateDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReferenceRatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReferenceRatesTable> {
+  $$ReferenceRatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get rateDate => $composableBuilder(
+    column: $table.rateDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReferenceRatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReferenceRatesTable> {
+  $$ReferenceRatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get rateDate =>
+      $composableBuilder(column: $table.rateDate, builder: (column) => column);
+
+  GeneratedColumn<int> get ratePpm =>
+      $composableBuilder(column: $table.ratePpm, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ReferenceRatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReferenceRatesTable,
+          ReferenceRateRow,
+          $$ReferenceRatesTableFilterComposer,
+          $$ReferenceRatesTableOrderingComposer,
+          $$ReferenceRatesTableAnnotationComposer,
+          $$ReferenceRatesTableCreateCompanionBuilder,
+          $$ReferenceRatesTableUpdateCompanionBuilder,
+          (
+            ReferenceRateRow,
+            BaseReferences<
+              _$AppDatabase,
+              $ReferenceRatesTable,
+              ReferenceRateRow
+            >,
+          ),
+          ReferenceRateRow,
+          PrefetchHooks Function()
+        > {
+  $$ReferenceRatesTableTableManager(
+    _$AppDatabase db,
+    $ReferenceRatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReferenceRatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReferenceRatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReferenceRatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> type = const Value.absent(),
+                Value<DateTime> rateDate = const Value.absent(),
+                Value<int> ratePpm = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReferenceRatesCompanion(
+                type: type,
+                rateDate: rateDate,
+                ratePpm: ratePpm,
+                source: source,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String type,
+                required DateTime rateDate,
+                required int ratePpm,
+                required String source,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReferenceRatesCompanion.insert(
+                type: type,
+                rateDate: rateDate,
+                ratePpm: ratePpm,
+                source: source,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReferenceRatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReferenceRatesTable,
+      ReferenceRateRow,
+      $$ReferenceRatesTableFilterComposer,
+      $$ReferenceRatesTableOrderingComposer,
+      $$ReferenceRatesTableAnnotationComposer,
+      $$ReferenceRatesTableCreateCompanionBuilder,
+      $$ReferenceRatesTableUpdateCompanionBuilder,
+      (
+        ReferenceRateRow,
+        BaseReferences<_$AppDatabase, $ReferenceRatesTable, ReferenceRateRow>,
+      ),
+      ReferenceRateRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentRepricingRecordsTableCreateCompanionBuilder =
+    InstallmentRepricingRecordsCompanion Function({
+      required String id,
+      required String contractId,
+      required String stageId,
+      required DateTime resetDate,
+      required DateTime effectiveDate,
+      required DateTime referenceRateDate,
+      required String referenceRateType,
+      required int referenceRatePpm,
+      required int spreadBp,
+      required String source,
+      Value<bool> applied,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentRepricingRecordsTableUpdateCompanionBuilder =
+    InstallmentRepricingRecordsCompanion Function({
+      Value<String> id,
+      Value<String> contractId,
+      Value<String> stageId,
+      Value<DateTime> resetDate,
+      Value<DateTime> effectiveDate,
+      Value<DateTime> referenceRateDate,
+      Value<String> referenceRateType,
+      Value<int> referenceRatePpm,
+      Value<int> spreadBp,
+      Value<String> source,
+      Value<bool> applied,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentRepricingRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingRecordsTable> {
+  $$InstallmentRepricingRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stageId => $composableBuilder(
+    column: $table.stageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resetDate => $composableBuilder(
+    column: $table.resetDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get effectiveDate => $composableBuilder(
+    column: $table.effectiveDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get referenceRateDate => $composableBuilder(
+    column: $table.referenceRateDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get referenceRatePpm => $composableBuilder(
+    column: $table.referenceRatePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get applied => $composableBuilder(
+    column: $table.applied,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentRepricingRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingRecordsTable> {
+  $$InstallmentRepricingRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stageId => $composableBuilder(
+    column: $table.stageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resetDate => $composableBuilder(
+    column: $table.resetDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get effectiveDate => $composableBuilder(
+    column: $table.effectiveDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get referenceRateDate => $composableBuilder(
+    column: $table.referenceRateDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get referenceRatePpm => $composableBuilder(
+    column: $table.referenceRatePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get applied => $composableBuilder(
+    column: $table.applied,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentRepricingRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingRecordsTable> {
+  $$InstallmentRepricingRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get stageId =>
+      $composableBuilder(column: $table.stageId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resetDate =>
+      $composableBuilder(column: $table.resetDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get effectiveDate => $composableBuilder(
+    column: $table.effectiveDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get referenceRateDate => $composableBuilder(
+    column: $table.referenceRateDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get referenceRatePpm => $composableBuilder(
+    column: $table.referenceRatePpm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get spreadBp =>
+      $composableBuilder(column: $table.spreadBp, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<bool> get applied =>
+      $composableBuilder(column: $table.applied, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InstallmentRepricingRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentRepricingRecordsTable,
+          InstallmentRepricingRow,
+          $$InstallmentRepricingRecordsTableFilterComposer,
+          $$InstallmentRepricingRecordsTableOrderingComposer,
+          $$InstallmentRepricingRecordsTableAnnotationComposer,
+          $$InstallmentRepricingRecordsTableCreateCompanionBuilder,
+          $$InstallmentRepricingRecordsTableUpdateCompanionBuilder,
+          (
+            InstallmentRepricingRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentRepricingRecordsTable,
+              InstallmentRepricingRow
+            >,
+          ),
+          InstallmentRepricingRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentRepricingRecordsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentRepricingRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentRepricingRecordsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentRepricingRecordsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentRepricingRecordsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
+                Value<String> stageId = const Value.absent(),
+                Value<DateTime> resetDate = const Value.absent(),
+                Value<DateTime> effectiveDate = const Value.absent(),
+                Value<DateTime> referenceRateDate = const Value.absent(),
+                Value<String> referenceRateType = const Value.absent(),
+                Value<int> referenceRatePpm = const Value.absent(),
+                Value<int> spreadBp = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<bool> applied = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRepricingRecordsCompanion(
+                id: id,
+                contractId: contractId,
+                stageId: stageId,
+                resetDate: resetDate,
+                effectiveDate: effectiveDate,
+                referenceRateDate: referenceRateDate,
+                referenceRateType: referenceRateType,
+                referenceRatePpm: referenceRatePpm,
+                spreadBp: spreadBp,
+                source: source,
+                applied: applied,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String contractId,
+                required String stageId,
+                required DateTime resetDate,
+                required DateTime effectiveDate,
+                required DateTime referenceRateDate,
+                required String referenceRateType,
+                required int referenceRatePpm,
+                required int spreadBp,
+                required String source,
+                Value<bool> applied = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRepricingRecordsCompanion.insert(
+                id: id,
+                contractId: contractId,
+                stageId: stageId,
+                resetDate: resetDate,
+                effectiveDate: effectiveDate,
+                referenceRateDate: referenceRateDate,
+                referenceRateType: referenceRateType,
+                referenceRatePpm: referenceRatePpm,
+                spreadBp: spreadBp,
+                source: source,
+                applied: applied,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentRepricingRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentRepricingRecordsTable,
+      InstallmentRepricingRow,
+      $$InstallmentRepricingRecordsTableFilterComposer,
+      $$InstallmentRepricingRecordsTableOrderingComposer,
+      $$InstallmentRepricingRecordsTableAnnotationComposer,
+      $$InstallmentRepricingRecordsTableCreateCompanionBuilder,
+      $$InstallmentRepricingRecordsTableUpdateCompanionBuilder,
+      (
+        InstallmentRepricingRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentRepricingRecordsTable,
+          InstallmentRepricingRow
+        >,
+      ),
+      InstallmentRepricingRow,
       PrefetchHooks Function()
     >;
 typedef $$RepaymentsTableCreateCompanionBuilder =
@@ -20196,6 +22415,14 @@ class $AppDatabaseManager {
       );
   $$InstallmentSchedulesTableTableManager get installmentSchedules =>
       $$InstallmentSchedulesTableTableManager(_db, _db.installmentSchedules);
+  $$ReferenceRatesTableTableManager get referenceRates =>
+      $$ReferenceRatesTableTableManager(_db, _db.referenceRates);
+  $$InstallmentRepricingRecordsTableTableManager
+  get installmentRepricingRecords =>
+      $$InstallmentRepricingRecordsTableTableManager(
+        _db,
+        _db.installmentRepricingRecords,
+      );
   $$RepaymentsTableTableManager get repayments =>
       $$RepaymentsTableTableManager(_db, _db.repayments);
   $$RepaymentItemsTableTableManager get repaymentItems =>

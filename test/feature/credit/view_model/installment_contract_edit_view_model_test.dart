@@ -121,6 +121,7 @@ void main() {
         expect(loaded.draft.map((row) => row.interest.minorUnits), [120, 80]);
         expect(loaded.draft.map((row) => row.fee.minorUnits), [10, 20]);
         expect(loaded.stagePlanPreviewed, isTrue);
+        expect(loaded.planPreviewToken, 'preview-token');
         expect(loaded.manualPatchedPeriodNos, isEmpty);
         viewModel.setStageDraft(loaded.stageDraft);
         expect(
@@ -133,6 +134,20 @@ void main() {
               .stagePlanPreviewed,
           isTrue,
         );
+        viewModel.setStageDraft(_draft(periods: '4'));
+        final changed =
+            container
+                    .read(
+                      installmentContractEditViewModelProvider('contract-1'),
+                    )
+                    .requireValue
+                as InstallmentContractEditLoaded;
+        expect(changed.stagePlanPreviewed, isFalse);
+        expect(changed.planPreviewToken, isNull);
+        viewModel.setStageDraft(loaded.stageDraft);
+        await viewModel.recalculate();
+        await viewModel.submit();
+        expect(service.updateCommands.last.planPreviewToken, 'preview-token');
       },
     );
 
@@ -401,7 +416,7 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   final Object? updateException;
   final List<RecalculatedSchedulePreview> previewResults;
   final updateCommands = <UpdateContractCommand>[];
-  final previewCommands = <RecalculateContractSchedulesCommand>[];
+  final previewCommands = <PreviewContractRecalculationCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -411,18 +426,14 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
-    RecalculateContractSchedulesCommand command,
+  Future<ContractRecalculationPreview> previewContractRecalculation(
+    PreviewContractRecalculationCommand command,
   ) async {
     previewCommands.add(command);
-    return previewResults;
-  }
-
-  @override
-  Future<void> recalculateContractSchedules(
-    RecalculateContractSchedulesCommand command,
-  ) {
-    throw UnimplementedError();
+    return ContractRecalculationPreview(
+      schedules: previewResults,
+      token: 'preview-token',
+    );
   }
 
   @override
@@ -433,16 +444,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   @override
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
     throw UnimplementedError();
-  }
-
-  @override
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  ) async {
-    return const ContractStatusValidationResult(
-      repairedScheduleCount: 0,
-      contractStatusChanged: false,
-    );
   }
 
   @override

@@ -21,7 +21,7 @@ void main() {
     test(
       '12000 over 12 months at 1% per month is the 1066.19 textbook plan',
       () {
-        final plan = engine.plan(
+        final plan = engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 1200000),
             borrowingDate: DateTime(2026, 1, 10),
@@ -80,17 +80,29 @@ void main() {
     );
 
     test('equal principal at 4.9% annual accrues on the declining balance', () {
-      final entries = engine.generate(
-        principal: const Money(minorUnits: 10000000),
-        borrowingDate: DateTime(2026, 1, 15),
-        firstRepaymentDate: DateTime(2026, 2, 15),
-        lastRepaymentDate: DateTime(2026, 11, 15),
-        totalPeriods: 10,
-        method: InstallmentRepaymentMethod.equalPrincipal,
-        accrualMethod: InterestAccrualMethod.monthly,
-        ratePeriod: InterestRatePeriod.annual,
-        ratePpm: 49000,
-      );
+      final entries = engine
+          .generate(
+            InstallmentPlanTerms(
+              principal: const Money(minorUnits: 10000000),
+              borrowingDate: DateTime(2026, 1, 15),
+              stages: [
+                AmortizingStage(
+                  dates: IntervalRepaymentDates(
+                    firstDate: DateTime(2026, 2, 15),
+                    lastDate: DateTime(2026, 11, 15),
+                    count: 10,
+                  ),
+                  method: InstallmentRepaymentMethod.equalPrincipal,
+                  accrual: InterestAccrualMethod.monthly,
+                  rate: const InterestRate(
+                    period: InterestRatePeriod.annual,
+                    ppm: 49000,
+                  ),
+                ),
+              ],
+            ),
+          )
+          .entries;
 
       expect(entries.map((e) => e.expectedPrincipal.minorUnits).toSet(), {
         1000000,
@@ -110,18 +122,30 @@ void main() {
     });
 
     test('flat fee preset splits fee across periods without interest', () {
-      final entries = engine.generate(
-        principal: const Money(minorUnits: 120000),
-        borrowingDate: DateTime(2026, 5, 9),
-        firstRepaymentDate: DateTime(2026, 6, 9),
-        lastRepaymentDate: DateTime(2027, 5, 9),
-        totalPeriods: 12,
-        method: InstallmentRepaymentMethod.flatFee,
-        accrualMethod: InterestAccrualMethod.monthly,
-        ratePeriod: InterestRatePeriod.annual,
-        ratePpm: 72000,
-        totalFeeMinor: 10560,
-      );
+      final entries = engine
+          .generate(
+            InstallmentPlanTerms(
+              principal: const Money(minorUnits: 120000),
+              borrowingDate: DateTime(2026, 5, 9),
+              stages: [
+                AmortizingStage(
+                  dates: IntervalRepaymentDates(
+                    firstDate: DateTime(2026, 6, 9),
+                    lastDate: DateTime(2027, 5, 9),
+                    count: 12,
+                  ),
+                  method: InstallmentRepaymentMethod.flatFee,
+                  accrual: InterestAccrualMethod.monthly,
+                  rate: const InterestRate(
+                    period: InterestRatePeriod.annual,
+                    ppm: 72000,
+                  ),
+                  fee: const Money(minorUnits: 10560),
+                ),
+              ],
+            ),
+          )
+          .entries;
 
       expect(entries.map((e) => e.expectedPrincipal.minorUnits).toSet(), {
         10000,
@@ -134,7 +158,7 @@ void main() {
   group('stages', () {
     test('deferment, interest-only years and equal principal years chain', () {
       const rate = InterestRate(ppm: 31000, period: InterestRatePeriod.annual);
-      final plan = engine.plan(
+      final plan = engine.generate(
         InstallmentPlanTerms(
           principal: const Money(minorUnits: 1200000),
           borrowingDate: DateTime(2026, 9, 1),
@@ -187,7 +211,7 @@ void main() {
     });
 
     test('explicit end principal feeds the next stage', () {
-      final plan = engine.plan(
+      final plan = engine.generate(
         InstallmentPlanTerms(
           principal: const Money(minorUnits: 10000),
           borrowingDate: DateTime(2026, 1, 1),
@@ -224,7 +248,7 @@ void main() {
       'non-final equal principal stage requires an explicit end principal',
       () {
         expect(
-          () => engine.plan(
+          () => engine.generate(
             InstallmentPlanTerms(
               principal: const Money(minorUnits: 10000),
               borrowingDate: DateTime(2026, 1, 1),
@@ -252,7 +276,7 @@ void main() {
     );
 
     test('balloon end principal is repaid on top of the final period', () {
-      final plan = engine.plan(
+      final plan = engine.generate(
         InstallmentPlanTerms(
           principal: const Money(minorUnits: 1000000),
           borrowingDate: DateTime(2026, 1, 1),
@@ -285,7 +309,7 @@ void main() {
 
     test('stage dates must follow the previous stage', () {
       expect(
-        () => engine.plan(
+        () => engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 10000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -307,7 +331,7 @@ void main() {
 
     test('explicit accrual start cannot bypass the stage timeline', () {
       expect(
-        () => engine.plan(
+        () => engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 10000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -327,7 +351,7 @@ void main() {
 
     test('a trailing deferment cannot leave principal unallocated', () {
       expect(
-        () => engine.plan(
+        () => engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 10000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -346,7 +370,7 @@ void main() {
 
     test('explicit dates require a positive repayment rhythm', () {
       expect(
-        () => engine.plan(
+        () => engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 10000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -367,7 +391,7 @@ void main() {
 
     test('deferment alone produces no periods', () {
       expect(
-        () => engine.plan(
+        () => engine.generate(
           InstallmentPlanTerms(
             principal: const Money(minorUnits: 10000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -381,7 +405,7 @@ void main() {
 
   group('conventions', () {
     test('quarterly rhythm with monthly accrual counts three months', () {
-      final plan = engine.plan(
+      final plan = engine.generate(
         InstallmentPlanTerms(
           principal: const Money(minorUnits: 1200000),
           borrowingDate: DateTime(2026, 1, 1),
@@ -414,7 +438,7 @@ void main() {
       const rate = InterestRate(ppm: 73000, period: InterestRatePeriod.annual);
       List<int> interest(DayCountConvention dayCount) {
         return engine
-            .plan(
+            .generate(
               InstallmentPlanTerms(
                 principal: const Money(minorUnits: 1000000),
                 borrowingDate: DateTime(2026, 1, 1),
@@ -441,7 +465,7 @@ void main() {
     test('rounding mode applies to every amount that lands on cents', () {
       List<int> principals(RoundingMode rounding) {
         return engine
-            .plan(
+            .generate(
               InstallmentPlanTerms(
                 principal: const Money(minorUnits: 1001),
                 borrowingDate: DateTime(2026, 1, 1),
@@ -471,7 +495,7 @@ void main() {
 
   group('equal installment amount', () {
     InstallmentPlan planWith(EqualInstallmentAmount amount) {
-      return engine.plan(
+      return engine.generate(
         InstallmentPlanTerms(
           principal: const Money(minorUnits: 10000),
           borrowingDate: DateTime(2026, 1, 1),
@@ -555,7 +579,7 @@ void main() {
 
   test('a 360 period plan is computed quickly with exact arithmetic', () {
     final stopwatch = Stopwatch()..start();
-    final plan = engine.plan(
+    final plan = engine.generate(
       InstallmentPlanTerms(
         principal: const Money(minorUnits: 100000000),
         borrowingDate: DateTime(2026, 1, 1),

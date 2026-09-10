@@ -21,6 +21,8 @@ class InstallmentSchedules extends Table {
   TextColumn get status =>
       textEnum<InstallmentScheduleStatus>().named('status')();
   TextColumn get note => text().nullable()();
+  BoolColumn get manuallyAdjusted =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

@@ -58,6 +58,10 @@ void main() {
     );
     expect(find.text('账户管理'), findsNothing);
     expect(
+      find.descendant(of: sections.at(0), matching: find.text('参考利率')),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(of: sections.at(1), matching: find.text('数据导入')),
       findsOneWidget,
     );

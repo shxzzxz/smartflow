@@ -5,6 +5,7 @@ import '../../../core/time/date_label.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
 import '../valobj/installment_contract_terms.dart';
+import '../valobj/installment_plan_change.dart';
 import '../service/settlement/settlement_judgement_service.dart';
 import 'installment_schedule.dart';
 
@@ -76,7 +77,7 @@ class InstallmentContract {
     String? productName,
   }) {
     ensureEditable();
-    terms.validate();
+    terms.validateReplacementOf(_stageTerms);
     _stageTerms = terms;
     if (customRules != null) this.customRules = customRules;
     if (productId != null) {
@@ -180,6 +181,16 @@ class InstallmentContract {
     }
     for (final revision in revisions) {
       final target = byPeriod[revision.periodNo]!;
+      if ((revision.expectedPrincipal != null &&
+              revision.expectedPrincipal != target.expectedPrincipal) ||
+          (revision.expectedInterest != null &&
+              revision.expectedInterest != target.expectedInterest) ||
+          (revision.expectedFee != null &&
+              revision.expectedFee != target.expectedFee) ||
+          (revision.expectedRepaymentDate != null &&
+              revision.expectedRepaymentDate != target.expectedRepaymentDate)) {
+        target.manuallyAdjusted = true;
+      }
       target.reviseExpectation(
         expectedPrincipal: revision.expectedPrincipal,
         expectedInterest: revision.expectedInterest,
@@ -197,6 +208,90 @@ class InstallmentContract {
       current: _status,
       scheduleStatuses: schedules.map((schedule) => schedule.status),
     );
+  }
+
+  /// 自动计算与人工编辑分别应用，避免自动重算被标记为人工调整。
+  List<InstallmentSchedule> applyPlanChange(
+    InstallmentPlanChangeSet change, {
+    required List<InstallmentSchedule> schedules,
+    required String Function() newId,
+    required DateTime createdAt,
+  }) {
+    ensureEditable();
+    for (final schedule in schedules) {
+      _ensureScheduleBelongsToContract(schedule);
+    }
+    final current = {for (final row in schedules) row.id: row};
+    final proposed = {
+      for (final row in change.rows)
+        if (row.id != null) row.id: row,
+    };
+    for (final previous in schedules) {
+      if (previous.status == InstallmentScheduleStatus.pending &&
+          !change.frozenIds.contains(previous.id)) {
+        continue;
+      }
+      final next = proposed[previous.id];
+      if (next == null ||
+          next.status != previous.status ||
+          !next.sameExpectation(InstallmentPlanRow.fromSchedule(previous)) ||
+          next.manuallyAdjusted != previous.manuallyAdjusted) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotPending,
+          message: '计划变更不能修改或移除冻结期次',
+        );
+      }
+    }
+    final result = <InstallmentSchedule>[];
+    final ownedStages = _stageTerms.stages.map((s) => s.id).toSet();
+    final stageIds = {
+      for (final stage in change.terms.stages)
+        stage.id: ownedStages.contains(stage.id) ? stage.id : newId(),
+    };
+    final ids = <String>{};
+    final periods = <int>{};
+    for (final row in change.rows) {
+      final previous = row.id == null ? null : current[row.id];
+      if ((row.id != null && previous == null) ||
+          !periods.add(row.periodNo) ||
+          (row.id != null && !ids.add(row.id!))) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '计划变更包含无效身份或重复期次',
+        );
+      }
+      result.add(
+        InstallmentSchedule(
+          id: row.id ?? newId(),
+          contractId: id,
+          stageId: stageIds[row.stageId] ?? row.stageId,
+          periodNo: row.periodNo,
+          expectedRepaymentDate: row.date,
+          expectedPrincipal: row.principal,
+          expectedInterest: row.interest,
+          expectedFee: row.fee,
+          status: row.status,
+          manuallyAdjusted:
+              change.request is RecalculateFromTerms &&
+                  change.recalculatedPeriods.contains(row.periodNo)
+              ? false
+              : previous?.manuallyAdjusted ?? false,
+          createdAt: previous?.createdAt ?? createdAt,
+          note: previous?.note,
+        ),
+      );
+    }
+    _stageTerms = InstallmentContractTerms(
+      dayCount: change.terms.dayCount,
+      rounding: change.terms.rounding,
+      tailDifference: change.terms.tailDifference,
+      stages: [
+        for (final stage in change.terms.stages)
+          InstallmentContractStage(id: stageIds[stage.id]!, terms: stage.terms),
+      ],
+    );
+    refreshStatusFromSchedules(result);
+    return result;
   }
 
   void _ensureScheduleBelongsToContract(InstallmentSchedule schedule) {

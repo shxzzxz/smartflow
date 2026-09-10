@@ -12,7 +12,8 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/domain/credit/entity/installment_product.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/valobj/equal_installment_amount.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
@@ -196,28 +197,32 @@ void main() {
       expect(loaded.stageTerms.rounding, RoundingMode.halfEven);
       final schedules = await contracts.listSchedules('loan');
       expect(schedules.map((s) => s.stageId), ['c2', 'c2', 'c3', 'c3']);
-      final before = const InstallmentPrepaymentRecalculator().recalculate(
-        contract: loaded,
-        schedules: schedules,
-        prepaymentPrincipalMinor: 1000,
-      );
+      final before = const InstallmentPlanEngine()
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: loaded,
+              schedules: schedules,
+              prepaymentPrincipal: Money(minorUnits: 1000),
+            ),
+            RecalculateAfterPrepayment(loaded.borrowingDate),
+          )
+          .recalculatedRows;
       final gateway = DriftBackupGateway(db);
       final snapshot = await gateway.readSnapshot();
       await gateway.replaceSnapshot(snapshot);
       final restored = (await contracts.findContract('loan'))!;
-      final after = const InstallmentPrepaymentRecalculator().recalculate(
-        contract: restored,
-        schedules: await contracts.listSchedules('loan'),
-        prepaymentPrincipalMinor: 1000,
-      );
-      expect(
-        after.map((r) => r.expectedPrincipal),
-        before.map((r) => r.expectedPrincipal),
-      );
-      expect(
-        after.map((r) => r.expectedInterest),
-        before.map((r) => r.expectedInterest),
-      );
+      final after = const InstallmentPlanEngine()
+          .recalculate(
+            InstallmentPlanContext.fromContract(
+              contract: restored,
+              schedules: await contracts.listSchedules('loan'),
+              prepaymentPrincipal: Money(minorUnits: 1000),
+            ),
+            RecalculateAfterPrepayment(restored.borrowingDate),
+          )
+          .recalculatedRows;
+      expect(after.map((r) => r.principal), before.map((r) => r.principal));
+      expect(after.map((r) => r.interest), before.map((r) => r.interest));
       expect(restored.productName, '原产品');
       expect(restored.name, '保留的合同名称');
     },

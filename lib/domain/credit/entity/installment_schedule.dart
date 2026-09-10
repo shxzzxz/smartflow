@@ -20,12 +20,14 @@ class InstallmentSchedule {
     required this.createdAt,
     this.note,
     this.stageId,
+    this.manuallyAdjusted = false,
   }) : _status = status;
 
   final String id;
   final String contractId;
   final String? stageId;
   final int periodNo;
+  bool manuallyAdjusted;
   DateTime expectedRepaymentDate;
   Money expectedPrincipal;
   Money expectedInterest;

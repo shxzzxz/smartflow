@@ -12,9 +12,9 @@ import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_lifecycle_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_prepayment_recalculator.dart';
+import '../../installment/command/installment_plan_service.dart';
+import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart'
     as domain_repayment;
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
@@ -24,7 +24,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'repayment_command.dart';
 import '../repayment_amount_dto.dart';
-import '../../settlement/credit_settlement_coordinator.dart';
+import '../../settlement/settlement_app_service.dart';
 
 abstract interface class RepaymentAppService {
   Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
@@ -79,14 +79,20 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     InstallmentOriginationService origination =
         const InstallmentOriginationService(),
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
-    InstallmentLifecycleService installmentLifecycle =
-        const InstallmentLifecycleService(),
     domain_repayment.RepaymentPolicyService repaymentPolicy =
         const domain_repayment.RepaymentPolicyService(),
-    InstallmentPrepaymentRecalculator prepaymentRecalculator =
-        const InstallmentPrepaymentRecalculator(),
-    CreditSettlementCoordinator? repaymentSettlement,
-  }) : _bills = bills,
+    InstallmentPlanService? plans,
+    SettlementAppService? repaymentSettlement,
+  }) : _plans =
+           plans ??
+           InstallmentPlanService(
+             installments: installments,
+             repayments: repayments,
+             bills: bills,
+             runner: transactionRunner,
+             idGenerator: idGenerator,
+           ),
+       _bills = bills,
        _repayments = repayments,
        _installments = installments,
        _ledger = ledger,
@@ -97,14 +103,13 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
        _repaymentPolicy = repaymentPolicy,
        _repaymentSettlement =
            repaymentSettlement ??
-           CreditSettlementCoordinator(
+           SettlementAppService(
              bills: bills,
              repayments: repayments,
              installments: installments,
-             lifecycle: installmentLifecycle,
-             prepaymentRecalculator: prepaymentRecalculator,
            );
 
+  final InstallmentPlanService _plans;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final InstallmentRepository _installments;
@@ -114,7 +119,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   final InstallmentOriginationService _origination;
   final CreditDebtBucketService _debtBuckets;
   final domain_repayment.RepaymentPolicyService _repaymentPolicy;
-  final CreditSettlementCoordinator _repaymentSettlement;
+  final SettlementAppService _repaymentSettlement;
 
   @override
   Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
@@ -535,12 +540,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
       if (total.principal.minorUnits > 0) {
-        await _repaymentSettlement.recalculatePendingSchedules(
+        await _plans.applyAutomaticChange(
           contract.id,
-          eventDate:
-              command.transactionInfo?.occurredAt ?? repayment.repaymentDate,
+          RecalculateAfterPrepayment(repayment.repaymentDate),
         );
-        await _repaymentSettlement.refreshContractStatus(contract.id);
       }
       return CreateRepaymentResult(
         repaymentId: repaymentId,
@@ -759,11 +762,10 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repayment.totalAllocated().principal.minorUnits > 0;
     await _repayments.deleteRepayment(repayment.id);
     if (changesPrincipal) {
-      await _repaymentSettlement.recalculatePendingSchedules(
+      await _plans.applyAutomaticChange(
         contract.id,
-        eventDate: eventDate,
+        RecalculateAfterPrepayment(eventDate!),
       );
-      await _repaymentSettlement.refreshContractStatus(contract.id);
     }
   }
 

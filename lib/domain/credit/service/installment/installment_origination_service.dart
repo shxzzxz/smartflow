@@ -9,7 +9,6 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 import '../../valobj/installment_contract_terms.dart';
-import '../../valobj/installment_plan_terms.dart';
 
 class InstallmentOriginationTerms {
   const InstallmentOriginationTerms({
@@ -129,19 +128,14 @@ class InstallmentOriginationService {
     }
     final stageTerms = terms.stageTerms;
     stageTerms.validate();
-    final plan = _planEngine.plan(
+    final plan = _planEngine.generate(
       stageTerms.planTerms(terms.principal, terms.borrowingDate),
     );
     final entries = plan.entries;
-    final stageIdsByPeriod = <int, String>{};
-    var period = 1;
-    for (final stage in stageTerms.stages) {
-      if (stage.terms case AmortizingStage(:final dates)) {
-        for (var i = 0; i < dates.getDates().length; i++) {
-          stageIdsByPeriod[period++] = stage.id;
-        }
-      }
-    }
+    final stageIdsByPeriod = {
+      for (final entry in entries)
+        entry.periodNo: stageTerms.stages[entry.stageIndex].id,
+    };
     final contract = InstallmentContract(
       id: contractId,
       liabilityAccountId: liabilityAccountId,

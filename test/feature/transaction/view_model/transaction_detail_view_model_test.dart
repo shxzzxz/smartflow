@@ -913,15 +913,8 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<List<RecalculatedSchedulePreview>> previewContractRecalculation(
-    RecalculateContractSchedulesCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> recalculateContractSchedules(
-    RecalculateContractSchedulesCommand command,
+  Future<ContractRecalculationPreview> previewContractRecalculation(
+    PreviewContractRecalculationCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -934,16 +927,6 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   @override
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
     throw UnimplementedError();
-  }
-
-  @override
-  Future<ContractStatusValidationResult> validateContractStatuses(
-    ValidateContractStatusesCommand command,
-  ) async {
-    return const ContractStatusValidationResult(
-      repairedScheduleCount: 0,
-      contractStatusChanged: false,
-    );
   }
 
   @override

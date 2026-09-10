@@ -61,7 +61,11 @@ class InstallmentContractEditViewModel
   void setStageDraft(InstallmentTermsDraft value) => _updateLoaded(
     (s) => identical(s.stageDraft, value)
         ? s
-        : s.copyWith(stageDraft: value, stagePlanPreviewed: false),
+        : s.copyWith(
+            stageDraft: value,
+            stagePlanPreviewed: false,
+            planPreviewToken: null,
+          ),
   );
   void setCustomRules(bool value) =>
       _updateLoaded((s) => s.copyWith(customRules: value));
@@ -73,6 +77,9 @@ class InstallmentContractEditViewModel
       customRules: true,
       stagePlanPreviewed:
           identical(s.stageDraft, value.terms) && s.stagePlanPreviewed,
+      planPreviewToken: identical(s.stageDraft, value.terms)
+          ? s.planPreviewToken
+          : null,
     ),
   );
 
@@ -83,7 +90,7 @@ class InstallmentContractEditViewModel
     final preview = await ref
         .read(installmentAppServiceProvider)
         .previewContractRecalculation(
-          RecalculateContractSchedulesCommand(
+          PreviewContractRecalculationCommand(
             contractId: contractId,
             stageTerms: terms,
           ),
@@ -92,11 +99,12 @@ class InstallmentContractEditViewModel
     _setLoaded(
       loaded.copyWith(
         stagePlanPreviewed: true,
+        planPreviewToken: preview.token,
         manualPatchedPeriodNos: {},
         draft: [
-          for (final row in preview)
+          for (final row in preview.schedules)
             InstallmentContractDraftRow(
-              scheduleId: row.scheduleId,
+              scheduleId: row.scheduleId ?? 'preview-${row.periodNo}',
               periodNo: row.periodNo,
               date: row.expectedRepaymentDate,
               principal: row.expectedPrincipal,
@@ -129,6 +137,7 @@ class InstallmentContractEditViewModel
                 stageTerms: terms,
                 customRules: loaded.customRules,
                 regeneratePlan: loaded.stagePlanPreviewed,
+                planPreviewToken: loaded.planPreviewToken,
                 schedulePatches: [
                   for (final row in loaded.draft)
                     if (loaded.manualPatchedPeriodNos.contains(row.periodNo))

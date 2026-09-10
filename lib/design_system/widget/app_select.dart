@@ -63,8 +63,13 @@ class _AppSelectMenuState<T> extends State<AppSelectMenu<T>> {
     final colors = Theme.of(context).colorScheme;
     return [
       for (final option in widget.options)
-        PopupMenuItem(
+        PopupMenuItem<T>(
           value: option.value,
+          onTap: option.value == null
+              ? () {
+                  widget.onChanged(option.value);
+                }
+              : null,
           child: Row(
             children: [
               if (option.icon != null) ...[
@@ -119,34 +124,32 @@ class _AppSelectMenuState<T> extends State<AppSelectMenu<T>> {
               screenSize.height - triggerRect.bottom - AppSpacing.space8;
           final above = triggerRect.top - AppSpacing.space8;
           final openBelow = below >= menuHeight || below >= above;
-          final desiredTop =
-              openBelow ? triggerRect.bottom : triggerRect.top - menuHeight;
-          final top =
-              desiredTop
-                  .clamp(
-                    AppSpacing.space8,
-                    math.max(
-                      AppSpacing.space8,
-                      screenSize.height - menuHeight - AppSpacing.space8,
-                    ),
-                  )
-                  .toDouble();
+          final desiredTop = openBelow
+              ? triggerRect.bottom
+              : triggerRect.top - menuHeight;
+          final top = desiredTop
+              .clamp(
+                AppSpacing.space8,
+                math.max(
+                  AppSpacing.space8,
+                  screenSize.height - menuHeight - AppSpacing.space8,
+                ),
+              )
+              .toDouble();
 
           final menuWidth = AppComponentTokens.menuMinWidth;
-          final desiredLeft =
-              widget.alignment == AppSelectMenuAlignment.end
-                  ? triggerRect.right - menuWidth
-                  : triggerRect.left;
-          final left =
-              desiredLeft
-                  .clamp(
-                    AppSpacing.space8,
-                    math.max(
-                      AppSpacing.space8,
-                      screenSize.width - menuWidth - AppSpacing.space8,
-                    ),
-                  )
-                  .toDouble();
+          final desiredLeft = widget.alignment == AppSelectMenuAlignment.end
+              ? triggerRect.right - menuWidth
+              : triggerRect.left;
+          final left = desiredLeft
+              .clamp(
+                AppSpacing.space8,
+                math.max(
+                  AppSpacing.space8,
+                  screenSize.width - menuWidth - AppSpacing.space8,
+                ),
+              )
+              .toDouble();
 
           return RelativeRect.fromLTRB(
             left,
