@@ -6,12 +6,10 @@ import '../../../../core/id/id_generator.dart';
 import '../../../../core/money/money.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_schedule.dart';
-import '../../../../domain/credit/port/bill_repository.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
 import '../../../../domain/credit/service/installment/installment_lifecycle_service.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
-import '../../../../domain/credit/valobj/bill_enums.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/equal_installment_amount.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
@@ -22,15 +20,9 @@ import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../shared/transaction_runner.dart';
 
 class InstallmentPlanPreview {
-  const InstallmentPlanPreview({
-    required this.change,
-    required this.token,
-    required this.hasFrozenPeriods,
-    required this.hasIssuedBills,
-  });
+  const InstallmentPlanPreview({required this.change, required this.token});
   final InstallmentPlanChangeSet change;
   final String token;
-  final bool hasFrozenPeriods, hasIssuedBills;
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。
@@ -38,36 +30,39 @@ class InstallmentPlanService {
   InstallmentPlanService({
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
-    required BillRepository bills,
     required TransactionRunner runner,
     required IdGenerator idGenerator,
     InstallmentPlanEngine engine = const InstallmentPlanEngine(),
   }) : _installments = installments,
        _repayments = repayments,
-       _bills = bills,
        _runner = runner,
        _ids = idGenerator,
        _engine = engine;
 
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
-  final BillRepository _bills;
   final TransactionRunner _runner;
   final IdGenerator _ids;
   final InstallmentPlanEngine _engine;
 
   Future<InstallmentPlanPreview> previewChange(
     String contractId,
-    InstallmentPlanChangeRequest request,
-  ) => _runner.run(() async => (await _prepare(contractId, request)).preview);
+    RecalculateFromTerms request,
+  ) => _runner.run(() async {
+    final prepared = await _prepare(contractId, request);
+    return InstallmentPlanPreview(
+      change: prepared.change,
+      token: _previewToken(prepared, request),
+    );
+  });
 
   Future<void> confirmChange(
     String contractId,
-    InstallmentPlanChangeRequest request, {
+    RecalculateFromTerms request, {
     required String token,
   }) => _runner.run(() async {
     final prepared = await _prepare(contractId, request);
-    if (prepared.preview.token != token) {
+    if (_previewToken(prepared, request) != token) {
       throw BusinessException(
         CreditErrorCode.contractPersistenceConflict,
         message: '合同、计划或还款状态已变化，请重新预览',
@@ -117,35 +112,13 @@ class InstallmentPlanService {
       ),
     );
     final change = _engine.recalculate(context, request);
-    final affected =
-        change.recalculatedRows.map((r) => r.id).whereType<String>().toSet()
-          ..addAll(change.removed.map((r) => r.id).whereType<String>());
-    final issued = <List<Object?>>[];
-    if (request is ApplyInstallmentRepricing) {
-      final bills = await _bills.listBillsByAccount(
-        contract.liabilityAccountId,
-      );
-      for (final bill in bills) {
-        if (bill.status == BillStatus.open) continue;
-        for (final item in bill.items) {
-          if (affected.contains(item.scheduleId)) {
-            issued.add([bill.id, bill.status.name, item.id, item.scheduleId]);
-          }
-        }
-      }
-      issued.sort((a, b) => jsonEncode(a).compareTo(jsonEncode(b)));
-    }
-    final frozen =
-        request is ApplyInstallmentRepricing &&
-        context.rows.any(
-          (r) =>
-              !r.isPending &&
-              _day(
-                    r.date,
-                  ).compareTo(_day(request.record.change.effectiveDate)) >
-                  0,
-        );
-    final token = sha256
+    return _PreparedPlan(contract, schedules, change);
+  }
+
+  String _previewToken(_PreparedPlan prepared, RecalculateFromTerms request) {
+    final contract = prepared.contract;
+    final context = prepared.change.context;
+    return sha256
         .convert(
           utf8.encode(
             jsonEncode([
@@ -170,27 +143,16 @@ class InstallmentPlanService {
                   row.status.name,
                   row.manuallyAdjusted,
                 ],
-              _requestFacts(request),
-              issued,
+              _termsFacts(request.terms),
             ]),
           ),
         )
         .toString();
-    return _PreparedPlan(
-      contract,
-      schedules,
-      InstallmentPlanPreview(
-        change: change,
-        token: token,
-        hasFrozenPeriods: frozen,
-        hasIssuedBills: issued.isNotEmpty,
-      ),
-    );
   }
 
   Future<void> _save(_PreparedPlan prepared) async {
     final rows = prepared.contract.applyPlanChange(
-      prepared.preview.change,
+      prepared.change,
       schedules: prepared.schedules,
       newId: _ids.newId,
       createdAt: DateTime.now(),
@@ -200,30 +162,14 @@ class InstallmentPlanService {
 }
 
 class _PreparedPlan {
-  const _PreparedPlan(this.contract, this.schedules, this.preview);
+  const _PreparedPlan(this.contract, this.schedules, this.change);
   final InstallmentContract contract;
   final List<InstallmentSchedule> schedules;
-  final InstallmentPlanPreview preview;
+  final InstallmentPlanChangeSet change;
 }
 
 String _day(DateTime value) =>
     DateTime.utc(value.year, value.month, value.day).toIso8601String();
-
-Object _requestFacts(InstallmentPlanChangeRequest request) => switch (request) {
-  RecalculateFromTerms(:final terms) => ['terms', _termsFacts(terms)],
-  RecalculateAfterPrepayment(:final repaymentDate) => [
-    'prepayment',
-    _day(repaymentDate),
-  ],
-  ApplyInstallmentRepricing(:final record) => [
-    'repricing',
-    record.id,
-    record.contractId,
-    record.stageId,
-    record.applied,
-    _rateFacts(record.change),
-  ],
-};
 
 Object _rateFacts(RateChange value) => [
   _day(value.resetDate),

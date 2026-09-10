@@ -673,7 +673,6 @@ InstallmentPlanService installmentPlanService(Ref ref) =>
     InstallmentPlanService(
       installments: ref.watch(installmentRepositoryProvider),
       repayments: ref.watch(repaymentRepositoryProvider),
-      bills: ref.watch(billRepositoryProvider),
       runner: ref.watch(transactionRunnerProvider),
       idGenerator: ref.watch(idGeneratorProvider),
     );

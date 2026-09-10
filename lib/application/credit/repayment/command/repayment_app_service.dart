@@ -88,7 +88,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
            InstallmentPlanService(
              installments: installments,
              repayments: repayments,
-             bills: bills,
              runner: transactionRunner,
              idGenerator: idGenerator,
            ),

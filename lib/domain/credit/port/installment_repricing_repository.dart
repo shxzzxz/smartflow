@@ -4,7 +4,7 @@ abstract interface class InstallmentRepricingRepository {
   Future<List<String>> activeContractIds();
   Future<List<InstallmentRepricing>> list(String contractId);
 
-  /// 报价和重定价结果一起保存；重复取值不覆盖既有快照。
+  /// 保存合同重定价快照；重复取值不覆盖既有快照，不写入公共参考利率历史。
   Future<void> insert(InstallmentRepricing record);
   Future<void> markApplied(String id);
 

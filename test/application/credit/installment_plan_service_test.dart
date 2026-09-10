@@ -9,7 +9,6 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
-import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -31,7 +30,6 @@ void main() {
     service = InstallmentPlanService(
       installments: installments,
       repayments: repayments,
-      bills: DriftBillRepository(db),
       runner: DriftTransactionRunner(db),
       idGenerator: ids,
     );

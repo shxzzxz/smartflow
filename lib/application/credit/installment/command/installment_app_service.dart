@@ -66,7 +66,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
            InstallmentPlanService(
              installments: repository,
              repayments: repayments,
-             bills: bills,
              runner: transactionRunner,
              idGenerator: idGenerator,
            ),

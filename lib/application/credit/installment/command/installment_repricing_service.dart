@@ -1,53 +1,18 @@
-import 'installment_plan_service.dart';
-import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import 'package:logging/logging.dart';
 
 import '../../../../core/error/app_exception.dart';
-import '../../../../core/money/money.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_repricing.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
 import '../../../shared/transaction_runner.dart';
 import '../../reference_rate/reference_rate_service.dart';
-
-class RepricingScheduleDifference {
-  const RepricingScheduleDifference({
-    required this.scheduleId,
-    required this.periodNo,
-    required this.date,
-    required this.oldPrincipal,
-    required this.oldInterest,
-    required this.principal,
-    required this.interest,
-  });
-  final String scheduleId;
-  final int periodNo;
-  final DateTime date;
-  final Money oldPrincipal, oldInterest, principal, interest;
-}
-
-class RepricingPreview {
-  const RepricingPreview({
-    required this.contractId,
-    required this.recordId,
-    required this.effectiveDate,
-    required this.ratePpm,
-    required this.token,
-    required this.differences,
-    required this.hasFrozenPeriods,
-    required this.hasIssuedBills,
-  });
-  final String contractId, recordId, token;
-  final DateTime effectiveDate;
-  final int ratePpm;
-  final List<RepricingScheduleDifference> differences;
-  final bool hasFrozenPeriods, hasIssuedBills;
-}
+import 'installment_plan_service.dart';
 
 class InstallmentRepricingService {
   InstallmentRepricingService({
@@ -133,81 +98,22 @@ class InstallmentRepricingService {
     return complete;
   }
 
-  Future<RepricingPreview?> preview(String contractId) =>
-      runner.run(() => _preview(contractId));
-
-  Future<RepricingPreview?> preparePreview(
-    String contractId,
-    DateTime now,
-  ) async {
-    final complete = await prepare(contractId, now);
-    final next = await preview(contractId);
-    if (next == null && !complete) {
-      throw BusinessException(
-        ReferenceRateErrorCode.unavailable,
-        message: '参考利率尚未确定，请稍后重试',
-      );
-    }
-    return next;
-  }
-
-  Future<RepricingPreview?> _preview(String contractId) async {
+  Future<bool> _applyNext(String contractId) => runner.run(() async {
     final contract = await installments.findContract(contractId);
     if (contract == null ||
         contract.status != InstallmentContractStatus.active) {
-      return null;
+      return false;
     }
-    final pending = (await records.list(
+    final record = (await records.list(
       contractId,
-    )).where((r) => !r.applied).toList();
-    if (pending.isEmpty) return null;
-    final record = pending.first;
-    final preview = await plans.previewChange(
+    )).where((r) => !r.applied).firstOrNull;
+    if (record == null) return false;
+    await plans.applyAutomaticChange(
       contractId,
       ApplyInstallmentRepricing(record),
     );
-    final previous = {
-      for (final row in preview.change.context.rows) row.id: row,
-    };
-    return RepricingPreview(
-      contractId: contractId,
-      recordId: record.id,
-      effectiveDate: referenceDate(record.change.effectiveDate),
-      ratePpm: record.change.rate.ppm,
-      token: preview.token,
-      hasFrozenPeriods: preview.hasFrozenPeriods,
-      hasIssuedBills: preview.hasIssuedBills,
-      differences: List.unmodifiable([
-        for (final row in preview.change.updated)
-          RepricingScheduleDifference(
-            scheduleId: row.id!,
-            periodNo: row.periodNo,
-            date: row.date,
-            oldPrincipal: previous[row.id]!.principal,
-            oldInterest: previous[row.id]!.interest,
-            principal: row.principal,
-            interest: row.interest,
-          ),
-      ]),
-    );
-  }
-
-  Future<void> apply(RepricingPreview preview) => runner.run(() async {
-    final pending = (await records.list(
-      preview.contractId,
-    )).where((r) => !r.applied).toList();
-    if (pending.isEmpty || pending.first.id != preview.recordId) {
-      throw BusinessException(
-        CreditErrorCode.contractPersistenceConflict,
-        message: '重定价结果已变化，请重新预览',
-      );
-    }
-    await plans.confirmChange(
-      preview.contractId,
-      ApplyInstallmentRepricing(pending.first),
-      token: preview.token,
-    );
-    await records.markApplied(pending.first.id);
+    await records.markApplied(record.id);
+    return true;
   });
 
   /// 确认用户已查看已应用结果；不重新计算计划，也不修改利率事实。
@@ -251,10 +157,7 @@ class InstallmentRepricingService {
     for (final id in eligibleIds) {
       try {
         if (!await prepare(id, now, resolvedRates: resolved)) needsRetry = true;
-        while (true) {
-          final next = await preview(id);
-          if (next == null) break;
-          await apply(next);
+        while (await _applyNext(id)) {
           changed = true;
         }
       } on Exception catch (error, stack) {
