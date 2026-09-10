@@ -1,9 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
+import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
@@ -12,6 +19,95 @@ import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
 void main() {
+  testWidgets(
+    'repricing banner confirms loaded records and prevents duplicate taps',
+    (tester) async {
+      final service = _MockRepricingService();
+      final completion = Completer<void>();
+      var ids = ['repricing-1', 'repricing-2'];
+      when(() => service.confirm('contract-1', any())).thenAnswer((_) async {
+        await completion.future;
+        ids = [];
+      });
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        _app(
+          service: _FakeInstallmentAppService(),
+          scheduleStatus: InstallmentScheduleStatus.pending,
+          repricingService: service,
+          unconfirmedRepricingIds: () => ids,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('分期合同已执行重定价，请查看后确认'), findsOneWidget);
+      expect(find.byTooltip('重定价预览'), findsNothing);
+      expect(find.textContaining('浮动利率计划：'), findsNothing);
+      expect(
+        tester.getTopLeft(find.byType(AppStatusBanner)).dy,
+        greaterThan(tester.getTopLeft(find.text('校验状态')).dy),
+      );
+      expect(
+        tester.getBottomLeft(find.byType(AppStatusBanner)).dy,
+        lessThan(tester.getTopLeft(find.text('还款计划')).dy),
+      );
+      await tester.tap(find.widgetWithText(TextButton, '确认'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, '确认'))
+            .onPressed,
+        isNull,
+      );
+      completion.complete();
+      await tester.pumpAndSettle();
+      verify(
+        () => service.confirm('contract-1', {'repricing-1', 'repricing-2'}),
+      ).called(1);
+      expect(find.byType(AppStatusBanner), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'failed repricing confirmation keeps the banner and supports retry',
+    (tester) async {
+      final service = _MockRepricingService();
+      var ids = ['repricing-1'];
+      when(() => service.confirm('contract-1', any())).thenThrow(
+        BusinessException(
+          CreditErrorCode.contractPersistenceConflict,
+          message: '确认失败，请重试',
+        ),
+      );
+      await tester.pumpWidget(
+        _app(
+          service: _FakeInstallmentAppService(),
+          scheduleStatus: InstallmentScheduleStatus.pending,
+          repricingService: service,
+          unconfirmedRepricingIds: () => ids,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '确认'));
+      await tester.pumpAndSettle();
+      expect(find.text('确认失败，请重试'), findsOneWidget);
+      expect(find.byType(AppStatusBanner), findsOneWidget);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, '确认'))
+            .onPressed,
+        isNotNull,
+      );
+      when(() => service.confirm('contract-1', any())).thenAnswer((_) async {
+        ids = [];
+      });
+      await tester.tap(find.widgetWithText(TextButton, '确认'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppStatusBanner), findsNothing);
+    },
+  );
+
   testWidgets('pending schedule exposes skip action', (tester) async {
     final service = _FakeInstallmentAppService();
     await tester.pumpWidget(
@@ -146,6 +242,9 @@ void main() {
   });
 }
 
+class _MockRepricingService extends Mock
+    implements InstallmentRepricingService {}
+
 Widget _app({
   required _FakeInstallmentAppService service,
   required InstallmentScheduleStatus scheduleStatus,
@@ -154,6 +253,8 @@ Widget _app({
   _FakeStatusRepairAppService? statusRepair,
   int scheduleCount = 1,
   List<ContractRepayment> repayments = const [],
+  InstallmentRepricingService? repricingService,
+  List<String> Function()? unconfirmedRepricingIds,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -161,7 +262,10 @@ Widget _app({
         statusRepair ?? _FakeStatusRepairAppService(),
       ),
       installmentContractProvider.overrideWith(
-        (ref, contractId) async => _contract(status: contractStatus),
+        (ref, contractId) async => _contract(
+          status: contractStatus,
+          unconfirmedRepricingIds: unconfirmedRepricingIds?.call() ?? const [],
+        ),
       ),
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => [
@@ -173,6 +277,8 @@ Widget _app({
         (ref, contractId) async => repayments,
       ),
       installmentAppServiceProvider.overrideWithValue(service),
+      if (repricingService != null)
+        installmentRepricingServiceProvider.overrideWithValue(repricingService),
       if (repaymentService != null)
         repaymentAppServiceProvider.overrideWithValue(repaymentService),
     ],
@@ -180,17 +286,20 @@ Widget _app({
   addTearDown(container.dispose);
   return UncontrolledProviderScope(
     container: container,
-    child: const MaterialApp(
-      home: InstallmentDetailPage(contractId: 'contract-1'),
+    child: MaterialApp(
+      theme: AppTheme.light(),
+      home: const InstallmentDetailPage(contractId: 'contract-1'),
     ),
   );
 }
 
 InstallmentContractReadModel _contract({
   InstallmentContractStatus status = InstallmentContractStatus.active,
+  List<String> unconfirmedRepricingIds = const [],
 }) {
   return InstallmentContractReadModel(
     id: 'contract-1',
+    unconfirmedRepricingIds: unconfirmedRepricingIds,
     liabilityAccountId: 'loan',
     sourceType: InstallmentSourceType.disbursement,
     disbursementAccountId: 'cash',

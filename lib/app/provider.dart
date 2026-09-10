@@ -597,6 +597,9 @@ InstallmentStatusRepairAppService installmentStatusRepairAppService(Ref ref) {
 InstallmentQueryService installmentQueryService(Ref ref) {
   return InstallmentQueryServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    repricings: DriftInstallmentRepricingRepository(
+      ref.watch(appDatabaseProvider),
+    ),
   );
 }
 

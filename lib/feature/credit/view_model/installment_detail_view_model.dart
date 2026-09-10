@@ -55,19 +55,39 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     });
   }
 
-  Future<UiActionOutcome<RepricingPreview?>> previewRepricing() =>
-      guardUiAction(_logger, 'Loan repricing preview', () async {
-        return ref
+  Future<UiActionOutcome<void>> confirmRepricing() async {
+    final loaded = _loadedOrNull();
+    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded.confirmingRepricing) return _invalidAction('正在确认，请稍候');
+    _setConfirmingRepricing(true);
+    try {
+      return await guardUiAction(_logger, 'Confirm loan repricing', () async {
+        await ref
             .read(installmentRepricingServiceProvider)
-            .preparePreview(contractId, DateTime.now());
+            .confirm(
+              contractId,
+              loaded.contract.unconfirmedRepricingIds.toSet(),
+            );
+        if (!ref.mounted) return;
+        ref.invalidate(installmentContractProvider(contractId));
       });
+    } finally {
+      if (ref.mounted) _setConfirmingRepricing(false);
+    }
+  }
 
-  Future<UiActionOutcome<void>> applyRepricing(RepricingPreview preview) =>
-      guardUiAction(_logger, 'Loan repricing apply', () async {
-        await ref.read(installmentRepricingServiceProvider).apply(preview);
-        final loaded = _loadedOrNull();
-        if (loaded != null) _invalidateContract(loaded.contract);
-      });
+  void _setConfirmingRepricing(bool value) {
+    final loaded = _loadedOrNull();
+    if (loaded == null) return;
+    state = AsyncData(
+      InstallmentDetailLoaded(
+        contract: loaded.contract,
+        schedules: loaded.schedules,
+        repayments: loaded.repayments,
+        confirmingRepricing: value,
+      ),
+    );
+  }
 
   Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
@@ -174,11 +194,13 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
     required this.contract,
     required this.schedules,
     required this.repayments,
+    this.confirmingRepricing = false,
   });
 
   final InstallmentContractReadModel contract;
   final List<InstallmentScheduleReadModel> schedules;
   final List<ContractRepayment> repayments;
+  final bool confirmingRepricing;
 
   List<InstallmentScheduleItemState> get scheduleItems => [
     for (final schedule in schedules)

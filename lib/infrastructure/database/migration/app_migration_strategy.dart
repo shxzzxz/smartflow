@@ -332,7 +332,7 @@ WHERE NOT EXISTS (
               database.installmentSchedules,
               database.installmentSchedules.manuallyAdjusted,
             );
-            // 旧计划未记录人工修正来源，保守要求首次自动重定价经过预览。
+            // 旧计划未记录人工修正来源，保守保留人工调整标识。
             await database.customStatement(
               "UPDATE installment_schedules SET manually_adjusted = 1 WHERE status = 'pending'",
             );
@@ -412,11 +412,29 @@ WHERE NOT EXISTS (
                   records.referenceRatePpm: const CustomExpression<int>(
                     'lpr_ppm',
                   ),
+                  records.status: const CustomExpression<String>(
+                    "CASE applied WHEN 1 THEN 'applied' ELSE 'pending' END",
+                  ),
                 },
               ),
             );
           }
         });
+      }
+      if (from < 39) {
+        final records = database.installmentRepricingRecords;
+        if (await _hasColumn(database, records.actualTableName, 'applied')) {
+          await migrator.alterTable(
+            TableMigration(
+              records,
+              columnTransformer: {
+                records.status: const CustomExpression<String>(
+                  "CASE applied WHEN 1 THEN 'applied' ELSE 'pending' END",
+                ),
+              },
+            ),
+          );
+        }
       }
     },
   );

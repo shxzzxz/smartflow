@@ -528,7 +528,12 @@ class BackupService {
     };
     for (final row in snapshot.rows('installment_repricing_records')) {
       final stage = stages[row['stageId']];
-      if (!contracts.containsKey(row['contractId']) ||
+      if (!const {
+            'pending',
+            'applied',
+            'userConfirmed',
+          }.contains(row['status']) ||
+          !contracts.containsKey(row['contractId']) ||
           stage == null ||
           stage['ownerType'] != 'contract' ||
           stage['ownerId'] != row['contractId'] ||

@@ -21,6 +21,7 @@ class InstallmentContractReadModel {
     this.productId,
     this.productName,
     this.customRules = false,
+    this.unconfirmedRepricingIds = const [],
   }) : _name = name;
 
   final String id;
@@ -40,6 +41,7 @@ class InstallmentContractReadModel {
   final String? productId;
   final String? productName;
   final bool customRules;
+  final List<String> unconfirmedRepricingIds;
   int get totalPeriods => stageTerms.totalPeriods;
   DateTime get firstRepaymentDate => stageTerms.firstDate;
   DateTime get lastRepaymentDate => stageTerms.lastDate;

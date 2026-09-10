@@ -39,7 +39,6 @@ class RepricingPreview {
     required this.ratePpm,
     required this.token,
     required this.differences,
-    required this.requiresReview,
     required this.hasFrozenPeriods,
     required this.hasIssuedBills,
   });
@@ -47,7 +46,7 @@ class RepricingPreview {
   final DateTime effectiveDate;
   final int ratePpm;
   final List<RepricingScheduleDifference> differences;
-  final bool requiresReview, hasFrozenPeriods, hasIssuedBills;
+  final bool hasFrozenPeriods, hasIssuedBills;
 }
 
 class InstallmentRepricingService {
@@ -176,7 +175,6 @@ class InstallmentRepricingService {
       effectiveDate: referenceDate(record.change.effectiveDate),
       ratePpm: record.change.rate.ppm,
       token: preview.token,
-      requiresReview: preview.requiresReview,
       hasFrozenPeriods: preview.hasFrozenPeriods,
       hasIssuedBills: preview.hasIssuedBills,
       differences: List.unmodifiable([
@@ -194,25 +192,39 @@ class InstallmentRepricingService {
     );
   }
 
-  Future<void> apply(RepricingPreview preview, {bool automatic = false}) =>
-      runner.run(() async {
-        final pending = (await records.list(
-          preview.contractId,
-        )).where((r) => !r.applied).toList();
-        if (pending.isEmpty || pending.first.id != preview.recordId) {
-          throw BusinessException(
-            CreditErrorCode.contractPersistenceConflict,
-            message: '重定价结果已变化，请重新预览',
-          );
-        }
-        await plans.confirmChange(
-          preview.contractId,
-          ApplyInstallmentRepricing(pending.first),
-          token: preview.token,
-          automatic: automatic,
+  Future<void> apply(RepricingPreview preview) => runner.run(() async {
+    final pending = (await records.list(
+      preview.contractId,
+    )).where((r) => !r.applied).toList();
+    if (pending.isEmpty || pending.first.id != preview.recordId) {
+      throw BusinessException(
+        CreditErrorCode.contractPersistenceConflict,
+        message: '重定价结果已变化，请重新预览',
+      );
+    }
+    await plans.confirmChange(
+      preview.contractId,
+      ApplyInstallmentRepricing(pending.first),
+      token: preview.token,
+    );
+    await records.markApplied(pending.first.id);
+  });
+
+  /// 确认用户已查看已应用结果；不重新计算计划，也不修改利率事实。
+  Future<void> confirm(String contractId, Set<String> recordIds) => runner.run(
+    () async {
+      final current = {
+        for (final record in await records.list(contractId)) record.id: record,
+      };
+      if (recordIds.any((id) => current[id]?.applied != true)) {
+        throw BusinessException(
+          CreditErrorCode.contractPersistenceConflict,
+          message: '重定价记录已变化，请刷新后重试',
         );
-        await records.markApplied(pending.first.id);
-      });
+      }
+      await records.markUserConfirmed(contractId, recordIds);
+    },
+  );
 
   Future<({bool changed, bool needsRetry})> runDue(DateTime now) async {
     var changed = false;
@@ -241,8 +253,8 @@ class InstallmentRepricingService {
         if (!await prepare(id, now, resolvedRates: resolved)) needsRetry = true;
         while (true) {
           final next = await preview(id);
-          if (next == null || next.requiresReview) break;
-          await apply(next, automatic: true);
+          if (next == null) break;
+          await apply(next);
           changed = true;
         }
       } on Exception catch (error, stack) {

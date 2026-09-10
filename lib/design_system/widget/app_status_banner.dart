@@ -9,10 +9,16 @@ import '../token/spacing.dart';
 enum AppStatusBannerTone { success, warning, danger, info }
 
 class AppStatusBanner extends StatelessWidget {
-  const AppStatusBanner({required this.message, required this.tone, super.key});
+  const AppStatusBanner({
+    required this.message,
+    required this.tone,
+    this.action,
+    super.key,
+  });
 
   final String message;
   final AppStatusBannerTone tone;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +59,10 @@ class AppStatusBanner extends StatelessWidget {
                 ),
               ),
             ),
+            if (action case final action?) ...[
+              const SizedBox(width: AppSpacing.space8),
+              action,
+            ],
           ],
         ),
       ),

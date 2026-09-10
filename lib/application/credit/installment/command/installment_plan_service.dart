@@ -31,7 +31,6 @@ class InstallmentPlanPreview {
   final InstallmentPlanChangeSet change;
   final String token;
   final bool hasFrozenPeriods, hasIssuedBills;
-  bool get requiresReview => change.affectsManualAdjustments;
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。
@@ -66,11 +65,9 @@ class InstallmentPlanService {
     String contractId,
     InstallmentPlanChangeRequest request, {
     required String token,
-    bool automatic = false,
   }) => _runner.run(() async {
     final prepared = await _prepare(contractId, request);
-    if (prepared.preview.token != token ||
-        (automatic && prepared.preview.requiresReview)) {
+    if (prepared.preview.token != token) {
       throw BusinessException(
         CreditErrorCode.contractPersistenceConflict,
         message: '合同、计划或还款状态已变化，请重新预览',
@@ -90,13 +87,6 @@ class InstallmentPlanService {
       );
     }
     final prepared = await _prepare(contractId, request);
-    if (request is ApplyInstallmentRepricing &&
-        prepared.preview.requiresReview) {
-      throw BusinessException(
-        CreditErrorCode.contractPersistenceConflict,
-        message: '本次重定价需要预览确认',
-      );
-    }
     await _save(prepared);
   });
 

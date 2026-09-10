@@ -11695,20 +11695,15 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _appliedMeta = const VerificationMeta(
-    'applied',
-  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
-  late final GeneratedColumn<bool> applied = GeneratedColumn<bool>(
-    'applied',
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
     aliasedName,
     false,
-    type: DriftSqlType.bool,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("applied" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
+    defaultValue: const Constant('pending'),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -11734,7 +11729,7 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     referenceRatePpm,
     spreadBp,
     source,
-    applied,
+    status,
     createdAt,
   ];
   @override
@@ -11838,10 +11833,10 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     } else if (isInserting) {
       context.missing(_sourceMeta);
     }
-    if (data.containsKey('applied')) {
+    if (data.containsKey('status')) {
       context.handle(
-        _appliedMeta,
-        applied.isAcceptableOrUnknown(data['applied']!, _appliedMeta),
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -11902,9 +11897,9 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
         DriftSqlType.string,
         data['${effectivePrefix}source'],
       )!,
-      applied: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}applied'],
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -11931,7 +11926,7 @@ class InstallmentRepricingRow extends DataClass
   final int referenceRatePpm;
   final int spreadBp;
   final String source;
-  final bool applied;
+  final String status;
   final DateTime createdAt;
   const InstallmentRepricingRow({
     required this.id,
@@ -11944,7 +11939,7 @@ class InstallmentRepricingRow extends DataClass
     required this.referenceRatePpm,
     required this.spreadBp,
     required this.source,
-    required this.applied,
+    required this.status,
     required this.createdAt,
   });
   @override
@@ -11960,7 +11955,7 @@ class InstallmentRepricingRow extends DataClass
     map['reference_rate_ppm'] = Variable<int>(referenceRatePpm);
     map['spread_bp'] = Variable<int>(spreadBp);
     map['source'] = Variable<String>(source);
-    map['applied'] = Variable<bool>(applied);
+    map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -11977,7 +11972,7 @@ class InstallmentRepricingRow extends DataClass
       referenceRatePpm: Value(referenceRatePpm),
       spreadBp: Value(spreadBp),
       source: Value(source),
-      applied: Value(applied),
+      status: Value(status),
       createdAt: Value(createdAt),
     );
   }
@@ -12000,7 +11995,7 @@ class InstallmentRepricingRow extends DataClass
       referenceRatePpm: serializer.fromJson<int>(json['referenceRatePpm']),
       spreadBp: serializer.fromJson<int>(json['spreadBp']),
       source: serializer.fromJson<String>(json['source']),
-      applied: serializer.fromJson<bool>(json['applied']),
+      status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -12018,7 +12013,7 @@ class InstallmentRepricingRow extends DataClass
       'referenceRatePpm': serializer.toJson<int>(referenceRatePpm),
       'spreadBp': serializer.toJson<int>(spreadBp),
       'source': serializer.toJson<String>(source),
-      'applied': serializer.toJson<bool>(applied),
+      'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -12034,7 +12029,7 @@ class InstallmentRepricingRow extends DataClass
     int? referenceRatePpm,
     int? spreadBp,
     String? source,
-    bool? applied,
+    String? status,
     DateTime? createdAt,
   }) => InstallmentRepricingRow(
     id: id ?? this.id,
@@ -12047,7 +12042,7 @@ class InstallmentRepricingRow extends DataClass
     referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
     spreadBp: spreadBp ?? this.spreadBp,
     source: source ?? this.source,
-    applied: applied ?? this.applied,
+    status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
   );
   InstallmentRepricingRow copyWithCompanion(
@@ -12074,7 +12069,7 @@ class InstallmentRepricingRow extends DataClass
           : this.referenceRatePpm,
       spreadBp: data.spreadBp.present ? data.spreadBp.value : this.spreadBp,
       source: data.source.present ? data.source.value : this.source,
-      applied: data.applied.present ? data.applied.value : this.applied,
+      status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -12092,7 +12087,7 @@ class InstallmentRepricingRow extends DataClass
           ..write('referenceRatePpm: $referenceRatePpm, ')
           ..write('spreadBp: $spreadBp, ')
           ..write('source: $source, ')
-          ..write('applied: $applied, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -12110,7 +12105,7 @@ class InstallmentRepricingRow extends DataClass
     referenceRatePpm,
     spreadBp,
     source,
-    applied,
+    status,
     createdAt,
   );
   @override
@@ -12127,7 +12122,7 @@ class InstallmentRepricingRow extends DataClass
           other.referenceRatePpm == this.referenceRatePpm &&
           other.spreadBp == this.spreadBp &&
           other.source == this.source &&
-          other.applied == this.applied &&
+          other.status == this.status &&
           other.createdAt == this.createdAt);
 }
 
@@ -12143,7 +12138,7 @@ class InstallmentRepricingRecordsCompanion
   final Value<int> referenceRatePpm;
   final Value<int> spreadBp;
   final Value<String> source;
-  final Value<bool> applied;
+  final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const InstallmentRepricingRecordsCompanion({
@@ -12157,7 +12152,7 @@ class InstallmentRepricingRecordsCompanion
     this.referenceRatePpm = const Value.absent(),
     this.spreadBp = const Value.absent(),
     this.source = const Value.absent(),
-    this.applied = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -12172,7 +12167,7 @@ class InstallmentRepricingRecordsCompanion
     required int referenceRatePpm,
     required int spreadBp,
     required String source,
-    this.applied = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -12196,7 +12191,7 @@ class InstallmentRepricingRecordsCompanion
     Expression<int>? referenceRatePpm,
     Expression<int>? spreadBp,
     Expression<String>? source,
-    Expression<bool>? applied,
+    Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -12211,7 +12206,7 @@ class InstallmentRepricingRecordsCompanion
       if (referenceRatePpm != null) 'reference_rate_ppm': referenceRatePpm,
       if (spreadBp != null) 'spread_bp': spreadBp,
       if (source != null) 'source': source,
-      if (applied != null) 'applied': applied,
+      if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -12228,7 +12223,7 @@ class InstallmentRepricingRecordsCompanion
     Value<int>? referenceRatePpm,
     Value<int>? spreadBp,
     Value<String>? source,
-    Value<bool>? applied,
+    Value<String>? status,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -12243,7 +12238,7 @@ class InstallmentRepricingRecordsCompanion
       referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
       spreadBp: spreadBp ?? this.spreadBp,
       source: source ?? this.source,
-      applied: applied ?? this.applied,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -12282,8 +12277,8 @@ class InstallmentRepricingRecordsCompanion
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
-    if (applied.present) {
-      map['applied'] = Variable<bool>(applied.value);
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -12307,7 +12302,7 @@ class InstallmentRepricingRecordsCompanion
           ..write('referenceRatePpm: $referenceRatePpm, ')
           ..write('spreadBp: $spreadBp, ')
           ..write('source: $source, ')
-          ..write('applied: $applied, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -20690,7 +20685,7 @@ typedef $$InstallmentRepricingRecordsTableCreateCompanionBuilder =
       required int referenceRatePpm,
       required int spreadBp,
       required String source,
-      Value<bool> applied,
+      Value<String> status,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -20706,7 +20701,7 @@ typedef $$InstallmentRepricingRecordsTableUpdateCompanionBuilder =
       Value<int> referenceRatePpm,
       Value<int> spreadBp,
       Value<String> source,
-      Value<bool> applied,
+      Value<String> status,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -20770,8 +20765,8 @@ class $$InstallmentRepricingRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get applied => $composableBuilder(
-    column: $table.applied,
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20840,8 +20835,8 @@ class $$InstallmentRepricingRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get applied => $composableBuilder(
-    column: $table.applied,
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20900,8 +20895,8 @@ class $$InstallmentRepricingRecordsTableAnnotationComposer
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
-  GeneratedColumn<bool> get applied =>
-      $composableBuilder(column: $table.applied, builder: (column) => column);
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -20963,7 +20958,7 @@ class $$InstallmentRepricingRecordsTableTableManager
                 Value<int> referenceRatePpm = const Value.absent(),
                 Value<int> spreadBp = const Value.absent(),
                 Value<String> source = const Value.absent(),
-                Value<bool> applied = const Value.absent(),
+                Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentRepricingRecordsCompanion(
@@ -20977,7 +20972,7 @@ class $$InstallmentRepricingRecordsTableTableManager
                 referenceRatePpm: referenceRatePpm,
                 spreadBp: spreadBp,
                 source: source,
-                applied: applied,
+                status: status,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -20993,7 +20988,7 @@ class $$InstallmentRepricingRecordsTableTableManager
                 required int referenceRatePpm,
                 required int spreadBp,
                 required String source,
-                Value<bool> applied = const Value.absent(),
+                Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentRepricingRecordsCompanion.insert(
@@ -21007,7 +21002,7 @@ class $$InstallmentRepricingRecordsTableTableManager
                 referenceRatePpm: referenceRatePpm,
                 spreadBp: spreadBp,
                 source: source,
-                applied: applied,
+                status: status,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

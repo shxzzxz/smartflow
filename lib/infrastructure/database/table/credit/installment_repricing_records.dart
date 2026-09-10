@@ -12,13 +12,14 @@ class InstallmentRepricingRecords extends Table {
   IntColumn get referenceRatePpm => integer()();
   IntColumn get spreadBp => integer()();
   TextColumn get source => text()();
-  BoolColumn get applied => boolean().withDefault(const Constant(false))();
+  TextColumn get status => text().withDefault(const Constant('pending'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   @override
   Set<Column> get primaryKey => {id};
   @override
   List<String> get customConstraints => [
     'UNIQUE (contract_id, stage_id, reset_date)',
+    "CHECK (status IN ('pending', 'applied', 'userConfirmed'))",
     "CHECK (reference_rate_type IN ('lprOneYear', 'lprFiveYearPlus', 'loanBenchmarkShortTerm', 'loanBenchmarkLongTerm'))",
     'CHECK (reference_rate_ppm >= 0 AND reference_rate_ppm + spread_bp * 100 >= 0)',
     'CHECK (reference_rate_date <= reset_date AND reset_date <= effective_date)',

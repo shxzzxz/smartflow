@@ -1915,20 +1915,30 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _statusFeedbackPreview() {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: AppSpacing.space8,
       children: [
-        AppStatusBanner(
+        const AppStatusBanner(
           message: '操作成功的提示文案',
           tone: AppStatusBannerTone.success,
         ),
-        AppStatusBanner(
+        const AppStatusBanner(
           message: '需要注意的提示文案',
           tone: AppStatusBannerTone.warning,
         ),
-        AppStatusBanner(message: '操作失败的提示文案', tone: AppStatusBannerTone.danger),
-        AppStatusBanner(message: '普通提示的文案内容', tone: AppStatusBannerTone.info),
+        const AppStatusBanner(
+          message: '操作失败的提示文案',
+          tone: AppStatusBannerTone.danger,
+        ),
+        AppStatusBanner(
+          message: '普通提示的文案内容',
+          tone: AppStatusBannerTone.info,
+          action: TextButton(
+            onPressed: () => _showMessage('已确认'),
+            child: const Text('确认'),
+          ),
+        ),
       ],
     );
   }

@@ -3008,7 +3008,7 @@ final class InstallmentQueryServiceProvider
 }
 
 String _$installmentQueryServiceHash() =>
-    r'ed37f40ae719e4e434531e311910a2796e21c552';
+    r'd7f177151dc820c5904727f231a95f7690ae4472';
 
 @ProviderFor(contractMetricsQuery)
 final contractMetricsQueryProvider = ContractMetricsQueryProvider._();

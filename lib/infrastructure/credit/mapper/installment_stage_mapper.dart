@@ -52,7 +52,8 @@ InstallmentContractTerms decodeContractTerms(
                       ),
                 rateChanges: [
                   for (final r in repricings)
-                    if (r.stageId == row.id && r.applied) decodeRateChange(r),
+                    if (r.stageId == row.id && r.status != 'pending')
+                      decodeRateChange(r),
                 ],
                 dates: IntervalRepaymentDates(
                   firstDate: row.firstDate!,

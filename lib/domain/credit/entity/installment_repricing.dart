@@ -1,4 +1,5 @@
 import '../valobj/floating_rate.dart';
+import '../valobj/installment_enums.dart';
 
 class InstallmentRepricing {
   const InstallmentRepricing({
@@ -6,11 +7,12 @@ class InstallmentRepricing {
     required this.contractId,
     required this.stageId,
     required this.change,
-    this.applied = false,
+    this.status = InstallmentRepricingStatus.pending,
   });
   final String id;
   final String contractId;
   final String stageId;
   final RateChange change;
-  final bool applied;
+  final InstallmentRepricingStatus status;
+  bool get applied => status != InstallmentRepricingStatus.pending;
 }

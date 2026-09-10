@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../domain/credit/entity/installment_repricing.dart';
 import '../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../database/app_database.dart';
 import '../mapper/installment_stage_mapper.dart';
 
@@ -43,7 +44,7 @@ class DriftInstallmentRepricingRepository
         contractId: r.contractId,
         stageId: r.stageId,
         change: decodeRateChange(r),
-        applied: r.applied,
+        status: InstallmentRepricingStatus.values.byName(r.status),
       ),
   ];
 
@@ -73,9 +74,28 @@ class DriftInstallmentRepricingRepository
   Future<void> markApplied(String id) async {
     await (database.update(
       database.installmentRepricingRecords,
-    )..where((r) => r.id.equals(id))).write(
-      const InstallmentRepricingRecordsCompanion(applied: Value(true)),
+    )..where((r) => r.id.equals(id) & r.status.equals('pending'))).write(
+      const InstallmentRepricingRecordsCompanion(status: Value('applied')),
     );
+  }
+
+  @override
+  Future<void> markUserConfirmed(
+    String contractId,
+    Set<String> recordIds,
+  ) async {
+    if (recordIds.isEmpty) return;
+    await (database.update(database.installmentRepricingRecords)..where(
+          (r) =>
+              r.contractId.equals(contractId) &
+              r.id.isIn(recordIds) &
+              r.status.equals('applied'),
+        ))
+        .write(
+          const InstallmentRepricingRecordsCompanion(
+            status: Value('userConfirmed'),
+          ),
+        );
   }
 
   @override
@@ -85,7 +105,7 @@ class DriftInstallmentRepricingRepository
           (r) =>
               r.contractId.equals(contractId) &
               r.stageId.isIn(stageIds) &
-              r.applied.equals(false),
+              r.status.equals('pending'),
         ))
         .go();
   }

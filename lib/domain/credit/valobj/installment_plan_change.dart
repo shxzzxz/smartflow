@@ -137,12 +137,4 @@ class InstallmentPlanChangeSet {
         )
         .toList();
   }
-
-  bool get affectsManualAdjustments {
-    final affected = recalculatedRows.map((r) => r.id).toSet()
-      ..addAll(removed.map((r) => r.id));
-    return context.rows.any(
-      (r) => affected.contains(r.id) && r.manuallyAdjusted,
-    );
-  }
 }

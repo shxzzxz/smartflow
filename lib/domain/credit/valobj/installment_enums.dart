@@ -22,6 +22,8 @@ enum InstallmentContractStatus { active, settled }
 
 enum InstallmentScheduleStatus { pending, partiallyPaid, paid, skipped }
 
+enum InstallmentRepricingStatus { pending, applied, userConfirmed }
+
 /// 分期模块写入 `transaction.owner_type` 的固定值。
 const String installmentOwnerType = 'installment';
 

@@ -8,6 +8,9 @@ abstract interface class InstallmentRepricingRepository {
   Future<void> insert(InstallmentRepricing record);
   Future<void> markApplied(String id);
 
+  /// 仅确认指定合同中已应用的记录，不触及之后新生成的结果。
+  Future<void> markUserConfirmed(String contractId, Set<String> recordIds);
+
   /// 修改尚未执行的规则时移除旧候选；已应用的结果保留。
   Future<void> discardPending(String contractId, Set<String> stageIds);
 }

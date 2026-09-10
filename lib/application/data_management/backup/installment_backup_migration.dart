@@ -116,6 +116,14 @@ void migrateInstallmentBackup(
           ..remove('lprPpm'),
     ];
   }
+  if (schemaVersion < 39) {
+    tables['installment_repricing_records'] = [
+      for (final row
+          in tables['installment_repricing_records'] ?? <BackupJson>[])
+        {...row, 'status': row['applied'] == true ? 'applied' : 'pending'}
+          ..remove('applied'),
+    ];
+  }
 }
 
 String _legacyReferenceRateType(Object? tenor) => switch (tenor) {

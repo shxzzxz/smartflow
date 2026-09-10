@@ -7,6 +7,71 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
 void main() {
+  test(
+    'v38 preserves pending and applied repricings as distinct states',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-repricing-status-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final old = _openDatabase(file);
+      await old.customSelect('SELECT 1').get();
+      await old.customStatement('DROP TABLE installment_repricing_records');
+      await old.customStatement('''CREATE TABLE installment_repricing_records (
+      id TEXT PRIMARY KEY, contract_id TEXT NOT NULL, stage_id TEXT NOT NULL,
+      reset_date INTEGER NOT NULL, effective_date INTEGER NOT NULL,
+      reference_rate_date INTEGER NOT NULL, reference_rate_type TEXT NOT NULL,
+      reference_rate_ppm INTEGER NOT NULL, spread_bp INTEGER NOT NULL,
+      source TEXT NOT NULL, applied INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL)''');
+      for (final applied in [0, 1]) {
+        await old.customStatement(
+          '''INSERT INTO installment_repricing_records
+        VALUES (?, 'loan', ?, 1703030400, 1704067200, 1703030400, 'lprOneYear',
+          42000, -30, 'legacy', ?, 1703030401)''',
+          ['record-$applied', 'stage-$applied', applied],
+        );
+      }
+      await old.customStatement('PRAGMA user_version = 38');
+      await old.close();
+      final db = _openDatabase(file);
+      addTearDown(db.close);
+      final records = await (db.select(
+        db.installmentRepricingRecords,
+      )..orderBy([(r) => OrderingTerm.asc(r.id)])).get();
+      expect(records.map((r) => r.status), ['pending', 'applied']);
+      expect(records.map((r) => r.referenceRatePpm), [42000, 42000]);
+      expect(records.map((r) => r.source), ['legacy', 'legacy']);
+      expect(
+        (await db
+                .customSelect(
+                  'PRAGMA table_info(installment_repricing_records)',
+                )
+                .get())
+            .map((r) => r.read<String>('name')),
+        isNot(contains('applied')),
+      );
+      expect(
+        await db
+            .customSelect(
+              'PRAGMA foreign_key_list(installment_repricing_records)',
+            )
+            .get(),
+        isEmpty,
+      );
+      await db.customStatement(
+        "UPDATE installment_repricing_records SET status = 'userConfirmed' WHERE id = 'record-1'",
+      );
+      expect(
+        (await (db.select(
+          db.installmentRepricingRecords,
+        )..where((r) => r.id.equals('record-1'))).getSingle()).status,
+        'userConfirmed',
+      );
+    },
+  );
+
   for (final version in [36, 37]) {
     test(
       'v$version migrates LPR terms and repricing snapshots without losing evidence',
@@ -84,7 +149,7 @@ void main() {
           'lprOneYear',
           'lprFiveYearPlus',
         ]);
-        expect(records.map((r) => r.applied), [false, true]);
+        expect(records.map((r) => r.status), ['pending', 'applied']);
         for (final record in records) {
           expect(record.referenceRatePpm, 42000);
           expect(record.spreadBp, -30);
@@ -549,7 +614,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 38);
+    expect(version.read<int>('user_version'), 39);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -588,7 +653,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 38);
+      expect(version.read<int>('user_version'), 39);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -642,7 +707,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 38);
+      expect(version.read<int>('user_version'), 39);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -753,7 +818,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 38);
+      expect(version.read<int>('user_version'), 39);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -920,7 +985,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 38);
+      expect(version.read<int>('user_version'), 39);
 
       for (final table in [
         'import_entity_mappings',

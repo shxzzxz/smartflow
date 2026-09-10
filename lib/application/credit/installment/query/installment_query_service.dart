@@ -1,6 +1,7 @@
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import '../../../../domain/credit/port/installment_repricing_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 import 'installment_read_models.dart';
@@ -19,10 +20,14 @@ abstract interface class InstallmentQueryService {
 }
 
 class InstallmentQueryServiceImpl implements InstallmentQueryService {
-  const InstallmentQueryServiceImpl({required InstallmentRepository repository})
-    : _repository = repository;
+  const InstallmentQueryServiceImpl({
+    required InstallmentRepository repository,
+    required InstallmentRepricingRepository repricings,
+  }) : _repository = repository,
+       _repricings = repricings;
 
   final InstallmentRepository _repository;
+  final InstallmentRepricingRepository _repricings;
 
   @override
   Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
@@ -31,7 +36,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     final values = await _repository.listContractsByLiabilityAccount(
       liabilityAccountId,
     );
-    return values.map(_contractReadModel).toList();
+    return Future.wait(values.map(_contractReadModel));
   }
 
   @override
@@ -71,7 +76,10 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     return sum;
   }
 
-  InstallmentContractReadModel _contractReadModel(InstallmentContract value) {
+  Future<InstallmentContractReadModel> _contractReadModel(
+    InstallmentContract value,
+  ) async {
+    final repricings = await _repricings.list(value.id);
     return InstallmentContractReadModel(
       id: value.id,
       name: value.name,
@@ -89,6 +97,10 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       note: value.note,
       createdAt: value.createdAt,
       stageTerms: value.stageTerms,
+      unconfirmedRepricingIds: List.unmodifiable([
+        for (final record in repricings)
+          if (record.status == InstallmentRepricingStatus.applied) record.id,
+      ]),
     );
   }
 
