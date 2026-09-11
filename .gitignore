@@ -31,7 +31,6 @@ build/
 # Flutter symbols & 元数据
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.metadata
 
 # ===== Android =====
 **/android/.gradle
