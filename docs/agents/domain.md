@@ -8,9 +8,8 @@ This is a single-context repo: use the root `CONTEXT.md` as the shared glossary 
 
 - **`CONTEXT.md`** at the repo root, or
 - **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
+- **[docs/03.业务域领域文档.md](../03.业务域领域文档.md)** — read before exploring domain behavior or creating or updating domain docs. Follow its authoring rules and index to the relevant domain documents.
 - **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
-- **`docs/domains/ledger/`** — read when touching double-entry accounting, accounts, transactions, postings, ledgers, repositories, balances, budgets, or related invariants.
-- **`docs/domains/credit/`** — read when touching credit accounts, repayment plans, billing cycles, interest, installment logic, or credit-specific workflows.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The producer skill (`/grill-with-docs`) creates them lazily when terms or decisions actually get resolved.
 
@@ -21,11 +20,13 @@ Single-context repo:
 ```text
 /
 ├── CONTEXT.md
-├── docs/adr/
-├── docs/domains/
-│   ├── credit/
-│   └── ledger/
 └── docs/
+    ├── 03.业务域领域文档.md
+    ├── adr/
+    └── domains/
+        ├── credit/
+        ├── import/
+        └── ledger/
 ```
 
 Multi-context repo:
