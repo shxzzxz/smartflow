@@ -126,6 +126,8 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
                       onChanged: notifier.setTerms,
                       borrowingDate: state.borrowingDate,
                       showAdvanced: state.advanced,
+                      repricingConfigurationEditable:
+                          state.installment?.basicInfoReadOnly != true,
                       planAction: AppSubmitButton(
                         label: state.submitLabel,
                         onPressed: () => _submit(notifier, state.selection),

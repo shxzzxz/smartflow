@@ -28,6 +28,90 @@ import '../../helper/test_app_database.dart';
 
 void main() {
   group('RepaymentAppService', () {
+    test(
+      'detached historical items can be read but metadata edits require corrected allocations',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+        final result = await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1000),
+            ],
+            transactionInfo: _transactionInfo(),
+          ),
+        );
+        fixture.transactionQuery.details[result.transactionId!] =
+            _transactionDetail(
+              transactionId: result.transactionId!,
+              occurredAt: _transactionInfo().occurredAt,
+            );
+        await fixture.database.customStatement(
+          'UPDATE repayment_items SET bill_item_id = NULL WHERE repayment_id = ?',
+          [result.repaymentId],
+        );
+        final before = await fixture.database
+            .select(fixture.database.repaymentItems)
+            .get();
+        final editView = await fixture.service.loadBillRepaymentEditView(
+          result.repaymentId,
+        );
+        expect(editView!.allocations.single.billItemId, isNull);
+        expect(
+          editView.allocations.single.allocated.principal.minorUnits,
+          1000,
+        );
+        fixture.update.onUpdateBasicInfo = (_) async =>
+            fail('Invalid submission must not change the ledger');
+        await expectLater(
+          fixture.service.editRepaymentTransaction(
+            credit.EditCreditRepaymentTransactionCommand(
+              repaymentId: result.repaymentId,
+              occurredAt: DateTime(2026, 7, 1),
+            ),
+          ),
+          throwsA(
+            isA<BusinessException>().having(
+              (error) => error.message,
+              'message',
+              contains('无明细'),
+            ),
+          ),
+        );
+        expect(
+          await fixture.database.select(fixture.database.repaymentItems).get(),
+          before,
+        );
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.repaymentDate,
+          _transactionInfo().occurredAt,
+        );
+        await fixture.service.editBillRepayment(
+          credit.EditBillRepaymentCommand(
+            repaymentId: result.repaymentId,
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1000),
+            ],
+            transactionInfo: _transactionInfo(),
+          ),
+        );
+        expect(
+          (await fixture.repayments.findRepayment(
+            result.repaymentId,
+          ))!.items.single.billItemId,
+          'bill-item-1',
+        );
+      },
+    );
+
     for (final editPath in ['metadata', 'account', 'bill']) {
       for (final failRepaymentWrite in [false, true]) {
         test(
@@ -530,29 +614,32 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
       },
     );
 
-    test('allows manual principal over-allocation and marks item overpaid', () async {
-      final fixture = _Fixture();
-      addTearDown(fixture.close);
-      await fixture.seedBill(
-        status: credit.BillStatus.billed,
-        itemType: credit.BillItemType.consumption,
-        expectedPrincipal: 1000,
-      );
+    test(
+      'allows manual principal over-allocation and marks item overpaid',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
 
-      await fixture.service.createBillRepayment(
-        credit.CreateBillRepaymentCommand(
-          billId: 'bill-1',
-          allocations: [
-            _allocation(billItemId: 'bill-item-1', principal: 1200),
-          ],
-          repaymentDate: DateTime(2026, 6, 20),
-        ),
-      );
+        await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1200),
+            ],
+            repaymentDate: DateTime(2026, 6, 20),
+          ),
+        );
 
-      final bill = await fixture.bills.findBill('bill-1');
-      expect(bill!.items.single.status, credit.BillItemStatus.overpaid);
-      expect(bill.status, credit.BillStatus.settled);
-    });
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.overpaid);
+        expect(bill.status, credit.BillStatus.settled);
+      },
+    );
 
     test(
       'bill conversion preserves complete staged terms and matches calculator preview',
@@ -739,7 +826,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     );
 
     test(
-      'creates no-transaction prepayment and recalculates pending schedules',
+      'creates no-transaction prepayment and regenerates the complete plan',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -880,8 +967,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     );
 
     test(
-      'prepayment dated after a pending schedule freezes it and recalculates '
-      'only later schedules',
+      'prepayment affects only periods whose interest accrues after the reduction',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -1196,7 +1282,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     );
 
     test(
-      'deletes prepayment and recalculates affected pending schedules',
+      'deletes prepayment and recalculates all schedules while retaining actual bill repayments',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -1205,6 +1291,27 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           schedulePrincipals: [40000, 40000, 40000],
         );
         final schedules = await fixture.installments.listSchedules(contractId);
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            _BillItemSeed(
+              id: 'paid-first',
+              itemType: credit.BillItemType.installment,
+              expectedPrincipal: 40000,
+              contractId: contractId,
+              scheduleId: schedules[0].id,
+            ),
+          ],
+        );
+        await fixture.service.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            repaymentDate: DateTime(2026, 7, 25),
+            allocations: [
+              _allocation(billItemId: 'paid-first', principal: 40000),
+            ],
+          ),
+        );
         schedules[0].markPaid();
         final contract = await fixture.installments.findContract(contractId);
         contract!.refreshStatusFromSchedules(schedules);
@@ -1938,9 +2045,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   @override
   Future<CreditLedgerRepaymentSnapshot?> findRepaymentTransaction(
     String transactionId,
-  ) {
-    throw UnimplementedError();
-  }
+  ) async => null;
 
   @override
   Future<void> editBorrowing(CreditLedgerEditBorrowingCommand command) {

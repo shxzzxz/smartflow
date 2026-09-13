@@ -1,6 +1,6 @@
 import '../../../../core/error/app_exception.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
-import '../../../../domain/credit/service/installment/installment_metrics.dart'
+import '../../../../domain/credit/service/installment/calculator/installment_metrics.dart'
     as domain;
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';

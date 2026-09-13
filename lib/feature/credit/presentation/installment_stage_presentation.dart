@@ -1,10 +1,47 @@
 import 'package:decimal/decimal.dart';
 
 import '../../../core/time/date_label.dart';
-import '../../../domain/credit/valobj/installment_enums.dart';
-import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
+import '../../../application/credit/credit_query_api.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
 import '../view_model/installment_terms_draft.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
+
+InterestRate? installmentRateOn(
+  InstallmentContractReadModel contract,
+  DateTime date,
+) {
+  final stages = contract.stageTerms.stages
+      .where((stage) => stage.terms is AmortizingStage)
+      .toList();
+  final currentStage =
+      stages
+          .where(
+            (stage) => !referenceDate(
+              (stage.terms as AmortizingStage).dates.getDates().last,
+            ).isBefore(referenceDate(date)),
+          )
+          .firstOrNull ??
+      stages.last;
+  final stage = currentStage.terms as AmortizingStage;
+  if (stage.method == InstallmentRepaymentMethod.custom ||
+      stage.method == InstallmentRepaymentMethod.flatFee) {
+    return null;
+  }
+  final changes =
+      contract.repricings
+          .where(
+            (record) =>
+                record.stageId == currentStage.id &&
+                !referenceDate(
+                  record.change.effectiveDate,
+                ).isAfter(referenceDate(date)),
+          )
+          .toList()
+        ..sort(
+          (a, b) => a.change.effectiveDate.compareTo(b.change.effectiveDate),
+        );
+  return changes.isEmpty ? stage.rate : changes.last.change.rate;
+}
 
 class InstallmentStageSummaryPresentation {
   const InstallmentStageSummaryPresentation({

@@ -171,7 +171,6 @@ class InstallmentContractEditViewModel
     InstallmentAmountField field,
     Money value,
   ) {
-    if (row.status != InstallmentScheduleStatus.pending) return;
     final loaded = _loadedOrNull();
     if (loaded == null) return;
     final nextRow = switch (field) {
@@ -194,7 +193,6 @@ class InstallmentContractEditViewModel
   }
 
   void editScheduleDate(InstallmentContractDraftRow row, DateTime value) {
-    if (row.status != InstallmentScheduleStatus.pending) return;
     final loaded = _loadedOrNull();
     if (loaded == null) return;
     final nextRow = row.copyWith(date: value);

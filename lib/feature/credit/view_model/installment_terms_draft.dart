@@ -43,7 +43,6 @@ class InstallmentStageDraft {
     this.repricingPaymentTiming = RepricingPaymentTiming.nextPeriod,
     this.firstResetDate,
     this.firstEffectiveDate,
-    this.rateChanges = const [],
     Map<StageInput, String> inputs = const {StageInput.interval: '1'},
   }) : inputs = Map.unmodifiable(inputs);
   final String id;
@@ -59,7 +58,6 @@ class InstallmentStageDraft {
   final int repricingCycleMonths;
   final RepricingPaymentTiming repricingPaymentTiming;
   final DateTime? firstResetDate, firstEffectiveDate;
-  final List<RateChange> rateChanges;
   String text(StageInput field) => inputs[field] ?? '';
 
   InstallmentStageDraft copyWith({
@@ -97,7 +95,6 @@ class InstallmentStageDraft {
         repricingPaymentTiming ?? this.repricingPaymentTiming,
     firstResetDate: firstResetDate ?? this.firstResetDate,
     firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
-    rateChanges: rateChanges,
   );
 
   InstallmentStageDraft setInput(StageInput field, String value) =>
@@ -210,7 +207,7 @@ class InstallmentStageDraft {
         accrual: accrual,
         rate: rate,
         floatingRate: floatingRule,
-        rateChanges: floating ? rateChanges : const [],
+        repricingPaymentTiming: repricingPaymentTiming,
         accrualStartDate: accrualStartDate,
         endPrincipal: _money(text(StageInput.endPrincipal), '期末本金'),
         fee: _money(text(StageInput.fee), '手续费') ?? Money.zero(),
@@ -394,12 +391,9 @@ class InstallmentTermsDraft {
                     s.floatingRate?.referenceRateType ??
                     ReferenceRateType.lprFiveYearPlus,
                 repricingCycleMonths: s.floatingRate?.cycleMonths ?? 12,
-                repricingPaymentTiming:
-                    s.floatingRate?.paymentTiming ??
-                    RepricingPaymentTiming.nextPeriod,
+                repricingPaymentTiming: s.repricingPaymentTiming,
                 firstResetDate: s.floatingRate?.firstResetDate,
                 firstEffectiveDate: s.floatingRate?.firstEffectiveDate,
-                rateChanges: s.rateChanges,
                 method: s.method,
                 firstDate: s.dates.getDates().first,
                 lastDate: s.dates is IntervalRepaymentDates

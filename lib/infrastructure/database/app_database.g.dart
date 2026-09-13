@@ -12310,6 +12310,1191 @@ class InstallmentRepricingRecordsCompanion
   }
 }
 
+class $InstallmentRepricingConfigsTable extends InstallmentRepricingConfigs
+    with
+        TableInfo<
+          $InstallmentRepricingConfigsTable,
+          InstallmentRepricingConfigRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentRepricingConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageIdMeta = const VerificationMeta(
+    'stageId',
+  );
+  @override
+  late final GeneratedColumn<String> stageId = GeneratedColumn<String>(
+    'stage_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _effectiveFromMeta = const VerificationMeta(
+    'effectiveFrom',
+  );
+  @override
+  late final GeneratedColumn<DateTime> effectiveFrom =
+      GeneratedColumn<DateTime>(
+        'effective_from',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _referenceRateTypeMeta = const VerificationMeta(
+    'referenceRateType',
+  );
+  @override
+  late final GeneratedColumn<String> referenceRateType =
+      GeneratedColumn<String>(
+        'reference_rate_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _spreadBpMeta = const VerificationMeta(
+    'spreadBp',
+  );
+  @override
+  late final GeneratedColumn<int> spreadBp = GeneratedColumn<int>(
+    'spread_bp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstResetDateMeta = const VerificationMeta(
+    'firstResetDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstResetDate =
+      GeneratedColumn<DateTime>(
+        'first_reset_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _firstEffectiveDateMeta =
+      const VerificationMeta('firstEffectiveDate');
+  @override
+  late final GeneratedColumn<DateTime> firstEffectiveDate =
+      GeneratedColumn<DateTime>(
+        'first_effective_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _cycleMonthsMeta = const VerificationMeta(
+    'cycleMonths',
+  );
+  @override
+  late final GeneratedColumn<int> cycleMonths = GeneratedColumn<int>(
+    'cycle_months',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastGeneratedDateMeta = const VerificationMeta(
+    'lastGeneratedDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastGeneratedDate =
+      GeneratedColumn<DateTime>(
+        'last_generated_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    stageId,
+    effectiveFrom,
+    referenceRateType,
+    spreadBp,
+    firstResetDate,
+    firstEffectiveDate,
+    cycleMonths,
+    lastGeneratedDate,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_repricing_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentRepricingConfigRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('stage_id')) {
+      context.handle(
+        _stageIdMeta,
+        stageId.isAcceptableOrUnknown(data['stage_id']!, _stageIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stageIdMeta);
+    }
+    if (data.containsKey('effective_from')) {
+      context.handle(
+        _effectiveFromMeta,
+        effectiveFrom.isAcceptableOrUnknown(
+          data['effective_from']!,
+          _effectiveFromMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_effectiveFromMeta);
+    }
+    if (data.containsKey('reference_rate_type')) {
+      context.handle(
+        _referenceRateTypeMeta,
+        referenceRateType.isAcceptableOrUnknown(
+          data['reference_rate_type']!,
+          _referenceRateTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_referenceRateTypeMeta);
+    }
+    if (data.containsKey('spread_bp')) {
+      context.handle(
+        _spreadBpMeta,
+        spreadBp.isAcceptableOrUnknown(data['spread_bp']!, _spreadBpMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_spreadBpMeta);
+    }
+    if (data.containsKey('first_reset_date')) {
+      context.handle(
+        _firstResetDateMeta,
+        firstResetDate.isAcceptableOrUnknown(
+          data['first_reset_date']!,
+          _firstResetDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstResetDateMeta);
+    }
+    if (data.containsKey('first_effective_date')) {
+      context.handle(
+        _firstEffectiveDateMeta,
+        firstEffectiveDate.isAcceptableOrUnknown(
+          data['first_effective_date']!,
+          _firstEffectiveDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstEffectiveDateMeta);
+    }
+    if (data.containsKey('cycle_months')) {
+      context.handle(
+        _cycleMonthsMeta,
+        cycleMonths.isAcceptableOrUnknown(
+          data['cycle_months']!,
+          _cycleMonthsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_cycleMonthsMeta);
+    }
+    if (data.containsKey('last_generated_date')) {
+      context.handle(
+        _lastGeneratedDateMeta,
+        lastGeneratedDate.isAcceptableOrUnknown(
+          data['last_generated_date']!,
+          _lastGeneratedDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentRepricingConfigRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentRepricingConfigRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      )!,
+      stageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stage_id'],
+      )!,
+      effectiveFrom: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}effective_from'],
+      )!,
+      referenceRateType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reference_rate_type'],
+      )!,
+      spreadBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}spread_bp'],
+      )!,
+      firstResetDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_reset_date'],
+      )!,
+      firstEffectiveDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_effective_date'],
+      )!,
+      cycleMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cycle_months'],
+      )!,
+      lastGeneratedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_generated_date'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentRepricingConfigsTable createAlias(String alias) {
+    return $InstallmentRepricingConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentRepricingConfigRow extends DataClass
+    implements Insertable<InstallmentRepricingConfigRow> {
+  final String id;
+  final String contractId;
+  final String stageId;
+  final DateTime effectiveFrom;
+  final String referenceRateType;
+  final int spreadBp;
+  final DateTime firstResetDate;
+  final DateTime firstEffectiveDate;
+  final int cycleMonths;
+  final DateTime? lastGeneratedDate;
+  final DateTime createdAt;
+  const InstallmentRepricingConfigRow({
+    required this.id,
+    required this.contractId,
+    required this.stageId,
+    required this.effectiveFrom,
+    required this.referenceRateType,
+    required this.spreadBp,
+    required this.firstResetDate,
+    required this.firstEffectiveDate,
+    required this.cycleMonths,
+    this.lastGeneratedDate,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
+    map['stage_id'] = Variable<String>(stageId);
+    map['effective_from'] = Variable<DateTime>(effectiveFrom);
+    map['reference_rate_type'] = Variable<String>(referenceRateType);
+    map['spread_bp'] = Variable<int>(spreadBp);
+    map['first_reset_date'] = Variable<DateTime>(firstResetDate);
+    map['first_effective_date'] = Variable<DateTime>(firstEffectiveDate);
+    map['cycle_months'] = Variable<int>(cycleMonths);
+    if (!nullToAbsent || lastGeneratedDate != null) {
+      map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InstallmentRepricingConfigsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentRepricingConfigsCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      stageId: Value(stageId),
+      effectiveFrom: Value(effectiveFrom),
+      referenceRateType: Value(referenceRateType),
+      spreadBp: Value(spreadBp),
+      firstResetDate: Value(firstResetDate),
+      firstEffectiveDate: Value(firstEffectiveDate),
+      cycleMonths: Value(cycleMonths),
+      lastGeneratedDate: lastGeneratedDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastGeneratedDate),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InstallmentRepricingConfigRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentRepricingConfigRow(
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
+      stageId: serializer.fromJson<String>(json['stageId']),
+      effectiveFrom: serializer.fromJson<DateTime>(json['effectiveFrom']),
+      referenceRateType: serializer.fromJson<String>(json['referenceRateType']),
+      spreadBp: serializer.fromJson<int>(json['spreadBp']),
+      firstResetDate: serializer.fromJson<DateTime>(json['firstResetDate']),
+      firstEffectiveDate: serializer.fromJson<DateTime>(
+        json['firstEffectiveDate'],
+      ),
+      cycleMonths: serializer.fromJson<int>(json['cycleMonths']),
+      lastGeneratedDate: serializer.fromJson<DateTime?>(
+        json['lastGeneratedDate'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
+      'stageId': serializer.toJson<String>(stageId),
+      'effectiveFrom': serializer.toJson<DateTime>(effectiveFrom),
+      'referenceRateType': serializer.toJson<String>(referenceRateType),
+      'spreadBp': serializer.toJson<int>(spreadBp),
+      'firstResetDate': serializer.toJson<DateTime>(firstResetDate),
+      'firstEffectiveDate': serializer.toJson<DateTime>(firstEffectiveDate),
+      'cycleMonths': serializer.toJson<int>(cycleMonths),
+      'lastGeneratedDate': serializer.toJson<DateTime?>(lastGeneratedDate),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InstallmentRepricingConfigRow copyWith({
+    String? id,
+    String? contractId,
+    String? stageId,
+    DateTime? effectiveFrom,
+    String? referenceRateType,
+    int? spreadBp,
+    DateTime? firstResetDate,
+    DateTime? firstEffectiveDate,
+    int? cycleMonths,
+    Value<DateTime?> lastGeneratedDate = const Value.absent(),
+    DateTime? createdAt,
+  }) => InstallmentRepricingConfigRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    stageId: stageId ?? this.stageId,
+    effectiveFrom: effectiveFrom ?? this.effectiveFrom,
+    referenceRateType: referenceRateType ?? this.referenceRateType,
+    spreadBp: spreadBp ?? this.spreadBp,
+    firstResetDate: firstResetDate ?? this.firstResetDate,
+    firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
+    cycleMonths: cycleMonths ?? this.cycleMonths,
+    lastGeneratedDate: lastGeneratedDate.present
+        ? lastGeneratedDate.value
+        : this.lastGeneratedDate,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InstallmentRepricingConfigRow copyWithCompanion(
+    InstallmentRepricingConfigsCompanion data,
+  ) {
+    return InstallmentRepricingConfigRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
+      stageId: data.stageId.present ? data.stageId.value : this.stageId,
+      effectiveFrom: data.effectiveFrom.present
+          ? data.effectiveFrom.value
+          : this.effectiveFrom,
+      referenceRateType: data.referenceRateType.present
+          ? data.referenceRateType.value
+          : this.referenceRateType,
+      spreadBp: data.spreadBp.present ? data.spreadBp.value : this.spreadBp,
+      firstResetDate: data.firstResetDate.present
+          ? data.firstResetDate.value
+          : this.firstResetDate,
+      firstEffectiveDate: data.firstEffectiveDate.present
+          ? data.firstEffectiveDate.value
+          : this.firstEffectiveDate,
+      cycleMonths: data.cycleMonths.present
+          ? data.cycleMonths.value
+          : this.cycleMonths,
+      lastGeneratedDate: data.lastGeneratedDate.present
+          ? data.lastGeneratedDate.value
+          : this.lastGeneratedDate,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepricingConfigRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
+          ..write('effectiveFrom: $effectiveFrom, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('firstResetDate: $firstResetDate, ')
+          ..write('firstEffectiveDate: $firstEffectiveDate, ')
+          ..write('cycleMonths: $cycleMonths, ')
+          ..write('lastGeneratedDate: $lastGeneratedDate, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    stageId,
+    effectiveFrom,
+    referenceRateType,
+    spreadBp,
+    firstResetDate,
+    firstEffectiveDate,
+    cycleMonths,
+    lastGeneratedDate,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentRepricingConfigRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.stageId == this.stageId &&
+          other.effectiveFrom == this.effectiveFrom &&
+          other.referenceRateType == this.referenceRateType &&
+          other.spreadBp == this.spreadBp &&
+          other.firstResetDate == this.firstResetDate &&
+          other.firstEffectiveDate == this.firstEffectiveDate &&
+          other.cycleMonths == this.cycleMonths &&
+          other.lastGeneratedDate == this.lastGeneratedDate &&
+          other.createdAt == this.createdAt);
+}
+
+class InstallmentRepricingConfigsCompanion
+    extends UpdateCompanion<InstallmentRepricingConfigRow> {
+  final Value<String> id;
+  final Value<String> contractId;
+  final Value<String> stageId;
+  final Value<DateTime> effectiveFrom;
+  final Value<String> referenceRateType;
+  final Value<int> spreadBp;
+  final Value<DateTime> firstResetDate;
+  final Value<DateTime> firstEffectiveDate;
+  final Value<int> cycleMonths;
+  final Value<DateTime?> lastGeneratedDate;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const InstallmentRepricingConfigsCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.stageId = const Value.absent(),
+    this.effectiveFrom = const Value.absent(),
+    this.referenceRateType = const Value.absent(),
+    this.spreadBp = const Value.absent(),
+    this.firstResetDate = const Value.absent(),
+    this.firstEffectiveDate = const Value.absent(),
+    this.cycleMonths = const Value.absent(),
+    this.lastGeneratedDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentRepricingConfigsCompanion.insert({
+    required String id,
+    required String contractId,
+    required String stageId,
+    required DateTime effectiveFrom,
+    required String referenceRateType,
+    required int spreadBp,
+    required DateTime firstResetDate,
+    required DateTime firstEffectiveDate,
+    required int cycleMonths,
+    this.lastGeneratedDate = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
+       stageId = Value(stageId),
+       effectiveFrom = Value(effectiveFrom),
+       referenceRateType = Value(referenceRateType),
+       spreadBp = Value(spreadBp),
+       firstResetDate = Value(firstResetDate),
+       firstEffectiveDate = Value(firstEffectiveDate),
+       cycleMonths = Value(cycleMonths);
+  static Insertable<InstallmentRepricingConfigRow> custom({
+    Expression<String>? id,
+    Expression<String>? contractId,
+    Expression<String>? stageId,
+    Expression<DateTime>? effectiveFrom,
+    Expression<String>? referenceRateType,
+    Expression<int>? spreadBp,
+    Expression<DateTime>? firstResetDate,
+    Expression<DateTime>? firstEffectiveDate,
+    Expression<int>? cycleMonths,
+    Expression<DateTime>? lastGeneratedDate,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (stageId != null) 'stage_id': stageId,
+      if (effectiveFrom != null) 'effective_from': effectiveFrom,
+      if (referenceRateType != null) 'reference_rate_type': referenceRateType,
+      if (spreadBp != null) 'spread_bp': spreadBp,
+      if (firstResetDate != null) 'first_reset_date': firstResetDate,
+      if (firstEffectiveDate != null)
+        'first_effective_date': firstEffectiveDate,
+      if (cycleMonths != null) 'cycle_months': cycleMonths,
+      if (lastGeneratedDate != null) 'last_generated_date': lastGeneratedDate,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentRepricingConfigsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? contractId,
+    Value<String>? stageId,
+    Value<DateTime>? effectiveFrom,
+    Value<String>? referenceRateType,
+    Value<int>? spreadBp,
+    Value<DateTime>? firstResetDate,
+    Value<DateTime>? firstEffectiveDate,
+    Value<int>? cycleMonths,
+    Value<DateTime?>? lastGeneratedDate,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentRepricingConfigsCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      stageId: stageId ?? this.stageId,
+      effectiveFrom: effectiveFrom ?? this.effectiveFrom,
+      referenceRateType: referenceRateType ?? this.referenceRateType,
+      spreadBp: spreadBp ?? this.spreadBp,
+      firstResetDate: firstResetDate ?? this.firstResetDate,
+      firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
+      cycleMonths: cycleMonths ?? this.cycleMonths,
+      lastGeneratedDate: lastGeneratedDate ?? this.lastGeneratedDate,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (stageId.present) {
+      map['stage_id'] = Variable<String>(stageId.value);
+    }
+    if (effectiveFrom.present) {
+      map['effective_from'] = Variable<DateTime>(effectiveFrom.value);
+    }
+    if (referenceRateType.present) {
+      map['reference_rate_type'] = Variable<String>(referenceRateType.value);
+    }
+    if (spreadBp.present) {
+      map['spread_bp'] = Variable<int>(spreadBp.value);
+    }
+    if (firstResetDate.present) {
+      map['first_reset_date'] = Variable<DateTime>(firstResetDate.value);
+    }
+    if (firstEffectiveDate.present) {
+      map['first_effective_date'] = Variable<DateTime>(
+        firstEffectiveDate.value,
+      );
+    }
+    if (cycleMonths.present) {
+      map['cycle_months'] = Variable<int>(cycleMonths.value);
+    }
+    if (lastGeneratedDate.present) {
+      map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepricingConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('stageId: $stageId, ')
+          ..write('effectiveFrom: $effectiveFrom, ')
+          ..write('referenceRateType: $referenceRateType, ')
+          ..write('spreadBp: $spreadBp, ')
+          ..write('firstResetDate: $firstResetDate, ')
+          ..write('firstEffectiveDate: $firstEffectiveDate, ')
+          ..write('cycleMonths: $cycleMonths, ')
+          ..write('lastGeneratedDate: $lastGeneratedDate, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentInterestAdjustmentsTable
+    extends InstallmentInterestAdjustments
+    with
+        TableInfo<
+          $InstallmentInterestAdjustmentsTable,
+          InstallmentInterestAdjustmentRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentInterestAdjustmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ratioPpmMeta = const VerificationMeta(
+    'ratioPpm',
+  );
+  @override
+  late final GeneratedColumn<int> ratioPpm = GeneratedColumn<int>(
+    'ratio_ppm',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    startDate,
+    endDate,
+    ratioPpm,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_interest_adjustments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentInterestAdjustmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
+    }
+    if (data.containsKey('ratio_ppm')) {
+      context.handle(
+        _ratioPpmMeta,
+        ratioPpm.isAcceptableOrUnknown(data['ratio_ppm']!, _ratioPpmMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ratioPpmMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentInterestAdjustmentRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentInterestAdjustmentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      )!,
+      ratioPpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ratio_ppm'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentInterestAdjustmentsTable createAlias(String alias) {
+    return $InstallmentInterestAdjustmentsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentInterestAdjustmentRow extends DataClass
+    implements Insertable<InstallmentInterestAdjustmentRow> {
+  final String id;
+  final String contractId;
+  final DateTime startDate;
+  final DateTime endDate;
+  final int ratioPpm;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentInterestAdjustmentRow({
+    required this.id,
+    required this.contractId,
+    required this.startDate,
+    required this.endDate,
+    required this.ratioPpm,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
+    map['start_date'] = Variable<DateTime>(startDate);
+    map['end_date'] = Variable<DateTime>(endDate);
+    map['ratio_ppm'] = Variable<int>(ratioPpm);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentInterestAdjustmentsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentInterestAdjustmentsCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      startDate: Value(startDate),
+      endDate: Value(endDate),
+      ratioPpm: Value(ratioPpm),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentInterestAdjustmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentInterestAdjustmentRow(
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
+      ratioPpm: serializer.fromJson<int>(json['ratioPpm']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
+      'ratioPpm': serializer.toJson<int>(ratioPpm),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentInterestAdjustmentRow copyWith({
+    String? id,
+    String? contractId,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? ratioPpm,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentInterestAdjustmentRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate ?? this.endDate,
+    ratioPpm: ratioPpm ?? this.ratioPpm,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentInterestAdjustmentRow copyWithCompanion(
+    InstallmentInterestAdjustmentsCompanion data,
+  ) {
+    return InstallmentInterestAdjustmentRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      ratioPpm: data.ratioPpm.present ? data.ratioPpm.value : this.ratioPpm,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentInterestAdjustmentRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('ratioPpm: $ratioPpm, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    startDate,
+    endDate,
+    ratioPpm,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentInterestAdjustmentRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.ratioPpm == this.ratioPpm &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentInterestAdjustmentsCompanion
+    extends UpdateCompanion<InstallmentInterestAdjustmentRow> {
+  final Value<String> id;
+  final Value<String> contractId;
+  final Value<DateTime> startDate;
+  final Value<DateTime> endDate;
+  final Value<int> ratioPpm;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InstallmentInterestAdjustmentsCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.ratioPpm = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentInterestAdjustmentsCompanion.insert({
+    required String id,
+    required String contractId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required int ratioPpm,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
+       startDate = Value(startDate),
+       endDate = Value(endDate),
+       ratioPpm = Value(ratioPpm);
+  static Insertable<InstallmentInterestAdjustmentRow> custom({
+    Expression<String>? id,
+    Expression<String>? contractId,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<int>? ratioPpm,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (ratioPpm != null) 'ratio_ppm': ratioPpm,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentInterestAdjustmentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? contractId,
+    Value<DateTime>? startDate,
+    Value<DateTime>? endDate,
+    Value<int>? ratioPpm,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentInterestAdjustmentsCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      ratioPpm: ratioPpm ?? this.ratioPpm,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (ratioPpm.present) {
+      map['ratio_ppm'] = Variable<int>(ratioPpm.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentInterestAdjustmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('ratioPpm: $ratioPpm, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RepaymentsTable extends Repayments
     with TableInfo<$RepaymentsTable, RepaymentRow> {
   @override
@@ -14992,6 +16177,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReferenceRatesTable referenceRates = $ReferenceRatesTable(this);
   late final $InstallmentRepricingRecordsTable installmentRepricingRecords =
       $InstallmentRepricingRecordsTable(this);
+  late final $InstallmentRepricingConfigsTable installmentRepricingConfigs =
+      $InstallmentRepricingConfigsTable(this);
+  late final $InstallmentInterestAdjustmentsTable
+  installmentInterestAdjustments = $InstallmentInterestAdjustmentsTable(this);
   late final $RepaymentsTable repayments = $RepaymentsTable(this);
   late final $RepaymentItemsTable repaymentItems = $RepaymentItemsTable(this);
   late final $ImportEntityMappingsTable importEntityMappings =
@@ -15024,6 +16213,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentSchedules,
     referenceRates,
     installmentRepricingRecords,
+    installmentRepricingConfigs,
+    installmentInterestAdjustments,
     repayments,
     repaymentItems,
     importEntityMappings,
@@ -21035,6 +22226,612 @@ typedef $$InstallmentRepricingRecordsTableProcessedTableManager =
       InstallmentRepricingRow,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentRepricingConfigsTableCreateCompanionBuilder =
+    InstallmentRepricingConfigsCompanion Function({
+      required String id,
+      required String contractId,
+      required String stageId,
+      required DateTime effectiveFrom,
+      required String referenceRateType,
+      required int spreadBp,
+      required DateTime firstResetDate,
+      required DateTime firstEffectiveDate,
+      required int cycleMonths,
+      Value<DateTime?> lastGeneratedDate,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentRepricingConfigsTableUpdateCompanionBuilder =
+    InstallmentRepricingConfigsCompanion Function({
+      Value<String> id,
+      Value<String> contractId,
+      Value<String> stageId,
+      Value<DateTime> effectiveFrom,
+      Value<String> referenceRateType,
+      Value<int> spreadBp,
+      Value<DateTime> firstResetDate,
+      Value<DateTime> firstEffectiveDate,
+      Value<int> cycleMonths,
+      Value<DateTime?> lastGeneratedDate,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentRepricingConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingConfigsTable> {
+  $$InstallmentRepricingConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stageId => $composableBuilder(
+    column: $table.stageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get effectiveFrom => $composableBuilder(
+    column: $table.effectiveFrom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cycleMonths => $composableBuilder(
+    column: $table.cycleMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastGeneratedDate => $composableBuilder(
+    column: $table.lastGeneratedDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentRepricingConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingConfigsTable> {
+  $$InstallmentRepricingConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stageId => $composableBuilder(
+    column: $table.stageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get effectiveFrom => $composableBuilder(
+    column: $table.effectiveFrom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get spreadBp => $composableBuilder(
+    column: $table.spreadBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cycleMonths => $composableBuilder(
+    column: $table.cycleMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastGeneratedDate => $composableBuilder(
+    column: $table.lastGeneratedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentRepricingConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentRepricingConfigsTable> {
+  $$InstallmentRepricingConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get stageId =>
+      $composableBuilder(column: $table.stageId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get effectiveFrom => $composableBuilder(
+    column: $table.effectiveFrom,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get referenceRateType => $composableBuilder(
+    column: $table.referenceRateType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get spreadBp =>
+      $composableBuilder(column: $table.spreadBp, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstResetDate => $composableBuilder(
+    column: $table.firstResetDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstEffectiveDate => $composableBuilder(
+    column: $table.firstEffectiveDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cycleMonths => $composableBuilder(
+    column: $table.cycleMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastGeneratedDate => $composableBuilder(
+    column: $table.lastGeneratedDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InstallmentRepricingConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentRepricingConfigsTable,
+          InstallmentRepricingConfigRow,
+          $$InstallmentRepricingConfigsTableFilterComposer,
+          $$InstallmentRepricingConfigsTableOrderingComposer,
+          $$InstallmentRepricingConfigsTableAnnotationComposer,
+          $$InstallmentRepricingConfigsTableCreateCompanionBuilder,
+          $$InstallmentRepricingConfigsTableUpdateCompanionBuilder,
+          (
+            InstallmentRepricingConfigRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentRepricingConfigsTable,
+              InstallmentRepricingConfigRow
+            >,
+          ),
+          InstallmentRepricingConfigRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentRepricingConfigsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentRepricingConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentRepricingConfigsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentRepricingConfigsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentRepricingConfigsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
+                Value<String> stageId = const Value.absent(),
+                Value<DateTime> effectiveFrom = const Value.absent(),
+                Value<String> referenceRateType = const Value.absent(),
+                Value<int> spreadBp = const Value.absent(),
+                Value<DateTime> firstResetDate = const Value.absent(),
+                Value<DateTime> firstEffectiveDate = const Value.absent(),
+                Value<int> cycleMonths = const Value.absent(),
+                Value<DateTime?> lastGeneratedDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRepricingConfigsCompanion(
+                id: id,
+                contractId: contractId,
+                stageId: stageId,
+                effectiveFrom: effectiveFrom,
+                referenceRateType: referenceRateType,
+                spreadBp: spreadBp,
+                firstResetDate: firstResetDate,
+                firstEffectiveDate: firstEffectiveDate,
+                cycleMonths: cycleMonths,
+                lastGeneratedDate: lastGeneratedDate,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String contractId,
+                required String stageId,
+                required DateTime effectiveFrom,
+                required String referenceRateType,
+                required int spreadBp,
+                required DateTime firstResetDate,
+                required DateTime firstEffectiveDate,
+                required int cycleMonths,
+                Value<DateTime?> lastGeneratedDate = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRepricingConfigsCompanion.insert(
+                id: id,
+                contractId: contractId,
+                stageId: stageId,
+                effectiveFrom: effectiveFrom,
+                referenceRateType: referenceRateType,
+                spreadBp: spreadBp,
+                firstResetDate: firstResetDate,
+                firstEffectiveDate: firstEffectiveDate,
+                cycleMonths: cycleMonths,
+                lastGeneratedDate: lastGeneratedDate,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentRepricingConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentRepricingConfigsTable,
+      InstallmentRepricingConfigRow,
+      $$InstallmentRepricingConfigsTableFilterComposer,
+      $$InstallmentRepricingConfigsTableOrderingComposer,
+      $$InstallmentRepricingConfigsTableAnnotationComposer,
+      $$InstallmentRepricingConfigsTableCreateCompanionBuilder,
+      $$InstallmentRepricingConfigsTableUpdateCompanionBuilder,
+      (
+        InstallmentRepricingConfigRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentRepricingConfigsTable,
+          InstallmentRepricingConfigRow
+        >,
+      ),
+      InstallmentRepricingConfigRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentInterestAdjustmentsTableCreateCompanionBuilder =
+    InstallmentInterestAdjustmentsCompanion Function({
+      required String id,
+      required String contractId,
+      required DateTime startDate,
+      required DateTime endDate,
+      required int ratioPpm,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentInterestAdjustmentsTableUpdateCompanionBuilder =
+    InstallmentInterestAdjustmentsCompanion Function({
+      Value<String> id,
+      Value<String> contractId,
+      Value<DateTime> startDate,
+      Value<DateTime> endDate,
+      Value<int> ratioPpm,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentInterestAdjustmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentInterestAdjustmentsTable> {
+  $$InstallmentInterestAdjustmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratioPpm => $composableBuilder(
+    column: $table.ratioPpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentInterestAdjustmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentInterestAdjustmentsTable> {
+  $$InstallmentInterestAdjustmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratioPpm => $composableBuilder(
+    column: $table.ratioPpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentInterestAdjustmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentInterestAdjustmentsTable> {
+  $$InstallmentInterestAdjustmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<int> get ratioPpm =>
+      $composableBuilder(column: $table.ratioPpm, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentInterestAdjustmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentInterestAdjustmentsTable,
+          InstallmentInterestAdjustmentRow,
+          $$InstallmentInterestAdjustmentsTableFilterComposer,
+          $$InstallmentInterestAdjustmentsTableOrderingComposer,
+          $$InstallmentInterestAdjustmentsTableAnnotationComposer,
+          $$InstallmentInterestAdjustmentsTableCreateCompanionBuilder,
+          $$InstallmentInterestAdjustmentsTableUpdateCompanionBuilder,
+          (
+            InstallmentInterestAdjustmentRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentInterestAdjustmentsTable,
+              InstallmentInterestAdjustmentRow
+            >,
+          ),
+          InstallmentInterestAdjustmentRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentInterestAdjustmentsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentInterestAdjustmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentInterestAdjustmentsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentInterestAdjustmentsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentInterestAdjustmentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime> endDate = const Value.absent(),
+                Value<int> ratioPpm = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentInterestAdjustmentsCompanion(
+                id: id,
+                contractId: contractId,
+                startDate: startDate,
+                endDate: endDate,
+                ratioPpm: ratioPpm,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String contractId,
+                required DateTime startDate,
+                required DateTime endDate,
+                required int ratioPpm,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentInterestAdjustmentsCompanion.insert(
+                id: id,
+                contractId: contractId,
+                startDate: startDate,
+                endDate: endDate,
+                ratioPpm: ratioPpm,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentInterestAdjustmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentInterestAdjustmentsTable,
+      InstallmentInterestAdjustmentRow,
+      $$InstallmentInterestAdjustmentsTableFilterComposer,
+      $$InstallmentInterestAdjustmentsTableOrderingComposer,
+      $$InstallmentInterestAdjustmentsTableAnnotationComposer,
+      $$InstallmentInterestAdjustmentsTableCreateCompanionBuilder,
+      $$InstallmentInterestAdjustmentsTableUpdateCompanionBuilder,
+      (
+        InstallmentInterestAdjustmentRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentInterestAdjustmentsTable,
+          InstallmentInterestAdjustmentRow
+        >,
+      ),
+      InstallmentInterestAdjustmentRow,
+      PrefetchHooks Function()
+    >;
 typedef $$RepaymentsTableCreateCompanionBuilder =
     RepaymentsCompanion Function({
       required String id,
@@ -22417,6 +24214,18 @@ class $AppDatabaseManager {
       $$InstallmentRepricingRecordsTableTableManager(
         _db,
         _db.installmentRepricingRecords,
+      );
+  $$InstallmentRepricingConfigsTableTableManager
+  get installmentRepricingConfigs =>
+      $$InstallmentRepricingConfigsTableTableManager(
+        _db,
+        _db.installmentRepricingConfigs,
+      );
+  $$InstallmentInterestAdjustmentsTableTableManager
+  get installmentInterestAdjustments =>
+      $$InstallmentInterestAdjustmentsTableTableManager(
+        _db,
+        _db.installmentInterestAdjustments,
       );
   $$RepaymentsTableTableManager get repayments =>
       $$RepaymentsTableTableManager(_db, _db.repayments);

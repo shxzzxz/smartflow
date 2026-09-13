@@ -501,83 +501,190 @@ void main() {
       },
     );
 
-    test('cross-month schedule creates a new bill item identity', () async {
-      final fixture = _Fixture();
-      addTearDown(fixture.close);
-      final account = await fixture.createLoanAccount();
-      final contractId = fixture.ids.newId();
-      await fixture.installmentRepository.saveContract(
-        InstallmentContract(
-          id: contractId,
-          liabilityAccountId: account.id,
-          sourceType: InstallmentSourceType.disbursement,
-          disbursementAccountId: 'asset-account',
-          disbursementTransactionId: 'tx-borrowing',
-          principal: const Money(minorUnits: 60000),
-          borrowingDate: DateTime(2026, 6, 1),
-          status: InstallmentContractStatus.active,
-          createdAt: DateTime(2026, 6, 1),
-          stageTerms: InstallmentContractTerms.singleStage(
-            id: contractId,
-            totalPeriods: 1,
-            firstDate: DateTime(2026, 7, 1),
-            lastDate: DateTime(2026, 7, 1),
-            method: InstallmentRepaymentMethod.equalPrincipal,
-            accrual: InterestAccrualMethod.daily,
-            feeMinor: 0,
-          ),
-        ),
+    for (final scenario in [
+      (paidMinor: 0, refreshFirst: false),
+      (paidMinor: 20000, refreshFirst: false),
+      (paidMinor: 60000, refreshFirst: false),
+      (paidMinor: 20000, refreshFirst: true),
+    ]) {
+      final paidMinor = scenario.paidMinor;
+      test(
+        'cross-month schedule with $paidMinor paid, old refresh first ${scenario.refreshFirst}, detaches references and projects the full amount',
+        () async {
+          final fixture = _Fixture();
+          addTearDown(fixture.close);
+          final account = await fixture.createLoanAccount();
+          final contractId = fixture.ids.newId();
+          await fixture.installmentRepository.saveContract(
+            InstallmentContract(
+              id: contractId,
+              liabilityAccountId: account.id,
+              sourceType: InstallmentSourceType.disbursement,
+              disbursementAccountId: 'asset-account',
+              disbursementTransactionId: 'tx-borrowing',
+              principal: const Money(minorUnits: 60000),
+              borrowingDate: DateTime(2026, 6, 1),
+              status: InstallmentContractStatus.active,
+              createdAt: DateTime(2026, 6, 1),
+              stageTerms: InstallmentContractTerms.singleStage(
+                id: contractId,
+                totalPeriods: 1,
+                firstDate: DateTime(2026, 7, 1),
+                lastDate: DateTime(2026, 7, 1),
+                method: InstallmentRepaymentMethod.equalPrincipal,
+                accrual: InterestAccrualMethod.daily,
+                feeMinor: 0,
+              ),
+            ),
+          );
+          await fixture.installmentRepository.saveAggregate(
+            (await fixture.installmentRepository.findContract(contractId))!,
+            [
+              InstallmentSchedule(
+                id: fixture.ids.newId(),
+                contractId: contractId,
+                periodNo: 1,
+                expectedRepaymentDate: DateTime(2026, 7, 1),
+                expectedPrincipal: const Money(minorUnits: 60000),
+                expectedInterest: Money.zero(),
+                expectedFee: Money.zero(),
+                status: InstallmentScheduleStatus.pending,
+                createdAt: DateTime(2026, 6, 1),
+              ),
+            ],
+          );
+          final schedule = (await fixture.installmentRepository.listSchedules(
+            contractId,
+          )).single;
+
+          await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
+          final july = (await fixture.billRepository.listBillsByAccount(
+            account.id,
+          )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
+          final originalItemId = july.items.single.id;
+          if (paidMinor > 0) {
+            await fixture.repaymentAppService.createBillRepayment(
+              CreateBillRepaymentCommand(
+                billId: july.id,
+                repaymentDate: DateTime(2026, 7, 15),
+                allocations: [
+                  BillRepaymentAllocation(
+                    billItemId: originalItemId,
+                    allocated: RepaymentAmountDto(
+                      principal: Money(minorUnits: paidMinor),
+                      interest: Money.zero(),
+                      fee: Money.zero(),
+                      discount: Money.zero(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final contract = await fixture.installmentRepository.findContract(
+            schedule.contractId,
+          );
+          final schedules = await fixture.installmentRepository.listSchedules(
+            schedule.contractId,
+          );
+          schedules
+              .singleWhere((candidate) => candidate.id == schedule.id)
+              .reviseExpectation(expectedRepaymentDate: DateTime(2026, 8, 1));
+          await fixture.installmentRepository.saveAggregate(
+            contract!,
+            schedules,
+          );
+
+          if (scenario.refreshFirst) {
+            final before = await fixture.database
+                .select(fixture.database.repaymentItems)
+                .get();
+            await fixture.database.customStatement('''
+CREATE TRIGGER reject_bill_refresh BEFORE DELETE ON bill_items
+WHEN OLD.id = '$originalItemId'
+BEGIN SELECT RAISE(ABORT, 'bill refresh failed'); END
+''');
+            await expectLater(
+              fixture.generation.refreshBill(july.id),
+              throwsA(isA<Exception>()),
+            );
+            expect(
+              await fixture.database
+                  .select(fixture.database.repaymentItems)
+                  .get(),
+              before,
+            );
+            expect(
+              (await fixture.billRepository.findBill(july.id))!.items.single.id,
+              originalItemId,
+            );
+            await fixture.database.customStatement(
+              'DROP TRIGGER reject_bill_refresh',
+            );
+            await fixture.generation.refreshBill(july.id);
+          }
+
+          await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
+          final august = (await fixture.billRepository.listBillsByAccount(
+            account.id,
+          )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202608));
+          expect(august.items.single.id, isNot(originalItemId));
+          expect(august.items.single.scheduleId, schedule.id);
+          expect(august.items.single.expectedPrincipal.minorUnits, 60000);
+
+          await fixture.generation.refreshBill(july.id);
+
+          final syncedJuly = await fixture.billRepository.findBill(july.id);
+          expect(syncedJuly!.status, BillStatus.settled);
+          expect(syncedJuly.items, isEmpty);
+          expect(
+            await fixture.repaymentRepository.listItemsByBillItem(
+              originalItemId,
+            ),
+            isEmpty,
+          );
+          if (paidMinor > 0) {
+            final repayment = (await fixture.repaymentRepository.listByTarget(
+              RepaymentTargetType.bill,
+              july.id,
+            )).single;
+            expect(repayment.items.single.billItemId, isNull);
+            expect(
+              repayment.items.single.allocated.principal.minorUnits,
+              paidMinor,
+            );
+            expect(repayment.repaymentDate, DateTime(2026, 7, 15));
+            final edit = await fixture.repaymentAppService
+                .loadBillRepaymentEditView(repayment.id);
+            expect(edit!.allocations.single.billItemId, isNull);
+            expect(
+              edit.allocations.single.allocated.principal.minorUnits,
+              paidMinor,
+            );
+          }
+          final validation = await InstallmentStatusRepairAppService(
+            installments: fixture.installmentRepository,
+            bills: fixture.billRepository,
+            repayments: fixture.repaymentRepository,
+            transactionRunner: fixture.runner,
+          ).validateAndRepair(contractId);
+          expect(validation.issues, isEmpty);
+          expect(
+            (await fixture.installmentRepository.listSchedules(
+              contractId,
+            )).single.status,
+            InstallmentScheduleStatus.pending,
+          );
+          expect(
+            (await fixture.installmentRepository.findContract(
+              contractId,
+            ))!.status,
+            InstallmentContractStatus.active,
+          );
+        },
       );
-      await fixture.installmentRepository.saveAggregate(
-        (await fixture.installmentRepository.findContract(contractId))!,
-        [
-          InstallmentSchedule(
-            id: fixture.ids.newId(),
-            contractId: contractId,
-            periodNo: 1,
-            expectedRepaymentDate: DateTime(2026, 7, 1),
-            expectedPrincipal: const Money(minorUnits: 60000),
-            expectedInterest: Money.zero(),
-            expectedFee: Money.zero(),
-            status: InstallmentScheduleStatus.pending,
-            createdAt: DateTime(2026, 6, 1),
-          ),
-        ],
-      );
-      final schedule = (await fixture.installmentRepository.listSchedules(
-        contractId,
-      )).single;
-
-      await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
-      final july = (await fixture.billRepository.listBillsByAccount(
-        account.id,
-      )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202607));
-      final originalItemId = july.items.single.id;
-
-      final contract = await fixture.installmentRepository.findContract(
-        schedule.contractId,
-      );
-      final schedules = await fixture.installmentRepository.listSchedules(
-        schedule.contractId,
-      );
-      schedules
-          .singleWhere((candidate) => candidate.id == schedule.id)
-          .reviseExpectation(expectedRepaymentDate: DateTime(2026, 8, 1));
-      await fixture.installmentRepository.saveAggregate(contract!, schedules);
-
-      await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
-      final august = (await fixture.billRepository.listBillsByAccount(
-        account.id,
-      )).singleWhere((bill) => bill.period == BillPeriod.fromInt(202608));
-      expect(august.items.single.id, isNot(originalItemId));
-      expect(august.items.single.scheduleId, schedule.id);
-
-      await fixture.generation.refreshBill(july.id);
-
-      final syncedJuly = await fixture.billRepository.findBill(july.id);
-      expect(syncedJuly!.items, isEmpty);
-      expect(syncedJuly.status, BillStatus.settled);
-    });
+    }
 
     test('bill refresh does not drive installment aggregate status', () async {
       final fixture = _Fixture();

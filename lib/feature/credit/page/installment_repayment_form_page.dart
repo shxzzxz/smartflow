@@ -130,7 +130,7 @@ class _InstallmentRepaymentFormPageState
           ),
           const SizedBox(height: AppSpacing.space24),
           const CreditRepaymentSubmitHint(
-            text: '提交后，以本次还款日期为锚点重新计算其后的待还期次；锚点之前的期次保持不变。',
+            text: '本次本金从还款日期所在的计息期开始扣减，提交后重新计算还款计划。',
           ),
           AppSubmitButton(
             label: '提交并重算',

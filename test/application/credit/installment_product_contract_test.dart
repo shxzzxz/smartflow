@@ -70,8 +70,8 @@ void main() {
   for (final rejectProduct in [false, true]) {
     test(
       rejectProduct
-          ? 'failed contract edit restores the written plan and discarded repricing candidate'
-          : 'contract edit commits rebuilt plan, details and candidate cleanup together',
+          ? 'failed contract edit restores the written plan and preserved repricing facts'
+          : 'contract edit commits rebuilt plan, details and repricing facts together',
       () async {
         final rule = FloatingRateRule(
           referenceRateType: ReferenceRateType.lprFiveYearPlus,
@@ -89,7 +89,7 @@ void main() {
           InstallmentRepricing(
             id: 'pending-reset',
             contractId: original.id,
-            stageId: original.stageTerms.stages.single.id,
+            stageId: original.stageTerms.stages.first.id,
             change: RateChange(
               resetDate: rule.firstResetDate,
               effectiveDate: rule.firstEffectiveDate,
@@ -123,7 +123,7 @@ void main() {
         when(() => rejectedProducts.find('missing-product')).thenAnswer((
           _,
         ) async {
-          // 后续产品校验失败前，重算和候选清理已经实际写入数据库。
+          // 后续产品校验失败前，完整重算已经实际写入数据库。
           expect(
             (await repository.findContract(
               original.id,
@@ -136,13 +136,12 @@ void main() {
             )).first.expectedInterest,
             isNot(before.first.expectedInterest),
           );
-          expect(await records.list(original.id), isEmpty);
+          expect(await records.list(original.id), hasLength(1));
           return null;
         });
         final editing = InstallmentAppServiceImpl(
           repository: repository,
           products: rejectProduct ? rejectedProducts : products,
-          repricings: records,
           bills: DriftBillRepository(db),
           repayments: DriftRepaymentRepository(db),
           ledger: _Ledger(),
@@ -188,10 +187,9 @@ void main() {
               ? before.map((r) => r.expectedInterest)
               : preview.schedules.map((r) => r.expectedInterest),
         );
-        expect(
-          (await records.list(original.id)).map((r) => r.id),
-          rejectProduct ? ['pending-reset'] : isEmpty,
-        );
+        expect((await records.list(original.id)).map((r) => r.id), [
+          'pending-reset',
+        ]);
       },
     );
   }
@@ -340,7 +338,7 @@ void main() {
   );
 
   test(
-    'stage edits cannot move frozen schedules and failure rolls back all rows',
+    'stage edits rebuild paid schedules and persistence failure rolls back the complete change',
     () async {
       final created = await service.createDisbursementContract(
         _command(10000, 12000),
@@ -357,14 +355,15 @@ void main() {
           ),
         ],
       );
-      await expectLater(
-        service.previewContractRecalculation(
-          PreviewContractRecalculationCommand(
-            contractId: original.id,
-            stageTerms: changed,
-          ),
+      final preview = await service.previewContractRecalculation(
+        PreviewContractRecalculationCommand(
+          contractId: original.id,
+          stageTerms: changed,
         ),
-        throwsA(isA<BusinessException>()),
+      );
+      await db.customStatement(
+        'CREATE TRIGGER reject_plan BEFORE INSERT ON installment_schedules '
+        "WHEN NEW.period_no = 2 BEGIN SELECT RAISE(ABORT, 'test failure'); END",
       );
       await expectLater(
         service.updateContract(
@@ -372,9 +371,10 @@ void main() {
             contractId: original.id,
             stageTerms: changed,
             regeneratePlan: true,
+            planPreviewToken: preview.token,
           ),
         ),
-        throwsA(isA<BusinessException>()),
+        throwsA(isA<Exception>()),
       );
       final after = await repository.listSchedules(original.id);
       expect(after.first.id, rows.first.id);
@@ -385,6 +385,23 @@ void main() {
         ))!.stageTerms.stages.single.id,
         original.stageTerms.stages.single.id,
       );
+      await db.customStatement('DROP TRIGGER reject_plan');
+      await service.updateContract(
+        UpdateContractCommand(
+          contractId: original.id,
+          stageTerms: changed,
+          regeneratePlan: true,
+          planPreviewToken: preview.token,
+        ),
+      );
+      final rebuilt = await repository.listSchedules(original.id);
+      final savedStageId = (await repository.findContract(
+        original.id,
+      ))!.stageTerms.stages.single.id;
+      expect(savedStageId, isNot(original.stageTerms.stages.single.id));
+      expect(rebuilt.map((row) => row.stageId), everyElement(savedStageId));
+      expect(rebuilt.first.expectedPrincipal, rows.first.expectedPrincipal);
+      expect(rebuilt.first.status, InstallmentScheduleStatus.pending);
     },
   );
 }

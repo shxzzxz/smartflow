@@ -86,4 +86,16 @@ class RateChange {
     ppm: referenceRate.ratePpm + spreadBp * 100,
     period: InterestRatePeriod.annual,
   );
+
+  void validate() {
+    if (referenceDate(effectiveDate).isBefore(referenceDate(resetDate)) ||
+        referenceDate(referenceRate.date).isAfter(referenceDate(resetDate)) ||
+        referenceRate.ratePpm < 0 ||
+        rate.ppm < 0) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '重定价日期或参考利率无效，执行利率不得为负',
+      );
+    }
+  }
 }

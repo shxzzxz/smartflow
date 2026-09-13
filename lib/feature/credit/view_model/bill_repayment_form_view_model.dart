@@ -53,7 +53,13 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     }
 
     final lines = _allocationLines(detail, editing: editView?.allocations);
-    if (lines.isEmpty) {
+    final missingAllocations = [
+      for (final allocation
+          in editView?.allocations ??
+              const <credit.BillRepaymentEditAllocation>[])
+        if (allocation.billItemId == null) allocation,
+    ];
+    if (lines.isEmpty && missingAllocations.isEmpty) {
       return BillRepaymentFormState.noPending(
         summary: detail.summary,
         repaymentSourceAccounts: repaymentSourceAccounts,
@@ -75,7 +81,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
               amount: pending,
             ).allocations,
           )
-        : _manualAmountsFromCommandAllocations(editView.allocations);
+        : _manualAmountsFromEditAllocations(editView.allocations);
     return BillRepaymentFormState.loaded(
       summary: detail.summary,
       lines: lines,
@@ -93,6 +99,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
       createTransaction: editView?.hasTransaction ?? true,
       editingRepaymentId: editView?.repaymentId,
       manualAllocations: defaultManualAllocations,
+      missingAllocations: missingAllocations,
     );
   }
 
@@ -108,13 +115,23 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
   void setAllocationMode(BillRepaymentAllocationMode value) =>
       _update((state) => state.copyWith(allocationMode: value));
 
+  void removeMissingAllocation(String id) => _update(
+    (state) => state.copyWith(
+      missingAllocations: [
+        for (final allocation in state.missingAllocations)
+          if (allocation.id != id) allocation,
+      ],
+    ),
+  );
+
   void calculateAllocation({
     required String principalText,
     required String interestText,
     required String feeText,
     required String discountText,
   }) => _update((state) {
-    if (state.allocationMode == BillRepaymentAllocationMode.manual) {
+    if (state.allocationMode == BillRepaymentAllocationMode.manual ||
+        state.missingAllocations.isNotEmpty) {
       return state;
     }
     final amount = _amountFromText(
@@ -169,6 +186,9 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('账单还款表单尚未加载');
+    }
+    if (current.missingAllocations.isNotEmpty) {
+      return _invalidCommand('存在无明细分项，请先移除并纠正还款分摊');
     }
     final principal = _parseOptionalNonNegativeMoney(principalText);
     if (principal == null) return _invalidCommand('请输入有效本金');
@@ -308,6 +328,7 @@ class BillRepaymentFormState {
     this.summary,
     this.paidFromAccountId,
     this.editingRepaymentId,
+    this.missingAllocations = const [],
   });
 
   factory BillRepaymentFormState.loaded({
@@ -324,6 +345,7 @@ class BillRepaymentFormState {
     Map<String, credit.RepaymentAmountBreakdown> manualAllocations = const {},
     bool createTransaction = true,
     String? editingRepaymentId,
+    List<credit.BillRepaymentEditAllocation> missingAllocations = const [],
   }) {
     return BillRepaymentFormState(
       status: BillRepaymentFormLoadStatus.loaded,
@@ -339,6 +361,7 @@ class BillRepaymentFormState {
       paidFromAccountId: paidFromAccountId,
       createTransaction: createTransaction,
       editingRepaymentId: editingRepaymentId,
+      missingAllocations: List.unmodifiable(missingAllocations),
       allocationMode: BillRepaymentAllocationMode.fifo,
       manualAllocations: manualAllocations,
       submitting: false,
@@ -404,9 +427,13 @@ class BillRepaymentFormState {
   final bool createTransaction;
   final BillRepaymentAllocationMode allocationMode;
   final Map<String, credit.RepaymentAmountBreakdown> manualAllocations;
+  final List<credit.BillRepaymentEditAllocation> missingAllocations;
   final bool submitting;
 
   bool get isLoaded => status == BillRepaymentFormLoadStatus.loaded;
+
+  credit.RepaymentAmountBreakdown get missingAllocationTotal =>
+      _totalAllocations(missingAllocations);
 
   List<Account> get repaymentAccounts {
     final accountId = summary?.accountId;
@@ -427,6 +454,7 @@ class BillRepaymentFormState {
     bool? createTransaction,
     BillRepaymentAllocationMode? allocationMode,
     Map<String, credit.RepaymentAmountBreakdown>? manualAllocations,
+    List<credit.BillRepaymentEditAllocation>? missingAllocations,
     bool? submitting,
   }) {
     return BillRepaymentFormState(
@@ -447,6 +475,9 @@ class BillRepaymentFormState {
       createTransaction: createTransaction ?? this.createTransaction,
       allocationMode: allocationMode ?? this.allocationMode,
       manualAllocations: manualAllocations ?? this.manualAllocations,
+      missingAllocations: missingAllocations == null
+          ? this.missingAllocations
+          : List.unmodifiable(missingAllocations),
       submitting: submitting ?? this.submitting,
     );
   }
@@ -454,12 +485,13 @@ class BillRepaymentFormState {
 
 List<BillRepaymentAllocationLine> _allocationLines(
   credit_query.BillDetailReadModel detail, {
-  List<credit.BillRepaymentAllocation>? editing,
+  List<credit.BillRepaymentEditAllocation>? editing,
 }) {
   final editingByItem = {
     for (final allocation
-        in editing ?? const <credit.BillRepaymentAllocation>[])
-      allocation.billItemId: allocation.allocated,
+        in editing ?? const <credit.BillRepaymentEditAllocation>[])
+      if (allocation.billItemId != null)
+        allocation.billItemId!: allocation.allocated,
   };
   return [
     for (final item in detail.items)
@@ -517,18 +549,18 @@ BillRepaymentAllocationReview _allocationReview({
   );
 }
 
-Map<String, credit.RepaymentAmountBreakdown>
-_manualAmountsFromCommandAllocations(
-  List<credit.BillRepaymentAllocation> allocations,
+Map<String, credit.RepaymentAmountBreakdown> _manualAmountsFromEditAllocations(
+  List<credit.BillRepaymentEditAllocation> allocations,
 ) {
   return {
     for (final allocation in allocations)
-      allocation.billItemId: credit.RepaymentAmountBreakdown(
-        principal: allocation.allocated.principal,
-        interest: allocation.allocated.interest,
-        fee: allocation.allocated.fee,
-        discount: allocation.allocated.discount,
-      ),
+      if (allocation.billItemId != null)
+        allocation.billItemId!: credit.RepaymentAmountBreakdown(
+          principal: allocation.allocated.principal,
+          interest: allocation.allocated.interest,
+          fee: allocation.allocated.fee,
+          discount: allocation.allocated.discount,
+        ),
   };
 }
 
@@ -594,7 +626,7 @@ String? _selectedId(String? id, List<Account> accounts) {
 }
 
 credit.RepaymentAmountBreakdown _totalAllocations(
-  Iterable<credit.BillRepaymentAllocation> allocations,
+  Iterable<credit.BillRepaymentEditAllocation> allocations,
 ) {
   return allocations.fold(
     credit.RepaymentAmountBreakdown.zero,

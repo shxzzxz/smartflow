@@ -179,7 +179,7 @@ class _ScheduleRow extends StatelessWidget {
                   '${row.date.day.toString().padLeft(2, '0')}',
               style: cellStyle,
               align: TextAlign.left,
-              onTap: pending ? () => onEditDate(row) : null,
+              onTap: () => onEditDate(row),
             ),
           ),
           Expanded(
@@ -187,7 +187,7 @@ class _ScheduleRow extends StatelessWidget {
               key: ValueKey('p-${row.periodNo}'),
               value: row.principal,
               style: cellStyle,
-              canEdit: pending,
+              canEdit: true,
               allowZero: false,
               onCommit: (m) =>
                   onApplyAmount(row, InstallmentAmountField.principal, m),
@@ -198,7 +198,7 @@ class _ScheduleRow extends StatelessWidget {
               key: ValueKey('i-${row.periodNo}'),
               value: row.interest,
               style: cellStyle,
-              canEdit: pending,
+              canEdit: true,
               allowZero: true,
               onCommit: (m) =>
                   onApplyAmount(row, InstallmentAmountField.interest, m),
@@ -209,7 +209,7 @@ class _ScheduleRow extends StatelessWidget {
               key: ValueKey('f-${row.periodNo}'),
               value: row.fee,
               style: cellStyle,
-              canEdit: pending,
+              canEdit: true,
               allowZero: true,
               onCommit: (m) =>
                   onApplyAmount(row, InstallmentAmountField.fee, m),

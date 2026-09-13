@@ -17,11 +17,10 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
-import '../../../../domain/credit/port/installment_repricing_repository.dart';
-import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/port/installment_product_repository.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import 'installment_plan_service.dart';
+import 'installment_status_repair_app_service.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../settlement/settlement_app_service.dart';
@@ -33,7 +32,7 @@ abstract interface class InstallmentAppService {
 
   Future<void> updateContract(UpdateContractCommand command);
 
-  /// 预览按候选条款重建待还尾部，返回确认所需的事实指纹。
+  /// 预览按候选条款重建完整计划，返回确认所需的事实指纹。
   Future<ContractRecalculationPreview> previewContractRecalculation(
     PreviewContractRecalculationCommand command,
   );
@@ -56,7 +55,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     required IdGenerator idGenerator,
     InstallmentPlanService? plans,
     InstallmentProductRepository? products,
-    InstallmentRepricingRepository? repricings,
     InstallmentOriginationService origination =
         const InstallmentOriginationService(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
@@ -66,10 +64,10 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
            InstallmentPlanService(
              installments: repository,
              repayments: repayments,
+             bills: bills,
              runner: transactionRunner,
              idGenerator: idGenerator,
            ),
-       _repricings = repricings,
        _products = products,
        _repository = repository,
        _bills = bills,
@@ -88,7 +86,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
 
   final InstallmentPlanService _plans;
   final InstallmentRepository _repository;
-  final InstallmentRepricingRepository? _repricings;
   final InstallmentProductRepository? _products;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
@@ -189,11 +186,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     final schedules = prepared.schedules;
     final terms = command.stageTerms;
     if (terms != null) {
-      await _discardChangedRateCandidates(
-        contract.id,
-        prepared.previousTerms,
-        terms,
-      );
       await _reviseContractTerms(contract, command, terms);
     }
     contract.reviseDetails(
@@ -218,6 +210,14 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
 
     await _synchronizeBorrowing(contract, command);
     await _repository.saveAggregate(contract, schedules);
+    if (command.schedulePatches.isNotEmpty) {
+      await InstallmentStatusRepairAppService(
+        installments: _repository,
+        bills: _bills,
+        repayments: _repayments,
+        transactionRunner: _runner,
+      ).validateAndRepair(contract.id);
+    }
   }
 
   Future<
@@ -231,11 +231,10 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     var contract =
         await _repository.findContract(command.contractId) ??
         (throw BusinessException(CreditErrorCode.contractNotFound));
-    contract.ensureEditable();
     var schedules = await _repository.listSchedules(command.contractId);
     final previousTerms = contract.stageTerms;
     final terms = command.stageTerms ?? previousTerms;
-    terms.validateReplacementOf(previousTerms);
+    terms.validate();
     if (command.regeneratePlan) {
       final token = command.planPreviewToken;
       if (token == null ||
@@ -271,28 +270,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
       schedules: schedules,
       previousTerms: previousTerms,
     );
-  }
-
-  Future<void> _discardChangedRateCandidates(
-    String contractId,
-    InstallmentContractTerms previousTerms,
-    InstallmentContractTerms terms,
-  ) async {
-    final changedRateStages = <String>{};
-    for (final previous in previousTerms.stages) {
-      if (previous.terms is! AmortizingStage) continue;
-      final old = previous.terms as AmortizingStage;
-      final next = terms.stages
-          .where((s) => s.id == previous.id)
-          .firstOrNull
-          ?.terms;
-      if (next is! AmortizingStage ||
-          next.floatingRate != old.floatingRate ||
-          next.rate != old.rate) {
-        changedRateStages.add(previous.id);
-      }
-    }
-    await _repricings?.discardPending(contractId, changedRateStages);
   }
 
   Future<void> _reviseContractTerms(

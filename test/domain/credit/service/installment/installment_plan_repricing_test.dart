@@ -5,6 +5,7 @@ import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/valobj/equal_installment_amount.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
@@ -14,7 +15,7 @@ void main() {
   final start = DateTime.utc(2025, 12, 20);
   final effective = DateTime.utc(2026, 1, 1);
   test(
-    'floating stage preserves its end-principal target before the next stage',
+    'repricing preserves the stage end-principal target before the next stage',
     () {
       final result = engine.generate(
         InstallmentPlanTerms(
@@ -32,25 +33,6 @@ void main() {
                 period: InterestRatePeriod.annual,
               ),
               endPrincipal: const Money(minorUnits: 5000000),
-              floatingRate: FloatingRateRule(
-                referenceRateType: ReferenceRateType.lprOneYear,
-                spreadBp: 0,
-                firstResetDate: effective,
-                firstEffectiveDate: effective,
-              ),
-              rateChanges: [
-                RateChange(
-                  resetDate: effective,
-                  effectiveDate: effective,
-                  spreadBp: 0,
-                  referenceRate: ReferenceRate(
-                    date: effective,
-                    type: ReferenceRateType.lprOneYear,
-                    ratePpm: 36000,
-                    source: 'test',
-                  ),
-                ),
-              ],
             ),
             AmortizingStage(
               dates: IntervalRepaymentDates(
@@ -64,6 +46,23 @@ void main() {
               ),
             ),
           ],
+        ),
+        operations: InstallmentPlanOperations(
+          rateChangesByStage: {
+            0: [
+              RateChange(
+                resetDate: effective,
+                effectiveDate: effective,
+                spreadBp: 0,
+                referenceRate: ReferenceRate(
+                  date: effective,
+                  type: ReferenceRateType.lprOneYear,
+                  ratePpm: 36000,
+                  source: 'test',
+                ),
+              ),
+            ],
+          },
         ),
       );
       expect(result.stages, hasLength(2));
@@ -81,16 +80,6 @@ void main() {
         8000000,
       );
     },
-  );
-  FloatingRateRule rule({
-    RepricingPaymentTiming timing = RepricingPaymentTiming.nextPeriod,
-  }) => FloatingRateRule(
-    referenceRateType: ReferenceRateType.lprFiveYearPlus,
-    spreadBp: -30,
-    firstResetDate: DateTime.utc(2025, 12, 20),
-    firstEffectiveDate: effective,
-    cycleMonths: 3,
-    paymentTiming: timing,
   );
   RateChange change(DateTime date, int ratePpm) => RateChange(
     resetDate: DateTime.utc(date.year, date.month, 1),
@@ -129,10 +118,14 @@ void main() {
           ),
           accrual: accrual,
           installmentAmount: amount,
-          floatingRate: rule(timing: timing),
-          rateChanges: changes ?? [change(effective, 36000)],
+          repricingPaymentTiming: timing,
         ),
       ],
+    ),
+    operations: InstallmentPlanOperations(
+      rateChangesByStage: {
+        0: changes ?? [change(effective, 36000)],
+      },
     ),
   );
 
@@ -295,17 +288,4 @@ void main() {
       );
     },
   );
-
-  test('calendar recurrence preserves month-end anchor', () {
-    final config = FloatingRateRule(
-      referenceRateType: ReferenceRateType.lprOneYear,
-      spreadBp: 0,
-      firstResetDate: DateTime.utc(2026, 8, 31),
-      firstEffectiveDate: DateTime.utc(2026, 8, 31),
-      cycleMonths: 3,
-    );
-    expect(config.resetDate(1), DateTime.utc(2026, 11, 30));
-    expect(config.resetDate(2), DateTime.utc(2027, 2, 28));
-    expect(config.resetDate(3), DateTime.utc(2027, 5, 31));
-  });
 }

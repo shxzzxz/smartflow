@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_metrics.dart';
+import 'package:smartflow/domain/credit/service/installment/calculator/installment_metrics.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 
 void main() {

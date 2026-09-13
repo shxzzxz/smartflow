@@ -319,7 +319,8 @@ void main() {
         repaymentId: 'repayment',
         billId: 'bill',
         allocations: [
-          credit.BillRepaymentAllocation(
+          credit.BillRepaymentEditAllocation(
+            id: 'repayment-item',
             billItemId: 'bill-item',
             allocated: const credit.RepaymentAmountDto(
               principal: Money(minorUnits: 1000),
@@ -352,6 +353,111 @@ void main() {
     expect(state.discountText, '0.50');
     expect(review?.unallocated.discount, Money.zero());
   });
+
+  test(
+    'missing bill allocations remain visible until explicitly removed before saving',
+    () async {
+      final repayment = _FakeRepaymentAppService(
+        editView: credit.BillRepaymentEditView(
+          repaymentId: 'repayment',
+          billId: 'bill',
+          hasTransaction: false,
+          allocations: [
+            credit.BillRepaymentEditAllocation(
+              id: 'linked',
+              billItemId: 'bill-item',
+              allocated: const credit.RepaymentAmountDto(
+                principal: Money(minorUnits: 500),
+                interest: Money(minorUnits: 0),
+                fee: Money(minorUnits: 0),
+                discount: Money(minorUnits: 0),
+              ),
+            ),
+            credit.BillRepaymentEditAllocation(
+              id: 'missing-1',
+              billItemId: null,
+              allocated: const credit.RepaymentAmountDto(
+                principal: Money(minorUnits: 300),
+                interest: Money(minorUnits: 20),
+                fee: Money(minorUnits: 5),
+                discount: Money(minorUnits: 2),
+              ),
+            ),
+            credit.BillRepaymentEditAllocation(
+              id: 'missing-2',
+              billItemId: null,
+              allocated: const credit.RepaymentAmountDto(
+                principal: Money(minorUnits: 200),
+                interest: Money(minorUnits: 30),
+                fee: Money(minorUnits: 5),
+                discount: Money(minorUnits: 3),
+              ),
+            ),
+          ],
+        ),
+      );
+      final container = _container(repaymentAppService: repayment);
+      final provider = billRepaymentFormViewModelProvider(
+        const BillRepaymentFormArgs.edit('repayment'),
+      );
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+      final loaded = await container.read(provider.future);
+      final notifier = container.read(provider.notifier);
+      expect(loaded.missingAllocations.map((item) => item.id), [
+        'missing-1',
+        'missing-2',
+      ]);
+      expect(loaded.principalText, '10.00');
+      expect(loaded.interestText, '0.50');
+      expect(loaded.feeText, '0.10');
+      expect(loaded.discountText, '0.05');
+      Future<SubmitOutcome> submit() => notifier.submit(
+        principalText: loaded.principalText,
+        interestText: loaded.interestText,
+        feeText: loaded.feeText,
+        discountText: loaded.discountText,
+        noteText: '',
+      );
+      expect(await submit(), isA<SubmitFailure>());
+      expect(repayment.editBillCommands, isEmpty);
+      notifier.calculateAllocation(
+        principalText: '10',
+        interestText: '0.50',
+        feeText: '0.10',
+        discountText: '0.05',
+      );
+      expect(container.read(provider).value!.missingAllocations, hasLength(2));
+      expect(
+        container
+            .read(provider)
+            .value!
+            .manualAllocation('bill-item')
+            .principal
+            .minorUnits,
+        500,
+      );
+      notifier.removeMissingAllocation('missing-1');
+      expect(
+        container.read(provider).value!.missingAllocations.single.id,
+        'missing-2',
+      );
+      expect(await submit(), isA<SubmitFailure>());
+      notifier.removeMissingAllocation('missing-2');
+      notifier.setManualAllocationAmount(
+        billItemId: 'bill-item',
+        principal: const Money(minorUnits: 1000),
+        interest: const Money(minorUnits: 50),
+        fee: const Money(minorUnits: 10),
+        discount: const Money(minorUnits: 5),
+      );
+      expect(await submit(), isA<SubmitSuccess>());
+      final allocation = repayment.editBillCommands.single.allocations.single;
+      expect(allocation.billItemId, 'bill-item');
+      expect(allocation.allocated.principal.minorUnits, 1000);
+      expect(allocation.allocated.discount.minorUnits, 5);
+    },
+  );
 
   test('bill repayment form supports equal allocation mode', () async {
     final repayment = _FakeRepaymentAppService();
@@ -730,6 +836,7 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   final prepaymentCommands =
       <credit.CreateContractPrepaymentRepaymentCommand>[];
   final billRepaymentCommands = <credit.CreateBillRepaymentCommand>[];
+  final editBillCommands = <credit.EditBillRepaymentCommand>[];
   final billConversionCommands =
       <credit.CreateBillConversionInstallmentRepaymentCommand>[];
   final unattributedCommands = <credit.CreateUnattributedRepaymentCommand>[];
@@ -762,6 +869,14 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   Future<credit.BillRepaymentEditView?> loadBillRepaymentEditView(
     String repaymentId,
   ) async => editView;
+
+  @override
+  Future<credit.CreateRepaymentResult> editBillRepayment(
+    credit.EditBillRepaymentCommand command,
+  ) async {
+    editBillCommands.add(command);
+    return credit.CreateRepaymentResult(repaymentId: command.repaymentId);
+  }
 
   @override
   Future<credit.CreateRepaymentResult> createBillConversionInstallmentRepayment(

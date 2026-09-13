@@ -164,22 +164,20 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
                 label: '分摊方式',
                 value: state.allocationMode,
                 items: billRepaymentAllocationModeItems,
-                onChanged:
-                    (value) =>
-                        ref.read(provider.notifier).setAllocationMode(value),
+                onChanged: (value) =>
+                    ref.read(provider.notifier).setAllocationMode(value),
               ),
               CreditRepaymentTransactionFields(
                 createTransaction: state.createTransaction,
-                onCreateTransactionChanged:
-                    state.editingRepaymentId == null
-                        ? (value) => ref
-                            .read(provider.notifier)
-                            .setCreateTransaction(value)
-                        : null,
+                onCreateTransactionChanged: state.editingRepaymentId == null
+                    ? (value) => ref
+                          .read(provider.notifier)
+                          .setCreateTransaction(value)
+                    : null,
                 occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
-                onPickDate:
-                    (onSelected) => _pickDate(state.occurredAt, onSelected),
+                onPickDate: (onSelected) =>
+                    _pickDate(state.occurredAt, onSelected),
                 onOccurredAtChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -188,14 +186,14 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
                 repaymentAccount: paidFromAccount,
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.repaymentAccounts,
-                onRepaymentAccountChanged:
-                    ref.read(provider.notifier).setPaidFromAccountId,
-                onPickAccount:
-                    (onSelected) => _pickAccount(
-                      accounts: state.repaymentAccounts,
-                      selectedId: state.paidFromAccountId,
-                      onSelected: onSelected,
-                    ),
+                onRepaymentAccountChanged: ref
+                    .read(provider.notifier)
+                    .setPaidFromAccountId,
+                onPickAccount: (onSelected) => _pickAccount(
+                  accounts: state.repaymentAccounts,
+                  selectedId: state.paidFromAccountId,
+                  onSelected: onSelected,
+                ),
               ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -214,36 +212,42 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
             state: state,
             review: review,
             onCalculate:
-                state.allocationMode == BillRepaymentAllocationMode.manual
-                    ? null
-                    : () => ref
-                        .read(provider.notifier)
-                        .calculateAllocation(
-                          principalText: _principalController.text,
-                          interestText: _interestController.text,
-                          feeText: _feeController.text,
-                          discountText: _discountController.text,
-                        ),
-            onChanged: ({
-              required String billItemId,
-              required _AllocationAmountField field,
-              required Money value,
-            }) {
-              ref
-                  .read(provider.notifier)
-                  .setManualAllocationAmount(
-                    billItemId: billItemId,
-                    principal:
-                        field == _AllocationAmountField.principal
+                state.allocationMode == BillRepaymentAllocationMode.manual ||
+                    state.missingAllocations.isNotEmpty
+                ? null
+                : () => ref
+                      .read(provider.notifier)
+                      .calculateAllocation(
+                        principalText: _principalController.text,
+                        interestText: _interestController.text,
+                        feeText: _feeController.text,
+                        discountText: _discountController.text,
+                      ),
+            onRemoveMissing: ref
+                .read(provider.notifier)
+                .removeMissingAllocation,
+            onChanged:
+                ({
+                  required String billItemId,
+                  required _AllocationAmountField field,
+                  required Money value,
+                }) {
+                  ref
+                      .read(provider.notifier)
+                      .setManualAllocationAmount(
+                        billItemId: billItemId,
+                        principal: field == _AllocationAmountField.principal
                             ? value
                             : null,
-                    interest:
-                        field == _AllocationAmountField.interest ? value : null,
-                    fee: field == _AllocationAmountField.fee ? value : null,
-                    discount:
-                        field == _AllocationAmountField.discount ? value : null,
-                  );
-            },
+                        interest: field == _AllocationAmountField.interest
+                            ? value
+                            : null,
+                        fee: field == _AllocationAmountField.fee ? value : null,
+                        discount: field == _AllocationAmountField.discount
+                            ? value
+                            : null,
+                      );
+                },
           ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
@@ -322,10 +326,9 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
     );
   }
 
-  BillRepaymentFormArgs get _args =>
-      widget.repaymentId == null
-          ? BillRepaymentFormArgs.create(widget.billId!)
-          : BillRepaymentFormArgs.edit(widget.repaymentId!);
+  BillRepaymentFormArgs get _args => widget.repaymentId == null
+      ? BillRepaymentFormArgs.create(widget.billId!)
+      : BillRepaymentFormArgs.edit(widget.repaymentId!);
 }
 
 const List<DropdownMenuItem<BillRepaymentAllocationMode>>
@@ -355,6 +358,7 @@ class _AllocationResultSection extends StatelessWidget {
     required this.state,
     required this.review,
     required this.onChanged,
+    required this.onRemoveMissing,
     this.onCalculate,
   });
 
@@ -362,12 +366,24 @@ class _AllocationResultSection extends StatelessWidget {
   final BillRepaymentAllocationReview? review;
   final VoidCallback? onCalculate;
   final _ApplyAllocationAmount onChanged;
+  final ValueChanged<String> onRemoveMissing;
 
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final unallocated = review?.unallocated;
+    final missing = state.missingAllocationTotal;
+    final totalAllocated =
+        (review?.totalAllocated ?? credit.RepaymentAmountBreakdown.zero) +
+        missing;
+    final unallocated = review == null
+        ? null
+        : credit.RepaymentAmountBreakdown(
+            principal: review!.unallocated.principal - missing.principal,
+            interest: review!.unallocated.interest - missing.interest,
+            fee: review!.unallocated.fee - missing.fee,
+            discount: review!.unallocated.discount - missing.discount,
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -426,6 +442,30 @@ class _AllocationResultSection extends StatelessWidget {
                     color: colors.outlineVariant.withValues(alpha: 0.35),
                   ),
                 ],
+                for (final allocation in state.missingAllocations)
+                  Column(
+                    key: ValueKey('missing-${allocation.id}'),
+                    children: [
+                      _AllocationSummaryRow(
+                        label: '无明细',
+                        breakdown: credit.RepaymentAmountBreakdown(
+                          principal: allocation.allocated.principal,
+                          interest: allocation.allocated.interest,
+                          fee: allocation.allocated.fee,
+                          discount: allocation.allocated.discount,
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: state.submitting
+                              ? null
+                              : () => onRemoveMissing(allocation.id),
+                          child: const Text('移除此分项'),
+                        ),
+                      ),
+                    ],
+                  ),
                 if (unallocated != null && _hasNonZeroAmount(unallocated)) ...[
                   _AllocationSummaryRow(
                     label: '未分摊',
@@ -439,9 +479,7 @@ class _AllocationResultSection extends StatelessWidget {
                 ],
                 _AllocationSummaryRow(
                   label: '合计',
-                  breakdown:
-                      review?.totalAllocated ??
-                      credit.RepaymentAmountBreakdown.zero,
+                  breakdown: totalAllocated,
                   emphasize: true,
                 ),
               ],
@@ -535,12 +573,11 @@ class _AllocationResultRow extends StatelessWidget {
               key: ValueKey('${line.billItemId}-principal'),
               value: breakdown.principal,
               style: cellStyle,
-              onCommit:
-                  (value) => onChanged(
-                    billItemId: line.billItemId,
-                    field: _AllocationAmountField.principal,
-                    value: value,
-                  ),
+              onCommit: (value) => onChanged(
+                billItemId: line.billItemId,
+                field: _AllocationAmountField.principal,
+                value: value,
+              ),
             ),
           ),
           Expanded(
@@ -548,12 +585,11 @@ class _AllocationResultRow extends StatelessWidget {
               key: ValueKey('${line.billItemId}-interest'),
               value: breakdown.interest,
               style: cellStyle,
-              onCommit:
-                  (value) => onChanged(
-                    billItemId: line.billItemId,
-                    field: _AllocationAmountField.interest,
-                    value: value,
-                  ),
+              onCommit: (value) => onChanged(
+                billItemId: line.billItemId,
+                field: _AllocationAmountField.interest,
+                value: value,
+              ),
             ),
           ),
           Expanded(
@@ -561,12 +597,11 @@ class _AllocationResultRow extends StatelessWidget {
               key: ValueKey('${line.billItemId}-fee'),
               value: breakdown.fee,
               style: cellStyle,
-              onCommit:
-                  (value) => onChanged(
-                    billItemId: line.billItemId,
-                    field: _AllocationAmountField.fee,
-                    value: value,
-                  ),
+              onCommit: (value) => onChanged(
+                billItemId: line.billItemId,
+                field: _AllocationAmountField.fee,
+                value: value,
+              ),
             ),
           ),
           Expanded(
@@ -574,12 +609,11 @@ class _AllocationResultRow extends StatelessWidget {
               key: ValueKey('${line.billItemId}-discount'),
               value: breakdown.discount,
               style: cellStyle,
-              onCommit:
-                  (value) => onChanged(
-                    billItemId: line.billItemId,
-                    field: _AllocationAmountField.discount,
-                    value: value,
-                  ),
+              onCommit: (value) => onChanged(
+                billItemId: line.billItemId,
+                field: _AllocationAmountField.discount,
+                value: value,
+              ),
             ),
           ),
           SizedBox(
@@ -709,8 +743,9 @@ class _EditableAllocationMoneyCellState
 
   void _startEdit() {
     if (_isEditing) return;
-    final text =
-        widget.value.minorUnits == 0 ? '' : widget.value.major.toString();
+    final text = widget.value.minorUnits == 0
+        ? ''
+        : widget.value.major.toString();
     _controller.text = text;
     _controller.selection = TextSelection(
       baseOffset: 0,

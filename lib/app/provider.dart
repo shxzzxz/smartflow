@@ -5,6 +5,8 @@ import '../infrastructure/credit/adapter/eastmoney_reference_rate_source.dart';
 import '../infrastructure/credit/repository/drift_reference_rate_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repricing_repository.dart';
 import '../application/credit/installment/command/installment_repricing_service.dart';
+import '../application/credit/installment/command/installment_interest_adjustment_service.dart';
+import '../infrastructure/credit/repository/drift_installment_interest_adjustment_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 
 import '../core/logging/app_log_file_sink.dart';
@@ -571,9 +573,6 @@ InstallmentAppService installmentAppService(Ref ref) {
   return InstallmentAppServiceImpl(
     plans: ref.watch(installmentPlanServiceProvider),
     repository: ref.watch(installmentRepositoryProvider),
-    repricings: DriftInstallmentRepricingRepository(
-      ref.watch(appDatabaseProvider),
-    ),
     products: ref.watch(installmentProductRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
@@ -673,6 +672,7 @@ InstallmentPlanService installmentPlanService(Ref ref) =>
     InstallmentPlanService(
       installments: ref.watch(installmentRepositoryProvider),
       repayments: ref.watch(repaymentRepositoryProvider),
+      bills: ref.watch(billRepositoryProvider),
       runner: ref.watch(transactionRunnerProvider),
       idGenerator: ref.watch(idGeneratorProvider),
     );
@@ -688,6 +688,19 @@ InstallmentRepricingService installmentRepricingService(Ref ref) =>
       plans: ref.watch(installmentPlanServiceProvider),
       runner: ref.watch(transactionRunnerProvider),
     );
+
+@Riverpod(keepAlive: true)
+InstallmentInterestAdjustmentService installmentInterestAdjustmentService(
+  Ref ref,
+) => InstallmentInterestAdjustmentService(
+  installments: ref.watch(installmentRepositoryProvider),
+  records: DriftInstallmentInterestAdjustmentRepository(
+    ref.watch(appDatabaseProvider),
+  ),
+  plans: ref.watch(installmentPlanServiceProvider),
+  runner: ref.watch(transactionRunnerProvider),
+  ids: ref.watch(idGeneratorProvider),
+);
 
 @Riverpod(keepAlive: true)
 BillQueryService billQueryService(Ref ref) {

@@ -69,6 +69,38 @@ class Repayment {
   void replaceItems(List<RepaymentItem> nextItems) {
     _items = List.unmodifiable(nextItems);
     _ensureItemsValid();
+    ensureBillItemReferences();
+  }
+
+  /// 用户提交须纠正历史上因账单刷新而解除的明细关联。
+  void ensureBillItemReferences() {
+    if (targetType == RepaymentTargetType.bill &&
+        _items.any((item) => item.billItemId == null)) {
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: '存在无明细分项，请先纠正还款分摊',
+      );
+    }
+  }
+
+  /// 来源明细消失时只解除关联，保留分项身份、金额与还款事实。
+  bool detachBillItems(Set<String> removedIds) {
+    if (!_items.any((item) => removedIds.contains(item.billItemId))) {
+      return false;
+    }
+    _items = List.unmodifiable([
+      for (final item in _items)
+        if (!removedIds.contains(item.billItemId))
+          item
+        else
+          RepaymentItem(
+            id: item.id,
+            repaymentId: item.repaymentId,
+            allocated: item.allocated,
+            createdAt: item.createdAt,
+          ),
+    ]);
+    return true;
   }
 
   void reviseRepaymentDate(DateTime value) {
@@ -118,10 +150,7 @@ class Repayment {
       final isBillLevel =
           repaymentType == RepaymentType.bill ||
           repaymentType == RepaymentType.installment;
-      final billItemValid = isBillLevel
-          ? item.billItemId != null
-          : item.billItemId == null;
-      if (!billItemValid) {
+      if (!isBillLevel && item.billItemId != null) {
         throw BusinessException(
           CreditErrorCode.repaymentInvalidCommand,
           message: 'Repayment item bill target does not match repayment type.',

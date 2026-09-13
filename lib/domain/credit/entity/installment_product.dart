@@ -3,6 +3,7 @@ import '../../../core/money/rounding_mode.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/day_count_convention.dart';
 import '../valobj/installment_stage_rule.dart';
+import '../valobj/installment_enums.dart';
 import '../valobj/tail_difference_policy.dart';
 
 class InstallmentProduct {
@@ -27,6 +28,17 @@ class InstallmentProduct {
   final TailDifferencePolicy tailDifference;
 
   void validate() {
+    if (stages.any(
+          (stage) => stage.method == InstallmentRepaymentMethod.custom,
+        ) &&
+        stages.any(
+          (stage) => stage.method != InstallmentRepaymentMethod.custom,
+        )) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '自定义阶段不能与其他阶段混用',
+      );
+    }
     if (!DayCountConvention.values.contains(dayCount) ||
         name.trim().isEmpty ||
         stages.isEmpty ||

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/migration/account_profile_migration_error.dart';
 
@@ -28,9 +29,9 @@ void main() {
       for (final applied in [0, 1]) {
         await old.customStatement(
           '''INSERT INTO installment_repricing_records
-        VALUES (?, 'loan', ?, 1703030400, 1704067200, 1703030400, 'lprOneYear',
+        VALUES (?, 'loan', ?, 1703030400, 1704067200 + ?, 1703030400, 'lprOneYear',
           42000, -30, 'legacy', ?, 1703030401)''',
-          ['record-$applied', 'stage-$applied', applied],
+          ['record-$applied', 'stage-$applied', applied * 86400, applied],
         );
       }
       await old.customStatement('PRAGMA user_version = 38');
@@ -83,6 +84,18 @@ void main() {
         final file = File('${directory.path}/smartflow.sqlite');
         final old = _openDatabase(file);
         await old.customSelect('SELECT 1').get();
+        await old
+            .into(old.installmentContracts)
+            .insert(
+              InstallmentContractsCompanion.insert(
+                id: 'loan',
+                liabilityAccountId: 'account',
+                sourceType: InstallmentSourceType.disbursement,
+                principalMinor: 10000000,
+                borrowingDate: DateTime.utc(2023, 12, 1),
+                status: InstallmentContractStatus.active,
+              ),
+            );
         await old.customStatement(
           'ALTER TABLE installment_stage_configs RENAME COLUMN reference_rate_type TO lpr_tenor',
         );
@@ -104,16 +117,21 @@ void main() {
             '''INSERT INTO installment_stage_configs
           (id, owner_type, owner_id, position, stage_kind, repayment_method,
            rate_period, rate_ppm, lpr_tenor, spread_bp, first_reset_date,
-           first_effective_date, repricing_cycle_months, repricing_payment_timing)
+           first_effective_date, repricing_cycle_months, repricing_payment_timing, first_date, periods)
           VALUES (?, 'contract', 'loan', ?, 'repayment', 'equalPrincipal',
-                  'annual', 45000, ?, -30, 1703030400, 1704067200, 12, 'nextPeriod')''',
-            ['stage-$index', index, tenor],
+                  'annual', 45000, ?, -30, 1703030400, 1704067200, 12, 'nextPeriod', ?, 1)''',
+            [
+              'stage-$index',
+              index,
+              tenor,
+              DateTime.utc(2024, index + 1, 20).millisecondsSinceEpoch ~/ 1000,
+            ],
           );
           await old.customStatement(
             '''INSERT INTO installment_repricing_records
-          VALUES (?, 'loan', ?, 1703030400, 1704067200, 1703030400, ?, 42000,
+          VALUES (?, 'loan', ?, 1703030400, 1704067200 + ?, 1703030400, ?, 42000,
                   -30, 'legacy', ?, 1703030401)''',
-            ['record-$index', 'stage-$index', tenor, index],
+            ['record-$index', 'stage-$index', index * 86400, tenor, index],
           );
         }
         await old.customStatement('PRAGMA user_version = $version');
@@ -132,19 +150,29 @@ void main() {
         final records = await (db.select(
           db.installmentRepricingRecords,
         )..orderBy([(r) => OrderingTerm.asc(r.id)])).get();
-        expect(stages.map((s) => s.referenceRateType), [
+        expect(
+          stages.every(
+            (stage) =>
+                stage.referenceRateType == null &&
+                stage.spreadBp == null &&
+                stage.repricingCycleMonths == null,
+          ),
+          isTrue,
+        );
+        final configurations = await (db.select(
+          db.installmentRepricingConfigs,
+        )..orderBy([(row) => OrderingTerm.asc(row.effectiveFrom)])).get();
+        expect(configurations.map((row) => row.referenceRateType), [
           'lprOneYear',
           'lprFiveYearPlus',
         ]);
         expect(
-          stages.every(
-            (s) =>
-                s.spreadBp == -30 &&
-                s.ratePpm == 45000 &&
-                s.repricingCycleMonths == 12,
+          configurations.every(
+            (row) => row.spreadBp == -30 && row.cycleMonths == 12,
           ),
           isTrue,
         );
+        expect(stages.every((stage) => stage.ratePpm == 45000), isTrue);
         expect(records.map((r) => r.referenceRateType), [
           'lprOneYear',
           'lprFiveYearPlus',
@@ -161,7 +189,7 @@ void main() {
           expect(record.resetDate.millisecondsSinceEpoch ~/ 1000, 1703030400);
           expect(
             record.effectiveDate.millisecondsSinceEpoch ~/ 1000,
-            1704067200,
+            1704067200 + (record.id == 'record-1' ? 86400 : 0),
           );
           expect(record.createdAt.millisecondsSinceEpoch ~/ 1000, 1703030401);
         }
@@ -614,7 +642,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 39);
+    expect(version.read<int>('user_version'), 41);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -653,7 +681,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 39);
+      expect(version.read<int>('user_version'), 41);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -707,7 +735,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 39);
+      expect(version.read<int>('user_version'), 41);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -818,7 +846,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 39);
+      expect(version.read<int>('user_version'), 41);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -985,7 +1013,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 39);
+      expect(version.read<int>('user_version'), 41);
 
       for (final table in [
         'import_entity_mappings',

@@ -2908,7 +2908,7 @@ final class InstallmentAppServiceProvider
 }
 
 String _$installmentAppServiceHash() =>
-    r'328ba190ef38fa87077d3d684aa2caed84adefaf';
+    r'547e1558242ff7d3edee34b794a38958d3421178';
 
 @ProviderFor(installmentStatusRepairAppService)
 final installmentStatusRepairAppServiceProvider =
@@ -3394,7 +3394,7 @@ final class InstallmentPlanServiceProvider
 }
 
 String _$installmentPlanServiceHash() =>
-    r'd718c968c91420b71fee06ebbf0a09d2bf60de76';
+    r'12ebcc2448afa430183dea86b480b0613f290d1e';
 
 @ProviderFor(installmentRepricingService)
 final installmentRepricingServiceProvider =
@@ -3444,6 +3444,57 @@ final class InstallmentRepricingServiceProvider
 
 String _$installmentRepricingServiceHash() =>
     r'5e1435272fd2e450b604e9346d5fed7891158ed5';
+
+@ProviderFor(installmentInterestAdjustmentService)
+final installmentInterestAdjustmentServiceProvider =
+    InstallmentInterestAdjustmentServiceProvider._();
+
+final class InstallmentInterestAdjustmentServiceProvider
+    extends
+        $FunctionalProvider<
+          InstallmentInterestAdjustmentService,
+          InstallmentInterestAdjustmentService,
+          InstallmentInterestAdjustmentService
+        >
+    with $Provider<InstallmentInterestAdjustmentService> {
+  InstallmentInterestAdjustmentServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentInterestAdjustmentServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$installmentInterestAdjustmentServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentInterestAdjustmentService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentInterestAdjustmentService create(Ref ref) {
+    return installmentInterestAdjustmentService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentInterestAdjustmentService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<InstallmentInterestAdjustmentService>(value),
+    );
+  }
+}
+
+String _$installmentInterestAdjustmentServiceHash() =>
+    r'54275c52f13668d8b35f4411f3fd97d7ddfc4050';
 
 @ProviderFor(billQueryService)
 final billQueryServiceProvider = BillQueryServiceProvider._();

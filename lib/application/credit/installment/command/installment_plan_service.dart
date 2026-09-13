@@ -3,12 +3,14 @@ import 'package:crypto/crypto.dart';
 
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/id/id_generator.dart';
-import '../../../../core/money/money.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_schedule.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
-import '../../../../domain/credit/service/installment/installment_lifecycle_service.dart';
+import '../../../../domain/credit/entity/bill.dart';
+import '../../../../domain/credit/port/bill_repository.dart';
+import '../../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/equal_installment_amount.dart';
@@ -18,6 +20,7 @@ import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../shared/transaction_runner.dart';
+import 'installment_status_repair_app_service.dart';
 
 class InstallmentPlanPreview {
   const InstallmentPlanPreview({required this.change, required this.token});
@@ -30,17 +33,20 @@ class InstallmentPlanService {
   InstallmentPlanService({
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
+    required BillRepository bills,
     required TransactionRunner runner,
     required IdGenerator idGenerator,
     InstallmentPlanEngine engine = const InstallmentPlanEngine(),
   }) : _installments = installments,
        _repayments = repayments,
+       _bills = bills,
        _runner = runner,
        _ids = idGenerator,
        _engine = engine;
 
   final InstallmentRepository _installments;
   final RepaymentRepository _repayments;
+  final BillRepository _bills;
   final TransactionRunner _runner;
   final IdGenerator _ids;
   final InstallmentPlanEngine _engine;
@@ -93,25 +99,90 @@ class InstallmentPlanService {
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
-    contract.ensureEditable();
-    if (request is ApplyInstallmentRepricing &&
-        request.record.contractId != id) {
-      throw BusinessException(CreditErrorCode.contractInvalidCommand);
-    }
     final schedules = await _installments.listSchedules(id);
     final repayments = await _repayments.listByTarget(
       RepaymentTargetType.contract,
       id,
     );
+    final terms = request is RecalculateFromTerms
+        ? request.terms
+        : contract.stageTerms;
+    terms.validate();
+    final operations = InstallmentPlanOperations(
+      principalReductions: [
+        for (final repayment in repayments)
+          if (repayment.repaymentType == RepaymentType.prepayment &&
+              repayment.totalAllocated().principal.minorUnits > 0)
+            PrincipalReduction(
+              date: repayment.repaymentDate,
+              principal: repayment.totalAllocated().principal,
+            ),
+      ],
+      rateChangesByStage: {
+        for (var index = 0; index < terms.stages.length; index++)
+          if (terms.stages[index].terms is AmortizingStage)
+            index: [
+              for (final record in contract.repricings)
+                if (record.stageId == terms.stages[index].id) record.change,
+            ],
+      },
+      interestAdjustments: [
+        for (final record in contract.interestAdjustments) record.adjustment,
+      ],
+    );
     final context = InstallmentPlanContext.fromContract(
       contract: contract,
       schedules: schedules,
-      prepaymentPrincipal: Money(
-        minorUnits: const InstallmentLifecycleService()
-            .prepaymentPrincipalMinor(repayments),
-      ),
+      operations: operations,
     );
-    final change = _engine.recalculate(context, request);
+    if (terms.isCustom && request is! RecalculateFromTerms) {
+      return _PreparedPlan(
+        contract,
+        schedules,
+        InstallmentPlanChangeSet(
+          context: context,
+          terms: terms,
+          rows: context.rows,
+        ),
+      );
+    }
+    final plan = _engine.generate(
+      terms.planTerms(contract.principal, contract.borrowingDate),
+      operations: operations,
+    );
+    final previous = {for (final row in context.rows) row.periodNo: row};
+    final change = InstallmentPlanChangeSet(
+      context: context,
+      terms: terms,
+      rows: [
+        for (final entry in plan.entries)
+          if (terms.isCustom && previous[entry.periodNo] != null)
+            InstallmentPlanRow(
+              id: previous[entry.periodNo]!.id,
+              stageId: terms.stages[entry.stageIndex].id,
+              periodNo: entry.periodNo,
+              date: previous[entry.periodNo]!.date,
+              principal: previous[entry.periodNo]!.principal,
+              interest: previous[entry.periodNo]!.interest,
+              fee: previous[entry.periodNo]!.fee,
+              status: previous[entry.periodNo]!.status,
+              manuallyAdjusted: previous[entry.periodNo]!.manuallyAdjusted,
+            )
+          else
+            InstallmentPlanRow(
+              id: previous[entry.periodNo]?.id,
+              stageId: terms.stages[entry.stageIndex].id,
+              periodNo: entry.periodNo,
+              date: entry.expectedRepaymentDate,
+              principal: entry.expectedPrincipal,
+              interest: entry.expectedInterest,
+              fee: entry.expectedFee,
+              status:
+                  previous[entry.periodNo]?.status ??
+                  InstallmentScheduleStatus.pending,
+            ),
+      ],
+    );
     return _PreparedPlan(contract, schedules, change);
   }
 
@@ -128,7 +199,27 @@ class InstallmentPlanService {
               context.principal.minorUnits,
               _day(context.borrowingDate),
               _termsFacts(context.terms),
-              context.prepaymentPrincipal.minorUnits,
+              _operationFacts(context.operations),
+              for (final record in [
+                ...contract.repricings,
+              ]..sort((a, b) => a.id.compareTo(b.id)))
+                [record.id, record.stageId, _rateFacts(record.change)],
+              for (final config in [
+                ...contract.repricingConfigurations,
+              ]..sort((a, b) => a.id.compareTo(b.id)))
+                [
+                  config.id,
+                  config.stageId,
+                  _day(config.effectiveFrom),
+                  config.rule.referenceRateType.name,
+                  config.rule.spreadBp,
+                  config.rule.cycleMonths,
+                  _day(config.rule.firstResetDate),
+                  _day(config.rule.firstEffectiveDate),
+                  config.lastGeneratedDate == null
+                      ? null
+                      : _day(config.lastGeneratedDate!),
+                ],
               for (final row in [
                 ...context.rows,
               ]..sort((a, b) => a.periodNo.compareTo(b.periodNo)))
@@ -158,6 +249,51 @@ class InstallmentPlanService {
       createdAt: DateTime.now(),
     );
     await _installments.saveAggregate(prepared.contract, rows);
+    await _detachRemovedScheduleReferences(prepared, rows);
+    await InstallmentStatusRepairAppService(
+      installments: _installments,
+      bills: _bills,
+      repayments: _repayments,
+      transactionRunner: _runner,
+    ).validateAndRepair(prepared.contract.id);
+  }
+
+  Future<void> _detachRemovedScheduleReferences(
+    _PreparedPlan prepared,
+    List<InstallmentSchedule> rows,
+  ) async {
+    final retained = rows.map((row) => row.id).toSet();
+    final removed = prepared.schedules
+        .where((row) => !retained.contains(row.id))
+        .map((row) => row.id)
+        .toSet();
+    if (removed.isEmpty) return;
+    for (final bill in await _bills.listBillsByAccount(
+      prepared.contract.liabilityAccountId,
+    )) {
+      if (!bill.items.any((item) => removed.contains(item.scheduleId))) {
+        continue;
+      }
+      await _bills.replaceBillItems(bill.id, [
+        for (final item in bill.items)
+          if (!removed.contains(item.scheduleId))
+            item
+          else
+            BillItem(
+              id: item.id,
+              billId: item.billId,
+              itemType: item.itemType,
+              repaymentDate: item.repaymentDate,
+              expectedPrincipal: item.expectedPrincipal,
+              expectedInterest: item.expectedInterest,
+              expectedFee: item.expectedFee,
+              status: item.status,
+              billingState: item.billingState,
+              contractId: item.contractId,
+              createdAt: item.createdAt,
+            ),
+      ]);
+    }
   }
 }
 
@@ -170,6 +306,33 @@ class _PreparedPlan {
 
 String _day(DateTime value) =>
     DateTime.utc(value.year, value.month, value.day).toIso8601String();
+
+Object _operationFacts(InstallmentPlanOperations operations) => [
+  [
+    for (final value in [
+      ...operations.principalReductions,
+    ]..sort((a, b) => a.date.compareTo(b.date)))
+      [_day(value.date), value.principal.minorUnits],
+  ],
+  [
+    for (final entry
+        in operations.rateChangesByStage.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key)))
+      [
+        entry.key,
+        for (final value in [
+          ...entry.value,
+        ]..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate)))
+          _rateFacts(value),
+      ],
+  ],
+  [
+    for (final value in [
+      ...operations.interestAdjustments,
+    ]..sort((a, b) => a.start.compareTo(b.start)))
+      [_day(value.start), _day(value.end), value.ratioPpm],
+  ],
+];
 
 Object _rateFacts(RateChange value) => [
   _day(value.resetDate),
@@ -220,7 +383,7 @@ Object _termsFacts(InstallmentContractTerms terms) => [
             ]
           else
             null,
-          [for (final rate in stage.rateChanges) _rateFacts(rate)],
+          stage.repricingPaymentTiming.name,
         ],
       },
     ],

@@ -5,9 +5,13 @@ import '../../../core/time/date_label.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
 import '../valobj/installment_contract_terms.dart';
+import '../valobj/installment_plan_terms.dart';
 import '../valobj/installment_plan_change.dart';
 import '../service/settlement/settlement_judgement_service.dart';
 import 'installment_schedule.dart';
+import 'installment_repricing.dart';
+import 'installment_repricing_configuration.dart';
+import 'installment_interest_adjustment.dart';
 
 class InstallmentScheduleRevision {
   const InstallmentScheduleRevision({
@@ -45,9 +49,14 @@ class InstallmentContract {
     this.productId,
     this.productName,
     this.customRules = false,
+    List<InstallmentRepricingConfiguration> repricingConfigurations = const [],
+    List<InstallmentRepricing> repricings = const [],
+    this.interestAdjustments = const [],
   }) : name = name ?? formatCompactDate(borrowingDate),
        _status = status,
-       _stageTerms = stageTerms;
+       _stageTerms = stageTerms,
+       _repricingConfigurations = List.unmodifiable(repricingConfigurations),
+       _repricings = List.unmodifiable(repricings);
 
   final String id;
   String name;
@@ -67,6 +76,12 @@ class InstallmentContract {
   String? productId;
   String? productName;
   bool customRules;
+  List<InstallmentRepricingConfiguration> _repricingConfigurations;
+  List<InstallmentRepricingConfiguration> get repricingConfigurations =>
+      _repricingConfigurations;
+  List<InstallmentRepricing> _repricings;
+  List<InstallmentRepricing> get repricings => _repricings;
+  final List<InstallmentInterestAdjustment> interestAdjustments;
   InstallmentContractTerms _stageTerms;
   InstallmentContractTerms get stageTerms => _stageTerms;
 
@@ -76,9 +91,20 @@ class InstallmentContract {
     String? productId,
     String? productName,
   }) {
-    ensureEditable();
-    terms.validateReplacementOf(_stageTerms);
+    terms.validate();
     _stageTerms = terms;
+    final retained = {
+      for (final stage in terms.stages)
+        if (stage.terms is AmortizingStage) stage.id,
+    };
+    _repricingConfigurations = List.unmodifiable(
+      _repricingConfigurations.where(
+        (config) => retained.contains(config.stageId),
+      ),
+    );
+    _repricings = List.unmodifiable(
+      _repricings.where((record) => retained.contains(record.stageId)),
+    );
     if (customRules != null) this.customRules = customRules;
     if (productId != null) {
       this.productId = productId;
@@ -94,7 +120,6 @@ class InstallmentContract {
     Patch<String>? note,
     String? disbursementAccountId,
   }) {
-    ensureEditable();
     if (name != null) {
       if (name.trim().isEmpty) {
         throw BusinessException(
@@ -157,7 +182,6 @@ class InstallmentContract {
     required List<InstallmentSchedule> schedules,
     required List<InstallmentScheduleRevision> revisions,
   }) {
-    ensureEditable();
     for (final schedule in schedules) {
       _ensureScheduleBelongsToContract(schedule);
     }
@@ -170,12 +194,6 @@ class InstallmentContract {
         throw BusinessException(
           CreditErrorCode.scheduleNotFound,
           message: 'Schedule period does not belong to the contract.',
-        );
-      }
-      if (target.status != InstallmentScheduleStatus.pending) {
-        throw BusinessException(
-          CreditErrorCode.scheduleNotPending,
-          message: 'Only pending schedules can be edited.',
         );
       }
     }
@@ -217,31 +235,10 @@ class InstallmentContract {
     required String Function() newId,
     required DateTime createdAt,
   }) {
-    ensureEditable();
     for (final schedule in schedules) {
       _ensureScheduleBelongsToContract(schedule);
     }
     final current = {for (final row in schedules) row.id: row};
-    final proposed = {
-      for (final row in change.rows)
-        if (row.id != null) row.id: row,
-    };
-    for (final previous in schedules) {
-      if (previous.status == InstallmentScheduleStatus.pending &&
-          !change.frozenIds.contains(previous.id)) {
-        continue;
-      }
-      final next = proposed[previous.id];
-      if (next == null ||
-          next.status != previous.status ||
-          !next.sameExpectation(InstallmentPlanRow.fromSchedule(previous)) ||
-          next.manuallyAdjusted != previous.manuallyAdjusted) {
-        throw BusinessException(
-          CreditErrorCode.scheduleNotPending,
-          message: '计划变更不能修改或移除冻结期次',
-        );
-      }
-    }
     final result = <InstallmentSchedule>[];
     final ownedStages = _stageTerms.stages.map((s) => s.id).toSet();
     final stageIds = {
@@ -271,26 +268,26 @@ class InstallmentContract {
           expectedInterest: row.interest,
           expectedFee: row.fee,
           status: row.status,
-          manuallyAdjusted:
-              change.request is RecalculateFromTerms &&
-                  change.recalculatedPeriods.contains(row.periodNo)
-              ? false
-              : previous?.manuallyAdjusted ?? false,
+          manuallyAdjusted: row.manuallyAdjusted,
           createdAt: previous?.createdAt ?? createdAt,
           note: previous?.note,
         ),
       );
     }
-    _stageTerms = InstallmentContractTerms(
-      dayCount: change.terms.dayCount,
-      rounding: change.terms.rounding,
-      tailDifference: change.terms.tailDifference,
-      stages: [
-        for (final stage in change.terms.stages)
-          InstallmentContractStage(id: stageIds[stage.id]!, terms: stage.terms),
-      ],
+    reviseStageTerms(
+      InstallmentContractTerms(
+        dayCount: change.terms.dayCount,
+        rounding: change.terms.rounding,
+        tailDifference: change.terms.tailDifference,
+        stages: [
+          for (final stage in change.terms.stages)
+            InstallmentContractStage(
+              id: stageIds[stage.id]!,
+              terms: stage.terms,
+            ),
+        ],
+      ),
     );
-    refreshStatusFromSchedules(result);
     return result;
   }
 

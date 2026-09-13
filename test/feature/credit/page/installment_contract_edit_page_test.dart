@@ -108,7 +108,7 @@ void main() {
   );
 
   testWidgets(
-    'only pending rows allow amount editing without a status column',
+    'all schedule states allow amount editing without a status column',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -146,11 +146,14 @@ void main() {
         final cell = find.byKey(ValueKey('p-$period'));
         await tester.ensureVisible(cell);
         await tester.tap(cell);
-        await tester.pump();
-        expect(find.byType(TextFormField), findsNothing);
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: cell, matching: find.byType(TextFormField)),
+          findsOneWidget,
+        );
       }
       await tester.tap(find.byKey(const ValueKey('p-1')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byType(TextFormField), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

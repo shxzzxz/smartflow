@@ -9,6 +9,8 @@ import '../builtin_data.dart';
 import 'account_profile_migration_error.dart';
 import 'transaction_line_migration.dart';
 import 'transaction_line_migration_error.dart';
+import 'v40_installment_operations_migration.dart';
+import 'v41_repricing_stage_scope_migration.dart';
 
 final _logger = Logger('infra.database');
 
@@ -29,7 +31,7 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
       }
       await ensureBuiltinData(database);
     },
-    onUpgrade: (migrator, from, to) async {
+    onUpgrade: (migrator, from, to) => database.transaction(() async {
       if (from < 19) {
         // Versions before v19 still follow the development-channel rebuild
         // policy. The v19 -> v20 step below is the first compatible upgrade.
@@ -398,6 +400,7 @@ WHERE NOT EXISTS (
           }
           final records = database.installmentRepricingRecords;
           if (await _hasColumn(database, records.actualTableName, 'tenor')) {
+            await mergeLegacyRepricingRecords(database);
             await migrator.alterTable(
               TableMigration(
                 records,
@@ -424,6 +427,7 @@ WHERE NOT EXISTS (
       if (from < 39) {
         final records = database.installmentRepricingRecords;
         if (await _hasColumn(database, records.actualTableName, 'applied')) {
+          await mergeLegacyRepricingRecords(database);
           await migrator.alterTable(
             TableMigration(
               records,
@@ -436,7 +440,13 @@ WHERE NOT EXISTS (
           );
         }
       }
-    },
+      if (from < 40) {
+        await migrateInstallmentOperations(database, migrator);
+      }
+      if (from < 41) {
+        await migrateRepricingStageScope(database, migrator);
+      }
+    }),
   );
 }
 

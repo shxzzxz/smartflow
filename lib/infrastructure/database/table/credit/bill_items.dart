@@ -41,8 +41,7 @@ class BillItems extends Table {
         'AND contract_id IS NULL '
         'AND schedule_id IS NULL) '
         'OR (item_type = \'installment\' '
-        'AND contract_id IS NOT NULL '
-        'AND schedule_id IS NOT NULL)'
+        'AND contract_id IS NOT NULL)'
         ')',
   ];
 }

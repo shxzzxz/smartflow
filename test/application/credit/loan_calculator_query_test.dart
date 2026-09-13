@@ -4,7 +4,7 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
-import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
 void main() {
@@ -79,7 +79,7 @@ void main() {
   });
 
   test(
-    'prepayment simulation freezes paid periods and recalculates the tail',
+    'prepayment simulation applies the reduction from its effective interest period',
     () {
       final base = query.calculate(textbookTerms());
       final simulation = query.simulatePrepayment(
@@ -195,27 +195,30 @@ void main() {
           ),
         );
         final actual = const InstallmentPlanEngine()
-            .recalculate(
-              InstallmentPlanContext.fromContract(
-                contract: loan.contract,
-                schedules: loan.schedules,
-                prepaymentPrincipal: Money(minorUnits: prepaymentMinor),
+            .generate(
+              loan.contract.stageTerms.planTerms(principal, borrowingDate),
+              operations: InstallmentPlanOperations(
+                principalReductions: [
+                  PrincipalReduction(
+                    date: date,
+                    principal: Money(minorUnits: prepaymentMinor),
+                  ),
+                ],
               ),
-              RecalculateAfterPrepayment(date),
             )
-            .recalculatedRows;
+            .entries;
 
         expect(
           simulation.periods.map((r) => r.principal),
-          actual.map((r) => r.principal),
+          actual.map((r) => r.expectedPrincipal),
         );
         expect(
           simulation.periods.map((r) => r.interest),
-          actual.map((r) => r.interest),
+          actual.map((r) => r.expectedInterest),
         );
         expect(
           simulation.periods.map((r) => r.date),
-          actual.map((r) => r.date),
+          actual.map((r) => r.expectedRepaymentDate),
         );
         expect(simulation.periods.last.remainingPrincipal, Money.zero());
         expect(
@@ -282,7 +285,7 @@ void main() {
 
   for (final paid in [1, 2]) {
     test(
-      'prepayment after period $paid retains stage rules, fees and frozen rows',
+      'prepayment after period $paid retains stage rules, fees and earlier periods',
       () {
         final terms = InstallmentPlanTerms(
           principal: const Money(minorUnits: 120000),

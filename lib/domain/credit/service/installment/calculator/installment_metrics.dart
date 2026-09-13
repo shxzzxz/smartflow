@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import '../../../../core/money/money.dart';
-import 'installment_plan_engine.dart';
+import '../../../../../core/money/money.dart';
+import '../installment_plan_engine.dart';
 
 enum ContractMetricsUnavailableReason {
   principalNotConserved,

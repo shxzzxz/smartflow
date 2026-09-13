@@ -38,6 +38,14 @@ class DriftBackupGateway
   Future<BackupSnapshot> readSnapshot() async {
     return database.transaction(() async {
       final tables = <String, Iterable<BackupJson>>{
+        'installment_repricing_configs':
+            (await database.select(database.installmentRepricingConfigs).get())
+                .map(_json),
+        'installment_interest_adjustments':
+            (await database
+                    .select(database.installmentInterestAdjustments)
+                    .get())
+                .map(_json),
         'reference_rates':
             (await database.select(database.referenceRates).get()).map(_json),
         'installment_repricing_records':
@@ -133,6 +141,8 @@ class DriftBackupGateway
       // enabled by a host application in the future.
       for (final table in [
         'installment_repricing_records',
+        'installment_repricing_configs',
+        'installment_interest_adjustments',
         'reference_rates',
         'repayment_items',
         'repayments',
@@ -160,6 +170,26 @@ class DriftBackupGateway
       }
 
       await database.batch((batch) {
+        batch.insertAll(
+          database.installmentRepricingConfigs,
+          snapshot
+              .rows('installment_repricing_configs')
+              .map(
+                (row) => InstallmentRepricingConfigRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.installmentInterestAdjustments,
+          snapshot
+              .rows('installment_interest_adjustments')
+              .map(
+                (row) => InstallmentInterestAdjustmentRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
         batch.insertAll(
           database.referenceRates,
           snapshot
@@ -395,6 +425,12 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is InstallmentRepricingRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentRepricingConfigRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentInterestAdjustmentRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is RepaymentRow) {

@@ -24,6 +24,8 @@ class BackupTables {
     'installment_schedules',
     'reference_rates',
     'installment_repricing_records',
+    'installment_repricing_configs',
+    'installment_interest_adjustments',
     'repayments',
     'repayment_items',
     'import_entity_mappings',
@@ -55,6 +57,8 @@ class BackupTables {
       'installment_schedules',
       'reference_rates',
       'installment_repricing_records',
+      'installment_repricing_configs',
+      'installment_interest_adjustments',
       'repayments',
       'repayment_items',
     }.contains(table)) {
@@ -330,6 +334,8 @@ class BackupDiff {
       if (table == 'installment_stage_configs') return '分期阶段';
       if (table == 'reference_rates') return '参考利率历史';
       if (table == 'installment_repricing_records') return '贷款重定价';
+      if (table == 'installment_repricing_configs') return '阶段重定价配置';
+      if (table == 'installment_interest_adjustments') return '合同利息调整';
       if (table == 'installment_contracts' ||
           table == 'installment_schedules' ||
           table == 'repayments' ||

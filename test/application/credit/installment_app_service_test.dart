@@ -133,7 +133,7 @@ void main() {
     );
 
     test(
-      'explicit recalculation changes pending amounts and regenerates pending dates',
+      'explicit recalculation rebuilds all amounts and dates while retaining skipped intent',
       () async {
         final fixture = _Fixture();
         fixture.installments.putContract(
@@ -197,7 +197,7 @@ void main() {
           ),
         );
 
-        // 锚点是被跳过的第 1 期；其后的待还尾部按合同条款重生日期并重新分配。
+        // 跳过状态不冻结计划金额；完整条款决定本金、手续费及日期。
         expect(
           preview.schedules.skip(1).map((row) => row.expectedRepaymentDate),
           [DateTime(2026, 8, 10), DateTime(2026, 10, 10)],
@@ -207,13 +207,13 @@ void main() {
           preview.schedules
               .skip(1)
               .map((row) => row.expectedPrincipal.minorUnits),
-          [4951, 4950],
+          [3333, 3334],
         );
         expect(
           preview.schedules.skip(1).map((row) => row.expectedFee.minorUnits),
-          [250, 250],
+          [167, 166],
         );
-        expect(schedules[0].expectedPrincipal, const Money(minorUnits: 99));
+        expect(schedules[0].expectedPrincipal, const Money(minorUnits: 3333));
         expect(schedules[0].status, InstallmentScheduleStatus.skipped);
         expect(
           schedules[1].expectedPrincipal,
@@ -226,7 +226,7 @@ void main() {
     );
 
     test(
-      'explicit recalculation fails when only skipped rows remain with principal',
+      'explicit recalculation allocates principal even when the final row is skipped',
       () async {
         final fixture = _Fixture();
         fixture.installments.putContract(
@@ -254,17 +254,15 @@ void main() {
           ),
         ]);
 
-        await expectLater(
-          fixture.service.previewContractRecalculation(
-            PreviewContractRecalculationCommand(contractId: 'contract-1'),
+        final preview = await fixture.service.previewContractRecalculation(
+          PreviewContractRecalculationCommand(contractId: 'contract-1'),
+        );
+        expect(
+          preview.schedules.fold<int>(
+            0,
+            (sum, row) => sum + row.expectedPrincipal.minorUnits,
           ),
-          throwsA(
-            isA<BusinessException>().having(
-              (e) => e.code,
-              'code',
-              CreditErrorCode.contractInvalidCommand.code,
-            ),
-          ),
+          10000,
         );
       },
     );
@@ -323,20 +321,21 @@ void main() {
       },
     );
 
-    test('manual schedule patches reject non-pending rows', () async {
-      final fixture = _Fixture();
-      fixture.installments.putContract(_contract(id: 'contract-1'));
-      fixture.installments.putSchedules('contract-1', [
-        _schedule(
-          id: 'schedule-1',
-          contractId: 'contract-1',
-          periodNo: 1,
-          status: InstallmentScheduleStatus.skipped,
-        ),
-      ]);
+    test(
+      'manual schedule patches allow skipped rows without clearing the skipped intent',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(_contract(id: 'contract-1'));
+        fixture.installments.putSchedules('contract-1', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'contract-1',
+            periodNo: 1,
+            status: InstallmentScheduleStatus.skipped,
+          ),
+        ]);
 
-      await expectLater(
-        fixture.service.updateContract(
+        await fixture.service.updateContract(
           UpdateContractCommand(
             contractId: 'contract-1',
             schedulePatches: [
@@ -346,16 +345,21 @@ void main() {
               ),
             ],
           ),
-        ),
-        throwsA(
-          isA<BusinessException>().having(
-            (e) => e.code,
-            'code',
-            CreditErrorCode.scheduleNotPending.code,
-          ),
-        ),
-      );
-    });
+        );
+        expect(
+          fixture.installments
+              .schedulesFor('contract-1')
+              .single
+              .expectedPrincipal
+              .minorUnits,
+          200,
+        );
+        expect(
+          fixture.installments.schedulesFor('contract-1').single.status,
+          InstallmentScheduleStatus.skipped,
+        );
+      },
+    );
 
     test(
       'schedule patch batch is rejected without partial persistence',
@@ -388,7 +392,7 @@ void main() {
                   expectedPrincipal: Money(minorUnits: 6000),
                 ),
                 SchedulePendingPatch(
-                  periodNo: 2,
+                  periodNo: 99,
                   expectedPrincipal: Money(minorUnits: 4000),
                 ),
               ],
@@ -398,7 +402,7 @@ void main() {
             isA<BusinessException>().having(
               (exception) => exception.code,
               'code',
-              CreditErrorCode.scheduleNotPending.code,
+              CreditErrorCode.scheduleNotFound.code,
             ),
           ),
         );

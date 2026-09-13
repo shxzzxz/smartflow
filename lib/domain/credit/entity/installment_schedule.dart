@@ -45,7 +45,6 @@ class InstallmentSchedule {
     DateTime? expectedRepaymentDate,
     String? note,
   }) {
-    _ensurePending();
     if (expectedPrincipal != null) this.expectedPrincipal = expectedPrincipal;
     if (expectedInterest != null) this.expectedInterest = expectedInterest;
     if (expectedFee != null) this.expectedFee = expectedFee;

@@ -19,6 +19,7 @@ import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/contract_status_validation_presentation.dart';
 import '../presentation/installment_schedule_presentation.dart';
+import '../presentation/installment_stage_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
 import '../widget/installment_schedule_view.dart';
 
@@ -192,6 +193,16 @@ class _Body extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space8),
         _ActionBar(contract: contract, onValidate: onValidate),
+        const SizedBox(height: AppSpacing.space8),
+        AppSurface(
+          child: ListTile(
+            leading: const Icon(RemixIcons.percent_line),
+            title: const Text('利率与利息调整'),
+            trailing: const Icon(RemixIcons.arrow_right_s_line),
+            onTap: () =>
+                context.push('/installments/${contract.id}/operations'),
+          ),
+        ),
         if (contract.unconfirmedRepricingIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.space12),
           AppStatusBanner(
@@ -259,6 +270,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentRate = installmentRateOn(contract, DateTime.now());
     final (statusLabel, statusColor) = switch (contract.status) {
       InstallmentContractStatus.active => (
         '进行中',
@@ -323,14 +335,7 @@ class _Header extends StatelessWidget {
           label: '利率',
           value: contract.stageTerms.stages.length > 1
               ? '按各阶段条款'
-              : _formatRate(
-                  contract.stageTerms.repayments.first
-                      .rateOn(DateTime.now())
-                      ?.period,
-                  contract.stageTerms.repayments.first
-                      .rateOn(DateTime.now())
-                      ?.ppm,
-                ),
+              : _formatRate(currentRate?.period, currentRate?.ppm),
         ),
       ],
     );
@@ -364,16 +369,15 @@ class _ActionBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.space6),
-              Expanded(
-                child: _ActionButton(
-                  icon: RemixIcons.edit_line,
-                  label: '编辑合同',
-                  onTap: () =>
-                      context.push('/installments/${contract.id}/edit'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.space6),
             ],
+            Expanded(
+              child: _ActionButton(
+                icon: RemixIcons.edit_line,
+                label: '编辑合同',
+                onTap: () => context.push('/installments/${contract.id}/edit'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space6),
             Expanded(
               child: _ActionButton(
                 icon: RemixIcons.refresh_line,

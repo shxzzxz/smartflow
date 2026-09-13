@@ -1,12 +1,10 @@
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/money/money.dart';
-import '../../../../domain/credit/service/installment/installment_metrics.dart'
+import '../../../../domain/credit/service/installment/calculator/installment_metrics.dart'
     show InstallmentMetricsCalculator;
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
-import '../../../../domain/credit/valobj/installment_plan_change.dart';
-import '../../../../domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
-import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../installment/query/contract_metrics_read_model.dart';
 import 'loan_calculator_read_model.dart';
@@ -28,7 +26,7 @@ class LoanPrepaymentSimulationRequest {
   final Money prepaymentPrincipal;
 }
 
-/// 贷款计算器：不落库地生成还款计划与合同维度指标，并按重算锚点规则试算提前还款。
+/// 贷款计算器：不落库地生成还款计划与合同维度指标，并按本金扣减规则试算提前还款。
 abstract interface class LoanCalculatorQuery {
   LoanCalculation calculate(InstallmentPlanTerms terms);
 
@@ -94,66 +92,40 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
         message: '提前还款日不能早于借款日期',
       );
     }
-    final contractTerms = InstallmentContractTerms(
-      stages: [
-        for (var i = 0; i < terms.stages.length; i++)
-          InstallmentContractStage(id: 'stage-$i', terms: terms.stages[i]),
-      ],
-      dayCount: terms.dayCount,
-      rounding: terms.rounding,
-      tailDifference: terms.tailDifference,
-    );
-    final change = _engine.recalculate(
-      InstallmentPlanContext(
-        terms: contractTerms,
-        principal: terms.principal,
-        borrowingDate: terms.borrowingDate,
-        rows: [
-          for (final entry in base.entries)
-            InstallmentPlanRow(
-              id: '${entry.periodNo}',
-              stageId: 'stage-${entry.stageIndex}',
-              periodNo: entry.periodNo,
-              date: entry.expectedRepaymentDate,
-              principal: entry.expectedPrincipal,
-              interest: entry.expectedInterest,
-              fee: entry.expectedFee,
-              status: entry.periodNo > request.paidPeriods
-                  ? InstallmentScheduleStatus.pending
-                  : InstallmentScheduleStatus.paid,
-            ),
-        ],
-        prepaymentPrincipal: request.prepaymentPrincipal,
-      ),
-      RecalculateAfterPrepayment(request.prepaymentDate),
-    );
-    final recalculations = change.recalculatedRows;
-    final recalculatedByPeriodNo = {
-      for (final recalculation in recalculations)
-        recalculation.periodNo: recalculation,
-    };
-    final entries = [
-      for (final entry in base.entries)
-        switch (recalculatedByPeriodNo[entry.periodNo]) {
-          null => entry,
-          final recalculation => InstallmentSchedulePlanEntry(
-            periodNo: recalculation.periodNo,
-            expectedRepaymentDate: recalculation.date,
-            expectedPrincipal: recalculation.principal,
-            expectedInterest: recalculation.interest,
-            expectedFee: recalculation.fee,
+    final plan = _engine.generate(
+      terms,
+      operations: InstallmentPlanOperations(
+        principalReductions: [
+          PrincipalReduction(
+            date: request.prepaymentDate,
+            principal: request.prepaymentPrincipal,
           ),
-        },
-    ];
-    // 提前还款本金在锚点当日归还，剩余本金口径从锚点之后开始扣减。
+        ],
+      ),
+    );
+    final firstAffected = base.entries
+        .where(
+          (entry) =>
+              DateTime.utc(
+                entry.expectedRepaymentDate.year,
+                entry.expectedRepaymentDate.month,
+                entry.expectedRepaymentDate.day,
+              ).isAfter(
+                DateTime.utc(
+                  request.prepaymentDate.year,
+                  request.prepaymentDate.month,
+                  request.prepaymentDate.day,
+                ),
+              ),
+        )
+        .firstOrNull
+        ?.periodNo;
     final periods = _periods(
       terms.principal,
-      entries,
+      plan.entries,
       prepayment: (
         principal: request.prepaymentPrincipal,
-        beforePeriodNo: recalculations.isEmpty
-            ? null
-            : recalculations.first.periodNo,
+        beforePeriodNo: firstAffected,
       ),
     );
     final baseInterest = _sum(base.entries, (entry) => entry.expectedInterest);
@@ -164,14 +136,12 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
         (s) => s.floatingRate != null,
       ),
       periods: periods,
-      stages: _stages(terms, base),
+      stages: _stages(terms, plan),
       prepaymentPrincipal: request.prepaymentPrincipal,
       totalInterest: totalInterest,
       totalFee: _sum(periods, (period) => period.fee),
       interestSaved: baseInterest - totalInterest,
-      firstRecalculatedPeriodNo: recalculations.isEmpty
-          ? null
-          : recalculations.first.periodNo,
+      firstRecalculatedPeriodNo: firstAffected,
       paidPeriods: request.paidPeriods,
       beforeTotalInterest: baseInterest,
       beforeTotalFee: baseFee,

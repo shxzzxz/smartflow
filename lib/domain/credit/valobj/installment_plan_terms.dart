@@ -7,7 +7,6 @@ import 'equal_installment_amount.dart';
 import 'installment_enums.dart';
 import 'interest_rate.dart';
 import 'floating_rate.dart';
-import 'reference_rate.dart';
 import 'repayment_dates_strategy.dart';
 import 'tail_difference_policy.dart';
 
@@ -28,6 +27,26 @@ class InstallmentPlanTerms {
   final RoundingMode rounding;
   final TailDifferencePolicy tailDifference;
   final List<InstallmentStage> stages;
+
+  bool get isCustom => stages.any(
+    (stage) =>
+        stage is AmortizingStage &&
+        stage.method == InstallmentRepaymentMethod.custom,
+  );
+
+  void validateStageKinds() {
+    if (isCustom &&
+        stages.any(
+          (stage) =>
+              stage is! AmortizingStage ||
+              stage.method != InstallmentRepaymentMethod.custom,
+        )) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '自定义合同只能包含自定义阶段',
+      );
+    }
+  }
 }
 
 sealed class InstallmentStage {
@@ -53,47 +72,30 @@ class AmortizingStage extends InstallmentStage {
     this.accrualStartDate,
     this.rate,
     this.floatingRate,
-    this.rateChanges = const [],
+    RepricingPaymentTiming repricingPaymentTiming =
+        RepricingPaymentTiming.nextPeriod,
     this.accrual = InterestAccrualMethod.monthly,
     this.endPrincipal,
     this.fee = const Money(minorUnits: 0),
     this.installmentAmount = const EqualInstallmentAmount.nominalRate(),
-  });
+  }) : _repricingPaymentTiming = repricingPaymentTiming;
 
   final RepaymentDatesStrategy dates;
 
-  /// 计息起点；缺省为上一阶段结束日或借款日。重算时取锚点期次日期。
+  /// 计息起点；缺省为上一阶段结束日或借款日。
   final DateTime? accrualStartDate;
   final InstallmentRepaymentMethod method;
 
   /// 为空即免息。
   final InterestRate? rate;
   final FloatingRateRule? floatingRate;
-  final List<RateChange> rateChanges;
-
-  InterestRate? rateOn(DateTime date) {
-    final active =
-        rateChanges
-            .where(
-              (c) =>
-                  !referenceDate(c.effectiveDate).isAfter(referenceDate(date)),
-            )
-            .toList()
-          ..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate));
-    return active.isEmpty ? rate : active.last.rate;
-  }
+  final RepricingPaymentTiming _repricingPaymentTiming;
+  RepricingPaymentTiming get repricingPaymentTiming =>
+      floatingRate?.paymentTiming ?? _repricingPaymentTiming;
 
   void validateFloatingRate() {
     final rule = floatingRate;
-    if (rule == null) {
-      if (rateChanges.isNotEmpty) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '固定利率阶段不能带有重定价结果',
-        );
-      }
-      return;
-    }
+    if (rule == null) return;
     rule.validate();
     if (rate == null ||
         rate!.period != InterestRatePeriod.annual ||
@@ -105,24 +107,6 @@ class AmortizingStage extends InstallmentStage {
         CreditErrorCode.contractInvalidCommand,
         message: '浮动利率需要初始执行年利率及自动计算的还款方式和固定额算法',
       );
-    }
-    final effectiveDates = <DateTime>{};
-    for (final change in rateChanges) {
-      if (change.referenceRate.ratePpm < 0 ||
-          change.rate.ppm < 0 ||
-          change.referenceRate.type != rule.referenceRateType ||
-          referenceDate(
-            change.referenceRate.date,
-          ).isAfter(referenceDate(change.resetDate)) ||
-          referenceDate(
-            change.resetDate,
-          ).isAfter(referenceDate(change.effectiveDate)) ||
-          !effectiveDates.add(referenceDate(change.effectiveDate))) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '重定价报价、日期或执行利率无效',
-        );
-      }
     }
   }
 

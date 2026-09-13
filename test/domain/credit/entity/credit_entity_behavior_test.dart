@@ -81,19 +81,12 @@ void main() {
   });
 
   group('Installment aggregate behavior', () {
-    test('settled contract rejects term revision', () {
+    test('settled contract allows term revision independently of status', () {
       final contract = _contract(status: InstallmentContractStatus.settled);
 
-      expect(
-        () => contract.reviseStageTerms(_terms(totalPeriods: 3)),
-        throwsA(
-          isA<BusinessException>().having(
-            (exception) => exception.code,
-            'code',
-            CreditErrorCode.contractNotActive.code,
-          ),
-        ),
-      );
+      contract.reviseStageTerms(_terms(totalPeriods: 3));
+      expect(contract.stageTerms.totalPeriods, 3);
+      expect(contract.status, InstallmentContractStatus.settled);
     });
 
     test('bill conversion contract rejects disbursement account revision', () {
@@ -207,7 +200,7 @@ void main() {
     });
 
     test(
-      'schedule revisions reject the whole batch when one row is not pending',
+      'schedule revisions reject the whole batch when a period is missing',
       () {
         final contract = _contract();
         final schedules = [
@@ -224,7 +217,7 @@ void main() {
                 expectedPrincipal: Money(minorUnits: 600),
               ),
               InstallmentScheduleRevision(
-                periodNo: 2,
+                periodNo: 99,
                 expectedPrincipal: Money(minorUnits: 400),
               ),
             ],
@@ -233,7 +226,7 @@ void main() {
             isA<BusinessException>().having(
               (exception) => exception.code,
               'code',
-              CreditErrorCode.scheduleNotPending.code,
+              CreditErrorCode.scheduleNotFound.code,
             ),
           ),
         );

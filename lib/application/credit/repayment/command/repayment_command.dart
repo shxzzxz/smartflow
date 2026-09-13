@@ -63,6 +63,19 @@ class EditBillRepaymentCommand {
   final String? note;
 }
 
+/// 编辑时须展示已失去明细关联的历史分项；提交命令仍要求有效明细。
+class BillRepaymentEditAllocation {
+  const BillRepaymentEditAllocation({
+    required this.id,
+    required this.billItemId,
+    required this.allocated,
+  });
+
+  final String id;
+  final String? billItemId;
+  final RepaymentAmountDto allocated;
+}
+
 class BillRepaymentEditView {
   const BillRepaymentEditView({
     required this.repaymentId,
@@ -77,7 +90,7 @@ class BillRepaymentEditView {
 
   final String repaymentId;
   final String billId;
-  final List<BillRepaymentAllocation> allocations;
+  final List<BillRepaymentEditAllocation> allocations;
   final bool hasTransaction;
   final String? transactionId;
   final String? paidFromAccountId;

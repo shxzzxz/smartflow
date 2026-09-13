@@ -38,6 +38,7 @@ class InstallmentTermsEditor extends StatefulWidget {
     this.beforePlanAction,
     this.rulesEditable = true,
     this.showAdvanced = true,
+    this.repricingConfigurationEditable = true,
     super.key,
   });
   final InstallmentTermsDraft value;
@@ -51,6 +52,7 @@ class InstallmentTermsEditor extends StatefulWidget {
 
   /// 只控制计算约定和固定额算法的显示，不修改草稿或锁定其他字段。
   final bool showAdvanced;
+  final bool repricingConfigurationEditable;
 
   @override
   State<InstallmentTermsEditor> createState() => _InstallmentTermsEditorState();
@@ -331,24 +333,27 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                   onChanged: (v) => update(s.copyWith(ratePeriod: v)),
                 ),
               if (!flat && !custom && !productMode) ...[
-                AppPlainSelectMenuFormRow<bool>(
-                  label: '利率规则',
-                  value: s.floating,
-                  options: const [
-                    AppSelectOption(value: false, label: '固定利率'),
-                    AppSelectOption(value: true, label: '参考利率加减基点'),
-                  ],
-                  onChanged: (v) => update(
-                    s.copyWith(
-                      floating: v,
-                      ratePeriod: v ? InterestRatePeriod.annual : s.ratePeriod,
-                      algorithm:
-                          v && s.algorithm == InstallmentAmountAlgorithm.fixed
-                          ? InstallmentAmountAlgorithm.nominalRate
-                          : s.algorithm,
+                if (widget.repricingConfigurationEditable)
+                  AppPlainSelectMenuFormRow<bool>(
+                    label: '利率规则',
+                    value: s.floating,
+                    options: const [
+                      AppSelectOption(value: false, label: '固定利率'),
+                      AppSelectOption(value: true, label: '参考利率加减基点'),
+                    ],
+                    onChanged: (v) => update(
+                      s.copyWith(
+                        floating: v,
+                        ratePeriod: v
+                            ? InterestRatePeriod.annual
+                            : s.ratePeriod,
+                        algorithm:
+                            v && s.algorithm == InstallmentAmountAlgorithm.fixed
+                            ? InstallmentAmountAlgorithm.nominalRate
+                            : s.algorithm,
+                      ),
                     ),
                   ),
-                ),
                 _DraftInput(
                   key: ValueKey('${s.id}:rate'),
                   value: s.text(StageInput.rate),
@@ -363,7 +368,7 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                       update(s.setInput(StageInput.rate, text)),
                   validator: _validateRate,
                 ),
-                if (s.floating) ...[
+                if (s.floating && widget.repricingConfigurationEditable) ...[
                   AppPlainSelectMenuFormRow<ReferenceRateType>(
                     label: '参考利率类型',
                     value: s.referenceRateType,
@@ -413,26 +418,34 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                     onChanged: (v) =>
                         update(s.copyWith(repricingCycleMonths: v)),
                   ),
-                  if (s.method == InstallmentRepaymentMethod.equalInstallment)
-                    AppPlainSelectMenuFormRow<RepricingPaymentTiming>(
-                      label: '固定额重算',
-                      value: s.repricingPaymentTiming,
-                      options: const [
-                        AppSelectOption(
-                          value: RepricingPaymentTiming.nextPeriod,
-                          label: '下一期，保留当期本金',
-                        ),
-                        AppSelectOption(
-                          value: RepricingPaymentTiming.currentPeriod,
-                          label: '跨调息当期',
-                        ),
-                      ],
-                      onChanged: (v) =>
-                          update(s.copyWith(repricingPaymentTiming: v)),
-                    ),
                   const Text('按重定价日前最近报价取值，不含重定价日当天。尚未确定的未来利率沿用已知利率预测。'),
                 ],
               ],
+              if (!widget.repricingConfigurationEditable &&
+                  !flat &&
+                  !custom &&
+                  !productMode)
+                const Text(
+                  '本阶段的重定价配置与记录请在合同详情的“利率与利息调整”中管理。删除阶段会同时删除它的重定价配置和记录。',
+                ),
+              if (!productMode &&
+                  s.method == InstallmentRepaymentMethod.equalInstallment)
+                AppPlainSelectMenuFormRow<RepricingPaymentTiming>(
+                  label: '固定额重算',
+                  value: s.repricingPaymentTiming,
+                  options: const [
+                    AppSelectOption(
+                      value: RepricingPaymentTiming.nextPeriod,
+                      label: '下一期，保留当期本金',
+                    ),
+                    AppSelectOption(
+                      value: RepricingPaymentTiming.currentPeriod,
+                      label: '跨调息当期',
+                    ),
+                  ],
+                  onChanged: (v) =>
+                      update(s.copyWith(repricingPaymentTiming: v)),
+                ),
               if (!flat && !custom)
                 AppPlainSelectMenuFormRow(
                   label: '计息方式',

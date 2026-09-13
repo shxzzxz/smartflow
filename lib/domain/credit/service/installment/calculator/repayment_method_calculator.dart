@@ -1,10 +1,11 @@
 import 'package:rational/rational.dart';
 
-import '../../../../core/error/app_exception.dart';
-import '../../../../core/money/money.dart';
-import '../../../../core/money/rounding_mode.dart';
-import '../../valobj/credit_error_code.dart';
-import '../../valobj/equal_installment_amount.dart';
+import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/money/money.dart';
+import '../../../../../core/money/rounding_mode.dart';
+import '../../../valobj/credit_error_code.dart';
+import '../../../valobj/equal_installment_amount.dart';
+import '../../../valobj/interest_accrual_segment.dart';
 import 'interest_accrual_policy.dart';
 
 class InstallmentAmountAllocation {
@@ -12,11 +13,13 @@ class InstallmentAmountAllocation {
     required this.principal,
     required this.interest,
     required this.fee,
+    this.interestSegments = const [],
   });
 
   final Money principal;
   final Money interest;
   final Money fee;
+  final List<InterestAccrualSegment> interestSegments;
 }
 
 /// 一个阶段的本息分摊输入：期初本金、期末本金、每期期利率与舍入方式。
@@ -83,7 +86,7 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
     var balance = opening;
     for (var i = 0; i < n; i++) {
       final interest = _interestFor(balance, input.rates[i], input.rounding);
-      final int principal;
+      int principal;
       if (i == n - 1) {
         principal = balance - end;
         if (principal < 0) {
@@ -99,7 +102,17 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
           );
         }
       }
-      allocations.add(_allocation(principal, interest));
+      if (principal > balance - end &&
+          input.installmentAmount is! FixedInstallmentAmount) {
+        principal = balance - end;
+      }
+      allocations.add(
+        _allocation(
+          principal,
+          interest,
+          input.rates[i].interestSegments(Money(minorUnits: balance)),
+        ),
+      );
       balance -= principal;
     }
     return RepaymentMethodCalculation(
@@ -148,7 +161,13 @@ class EqualPrincipalCalculator implements RepaymentMethodCalculator {
     var balance = input.openingPrincipal.minorUnits;
     for (var i = 0; i < n; i++) {
       final interest = _interestFor(balance, input.rates[i], input.rounding);
-      allocations.add(_allocation(principals[i], interest));
+      allocations.add(
+        _allocation(
+          principals[i],
+          interest,
+          input.rates[i].interestSegments(Money(minorUnits: balance)),
+        ),
+      );
       balance -= principals[i];
     }
     return RepaymentMethodCalculation(allocations: allocations);
@@ -168,20 +187,8 @@ class InterestFirstCalculator implements RepaymentMethodCalculator {
           _allocation(
             i == n - 1 ? opening - input.endPrincipal.minorUnits : 0,
             _interestFor(opening, input.rates[i], input.rounding),
+            input.rates[i].interestSegments(input.openingPrincipal),
           ),
-      ],
-    );
-  }
-}
-
-class CustomInstallmentCalculator implements RepaymentMethodCalculator {
-  const CustomInstallmentCalculator();
-
-  @override
-  RepaymentMethodCalculation calculate(RepaymentMethodCalculationInput input) {
-    return RepaymentMethodCalculation(
-      allocations: [
-        for (var i = 0; i < input.periodCount; i++) _allocation(0, 0),
       ],
     );
   }
@@ -208,11 +215,16 @@ int _interestFor(int balanceMinor, PeriodRate rate, RoundingMode rounding) {
   return (Rational.fromInt(balanceMinor) * rate.actual).roundToInt(rounding);
 }
 
-InstallmentAmountAllocation _allocation(int principal, int interest) {
+InstallmentAmountAllocation _allocation(
+  int principal,
+  int interest, [
+  List<InterestAccrualSegment> segments = const [],
+]) {
   return InstallmentAmountAllocation(
     principal: Money(minorUnits: principal),
     interest: Money(minorUnits: interest),
     fee: Money.zero(),
+    interestSegments: List.unmodifiable(segments),
   );
 }
 

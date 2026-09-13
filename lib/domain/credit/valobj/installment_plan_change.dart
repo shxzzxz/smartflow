@@ -1,37 +1,37 @@
 import '../../../core/money/money.dart';
 import '../entity/installment_contract.dart';
-import '../entity/installment_repricing.dart';
 import '../entity/installment_schedule.dart';
 import 'installment_contract_terms.dart';
 import 'installment_enums.dart';
+import 'installment_plan_operation.dart';
 
-/// 一次计算的不可变事实快照；条款包含已应用的重定价事实。
+/// 用例预览的事实快照；旧计划只用于保存时衔接引用，不进入计算。
 class InstallmentPlanContext {
   InstallmentPlanContext({
     required this.terms,
     required this.principal,
     required this.borrowingDate,
     required List<InstallmentPlanRow> rows,
-    required this.prepaymentPrincipal,
+    this.operations = const InstallmentPlanOperations(),
   }) : rows = List.unmodifiable(rows);
 
   factory InstallmentPlanContext.fromContract({
     required InstallmentContract contract,
     required List<InstallmentSchedule> schedules,
-    required Money prepaymentPrincipal,
+    InstallmentPlanOperations operations = const InstallmentPlanOperations(),
   }) => InstallmentPlanContext(
     terms: contract.stageTerms,
     principal: contract.principal,
     borrowingDate: contract.borrowingDate,
     rows: [for (final row in schedules) InstallmentPlanRow.fromSchedule(row)],
-    prepaymentPrincipal: prepaymentPrincipal,
+    operations: operations,
   );
 
   final InstallmentContractTerms terms;
   final Money principal;
   final DateTime borrowingDate;
   final List<InstallmentPlanRow> rows;
-  final Money prepaymentPrincipal;
+  final InstallmentPlanOperations operations;
 }
 
 sealed class InstallmentPlanChangeRequest {
@@ -43,14 +43,8 @@ final class RecalculateFromTerms extends InstallmentPlanChangeRequest {
   final InstallmentContractTerms terms;
 }
 
-final class ApplyInstallmentRepricing extends InstallmentPlanChangeRequest {
-  const ApplyInstallmentRepricing(this.record);
-  final InstallmentRepricing record;
-}
-
-final class RecalculateAfterPrepayment extends InstallmentPlanChangeRequest {
-  const RecalculateAfterPrepayment(this.repaymentDate);
-  final DateTime repaymentDate;
+final class RecalculateFromOperations extends InstallmentPlanChangeRequest {
+  const RecalculateFromOperations();
 }
 
 /// 新增期次尚无持久化身份；身份只在应用结果时分配。
@@ -87,54 +81,16 @@ class InstallmentPlanRow {
   final Money principal, interest, fee;
   final InstallmentScheduleStatus status;
   final bool manuallyAdjusted;
-  bool get isPending => status == InstallmentScheduleStatus.pending;
-
-  bool sameExpectation(InstallmentPlanRow other) =>
-      stageId == other.stageId &&
-      periodNo == other.periodNo &&
-      date == other.date &&
-      principal == other.principal &&
-      interest == other.interest &&
-      fee == other.fee;
 }
 
 class InstallmentPlanChangeSet {
   InstallmentPlanChangeSet({
     required this.context,
-    required this.request,
     required this.terms,
     required List<InstallmentPlanRow> rows,
-    required Set<String> frozenIds,
-    required Set<int> recalculatedPeriods,
-  }) : rows = List.unmodifiable(rows),
-       frozenIds = Set.unmodifiable(frozenIds),
-       recalculatedPeriods = Set.unmodifiable(recalculatedPeriods);
+  }) : rows = List.unmodifiable(rows);
 
   final InstallmentPlanContext context;
-  final InstallmentPlanChangeRequest request;
   final InstallmentContractTerms terms;
   final List<InstallmentPlanRow> rows;
-  final Set<String> frozenIds;
-  final Set<int> recalculatedPeriods;
-
-  List<InstallmentPlanRow> get recalculatedRows =>
-      rows.where((r) => recalculatedPeriods.contains(r.periodNo)).toList();
-  List<InstallmentPlanRow> get added =>
-      rows.where((r) => r.id == null).toList();
-  List<InstallmentPlanRow> get removed {
-    final retained = rows.map((r) => r.id).toSet();
-    return context.rows.where((r) => !retained.contains(r.id)).toList();
-  }
-
-  List<InstallmentPlanRow> get updated {
-    final previous = {for (final r in context.rows) r.id: r};
-    return rows
-        .where(
-          (r) =>
-              r.id != null &&
-              previous[r.id] != null &&
-              !r.sameExpectation(previous[r.id]!),
-        )
-        .toList();
-  }
 }

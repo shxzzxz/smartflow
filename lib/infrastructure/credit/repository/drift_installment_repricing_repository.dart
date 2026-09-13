@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/entity/installment_repricing.dart';
+import '../../../domain/credit/entity/installment_repricing_configuration.dart';
 import '../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
@@ -13,18 +14,17 @@ class DriftInstallmentRepricingRepository
   DriftInstallmentRepricingRepository(this.database);
   final AppDatabase database;
   @override
-  Future<List<String>> activeContractIds() async => [
+  Future<List<String>> configuredContractIds() async => [
     for (final row
         in await database
             .customSelect(
               '''
       SELECT DISTINCT c.id FROM installment_contracts c
-      JOIN installment_stage_configs s ON s.owner_type = 'contract' AND s.owner_id = c.id
-      WHERE c.status = 'active' AND s.reference_rate_type IS NOT NULL
+      JOIN installment_repricing_configs r ON r.contract_id = c.id
     ''',
               readsFrom: {
                 database.installmentContracts,
-                database.installmentStageConfigs,
+                database.installmentRepricingConfigs,
               },
             )
             .get())
@@ -51,11 +51,12 @@ class DriftInstallmentRepricingRepository
   ];
 
   @override
-  Future<void> insert(InstallmentRepricing record) async {
+  Future<bool> insert(InstallmentRepricing record) async {
+    await _requireStage(record.contractId, record.stageId);
     final c = record.change;
-    await database
+    final inserted = await database
         .into(database.installmentRepricingRecords)
-        .insert(
+        .insertReturningOrNull(
           InstallmentRepricingRecordsCompanion.insert(
             id: record.id,
             contractId: record.contractId,
@@ -68,8 +69,15 @@ class DriftInstallmentRepricingRepository
             spreadBp: c.spreadBp,
             source: c.referenceRate.source,
           ),
-          mode: InsertMode.insertOrIgnore,
+          onConflict: DoNothing(
+            target: [
+              database.installmentRepricingRecords.contractId,
+              database.installmentRepricingRecords.stageId,
+              database.installmentRepricingRecords.effectiveDate,
+            ],
+          ),
         );
+    return inserted != null;
   }
 
   @override
@@ -78,6 +86,7 @@ class DriftInstallmentRepricingRepository
         await (database.update(database.installmentRepricingRecords)..where(
               (r) =>
                   r.id.equals(record.id) &
+                  r.stageId.equals(record.stageId) &
                   r.contractId.equals(record.contractId),
             ))
             .write(
@@ -91,14 +100,74 @@ class DriftInstallmentRepricingRepository
   }
 
   @override
-  Future<void> discardPending(String contractId, Set<String> stageIds) async {
-    if (stageIds.isEmpty) return;
+  Future<void> insertConfiguration(
+    InstallmentRepricingConfiguration configuration,
+  ) async {
+    configuration.validate();
+    await _requireStage(configuration.contractId, configuration.stageId);
+    final inserted = await database
+        .into(database.installmentRepricingConfigs)
+        .insertReturningOrNull(
+          encodeRepricingConfiguration(configuration),
+          onConflict: DoNothing(
+            target: [
+              database.installmentRepricingConfigs.contractId,
+              database.installmentRepricingConfigs.stageId,
+              database.installmentRepricingConfigs.effectiveFrom,
+            ],
+          ),
+        );
+    if (inserted == null) {
+      throw BusinessException(
+        CreditErrorCode.contractPersistenceConflict,
+        message: '该阶段的配置生效日已有重定价配置',
+      );
+    }
+  }
+
+  @override
+  Future<void> advanceGeneration(
+    String configurationId,
+    DateTime effectiveDate,
+  ) async {
+    final date = referenceDate(effectiveDate);
+    await (database.update(database.installmentRepricingConfigs)..where(
+          (row) =>
+              row.id.equals(configurationId) &
+              (row.lastGeneratedDate.isNull() |
+                  row.lastGeneratedDate.isSmallerThanValue(date)),
+        ))
+        .write(
+          InstallmentRepricingConfigsCompanion(lastGeneratedDate: Value(date)),
+        );
+  }
+
+  @override
+  Future<void> delete(InstallmentRepricing record) async {
     await (database.delete(database.installmentRepricingRecords)..where(
-          (r) =>
-              r.contractId.equals(contractId) &
-              r.stageId.isIn(stageIds) &
-              r.status.equals('pending'),
+          (row) =>
+              row.contractId.equals(record.contractId) &
+              row.stageId.equals(record.stageId) &
+              row.id.equals(record.id),
         ))
         .go();
+  }
+
+  Future<void> _requireStage(String contractId, String stageId) async {
+    final stage =
+        await (database.select(database.installmentStageConfigs)..where(
+              (row) =>
+                  row.id.equals(stageId) &
+                  row.ownerType.equals('contract') &
+                  row.ownerId.equals(contractId) &
+                  row.stageKind.equals('repayment'),
+            ))
+            .getSingleOrNull();
+    if (stage == null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '重定价必须关联到本合同的还款阶段',
+      );
+    }
   }
 }

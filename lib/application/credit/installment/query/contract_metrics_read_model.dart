@@ -1,5 +1,5 @@
 import '../../../../core/money/money.dart';
-import '../../../../domain/credit/service/installment/installment_metrics.dart'
+import '../../../../domain/credit/service/installment/calculator/installment_metrics.dart'
     as domain;
 
 enum ContractMetricsUnavailableReason {

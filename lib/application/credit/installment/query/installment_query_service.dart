@@ -97,6 +97,31 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       note: value.note,
       createdAt: value.createdAt,
       stageTerms: value.stageTerms,
+      repricingConfigurations: List.unmodifiable([
+        for (final config in value.repricingConfigurations)
+          InstallmentRepricingConfigurationReadModel(
+            id: config.id,
+            stageId: config.stageId,
+            effectiveFrom: config.effectiveFrom,
+            rule: config.rule,
+          ),
+      ]),
+      repricings: List.unmodifiable([
+        for (final record in value.repricings)
+          InstallmentRepricingReadModel(
+            id: record.id,
+            stageId: record.stageId,
+            change: record.change,
+            status: record.status,
+          ),
+      ]),
+      interestAdjustments: List.unmodifiable([
+        for (final record in value.interestAdjustments)
+          InstallmentInterestAdjustmentReadModel(
+            id: record.id,
+            adjustment: record.adjustment,
+          ),
+      ]),
       unconfirmedRepricingIds: List.unmodifiable([
         for (final record in repricings)
           if (record.status == InstallmentRepricingStatus.applied) record.id,

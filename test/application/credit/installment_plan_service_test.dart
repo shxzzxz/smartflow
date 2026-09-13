@@ -10,6 +10,7 @@ import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -30,6 +31,7 @@ void main() {
     service = InstallmentPlanService(
       installments: installments,
       repayments: repayments,
+      bills: DriftBillRepository(db),
       runner: DriftTransactionRunner(db),
       idGenerator: ids,
     );
@@ -138,7 +140,7 @@ void main() {
       final preview = await service.previewChange('loan', request);
       final second = await service.previewChange('loan', request);
       expect(second.token, preview.token);
-      expect(preview.change.added.single.id, isNull);
+      expect(preview.change.rows.where((row) => row.id == null), hasLength(1));
       expect(await installments.listSchedules('loan'), hasLength(3));
       final contract = (await installments.findContract('loan'))!
         ..reviseDetails(name: '新名称');
@@ -164,7 +166,7 @@ void main() {
       await prepay(3000);
       await service.applyAutomaticChange(
         'loan',
-        RecalculateAfterPrepayment(date),
+        const RecalculateFromOperations(),
       );
       var rows = await installments.listSchedules('loan');
       expect(rows.map((r) => r.expectedPrincipal.minorUnits), [
@@ -177,7 +179,7 @@ void main() {
       await repayments.deleteRepayment('prepay');
       await service.applyAutomaticChange(
         'loan',
-        RecalculateAfterPrepayment(date),
+        const RecalculateFromOperations(),
       );
       rows = await installments.listSchedules('loan');
       expect(rows.map((r) => r.expectedPrincipal.minorUnits), [
@@ -198,7 +200,7 @@ void main() {
           await prepay(3000);
           await service.applyAutomaticChange(
             'loan',
-            RecalculateAfterPrepayment(date),
+            const RecalculateFromOperations(),
           );
           expect(
             (await installments.listSchedules(
@@ -220,7 +222,7 @@ void main() {
   );
 
   test(
-    'terms rebuild requires confirmation and clears manual flags only in its tail',
+    'terms rebuild replaces manual expectations across all statuses and repairs states',
     () async {
       final contract = (await installments.findContract('loan'))!;
       final rows = await installments.listSchedules('loan');
@@ -239,8 +241,8 @@ void main() {
       final preview = await service.previewChange('loan', request);
       await service.confirmChange('loan', request, token: preview.token);
       final after = await installments.listSchedules('loan');
-      expect(after.first.manuallyAdjusted, isTrue);
-      expect(after.first.status, InstallmentScheduleStatus.paid);
+      expect(after.first.manuallyAdjusted, isFalse);
+      expect(after.first.status, InstallmentScheduleStatus.pending);
       expect(after.last.manuallyAdjusted, isFalse);
       expect(after.last.expectedInterest, Money.zero());
     },

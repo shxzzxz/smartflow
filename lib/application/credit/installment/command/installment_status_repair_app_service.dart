@@ -86,7 +86,7 @@ class InstallmentStatusRepairAppService {
           ));
           continue;
         }
-        if (item.contractId == contract.id) {
+        if (item.contractId == contract.id && item.scheduleId != null) {
           _addIssue(
             issues,
             const ContractStatusValidationIssue(
@@ -107,7 +107,8 @@ class InstallmentStatusRepairAppService {
       for (final repayment in billRepayments) {
         for (final repaymentItem in repayment.items) {
           final billItemId = repaymentItem.billItemId;
-          final billItem = billItemId == null ? null : allItemsById[billItemId];
+          if (billItemId == null) continue;
+          final billItem = allItemsById[billItemId];
           if (billItem == null) {
             _addIssue(
               issues,

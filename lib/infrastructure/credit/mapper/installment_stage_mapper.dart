@@ -12,6 +12,9 @@ import '../../../domain/credit/valobj/floating_rate.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../database/app_database.dart';
+import '../../../domain/credit/entity/installment_repricing_configuration.dart';
+import '../../../domain/credit/entity/installment_interest_adjustment.dart';
+import '../../../domain/credit/valobj/installment_plan_operation.dart';
 
 String encodeDayCount(DayCountConvention value) =>
     value == DayCountConvention.thirty365 ? 'thirty365' : 'thirty360';
@@ -25,7 +28,6 @@ InstallmentContractTerms decodeContractTerms(
   List<InstallmentStageConfigRow> rows, {
   required String dayCount,
   required String rounding,
-  List<InstallmentRepricingRow> repricings = const [],
 }) => InstallmentContractTerms(
   dayCount: decodeDayCount(dayCount),
   rounding: RoundingMode.values.byName(rounding),
@@ -36,25 +38,11 @@ InstallmentContractTerms decodeContractTerms(
         terms: row.stageKind == 'deferment'
             ? DefermentStage(until: row.untilDate!)
             : AmortizingStage(
-                floatingRate: row.referenceRateType == null
-                    ? null
-                    : FloatingRateRule(
-                        referenceRateType: ReferenceRateType.values.byName(
-                          row.referenceRateType!,
-                        ),
-                        spreadBp: row.spreadBp!,
-                        firstResetDate: row.firstResetDate!,
-                        firstEffectiveDate: row.firstEffectiveDate!,
-                        cycleMonths: row.repricingCycleMonths!,
-                        paymentTiming: RepricingPaymentTiming.values.byName(
-                          row.repricingPaymentTiming!,
-                        ),
+                repricingPaymentTiming: row.repricingPaymentTiming == null
+                    ? RepricingPaymentTiming.nextPeriod
+                    : RepricingPaymentTiming.values.byName(
+                        row.repricingPaymentTiming!,
                       ),
-                rateChanges: [
-                  for (final r in repricings)
-                    if (r.stageId == row.id && r.status != 'pending')
-                      decodeRateChange(r),
-                ],
                 dates: IntervalRepaymentDates(
                   firstDate: row.firstDate!,
                   count: row.periods!,
@@ -165,12 +153,7 @@ InstallmentStageConfigsCompanion encodeContractStage(
     accrualStartDate: Value(repayment.accrualStartDate),
     ratePeriod: Value(repayment.rate?.period.name),
     ratePpm: Value(repayment.rate?.ppm),
-    referenceRateType: Value(repayment.floatingRate?.referenceRateType.name),
-    spreadBp: Value(repayment.floatingRate?.spreadBp),
-    firstResetDate: Value(repayment.floatingRate?.firstResetDate),
-    firstEffectiveDate: Value(repayment.floatingRate?.firstEffectiveDate),
-    repricingCycleMonths: Value(repayment.floatingRate?.cycleMonths),
-    repricingPaymentTiming: Value(repayment.floatingRate?.paymentTiming.name),
+    repricingPaymentTiming: Value(repayment.repricingPaymentTiming.name),
     accrual: Value(repayment.accrual.name),
     feeMinor: Value(repayment.fee.minorUnits),
     endPrincipalMinor: Value(repayment.endPrincipal?.minorUnits),
@@ -194,13 +177,61 @@ InstallmentStageConfigsCompanion encodeContractStage(
 }
 
 RateChange decodeRateChange(InstallmentRepricingRow row) => RateChange(
-  resetDate: row.resetDate,
-  effectiveDate: row.effectiveDate,
+  resetDate: row.resetDate.toUtc(),
+  effectiveDate: row.effectiveDate.toUtc(),
   spreadBp: row.spreadBp,
   referenceRate: ReferenceRate(
-    date: row.referenceRateDate,
+    date: row.referenceRateDate.toUtc(),
     type: ReferenceRateType.values.byName(row.referenceRateType),
     ratePpm: row.referenceRatePpm,
     source: row.source,
+  ),
+);
+
+InstallmentRepricingConfiguration decodeRepricingConfiguration(
+  InstallmentRepricingConfigRow row,
+) => InstallmentRepricingConfiguration(
+  id: row.id,
+  contractId: row.contractId,
+  stageId: row.stageId,
+  effectiveFrom: row.effectiveFrom.toUtc(),
+  lastGeneratedDate: row.lastGeneratedDate?.toUtc(),
+  rule: FloatingRateRule(
+    referenceRateType: ReferenceRateType.values.byName(row.referenceRateType),
+    spreadBp: row.spreadBp,
+    firstResetDate: row.firstResetDate.toUtc(),
+    firstEffectiveDate: row.firstEffectiveDate.toUtc(),
+    cycleMonths: row.cycleMonths,
+  ),
+);
+
+InstallmentRepricingConfigsCompanion encodeRepricingConfiguration(
+  InstallmentRepricingConfiguration value,
+) => InstallmentRepricingConfigsCompanion.insert(
+  id: value.id,
+  contractId: value.contractId,
+  stageId: value.stageId,
+  effectiveFrom: referenceDate(value.effectiveFrom),
+  referenceRateType: value.rule.referenceRateType.name,
+  spreadBp: value.rule.spreadBp,
+  firstResetDate: referenceDate(value.rule.firstResetDate),
+  firstEffectiveDate: referenceDate(value.rule.firstEffectiveDate),
+  cycleMonths: value.rule.cycleMonths,
+  lastGeneratedDate: Value(
+    value.lastGeneratedDate == null
+        ? null
+        : referenceDate(value.lastGeneratedDate!),
+  ),
+);
+
+InstallmentInterestAdjustment decodeInterestAdjustment(
+  InstallmentInterestAdjustmentRow row,
+) => InstallmentInterestAdjustment(
+  id: row.id,
+  contractId: row.contractId,
+  adjustment: InterestAdjustment(
+    start: row.startDate.toUtc(),
+    end: row.endDate.toUtc(),
+    ratioPpm: row.ratioPpm,
   ),
 );

@@ -88,6 +88,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
            InstallmentPlanService(
              installments: installments,
              repayments: repayments,
+             bills: bills,
              runner: transactionRunner,
              idGenerator: idGenerator,
            ),
@@ -324,8 +325,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       billId: repayment.targetId,
       allocations: [
         for (final item in repayment.items)
-          BillRepaymentAllocation(
-            billItemId: item.billItemId!,
+          BillRepaymentEditAllocation(
+            id: item.id,
+            billItemId: item.billItemId,
             allocated: RepaymentAmountDto(
               principal: item.allocated.principal,
               interest: item.allocated.interest,
@@ -541,7 +543,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       if (total.principal.minorUnits > 0) {
         await _plans.applyAutomaticChange(
           contract.id,
-          RecalculateAfterPrepayment(repayment.repaymentDate),
+          const RecalculateFromOperations(),
         );
       }
       return CreateRepaymentResult(
@@ -612,6 +614,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentId: command.repaymentId,
         transactionId: command.transactionId,
       );
+      repayment.ensureBillItemReferences();
       final transactionId = repayment.transactionId;
       if (transactionId == null) {
         throw BusinessException(CreditErrorCode.repaymentNotEditable);
@@ -683,10 +686,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         case RepaymentType.installment:
           await _deleteBillConversionInstallmentRepayment(repayment);
         case RepaymentType.prepayment:
-          await _deleteContractPrepaymentRepayment(
-            repayment,
-            eventDate: transactionDetail?.occurredAt ?? repayment.repaymentDate,
-          );
+          await _deleteContractPrepaymentRepayment(repayment);
         case RepaymentType.unattributed:
           await _repayments.deleteRepayment(repayment.id);
       }
@@ -749,10 +749,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     }
   }
 
-  Future<void> _deleteContractPrepaymentRepayment(
-    Repayment repayment, {
-    required DateTime? eventDate,
-  }) async {
+  Future<void> _deleteContractPrepaymentRepayment(Repayment repayment) async {
     final contract = await _installments.findContract(repayment.targetId);
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
@@ -763,7 +760,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     if (changesPrincipal) {
       await _plans.applyAutomaticChange(
         contract.id,
-        RecalculateAfterPrepayment(eventDate!),
+        const RecalculateFromOperations(),
       );
     }
   }

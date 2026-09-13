@@ -8,7 +8,6 @@ import 'package:smartflow/domain/credit/port/reference_rate_source.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_reference_rate_repository.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
@@ -23,6 +22,9 @@ import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -113,7 +115,7 @@ void main() {
       DateTime.utc(2027, 1, 1),
     ]) {
       test(
-        'actual stage end $end controls resets via ${prepareOnly ? 'prepare' : 'runDue'}',
+        'contract calculation range ignores manually edited plan end $end ($prepareOnly)',
         () async {
           final contract = (await f.installments.findContract('loan'))!;
           final rows = await f.installments.listSchedules('loan');
@@ -124,43 +126,26 @@ void main() {
           if (prepareOnly) {
             expect(await f.service.prepare('loan', f.currentDate), isTrue);
           } else {
-            await f.service.runDue(DateTime.utc(2026, 12, 19));
-            final opening = (await f.installments.listSchedules(
-              'loan',
-            )).last.expectedPrincipal.minorUnits;
-            f.source.rates.add(
-              ReferenceRate(
-                type: ReferenceRateType.lprFiveYearPlus,
-                date: DateTime.utc(2026, 12, 19),
-                ratePpm: 29000,
-                source: f.source.key,
-              ),
-            );
-            final extended = end.isAfter(DateTime.utc(2027, 1, 1));
             expect(await f.service.runDue(f.currentDate), (
-              changed: extended,
+              changed: true,
               needsRetry: false,
             ));
-            if (extended) {
-              final last = (await f.installments.listSchedules('loan')).last;
-              // Actual period: November 20 to February 20, split at January 1.
-              expect(
-                last.expectedInterest.minorUnits,
-                (opening * (0.036 * 42 / 360 + 0.026 * 50 / 360)).round(),
-              );
-            }
           }
           final records = await f.records.list('loan');
+          expect(records, hasLength(4));
           expect(
-            records,
-            hasLength(end.isAfter(DateTime.utc(2027, 1, 1)) ? 5 : 4),
-          );
-          expect(
-            records.every((r) => r.change.effectiveDate.isBefore(end)),
+            records.every(
+              (record) => record.change.effectiveDate.isBefore(
+                referenceDate(contract.stageTerms.lastDate),
+              ),
+            ),
             isTrue,
           );
           final saved = await f.installments.listSchedules('loan');
-          expect(referenceDate(saved.last.expectedRepaymentDate), end);
+          expect(
+            referenceDate(saved.last.expectedRepaymentDate),
+            prepareOnly ? end : referenceDate(contract.stageTerms.lastDate),
+          );
         },
       );
     }
@@ -203,7 +188,7 @@ void main() {
 
   for (final prepareOnly in [true, false]) {
     test(
-      'each stage uses its own actual end via ${prepareOnly ? 'prepare' : 'runDue'}',
+      'configuration history owns each effective date via ${prepareOnly ? 'prepare' : 'runDue'}',
       () async {
         AmortizingStage stage(
           DateTime first,
@@ -271,13 +256,13 @@ void main() {
         final records = await f.records.list('multi');
         expect(
           records
-              .where((r) => r.stageId == 'first-stage')
+              .where((r) => r.change.effectiveDate.month < 7)
               .map((r) => r.change.effectiveDate.month),
-          [1, 4, 7],
+          [1, 4],
         );
         expect(
           records
-              .where((r) => r.stageId == 'second-stage')
+              .where((r) => r.change.effectiveDate.month >= 7)
               .map((r) => r.change.effectiveDate.month),
           [7, 10],
         );
@@ -287,7 +272,7 @@ void main() {
 
   for (final end in [DateTime(2026, 9, 20), DateTime(2026, 10, 1)]) {
     test(
-      'shortening a stage to $end excludes an otherwise due reset',
+      'a manually shortened plan to $end does not hide a contractual repricing',
       () async {
         await f.seed(
           id: 'short',
@@ -325,14 +310,22 @@ void main() {
         f.currentDate = DateTime(2026, 9, 20);
         expect(await f.service.prepare('short', f.currentDate), isTrue);
         await f.service.runDue(f.currentDate);
-        expect(await f.records.list('short'), isEmpty);
+        expect(await f.records.list('short'), hasLength(1));
+        expect(
+          referenceDate(
+            (await f.installments.listSchedules(
+              'short',
+            )).last.expectedRepaymentDate,
+          ),
+          DateTime.utc(2026, 12, 20),
+        );
       },
     );
   }
 
   for (final missingStageId in [true, false]) {
     test(
-      'no actual stage schedules never falls back to parameter dates ($missingStageId)',
+      'missing old schedule data does not prevent full calculation ($missingStageId)',
       () async {
         await f.db.customStatement(
           missingStageId
@@ -341,11 +334,12 @@ void main() {
         );
         expect(await f.service.prepare('loan', DateTime(2026, 1, 5)), isTrue);
         expect(await f.service.runDue(DateTime(2026, 1, 5)), (
-          changed: false,
+          changed: true,
           needsRetry: false,
         ));
-        expect(await f.records.list('loan'), isEmpty);
-        expect(f.source.calls, isEmpty);
+        expect(await f.records.list('loan'), hasLength(1));
+        expect(await f.installments.listSchedules('loan'), hasLength(12));
+        expect(f.source.calls, isNotEmpty);
       },
     );
   }
@@ -442,7 +436,7 @@ void main() {
     () async {
       await f.service.prepare('loan', DateTime(2026, 1, 5));
       final record = (await f.records.list('loan')).single;
-      await f.records.discardPending('loan', {record.stageId});
+      await f.records.delete(record);
       record.markApplied();
       await expectLater(
         f.records.update(record),
@@ -508,7 +502,7 @@ void main() {
       expect(
         (await DriftInstallmentRepository(
           target,
-        ).findContract('loan'))!.stageTerms.repayments.single.rateChanges,
+        ).findContract('loan'))!.repricings,
         hasLength(2),
       );
       await f.service.confirm('loan', {all.last.id});
@@ -703,7 +697,7 @@ void main() {
   );
 
   test(
-    'terms preview cannot rewrite the rate behind applied repricing facts',
+    'terms preview changes the initial rate and still consumes applied repricing facts',
     () async {
       await f.service.runDue(DateTime(2026, 1, 5));
       final contract = (await f.installments.findContract('loan'))!;
@@ -722,7 +716,6 @@ void main() {
                 ppm: 60000,
               ),
               floatingRate: old.floatingRate,
-              rateChanges: old.rateChanges,
               endPrincipal: old.endPrincipal,
               fee: old.fee,
               installmentAmount: old.installmentAmount,
@@ -730,32 +723,56 @@ void main() {
           ),
         ],
       );
-      await expectLater(
-        f.plans.previewChange('loan', RecalculateFromTerms(replacement)),
-        throwsA(isA<BusinessException>()),
+      final before = await f.installments.listSchedules('loan');
+      final facts = await f.records.list('loan');
+      final preview = await f.plans.previewChange(
+        'loan',
+        RecalculateFromTerms(replacement),
+      );
+      await f.plans.confirmChange(
+        'loan',
+        RecalculateFromTerms(replacement),
+        token: preview.token,
       );
       expect(
         (await f.installments.findContract(
           'loan',
         ))!.stageTerms.repayments.single.rate,
-        old.rate,
+        replacement.repayments.single.rate,
+      );
+      expect(
+        (await f.records.list('loan')).single.change.rate,
+        facts.single.change.rate,
+      );
+      expect(
+        (await f.installments.listSchedules('loan')).first.expectedInterest,
+        isNot(before.first.expectedInterest),
       );
     },
   );
 
-  test('repricing retains manually allocated fees on every period', () async {
-    final contract = (await f.installments.findContract('loan'))!;
-    final rows = await f.installments.listSchedules('loan');
-    rows.first.reviseExpectation(expectedFee: const Money(minorUnits: 99));
-    rows.last.reviseExpectation(expectedFee: const Money(minorUnits: 3));
-    rows.first.manuallyAdjusted = true;
-    await f.installments.saveAggregate(contract, rows);
-    await f.service.runDue(DateTime(2026, 1, 5));
-    expect(
-      (await f.installments.listSchedules('loan')).map((r) => r.expectedFee),
-      rows.map((r) => r.expectedFee),
-    );
-  });
+  test(
+    'repricing rebuilds fees from terms and clears manual adjustments',
+    () async {
+      final contract = (await f.installments.findContract('loan'))!;
+      final rows = await f.installments.listSchedules('loan');
+      rows.first.reviseExpectation(expectedFee: const Money(minorUnits: 99));
+      rows.last.reviseExpectation(expectedFee: const Money(minorUnits: 3));
+      rows.first.manuallyAdjusted = true;
+      await f.installments.saveAggregate(contract, rows);
+      await f.service.runDue(DateTime(2026, 1, 5));
+      expect(
+        (await f.installments.listSchedules('loan')).map((r) => r.expectedFee),
+        everyElement(Money.zero()),
+      );
+      expect(
+        (await f.installments.listSchedules(
+          'loan',
+        )).every((row) => !row.manuallyAdjusted),
+        isTrue,
+      );
+    },
+  );
 
   for (final prepayFirst in [true, false]) {
     test(
@@ -794,8 +811,8 @@ void main() {
         expect(after.map((r) => r.id), before.map((r) => r.id));
         expect(after.map((r) => r.stageId), before.map((r) => r.stageId));
         expect(
-          after.map((r) => r.expectedRepaymentDate),
-          before.map((r) => r.expectedRepaymentDate),
+          after.map((r) => referenceDate(r.expectedRepaymentDate)),
+          before.map((r) => referenceDate(r.expectedRepaymentDate)),
         );
         for (var i = 0; i < 3; i++) {
           expect(after[i].status, InstallmentScheduleStatus.paid);
@@ -925,11 +942,13 @@ void main() {
         final restored = (await DriftInstallmentRepository(
           target,
         ).findContract('loan'))!;
-        final stage = restored.stageTerms.repayments.single;
-        expect(stage.floatingRate!.referenceRateType, type);
-        expect(stage.rateChanges.single.referenceRate.type, type);
-        expect(stage.rateChanges.single.referenceRate.ratePpm, 39000);
-        expect(stage.rateChanges.single.rate.ppm, 36000);
+        expect(
+          restored.repricingConfigurations.single.rule.referenceRateType,
+          type,
+        );
+        expect(restored.repricings.single.change.referenceRate.type, type);
+        expect(restored.repricings.single.change.referenceRate.ratePpm, 39000);
+        expect(restored.repricings.single.change.rate.ppm, 36000);
         expect(
           (await target.select(target.referenceRates).getSingle()).type,
           type.name,
@@ -949,19 +968,27 @@ void main() {
       await f.service.runDue(DateTime(2026, 1, 5));
       final snapshot = await DriftBackupGateway(f.db).readSnapshot();
       final tables = <String, Iterable<BackupJson>>{...snapshot.tables};
+      final configuration = snapshot
+          .rows('installment_repricing_configs')
+          .single;
+      tables.remove('installment_repricing_configs');
+      tables.remove('installment_interest_adjustments');
       tables['installment_stage_configs'] = [
         for (final row in snapshot.rows('installment_stage_configs'))
           {
             ...row,
-            'lprTenor': row['referenceRateType'] == null
-                ? null
-                : 'fiveYearPlus',
+            'lprTenor': 'fiveYearPlus',
+            'spreadBp': configuration['spreadBp'],
+            'firstResetDate': configuration['firstResetDate'],
+            'firstEffectiveDate': configuration['firstEffectiveDate'],
+            'repricingCycleMonths': configuration['cycleMonths'],
           }..remove('referenceRateType'),
       ];
       tables['installment_repricing_records'] = [
         for (final row in snapshot.rows('installment_repricing_records'))
           {
               ...row,
+              'stageId': 'stage',
               'applied': true,
               'tenor': 'fiveYearPlus',
               'quoteDate': row['referenceRateDate'],
@@ -983,9 +1010,14 @@ void main() {
         target,
       ).findContract('loan'))!;
       expect(
-        restored.stageTerms.repayments.single.rateChanges.single.rate.ppm,
-        36000,
+        restored.repricingConfigurations.single.rule.referenceRateType,
+        ReferenceRateType.lprFiveYearPlus,
       );
+      expect(
+        restored.repricingConfigurations.single.lastGeneratedDate,
+        DateTime.utc(2026, 1, 1),
+      );
+      expect(restored.repricings.single.change.rate.ppm, 36000);
       expect(
         (await target.select(target.installmentRepricingRecords).getSingle())
             .status,
@@ -1059,9 +1091,7 @@ void main() {
       );
       expect(after.first.expectedInterest.minorUnits, 28000);
       expect(
-        (await f.installments.findContract(
-          'loan',
-        ))!.stageTerms.repayments.single.rateChanges,
+        (await f.installments.findContract('loan'))!.repricings,
         hasLength(1),
       );
       expect(await f.service.runDue(DateTime(2026, 1, 6)), (
@@ -1073,7 +1103,7 @@ void main() {
   );
 
   test(
-    'automatic repricing uses the latest repayment status and plan amounts',
+    'automatic repricing rebuilds all amounts and repairs stale status from repayment facts',
     () async {
       final rows = await f.installments.listSchedules('loan');
       rows.last.manuallyAdjusted = true;
@@ -1097,16 +1127,17 @@ void main() {
       ));
       expect((await f.records.list('loan')).single.applied, isTrue);
       final saved = await f.installments.listSchedules('loan');
-      expect(saved.first.status, InstallmentScheduleStatus.paid);
-      expect(saved.first.expectedInterest.minorUnits, 500);
+      expect(saved.first.status, InstallmentScheduleStatus.pending);
+      expect(saved.first.expectedInterest.minorUnits, 28000);
       expect(saved.last.expectedInterest.minorUnits, isNot(99));
     },
   );
 
   test(
-    'late repricing automatically revises pending tail and freezes paid prefix',
+    'late repricing recalculates paid periods while preserving actual repayment references',
     () async {
       final rows = await f.installments.listSchedules('loan');
+      await f.pay(rows.first, 'loan');
       rows.first.markPaid();
       await f.installments.saveAggregate(
         (await f.installments.findContract('loan'))!,
@@ -1117,7 +1148,7 @@ void main() {
       final saved = await f.installments.listSchedules('loan');
       expect(saved.first.status, InstallmentScheduleStatus.paid);
       expect(saved.first.expectedPrincipal, rows.first.expectedPrincipal);
-      expect(saved.first.expectedInterest, rows.first.expectedInterest);
+      expect(saved.first.expectedInterest.minorUnits, 28000);
       expect(saved.last.expectedInterest, isNot(rows.last.expectedInterest));
     },
   );
@@ -1194,21 +1225,29 @@ void main() {
     () async {
       await f.service.runDue(DateTime(2026, 1, 5));
       final contract = (await f.installments.findContract('loan'))!;
-      final rows = await f.installments.listSchedules('loan');
       // From an 80000 contract, reducing principal by 20000 means both rate segments use 60000.
       final updates = const InstallmentPlanEngine()
-          .recalculate(
-            InstallmentPlanContext.fromContract(
-              contract: contract,
-              schedules: rows,
-              prepaymentPrincipal: Money(minorUnits: 2000000),
+          .generate(
+            contract.stageTerms.planTerms(
+              contract.principal,
+              contract.borrowingDate,
             ),
-            RecalculateAfterPrepayment(DateTime(2026, 1, 10)),
+            operations: InstallmentPlanOperations(
+              principalReductions: [
+                PrincipalReduction(
+                  date: DateTime(2026, 1, 10),
+                  principal: const Money(minorUnits: 2000000),
+                ),
+              ],
+              rateChangesByStage: {
+                0: [for (final record in contract.repricings) record.change],
+              },
+            ),
           )
-          .recalculatedRows;
-      expect(updates.first.interest.minorUnits, 21000);
+          .entries;
+      expect(updates.first.expectedInterest.minorUnits, 21000);
       expect(
-        updates.fold<int>(0, (sum, r) => sum + r.principal.minorUnits),
+        updates.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits),
         6000000,
       );
     },
@@ -1234,11 +1273,8 @@ void main() {
       expect(BackupDiff.compare(snapshot, snapshot).changedCount, 0);
       await gateway.replaceSnapshot(snapshot);
       final restored = (await f.installments.findContract('loan'))!;
-      expect(restored.stageTerms.repayments.single.floatingRate!.spreadBp, -30);
-      expect(
-        restored.stageTerms.repayments.single.rateChanges.single.rate.ppm,
-        36000,
-      );
+      expect(restored.repricingConfigurations.single.rule.spreadBp, -30);
+      expect(restored.repricings.single.change.rate.ppm, 36000);
       expect(
         (await f.installments.listSchedules(
           'loan',
@@ -1313,6 +1349,7 @@ class _Fixture {
   late final plans = InstallmentPlanService(
     installments: installments,
     repayments: DriftRepaymentRepository(db),
+    bills: DriftBillRepository(db),
     runner: DriftTransactionRunner(db),
     idGenerator: _PlanIds(),
   );
@@ -1365,36 +1402,21 @@ class _Fixture {
             ),
           ],
         );
-    final contract = InstallmentContract(
-      id: id,
-      liabilityAccountId: 'account',
-      sourceType: InstallmentSourceType.disbursement,
-      principal: principal,
-      borrowingDate: borrowingDate ?? DateTime(2025, 12, 20),
-      status: InstallmentContractStatus.active,
-      createdAt: borrowingDate ?? DateTime(2025, 12, 20),
-      stageTerms: terms,
-    );
-    final plan = const InstallmentPlanEngine().generate(
-      terms.planTerms(contract.principal, contract.borrowingDate),
-    );
-    await installments.insertAggregate(contract, [
-      for (final p in plan.entries)
-        InstallmentSchedule(
-          id: id == 'loan'
-              ? 'period-${p.periodNo}'
-              : '$id-period-${p.periodNo}',
+    var period = 0;
+    final aggregate = const InstallmentOriginationService()
+        .originateDisbursement(
           contractId: id,
-          stageId: terms.stages[p.stageIndex].id,
-          periodNo: p.periodNo,
-          expectedRepaymentDate: p.expectedRepaymentDate,
-          expectedPrincipal: p.expectedPrincipal,
-          expectedInterest: p.expectedInterest,
-          expectedFee: p.expectedFee,
-          status: InstallmentScheduleStatus.pending,
-          createdAt: contract.createdAt,
-        ),
-    ]);
+          liabilityAccountId: 'account',
+          createdAt: borrowingDate ?? DateTime(2025, 12, 20),
+          terms: InstallmentOriginationTerms(
+            principal: principal,
+            borrowingDate: borrowingDate ?? DateTime(2025, 12, 20),
+            stageTerms: terms,
+          ),
+          newScheduleId: () =>
+              id == 'loan' ? 'period-${++period}' : '$id-period-${++period}',
+        );
+    await installments.insertAggregate(aggregate.contract, aggregate.schedules);
   }
 
   Future<void> seedRepaymentExample() async {
@@ -1438,11 +1460,62 @@ class _Fixture {
     );
     final rows = await installments.listSchedules('example');
     for (final row in rows.take(3)) {
+      await pay(row, 'example');
       row.markPaid();
     }
     await installments.saveAggregate(
       (await installments.findContract('example'))!,
       rows,
+    );
+  }
+
+  Future<void> pay(InstallmentSchedule row, String contractId) async {
+    final billId = 'bill-${row.id}', itemId = 'item-${row.id}';
+    await db.customStatement(
+      'INSERT INTO bills (id, account_id, period, status) VALUES (?, ?, ?, ?)',
+      [
+        billId,
+        'account',
+        row.expectedRepaymentDate.year * 100 + row.expectedRepaymentDate.month,
+        'billed',
+      ],
+    );
+    await db.customStatement(
+      'INSERT INTO bill_items (id, bill_id, item_type, billing_state, contract_id, schedule_id, '
+      'repayment_date, expected_principal_minor, expected_interest_minor, expected_fee_minor, status) '
+      "VALUES (?, ?, 'installment', 'billed', ?, ?, ?, ?, ?, ?, 'paid')",
+      [
+        itemId,
+        billId,
+        contractId,
+        row.id,
+        row.expectedRepaymentDate.millisecondsSinceEpoch ~/ 1000,
+        row.expectedPrincipal.minorUnits,
+        row.expectedInterest.minorUnits,
+        row.expectedFee.minorUnits,
+      ],
+    );
+    await DriftRepaymentRepository(db).saveRepayment(
+      Repayment(
+        id: 'paid-${row.id}',
+        repaymentType: RepaymentType.bill,
+        targetType: RepaymentTargetType.bill,
+        targetId: billId,
+        repaymentDate: row.expectedRepaymentDate,
+        items: [
+          RepaymentItem(
+            id: 'allocation-${row.id}',
+            repaymentId: 'paid-${row.id}',
+            billItemId: itemId,
+            allocated: RepaymentAmountBreakdown(
+              principal: row.expectedPrincipal,
+              interest: row.expectedInterest,
+              fee: row.expectedFee,
+              discount: Money.zero(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1472,7 +1545,7 @@ class _Fixture {
       );
       await plans.applyAutomaticChange(
         'example',
-        RecalculateAfterPrepayment(date),
+        const RecalculateFromOperations(),
       );
     });
   }

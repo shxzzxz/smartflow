@@ -13,7 +13,7 @@ import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/domain/credit/entity/installment_product.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
-import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/valobj/equal_installment_amount.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
@@ -198,31 +198,46 @@ void main() {
       final schedules = await contracts.listSchedules('loan');
       expect(schedules.map((s) => s.stageId), ['c2', 'c2', 'c3', 'c3']);
       final before = const InstallmentPlanEngine()
-          .recalculate(
-            InstallmentPlanContext.fromContract(
-              contract: loaded,
-              schedules: schedules,
-              prepaymentPrincipal: Money(minorUnits: 1000),
+          .generate(
+            loaded.stageTerms.planTerms(loaded.principal, loaded.borrowingDate),
+            operations: InstallmentPlanOperations(
+              principalReductions: [
+                PrincipalReduction(
+                  date: loaded.borrowingDate,
+                  principal: const Money(minorUnits: 1000),
+                ),
+              ],
             ),
-            RecalculateAfterPrepayment(loaded.borrowingDate),
           )
-          .recalculatedRows;
+          .entries;
       final gateway = DriftBackupGateway(db);
       final snapshot = await gateway.readSnapshot();
       await gateway.replaceSnapshot(snapshot);
       final restored = (await contracts.findContract('loan'))!;
       final after = const InstallmentPlanEngine()
-          .recalculate(
-            InstallmentPlanContext.fromContract(
-              contract: restored,
-              schedules: await contracts.listSchedules('loan'),
-              prepaymentPrincipal: Money(minorUnits: 1000),
+          .generate(
+            restored.stageTerms.planTerms(
+              restored.principal,
+              restored.borrowingDate,
             ),
-            RecalculateAfterPrepayment(restored.borrowingDate),
+            operations: InstallmentPlanOperations(
+              principalReductions: [
+                PrincipalReduction(
+                  date: restored.borrowingDate,
+                  principal: const Money(minorUnits: 1000),
+                ),
+              ],
+            ),
           )
-          .recalculatedRows;
-      expect(after.map((r) => r.principal), before.map((r) => r.principal));
-      expect(after.map((r) => r.interest), before.map((r) => r.interest));
+          .entries;
+      expect(
+        after.map((r) => r.expectedPrincipal),
+        before.map((r) => r.expectedPrincipal),
+      );
+      expect(
+        after.map((r) => r.expectedInterest),
+        before.map((r) => r.expectedInterest),
+      );
       expect(restored.productName, '原产品');
       expect(restored.name, '保留的合同名称');
     },

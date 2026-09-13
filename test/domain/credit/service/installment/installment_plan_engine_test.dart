@@ -6,45 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 
 void main() {
-  group('InstallmentPlanEngine.generateDates', () {
-    test('totalPeriods=1 时返回末期日', () {
-      final dates = _dates(
-        firstRepaymentDate: DateTime(2026, 2, 10),
-        lastRepaymentDate: DateTime(2026, 12, 10),
-        totalPeriods: 1,
-      );
-      expect(dates, [DateTime(2026, 12, 10)]);
-    });
-
-    test('中间期 = 首期 + (i-1) 月，末期为末期还款日', () {
-      final dates = _dates(
-        firstRepaymentDate: DateTime(2026, 1, 15),
-        lastRepaymentDate: DateTime(2026, 12, 20),
-        totalPeriods: 12,
-      );
-      expect(dates.first, DateTime(2026, 1, 15));
-      expect(dates.last, DateTime(2026, 12, 20));
-      // 中间期日期都是 15 号
-      for (var i = 1; i < dates.length - 1; i++) {
-        expect(dates[i].day, 15);
-      }
-      expect(dates, hasLength(12));
-    });
-
-    test('期数 <= 0 抛错', () {
-      expect(
-        () => _dates(
-          firstRepaymentDate: DateTime(2026, 1, 1),
-          lastRepaymentDate: DateTime(2026, 6, 1),
-          totalPeriods: 0,
-        ),
-        throwsArgumentError,
-      );
-    });
-  });
-
   group('InstallmentPlanEngine.generate (整体)', () {
     test('equalInstallment：本金累计等于合同本金', () {
       final drafts = _generate(
@@ -144,7 +108,7 @@ void main() {
       expect(feeSum, 36000);
     });
 
-    test('custom 返回 N 个全零草稿，日期由 generateDates 决定', () {
+    test('custom 按阶段日期生成全零草稿', () {
       final drafts = _generate(
         principal: const Money(minorUnits: 9999),
         borrowingDate: DateTime(2025, 12, 15),
@@ -287,12 +251,12 @@ void main() {
     });
   });
 
-  group('InstallmentPlanEngine.allocate (按 dates 重算)', () {
-    test('给定 anchor + dates 分配等额本金', () {
-      final allocs = _allocate(
-        remainingPrincipal: const Money(minorUnits: 600000),
-        anchorDate: DateTime(2026, 3, 10),
-        pendingDates: [
+  group('InstallmentPlanEngine.generate with explicit dates', () {
+    test('按借款日和明确期次日期分配等额本金', () {
+      final allocs = _generateWithExplicitDates(
+        principal: const Money(minorUnits: 600000),
+        borrowingDate: DateTime(2026, 3, 10),
+        dates: [
           DateTime(2026, 4, 10),
           DateTime(2026, 5, 10),
           DateTime(2026, 6, 10),
@@ -302,21 +266,24 @@ void main() {
         ratePeriod: InterestRatePeriod.monthly,
         ratePpm: 5000,
       );
-      final sum = allocs.fold<int>(0, (acc, a) => acc + a.principal.minorUnits);
+      final sum = allocs.fold<int>(
+        0,
+        (acc, a) => acc + a.expectedPrincipal.minorUnits,
+      );
       expect(sum, 600000);
       expect(allocs, hasLength(3));
     });
 
-    test('pendingDates 为空抛错', () {
+    test('期次日期为空时拒绝生成计划', () {
       expect(
-        () => _allocate(
-          remainingPrincipal: const Money(minorUnits: 1000),
-          anchorDate: DateTime(2026, 1, 1),
-          pendingDates: const [],
+        () => _generateWithExplicitDates(
+          principal: const Money(minorUnits: 1000),
+          borrowingDate: DateTime(2026, 1, 1),
+          dates: const [],
           method: InstallmentRepaymentMethod.equalPrincipal,
           accrualMethod: InterestAccrualMethod.daily,
         ),
-        throwsArgumentError,
+        throwsA(isA<BusinessException>()),
       );
     });
 
@@ -332,10 +299,10 @@ void main() {
       //           principal = 3417 - 67 = 3350; new balance = 3383
       // Period 3 (last): principal = 10000 - 3267 - 3350 = 3383
       //                  interest = round(3383·0.01·30/30) = 34
-      final allocs = _allocate(
-        remainingPrincipal: const Money(minorUnits: 10000),
-        anchorDate: DateTime(2026, 1, 1),
-        pendingDates: [
+      final allocs = _generateWithExplicitDates(
+        principal: const Money(minorUnits: 10000),
+        borrowingDate: DateTime(2026, 1, 1),
+        dates: [
           DateTime(2026, 2, 15), // +45 days
           DateTime(2026, 3, 17), // +30 days
           DateTime(2026, 4, 16), // +30 days
@@ -345,36 +312,36 @@ void main() {
         ratePeriod: InterestRatePeriod.monthly,
         ratePpm: 10000,
       );
-      expect(allocs[0].interest.minorUnits, 150);
-      expect(allocs[0].principal.minorUnits, 3267);
-      expect(allocs[1].interest.minorUnits, 67);
-      expect(allocs[1].principal.minorUnits, 3350);
-      expect(allocs[2].principal.minorUnits, 3383);
+      expect(allocs[0].expectedInterest.minorUnits, 150);
+      expect(allocs[0].expectedPrincipal.minorUnits, 3267);
+      expect(allocs[1].expectedInterest.minorUnits, 67);
+      expect(allocs[1].expectedPrincipal.minorUnits, 3350);
+      expect(allocs[2].expectedPrincipal.minorUnits, 3383);
       final principalSum = allocs.fold<int>(
         0,
-        (a, x) => a + x.principal.minorUnits,
+        (a, x) => a + x.expectedPrincipal.minorUnits,
       );
       expect(principalSum, 10000);
     });
 
     test('daily + equalInstallment 退化：所有期 30 天时数值与 monthly 一致', () {
-      final anchor = DateTime(2026, 1, 1);
+      final borrowingDate = DateTime(2026, 1, 1);
       final dates = [
-        for (var i = 1; i <= 12; i++) anchor.add(Duration(days: 30 * i)),
+        for (var i = 1; i <= 12; i++) borrowingDate.add(Duration(days: 30 * i)),
       ];
-      final dailyAllocs = _allocate(
-        remainingPrincipal: const Money(minorUnits: 1200000),
-        anchorDate: anchor,
-        pendingDates: dates,
+      final dailyAllocs = _generateWithExplicitDates(
+        principal: const Money(minorUnits: 1200000),
+        borrowingDate: borrowingDate,
+        dates: dates,
         method: InstallmentRepaymentMethod.equalInstallment,
         accrualMethod: InterestAccrualMethod.daily,
         ratePeriod: InterestRatePeriod.monthly,
         ratePpm: 10000,
       );
-      final monthlyAllocs = _allocate(
-        remainingPrincipal: const Money(minorUnits: 1200000),
-        anchorDate: anchor,
-        pendingDates: dates,
+      final monthlyAllocs = _generateWithExplicitDates(
+        principal: const Money(minorUnits: 1200000),
+        borrowingDate: borrowingDate,
+        dates: dates,
         method: InstallmentRepaymentMethod.equalInstallment,
         accrualMethod: InterestAccrualMethod.monthly,
         ratePeriod: InterestRatePeriod.monthly,
@@ -382,29 +349,19 @@ void main() {
       );
       for (var i = 0; i < 12; i++) {
         expect(
-          dailyAllocs[i].principal.minorUnits,
-          monthlyAllocs[i].principal.minorUnits,
+          dailyAllocs[i].expectedPrincipal.minorUnits,
+          monthlyAllocs[i].expectedPrincipal.minorUnits,
           reason: 'period ${i + 1} principal',
         );
         expect(
-          dailyAllocs[i].interest.minorUnits,
-          monthlyAllocs[i].interest.minorUnits,
+          dailyAllocs[i].expectedInterest.minorUnits,
+          monthlyAllocs[i].expectedInterest.minorUnits,
           reason: 'period ${i + 1} interest',
         );
       }
     });
   });
 }
-
-List<DateTime> _dates({
-  required DateTime firstRepaymentDate,
-  required DateTime lastRepaymentDate,
-  required int totalPeriods,
-}) => IntervalRepaymentDates(
-  firstDate: firstRepaymentDate,
-  lastDate: lastRepaymentDate,
-  count: totalPeriods,
-).getDates();
 
 List<InstallmentSchedulePlanEntry> _generate({
   required Money principal,
@@ -438,39 +395,28 @@ List<InstallmentSchedulePlanEntry> _generate({
     )
     .entries;
 
-List<({Money principal, Money interest, Money fee})> _allocate({
-  required Money remainingPrincipal,
-  required DateTime anchorDate,
-  required List<DateTime> pendingDates,
+List<InstallmentSchedulePlanEntry> _generateWithExplicitDates({
+  required Money principal,
+  required DateTime borrowingDate,
+  required List<DateTime> dates,
   required InstallmentRepaymentMethod method,
   required InterestAccrualMethod accrualMethod,
   InterestRatePeriod? ratePeriod,
   int? ratePpm,
-  int remainingFeeMinor = 0,
-  int? equalInstallmentOverrideMinor,
-}) => [
-  for (final row
-      in const InstallmentPlanEngine()
-          .generate(
-            _terms(
-              principal: remainingPrincipal,
-              start: anchorDate,
-              dates: ExplicitRepaymentDates(pendingDates),
-              method: method,
-              accrual: accrualMethod,
-              ratePeriod: ratePeriod,
-              ratePpm: ratePpm,
-              fee: remainingFeeMinor,
-              fixed: equalInstallmentOverrideMinor,
-            ),
-          )
-          .entries)
-    (
-      principal: row.expectedPrincipal,
-      interest: row.expectedInterest,
-      fee: row.expectedFee,
-    ),
-];
+}) => const InstallmentPlanEngine()
+    .generate(
+      _terms(
+        principal: principal,
+        start: borrowingDate,
+        dates: ExplicitRepaymentDates(dates),
+        method: method,
+        accrual: accrualMethod,
+        ratePeriod: ratePeriod,
+        ratePpm: ratePpm,
+        fee: 0,
+      ),
+    )
+    .entries;
 
 InstallmentPlanTerms _terms({
   required Money principal,

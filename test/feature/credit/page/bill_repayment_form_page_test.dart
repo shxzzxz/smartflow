@@ -15,6 +15,94 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
+  testWidgets(
+    'missing rows display amounts and must be explicitly removed before save',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 1100));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final service = _FailingRepaymentAppService()
+        ..editView = const BillRepaymentEditView(
+          repaymentId: 'repayment',
+          billId: 'bill',
+          hasTransaction: false,
+          allocations: [
+            BillRepaymentEditAllocation(
+              id: 'missing-1',
+              billItemId: null,
+              allocated: RepaymentAmountDto(
+                principal: Money(minorUnits: 600),
+                interest: Money(minorUnits: 0),
+                fee: Money(minorUnits: 0),
+                discount: Money(minorUnits: 0),
+              ),
+            ),
+            BillRepaymentEditAllocation(
+              id: 'missing-2',
+              billItemId: null,
+              allocated: RepaymentAmountDto(
+                principal: Money(minorUnits: 400),
+                interest: Money(minorUnits: 0),
+                fee: Money(minorUnits: 0),
+                discount: Money(minorUnits: 0),
+              ),
+            ),
+          ],
+        );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            billDetailProvider.overrideWith(
+              (ref, id) async => _billDetailWithTwoConsumptionItems(),
+            ),
+            accountsForSelectionPurposeProvider.overrideWith(
+              (ref, purpose) => Stream.value([
+                _account('cash', AccountType.asset),
+                _account('loan', AccountType.liability),
+              ]),
+            ),
+            repaymentAppServiceProvider.overrideWithValue(service),
+          ],
+          child: const MaterialApp(
+            home: BillRepaymentFormPage.edit(repaymentId: 'repayment'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('无明细'), findsNWidgets(2));
+      expect(find.text('6.00'), findsWidgets);
+      expect(find.text('4.00'), findsWidgets);
+      await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+      expect(find.text('存在无明细分项，请先移除并纠正还款分摊'), findsOneWidget);
+      expect(service.editCommands, isEmpty);
+      for (var i = 0; i < 2; i++) {
+        await tester.ensureVisible(find.text('移除此分项').first);
+        await tester.tap(find.text('移除此分项').first);
+        await tester.pumpAndSettle();
+      }
+      expect(find.text('无明细'), findsNothing);
+      await tester.ensureVisible(find.text('计算分摊'));
+      await tester.tap(find.text('计算分摊'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+      expect(
+        service
+            .editCommands
+            .single
+            .allocations
+            .single
+            .allocated
+            .principal
+            .minorUnits,
+        1000,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('shows allocation review before saving and removes extra rows', (
     tester,
   ) async {
@@ -121,14 +209,13 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pump();
 
-    final state =
-        container
-            .read(
-              billRepaymentFormViewModelProvider(
-                const BillRepaymentFormArgs.create('bill'),
-              ),
-            )
-            .value!;
+    final state = container
+        .read(
+          billRepaymentFormViewModelProvider(
+            const BillRepaymentFormArgs.create('bill'),
+          ),
+        )
+        .value!;
     expect(
       state.manualAllocation('bill-item-1').principal,
       const Money(minorUnits: 3000),
@@ -191,6 +278,20 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
 
 class _FailingRepaymentAppService implements RepaymentAppService {
   final commands = <CreateBillRepaymentCommand>[];
+  final editCommands = <EditBillRepaymentCommand>[];
+  BillRepaymentEditView? editView;
+
+  @override
+  Future<BillRepaymentEditView?> loadBillRepaymentEditView(String id) async =>
+      editView;
+
+  @override
+  Future<CreateRepaymentResult> editBillRepayment(
+    EditBillRepaymentCommand command,
+  ) async {
+    editCommands.add(command);
+    throw Exception('stop after capturing the command');
+  }
 
   @override
   Future<CreateRepaymentResult> createBillRepayment(

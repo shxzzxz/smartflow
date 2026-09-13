@@ -380,6 +380,21 @@ class CreditBillGenerationService {
       ),
       CreditLiabilityAccountKind.loan => await _buildLoanItems(account, bill),
     };
+    final retainedIds = sourceItems.map((item) => item.id).toSet();
+    final removedIds = bill.items
+        .where((item) => !retainedIds.contains(item.id))
+        .map((item) => item.id)
+        .toSet();
+    if (removedIds.isNotEmpty) {
+      for (final repayment in await _repayments.listByTarget(
+        RepaymentTargetType.bill,
+        bill.id,
+      )) {
+        if (repayment.detachBillItems(removedIds)) {
+          await _repayments.updateRepayment(repayment);
+        }
+      }
+    }
     if (bill.status == BillStatus.open && !freezeOpenBill) {
       bill.refreshOpenProjection(sourceItems: sourceItems);
     } else if (bill.status == BillStatus.open) {
@@ -501,7 +516,7 @@ class CreditBillGenerationService {
         if (existingByScheduleId[entry.schedule.id] != null)
           existingByScheduleId[entry.schedule.id]!.id,
     ]);
-    return [
+    final items = [
       for (final (:contract, :schedule) in schedules)
         _itemForSchedule(
           billId: bill.id,
@@ -511,6 +526,7 @@ class CreditBillGenerationService {
           allocated: allocated,
         ),
     ];
+    return items;
   }
 
   BillItem _itemForSchedule({

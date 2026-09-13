@@ -497,6 +497,86 @@ class BackupService {
     _validatePostingBalance(snapshot, accounts);
   }
 
+  static bool _isUtcCalendarDate(Object? value) =>
+      value is int &&
+      value >= -8640000000000000 &&
+      value <= 8640000000000000 &&
+      value % Duration.millisecondsPerDay == 0;
+
+  static bool _isRepricingStage(
+    BackupJson row,
+    Map<String, BackupJson> stages,
+  ) {
+    final stage = stages[row['stageId']];
+    return stage != null &&
+        stage['ownerType'] == 'contract' &&
+        stage['ownerId'] == row['contractId'] &&
+        stage['stageKind'] == 'repayment';
+  }
+
+  static void _validateInstallmentOperations(
+    BackupSnapshot snapshot,
+    Map<String, BackupJson> contracts,
+    Map<String, BackupJson> stages,
+  ) {
+    final configurationDates = <String>{};
+    for (final row in snapshot.rows('installment_repricing_configs')) {
+      _requiredReference(
+        row,
+        'contractId',
+        contracts,
+        'installment_repricing_configs.contractId',
+      );
+      if (!_isRepricingStage(row, stages) ||
+          !_isUtcCalendarDate(row['effectiveFrom']) ||
+          !_isUtcCalendarDate(row['firstResetDate']) ||
+          !_isUtcCalendarDate(row['firstEffectiveDate']) ||
+          (row['firstResetDate'] as int) > (row['firstEffectiveDate'] as int) ||
+          row['spreadBp'] is! int ||
+          !const {3, 6, 12}.contains(row['cycleMonths']) ||
+          (row['lastGeneratedDate'] != null &&
+              (!_isUtcCalendarDate(row['lastGeneratedDate']) ||
+                  (row['lastGeneratedDate'] as int) <
+                      (row['effectiveFrom'] as int))) ||
+          !ReferenceRateType.values.any(
+            (type) => type.name == row['referenceRateType'],
+          ) ||
+          !configurationDates.add(
+            '${row['contractId']}:${row['stageId']}:${row['effectiveFrom']}',
+          )) {
+        throw const BackupValidationException('阶段重定价配置无效或生效日重复');
+      }
+    }
+    final adjustments = <String, List<BackupJson>>{};
+    for (final row in snapshot.rows('installment_interest_adjustments')) {
+      _requiredReference(
+        row,
+        'contractId',
+        contracts,
+        'installment_interest_adjustments.contractId',
+      );
+      if (!_isUtcCalendarDate(row['startDate']) ||
+          !_isUtcCalendarDate(row['endDate']) ||
+          row['ratioPpm'] is! int ||
+          (row['startDate'] as int) >= (row['endDate'] as int) ||
+          (row['ratioPpm'] as int) < 0) {
+        throw const BackupValidationException('合同利息调整区间或比例无效');
+      }
+      adjustments.putIfAbsent(row['contractId'] as String, () => []).add(row);
+    }
+    for (final values in adjustments.values) {
+      values.sort(
+        (a, b) => (a['startDate'] as int).compareTo(b['startDate'] as int),
+      );
+      for (var i = 1; i < values.length; i++) {
+        if ((values[i]['startDate'] as int) <
+            (values[i - 1]['endDate'] as int)) {
+          throw const BackupValidationException('同一合同的利息调整区间不能重叠');
+        }
+      }
+    }
+  }
+
   static void _validateInstallmentStages(
     BackupSnapshot snapshot,
     Map<String, BackupJson> contracts,
@@ -520,6 +600,19 @@ class BackupService {
       'repricingCycleMonths',
       'repricingPaymentTiming',
     ];
+    _validateInstallmentOperations(snapshot, contracts, stages);
+    final stagesByOwner = <String, List<BackupJson>>{};
+    for (final stage in stages.values) {
+      stagesByOwner
+          .putIfAbsent('${stage['ownerType']}:${stage['ownerId']}', () => [])
+          .add(stage);
+    }
+    for (final values in stagesByOwner.values) {
+      if (values.any((row) => row['repaymentMethod'] == 'custom') &&
+          values.any((row) => row['repaymentMethod'] != 'custom')) {
+        throw const BackupValidationException('自定义阶段不能与其他阶段混用');
+      }
+    }
     final positions = <String>{};
     final resetKeys = <String>{};
     final referenceRateKeys = {
@@ -527,22 +620,18 @@ class BackupService {
         '${rate['rateDate']}:${rate['type']}',
     };
     for (final row in snapshot.rows('installment_repricing_records')) {
-      final stage = stages[row['stageId']];
       if (!const {
             'pending',
             'applied',
             'userConfirmed',
           }.contains(row['status']) ||
           !contracts.containsKey(row['contractId']) ||
-          stage == null ||
-          stage['ownerType'] != 'contract' ||
-          stage['ownerId'] != row['contractId'] ||
-          stage['referenceRateType'] != row['referenceRateType'] ||
+          !_isRepricingStage(row, stages) ||
           !referenceRateKeys.contains(
             '${row['referenceRateDate']}:${row['referenceRateType']}',
           ) ||
-          row['resetDate'] is! int ||
-          row['effectiveDate'] is! int ||
+          !_isUtcCalendarDate(row['resetDate']) ||
+          !_isUtcCalendarDate(row['effectiveDate']) ||
           row['referenceRateDate'] is! int ||
           (row['referenceRateDate'] as int) > (row['resetDate'] as int) ||
           (row['resetDate'] as int) > (row['effectiveDate'] as int) ||
@@ -552,9 +641,9 @@ class BackupService {
           (row['referenceRatePpm'] as int) + (row['spreadBp'] as int) * 100 <
               0 ||
           !resetKeys.add(
-            '${row['contractId']}:${row['stageId']}:${row['resetDate']}',
+            '${row['contractId']}:${row['stageId']}:${row['effectiveDate']}',
           )) {
-        throw const BackupValidationException('重定价结果的合同、阶段或日期归属无效');
+        throw const BackupValidationException('重定价结果的合同、阶段或生效日期无效');
       }
     }
     if (stages.length != snapshot.rows('installment_stage_configs').length ||
@@ -583,37 +672,21 @@ class BackupService {
     }
     for (final row in stages.values) {
       final owner = row['ownerType'];
-      const floatingFields = [
+      if (const [
         'referenceRateType',
         'spreadBp',
         'firstResetDate',
         'firstEffectiveDate',
         'repricingCycleMonths',
-        'repricingPaymentTiming',
-      ];
-      if (floatingFields.any((f) => row[f] != null)) {
-        if (owner != 'contract' ||
-            row['stageKind'] != 'repayment' ||
-            floatingFields.any((f) => row[f] == null) ||
-            !ReferenceRateType.values
-                .map((type) => type.name)
-                .contains(row['referenceRateType']) ||
-            row['spreadBp'] is! int ||
-            !const {3, 6, 12}.contains(row['repricingCycleMonths']) ||
-            row['firstResetDate'] is! int ||
-            row['firstEffectiveDate'] is! int ||
-            (row['firstResetDate'] as int) >
-                (row['firstEffectiveDate'] as int) ||
-            !const {
-              'nextPeriod',
-              'currentPeriod',
-            }.contains(row['repricingPaymentTiming']) ||
-            row['ratePeriod'] != 'annual' ||
-            row['ratePpm'] is! int ||
-            const {'flatFee', 'custom'}.contains(row['repaymentMethod']) ||
-            row['amountAlgorithm'] == 'fixed') {
-          throw const BackupValidationException('浮动利率条款无效或不完整');
-        }
+      ].any((field) => row[field] != null)) {
+        throw const BackupValidationException('重定价配置必须归属合同配置历史');
+      }
+      if (row['repricingPaymentTiming'] != null &&
+          !const {
+            'nextPeriod',
+            'currentPeriod',
+          }.contains(row['repricingPaymentTiming'])) {
+        throw const BackupValidationException('固定额重算时点无效');
       }
       if (owner != 'product' && owner != 'contract') {
         throw const BackupValidationException('阶段归属类型无效');

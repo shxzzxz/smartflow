@@ -81,7 +81,7 @@ class LoanPrepaymentSimulation {
     this.isRateProjection = false,
   });
 
-  /// 锚点前沿用原计划、锚点后按剩余本金重算的完整计划。
+  /// 按完整条款及日期化本金扣减重新计算的计划。
   final List<LoanCalculationPeriod> periods;
   final List<LoanCalculationStage> stages;
   final Money prepaymentPrincipal;
@@ -91,10 +91,10 @@ class LoanPrepaymentSimulation {
   /// 与原计划相比节省的利息。
   final Money interestSaved;
 
-  /// 第一个被重算的期次；提前还款把剩余本金全部结清且尾部为空时为空。
+  /// 第一个被本金扣减影响的计息期次。
   final int? firstRecalculatedPeriodNo;
 
-  /// 试算输入中从第 1 期起已还清的期数。
+  /// 用于展示试算背景，不冻结计算范围。
   final int paidPeriods;
 
   /// 提前还款前的计划息费，用于结果概览。

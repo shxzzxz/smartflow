@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rational/rational.dart';
-import 'package:smartflow/domain/credit/service/installment/interest_accrual_policy.dart';
+import 'package:smartflow/domain/credit/service/installment/calculator/interest_accrual_policy.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';

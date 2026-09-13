@@ -4,6 +4,9 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
+import '../../../domain/credit/entity/installment_repricing.dart';
+import '../../../domain/credit/valobj/installment_enums.dart';
+import '../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/port/installment_repository.dart';
 import '../../database/app_database.dart';
@@ -102,6 +105,17 @@ class DriftInstallmentRepository implements InstallmentRepository {
       _database.transaction(() => _insertContract(contract));
 
   Future<void> _insertContract(InstallmentContract contract) async {
+    final stageIds = {
+      for (final stage in contract.stageTerms.stages)
+        if (stage.terms is AmortizingStage) stage.id,
+    };
+    for (final config in contract.repricingConfigurations) {
+      config.validate();
+      if (config.contractId != contract.id ||
+          !stageIds.contains(config.stageId)) {
+        throw BusinessException(CreditErrorCode.contractInvalidCommand);
+      }
+    }
     final now = DateTime.now();
     await _database
         .into(_database.installmentContracts)
@@ -132,9 +146,30 @@ class DriftInstallmentRepository implements InstallmentRepository {
           ),
         );
     await _saveStages(contract);
+    for (final configuration in contract.repricingConfigurations) {
+      await _database
+          .into(_database.installmentRepricingConfigs)
+          .insert(encodeRepricingConfiguration(configuration));
+    }
   }
 
   Future<void> _saveStages(InstallmentContract contract) async {
+    final retained = [
+      for (final stage in contract.stageTerms.stages)
+        if (stage.terms is AmortizingStage) stage.id,
+    ];
+    await (_database.delete(_database.installmentRepricingConfigs)..where(
+          (row) =>
+              row.contractId.equals(contract.id) &
+              row.stageId.isNotIn(retained),
+        ))
+        .go();
+    await (_database.delete(_database.installmentRepricingRecords)..where(
+          (row) =>
+              row.contractId.equals(contract.id) &
+              row.stageId.isNotIn(retained),
+        ))
+        .go();
     await (_database.delete(_database.installmentStageConfigs)..where(
           (r) => r.ownerType.equals('contract') & r.ownerId.equals(contract.id),
         ))
@@ -209,6 +244,12 @@ class DriftInstallmentRepository implements InstallmentRepository {
   @override
   Future<void> deleteContract(String contractId) async {
     await (_database.delete(
+      _database.installmentRepricingConfigs,
+    )..where((row) => row.contractId.equals(contractId))).go();
+    await (_database.delete(
+      _database.installmentInterestAdjustments,
+    )..where((row) => row.contractId.equals(contractId))).go();
+    await (_database.delete(
       _database.installmentRepricingRecords,
     )..where((r) => r.contractId.equals(contractId))).go();
     await (_database.delete(
@@ -272,11 +313,44 @@ class DriftInstallmentRepository implements InstallmentRepository {
       status: row.status,
       note: row.note,
       createdAt: row.createdAt,
+      repricingConfigurations: [
+        for (final config
+            in await (_database.select(_database.installmentRepricingConfigs)
+                  ..where((config) => config.contractId.equals(row.id))
+                  ..orderBy([
+                    (config) => OrderingTerm.asc(config.effectiveFrom),
+                  ]))
+                .get())
+          decodeRepricingConfiguration(config),
+      ],
+      repricings: [
+        for (final record
+            in await (_database.select(_database.installmentRepricingRecords)
+                  ..where((record) => record.contractId.equals(row.id))
+                  ..orderBy([
+                    (record) => OrderingTerm.asc(record.effectiveDate),
+                  ]))
+                .get())
+          InstallmentRepricing(
+            id: record.id,
+            contractId: record.contractId,
+            stageId: record.stageId,
+            change: decodeRateChange(record),
+            status: InstallmentRepricingStatus.values.byName(record.status),
+          ),
+      ],
+      interestAdjustments: [
+        for (final adjustment
+            in await (_database.select(_database.installmentInterestAdjustments)
+                  ..where((adjustment) => adjustment.contractId.equals(row.id))
+                  ..orderBy([
+                    (adjustment) => OrderingTerm.asc(adjustment.startDate),
+                  ]))
+                .get())
+          decodeInterestAdjustment(adjustment),
+      ],
       stageTerms: decodeContractTerms(
         stages,
-        repricings: await (_database.select(
-          _database.installmentRepricingRecords,
-        )..where((r) => r.contractId.equals(row.id))).get(),
         dayCount: row.dayCount,
         rounding: row.rounding,
       ),

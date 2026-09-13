@@ -270,7 +270,7 @@ void main() {
               ],
             ),
           ),
-          throwsA(_invalidCommand(contains('end principal'))),
+          throwsA(_invalidCommand(contains('期末本金'))),
         );
       },
     );
@@ -325,7 +325,7 @@ void main() {
             ],
           ),
         ),
-        throwsA(_invalidCommand(contains('strictly increasing'))),
+        throwsA(_invalidCommand(contains('严格递增'))),
       );
     });
 
@@ -345,7 +345,7 @@ void main() {
             ],
           ),
         ),
-        throwsA(_invalidCommand(contains('strictly increasing'))),
+        throwsA(_invalidCommand(contains('严格递增'))),
       );
     });
 
@@ -364,7 +364,7 @@ void main() {
             ],
           ),
         ),
-        throwsA(_invalidCommand(contains('principal'))),
+        throwsA(_invalidCommand(contains('本金'))),
       );
     });
 
@@ -398,7 +398,7 @@ void main() {
             stages: [DefermentStage(until: DateTime(2026, 6, 1))],
           ),
         ),
-        throwsA(_invalidCommand(contains('amortizing stage'))),
+        throwsA(_invalidCommand(contains('还款阶段'))),
       );
     });
   });
@@ -516,7 +516,7 @@ void main() {
       );
     }
 
-    test('actual rate discounting keeps the existing behaviour', () {
+    test('actual rate discounting uses the dated interest factors', () {
       final plan = planWith(const EqualInstallmentAmount.actualRate());
       expect(
         plan.stages.single.installmentAmount,

@@ -9,6 +9,8 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 import '../../valobj/installment_contract_terms.dart';
+import '../../entity/installment_repricing_configuration.dart';
+import '../../valobj/installment_plan_terms.dart';
 
 class InstallmentOriginationTerms {
   const InstallmentOriginationTerms({
@@ -152,6 +154,11 @@ class InstallmentOriginationService {
       note: terms.note,
       createdAt: createdAt,
       stageTerms: stageTerms,
+      repricingConfigurations: _initialRepricingConfigurations(
+        contractId,
+        stageTerms,
+        terms.borrowingDate,
+      ),
     );
     return InstallmentOriginationResult(
       contract: contract,
@@ -163,5 +170,34 @@ class InstallmentOriginationService {
         stageIdsByPeriod: stageIdsByPeriod,
       ),
     );
+  }
+
+  List<InstallmentRepricingConfiguration> _initialRepricingConfigurations(
+    String contractId,
+    InstallmentContractTerms terms,
+    DateTime borrowingDate,
+  ) {
+    var start = borrowingDate;
+    final result = <InstallmentRepricingConfiguration>[];
+    for (final config in terms.stages) {
+      switch (config.terms) {
+        case DefermentStage(:final until):
+          start = until;
+        case final AmortizingStage stage:
+          if (stage.floatingRate case final rule?) {
+            result.add(
+              InstallmentRepricingConfiguration(
+                id: '${config.id}:repricing',
+                contractId: contractId,
+                stageId: config.id,
+                effectiveFrom: stage.accrualStartDate ?? start,
+                rule: rule,
+              ),
+            );
+          }
+          start = stage.dates.getDates().last;
+      }
+    }
+    return List.unmodifiable(result);
   }
 }

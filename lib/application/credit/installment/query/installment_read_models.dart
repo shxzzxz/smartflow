@@ -2,6 +2,8 @@ import '../../../../core/money/money.dart';
 import '../../../../core/time/date_label.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
+import '../../../../domain/credit/valobj/floating_rate.dart';
+import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 
 class InstallmentContractReadModel {
   const InstallmentContractReadModel({
@@ -22,6 +24,9 @@ class InstallmentContractReadModel {
     this.productName,
     this.customRules = false,
     this.unconfirmedRepricingIds = const [],
+    this.repricingConfigurations = const [],
+    this.repricings = const [],
+    this.interestAdjustments = const [],
   }) : _name = name;
 
   final String id;
@@ -42,10 +47,49 @@ class InstallmentContractReadModel {
   final String? productName;
   final bool customRules;
   final List<String> unconfirmedRepricingIds;
+  final List<InstallmentRepricingConfigurationReadModel>
+  repricingConfigurations;
+  final List<InstallmentRepricingReadModel> repricings;
+  final List<InstallmentInterestAdjustmentReadModel> interestAdjustments;
   int get totalPeriods => stageTerms.totalPeriods;
   DateTime get firstRepaymentDate => stageTerms.firstDate;
   DateTime get lastRepaymentDate => stageTerms.lastDate;
   int get totalFeeMinor => stageTerms.totalFeeMinor;
+}
+
+class InstallmentRepricingConfigurationReadModel {
+  const InstallmentRepricingConfigurationReadModel({
+    required this.id,
+    required this.stageId,
+    required this.effectiveFrom,
+    required this.rule,
+  });
+  final String id;
+  final DateTime effectiveFrom;
+  final FloatingRateRule rule;
+  final String stageId;
+}
+
+class InstallmentRepricingReadModel {
+  const InstallmentRepricingReadModel({
+    required this.id,
+    required this.stageId,
+    required this.change,
+    required this.status,
+  });
+  final String id;
+  final RateChange change;
+  final String stageId;
+  final InstallmentRepricingStatus status;
+}
+
+class InstallmentInterestAdjustmentReadModel {
+  const InstallmentInterestAdjustmentReadModel({
+    required this.id,
+    required this.adjustment,
+  });
+  final String id;
+  final InterestAdjustment adjustment;
 }
 
 class InstallmentScheduleReadModel {

@@ -24,6 +24,8 @@ import 'table/credit/installment_stage_configs.dart';
 import 'table/credit/installment_schedules.dart';
 import 'table/credit/reference_rates.dart';
 import 'table/credit/installment_repricing_records.dart';
+import 'table/credit/installment_repricing_configs.dart';
+import 'table/credit/installment_interest_adjustments.dart';
 import 'table/credit/repayment_items.dart';
 import 'table/credit/repayments.dart';
 import 'table/ledger/transaction_lines.dart';
@@ -57,6 +59,8 @@ part 'app_database.g.dart';
     InstallmentSchedules,
     ReferenceRates,
     InstallmentRepricingRecords,
+    InstallmentRepricingConfigs,
+    InstallmentInterestAdjustments,
     Repayments,
     RepaymentItems,
     ImportEntityMappings,
@@ -68,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 39;
+  int get schemaVersion => 41;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

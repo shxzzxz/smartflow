@@ -1,5 +1,7 @@
 import 'backup_models.dart';
 import '../../../core/time/date_label.dart';
+import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
 
 /// 旧快照只在导入入口升级；当前合同行不包含阶段参数。
 void migrateInstallmentBackup(
@@ -124,6 +126,214 @@ void migrateInstallmentBackup(
           ..remove('applied'),
     ];
   }
+  if (schemaVersion < 40) _migrateContractOperations(tables);
+  if (schemaVersion < 41) _migrateRepricingStageScope(tables);
+}
+
+void _migrateContractOperations(Map<String, Iterable<BackupJson>> tables) {
+  final configurations = <BackupJson>[];
+  final stages = (tables['installment_stage_configs'] ?? []).toList();
+  for (final contract in tables['installment_contracts'] ?? <BackupJson>[]) {
+    if (!stages.any(
+      (stage) =>
+          stage['ownerType'] == 'contract' &&
+          stage['ownerId'] == contract['id'] &&
+          stage['referenceRateType'] != null,
+    )) {
+      continue;
+    }
+    var start = _backupDate(contract, 'borrowingDate');
+    final owned =
+        stages
+            .where(
+              (stage) =>
+                  stage['ownerType'] == 'contract' &&
+                  stage['ownerId'] == contract['id'],
+            )
+            .toList()
+          ..sort(
+            (a, b) => (a['position'] as int).compareTo(b['position'] as int),
+          );
+    for (final stage in owned) {
+      if (stage['stageKind'] == 'deferment') {
+        start = _backupDate(stage, 'untilDate');
+        continue;
+      }
+      if (stage['referenceRateType'] != null) {
+        configurations.add({
+          'id': '${stage['id']}:repricing',
+          'contractId': contract['id'],
+          'stageId': stage['id'],
+          'effectiveFrom': referenceDate(
+            stage['accrualStartDate'] == null
+                ? start
+                : _backupDate(stage, 'accrualStartDate'),
+          ).millisecondsSinceEpoch,
+          'referenceRateType': stage['referenceRateType'],
+          'spreadBp': stage['spreadBp'],
+          'firstResetDate': referenceDate(
+            _backupDate(stage, 'firstResetDate'),
+          ).millisecondsSinceEpoch,
+          'firstEffectiveDate': referenceDate(
+            _backupDate(stage, 'firstEffectiveDate'),
+          ).millisecondsSinceEpoch,
+          'cycleMonths': stage['repricingCycleMonths'],
+          'createdAt': stage['createdAt'] ?? contract['createdAt'],
+        });
+      }
+      start = IntervalRepaymentDates(
+        firstDate: _backupDate(stage, 'firstDate'),
+        count: stage['periods'] as int,
+        lastDate: stage['lastDate'] == null
+            ? null
+            : _backupDate(stage, 'lastDate'),
+        intervalMonths: stage['intervalMonths'] as int? ?? 1,
+      ).getDates().last;
+    }
+  }
+  tables['installment_repricing_configs'] = configurations;
+  tables['installment_interest_adjustments'] = [];
+  tables['installment_stage_configs'] = [
+    for (final stage in stages)
+      if (stage['referenceRateType'] != null)
+        {
+          ...stage,
+          'referenceRateType': null,
+          'spreadBp': null,
+          'firstResetDate': null,
+          'firstEffectiveDate': null,
+          'repricingCycleMonths': null,
+        }
+      else
+        stage,
+  ];
+  final records = <String, BackupJson>{};
+  final originals =
+      (tables['installment_repricing_records'] ?? <BackupJson>[]).toList()
+        ..sort((a, b) => '${a['id']}'.compareTo('${b['id']}'));
+  const ranks = {'pending': 0, 'applied': 1, 'userConfirmed': 2};
+  for (final original in originals) {
+    final row = {...original};
+    final key =
+        '${row['contractId']}:${row['stageId']}:${row['effectiveDate']}';
+    final previous = records[key];
+    if (previous != null &&
+        const [
+          'resetDate',
+          'referenceRateDate',
+          'referenceRateType',
+          'referenceRatePpm',
+          'spreadBp',
+          'source',
+        ].any((field) => row[field] != previous[field])) {
+      throw const BackupValidationException('同一合同同一阶段同一生效日存在冲突的旧重定价快照');
+    }
+    if (previous == null ||
+        (ranks[row['status']] ?? 0) > (ranks[previous['status']] ?? 0)) {
+      records[key] = row;
+    }
+  }
+  tables['installment_repricing_records'] = records.values.toList();
+  for (final config in configurations) {
+    final next = configurations.where(
+      (value) =>
+          value['contractId'] == config['contractId'] &&
+          value['stageId'] == config['stageId'] &&
+          (value['effectiveFrom'] as int) > (config['effectiveFrom'] as int),
+    );
+    final dates =
+        records.values
+            .where(
+              (record) =>
+                  record['contractId'] == config['contractId'] &&
+                  record['stageId'] == config['stageId'] &&
+                  (record['effectiveDate'] as int) >=
+                      (config['effectiveFrom'] as int) &&
+                  next.every(
+                    (value) =>
+                        (record['effectiveDate'] as int) <
+                        (value['effectiveFrom'] as int),
+                  ),
+            )
+            .map((record) => record['effectiveDate'] as int)
+            .toList()
+          ..sort();
+    config['lastGeneratedDate'] = dates.lastOrNull;
+  }
+}
+
+void _migrateRepricingStageScope(Map<String, Iterable<BackupJson>> tables) {
+  final contracts = {
+    for (final row in tables['installment_contracts'] ?? <BackupJson>[])
+      row['id']: row,
+  };
+  final stages = (tables['installment_stage_configs'] ?? <BackupJson>[])
+      .toList();
+  for (final (table, dateField) in [
+    ('installment_repricing_configs', 'effectiveFrom'),
+    ('installment_repricing_records', 'effectiveDate'),
+  ]) {
+    tables[table] = [
+      for (final row in tables[table] ?? <BackupJson>[])
+        if (row['stageId'] != null)
+          row
+        else
+          {
+            ...row,
+            'stageId': _legacyOperationStage(row, dateField, contracts, stages),
+          },
+    ];
+  }
+}
+
+String _legacyOperationStage(
+  BackupJson row,
+  String dateField,
+  Map<Object?, BackupJson> contracts,
+  List<BackupJson> stages,
+) {
+  final contract = contracts[row['contractId']];
+  if (contract == null) throw const BackupValidationException('旧重定价缺少所属合同');
+  final owned =
+      stages
+          .where(
+            (stage) =>
+                stage['ownerType'] == 'contract' &&
+                stage['ownerId'] == row['contractId'] &&
+                stage['stageKind'] == 'repayment',
+          )
+          .toList()
+        ..sort(
+          (a, b) => (a['position'] as int).compareTo(b['position'] as int),
+        );
+  if (dateField == 'effectiveFrom') {
+    for (final stage in owned) {
+      if (row['id'] == '${stage['id']}:repricing') return stage['id'] as String;
+    }
+  }
+  final date = referenceDate(_backupDate(row, dateField));
+  if (!date.isBefore(referenceDate(_backupDate(contract, 'borrowingDate')))) {
+    for (final stage in owned) {
+      final end = referenceDate(
+        IntervalRepaymentDates(
+          firstDate: _backupDate(stage, 'firstDate'),
+          count: stage['periods'] as int,
+          lastDate: stage['lastDate'] == null
+              ? null
+              : _backupDate(stage, 'lastDate'),
+          intervalMonths: stage['intervalMonths'] as int? ?? 1,
+        ).getDates().last,
+      );
+      if (date.isBefore(end)) return stage['id'] as String;
+    }
+  }
+  throw const BackupValidationException('旧重定价无法确定所属阶段');
+}
+
+DateTime _backupDate(BackupJson row, String field) {
+  final value = row[field];
+  if (value is! int) throw BackupValidationException('旧合同缺少有效日期 $field');
+  return DateTime.fromMillisecondsSinceEpoch(value);
 }
 
 String _legacyReferenceRateType(Object? tenor) => switch (tenor) {

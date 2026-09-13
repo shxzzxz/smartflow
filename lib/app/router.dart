@@ -1,3 +1,4 @@
+import '../feature/credit/page/installment_operations_page.dart';
 import '../feature/credit/page/installment_products_page.dart';
 import '../feature/credit/page/installment_product_edit_page.dart';
 import 'package:go_router/go_router.dart';
@@ -369,6 +370,12 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/installments/:contractId/edit',
       builder: (context, state) => InstallmentContractEditPage(
+        contractId: state.pathParameters['contractId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/installments/:contractId/operations',
+      builder: (context, state) => InstallmentOperationsPage(
         contractId: state.pathParameters['contractId']!,
       ),
     ),

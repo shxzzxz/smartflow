@@ -18,7 +18,7 @@ class InstallmentRepricingRecords extends Table {
   Set<Column> get primaryKey => {id};
   @override
   List<String> get customConstraints => [
-    'UNIQUE (contract_id, stage_id, reset_date)',
+    'UNIQUE (contract_id, stage_id, effective_date)',
     "CHECK (status IN ('pending', 'applied', 'userConfirmed'))",
     "CHECK (reference_rate_type IN ('lprOneYear', 'lprFiveYearPlus', 'loanBenchmarkShortTerm', 'loanBenchmarkLongTerm'))",
     'CHECK (reference_rate_ppm >= 0 AND reference_rate_ppm + spread_bp * 100 >= 0)',
