@@ -12,13 +12,11 @@ class InstallmentAmountAllocation {
   const InstallmentAmountAllocation({
     required this.principal,
     required this.interest,
-    required this.fee,
     this.interestSegments = const [],
   });
 
   final Money principal;
   final Money interest;
-  final Money fee;
   final List<InterestAccrualSegment> interestSegments;
 }
 
@@ -223,7 +221,6 @@ InstallmentAmountAllocation _allocation(
   return InstallmentAmountAllocation(
     principal: Money(minorUnits: principal),
     interest: Money(minorUnits: interest),
-    fee: Money.zero(),
     interestSegments: List.unmodifiable(segments),
   );
 }

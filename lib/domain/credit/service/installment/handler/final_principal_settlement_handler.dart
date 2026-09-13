@@ -21,7 +21,6 @@ class FinalPrincipalSettlementHandler {
         InstallmentAmountAllocation(
           principal: last.principal + closingPrincipal,
           interest: last.interest,
-          fee: last.fee,
           interestSegments: last.interestSegments,
         ),
       ]),

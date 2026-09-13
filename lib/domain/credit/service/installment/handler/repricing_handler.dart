@@ -96,7 +96,6 @@ class RepricingHandler {
             minorUnits: (Rational.fromInt(openingPrincipal.minorUnits) * factor)
                 .roundToInt(context.rounding),
           ),
-          fee: Money.zero(),
           interestSegments: mixed.interestSegments(openingPrincipal),
         ),
         projection: null,
