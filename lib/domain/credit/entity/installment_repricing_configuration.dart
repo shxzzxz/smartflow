@@ -17,7 +17,7 @@ class InstallmentRepricingConfiguration {
   final DateTime effectiveFrom;
   final FloatingRateRule rule;
 
-  /// 已成功处理的最后一个重定价生效日；删除结果不会回退此进度。
+  /// 已成功处理的最后一个重定价日；删除结果不会回退此进度。
   final DateTime? lastGeneratedDate;
 
   void validate() {
@@ -33,10 +33,8 @@ class InstallmentRepricingConfiguration {
     }
   }
 
-  bool owns(DateTime effectiveDate, DateTime? nextEffectiveFrom) =>
-      !referenceDate(effectiveDate).isBefore(referenceDate(effectiveFrom)) &&
+  bool owns(DateTime resetDate, DateTime? nextEffectiveFrom) =>
+      !referenceDate(resetDate).isBefore(referenceDate(effectiveFrom)) &&
       (nextEffectiveFrom == null ||
-          referenceDate(
-            effectiveDate,
-          ).isBefore(referenceDate(nextEffectiveFrom)));
+          referenceDate(resetDate).isBefore(referenceDate(nextEffectiveFrom)));
 }

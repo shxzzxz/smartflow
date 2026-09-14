@@ -67,9 +67,9 @@ void main() {
         },
       ),
     );
-    // First stage: 12 days at 3.6% + 19 days at 1.8%. Second: 30 days at 7.2%.
+    // First stage: 11 days at 3.6% + 20 days at 1.8%. Second: 30 days at 7.2%.
     expect(plan.entries.map((row) => row.expectedInterest.minorUnits), [
-      21500,
+      21000,
       60000,
     ]);
     final scoped = engine.generate(
@@ -82,7 +82,7 @@ void main() {
       ),
     );
     expect(scoped.entries.map((row) => row.expectedInterest.minorUnits), [
-      21500,
+      21000,
       20000,
     ]);
     expect(
@@ -149,8 +149,8 @@ void main() {
         operations: InstallmentPlanOperations(
           interestAdjustments: [
             InterestAdjustment(
-              start: date(12, 10),
-              end: DateTime(2027, 1, 10),
+              start: date(12, 11),
+              end: DateTime(2027, 1, 11),
               ratioPpm: 0,
             ),
           ],
@@ -188,7 +188,7 @@ void main() {
       );
       expect(plan.entries.map((row) => row.expectedInterest.minorUnits), [
         15000,
-        21500,
+        22000,
       ]);
       expect(
         () => engine.generate(
@@ -267,7 +267,7 @@ void main() {
   });
 
   test(
-    'daily segments produce 177.50 after adjustment without changing principal',
+    'daily segments produce 172.50 after adjustment without changing principal',
     () {
       final input = terms(stage());
       final changes = [rateChange(8, 20, 18000)];
@@ -288,8 +288,8 @@ void main() {
           ],
         ),
       );
-      expect(base.entries.single.expectedInterest.minorUnits, 21500);
-      expect(adjusted.entries.single.expectedInterest.minorUnits, 17750);
+      expect(base.entries.single.expectedInterest.minorUnits, 21000);
+      expect(adjusted.entries.single.expectedInterest.minorUnits, 17250);
       expect(
         adjusted.entries.single.expectedPrincipal,
         base.entries.single.expectedPrincipal,
@@ -299,7 +299,7 @@ void main() {
   );
 
   test(
-    'principal reduction affects the whole containing period; the end boundary belongs to the next',
+    'principal reduction includes repayment day and the next day starts a new period',
     () {
       final input = terms(stage(count: 2));
       final within = engine.generate(
@@ -324,7 +324,7 @@ void main() {
         within.entries.first.interestSegments.map(
           (segment) => segment.start.day,
         ),
-        [8, 15],
+        [9, 15],
       );
       final boundary = engine.generate(
         input,
@@ -334,8 +334,18 @@ void main() {
           ],
         ),
       );
-      expect(boundary.entries.first.expectedInterest.minorUnits, 31000);
+      expect(boundary.entries.first.expectedInterest.minorUnits, 27900);
       expect(boundary.entries.last.expectedInterest.minorUnits, 27000);
+      final following = engine.generate(
+        input,
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(date: date(9, 9), principal: money(1000000)),
+          ],
+        ),
+      );
+      expect(following.entries.first.expectedInterest.minorUnits, 31000);
+      expect(following.entries.last.expectedInterest.minorUnits, 27000);
     },
   );
 
@@ -432,7 +442,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(plan.entries.single.expectedInterest.minorUnits, 13000);
+      expect(plan.entries.single.expectedInterest.minorUnits, 12500);
     },
   );
 
@@ -446,10 +456,10 @@ void main() {
         input,
         operations: InstallmentPlanOperations(
           interestAdjustments: [
-            InterestAdjustment(start: date(8, 8), end: date(9, 8), ratioPpm: 0),
+            InterestAdjustment(start: date(8, 9), end: date(9, 9), ratioPpm: 0),
             InterestAdjustment(
-              start: date(9, 8),
-              end: date(10, 8),
+              start: date(9, 9),
+              end: date(10, 9),
               ratioPpm: 1200000,
             ),
           ],
@@ -465,13 +475,13 @@ void main() {
           operations: InstallmentPlanOperations(
             interestAdjustments: [
               InterestAdjustment(
-                start: date(8, 8),
-                end: date(10, 8),
+                start: date(8, 9),
+                end: date(10, 9),
                 ratioPpm: 500000,
               ),
               InterestAdjustment(
-                start: date(9, 8),
-                end: date(10, 8),
+                start: date(9, 9),
+                end: date(10, 9),
                 ratioPpm: 0,
               ),
             ],
@@ -520,7 +530,7 @@ void main() {
           interestAdjustments: [
             InterestAdjustment(
               start: date(4, 15),
-              end: date(6, 8),
+              end: date(6, 9),
               ratioPpm: 500000,
             ),
           ],
@@ -536,11 +546,11 @@ void main() {
       ]);
       expect(plan.entries.map((row) => row.expectedInterest.minorUnits), [
         360,
-        441,
+        450,
         // Stage two starts at its own 3.6%: 80000 * 3.6% / 12.
         240,
-        // 53333 * (3.6% * 7 / 360 + 1.8% * 23 / 360 * 50%).
-        68,
+        // 53333 * (3.6% * 6 / 360 + 1.8% * 24 / 360 * 50%).
+        64,
         31,
       ]);
       expect(plan.entries.map((row) => row.expectedFee.minorUnits), [

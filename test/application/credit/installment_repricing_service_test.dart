@@ -45,6 +45,89 @@ void main() {
   });
   tearDown(() => f.db.close());
 
+  test(
+    'configuration switch retains an earlier reset with a later effective date',
+    () async {
+      await f.seed(
+        id: 'annual-scope',
+        borrowingDate: DateTime.utc(2025, 6, 20),
+        stageTerms: InstallmentContractTerms(
+          stages: [
+            InstallmentContractStage(
+              id: 'annual-stage',
+              terms: AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime.utc(2026, 6, 20),
+                  count: 2,
+                  intervalMonths: 12,
+                ),
+                method: InstallmentRepaymentMethod.interestFirst,
+                rate: const InterestRate(
+                  ppm: 48000,
+                  period: InterestRatePeriod.annual,
+                ),
+                accrual: InterestAccrualMethod.daily,
+              ),
+            ),
+          ],
+        ),
+      );
+      for (final (from, reset, effective) in [
+        (
+          DateTime.utc(2026, 5, 1),
+          DateTime.utc(2026, 6, 20),
+          DateTime.utc(2026, 6, 21),
+        ),
+        (
+          DateTime.utc(2026, 6, 21),
+          DateTime.utc(2026, 12, 20),
+          DateTime.utc(2026, 12, 21),
+        ),
+      ]) {
+        await f.service.addConfiguration(
+          'annual-scope',
+          stageId: 'annual-stage',
+          effectiveFrom: from,
+          rule: FloatingRateRule(
+            referenceRateType: InterestRateType.lprFiveYearPlus,
+            spreadBp: -30,
+            firstResetDate: reset,
+            firstEffectiveDate: effective,
+          ),
+        );
+      }
+      f.currentDate = DateTime.utc(2026, 6, 20);
+      expect(await f.service.prepare('annual-scope', f.currentDate), isTrue);
+      final records = await f.records.list('annual-scope');
+      expect(records, hasLength(1));
+      expect(records.single.change.resetDate, DateTime.utc(2026, 6, 20));
+      expect(records.single.change.effectiveDate, DateTime.utc(2026, 6, 21));
+      expect(records.single.change.rate.ppm, 36000);
+      var contract = (await f.installments.findContract('annual-scope'))!;
+      expect(
+        contract.repricingConfigurations.first.lastGeneratedDate,
+        DateTime.utc(2026, 6, 20),
+      );
+      expect(contract.repricingConfigurations.last.lastGeneratedDate, isNull);
+      await f.service.runDue(f.currentDate);
+      expect((await f.records.list('annual-scope')).single.applied, isTrue);
+      expect(
+        (await f.installments.listSchedules(
+          'annual-scope',
+        )).last.expectedInterest.minorUnits,
+        292000,
+      );
+      await f.service.delete('annual-scope', records.single.id);
+      await f.service.runDue(f.currentDate);
+      expect(await f.records.list('annual-scope'), isEmpty);
+      contract = (await f.installments.findContract('annual-scope'))!;
+      expect(
+        contract.repricingConfigurations.first.lastGeneratedDate,
+        DateTime.utc(2026, 6, 20),
+      );
+    },
+  );
+
   test('balloon final period reprices once and conserves principal', () async {
     await f.seed(
       id: 'balloon',
@@ -94,7 +177,7 @@ void main() {
       1003994 + 5000000,
     ]);
     // 60039.94 * (4.8% * 14/360 + 3.6% * 17/360) = 214.14.
-    expect(after.last.expectedInterest.minorUnits, 21414);
+    expect(after.last.expectedInterest.minorUnits, 21214);
     expect(
       after.take(2).map((r) => r.expectedInterest),
       before.take(2).map((r) => r.expectedInterest),
@@ -170,7 +253,7 @@ void main() {
       final record = (await f.records.list('loan')).single;
       expect(record.status, InstallmentRepricingStatus.applied);
       final after = await f.installments.listSchedules('loan');
-      expect(after.first.expectedInterest.minorUnits, 28000);
+      expect(after.first.expectedInterest.minorUnits, 27733);
       expect(after.last.expectedInterest.minorUnits, isNot(99));
       expect(after.map((r) => r.id), before.map((r) => r.id));
       expect(
@@ -822,7 +905,7 @@ void main() {
           expect(after[i].expectedFee, before[i].expectedFee);
         }
         // P=140894.59；A0=15969.72；本金4=A0-round(P*4.8%/12)。
-        // 利息4=round(P*(4.8%*21/360+3.6%*10/360))=535.40。
+        // 利息4=round(P*(4.8%*20/360+3.6%*11/360))=530.70。
         // 第5期起固定额15898.56，末期吸收尾差。这些期望值按月供公式独立推导。
         expect(
           after
@@ -834,7 +917,7 @@ void main() {
                 ),
               ),
           [
-            (1540614, 53540),
+            (1540614, 53070),
             (1552209, 37647),
             (1556866, 32990),
             (1561537, 28319),
@@ -876,7 +959,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        28000,
+        27733,
       );
       expect(
         (await f.installments.listSchedules(
@@ -1019,7 +1102,7 @@ void main() {
       );
       expect(
         restored.repricingConfigurations.single.lastGeneratedDate,
-        DateTime.utc(2026, 1, 1),
+        DateTime.utc(2025, 12, 20),
       );
       expect(restored.repricings.single.change.rate.ppm, 36000);
       expect(
@@ -1070,7 +1153,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        28000,
+        27733,
       );
     },
   );
@@ -1093,7 +1176,7 @@ void main() {
         after.map((r) => r.expectedRepaymentDate),
         before.map((r) => r.expectedRepaymentDate),
       );
-      expect(after.first.expectedInterest.minorUnits, 28000);
+      expect(after.first.expectedInterest.minorUnits, 27733);
       expect(
         (await f.installments.findContract('loan'))!.repricings,
         hasLength(1),
@@ -1132,7 +1215,7 @@ void main() {
       expect((await f.records.list('loan')).single.applied, isTrue);
       final saved = await f.installments.listSchedules('loan');
       expect(saved.first.status, InstallmentScheduleStatus.pending);
-      expect(saved.first.expectedInterest.minorUnits, 28000);
+      expect(saved.first.expectedInterest.minorUnits, 27733);
       expect(saved.last.expectedInterest.minorUnits, isNot(99));
     },
   );
@@ -1152,7 +1235,7 @@ void main() {
       final saved = await f.installments.listSchedules('loan');
       expect(saved.first.status, InstallmentScheduleStatus.paid);
       expect(saved.first.expectedPrincipal, rows.first.expectedPrincipal);
-      expect(saved.first.expectedInterest.minorUnits, 28000);
+      expect(saved.first.expectedInterest.minorUnits, 27733);
       expect(saved.last.expectedInterest, isNot(rows.last.expectedInterest));
     },
   );
@@ -1197,7 +1280,7 @@ void main() {
     expect(outcomes.every((result) => !result.needsRetry), isTrue);
     expect((await f.records.list('loan')).single.applied, isTrue);
     final rows = await f.installments.listSchedules('loan');
-    expect(rows.first.expectedInterest.minorUnits, 28000);
+    expect(rows.first.expectedInterest.minorUnits, 27733);
     expect(
       rows.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits),
       8000000,
@@ -1249,7 +1332,7 @@ void main() {
             ),
           )
           .entries;
-      expect(updates.first.expectedInterest.minorUnits, 21000);
+      expect(updates.first.expectedInterest.minorUnits, 20800);
       expect(
         updates.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits),
         6000000,
@@ -1283,7 +1366,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        28000,
+        27733,
       );
       expect((await f.records.list('loan')).single.applied, isTrue);
     },

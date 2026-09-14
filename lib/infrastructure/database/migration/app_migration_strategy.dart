@@ -13,6 +13,7 @@ import 'v40_installment_operations_migration.dart';
 import 'v41_repricing_stage_scope_migration.dart';
 import 'v41_installment_schema.dart';
 import 'v42_installment_product_split_migration.dart';
+import 'v43_repricing_reset_progress_migration.dart';
 
 final _logger = Logger('infra.database');
 
@@ -452,6 +453,9 @@ WHERE NOT EXISTS (
       }
       if (from < 42) {
         await migrateInstallmentProductSplit(database, migrator);
+      }
+      if (from < 43) {
+        await migrateRepricingResetProgress(database);
       }
     }),
   );

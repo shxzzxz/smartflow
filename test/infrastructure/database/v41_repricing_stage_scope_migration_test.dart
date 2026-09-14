@@ -34,7 +34,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        42,
+        43,
       );
       await db.customStatement(
         'INSERT INTO installment_repricing_records '

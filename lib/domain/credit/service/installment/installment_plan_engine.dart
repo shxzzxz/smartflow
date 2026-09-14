@@ -182,26 +182,27 @@ class InstallmentPlanEngine {
       }
 
       repayment.validateFloatingRate();
+      final context = InstallmentStageContext(
+        stage: repayment,
+        dates: dates,
+        start: start,
+        policy: policy,
+        rounding: terms.rounding,
+      );
       final deductions = <int>[];
-      for (final date in dates) {
+      for (var i = 0; i < dates.length; i++) {
         var amount = 0;
         while (reductionIndex < reductions.length &&
             referenceDate(
               reductions[reductionIndex].date,
-            ).isBefore(referenceDate(date))) {
+            ).isBefore(context.periodRange(i).end)) {
           amount += reductions[reductionIndex++].principal.minorUnits;
         }
         deductions.add(amount);
       }
       final finalStage = index == terms.stages.length - 1;
       final stageCalculation = stageHandler.calculate(
-        InstallmentStageContext(
-          stage: repayment,
-          dates: dates,
-          start: start,
-          policy: policy,
-          rounding: terms.rounding,
-        ),
+        context,
         openingPrincipal: opening,
         finalStage: finalStage,
         reductions: deductions,
@@ -244,7 +245,7 @@ class InstallmentPlanEngine {
     }
     if (entries.isEmpty) _invalid('至少需要一个还款阶段');
     if (!custom) {
-      if (reductionIndex != reductions.length) _invalid('本金扣减日期必须早于末期计息结束日');
+      if (reductionIndex != reductions.length) _invalid('本金扣减日期不得晚于末期还款日');
       final principal = entries.fold<int>(
         0,
         (sum, row) => sum + row.expectedPrincipal.minorUnits,

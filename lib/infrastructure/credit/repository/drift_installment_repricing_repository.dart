@@ -128,9 +128,9 @@ class DriftInstallmentRepricingRepository
   @override
   Future<void> advanceGeneration(
     String configurationId,
-    DateTime effectiveDate,
+    DateTime resetDate,
   ) async {
-    final date = referenceDate(effectiveDate);
+    final date = referenceDate(resetDate);
     await (database.update(database.installmentRepricingConfigs)..where(
           (row) =>
               row.id.equals(configurationId) &

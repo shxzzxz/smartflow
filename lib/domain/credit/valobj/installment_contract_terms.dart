@@ -135,6 +135,7 @@ class InstallmentContractTerms {
   List<AmortizingStage> get repayments =>
       stages.map((s) => s.terms).whereType<AmortizingStage>().toList();
 
+  /// 所属阶段实际计息日期，返回起始包含、结束不包含的范围。
   ({DateTime start, DateTime end}) repaymentRange(
     String stageId,
     DateTime borrowingDate,
@@ -148,8 +149,10 @@ class InstallmentContractTerms {
           final end = referenceDate(repayment.dates.getDates().last);
           if (stage.id == stageId) {
             return (
-              start: referenceDate(repayment.accrualStartDate ?? previous),
-              end: end,
+              start: referenceDate(
+                repayment.accrualStartDate ?? previous,
+              ).add(const Duration(days: 1)),
+              end: end.add(const Duration(days: 1)),
             );
           }
           previous = end;

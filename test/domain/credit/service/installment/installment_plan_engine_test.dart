@@ -9,6 +9,31 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 
 void main() {
+  for (final (from, through, days) in [
+    (DateTime.utc(2026, 8, 8), DateTime.utc(2026, 9, 8), 31),
+    (DateTime.utc(2028, 2, 28), DateTime.utc(2028, 3, 1), 2),
+    (DateTime.utc(2026, 1, 31), DateTime.utc(2026, 2, 28), 28),
+  ]) {
+    test(
+      'first accrual excludes $from and includes $through for $days days',
+      () {
+        final entries = _generateWithExplicitDates(
+          principal: const Money(minorUnits: 10000000),
+          borrowingDate: from,
+          dates: [through],
+          method: InstallmentRepaymentMethod.interestFirst,
+          accrualMethod: InterestAccrualMethod.daily,
+          ratePeriod: InterestRatePeriod.annual,
+          ratePpm: 36000,
+        );
+        expect(entries.single.expectedInterest.minorUnits, days * 1000);
+        final segment = entries.single.interestSegments.single;
+        expect(segment.start, from.add(const Duration(days: 1)));
+        expect(segment.end, through.add(const Duration(days: 1)));
+        expect(segment.end.difference(segment.start).inDays, days);
+      },
+    );
+  }
   group('InstallmentPlanEngine.generate (整体)', () {
     test('equalInstallment：本金累计等于合同本金', () {
       final drafts = _generate(

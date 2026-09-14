@@ -57,7 +57,7 @@ void main() {
           .select(db.installmentRepricingConfigs)
           .getSingle();
       expect(config.stageId, 'loan-repayment');
-      expect(config.lastGeneratedDate?.toUtc(), DateTime.utc(2026, 2, 1));
+      expect(config.lastGeneratedDate?.toUtc(), DateTime.utc(2026, 1, 20));
       final record = await db
           .select(db.installmentRepricingRecords)
           .getSingle();

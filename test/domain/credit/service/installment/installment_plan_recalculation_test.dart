@@ -89,9 +89,9 @@ void main() {
     );
     expect(changed.entries.map((row) => row.expectedPrincipal.minorUnits), [
       2500,
-      2500,
-      1500,
-      1500,
+      1833,
+      1833,
+      1834,
     ]);
     expect(removed.entries.map((row) => row.expectedPrincipal.minorUnits), [
       2500,
@@ -194,7 +194,7 @@ void main() {
       ]);
       expect(
         plan.entries.first.interestSegments.first.start,
-        DateTime.utc(2026, 4, 8),
+        DateTime.utc(2026, 4, 9),
       );
     },
   );
@@ -268,8 +268,8 @@ void main() {
         operations: InstallmentPlanOperations(
           interestAdjustments: [
             InterestAdjustment(
-              start: DateTime(2026, 1, 8),
-              end: DateTime(2027, 1, 8),
+              start: DateTime(2026, 1, 9),
+              end: DateTime(2027, 1, 9),
               ratioPpm: 500000,
             ),
           ],
@@ -333,13 +333,13 @@ void main() {
           operations: InstallmentPlanOperations(
             interestAdjustments: [
               InterestAdjustment(
-                start: DateTime(2026, 1, 8),
-                end: DateTime(2027, 1, 20),
+                start: DateTime(2026, 1, 9),
+                end: DateTime(2027, 1, 21),
                 ratioPpm: 0,
               ),
               InterestAdjustment(
-                start: DateTime(2027, 1, 20),
-                end: DateTime(2028, 1, 9),
+                start: DateTime(2027, 1, 21),
+                end: DateTime(2028, 1, 10),
                 ratioPpm: 500000,
               ),
             ],
@@ -409,7 +409,7 @@ void main() {
             interestAdjustments: [
               InterestAdjustment(
                 start: DateTime(2026, 1, 1),
-                end: DateTime(2026, 2, 20),
+                end: DateTime(2026, 2, 21),
                 ratioPpm: 0,
               ),
             ],
@@ -447,8 +447,8 @@ void main() {
       operations: InstallmentPlanOperations(
         interestAdjustments: [
           InterestAdjustment(
-            start: DateTime(2026, 2, 8),
-            end: DateTime(2026, 3, 8),
+            start: DateTime(2026, 2, 9),
+            end: DateTime(2026, 3, 9),
             ratioPpm: 0,
           ),
         ],
@@ -475,8 +475,8 @@ void main() {
       operations: InstallmentPlanOperations(
         interestAdjustments: [
           InterestAdjustment(
-            start: DateTime(2026, 1, 1),
-            end: DateTime(2026, 1, 11),
+            start: DateTime(2026, 1, 2),
+            end: DateTime(2026, 1, 12),
             ratioPpm: 500000,
           ),
         ],

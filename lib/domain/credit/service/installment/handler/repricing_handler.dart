@@ -46,10 +46,9 @@ class RepricingHandler {
     required InstallmentStageProjection projection,
     required List<RateChange> changes,
   }) {
-    final previous = referenceDate(
-      periodIndex == 0 ? context.start : context.dates[periodIndex - 1],
-    );
-    final until = referenceDate(context.dates[periodIndex]);
+    final range = context.periodRange(periodIndex);
+    final previous = range.start;
+    final until = range.end;
     final allocation = projection.allocationAt(periodIndex);
     final segments = <AccrualRateSegment>[];
     var cursor = previous;

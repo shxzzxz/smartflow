@@ -371,7 +371,7 @@ void main() {
   );
 
   test(
-    'configuration windows select by effective date and concurrent tasks create one fact',
+    'configuration windows select by reset date and concurrent tasks create one fact',
     () async {
       await f.seed();
       await f.repricing.addConfiguration(
@@ -395,7 +395,7 @@ void main() {
       final records = await f.records.list('loan');
       expect(records, hasLength(1));
       expect(records.single.change.effectiveDate, DateTime.utc(2026, 9, 6));
-      expect(records.single.change.spreadBp, -10);
+      expect(records.single.change.spreadBp, 0);
       await expectLater(
         f.repricing.create(
           'loan',
@@ -692,7 +692,7 @@ void main() {
       await f.configure();
       await f.repricing.runDue(day(8, 20));
       final before = await f.installments.listSchedules('loan');
-      expect(before.first.expectedInterest.minorUnits, 21500);
+      expect(before.first.expectedInterest.minorUnits, 21000);
       final id = await f.adjustments.save(
         'loan',
         InterestAdjustment(
@@ -702,7 +702,7 @@ void main() {
         ),
       );
       final adjusted = await f.installments.listSchedules('loan');
-      expect(adjusted.first.expectedInterest.minorUnits, 17750);
+      expect(adjusted.first.expectedInterest.minorUnits, 17250);
       expect(
         adjusted.map((row) => row.expectedPrincipal),
         before.map((row) => row.expectedPrincipal),
@@ -716,7 +716,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        14000,
+        13500,
       );
       expect(
         (await f.installments.findContract(
@@ -729,7 +729,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        21500,
+        21000,
       );
     },
   );
@@ -758,18 +758,18 @@ void main() {
       );
       await f.adjustments.save(
         'loan',
-        InterestAdjustment(start: day(8, 8), end: day(9, 8), ratioPpm: 0),
+        InterestAdjustment(start: day(8, 9), end: day(9, 9), ratioPpm: 0),
       );
       await f.adjustments.save(
         'loan',
-        InterestAdjustment(start: day(9, 8), end: day(10, 8), ratioPpm: 500000),
+        InterestAdjustment(start: day(9, 9), end: day(10, 9), ratioPpm: 500000),
       );
       await expectLater(
         f.adjustments.save(
           'loan',
           InterestAdjustment(
-            start: day(8, 8),
-            end: day(10, 8),
+            start: day(8, 9),
+            end: day(10, 9),
             ratioPpm: 1000000,
           ),
         ),
@@ -803,7 +803,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        15500,
+        15000,
       );
     },
   );
@@ -894,7 +894,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        21500,
+        21000,
       );
     },
   );
@@ -1131,7 +1131,7 @@ void main() {
         (await DriftInstallmentRepository(
           target,
         ).listSchedules('loan')).first.expectedInterest.minorUnits,
-        17750,
+        17250,
       );
       final config = snapshot.rows('installment_repricing_configs').single;
       final record = snapshot.rows('installment_repricing_records').single;

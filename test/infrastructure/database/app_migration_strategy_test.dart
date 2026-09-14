@@ -653,7 +653,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 42);
+    expect(version.read<int>('user_version'), 43);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -694,7 +694,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 42);
+      expect(version.read<int>('user_version'), 43);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -750,7 +750,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 42);
+      expect(version.read<int>('user_version'), 43);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -863,7 +863,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 42);
+      expect(version.read<int>('user_version'), 43);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -1034,7 +1034,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 42);
+      expect(version.read<int>('user_version'), 43);
 
       for (final table in [
         'import_entity_mappings',

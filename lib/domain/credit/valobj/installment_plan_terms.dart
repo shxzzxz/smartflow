@@ -80,7 +80,7 @@ class AmortizingStage extends InstallmentStage {
 
   final RepaymentDatesStrategy dates;
 
-  /// 计息起点；缺省为上一阶段结束日或借款日。
+  /// 首期计息的左开边界；缺省为上一阶段结束日或借款日。
   final DateTime? accrualStartDate;
   final InstallmentRepaymentMethod method;
 

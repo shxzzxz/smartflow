@@ -1,7 +1,6 @@
 import '../../../../../core/money/money.dart';
 import '../../../valobj/floating_rate.dart';
 import '../../../valobj/installment_enums.dart';
-import '../../../valobj/reference_rate.dart';
 import '../calculator/repayment_method_calculator.dart';
 import 'base_plan_generation_handler.dart';
 import 'installment_stage_context.dart';
@@ -52,14 +51,17 @@ class InstallmentStageHandler {
     var rate = context.stage.method == InstallmentRepaymentMethod.flatFee
         ? null
         : context.stage.rate;
-    var previous = referenceDate(context.start);
     InstallmentStageProjection? projection;
     var changed = false;
     Money? fixedAmount;
     final allocations = <InstallmentAmountAllocation>[];
 
     for (var i = 0; i < context.dates.length; i++) {
-      final openingRate = repricingHandler.rateAt(rate, previous, changes);
+      final openingRate = repricingHandler.rateAt(
+        rate,
+        context.periodRange(i).start,
+        changes,
+      );
       if (openingRate != rate) {
         projection = null;
         changed = true;
@@ -101,7 +103,6 @@ class InstallmentStageHandler {
       allocations.add(repricing.allocation);
       balance -= repricing.allocation.principal;
       rate = repricing.closingRate;
-      previous = referenceDate(context.dates[i]);
     }
     return InstallmentStageCalculation(
       openingPrincipal: opening,

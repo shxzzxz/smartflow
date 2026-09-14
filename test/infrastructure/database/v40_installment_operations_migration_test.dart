@@ -24,7 +24,7 @@ void main() {
       ]);
       expect(configs.map((row) => row.lastGeneratedDate?.toUtc()), [
         DateTime.utc(2026, 8, 20),
-        DateTime.utc(2026, 11, 8),
+        null,
       ]);
       expect(configs.map((row) => row.spreadBp), [-30, -10]);
       final records =
@@ -69,7 +69,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        42,
+        43,
       );
       for (final table in db.allTables) {
         expect(

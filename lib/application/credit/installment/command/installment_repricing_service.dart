@@ -172,7 +172,7 @@ class InstallmentRepricingService {
         }
         await records.advanceGeneration(
           candidate.configuration.id,
-          candidate.effectiveDate,
+          candidate.resetDate,
         );
         return true;
       });
@@ -321,7 +321,7 @@ class InstallmentRepricingService {
     if (effectiveDate.isBefore(resetDate) ||
         effectiveDate.isBefore(referenceDate(contract.borrowingDate)) ||
         !effectiveDate.isBefore(range.end)) {
-      _invalid('重定价生效日不得早于重定价日或借款日，且须早于所属阶段结束日');
+      _invalid('重定价生效日不得早于重定价日或借款日，且不得晚于所属阶段末期还款日');
     }
   }
 

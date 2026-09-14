@@ -2,6 +2,7 @@ import 'backup_models.dart';
 import '../../../core/time/date_label.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/floating_rate.dart';
 
 /// 旧快照只在导入入口升级；当前合同行不包含阶段参数。
 void migrateInstallmentBackup(
@@ -129,6 +130,41 @@ void migrateInstallmentBackup(
   if (schemaVersion < 40) _migrateContractOperations(tables);
   if (schemaVersion < 41) _migrateRepricingStageScope(tables);
   if (schemaVersion < 42) _splitProductStages(tables);
+  if (schemaVersion < 43) _migrateRepricingGenerationDates(tables);
+}
+
+void _migrateRepricingGenerationDates(
+  Map<String, Iterable<BackupJson>> tables,
+) {
+  DateTime date(Object? milliseconds) =>
+      DateTime.fromMillisecondsSinceEpoch(milliseconds as int, isUtc: true);
+  final migrated = <BackupJson>[];
+  for (final row in tables['installment_repricing_configs'] ?? <BackupJson>[]) {
+    if (row['lastGeneratedDate'] == null) {
+      migrated.add(row);
+      continue;
+    }
+    final rule = FloatingRateRule(
+      referenceRateType: InterestRateType.values.byName(
+        row['referenceRateType'] as String,
+      ),
+      spreadBp: row['spreadBp'] as int,
+      firstResetDate: date(row['firstResetDate']),
+      firstEffectiveDate: date(row['firstEffectiveDate']),
+      cycleMonths: row['cycleMonths'] as int,
+    );
+    rule.validate();
+    final index = rule.effectiveCycleOnOrBefore(date(row['lastGeneratedDate']));
+    final reset = index == null ? null : rule.resetDate(index);
+    migrated.add({
+      ...row,
+      'lastGeneratedDate':
+          reset == null || reset.isBefore(date(row['effectiveFrom']))
+          ? null
+          : reset.millisecondsSinceEpoch,
+    });
+  }
+  tables['installment_repricing_configs'] = migrated;
 }
 
 void _splitProductStages(Map<String, Iterable<BackupJson>> tables) {

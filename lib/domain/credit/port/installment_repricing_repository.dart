@@ -15,11 +15,8 @@ abstract interface class InstallmentRepricingRepository {
     InstallmentRepricingConfiguration configuration,
   );
 
-  /// 单调推进配置的生成进度；与候选处理在同一事务中提交。
-  Future<void> advanceGeneration(
-    String configurationId,
-    DateTime effectiveDate,
-  );
+  /// 按重定价日单调推进配置进度；与候选处理在同一事务中提交。
+  Future<void> advanceGeneration(String configurationId, DateTime resetDate);
 
   /// 删除事实，保留配置的生成进度；参与调用方事务。
   Future<void> delete(InstallmentRepricing record);

@@ -12,7 +12,7 @@ class InstallmentRepricingCandidate {
   final DateTime resetDate, effectiveDate;
 }
 
-/// 配置归属以结果生效日判断；永久日历锚点避免月末日期漂移。
+/// 配置归属和生成进度按重定价日判断，计息顺序按结果生效日排列。
 class InstallmentRepricingPlanner {
   const InstallmentRepricingPlanner();
 
@@ -44,21 +44,18 @@ class InstallmentRepricingPlanner {
               rule.effectiveDate(i).isBefore(range.end);
           i++
         ) {
+          final reset = rule.resetDate(i);
           final effective = rule.effectiveDate(i);
           if (effective.isBefore(range.start) ||
-              !configuration.owns(effective, next) ||
+              !configuration.owns(reset, next) ||
               (configuration.lastGeneratedDate != null &&
-                  !effective.isAfter(
+                  !reset.isAfter(
                     referenceDate(configuration.lastGeneratedDate!),
                   ))) {
             continue;
           }
           candidates.add(
-            InstallmentRepricingCandidate(
-              configuration,
-              rule.resetDate(i),
-              effective,
-            ),
+            InstallmentRepricingCandidate(configuration, reset, effective),
           );
         }
       }

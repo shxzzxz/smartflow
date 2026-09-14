@@ -15,6 +15,57 @@ void main() {
   final start = DateTime.utc(2025, 12, 20);
   final effective = DateTime.utc(2026, 1, 1);
   test(
+    'annual reset on December 21 applies to the complete following period',
+    () {
+      final result = engine.generate(
+        InstallmentPlanTerms(
+          principal: const Money(minorUnits: 10000000),
+          borrowingDate: DateTime.utc(2024, 12, 20),
+          stages: [
+            AmortizingStage(
+              dates: IntervalRepaymentDates(
+                firstDate: DateTime.utc(2025, 12, 20),
+                count: 3,
+                intervalMonths: 12,
+              ),
+              method: InstallmentRepaymentMethod.interestFirst,
+              rate: const InterestRate(
+                ppm: 48000,
+                period: InterestRatePeriod.annual,
+              ),
+              accrual: InterestAccrualMethod.daily,
+            ),
+          ],
+        ),
+        operations: InstallmentPlanOperations(
+          rateChangesByStage: {
+            0: [
+              RateChange(
+                resetDate: DateTime.utc(2025, 12, 21),
+                effectiveDate: DateTime.utc(2025, 12, 21),
+                referenceRate: ReferenceRate(
+                  type: InterestRateType.lprOneYear,
+                  date: DateTime.utc(2025, 12, 20),
+                  ratePpm: 36000,
+                  source: 'test',
+                ),
+                spreadBp: 0,
+              ),
+            ],
+          },
+        ),
+      );
+      final nextYear = result.entries[1];
+      expect(nextYear.expectedInterest.minorUnits, 365000);
+      expect(nextYear.interestSegments, hasLength(1));
+      expect(
+        nextYear.interestSegments.single.start,
+        DateTime.utc(2025, 12, 21),
+      );
+      expect(nextYear.interestSegments.single.end, DateTime.utc(2026, 12, 21));
+    },
+  );
+  test(
     'repricing preserves the stage end-principal target before the next stage',
     () {
       final result = engine.generate(
@@ -66,7 +117,7 @@ void main() {
         ),
       );
       expect(result.stages, hasLength(2));
-      expect(result.entries.first.expectedInterest.minorUnits, 28000);
+      expect(result.entries.first.expectedInterest.minorUnits, 27733);
       expect(result.entries[3].expectedInterest.minorUnits, 15000);
       expect(
         result.entries.map((e) => e.expectedPrincipal.minorUnits).toSet(),
@@ -130,14 +181,14 @@ void main() {
   );
 
   test(
-    '12/20–1/20 uses 80000 for both rate segments and rounds only their sum',
+    '(12/20, 1/20] uses 80000 for both rate segments and rounds only their sum',
     () {
       final result = plan(
         method: InstallmentRepaymentMethod.equalPrincipal,
         count: 4,
       );
-      // 80000 * 4.8% * 12/360 + 80000 * 3.6% * 19/360 = 280.
-      expect(result.entries.first.expectedInterest.minorUnits, 28000);
+      // 80000 * 4.8% * 11/360 + 80000 * 3.6% * 20/360 = 277.333... .
+      expect(result.entries.first.expectedInterest.minorUnits, 27733);
       expect(result.entries.first.expectedPrincipal.minorUnits, 2000000);
       expect(result.entries[1].expectedInterest.minorUnits, 18000);
       expect(result.entries.length, 4);
@@ -154,7 +205,7 @@ void main() {
         after.entries.first.expectedPrincipal,
         before.entries.first.expectedPrincipal,
       );
-      expect(after.entries.first.expectedInterest.minorUnits, 28000);
+      expect(after.entries.first.expectedInterest.minorUnits, 27733);
       final payments = after.entries
           .skip(1)
           .take(10)
@@ -183,7 +234,7 @@ void main() {
 
   test('current-period recast includes mixed first rate in fixed payment', () {
     final result = plan(timing: InPeriodRepricingPolicy.dynamicPeriodRate);
-    expect(result.entries.first.expectedInterest.minorUnits, 28000);
+    expect(result.entries.first.expectedInterest.minorUnits, 27733);
     final payments = result.entries
         .take(11)
         .map(
@@ -214,34 +265,87 @@ void main() {
         )
         .toSet();
     expect(payments.length, 1);
-    expect(result.entries.first.expectedInterest.minorUnits, 28000);
+    expect(result.entries.first.expectedInterest.minorUnits, 27733);
     expect(
       payments.single,
       isNot(
         plan(
               timing: InPeriodRepricingPolicy.dynamicPeriodRate,
             ).entries.first.expectedPrincipal.minorUnits +
-            28000,
+            27733,
       ),
     );
   });
 
-  test('repricing on repayment date belongs to following accrual period', () {
-    final result = plan(changes: [change(DateTime.utc(2026, 1, 20), 36000)]);
-    final before = plan(changes: []);
-    expect(
-      result.entries.first.expectedPrincipal,
-      before.entries.first.expectedPrincipal,
-    );
-    expect(
-      result.entries.first.expectedInterest,
-      before.entries.first.expectedInterest,
-    );
-    expect(
-      result.entries[1].expectedPrincipal,
-      isNot(before.entries[1].expectedPrincipal),
-    );
-  });
+  test(
+    'repricing the day after repayment starts the following accrual period',
+    () {
+      final result = plan(changes: [change(DateTime.utc(2026, 1, 21), 36000)]);
+      final before = plan(changes: []);
+      expect(
+        result.entries.first.expectedPrincipal,
+        before.entries.first.expectedPrincipal,
+      );
+      expect(
+        result.entries.first.expectedInterest,
+        before.entries.first.expectedInterest,
+      );
+      expect(
+        result.entries[1].expectedPrincipal,
+        isNot(before.entries[1].expectedPrincipal),
+      );
+    },
+  );
+
+  test(
+    'period opening repricing does not use either in-period payment policy',
+    () {
+      for (final accrual in [
+        InterestAccrualMethod.daily,
+        InterestAccrualMethod.monthly,
+      ]) {
+        final changes = [change(DateTime.utc(2026, 1, 21), 36000)];
+        final preserve = plan(changes: changes, accrual: accrual);
+        final dynamic = plan(
+          changes: changes,
+          accrual: accrual,
+          timing: InPeriodRepricingPolicy.dynamicPeriodRate,
+        );
+        expect(
+          preserve.entries.map(
+            (row) => (row.expectedPrincipal, row.expectedInterest),
+          ),
+          dynamic.entries.map(
+            (row) => (row.expectedPrincipal, row.expectedInterest),
+          ),
+        );
+        expect(preserve.entries[1].interestSegments, hasLength(1));
+        expect(preserve.entries[1].interestSegments.single.accrual, accrual);
+      }
+    },
+  );
+
+  test(
+    'repricing on repayment day changes the final accrual day of that period',
+    () {
+      final result = plan(
+        method: InstallmentRepaymentMethod.equalPrincipal,
+        accrual: InterestAccrualMethod.daily,
+        count: 4,
+        changes: [change(DateTime.utc(2026, 1, 20), 36000)],
+      );
+      // (12/20, 1/20]: 30 old-rate days and one new-rate day.
+      expect(result.entries.first.expectedInterest.minorUnits, 32800);
+      expect(
+        result.entries.first.interestSegments.last.start,
+        DateTime.utc(2026, 1, 20),
+      );
+      expect(
+        result.entries.first.interestSegments.last.end,
+        DateTime.utc(2026, 1, 21),
+      );
+    },
+  );
 
   test(
     'future referenceRate does not influence payments before its effective period',

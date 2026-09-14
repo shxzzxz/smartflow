@@ -4,7 +4,6 @@ import '../../../valobj/credit_error_code.dart';
 import '../../../valobj/installment_enums.dart';
 import '../../../valobj/installment_plan_terms.dart';
 import '../../../valobj/interest_rate.dart';
-import '../../../valobj/reference_rate.dart';
 import '../calculator/interest_accrual_policy.dart';
 import '../calculator/repayment_method_calculator.dart';
 import 'installment_stage_context.dart';
@@ -71,12 +70,9 @@ class BasePlanGenerationHandler {
     final calculator = openingPrincipal == endPrincipal
         ? const InterestFirstCalculator()
         : configured;
-    var from = periodIndex == 0
-        ? context.start
-        : context.dates[periodIndex - 1];
     final rates = <PeriodRate>[];
     for (var i = periodIndex; i < context.dates.length; i++) {
-      final until = context.dates[i];
+      final range = context.periodRange(i);
       rates.add(
         i == periodIndex && firstPeriodRate != null
             ? firstPeriodRate
@@ -84,18 +80,15 @@ class BasePlanGenerationHandler {
                 rate: rate,
                 accrual: stage.accrual,
                 span: AccrualPeriodSpan(
-                  days: referenceDate(
-                    until,
-                  ).difference(referenceDate(from)).inDays,
+                  days: range.end.difference(range.start).inDays,
                   months: stage.dates.intervalMonths,
                 ),
-                start: from,
-                end: until,
+                start: range.start,
+                end: range.end,
                 units: context.accrualUnits,
                 elapsedMonths: i * stage.dates.intervalMonths,
               ),
       );
-      from = until;
     }
     return InstallmentStageProjection(
       firstPeriodIndex: periodIndex,
