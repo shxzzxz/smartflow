@@ -6,7 +6,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'loan_comparison_page.dart';
 import 'loan_configuration_page.dart';
-import 'loan_prepayment_page.dart';
+import 'loan_change_page.dart';
 
 class LoanCalculatorPage extends StatelessWidget {
   const LoanCalculatorPage({super.key});
@@ -39,10 +39,10 @@ class LoanCalculatorPage extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space12),
                 _entry(
                   context,
-                  '提前还款试算',
-                  '查看提前还本金后的利息和还款计划',
+                  '贷款变更试算',
+                  '组合提前还款、重定价和利息调整，查看还款计划变化',
                   RemixIcons.calendar_check_line,
-                  const LoanPrepaymentPage(),
+                  const LoanChangePage(),
                 ),
               ],
             ),

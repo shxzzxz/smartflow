@@ -54,9 +54,20 @@ const manualArticles = <ManualArticle>[
   ManualArticle(
     slug: 'loan-calculator',
     title: '贷款计算器',
-    summary: '配置贷款、比较两个方案，以及试算多阶段贷款的提前还款。',
+    summary: '配置和比较贷款，组合提前还款、重定价与利息调整试算还款计划。',
     category: '信贷与分期',
-    keywords: ['计算器', '贷款比较', '贷款产品', '还款计划', '提前还款', 'XIRR', '助学贷款'],
+    keywords: [
+      '计算器',
+      '贷款比较',
+      '贷款变更试算',
+      '贷款产品',
+      '还款计划',
+      '提前还款',
+      '重定价',
+      '利息调整',
+      'XIRR',
+      '助学贷款',
+    ],
     assetPath: 'assets/manual/loan-calculator.md',
   ),
 ];

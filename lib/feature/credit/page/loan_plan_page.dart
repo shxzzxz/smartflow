@@ -1,43 +1,65 @@
 import 'package:flutter/material.dart';
 
 import '../../../application/credit/credit_query_api.dart';
-import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../presentation/installment_schedule_presentation.dart';
+import '../presentation/loan_change_presentation.dart';
+import '../view_model/loan_configuration_view_model.dart';
 import '../widget/installment_plan_summary_card.dart';
 import '../widget/installment_schedule_view.dart';
+import '../widget/loan_calculator_action_button.dart';
+import '../widget/loan_comparison_table.dart';
+import 'loan_comparison_page.dart';
+import 'loan_change_page.dart';
 
 class LoanPlanPage extends StatelessWidget {
-  const LoanPlanPage({required LoanCalculation this.calculation, super.key})
-    : simulation = null,
-      prepaymentDate = null;
-  const LoanPlanPage.prepayment({
-    required LoanPrepaymentSimulation this.simulation,
-    required DateTime this.prepaymentDate,
+  const LoanPlanPage({required LoanConfiguration this.configuration, super.key})
+    : simulation = null;
+  const LoanPlanPage.changes({
+    required LoanChangeSimulation this.simulation,
     super.key,
-  }) : calculation = null;
+  }) : configuration = null;
 
-  final LoanCalculation? calculation;
-  final LoanPrepaymentSimulation? simulation;
-  final DateTime? prepaymentDate;
+  final LoanConfiguration? configuration;
+  final LoanChangeSimulation? simulation;
 
   @override
   Widget build(BuildContext context) {
     final repayment = simulation;
+    final calculation = configuration?.calculation;
     final items = repayment != null
-        ? prepaymentScheduleItems(repayment, prepaymentDate!)
+        ? loanChangeScheduleItems(repayment)
         : calculationScheduleItems(
             calculation!.periods,
-            stages: calculation!.stages,
+            stages: calculation.stages,
           );
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            AppPageHeader(title: repayment == null ? '还款计划' : '提前还款结果'),
+            AppPageHeader(
+              title: repayment == null ? '还款计划' : '贷款变更结果',
+              actions: [
+                if (configuration case final source?) ...[
+                  LoanCalculatorActionButton.compare(
+                    onPressed: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => LoanComparisonPage(initial: source),
+                      ),
+                    ),
+                  ),
+                  LoanCalculatorActionButton.change(
+                    onPressed: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => LoanChangePage(initial: source),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.space16),
@@ -51,37 +73,25 @@ class LoanPlanPage extends StatelessWidget {
                     InstallmentPlanSummaryCard(
                       title: '试算概览',
                       metrics: calculation!.metrics,
-                      principal: calculation!.totalPrincipal,
-                      periodCount: calculation!.periods.length,
+                      principal: calculation.totalPrincipal,
+                      periodCount: calculation.periods.length,
                     )
-                  else
-                    AppDetailSummaryCard(
-                      title: '提前还款试算',
-                      mainItems: [
-                        AppDetailSummaryCardItem(
-                          label: '试算前息费',
-                          value: repayment.beforeCharges.format(),
-                        ),
-                        AppDetailSummaryCardItem(
-                          label: '试算后息费',
-                          value: repayment.afterCharges.format(),
-                        ),
-                        AppDetailSummaryCardItem(
-                          label: '息费变化',
-                          value: repayment.chargesSaved.format(),
-                        ),
-                      ],
-                      supportingItems: [
-                        AppDetailSummaryCardItem(
-                          label: '提前还本金',
-                          value: repayment.prepaymentPrincipal.format(),
-                        ),
-                        AppDetailSummaryCardItem(
-                          label: '提前还款日',
-                          value: formatDateLabel(prepaymentDate!),
-                        ),
-                      ],
+                  else ...[
+                    LoanComparisonTable(
+                      rows: presentLoanChangeComparison(repayment),
+                      firstLabel: '原计划',
+                      secondLabel: '操作后',
+                      differenceLabel: '变化',
                     ),
+                    if (repayment.operations.principalReductions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.space12),
+                        child: Text(
+                          '提前还本金合计 ${repayment.prepaymentPrincipal.format()}，已计入总还款。',
+                          style: context.appTextStyles.formSupporting,
+                        ),
+                      ),
+                  ],
                   const SizedBox(height: AppSpacing.space16),
                   Text(
                     repayment == null ? '逐期明细' : '试算后还款计划',

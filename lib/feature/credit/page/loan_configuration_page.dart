@@ -12,6 +12,9 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/installment_terms_editor.dart';
 import '../widget/loan_basic_info_fields.dart';
+import '../widget/loan_calculator_action_button.dart';
+import 'loan_comparison_page.dart';
+import 'loan_change_page.dart';
 import 'loan_plan_page.dart';
 
 class LoanConfigurationPage extends ConsumerStatefulWidget {
@@ -70,7 +73,31 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '贷款配置'),
+            AppPageHeader(
+              title: '贷款配置',
+              actions: [
+                if (state.canUseCalculatorActions) ...[
+                  LoanCalculatorActionButton.compare(
+                    onPressed: state.resolvingRates
+                        ? null
+                        : () => _submit(
+                            notifier,
+                            false,
+                            destination: _LoanDestination.comparison,
+                          ),
+                  ),
+                  LoanCalculatorActionButton.change(
+                    onPressed: state.resolvingRates
+                        ? null
+                        : () => _submit(
+                            notifier,
+                            false,
+                            destination: _LoanDestination.changes,
+                          ),
+                  ),
+                ],
+              ],
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.space16,
@@ -200,8 +227,9 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
 
   Future<void> _submit(
     LoanConfigurationViewModel notifier,
-    bool selection,
-  ) async {
+    bool selection, {
+    _LoanDestination destination = _LoanDestination.plan,
+  }) async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     if (widget.installment != null) {
@@ -228,7 +256,13 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
         } else {
           await Navigator.of(context).push<void>(
             MaterialPageRoute(
-              builder: (_) => LoanPlanPage(calculation: value.calculation),
+              builder: (_) => switch (destination) {
+                _LoanDestination.plan => LoanPlanPage(configuration: value),
+                _LoanDestination.comparison => LoanComparisonPage(
+                  initial: value,
+                ),
+                _LoanDestination.changes => LoanChangePage(initial: value),
+              },
             ),
           );
         }
@@ -239,3 +273,5 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
     SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
   );
 }
+
+enum _LoanDestination { plan, comparison, changes }

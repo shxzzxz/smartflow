@@ -4,20 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_surface.dart';
 import '../presentation/loan_comparison_presentation.dart';
 import '../view_model/loan_comparison_view_model.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_configuration_entry.dart';
+import '../widget/loan_comparison_table.dart';
 import 'loan_configuration_page.dart';
 
 class LoanComparisonPage extends ConsumerWidget {
-  const LoanComparisonPage({super.key});
+  const LoanComparisonPage({this.initial, super.key});
+  final LoanConfiguration? initial;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(loanComparisonViewModelProvider);
-    final notifier = ref.read(loanComparisonViewModelProvider.notifier);
+    final provider = loanComparisonViewModelProvider(initial: initial);
+    final state = ref.watch(provider);
+    final notifier = ref.read(provider.notifier);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -60,7 +62,12 @@ class LoanComparisonPage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.space12),
                   Text('总体比较', style: context.appTextStyles.dateSectionTitle),
                   const SizedBox(height: AppSpacing.space8),
-                  _ComparisonTable(first: state.first, second: state.second),
+                  LoanComparisonTable(
+                    rows: presentLoanComparison(
+                      first: state.first,
+                      second: state.second,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -85,58 +92,5 @@ class LoanComparisonPage extends ConsumerWidget {
     if (context.mounted && configuration != null) {
       notifier.setConfiguration(index, configuration);
     }
-  }
-}
-
-class _ComparisonTable extends StatelessWidget {
-  const _ComparisonTable({required this.first, required this.second});
-  final LoanConfiguration? first, second;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final rows = presentLoanComparison(first: first, second: second);
-    Widget cell(String text, {bool header = false}) => Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space12,
-      ),
-      child: Text(text, style: header ? styles.formLabel : styles.formValue),
-    );
-    return AppSurface(
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(1.15),
-          1: FlexColumnWidth(),
-          2: FlexColumnWidth(),
-          3: FlexColumnWidth(),
-        },
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        border: TableBorder(
-          horizontalInside: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        children: [
-          TableRow(
-            children: [
-              cell('指标', header: true),
-              cell('配置一', header: true),
-              cell('配置二', header: true),
-              cell('差值', header: true),
-            ],
-          ),
-          for (final row in rows)
-            TableRow(
-              children: [
-                cell(row.label, header: true),
-                cell(row.firstValue),
-                cell(row.secondValue),
-                cell(row.difference),
-              ],
-            ),
-        ],
-      ),
-    );
   }
 }

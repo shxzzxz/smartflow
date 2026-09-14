@@ -83,9 +83,10 @@ class _ScheduleRow extends StatelessWidget {
               children: [
                 Text(formatDateLabel(item.date), style: styles.formLabel),
                 Text(
-                  '本金 ${item.principal.format()}'
-                  '${item.interest.minorUnits > 0 ? '  利息 ${item.interest.format()}' : ''}'
-                  '${item.fee.minorUnits > 0 ? '  手续费 ${item.fee.format()}' : ''}',
+                  item.detailsLabel ??
+                      '本金 ${item.principal.format()}'
+                          '${item.interest.minorUnits > 0 ? '  利息 ${item.interest.format()}' : ''}'
+                          '${item.fee.minorUnits > 0 ? '  手续费 ${item.fee.format()}' : ''}',
                   style: supporting,
                 ),
               ],
@@ -95,7 +96,10 @@ class _ScheduleRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(item.total.format(), style: styles.formLabel),
+              Text(
+                item.amountLabel ?? item.total.format(),
+                style: styles.formLabel,
+              ),
               if (item.statusLabel case final customStatus?)
                 Text(
                   customStatus,

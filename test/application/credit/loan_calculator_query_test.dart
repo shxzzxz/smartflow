@@ -82,17 +82,22 @@ void main() {
     'prepayment simulation applies the reduction from its effective interest period',
     () {
       final base = query.calculate(textbookTerms());
-      final simulation = query.simulatePrepayment(
-        LoanPrepaymentSimulationRequest(
+      final simulation = query.simulateChanges(
+        LoanChangeSimulationRequest(
           terms: textbookTerms(),
-          paidPeriods: 4,
-          prepaymentDate: DateTime(2026, 6, 15),
-          prepaymentPrincipal: const Money(minorUnits: 500000),
+          operations: InstallmentPlanOperations(
+            principalReductions: [
+              PrincipalReduction(
+                date: DateTime(2026, 6, 15),
+                principal: const Money(minorUnits: 500000),
+              ),
+            ],
+          ),
         ),
       );
 
       expect(simulation.periods, hasLength(12));
-      expect(simulation.firstRecalculatedPeriodNo, 6);
+      expect(simulation.periods[5].principal, isNot(base.periods[5].principal));
       for (var i = 0; i < 5; i++) {
         expect(simulation.periods[i].principal, base.periods[i].principal);
         expect(simulation.periods[i].interest, base.periods[i].interest);
@@ -104,8 +109,8 @@ void main() {
       expect(principalSum + 500000, 1200000);
       expect(simulation.totalInterest.minorUnits, lessThan(79423));
       expect(
-        simulation.interestSaved,
-        const Money(minorUnits: 79423) - simulation.totalInterest,
+        simulation.interestChange,
+        simulation.totalInterest - const Money(minorUnits: 79423),
       );
       expect(
         simulation.periods[5].remainingPrincipal.minorUnits,
@@ -117,8 +122,8 @@ void main() {
 
   test('prepayment simulation preserves quarterly and annual rhythms', () {
     for (final months in [3, 12]) {
-      final simulation = query.simulatePrepayment(
-        LoanPrepaymentSimulationRequest(
+      final simulation = query.simulateChanges(
+        LoanChangeSimulationRequest(
           terms: InstallmentPlanTerms(
             principal: const Money(minorUnits: 1200000),
             borrowingDate: DateTime(2026, 1, 1),
@@ -137,13 +142,21 @@ void main() {
               ),
             ],
           ),
-          paidPeriods: 1,
-          prepaymentDate: DateTime(2026, 1 + months, 2),
-          prepaymentPrincipal: const Money(minorUnits: 300000),
+          operations: InstallmentPlanOperations(
+            principalReductions: [
+              PrincipalReduction(
+                date: DateTime(2026, 1 + months, 2),
+                principal: const Money(minorUnits: 300000),
+              ),
+            ],
+          ),
         ),
       );
 
-      expect(simulation.firstRecalculatedPeriodNo, 2);
+      expect(
+        simulation.periods.first.interest,
+        simulation.original.periods.first.interest,
+      );
       expect(simulation.periods[1].interest.minorUnits, 6000 * months);
       expect(simulation.periods[1].date, DateTime(2026, 1 + 2 * months, 1));
       expect(simulation.periods.last.remainingPrincipal, Money.zero());
@@ -186,12 +199,17 @@ void main() {
               newScheduleId: () => 'schedule-${nextId++}',
             );
         final date = DateTime(2026, 1, 15);
-        final simulation = query.simulatePrepayment(
-          LoanPrepaymentSimulationRequest(
+        final simulation = query.simulateChanges(
+          LoanChangeSimulationRequest(
             terms: terms.planTerms(principal, borrowingDate),
-            paidPeriods: 0,
-            prepaymentDate: date,
-            prepaymentPrincipal: Money(minorUnits: prepaymentMinor),
+            operations: InstallmentPlanOperations(
+              principalReductions: [
+                PrincipalReduction(
+                  date: date,
+                  principal: Money(minorUnits: prepaymentMinor),
+                ),
+              ],
+            ),
           ),
         );
         final actual = const InstallmentPlanEngine()
@@ -226,8 +244,8 @@ void main() {
           prepaymentMinor == 10000 ? 3150 : 2000,
         );
         expect(
-          simulation.interestSaved.minorUnits,
-          prepaymentMinor == 10000 ? 250 : 1400,
+          simulation.interestChange.minorUnits,
+          prepaymentMinor == 10000 ? -250 : -1400,
         );
       },
     );
@@ -249,34 +267,49 @@ void main() {
       ],
     );
 
-    final deferred = query.simulatePrepayment(
-      LoanPrepaymentSimulationRequest(
+    final deferred = query.simulateChanges(
+      LoanChangeSimulationRequest(
         terms: multiStage,
-        paidPeriods: 0,
-        prepaymentDate: DateTime(2026, 6, 15),
-        prepaymentPrincipal: const Money(minorUnits: 1000),
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(
+              date: DateTime(2026, 6, 15),
+              principal: const Money(minorUnits: 1000),
+            ),
+          ],
+        ),
       ),
     );
     expect(deferred.periods.map((p) => p.principal.minorUnits), [4500, 4500]);
     expect(deferred.periods.last.remainingPrincipal, Money.zero());
     expect(
-      () => query.simulatePrepayment(
-        LoanPrepaymentSimulationRequest(
+      () => query.simulateChanges(
+        LoanChangeSimulationRequest(
           terms: textbookTerms(),
-          paidPeriods: 12,
-          prepaymentDate: DateTime(2026, 6, 15),
-          prepaymentPrincipal: const Money(minorUnits: 1000),
+          operations: InstallmentPlanOperations(
+            principalReductions: [
+              PrincipalReduction(
+                date: DateTime(2025, 6, 15),
+                principal: const Money(minorUnits: 1000),
+              ),
+            ],
+          ),
         ),
       ),
       throwsA(isA<BusinessException>()),
     );
     expect(
-      () => query.simulatePrepayment(
-        LoanPrepaymentSimulationRequest(
+      () => query.simulateChanges(
+        LoanChangeSimulationRequest(
           terms: textbookTerms(),
-          paidPeriods: 2,
-          prepaymentDate: DateTime(2026, 6, 15),
-          prepaymentPrincipal: Money.zero(),
+          operations: InstallmentPlanOperations(
+            principalReductions: [
+              PrincipalReduction(
+                date: DateTime(2026, 6, 15),
+                principal: Money.zero(),
+              ),
+            ],
+          ),
         ),
       ),
       throwsA(isA<BusinessException>()),
@@ -312,15 +345,19 @@ void main() {
             ),
           ],
         );
-        final result = query.simulatePrepayment(
-          LoanPrepaymentSimulationRequest(
+        final result = query.simulateChanges(
+          LoanChangeSimulationRequest(
             terms: terms,
-            paidPeriods: paid,
-            prepaymentDate: DateTime(2026, paid + 2, 2),
-            prepaymentPrincipal: const Money(minorUnits: 30000),
+            operations: InstallmentPlanOperations(
+              principalReductions: [
+                PrincipalReduction(
+                  date: DateTime(2026, paid + 2, 2),
+                  principal: const Money(minorUnits: 30000),
+                ),
+              ],
+            ),
           ),
         );
-        expect(result.firstRecalculatedPeriodNo, paid + 1);
         expect(result.periods.map((p) => p.principal.minorUnits), [
           0,
           0,
@@ -339,7 +376,7 @@ void main() {
           2000,
           2000,
         ]);
-        expect(result.interestSaved.minorUnits, paid == 1 ? 750 : 450);
+        expect(result.interestChange.minorUnits, paid == 1 ? -750 : -450);
         expect(result.totalFee.minorUnits, 6000);
         expect(result.stages.map((s) => s.index), [1, 2]);
         expect(result.periods.last.remainingPrincipal, Money.zero());

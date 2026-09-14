@@ -10,23 +10,30 @@ part of 'loan_comparison_view_model.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(LoanComparisonViewModel)
-final loanComparisonViewModelProvider = LoanComparisonViewModelProvider._();
+final loanComparisonViewModelProvider = LoanComparisonViewModelFamily._();
 
 final class LoanComparisonViewModelProvider
     extends $NotifierProvider<LoanComparisonViewModel, LoanComparisonState> {
-  LoanComparisonViewModelProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'loanComparisonViewModelProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  LoanComparisonViewModelProvider._({
+    required LoanComparisonViewModelFamily super.from,
+    required LoanConfiguration? super.argument,
+  }) : super(
+         retry: null,
+         name: r'loanComparisonViewModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
   String debugGetCreateSourceHash() => _$loanComparisonViewModelHash();
+
+  @override
+  String toString() {
+    return r'loanComparisonViewModelProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -39,14 +46,53 @@ final class LoanComparisonViewModelProvider
       providerOverride: $SyncValueProvider<LoanComparisonState>(value),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LoanComparisonViewModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$loanComparisonViewModelHash() =>
-    r'452506f995591ed6df2507fca1fd23ee48dc430b';
+    r'fec057cc1f99a9a397644f8c68f90a4e0129b50e';
+
+final class LoanComparisonViewModelFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          LoanComparisonViewModel,
+          LoanComparisonState,
+          LoanComparisonState,
+          LoanComparisonState,
+          LoanConfiguration?
+        > {
+  LoanComparisonViewModelFamily._()
+    : super(
+        retry: null,
+        name: r'loanComparisonViewModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  LoanComparisonViewModelProvider call({LoanConfiguration? initial}) =>
+      LoanComparisonViewModelProvider._(argument: initial, from: this);
+
+  @override
+  String toString() => r'loanComparisonViewModelProvider';
+}
 
 abstract class _$LoanComparisonViewModel
     extends $Notifier<LoanComparisonState> {
-  LoanComparisonState build();
+  late final _$args = ref.$arg as LoanConfiguration?;
+  LoanConfiguration? get initial => _$args;
+
+  LoanComparisonState build({LoanConfiguration? initial});
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -59,6 +105,6 @@ abstract class _$LoanComparisonViewModel
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    return element.handleCreate(ref, () => build(initial: _$args));
   }
 }

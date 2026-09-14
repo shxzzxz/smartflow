@@ -12,7 +12,8 @@ class LoanComparisonState {
 @riverpod
 class LoanComparisonViewModel extends _$LoanComparisonViewModel {
   @override
-  LoanComparisonState build() => const LoanComparisonState();
+  LoanComparisonState build({LoanConfiguration? initial}) =>
+      LoanComparisonState(first: initial);
 
   void setConfiguration(int index, LoanConfiguration configuration) {
     assert(index == 0 || index == 1);

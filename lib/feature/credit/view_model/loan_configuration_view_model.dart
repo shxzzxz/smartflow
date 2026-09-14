@@ -80,6 +80,7 @@ class LoanConfigurationState {
   final bool resolvingRates;
 
   bool get canSelectProduct => installment?.basicInfoReadOnly != true;
+  bool get canUseCalculatorActions => !selection && installment == null;
 
   String get submitLabel =>
       selection || installment != null ? '使用此配置' : '生成还款计划';

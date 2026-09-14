@@ -10,7 +10,7 @@ import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/loan_comparison_view_model.dart';
-import 'package:smartflow/feature/credit/view_model/loan_prepayment_view_model.dart';
+import 'package:smartflow/feature/credit/view_model/loan_change_view_model.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 class _Products extends Mock implements InstallmentProductService {}
@@ -139,8 +139,8 @@ void main() {
     'copy and edit preserve independent comparison configurations',
     () async {
       final original = await submit();
-      scope.listen(loanComparisonViewModelProvider, (_, _) {});
-      final comparison = scope.read(loanComparisonViewModelProvider.notifier);
+      scope.listen(loanComparisonViewModelProvider(), (_, _) {});
+      final comparison = scope.read(loanComparisonViewModelProvider().notifier);
       comparison.setConfiguration(0, original);
       comparison.copyFirstToSecond();
       final editProvider = loanConfigurationViewModelProvider(
@@ -154,7 +154,7 @@ void main() {
         terms.replace(terms.stages.single.setInput(StageInput.rate, '12')),
       );
       expect(
-        scope.read(loanComparisonViewModelProvider).second,
+        scope.read(loanComparisonViewModelProvider()).second,
         same(original),
       );
       final modified =
@@ -162,12 +162,16 @@ void main() {
               .value;
       comparison.setConfiguration(1, modified);
       expect(
-        scope.read(loanComparisonViewModelProvider).first!.principal.minorUnits,
+        scope
+            .read(loanComparisonViewModelProvider())
+            .first!
+            .principal
+            .minorUnits,
         1200000,
       );
       expect(
         scope
-            .read(loanComparisonViewModelProvider)
+            .read(loanComparisonViewModelProvider())
             .first!
             .terms
             .stages
@@ -177,7 +181,7 @@ void main() {
       );
       expect(
         scope
-            .read(loanComparisonViewModelProvider)
+            .read(loanComparisonViewModelProvider())
             .second!
             .principal
             .minorUnits,
@@ -208,17 +212,18 @@ void main() {
       ),
     );
     final configuration = await submit();
-    scope.listen(loanPrepaymentViewModelProvider, (_, _) {});
-    final prepayment = scope.read(loanPrepaymentViewModelProvider.notifier);
-    prepayment.setConfiguration(configuration);
-    prepayment.setDate(DateTime(2026, 2, 11));
-    final result = await prepayment.simulate(
-      paidPeriodsText: '',
+    final provider = loanChangeViewModelProvider(initial: configuration);
+    scope.listen(provider, (_, _) {});
+    final changes = scope.read(provider.notifier);
+    final saved = await changes.savePrepayment(
+      date: DateTime(2026, 2, 11),
       principalText: '3000',
     );
-    expect(result, isA<UiActionSuccess<LoanPrepaymentSimulation>>());
+    expect(saved, isA<UiActionSuccess<void>>());
+    final result = await changes.simulate();
+    expect(result, isA<UiActionSuccess<LoanChangeSimulation>>());
     expect(
-      (result as UiActionSuccess<LoanPrepaymentSimulation>)
+      (result as UiActionSuccess<LoanChangeSimulation>)
           .value
           .periods
           .last
