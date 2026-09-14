@@ -139,6 +139,12 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
     }
   }
 
+  Future<UiActionOutcome<void>> deleteConfiguration(String id) => _run(
+    () => ref
+        .read(installmentRepricingServiceProvider)
+        .deleteConfiguration(contractId, id),
+  );
+
   Future<UiActionOutcome<void>> deleteRepricing(String id) => _run(
     () => ref.read(installmentRepricingServiceProvider).delete(contractId, id),
   );

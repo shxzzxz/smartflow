@@ -63,6 +63,30 @@ void main() {
   });
   tearDown(() => db.close());
 
+  test(
+    'creation saves the entered name and initial rate without generating repricing configuration',
+    () async {
+      final result = await service.createDisbursementContract(
+        _command(
+          10000,
+          32000,
+          name: ' 家庭贷款 ',
+          floatingRate: FloatingRateRule(
+            referenceRateType: InterestRateType.lprOneYear,
+            spreadBp: -30,
+            firstResetDate: DateTime(2026, 1, 10),
+            firstEffectiveDate: DateTime(2026, 1, 15),
+          ),
+        ),
+      );
+      final saved = (await repository.findContract(result.contractId))!;
+      expect(saved.name, '家庭贷款');
+      expect(saved.stageTerms.repayments.single.rate!.ppm, 32000);
+      expect(saved.repricingConfigurations, isEmpty);
+      expect(saved.repricings, isEmpty);
+    },
+  );
+
   for (final rejectSave in [false, true]) {
     test(
       rejectSave
@@ -381,7 +405,9 @@ CreateDisbursementContractCommand _command(
   int principal,
   int rate, {
   FloatingRateRule? floatingRate,
+  String? name,
 }) => CreateDisbursementContractCommand(
+  name: name,
   liabilityAccountId: 'loan-account',
   principal: Money(minorUnits: principal),
   borrowingDate: DateTime(2026),

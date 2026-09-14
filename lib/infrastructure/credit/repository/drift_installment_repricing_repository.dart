@@ -14,17 +14,24 @@ class DriftInstallmentRepricingRepository
   DriftInstallmentRepricingRepository(this.database);
   final AppDatabase database;
   @override
-  Future<List<String>> configuredContractIds() async => [
+  Future<List<String>> contractIdsForRepricing() async => [
     for (final row
         in await database
             .customSelect(
               '''
-      SELECT DISTINCT c.id FROM installment_contracts c
-      JOIN installment_repricing_configs r ON r.contract_id = c.id
+      SELECT c.id FROM installment_contracts c
+      WHERE EXISTS (
+        SELECT 1 FROM installment_repricing_configs config
+        WHERE config.contract_id = c.id
+      ) OR EXISTS (
+        SELECT 1 FROM installment_repricing_records record
+        WHERE record.contract_id = c.id AND record.status = 'pending'
+      )
     ''',
               readsFrom: {
                 database.installmentContracts,
                 database.installmentRepricingConfigs,
+                database.installmentRepricingRecords,
               },
             )
             .get())
@@ -122,6 +129,23 @@ class DriftInstallmentRepricingRepository
         CreditErrorCode.contractPersistenceConflict,
         message: '该阶段的配置生效日已有重定价配置',
       );
+    }
+  }
+
+  @override
+  Future<void> deleteConfiguration(
+    InstallmentRepricingConfiguration configuration,
+  ) async {
+    final deleted =
+        await (database.delete(database.installmentRepricingConfigs)..where(
+              (row) =>
+                  row.id.equals(configuration.id) &
+                  row.stageId.equals(configuration.stageId) &
+                  row.contractId.equals(configuration.contractId),
+            ))
+            .go();
+    if (deleted == 0) {
+      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
     }
   }
 

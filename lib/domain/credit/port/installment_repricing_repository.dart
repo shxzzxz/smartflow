@@ -2,7 +2,8 @@ import '../entity/installment_repricing.dart';
 import '../entity/installment_repricing_configuration.dart';
 
 abstract interface class InstallmentRepricingRepository {
-  Future<List<String>> configuredContractIds();
+  /// 自动生成配置或待应用记录所涉及的合同；记录不依赖配置继续存在。
+  Future<List<String>> contractIdsForRepricing();
   Future<List<InstallmentRepricing>> list(String contractId);
 
   /// 保存合同重定价快照；重复取值不覆盖既有快照，不写入公共参考利率历史。
@@ -12,6 +13,11 @@ abstract interface class InstallmentRepricingRepository {
   Future<void> update(InstallmentRepricing record);
 
   Future<void> insertConfiguration(
+    InstallmentRepricingConfiguration configuration,
+  );
+
+  /// 仅删除自动生成约定，保留已独立保存的重定价事实。
+  Future<void> deleteConfiguration(
     InstallmentRepricingConfiguration configuration,
   );
 

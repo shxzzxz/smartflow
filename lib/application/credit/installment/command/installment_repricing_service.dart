@@ -47,6 +47,16 @@ class InstallmentRepricingService {
     await records.insertConfiguration(configuration);
   });
 
+  Future<void> deleteConfiguration(String contractId, String configurationId) =>
+      runner.run(() async {
+        final contract = await _requireContract(contractId);
+        final configuration = contract.repricingConfigurations
+            .where((value) => value.id == configurationId)
+            .firstOrNull;
+        if (configuration == null) _invalid('重定价配置已不存在');
+        await records.deleteConfiguration(configuration);
+      });
+
   Future<void> create(
     String contractId, {
     required String stageId,
@@ -223,7 +233,7 @@ class InstallmentRepricingService {
     var changed = false, needsRetry = false;
     final eligible = <String>[];
     final pending = <InstallmentRepricingCandidate>[];
-    for (final id in await records.configuredContractIds()) {
+    for (final id in await records.contractIdsForRepricing()) {
       try {
         final contract = await installments.findContract(id);
         if (contract == null) continue;

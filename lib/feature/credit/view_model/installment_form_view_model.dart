@@ -119,6 +119,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   Future<UiActionOutcome<String>> submit({
     required String principalText,
     required String noteText,
+    String nameText = '',
   }) async {
     final current = state.asData?.value;
     if (current is! InstallmentFormLoaded) return _invalidAction('分期表单尚未加载');
@@ -139,6 +140,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
               .createDisbursementContract(
                 CreateDisbursementContractCommand(
                   liabilityAccountId: current.liability.id,
+                  name: trimToNull(nameText),
                   disbursementAccountId: current.createDisbursementTransaction
                       ? current.disbursementAccountId
                       : null,

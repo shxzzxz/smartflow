@@ -20,6 +20,31 @@ import 'package:smartflow/feature/credit/provider/installment_query_providers.da
 
 void main() {
   testWidgets(
+    'contract operations live in the more menu and deletion remains confirmed',
+    (tester) async {
+      final service = _FakeInstallmentAppService();
+      await tester.pumpWidget(
+        _app(
+          service: service,
+          scheduleStatus: InstallmentScheduleStatus.pending,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('利率与利息调整'), findsNothing);
+      expect(find.byTooltip('删除合同'), findsNothing);
+      await tester.tap(find.byTooltip('更多'));
+      await tester.pumpAndSettle();
+      expect(find.text('重定价'), findsOneWidget);
+      expect(find.text('利息调整'), findsOneWidget);
+      await tester.tap(find.text('删除合同'));
+      await tester.pumpAndSettle();
+      expect(find.text('删除分期合同'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
+  testWidgets(
     'repricing banner confirms loaded records and prevents duplicate taps',
     (tester) async {
       final service = _MockRepricingService();

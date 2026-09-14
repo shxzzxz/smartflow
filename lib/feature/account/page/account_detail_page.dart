@@ -282,7 +282,11 @@ class _AccountDetailContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.space20),
           _BillSection(accountId: account.id, bills: bills),
           const SizedBox(height: AppSpacing.space20),
-          _InstallmentSection(contracts: contracts, accountKind: account.kind),
+          _InstallmentSection(
+            accountId: account.id,
+            contracts: contracts,
+            accountKind: account.kind,
+          ),
           const SizedBox(height: AppSpacing.space20),
         ],
         const _OverviewHeader(title: '账户交易'),
@@ -656,23 +660,29 @@ class _BillSection extends StatelessWidget {
 
 class _InstallmentSection extends StatelessWidget {
   const _InstallmentSection({
+    required this.accountId,
     required this.contracts,
     required this.accountKind,
   });
 
+  final String accountId;
   final AccountContractsState contracts;
   final AccountProfileKind accountKind;
 
   @override
   Widget build(BuildContext context) {
-    return _OverviewSection(title: '分期合同', child: _buildBody(context));
+    return _OverviewSection(
+      title: '分期合同',
+      onViewAll: () => context.push('/account/$accountId/installments'),
+      child: _buildBody(context),
+    );
   }
 
   Widget _buildBody(BuildContext context) {
     return switch (contracts) {
       AccountContractsLoaded(:final contracts) => AccountCreditSummaryList(
         items: [
-          for (final contract in contracts)
+          for (final contract in contracts.take(2))
             installmentAccountCreditSummary(contract, accountKind: accountKind),
         ],
         emptyMessage: '暂无分期合同',

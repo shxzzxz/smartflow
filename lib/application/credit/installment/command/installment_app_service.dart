@@ -131,6 +131,7 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
         disbursementAccountId: disbursementAccountId,
         disbursementTransactionId: borrowing?.transactionId,
         terms: InstallmentOriginationTerms(
+          name: command.name,
           principal: command.principal,
           borrowingDate: command.borrowingDate,
           note: command.note,

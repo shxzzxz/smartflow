@@ -12,6 +12,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -47,10 +48,29 @@ class InstallmentDetailPage extends ConsumerWidget {
               title: '分期合同',
               actions: [
                 if (loaded != null)
-                  AppHeaderIconButton(
-                    onPressed: () => _confirmDelete(context, ref),
-                    icon: RemixIcons.delete_bin_line,
-                    tooltip: '删除合同',
+                  AppPopupMenuButton(
+                    icon: RemixIcons.more_2_fill,
+                    tooltip: '更多',
+                    items: [
+                      AppPopupMenuAction(
+                        label: '重定价',
+                        icon: RemixIcons.percent_line,
+                        onPressed: () =>
+                            context.push('/installments/$contractId/repricing'),
+                      ),
+                      AppPopupMenuAction(
+                        label: '利息调整',
+                        icon: RemixIcons.equalizer_line,
+                        onPressed: () => context.push(
+                          '/installments/$contractId/interest-adjustments',
+                        ),
+                      ),
+                      AppPopupMenuAction(
+                        label: '删除合同',
+                        icon: RemixIcons.delete_bin_line,
+                        onPressed: () => _confirmDelete(context, ref),
+                      ),
+                    ],
                   ),
               ],
             ),
@@ -193,16 +213,6 @@ class _Body extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space8),
         _ActionBar(contract: contract, onValidate: onValidate),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          child: ListTile(
-            leading: const Icon(RemixIcons.percent_line),
-            title: const Text('利率与利息调整'),
-            trailing: const Icon(RemixIcons.arrow_right_s_line),
-            onTap: () =>
-                context.push('/installments/${contract.id}/operations'),
-          ),
-        ),
         if (contract.unconfirmedRepricingIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.space12),
           AppStatusBanner(

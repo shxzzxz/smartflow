@@ -38,6 +38,7 @@ void main() {
       var scheduleId = 0;
       String nextScheduleId() => 'schedule-${++scheduleId}';
       final terms = InstallmentOriginationTerms(
+        name: ' 家庭贷款 ',
         principal: const Money(minorUnits: 10000),
         borrowingDate: _borrowingDate,
         stageTerms: InstallmentContractTerms.singleStage(
@@ -61,6 +62,7 @@ void main() {
         newScheduleId: nextScheduleId,
       );
       final conversion = service.originateBillConversion(
+        name: ' 账单分期 ',
         contractId: 'conversion',
         bill: _bill(),
         sourceRepaymentId: 'repayment',
@@ -72,6 +74,7 @@ void main() {
       );
 
       for (final result in [disbursement, conversion]) {
+        expect(result.contract.repricingConfigurations, isEmpty);
         expect(result.schedules, hasLength(2));
         expect(
           result.schedules.fold<int>(
@@ -97,6 +100,8 @@ void main() {
         InstallmentSourceType.billConversion,
       );
       expect(conversion.contract.sourceRepaymentId, 'repayment');
+      expect(disbursement.contract.name, '家庭贷款');
+      expect(conversion.contract.name, '账单分期');
     },
   );
 }

@@ -10,6 +10,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../design_system/showcase/design_system_showcase_page.dart';
 import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_bills_page.dart';
+import '../feature/account/page/account_installments_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
@@ -321,6 +322,11 @@ final appRouter = GoRouter(
           UnattributedRepaymentFormPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
+      path: '/account/:id/installments',
+      builder: (context, state) =>
+          AccountInstallmentsPage(accountId: state.pathParameters['id']!),
+    ),
+    GoRoute(
       path: '/account/:id/installments/new',
       builder: (context, state) {
         final lockedSourceType = switch (state.uri.queryParameters['source']) {
@@ -374,8 +380,14 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/installments/:contractId/operations',
-      builder: (context, state) => InstallmentOperationsPage(
+      path: '/installments/:contractId/repricing',
+      builder: (context, state) => InstallmentRepricingPage(
+        contractId: state.pathParameters['contractId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/installments/:contractId/interest-adjustments',
+      builder: (context, state) => InstallmentInterestAdjustmentsPage(
         contractId: state.pathParameters['contractId']!,
       ),
     ),

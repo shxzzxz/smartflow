@@ -10,6 +10,7 @@ import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/credit/view_model/installment_form_view_model.dart';
@@ -75,22 +76,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('自定义本笔贷款'), findsNothing);
       expect(find.byType(Switch), findsNothing);
-      expect(
-        tester.getCenter(find.text('产品模板')).dy,
-        closeTo(tester.getCenter(find.byType(FilterChip)).dy, 1),
-      );
+      expect(find.widgetWithText(Tab, '基础配置'), findsOneWidget);
+      expect(find.widgetWithText(Tab, '高级配置'), findsOneWidget);
       await tester.tap(find.text('产品模板'));
       await tester.pumpAndSettle();
       expect(find.text('国家助学贷款'), findsOneWidget);
       await tester.tap(find.text('等额本金'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(FilterChip));
+      await tester.tap(find.text('高级配置'));
       await tester.pumpAndSettle();
-      expect(
-        tester.widget<FilterChip>(find.byType(FilterChip)).selected,
-        isTrue,
-      );
-      await tester.tap(find.byType(FilterChip));
+      expect(find.text('计算约定'), findsOneWidget);
+      await tester.tap(find.text('基础配置'));
       await tester.pumpAndSettle();
       final count = find.descendant(
         of: find.byKey(
@@ -161,7 +157,20 @@ void main() {
       container.read(provider.notifier).setBorrowingDate(DateTime(2026, 1, 1));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '12000');
-      await tester.enterText(find.byType(TextField).last, '保留备注');
+      final note = find.descendant(
+        of: find.widgetWithText(AppPlainTextFormRow, '备注'),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(note, '保留备注');
+      await tester.enterText(find.byType(TextField).last, '家庭贷款');
+      final configurationCard = find.ancestor(
+        of: find.text('分期配置'),
+        matching: find.byType(AppFormSection),
+      );
+      expect(
+        find.descendant(of: configurationCard, matching: find.text('合同名称')),
+        findsOneWidget,
+      );
       await tester.tap(find.text('分期配置'));
       await tester.pumpAndSettle();
       expect(find.byType(LoanConfigurationPage), findsOneWidget);
@@ -191,8 +200,9 @@ void main() {
       );
       expect(
         tester.widget<TextField>(find.byType(TextField).last).controller!.text,
-        '保留备注',
+        '家庭贷款',
       );
+      expect(tester.widget<TextField>(note).controller!.text, '保留备注');
       expect(
         (container.read(provider).requireValue as InstallmentFormLoaded)
             .termsDraft

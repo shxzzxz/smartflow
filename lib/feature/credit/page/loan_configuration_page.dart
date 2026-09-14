@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../application/credit/credit_query_api.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -29,8 +30,14 @@ class LoanConfigurationPage extends ConsumerStatefulWidget {
       _LoanConfigurationPageState();
 }
 
-class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
+class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  late final _tabs = TabController(
+    length: 2,
+    vsync: this,
+    initialIndex: widget.initial?.advanced == true ? 1 : 0,
+  );
   late final _principalController = TextEditingController(
     text:
         widget.installment?.principal?.format() ??
@@ -46,6 +53,7 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
 
   @override
   void dispose() {
+    _tabs.dispose();
     _principalController.dispose();
     super.dispose();
   }
@@ -54,11 +62,33 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(_provider);
     final notifier = ref.read(_provider.notifier);
+    ref.listen(_provider.select((value) => value.advanced), (_, advanced) {
+      final index = advanced ? 1 : 0;
+      if (_tabs.index != index) _tabs.animateTo(index);
+    });
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             const AppPageHeader(title: '贷款配置'),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space16,
+              ),
+              child: TabBar(
+                controller: _tabs,
+                labelStyle: context.appTextStyles.formValueEmphasis,
+                unselectedLabelStyle: context.appTextStyles.formValue,
+                onTap: (index) {
+                  FocusScope.of(context).unfocus();
+                  notifier.setAdvanced(index == 1);
+                },
+                tabs: const [
+                  Tab(text: '基础配置'),
+                  Tab(text: '高级配置'),
+                ],
+              ),
+            ),
             Expanded(
               child: Form(
                 key: _formKey,
@@ -70,56 +100,44 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
                     AppSpacing.space24,
                   ),
                   children: [
-                    AppFormSection(
-                      children: [
-                        Row(
-                          children: [
-                            if (state.canSelectProduct) ...[
-                              Expanded(
-                                flex: 2,
-                                child: AppPlainSelectFormRow<String>(
-                                  label: '产品模板',
-                                  value: state.productName,
-                                  placeholder: '请选择',
-                                  onTap: (_) => _pickProduct(notifier),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.space8),
-                            ],
-                            Expanded(
-                              child: FilterChip(
-                                label: const Center(child: Text('高级配置')),
-                                selected: state.advanced,
-                                showCheckmark: false,
-                                onSelected: notifier.setAdvanced,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space12),
-                    AppFormSection(
-                      title: '贷款',
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space16,
-                        vertical: AppSpacing.space8,
-                      ),
-                      children: [
-                        if (state.installment?.basicInfoReadOnly == true)
-                          LoanBasicInfoFields.readOnly(
-                            principal: state.installment!.principal!,
-                            borrowingDate: state.borrowingDate,
-                          )
-                        else
-                          LoanBasicInfoFields(
-                            principalController: _principalController,
-                            borrowingDate: state.borrowingDate,
-                            onBorrowingDateChanged: notifier.setBorrowingDate,
+                    if (state.canSelectProduct) ...[
+                      AppFormSection(
+                        children: [
+                          AppPlainSelectFormRow<String>(
+                            label: '产品模板',
+                            value: state.productName,
+                            placeholder: '请选择',
+                            onTap: (_) => _pickProduct(notifier),
                           ),
-                      ],
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.space12),
+                    ],
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: AppSpacing.space12,
+                      ),
+                      child: AppFormSection(
+                        title: '贷款',
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space16,
+                          vertical: AppSpacing.space8,
+                        ),
+                        children: [
+                          if (state.installment?.basicInfoReadOnly == true)
+                            LoanBasicInfoFields.readOnly(
+                              principal: state.installment!.principal!,
+                              borrowingDate: state.borrowingDate,
+                            )
+                          else
+                            LoanBasicInfoFields(
+                              principalController: _principalController,
+                              borrowingDate: state.borrowingDate,
+                              onBorrowingDateChanged: notifier.setBorrowingDate,
+                            ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.space12),
                     InstallmentTermsEditor(
                       mode: state.installment == null
                           ? InstallmentTermsEditorMode.calculator
@@ -128,10 +146,13 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
                       onChanged: notifier.setTerms,
                       borrowingDate: state.borrowingDate,
                       showAdvanced: state.advanced,
-                      repricingConfigurationEditable:
-                          state.installment?.basicInfoReadOnly != true,
+                      rateMessages: state.rateMessages,
+                      retryableRateStageIds: state.retryableRateStageIds,
+                      onRetryReferenceRates: () =>
+                          notifier.refreshReferenceRates(retry: true),
                       planAction: AppSubmitButton(
                         label: state.submitLabel,
+                        loading: state.resolvingRates,
                         onPressed: () => _submit(notifier, state.selection),
                       ),
                     ),

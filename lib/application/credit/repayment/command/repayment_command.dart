@@ -100,6 +100,7 @@ class BillRepaymentEditView {
 
 class CreateBillConversionInstallmentRepaymentCommand {
   const CreateBillConversionInstallmentRepaymentCommand({
+    this.contractName,
     required this.billId,
     required this.allocations,
     required this.borrowingDate,
@@ -107,6 +108,7 @@ class CreateBillConversionInstallmentRepaymentCommand {
     this.note,
   });
   final String billId;
+  final String? contractName;
   final List<BillRepaymentAllocation> allocations;
   final DateTime borrowingDate;
   final InstallmentContractTerms stageTerms;

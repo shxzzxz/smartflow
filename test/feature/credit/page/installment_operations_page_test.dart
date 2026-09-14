@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/feature/credit/page/installment_operations_page.dart';
@@ -24,6 +25,7 @@ void main() {
     WidgetTester tester, {
     bool records = false,
     bool multipleStages = false,
+    bool interestAdjustments = false,
     double textScale = 1,
   }) async {
     await tester.binding.setSurfaceSize(const Size(320, 780));
@@ -43,13 +45,16 @@ void main() {
           ),
         ],
         child: MaterialApp(
+          theme: AppTheme.light(),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
               context,
             ).copyWith(textScaler: TextScaler.linear(textScale)),
             child: child!,
           ),
-          home: const InstallmentOperationsPage(contractId: 'loan'),
+          home: interestAdjustments
+              ? const InstallmentInterestAdjustmentsPage(contractId: 'loan')
+              : const InstallmentRepricingPage(contractId: 'loan'),
         ),
       ),
     );
@@ -96,7 +101,7 @@ void main() {
   testWidgets(
     'failed adjustment saves preserve edited input and block duplicate submissions',
     (tester) async {
-      await pump(tester, records: true);
+      await pump(tester, records: true, interestAdjustments: true);
       await tester.ensureVisible(find.text('利息比例 50% · 点击修改'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('利息比例 50% · 点击修改'));
@@ -140,7 +145,7 @@ void main() {
     testWidgets(
       '${sample.action} validates ${sample.value} inline without failure logs',
       (tester) async {
-        await pump(tester);
+        await pump(tester, interestAdjustments: sample.action == '新增利息调整');
         await tester.ensureVisible(find.text(sample.action));
         await tester.tap(find.text(sample.action));
         await tester.pumpAndSettle();
@@ -185,6 +190,27 @@ void main() {
     expect(repricing.deleted, [('loan', 'rate')]);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'configuration deletion keeps records and each page exposes its own operations',
+    (tester) async {
+      await pump(tester, records: true);
+      expect(find.text('新增利息调整'), findsNothing);
+      final remove = find.byTooltip('删除重定价配置');
+      await tester.ensureVisible(remove);
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('已生成的重定价记录和还款计划会保留'), findsOneWidget);
+      await tester.tap(find.text('删除'));
+      await tester.pumpAndSettle();
+      expect(repricing.deletedConfigurations, [('loan', 'configuration')]);
+      expect(repricing.deleted, isEmpty);
+      await pump(tester, interestAdjustments: true);
+      expect(find.text('新增重定价'), findsNothing);
+      expect(find.text('新增配置'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, '新增利息调整'), findsOneWidget);
+    },
+  );
 
   for (final action in ['新增配置', '新增重定价']) {
     testWidgets('$action submits the stage selected by the user', (

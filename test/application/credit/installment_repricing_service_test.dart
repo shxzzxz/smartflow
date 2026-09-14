@@ -46,6 +46,94 @@ void main() {
   tearDown(() => f.db.close());
 
   test(
+    'pending repricing is applied even after its generating configuration is deleted',
+    () async {
+      expect(await f.service.prepare('loan', f.currentDate), isTrue);
+      final contract = (await f.installments.findContract('loan'))!;
+      expect(contract.repricings, isNotEmpty);
+      expect(contract.repricings.every((r) => !r.applied), isTrue);
+      await f.service.deleteConfiguration(
+        'loan',
+        contract.repricingConfigurations.single.id,
+      );
+      expect(await f.service.runDue(f.currentDate), (
+        changed: true,
+        needsRetry: false,
+      ));
+      final records = await f.records.list('loan');
+      expect(records.map((r) => r.id), contract.repricings.map((r) => r.id));
+      expect(records.every((r) => r.applied), isTrue);
+    },
+  );
+
+  test(
+    'deleting a configuration keeps generated rates and the saved plan',
+    () async {
+      await f.service.runDue(f.currentDate);
+      final before = (await f.installments.findContract('loan'))!;
+      final schedules = await f.installments.listSchedules('loan');
+      expect(before.repricings, isNotEmpty);
+      final configurationId = before.repricingConfigurations.single.id;
+
+      await f.service.deleteConfiguration('loan', configurationId);
+      var after = (await f.installments.findContract('loan'))!;
+      expect(after.repricingConfigurations, isEmpty);
+      expect(
+        after.repricings.map((r) => (r.id, r.status, r.change.rate.ppm)),
+        before.repricings.map((r) => (r.id, r.status, r.change.rate.ppm)),
+      );
+      expect(
+        (await f.installments.listSchedules('loan')).map(
+          (row) => (
+            row.id,
+            row.expectedPrincipal,
+            row.expectedInterest,
+            row.expectedFee,
+          ),
+        ),
+        schedules.map(
+          (row) => (
+            row.id,
+            row.expectedPrincipal,
+            row.expectedInterest,
+            row.expectedFee,
+          ),
+        ),
+      );
+      await f.service.runDue(DateTime.utc(2026, 12, 20));
+      after = (await f.installments.findContract('loan'))!;
+      expect(
+        after.repricings.map((r) => r.id),
+        before.repricings.map((r) => r.id),
+      );
+      await f.service.delete('loan', after.repricings.first.id);
+      expect(
+        (await f.records.list('loan')).length,
+        before.repricings.length - 1,
+      );
+    },
+  );
+
+  test(
+    'configuration deletion rejects an id belonging to another contract',
+    () async {
+      await f.seed(id: 'other');
+      final other = (await f.installments.findContract('other'))!;
+      await expectLater(
+        f.service.deleteConfiguration(
+          'loan',
+          other.repricingConfigurations.single.id,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      expect(
+        (await f.installments.findContract('other'))!.repricingConfigurations,
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
     'configuration switch retains an earlier reset with a later effective date',
     () async {
       await f.seed(
@@ -1505,6 +1593,23 @@ class _Fixture {
               id == 'loan' ? 'period-${++period}' : '$id-period-${++period}',
         );
     await installments.insertAggregate(aggregate.contract, aggregate.schedules);
+    var start = aggregate.contract.borrowingDate;
+    for (final configuration in terms.stages) {
+      switch (configuration.terms) {
+        case DefermentStage(:final until):
+          start = until;
+        case final AmortizingStage stage:
+          if (stage.floatingRate case final rule?) {
+            await service.addConfiguration(
+              id,
+              stageId: configuration.id,
+              effectiveFrom: stage.accrualStartDate ?? start,
+              rule: rule,
+            );
+          }
+          start = stage.dates.getDates().last;
+      }
+    }
   }
 
   Future<void> seedRepaymentExample() async {

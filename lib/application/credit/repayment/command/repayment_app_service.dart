@@ -451,6 +451,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       final contractId = _idGenerator.newId();
       final aggregate = _origination.originateBillConversion(
         contractId: contractId,
+        name: command.contractName,
         bill: bill,
         sourceRepaymentId: repaymentId,
         principal: total.principal,

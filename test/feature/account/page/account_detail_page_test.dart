@@ -8,21 +8,115 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
 import 'package:smartflow/feature/account/page/account_detail_page.dart';
+import 'package:smartflow/feature/account/page/account_installments_page.dart';
 import 'package:smartflow/feature/account/view_model/account_detail_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_transactions_view_model.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
+import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 void main() {
+  testWidgets(
+    'overview limits contracts to two and view all opens the full account list',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final account = _account(kind: AccountProfileKind.loan);
+      final contracts = [
+        for (var i = 1; i <= 3; i++)
+          InstallmentContractReadModel(
+            id: 'contract-$i',
+            name: '合同 $i',
+            liabilityAccountId: account.id,
+            sourceType: InstallmentSourceType.disbursement,
+            principal: const Money(minorUnits: 100000),
+            borrowingDate: DateTime(2026, 1, 1),
+            createdAt: DateTime(2026, 1, i),
+            status: InstallmentContractStatus.active,
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: 'stage-$i',
+              totalPeriods: 1,
+              firstDate: DateTime(2026, 2, 1),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.monthly,
+            ),
+          ),
+      ];
+      final detail = AccountDetailPageState.loaded(
+        account: account,
+        actions: accountDetailActions(account),
+        transactions: const AccountTransactionsState.loaded(
+          groups: [],
+          hasMore: false,
+          isLoadingMore: false,
+        ),
+        contracts: AccountContractsState.loaded(contracts: contracts),
+        bills: const AccountBillsState.loaded(bills: []),
+        creditOverview: const AccountCreditOverviewState.notApplicable(),
+      );
+      final router = GoRouter(
+        initialLocation: '/account/account',
+        routes: [
+          GoRoute(
+            path: '/account/:id',
+            builder: (_, state) =>
+                AccountDetailPage(accountId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/account/:id/installments',
+            builder: (_, state) =>
+                AccountInstallmentsPage(accountId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/installments/:id',
+            builder: (_, state) =>
+                Scaffold(body: Text('打开 ${state.pathParameters['id']}')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            accountDetailViewModelProvider(
+              account.id,
+            ).overrideWith(() => _FixedAccountDetailViewModel(detail)),
+            accountViewProvider(
+              account.id,
+            ).overrideWith((ref) => AsyncData(account)),
+            installmentContractsByAccountProvider(
+              account.id,
+            ).overrideWith((ref) async => contracts),
+          ],
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('合同 1'), findsOneWidget);
+      expect(find.text('合同 2'), findsOneWidget);
+      expect(find.text('合同 3'), findsNothing);
+      await tester.tap(find.text('查看全部').last);
+      await tester.pumpAndSettle();
+      expect(find.text('全部分期合同'), findsOneWidget);
+      expect(find.text('合同 3'), findsOneWidget);
+      await tester.tap(find.text('合同 3'));
+      await tester.pumpAndSettle();
+      expect(find.text('打开 contract-3'), findsOneWidget);
+    },
+  );
   testWidgets('shows receivable account actions', (tester) async {
     await tester.pumpWidget(
       _app(account: _account(kind: AccountProfileKind.receivable)),
@@ -90,9 +184,8 @@ void main() {
         ),
         GoRoute(
           path: '/account/:id',
-          builder:
-              (context, state) =>
-                  AccountDetailPage(accountId: state.pathParameters['id']!),
+          builder: (context, state) =>
+              AccountDetailPage(accountId: state.pathParameters['id']!),
         ),
       ],
     );
@@ -140,7 +233,7 @@ void main() {
 
     expect(find.text('合同未来欠款'), findsNothing);
     expect(find.text('生成历史账单'), findsNothing);
-    expect(find.text('查看全部'), findsOneWidget);
+    expect(find.text('查看全部'), findsNWidgets(2));
     expect(find.text('2026年07月'), findsOneWidget);
     expect(find.text('2026年06月'), findsOneWidget);
   });
@@ -262,15 +355,13 @@ void main() {
       routes: [
         GoRoute(
           path: '/account/:id',
-          builder:
-              (context, state) =>
-                  AccountDetailPage(accountId: state.pathParameters['id']!),
+          builder: (context, state) =>
+              AccountDetailPage(accountId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/account/:id/bills',
-          builder:
-              (context, state) =>
-                  AccountBillsPage(accountId: state.pathParameters['id']!),
+          builder: (context, state) =>
+              AccountBillsPage(accountId: state.pathParameters['id']!),
         ),
       ],
     );
@@ -296,7 +387,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('查看全部'));
+    await tester.tap(find.text('查看全部').first);
     await tester.pumpAndSettle();
 
     expect(find.text('全部账单'), findsOneWidget);
@@ -347,9 +438,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/account/:id',
-          builder:
-              (context, state) =>
-                  AccountDetailPage(accountId: state.pathParameters['id']!),
+          builder: (context, state) =>
+              AccountDetailPage(accountId: state.pathParameters['id']!),
         ),
         GoRoute(
           path: '/transaction/:id/edit',
@@ -475,10 +565,9 @@ AccountView _account({
     balance: Money.zero(),
     iconKey: kind.iconKey,
     isArchived: isArchived,
-    creditLimit:
-        kind == AccountProfileKind.credit
-            ? const Money(minorUnits: 100000)
-            : null,
+    creditLimit: kind == AccountProfileKind.credit
+        ? const Money(minorUnits: 100000)
+        : null,
     billingDay: kind == AccountProfileKind.credit ? 5 : null,
     repaymentDay: kind == AccountProfileKind.credit ? 25 : null,
     billingDayToNext: kind == AccountProfileKind.credit ? true : null,

@@ -41,6 +41,7 @@ class InstallmentFormPage extends ConsumerStatefulWidget {
 class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _principalController = TextEditingController();
+  final _nameController = TextEditingController();
   final _noteController = TextEditingController();
 
   InstallmentFormArgs get _args {
@@ -53,6 +54,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   @override
   void dispose() {
     _principalController.dispose();
+    _nameController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -149,6 +151,11 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 placeholder: '点击配置',
                 onTap: (_) => _configure(state),
               ),
+              AppPlainTextFormRow(
+                label: '合同名称',
+                controller: _nameController,
+                hintText: '选填，默认使用借款日期',
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
@@ -207,6 +214,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
         .read(installmentFormViewModelProvider(_args).notifier)
         .submit(
           principalText: _principalController.text,
+          nameText: _nameController.text,
           noteText: _noteController.text,
         );
     if (!mounted) return;

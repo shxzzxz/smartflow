@@ -1,5 +1,6 @@
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/text/text_normalizer.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
@@ -9,11 +10,10 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 import '../../valobj/installment_contract_terms.dart';
-import '../../entity/installment_repricing_configuration.dart';
-import '../../valobj/installment_plan_terms.dart';
 
 class InstallmentOriginationTerms {
   const InstallmentOriginationTerms({
+    this.name,
     required this.principal,
     required this.borrowingDate,
     this.note,
@@ -21,6 +21,7 @@ class InstallmentOriginationTerms {
   });
 
   final Money principal;
+  final String? name;
   final DateTime borrowingDate;
   final String? note;
   final InstallmentContractTerms stageTerms;
@@ -62,6 +63,7 @@ class InstallmentOriginationService {
       disbursementAccountId: disbursementAccountId,
       disbursementTransactionId: disbursementTransactionId,
       terms: InstallmentOriginationTerms(
+        name: terms.name,
         principal: terms.principal,
         borrowingDate: terms.borrowingDate,
         note: terms.note,
@@ -73,6 +75,7 @@ class InstallmentOriginationService {
   }
 
   InstallmentOriginationResult originateBillConversion({
+    String? name,
     required String contractId,
     required Bill bill,
     required String sourceRepaymentId,
@@ -88,6 +91,7 @@ class InstallmentOriginationService {
     sourceType: InstallmentSourceType.billConversion,
     sourceRepaymentId: sourceRepaymentId,
     terms: InstallmentOriginationTerms(
+      name: name,
       principal: principal,
       borrowingDate: borrowingDate,
       stageTerms: stageTerms,
@@ -126,6 +130,7 @@ class InstallmentOriginationService {
     };
     final contract = InstallmentContract(
       id: contractId,
+      name: trimToNull(terms.name),
       liabilityAccountId: liabilityAccountId,
       sourceType: sourceType,
       sourceRepaymentId: sourceRepaymentId,
@@ -137,11 +142,6 @@ class InstallmentOriginationService {
       note: terms.note,
       createdAt: createdAt,
       stageTerms: stageTerms,
-      repricingConfigurations: _initialRepricingConfigurations(
-        contractId,
-        stageTerms,
-        terms.borrowingDate,
-      ),
     );
     return InstallmentOriginationResult(
       contract: contract,
@@ -153,34 +153,5 @@ class InstallmentOriginationService {
         stageIdsByPeriod: stageIdsByPeriod,
       ),
     );
-  }
-
-  List<InstallmentRepricingConfiguration> _initialRepricingConfigurations(
-    String contractId,
-    InstallmentContractTerms terms,
-    DateTime borrowingDate,
-  ) {
-    var start = borrowingDate;
-    final result = <InstallmentRepricingConfiguration>[];
-    for (final config in terms.stages) {
-      switch (config.terms) {
-        case DefermentStage(:final until):
-          start = until;
-        case final AmortizingStage stage:
-          if (stage.floatingRate case final rule?) {
-            result.add(
-              InstallmentRepricingConfiguration(
-                id: '${config.id}:repricing',
-                contractId: contractId,
-                stageId: config.id,
-                effectiveFrom: stage.accrualStartDate ?? start,
-                rule: rule,
-              ),
-            );
-          }
-          start = stage.dates.getDates().last;
-      }
-    }
-    return List.unmodifiable(result);
   }
 }

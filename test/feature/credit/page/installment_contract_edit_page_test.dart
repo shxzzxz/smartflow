@@ -65,8 +65,8 @@ void main() {
           .widget<AppPlainSelectMenuFormRow<InterestRateType>>(
             find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
           );
-      expect(rateType.value, InterestRateType.lprFiveYearPlus);
-      expect(rateType.enabled, isFalse);
+      expect(rateType.value, InterestRateType.fixed);
+      expect(rateType.enabled, isTrue);
       await tester.enterText(
         find.descendant(
           of: find.byKey(const ValueKey('contract-1:stage:1:rate')),

@@ -155,10 +155,9 @@ void main() {
       final vm = container.read(provider.notifier);
       vm.setTerms(container.read(provider).terms.add(true));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byType(FilterChip));
-      await tester.tap(find.byType(FilterChip));
+      await tester.tap(find.text('高级配置'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(FilterChip));
+      await tester.tap(find.text('基础配置'));
       await tester.pumpAndSettle();
       final after = container.read(provider);
       expect(after.advanced, isFalse);

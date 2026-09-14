@@ -112,13 +112,14 @@ void main() {
 
       final outcome = await viewModel.submit(
         principalText: '12.34',
-
+        nameText: ' 家庭贷款 ',
         noteText: ' note ',
       );
 
       expect(outcome, isA<UiActionSuccess<String>>());
       expect((outcome as UiActionSuccess<String>).value, 'contract-created');
       final command = service.disbursementCommands.single;
+      expect(command.name, '家庭贷款');
       expect(command.liabilityAccountId, 'loan');
       expect(command.disbursementAccountId, 'cash');
       expect(command.principal, const Money(minorUnits: 1234));

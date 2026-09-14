@@ -134,10 +134,11 @@ void main() {
   });
 
   testWidgets(
-    'regular mode still shows required fixed amount and switching preserves rules',
+    'advanced mode includes basic inputs and preserves their edits across tabs',
     (tester) async {
       await openCalculator(tester);
       await tap(tester, '贷款试算');
+      await tester.enterText(find.byType(TextField).first, '12000');
       await tap(tester, '产品模板');
       await tap(tester, '指定固定额产品');
       expect(find.text('固定额算法'), findsNothing);
@@ -145,9 +146,31 @@ void main() {
       await tap(tester, '高级配置');
       expect(find.text('计算约定'), findsOneWidget);
       expect(find.text('固定额算法'), findsOneWidget);
-      await tap(tester, '高级配置');
+      expect(find.text('本金'), findsOneWidget);
+      expect(find.text('借款日期'), findsOneWidget);
+      expect(find.text('期数'), findsOneWidget);
+      expect(find.text('固定还款额'), findsOneWidget);
+      expect(find.byTooltip('删除阶段'), findsOneWidget);
+      expect(find.text('添加还款阶段'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        '12000',
+      );
+      final provider = loanConfigurationViewModelProvider();
+      final stageId = scope.read(provider).terms.stages.single.id;
+      final periods = find.descendant(
+        of: find.byKey(ValueKey('$stageId:periods')),
+        matching: find.byType(TextField),
+      );
+      await tester.ensureVisible(periods);
+      await tester.enterText(periods, '24');
+      await tap(tester, '基础配置');
       expect(find.text('计算约定'), findsNothing);
       expect(find.text('固定还款额'), findsOneWidget);
+      expect(
+        scope.read(provider).terms.stages.single.text(StageInput.periods),
+        '24',
+      );
       expect(
         scope
             .read(loanConfigurationViewModelProvider())

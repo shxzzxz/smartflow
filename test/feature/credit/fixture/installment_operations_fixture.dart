@@ -63,6 +63,21 @@ InstallmentContractReadModel operationsContract({
           ),
         ]
       : [],
+  repricingConfigurations: withRecords
+      ? [
+          InstallmentRepricingConfigurationReadModel(
+            id: 'configuration',
+            stageId: 'stage',
+            effectiveFrom: DateTime(2026, 8, 8),
+            rule: FloatingRateRule(
+              referenceRateType: InterestRateType.lprOneYear,
+              spreadBp: -10,
+              firstResetDate: DateTime(2026, 8, 20),
+              firstEffectiveDate: DateTime(2026, 8, 20),
+            ),
+          ),
+        ]
+      : [],
   interestAdjustments: withRecords
       ? [
           InstallmentInterestAdjustmentReadModel(
@@ -99,6 +114,7 @@ class RecordingRepricingService implements InstallmentRepricingService {
         })
       >[];
   final deleted = <(String, String)>[];
+  final deletedConfigurations = <(String, String)>[];
   Future<void> Function()? onWrite;
 
   @override
@@ -140,6 +156,15 @@ class RecordingRepricingService implements InstallmentRepricingService {
   @override
   Future<void> delete(String contractId, String recordId) async {
     deleted.add((contractId, recordId));
+    await onWrite?.call();
+  }
+
+  @override
+  Future<void> deleteConfiguration(
+    String contractId,
+    String configurationId,
+  ) async {
+    deletedConfigurations.add((contractId, configurationId));
     await onWrite?.call();
   }
 

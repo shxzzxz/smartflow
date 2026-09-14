@@ -130,7 +130,7 @@ void main() {
   );
 
   testWidgets(
-    'floating loan exposes reset dates, signed BP and payment timing',
+    'reference rate input shows a calculated initial rate without repricing configuration',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(600, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -140,8 +140,6 @@ void main() {
             id: 'floating',
             rateType: InterestRateType.lprFiveYearPlus,
             firstDate: DateTime(2026, 1, 20),
-            firstResetDate: DateTime(2025, 12, 20),
-            firstEffectiveDate: DateTime(2026, 1, 1),
             inputs: const {
               StageInput.rate: '3.2',
               StageInput.spreadBp: '-30',
@@ -168,18 +166,18 @@ void main() {
           ),
         ),
       );
-      expect(find.text('首次重定价日'), findsOneWidget);
-      expect(find.text('首次生效日'), findsOneWidget);
+      expect(find.text('首次重定价日'), findsNothing);
+      expect(find.text('首次生效日'), findsNothing);
+      expect(find.text('重定价周期'), findsNothing);
+      expect(find.text('3.2% / 年'), findsOneWidget);
+      expect(find.byKey(const ValueKey('floating:rate')), findsNothing);
       await tester.tap(
         find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('中长期贷款基准利率').last);
       await tester.pumpAndSettle();
-      expect(
-        draft.contractTerms().repayments.single.floatingRate!.referenceRateType,
-        InterestRateType.loanBenchmarkLongTerm,
-      );
+      expect(draft.contractTerms().repayments.single.rate!.ppm, 32000);
       final field = find.descendant(
         of: find.widgetWithText(AppPlainTextFormRow, '加减基点'),
         matching: find.byType(TextField),
@@ -192,10 +190,7 @@ void main() {
             find.byType(AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>),
           );
       expect(timing.value, InPeriodRepricingPolicy.preservePrincipal);
-      expect(
-        draft.contractTerms().repayments.single.floatingRate!.spreadBp,
-        -45,
-      );
+      expect(draft.contractTerms().repayments.single.floatingRate, isNull);
     },
   );
   testWidgets(

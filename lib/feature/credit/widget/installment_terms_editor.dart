@@ -11,6 +11,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
@@ -39,7 +40,9 @@ class InstallmentTermsEditor extends StatefulWidget {
     this.beforePlanAction,
     this.rulesEditable = true,
     this.showAdvanced = true,
-    this.repricingConfigurationEditable = true,
+    this.rateMessages = const {},
+    this.retryableRateStageIds = const {},
+    this.onRetryReferenceRates,
     super.key,
   });
   final InstallmentTermsDraft value;
@@ -51,9 +54,11 @@ class InstallmentTermsEditor extends StatefulWidget {
   bool get productMode => mode == InstallmentTermsEditorMode.product;
   final bool rulesEditable;
 
-  /// 只控制计算约定和固定额算法的显示，不修改草稿或锁定其他字段。
+  /// 在基础字段之外展示计算约定和高级策略，不修改草稿或隐藏基础信息。
   final bool showAdvanced;
-  final bool repricingConfigurationEditable;
+  final Map<String, String> rateMessages;
+  final Set<String> retryableRateStageIds;
+  final VoidCallback? onRetryReferenceRates;
 
   @override
   State<InstallmentTermsEditor> createState() => _InstallmentTermsEditorState();
@@ -268,233 +273,248 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
           ),
         ],
       ],
-      children: s.deferment
-          ? [
-              if (productMode)
-                const Text('免还期间不生成还款期次；结束日期在每笔贷款中填写。')
-              else
-                _date(
-                  context,
-                  '免还至',
-                  s.untilDate,
-                  (d) => update(s.copyWith(untilDate: d)),
-                ),
-            ]
-          : [
-              AppPlainSelectMenuFormRow(
-                label: '还款方式',
-                value: s.method,
-                options: mode == InstallmentTermsEditorMode.calculator
-                    ? loanCalculatorRepaymentMethodOptions
-                    : installmentRepaymentMethodOptions,
-                enabled: rulesEditable,
-                onChanged: (v) => update(s.changeMethod(v)),
-              ),
-              if (!productMode && !flat)
-                _input(s, StageInput.periods, '期数', update, hint: '本阶段期数'),
-              if (!flat)
-                _input(
-                  s,
-                  StageInput.interval,
-                  '间隔月数',
-                  update,
-                  enabled: rulesEditable,
-                  hint: '每期间隔月数：1 月供，3 季供，12 年供',
-                ),
-              if (!productMode)
-                _date(
-                  context,
-                  flat ? '还款日' : '首期还款日',
-                  s.firstDate,
-                  (d) => update(s.copyWith(firstDate: d)),
-                ),
-              if (!productMode && !flat) ...[
-                _date(
-                  context,
-                  '末期还款日',
-                  s.lastDate,
-                  (d) => update(s.copyWith(lastDate: d)),
-                  placeholder: '按期数与间隔生成',
-                ),
-                if (s.lastDate != null)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => update(s.copyWith(lastDate: null)),
-                      child: const Text('恢复自动末期日期'),
+      children: [
+        AppPlainFormSection(
+          children: s.deferment
+              ? [
+                  if (productMode)
+                    const Text('免还期间不生成还款期次；结束日期在每笔贷款中填写。')
+                  else
+                    _date(
+                      context,
+                      '免还至',
+                      s.untilDate,
+                      (d) => update(s.copyWith(untilDate: d)),
                     ),
+                ]
+              : [
+                  AppPlainSelectMenuFormRow(
+                    label: '还款方式',
+                    value: s.method,
+                    options: mode == InstallmentTermsEditorMode.calculator
+                        ? loanCalculatorRepaymentMethodOptions
+                        : installmentRepaymentMethodOptions,
+                    enabled: rulesEditable,
+                    onChanged: (v) => update(s.changeMethod(v)),
                   ),
-              ],
-              if (!flat && !custom)
-                AppPlainSelectMenuFormRow<InterestRateType>(
-                  label: '利率类型',
-                  value: s.rateType,
-                  enabled:
-                      rulesEditable &&
-                      (productMode || widget.repricingConfigurationEditable),
-                  options: [
-                    for (final type in InterestRateType.values)
-                      AppSelectOption(
-                        value: type,
-                        label: referenceRateTypeLabel(type),
+                  if (!productMode && !flat)
+                    _input(s, StageInput.periods, '期数', update, hint: '本阶段期数'),
+                  if (!flat)
+                    _input(
+                      s,
+                      StageInput.interval,
+                      '间隔月数',
+                      update,
+                      enabled: rulesEditable,
+                      hint: '每期间隔月数：1 月供，3 季供，12 年供',
+                    ),
+                  if (!productMode)
+                    _date(
+                      context,
+                      flat ? '还款日' : '首期还款日',
+                      s.firstDate,
+                      (d) => update(s.copyWith(firstDate: d)),
+                    ),
+                  if (!productMode && !flat) ...[
+                    _date(
+                      context,
+                      '末期还款日',
+                      s.lastDate,
+                      (d) => update(s.copyWith(lastDate: d)),
+                      placeholder: '按期数与间隔生成',
+                    ),
+                    if (s.lastDate != null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => update(s.copyWith(lastDate: null)),
+                          child: const Text('恢复自动末期日期'),
+                        ),
                       ),
                   ],
-                  onChanged: (v) => update(s.changeRateType(v)),
-                ),
-              if (!flat && !custom && productMode) ...[
-                AppPlainSelectMenuFormRow(
-                  label: '利率单位',
-                  value: s.ratePeriod,
-                  options: interestRatePeriodOptions,
-                  enabled: rulesEditable && !s.floating,
-                  onChanged: (v) => update(s.copyWith(ratePeriod: v)),
-                ),
-                if (s.floating) _repricingCycle(s, update),
-              ],
-              if (!flat && !custom && !productMode) ...[
-                _DraftInput(
-                  key: ValueKey('${s.id}:rate'),
-                  value: s.text(StageInput.rate),
-                  label: '利率',
-                  hint: s.floating ? '本阶段初始执行年利率' : '留空即免息',
-                  enabled: true,
-                  money: false,
-                  ratePeriod: s.ratePeriod,
-                  unitEnabled: rulesEditable && !s.floating,
-                  onRatePeriodChanged: (v) => update(s.copyWith(ratePeriod: v)),
-                  onChanged: (text) =>
-                      update(s.setInput(StageInput.rate, text)),
-                  validator: _validateRate,
-                ),
-                if (s.floating && widget.repricingConfigurationEditable) ...[
-                  _DraftInput(
-                    key: ValueKey('${s.id}:spreadBp'),
-                    value: s.text(StageInput.spreadBp),
-                    label: '加减基点',
-                    hint: '例如 -30；1 BP = 0.01 个百分点',
-                    enabled: true,
-                    money: false,
-                    signed: true,
-                    validator: (v) => int.tryParse((v ?? '').trim()) == null
-                        ? '请输入整数基点，可为负数'
-                        : null,
-                    onChanged: (v) =>
-                        update(s.setInput(StageInput.spreadBp, v)),
-                  ),
-                  _date(
-                    context,
-                    '首次重定价日',
-                    s.firstResetDate,
-                    (d) => update(s.copyWith(firstResetDate: d)),
-                  ),
-                  _date(
-                    context,
-                    '首次生效日',
-                    s.firstEffectiveDate,
-                    (d) => update(s.copyWith(firstEffectiveDate: d)),
-                  ),
-                  _repricingCycle(s, update),
-                  const Text('按重定价日前最近报价取值，不含重定价日当天。尚未确定的未来利率沿用已知利率预测。'),
+                  if (!flat && !custom)
+                    AppPlainSelectMenuFormRow<InterestRateType>(
+                      label: '利率类型',
+                      value: s.rateType,
+                      enabled: rulesEditable,
+                      options: [
+                        for (final type in InterestRateType.values)
+                          AppSelectOption(
+                            value: type,
+                            label: referenceRateTypeLabel(type),
+                          ),
+                      ],
+                      onChanged: (v) =>
+                          update(s.changeRateType(v, productMode: productMode)),
+                    ),
+                  if (!flat && !custom && productMode) ...[
+                    AppPlainSelectMenuFormRow(
+                      label: '利率单位',
+                      value: s.ratePeriod,
+                      options: interestRatePeriodOptions,
+                      enabled: rulesEditable && !s.floating,
+                      onChanged: (v) => update(s.copyWith(ratePeriod: v)),
+                    ),
+                    if (s.floating) _repricingCycle(s, update),
+                  ],
+                  if (!flat && !custom && !productMode) ...[
+                    if (!s.floating)
+                      _DraftInput(
+                        key: ValueKey('${s.id}:rate'),
+                        value: s.text(StageInput.rate),
+                        label: '利率',
+                        hint: '留空即免息',
+                        enabled: true,
+                        money: false,
+                        ratePeriod: s.ratePeriod,
+                        unitEnabled: rulesEditable && !s.floating,
+                        onRatePeriodChanged: (v) =>
+                            update(s.copyWith(ratePeriod: v)),
+                        onChanged: (text) =>
+                            update(s.setInput(StageInput.rate, text)),
+                        validator: _validateRate,
+                      ),
+                    if (s.floating) ...[
+                      _DraftInput(
+                        key: ValueKey('${s.id}:spreadBp'),
+                        value: s.text(StageInput.spreadBp),
+                        label: '加减基点',
+                        hint: '例如 -30；1 BP = 0.01 个百分点',
+                        enabled: true,
+                        money: false,
+                        signed: true,
+                        validator: (v) => int.tryParse((v ?? '').trim()) == null
+                            ? '请输入整数基点，可为负数'
+                            : null,
+                        onChanged: (v) =>
+                            update(s.setInput(StageInput.spreadBp, v)),
+                      ),
+                      _calculatedRate(s),
+                    ],
+                  ],
+                  if (!flat && !custom)
+                    AppPlainSelectMenuFormRow(
+                      label: '计息方式',
+                      value: s.accrual,
+                      options: interestAccrualMethodOptions,
+                      enabled: rulesEditable,
+                      onChanged: (v) => update(s.copyWith(accrual: v)),
+                    ),
+                  if (s.method ==
+                      InstallmentRepaymentMethod.equalInstallment) ...[
+                    if (!productMode &&
+                        s.algorithm == InstallmentAmountAlgorithm.fixed)
+                      _input(
+                        s,
+                        StageInput.fixedAmount,
+                        '固定还款额',
+                        update,
+                        money: true,
+                      ),
+                  ],
+                  if (!productMode) ...[
+                    _input(
+                      s,
+                      StageInput.endPrincipal,
+                      '期末本金',
+                      update,
+                      money: true,
+                      hint: index == value.stages.length - 1
+                          ? '留空归零；填余额表示末期额外归还'
+                          : s.method == InstallmentRepaymentMethod.interestFirst
+                          ? '留空承接全部本金'
+                          : '请填写留给下一阶段的本金',
+                    ),
+                    _input(
+                      s,
+                      StageInput.fee,
+                      '手续费',
+                      update,
+                      money: true,
+                      hint: flat ? '还款日一次收取（可选）' : '本阶段手续费合计，留空为 0',
+                    ),
+                  ],
                 ],
-              ],
-              if (!widget.repricingConfigurationEditable &&
-                  !flat &&
-                  !custom &&
-                  !productMode)
-                const Text(
-                  '本阶段的重定价配置与记录请在合同详情的“利率与利息调整”中管理。删除阶段会同时删除它的重定价配置和记录。',
-                ),
-              if (widget.showAdvanced &&
-                  s.method == InstallmentRepaymentMethod.equalInstallment &&
-                  s.algorithm != InstallmentAmountAlgorithm.fixed)
-                AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>(
-                  label: '期中重定价',
-                  value: s.inPeriodRepricingPolicy,
-                  options: const [
-                    AppSelectOption(
-                      value: InPeriodRepricingPolicy.preservePrincipal,
-                      label: '保留当期本金',
-                    ),
-                    AppSelectOption(
-                      value: InPeriodRepricingPolicy.dynamicPeriodRate,
-                      label: '动态期利率重算',
-                    ),
-                  ],
-                  onChanged: (v) =>
-                      update(s.copyWith(inPeriodRepricingPolicy: v)),
-                ),
-              if (!flat && !custom)
-                AppPlainSelectMenuFormRow(
-                  label: '计息方式',
-                  value: s.accrual,
-                  options: interestAccrualMethodOptions,
-                  enabled: rulesEditable,
-                  onChanged: (v) => update(s.copyWith(accrual: v)),
-                ),
-              if (s.method == InstallmentRepaymentMethod.equalInstallment) ...[
-                if (widget.showAdvanced)
-                  AppPlainSelectMenuFormRow(
-                    label: '固定额算法',
-                    value: s.algorithm,
-                    enabled: rulesEditable,
-                    options: s.floating
-                        ? installmentAmountAlgorithmOptions
-                              .where(
-                                (o) =>
-                                    o.value != InstallmentAmountAlgorithm.fixed,
-                              )
-                              .toList()
-                        : installmentAmountAlgorithmOptions,
-                    onChanged: (v) => update(s.changeAlgorithm(v)),
+        ),
+        if (widget.showAdvanced && !s.deferment) ...[
+          if (s.method == InstallmentRepaymentMethod.equalInstallment) ...[
+            AppPlainSelectMenuFormRow(
+              label: '固定额算法',
+              value: s.algorithm,
+              enabled: rulesEditable,
+              options: productMode && s.floating
+                  ? installmentAmountAlgorithmOptions
+                        .where(
+                          (o) => o.value != InstallmentAmountAlgorithm.fixed,
+                        )
+                        .toList()
+                  : installmentAmountAlgorithmOptions,
+              onChanged: (v) => update(s.changeAlgorithm(v)),
+            ),
+            if (s.algorithm != InstallmentAmountAlgorithm.fixed)
+              AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>(
+                label: '期中重定价',
+                value: s.inPeriodRepricingPolicy,
+                enabled: rulesEditable,
+                options: const [
+                  AppSelectOption(
+                    value: InPeriodRepricingPolicy.preservePrincipal,
+                    label: '保留当期本金',
                   ),
-                if (!productMode &&
-                    s.algorithm == InstallmentAmountAlgorithm.fixed)
-                  _input(
-                    s,
-                    StageInput.fixedAmount,
-                    '固定还款额',
-                    update,
-                    money: true,
+                  AppSelectOption(
+                    value: InPeriodRepricingPolicy.dynamicPeriodRate,
+                    label: '动态期利率重算',
                   ),
-              ],
-              if (widget.showAdvanced)
-                AppPlainSelectMenuFormRow<TailDifferencePolicy>(
-                  label: '尾差处理',
-                  value: s.tailDifference,
-                  enabled: rulesEditable,
-                  options: const [
-                    AppSelectOption(
-                      value: TailDifferencePolicy.lastPeriod,
-                      label: '计入阶段末期',
-                    ),
-                  ],
-                  onChanged: (v) => update(s.copyWith(tailDifference: v)),
-                ),
-              if (!productMode) ...[
-                _input(
-                  s,
-                  StageInput.endPrincipal,
-                  '期末本金',
-                  update,
-                  money: true,
-                  hint: index == value.stages.length - 1
-                      ? '留空归零；填余额表示末期额外归还'
-                      : s.method == InstallmentRepaymentMethod.interestFirst
-                      ? '留空承接全部本金'
-                      : '请填写留给下一阶段的本金',
-                ),
-                _input(
-                  s,
-                  StageInput.fee,
-                  '手续费',
-                  update,
-                  money: true,
-                  hint: flat ? '还款日一次收取（可选）' : '本阶段手续费合计，留空为 0',
-                ),
-              ],
+                ],
+                onChanged: (v) =>
+                    update(s.copyWith(inPeriodRepricingPolicy: v)),
+              ),
+          ],
+          AppPlainSelectMenuFormRow<TailDifferencePolicy>(
+            label: '尾差处理',
+            value: s.tailDifference,
+            enabled: rulesEditable,
+            options: const [
+              AppSelectOption(
+                value: TailDifferencePolicy.lastPeriod,
+                label: '计入阶段末期',
+              ),
             ],
+            onChanged: (v) => update(s.copyWith(tailDifference: v)),
+          ),
+        ],
+      ],
     );
   }
+
+  Widget _calculatedRate(InstallmentStageDraft stage) =>
+      AppControlledFormField<String>(
+        key: ValueKey('${stage.id}:calculated-rate'),
+        value: stage.text(StageInput.rate),
+        validator: (value) => value == null || value.isEmpty
+            ? widget.rateMessages[stage.id] ?? '参考利率尚未确定'
+            : _validateRate(value),
+        builder: (context, value, error, _) => AppPlainFormRow(
+          label: '利率',
+          supportingText: error == null ? widget.rateMessages[stage.id] : null,
+          errorText: error,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  value == null || value.isEmpty ? '—' : '$value% / 年',
+                  style: context.appTextStyles.formValue,
+                ),
+              ),
+              if (widget.retryableRateStageIds.contains(stage.id))
+                TextButton(
+                  onPressed: widget.onRetryReferenceRates,
+                  child: const Text('重试'),
+                ),
+            ],
+          ),
+        ),
+      );
 
   Widget _repricingCycle(
     InstallmentStageDraft s,

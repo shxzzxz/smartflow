@@ -24,14 +24,12 @@ void main() {
   });
 
   test(
-    'floating configuration round trip preserves signed BP, timing and calendar anchors',
+    'reference rate entry saves only the initial rate and repayment policy',
     () {
       final draft = InstallmentStageDraft(
         id: 'floating',
         rateType: InterestRateType.loanBenchmarkLongTerm,
         firstDate: DateTime(2026, 1, 20),
-        firstResetDate: DateTime(2025, 12, 20),
-        firstEffectiveDate: DateTime(2026, 1, 1),
         repricingCycleMonths: 6,
         inputs: const {
           StageInput.rate: '3.2',
@@ -42,15 +40,15 @@ void main() {
       );
       final terms = InstallmentTermsDraft(stages: [draft]).contractTerms();
       final reopened = InstallmentTermsDraft.contract(terms).stages.single;
-      expect(reopened.floating, isTrue);
-      expect(reopened.rateType, InterestRateType.loanBenchmarkLongTerm);
-      expect(reopened.text(StageInput.spreadBp), '-30');
-      expect(reopened.repricingCycleMonths, 6);
+      expect(reopened.floating, isFalse);
+      expect(reopened.rateType, InterestRateType.fixed);
+      expect(reopened.text(StageInput.spreadBp), isEmpty);
+      expect(terms.repayments.single.floatingRate, isNull);
+      expect(terms.repayments.single.rate!.ppm, 32000);
       expect(
         reopened.inPeriodRepricingPolicy,
         InPeriodRepricingPolicy.preservePrincipal,
       );
-      expect(reopened.firstEffectiveDate, DateTime(2026, 1, 1));
       expect(reopened.toContractStage().terms, isA<AmortizingStage>());
       final flat = reopened.changeMethod(InstallmentRepaymentMethod.flatFee);
       expect(flat.floating, isFalse);

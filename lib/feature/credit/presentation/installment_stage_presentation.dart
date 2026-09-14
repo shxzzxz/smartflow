@@ -93,12 +93,16 @@ InstallmentStageSummaryPresentation presentInstallmentStageSummary({
         if (!flat && !custom)
           productMode
               ? '$unit利率（本笔填写）'
-              : rate == null || rate < Decimal.zero
+              : rate == null ||
+                    rate < Decimal.zero ||
+                    (stage.floating && rateText.isEmpty)
               ? '$unit利率待完善'
               : '$unit利率 $rate%',
       ].join(' · '),
       if (stage.floating)
-        '${referenceRateTypeLabel(stage.rateType)} ${stage.text(StageInput.spreadBp)} BP · 每 ${stage.repricingCycleMonths} 个月重定价',
+        productMode
+            ? referenceRateTypeLabel(stage.rateType)
+            : '${referenceRateTypeLabel(stage.rateType)} ${stage.text(StageInput.spreadBp)} BP',
       range,
     ],
     endDate: endDate,
@@ -106,28 +110,7 @@ InstallmentStageSummaryPresentation presentInstallmentStageSummary({
 }
 
 DateTime? presentInstallmentStageEndDate(InstallmentStageDraft stage) {
-  if (stage.deferment) return stage.untilDate;
-  if (stage.method == InstallmentRepaymentMethod.flatFee) {
-    return stage.firstDate;
-  }
-  if (stage.lastDate != null) return stage.lastDate;
-  final first = stage.firstDate;
-  final count = int.tryParse(stage.text(StageInput.periods));
-  final interval = int.tryParse(stage.text(StageInput.interval));
-  if (first == null ||
-      count == null ||
-      count <= 0 ||
-      interval == null ||
-      interval <= 0) {
-    return null;
-  }
-  final months = (count - 1) * interval;
-  if (months < 0 || months ~/ interval != count - 1) return null;
-  try {
-    return IntervalRepaymentDates.addMonthsClamped(first, months);
-  } on ArgumentError {
-    return null;
-  }
+  return stage.endDate;
 }
 
 String _repaymentMethodLabel(InstallmentRepaymentMethod method) {

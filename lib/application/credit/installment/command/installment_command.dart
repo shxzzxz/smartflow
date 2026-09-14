@@ -4,6 +4,7 @@ import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 
 class CreateDisbursementContractCommand {
   const CreateDisbursementContractCommand({
+    this.name,
     required this.liabilityAccountId,
     required this.principal,
     required this.borrowingDate,
@@ -14,6 +15,7 @@ class CreateDisbursementContractCommand {
   });
 
   final String liabilityAccountId;
+  final String? name;
 
   /// 放款入账账户。为空时用于迁移场景：只创建合同和计划，不创建放款交易。
   final String? disbursementAccountId;

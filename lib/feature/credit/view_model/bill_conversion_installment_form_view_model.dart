@@ -99,6 +99,7 @@ class BillConversionInstallmentFormViewModel
   Future<UiActionOutcome<String>> submit({
     required String principalText,
     required String noteText,
+    String nameText = '',
   }) async {
     final current = _loadedOrNull();
     if (current == null) return _invalidAction('账单分期表单尚未加载');
@@ -135,6 +136,7 @@ class BillConversionInstallmentFormViewModel
               .createBillConversionInstallmentRepayment(
                 credit.CreateBillConversionInstallmentRepaymentCommand(
                   billId: billId,
+                  contractName: trimToNull(nameText),
                   allocations: billRepaymentCommandAllocations(
                     review.allocations,
                   ),

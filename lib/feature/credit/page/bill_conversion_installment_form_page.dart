@@ -33,12 +33,14 @@ class _BillConversionInstallmentFormPageState
     extends ConsumerState<BillConversionInstallmentFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _principalController = TextEditingController();
+  final _nameController = TextEditingController();
   final _noteController = TextEditingController();
   bool _controllersHydrated = false;
 
   @override
   void dispose() {
     _principalController.dispose();
+    _nameController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -132,6 +134,11 @@ class _BillConversionInstallmentFormPageState
                 placeholder: '点击配置',
                 onTap: (_) => _configure(state),
               ),
+              AppPlainTextFormRow(
+                label: '合同名称',
+                controller: _nameController,
+                hintText: '选填，默认使用借款日期',
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),
@@ -179,6 +186,7 @@ class _BillConversionInstallmentFormPageState
         .read(provider.notifier)
         .submit(
           principalText: _principalController.text,
+          nameText: _nameController.text,
           noteText: _noteController.text,
         );
     if (!mounted) return;

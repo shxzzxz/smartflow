@@ -36,18 +36,10 @@ class InstallmentContractEditViewModel
     } on Exception catch (error, stack) {
       _logger.warning('Load saved contract metrics', error, stack);
     }
-    final configurations = [...contract.repricingConfigurations]
-      ..sort((a, b) => b.effectiveFrom.compareTo(a.effectiveFrom));
     return InstallmentContractEditState.loaded(
       metrics: metrics,
       contract: contract,
-      stageDraft: InstallmentTermsDraft.contract(
-        contract.stageTerms,
-        repricingRules: {
-          for (final configuration in configurations)
-            configuration.stageId: configuration.rule,
-        },
-      ),
+      stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
       draft: [
         for (final schedule in schedules)
           InstallmentContractDraftRow(
@@ -86,7 +78,7 @@ class InstallmentContractEditViewModel
   Future<UiActionOutcome<void>> _recalculateStages(
     InstallmentContractEditLoaded loaded,
   ) => guardUiAction(_logger, 'Preview staged contract', () async {
-    final terms = loaded.stageDraft.contractTerms(includeRepricing: false);
+    final terms = loaded.stageDraft.contractTerms();
     final preview = await ref
         .read(installmentAppServiceProvider)
         .previewContractRecalculation(
@@ -126,7 +118,7 @@ class InstallmentContractEditViewModel
     _setLoaded(loaded.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Save staged contract', () async {
-        final terms = loaded.stageDraft.contractTerms(includeRepricing: false);
+        final terms = loaded.stageDraft.contractTerms();
         await ref
             .read(installmentAppServiceProvider)
             .updateContract(
