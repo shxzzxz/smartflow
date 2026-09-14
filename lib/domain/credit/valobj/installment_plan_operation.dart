@@ -14,6 +14,7 @@ class PrincipalReduction {
   final Money principal;
 }
 
+/// 调整区间为 (start, end]，与计息周期使用相同的日期边界。
 /// 比例沿用利率的 ppm 精度：1,000,000 为 100%。
 class InterestAdjustment {
   const InterestAdjustment({
@@ -25,6 +26,12 @@ class InterestAdjustment {
   final DateTime start;
   final DateTime end;
   final int ratioPpm;
+
+  /// 与计息片段求交时使用的起始包含、结束不包含日期。
+  ({DateTime start, DateTime end}) get accrualRange => (
+    start: referenceDate(start).add(const Duration(days: 1)),
+    end: referenceDate(end).add(const Duration(days: 1)),
+  );
 
   Rational get ratio => Rational(BigInt.from(ratioPpm), BigInt.from(1000000));
 

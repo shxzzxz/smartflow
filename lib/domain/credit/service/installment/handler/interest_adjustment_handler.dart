@@ -26,8 +26,7 @@ class InterestAdjustmentHandler {
       }
       for (final segment in segments) {
         if (segment.accrual == InterestAccrualMethod.daily) continue;
-        final start = referenceDate(adjustment.start),
-            end = referenceDate(adjustment.end);
+        final (:start, :end) = adjustment.accrualRange;
         final from = referenceDate(segment.start),
             until = referenceDate(segment.end);
         if (!start.isBefore(until) || !end.isAfter(from)) continue;
@@ -47,12 +46,9 @@ class InterestAdjustmentHandler {
     for (final segment in segments) {
       interest += segment.exactInterestMinor;
       for (final adjustment in adjustments) {
-        final from = referenceDate(adjustment.start).isAfter(segment.start)
-            ? referenceDate(adjustment.start)
-            : segment.start;
-        final until = referenceDate(adjustment.end).isBefore(segment.end)
-            ? referenceDate(adjustment.end)
-            : segment.end;
+        final (:start, :end) = adjustment.accrualRange;
+        final from = start.isAfter(segment.start) ? start : segment.start;
+        final until = end.isBefore(segment.end) ? end : segment.end;
         if (!from.isBefore(until)) continue;
         interest +=
             segment.interestWithin(from, until) *

@@ -161,7 +161,7 @@ class InstallmentOperationsPage extends ConsumerWidget {
                 label: const Text('新增利息调整'),
               ),
             ),
-            const Text('0% 免息，100% 保持原利息，120% 增加 20%。区间包含开始日，不包含结束日。'),
+            const Text('0% 免息，100% 保持原利息，120% 增加 20%。区间不包含开始日，包含结束日。'),
             if (contract.interestAdjustments.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.space12),

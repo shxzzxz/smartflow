@@ -192,10 +192,11 @@ class InstallmentPlanEngine {
       final deductions = <int>[];
       for (var i = 0; i < dates.length; i++) {
         var amount = 0;
+        // 还款后的计息日期才受影响；恰在本期还款日扣减时归入下一期。
         while (reductionIndex < reductions.length &&
-            referenceDate(
-              reductions[reductionIndex].date,
-            ).isBefore(context.periodRange(i).end)) {
+            referenceDate(reductions[reductionIndex].date)
+                .add(const Duration(days: 1))
+                .isBefore(context.periodRange(i).end)) {
           amount += reductions[reductionIndex++].principal.minorUnits;
         }
         deductions.add(amount);
@@ -245,7 +246,7 @@ class InstallmentPlanEngine {
     }
     if (entries.isEmpty) _invalid('至少需要一个还款阶段');
     if (!custom) {
-      if (reductionIndex != reductions.length) _invalid('本金扣减日期不得晚于末期还款日');
+      if (reductionIndex != reductions.length) _invalid('本金扣减日期必须早于末期还款日');
       final principal = entries.fold<int>(
         0,
         (sum, row) => sum + row.expectedPrincipal.minorUnits,

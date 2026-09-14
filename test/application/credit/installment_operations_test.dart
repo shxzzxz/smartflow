@@ -702,7 +702,7 @@ void main() {
         ),
       );
       final adjusted = await f.installments.listSchedules('loan');
-      expect(adjusted.first.expectedInterest.minorUnits, 17250);
+      expect(adjusted.first.expectedInterest.minorUnits, 17500);
       expect(
         adjusted.map((row) => row.expectedPrincipal),
         before.map((row) => row.expectedPrincipal),
@@ -716,7 +716,7 @@ void main() {
         (await f.installments.listSchedules(
           'loan',
         )).first.expectedInterest.minorUnits,
-        13500,
+        14000,
       );
       expect(
         (await f.installments.findContract(
@@ -758,18 +758,18 @@ void main() {
       );
       await f.adjustments.save(
         'loan',
-        InterestAdjustment(start: day(8, 9), end: day(9, 9), ratioPpm: 0),
+        InterestAdjustment(start: day(8, 8), end: day(9, 8), ratioPpm: 0),
       );
       await f.adjustments.save(
         'loan',
-        InterestAdjustment(start: day(9, 9), end: day(10, 9), ratioPpm: 500000),
+        InterestAdjustment(start: day(9, 8), end: day(10, 8), ratioPpm: 500000),
       );
       await expectLater(
         f.adjustments.save(
           'loan',
           InterestAdjustment(
-            start: day(8, 9),
-            end: day(10, 9),
+            start: day(8, 8),
+            end: day(10, 8),
             ratioPpm: 1000000,
           ),
         ),
@@ -1131,7 +1131,7 @@ void main() {
         (await DriftInstallmentRepository(
           target,
         ).listSchedules('loan')).first.expectedInterest.minorUnits,
-        17250,
+        17500,
       );
       final config = snapshot.rows('installment_repricing_configs').single;
       final record = snapshot.rows('installment_repricing_records').single;
