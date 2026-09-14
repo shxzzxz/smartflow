@@ -18,14 +18,12 @@ class InstallmentPlanTerms {
     required this.stages,
     this.dayCount = DayCountConvention.thirty360,
     this.rounding = RoundingMode.halfUp,
-    this.tailDifference = TailDifferencePolicy.lastPeriod,
   });
 
   final Money principal;
   final DateTime borrowingDate;
   final DayCountConvention dayCount;
   final RoundingMode rounding;
-  final TailDifferencePolicy tailDifference;
   final List<InstallmentStage> stages;
 
   bool get isCustom => stages.any(
@@ -72,13 +70,13 @@ class AmortizingStage extends InstallmentStage {
     this.accrualStartDate,
     this.rate,
     this.floatingRate,
-    RepricingPaymentTiming repricingPaymentTiming =
-        RepricingPaymentTiming.nextPeriod,
+    this.inPeriodRepricingPolicy = InPeriodRepricingPolicy.preservePrincipal,
+    this.tailDifference = TailDifferencePolicy.lastPeriod,
     this.accrual = InterestAccrualMethod.monthly,
     this.endPrincipal,
     this.fee = const Money(minorUnits: 0),
     this.installmentAmount = const EqualInstallmentAmount.nominalRate(),
-  }) : _repricingPaymentTiming = repricingPaymentTiming;
+  });
 
   final RepaymentDatesStrategy dates;
 
@@ -86,12 +84,11 @@ class AmortizingStage extends InstallmentStage {
   final DateTime? accrualStartDate;
   final InstallmentRepaymentMethod method;
 
-  /// 为空即免息。
+  /// 本阶段的初始执行利率；后续重定价结果按生效日期适用。为空即免息。
   final InterestRate? rate;
   final FloatingRateRule? floatingRate;
-  final RepricingPaymentTiming _repricingPaymentTiming;
-  RepricingPaymentTiming get repricingPaymentTiming =>
-      floatingRate?.paymentTiming ?? _repricingPaymentTiming;
+  final InPeriodRepricingPolicy inPeriodRepricingPolicy;
+  final TailDifferencePolicy tailDifference;
 
   void validateFloatingRate() {
     final rule = floatingRate;

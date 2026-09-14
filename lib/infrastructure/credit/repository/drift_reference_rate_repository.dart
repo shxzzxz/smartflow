@@ -9,7 +9,7 @@ class DriftReferenceRateRepository implements ReferenceRateRepository {
   final AppDatabase database;
 
   @override
-  Future<List<ReferenceRate>> read(ReferenceRateType type) async {
+  Future<List<ReferenceRate>> read(InterestRateType type) async {
     final rows =
         await (database.select(database.referenceRates)
               ..where((r) => r.type.equals(type.name))
@@ -28,7 +28,7 @@ class DriftReferenceRateRepository implements ReferenceRateRepository {
   }
 
   @override
-  Future<void> merge(ReferenceRateType type, List<ReferenceRate> rates) async {
+  Future<void> merge(InterestRateType type, List<ReferenceRate> rates) async {
     final existing = {for (final r in await read(type)) r.date: r};
     for (final rate in rates) {
       final previous = existing[rate.date];

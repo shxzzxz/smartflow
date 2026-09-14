@@ -9,13 +9,26 @@ import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 
 void main() {
+  test('a single-period end date cannot precede its first repayment date', () {
+    final draft = InstallmentTermsDraft(
+      stages: [
+        InstallmentStageDraft(
+          id: 'single',
+          firstDate: DateTime(2026, 2, 2),
+          lastDate: DateTime(2026, 2, 1),
+          inputs: const {StageInput.periods: '1', StageInput.interval: '1'},
+        ),
+      ],
+    );
+    expect(draft.contractTerms, throwsException);
+  });
+
   test(
     'floating configuration round trip preserves signed BP, timing and calendar anchors',
     () {
       final draft = InstallmentStageDraft(
         id: 'floating',
-        floating: true,
-        referenceRateType: ReferenceRateType.loanBenchmarkLongTerm,
+        rateType: InterestRateType.loanBenchmarkLongTerm,
         firstDate: DateTime(2026, 1, 20),
         firstResetDate: DateTime(2025, 12, 20),
         firstEffectiveDate: DateTime(2026, 1, 1),
@@ -30,15 +43,12 @@ void main() {
       final terms = InstallmentTermsDraft(stages: [draft]).contractTerms();
       final reopened = InstallmentTermsDraft.contract(terms).stages.single;
       expect(reopened.floating, isTrue);
-      expect(
-        reopened.referenceRateType,
-        ReferenceRateType.loanBenchmarkLongTerm,
-      );
+      expect(reopened.rateType, InterestRateType.loanBenchmarkLongTerm);
       expect(reopened.text(StageInput.spreadBp), '-30');
       expect(reopened.repricingCycleMonths, 6);
       expect(
-        reopened.repricingPaymentTiming,
-        RepricingPaymentTiming.nextPeriod,
+        reopened.inPeriodRepricingPolicy,
+        InPeriodRepricingPolicy.preservePrincipal,
       );
       expect(reopened.firstEffectiveDate, DateTime(2026, 1, 1));
       expect(reopened.toContractStage().terms, isA<AmortizingStage>());

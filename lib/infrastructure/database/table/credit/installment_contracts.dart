@@ -5,15 +5,11 @@ import '../../../../domain/credit/valobj/installment_enums.dart';
 @DataClassName('InstallmentContractRow')
 class InstallmentContracts extends Table {
   TextColumn get id => text()();
+
   /// 正常创建由合同填入借款日期名称；空值仅供迁移添加列后回填。
   TextColumn get name => text().withDefault(const Constant(''))();
-  TextColumn get productId => text().nullable()();
-  TextColumn get productName => text().nullable()();
-  BoolColumn get customRules => boolean().withDefault(const Constant(false))();
   TextColumn get dayCount => text().withDefault(const Constant('thirty360'))();
   TextColumn get rounding => text().withDefault(const Constant('halfUp'))();
-  TextColumn get tailDifference =>
-      text().withDefault(const Constant('lastPeriod'))();
   TextColumn get liabilityAccountId => text().named('liability_account_id')();
   TextColumn get sourceType =>
       textEnum<InstallmentSourceType>().named('source_type')();
@@ -26,7 +22,7 @@ class InstallmentContracts extends Table {
   IntColumn get principalMinor => integer().named('principal_minor')();
 
   /// 借款日期 / 合同起算日。
-  DateTimeColumn get borrowingDate => dateTime().named('start_date')();
+  DateTimeColumn get borrowingDate => dateTime()();
 
   TextColumn get status =>
       textEnum<InstallmentContractStatus>().named('status')();

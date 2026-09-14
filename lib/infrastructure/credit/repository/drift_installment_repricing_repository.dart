@@ -158,8 +158,7 @@ class DriftInstallmentRepricingRepository
         await (database.select(database.installmentStageConfigs)..where(
               (row) =>
                   row.id.equals(stageId) &
-                  row.ownerType.equals('contract') &
-                  row.ownerId.equals(contractId) &
+                  row.contractId.equals(contractId) &
                   row.stageKind.equals('repayment'),
             ))
             .getSingleOrNull();

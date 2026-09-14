@@ -56,7 +56,7 @@ void main() {
                 spreadBp: 0,
                 referenceRate: ReferenceRate(
                   date: effective,
-                  type: ReferenceRateType.lprOneYear,
+                  type: InterestRateType.lprOneYear,
                   ratePpm: 36000,
                   source: 'test',
                 ),
@@ -87,7 +87,7 @@ void main() {
     spreadBp: -30,
     referenceRate: ReferenceRate(
       date: DateTime.utc(date.year, date.month, 1),
-      type: ReferenceRateType.lprFiveYearPlus,
+      type: InterestRateType.lprFiveYearPlus,
       ratePpm: ratePpm + 3000,
       source: 'test',
     ),
@@ -95,7 +95,7 @@ void main() {
   InstallmentPlan plan({
     InstallmentRepaymentMethod method =
         InstallmentRepaymentMethod.equalInstallment,
-    RepricingPaymentTiming timing = RepricingPaymentTiming.nextPeriod,
+    InPeriodRepricingPolicy timing = InPeriodRepricingPolicy.preservePrincipal,
     List<RateChange>? changes,
     InterestAccrualMethod accrual = InterestAccrualMethod.monthly,
     EqualInstallmentAmount amount = const EqualInstallmentAmount.nominalRate(),
@@ -118,7 +118,7 @@ void main() {
           ),
           accrual: accrual,
           installmentAmount: amount,
-          repricingPaymentTiming: timing,
+          inPeriodRepricingPolicy: timing,
         ),
       ],
     ),
@@ -182,7 +182,7 @@ void main() {
   );
 
   test('current-period recast includes mixed first rate in fixed payment', () {
-    final result = plan(timing: RepricingPaymentTiming.currentPeriod);
+    final result = plan(timing: InPeriodRepricingPolicy.dynamicPeriodRate);
     expect(result.entries.first.expectedInterest.minorUnits, 28000);
     final payments = result.entries
         .take(11)
@@ -203,7 +203,7 @@ void main() {
 
   test('actual-rate recast accounts for differing day lengths', () {
     final result = plan(
-      timing: RepricingPaymentTiming.currentPeriod,
+      timing: InPeriodRepricingPolicy.dynamicPeriodRate,
       accrual: InterestAccrualMethod.daily,
       amount: const EqualInstallmentAmount.actualRate(),
     );
@@ -219,7 +219,7 @@ void main() {
       payments.single,
       isNot(
         plan(
-              timing: RepricingPaymentTiming.currentPeriod,
+              timing: InPeriodRepricingPolicy.dynamicPeriodRate,
             ).entries.first.expectedPrincipal.minorUnits +
             28000,
       ),

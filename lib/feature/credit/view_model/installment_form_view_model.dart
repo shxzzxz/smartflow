@@ -60,11 +60,8 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       ),
       productId: product.id,
       productName: product.name,
-      customRules: true,
     ),
   );
-  void setCustomRules(bool value) =>
-      _updateLoaded((s) => s.copyWith(customRules: value));
   void setTermsDraft(InstallmentTermsDraft value) =>
       _updateLoaded((s) => s.copyWith(termsDraft: value));
   void applyConfiguration(InstallmentConfigurationDraft value) => _updateLoaded(
@@ -73,7 +70,6 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       termsDraft: value.terms,
       productId: value.productId,
       productName: value.productName,
-      customRules: true,
     ),
   );
   void setBorrowingDate(DateTime value) => _updateLoaded((s) {
@@ -148,8 +144,6 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
                       : null,
                   principal: principal,
                   borrowingDate: current.borrowingDate,
-                  productId: current.productId,
-                  customRules: current.customRules,
                   note: trimToNull(noteText),
                   stageTerms: current.termsDraft.contractTerms(),
                 ),
@@ -219,7 +213,6 @@ class InstallmentFormLoaded extends InstallmentFormState {
     this.disbursementAccountId,
     this.productId,
     this.productName,
-    this.customRules = true,
     this.createDisbursementTransaction = true,
     this.submitting = false,
   });
@@ -228,7 +221,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   final DateTime borrowingDate;
   final InstallmentTermsDraft termsDraft;
   final String? disbursementAccountId, productId, productName;
-  final bool customRules, createDisbursementTransaction, submitting;
+  final bool createDisbursementTransaction, submitting;
   bool get isDisbursement => true;
   InstallmentFormLoaded copyWith({
     DateTime? borrowingDate,
@@ -236,7 +229,6 @@ class InstallmentFormLoaded extends InstallmentFormState {
     Object? disbursementAccountId = _sentinel,
     String? productId,
     String? productName,
-    bool? customRules,
     bool? createDisbursementTransaction,
     bool? submitting,
   }) => InstallmentFormLoaded(
@@ -249,7 +241,6 @@ class InstallmentFormLoaded extends InstallmentFormState {
         : disbursementAccountId as String?,
     productId: productId ?? this.productId,
     productName: productName ?? this.productName,
-    customRules: customRules ?? this.customRules,
     createDisbursementTransaction:
         createDisbursementTransaction ?? this.createDisbursementTransaction,
     submitting: submitting ?? this.submitting,

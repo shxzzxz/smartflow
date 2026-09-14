@@ -104,15 +104,12 @@ class CreateBillConversionInstallmentRepaymentCommand {
     required this.allocations,
     required this.borrowingDate,
     required this.stageTerms,
-    this.productId,
-    this.productName,
     this.note,
   });
   final String billId;
   final List<BillRepaymentAllocation> allocations;
   final DateTime borrowingDate;
   final InstallmentContractTerms stageTerms;
-  final String? productId, productName;
   final String? note;
 }
 

@@ -41,7 +41,7 @@ void main() {
     stageId: 'stage',
     resetDate: DateTime(2026, 8, 20),
     effectiveDate: DateTime(2026, 8, 25),
-    referenceRateType: ReferenceRateType.loanBenchmarkLongTerm,
+    referenceRateType: InterestRateType.loanBenchmarkLongTerm,
     spreadBp: bp,
   );
 
@@ -57,7 +57,7 @@ void main() {
         stageId: 'stage',
         reset: DateTime(2026, 8, 20),
         effective: DateTime(2026, 8, 25),
-        type: ReferenceRateType.loanBenchmarkLongTerm,
+        type: InterestRateType.loanBenchmarkLongTerm,
         bp: -25,
       ));
       expect(repricing.configurations, isEmpty);
@@ -73,7 +73,7 @@ void main() {
           effectiveFrom: DateTime(2026, 8, 8),
           firstResetDate: DateTime(2026, 8, 20),
           firstEffectiveDate: DateTime(2026, 8, 25),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           cycleMonths: 6,
           spreadBp: '-30',
         ),

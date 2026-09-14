@@ -106,6 +106,7 @@ class BasePlanGenerationHandler {
           rates: rates,
           rounding: context.rounding,
           installmentAmount: stage.installmentAmount,
+          tailDifference: stage.tailDifference,
         ),
       ),
     );

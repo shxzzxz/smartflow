@@ -55,7 +55,7 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     final productTables = await database
         .customSelect(
           "SELECT name FROM sqlite_master WHERE type = 'table' "
-          "AND name IN ('installment_products', 'installment_stage_configs')",
+          "AND name IN ('installment_products', 'installment_product_stage_configs')",
         )
         .get();
     if (productTables.length < 2) {

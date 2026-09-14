@@ -20,9 +20,6 @@ class InstallmentContractReadModel {
     this.sourceRepaymentId,
     this.note,
     required this.stageTerms,
-    this.productId,
-    this.productName,
-    this.customRules = false,
     this.unconfirmedRepricingIds = const [],
     this.repricingConfigurations = const [],
     this.repricings = const [],
@@ -43,9 +40,6 @@ class InstallmentContractReadModel {
   final String? note;
   final DateTime createdAt;
   final InstallmentContractTerms stageTerms;
-  final String? productId;
-  final String? productName;
-  final bool customRules;
   final List<String> unconfirmedRepricingIds;
   final List<InstallmentRepricingConfigurationReadModel>
   repricingConfigurations;

@@ -29,7 +29,7 @@ void main() {
             spreadBp: 0,
             referenceRate: ReferenceRate(
               date: date.subtract(const Duration(days: 1)),
-              type: ReferenceRateType.lprOneYear,
+              type: InterestRateType.lprOneYear,
               ratePpm: ratePpm,
               source: 'test',
             ),

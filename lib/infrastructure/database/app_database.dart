@@ -20,6 +20,7 @@ import 'table/credit/bill_generation_suppressions.dart';
 import 'table/credit/bills.dart';
 import 'table/credit/installment_contracts.dart';
 import 'table/credit/installment_products.dart';
+import 'table/credit/installment_product_stage_configs.dart';
 import 'table/credit/installment_stage_configs.dart';
 import 'table/credit/installment_schedules.dart';
 import 'table/credit/reference_rates.dart';
@@ -55,6 +56,7 @@ part 'app_database.g.dart';
     BillGenerationSuppressions,
     InstallmentContracts,
     InstallmentProducts,
+    InstallmentProductStageConfigs,
     InstallmentStageConfigs,
     InstallmentSchedules,
     ReferenceRates,
@@ -72,7 +74,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 41;
+  int get schemaVersion => 42;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

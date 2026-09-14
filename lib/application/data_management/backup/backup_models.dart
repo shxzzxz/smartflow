@@ -19,6 +19,7 @@ class BackupTables {
     'bill_items',
     'bill_generation_suppressions',
     'installment_products',
+    'installment_product_stage_configs',
     'installment_stage_configs',
     'installment_contracts',
     'installment_schedules',
@@ -52,6 +53,7 @@ class BackupTables {
       'bill_items',
       'bill_generation_suppressions',
       'installment_products',
+      'installment_product_stage_configs',
       'installment_stage_configs',
       'installment_contracts',
       'installment_schedules',
@@ -331,6 +333,7 @@ class BackupDiff {
       }
       if (table == 'bills' || table == 'bill_items') return '账单';
       if (table == 'installment_products') return '分期产品';
+      if (table == 'installment_product_stage_configs') return '产品阶段配置';
       if (table == 'installment_stage_configs') return '分期阶段';
       if (table == 'reference_rates') return '参考利率历史';
       if (table == 'installment_repricing_records') return '贷款重定价';

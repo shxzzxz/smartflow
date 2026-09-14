@@ -17,7 +17,6 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
-import '../../../../domain/credit/port/installment_product_repository.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import 'installment_plan_service.dart';
 import 'installment_status_repair_app_service.dart';
@@ -54,7 +53,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
     InstallmentPlanService? plans,
-    InstallmentProductRepository? products,
     InstallmentOriginationService origination =
         const InstallmentOriginationService(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
@@ -68,7 +66,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
              runner: transactionRunner,
              idGenerator: idGenerator,
            ),
-       _products = products,
        _repository = repository,
        _bills = bills,
        _repayments = repayments,
@@ -86,7 +83,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
 
   final InstallmentPlanService _plans;
   final InstallmentRepository _repository;
-  final InstallmentProductRepository? _products;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final CreditLedgerPort _ledger;
@@ -102,20 +98,10 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     CreateDisbursementContractCommand command,
   ) async {
     return _runner.run<CreateContractResult>(() async {
-      final product = command.productId == null
-          ? null
-          : await _products?.find(command.productId!);
-      if (command.productId != null && (product == null || product.archived)) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '产品不存在或已归档，请重新选择',
-        );
-      }
       final inputTerms = command.stageTerms;
       final stageTerms = InstallmentContractTerms(
         dayCount: inputTerms.dayCount,
         rounding: inputTerms.rounding,
-        tailDifference: inputTerms.tailDifference,
         stages: [
           for (final stage in inputTerms.stages)
             InstallmentContractStage(
@@ -148,9 +134,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
           principal: command.principal,
           borrowingDate: command.borrowingDate,
           note: command.note,
-          productId: product?.id,
-          productName: product?.name,
-          customRules: command.customRules,
           stageTerms: stageTerms,
         ),
         createdAt: now,
@@ -277,23 +260,8 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     UpdateContractCommand command,
     InstallmentContractTerms terms,
   ) async {
-    final product =
-        command.productId == null || command.productId == contract.productId
-        ? null
-        : await _products?.find(command.productId!);
-    if (command.productId != null &&
-        command.productId != contract.productId &&
-        (product == null || product.archived)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '产品模板不存在或已归档',
-      );
-    }
     contract.reviseStageTerms(
       command.regeneratePlan ? contract.stageTerms : terms,
-      customRules: command.customRules,
-      productId: product?.id,
-      productName: product?.name,
     );
   }
 

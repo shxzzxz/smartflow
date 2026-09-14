@@ -140,8 +140,6 @@ class BillConversionInstallmentFormViewModel
                   ),
                   borrowingDate: current.borrowingDate,
                   stageTerms: current.termsDraft.contractTerms(),
-                  productId: current.productId,
-                  productName: current.productName,
                   note: trimToNull(noteText),
                 ),
               );

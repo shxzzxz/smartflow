@@ -11,14 +11,14 @@ class ChinamoneyReferenceRateSource implements ReferenceRateSource {
   @override
   int get order => 200;
   @override
-  Set<ReferenceRateType> get supportedTypes => const {
-    ReferenceRateType.lprOneYear,
-    ReferenceRateType.lprFiveYearPlus,
+  Set<InterestRateType> get supportedTypes => const {
+    InterestRateType.lprOneYear,
+    InterestRateType.lprFiveYearPlus,
   };
 
   @override
-  Future<Map<ReferenceRateType, List<ReferenceRate>>> fetch(
-    List<ReferenceRateType> types, {
+  Future<Map<InterestRateType, List<ReferenceRate>>> fetch(
+    List<InterestRateType> types, {
     required DateTime from,
     required DateTime through,
   }) async {
@@ -30,7 +30,7 @@ class ChinamoneyReferenceRateSource implements ReferenceRateSource {
     if (start.isAfter(end)) throw ArgumentError('Invalid reference rate range');
     final rates = {for (final type in types) type: <ReferenceRate>[]};
     if (rates.isEmpty) return rates;
-    final historyStart = ReferenceRateType.lprOneYear.historyStart;
+    final historyStart = InterestRateType.lprOneYear.historyStart;
     if (start.isBefore(historyStart)) start = historyStart;
     final dates = <DateTime>{};
     while (!start.isAfter(end)) {
@@ -74,7 +74,7 @@ class ChinamoneyReferenceRateSource implements ReferenceRateSource {
                 type: type,
                 date: date,
                 ratePpm: ratePercentToPpm(
-                  row[type == ReferenceRateType.lprOneYear ? '1Y' : '5Y'],
+                  row[type == InterestRateType.lprOneYear ? '1Y' : '5Y'],
                 ),
                 source: key,
               ),

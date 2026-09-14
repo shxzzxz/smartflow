@@ -53,7 +53,7 @@ InstallmentContractReadModel operationsContract({
               resetDate: DateTime(2026, 8, 20),
               effectiveDate: DateTime(2026, 8, 20),
               referenceRate: ReferenceRate(
-                type: ReferenceRateType.lprOneYear,
+                type: InterestRateType.lprOneYear,
                 date: DateTime(2026, 8, 19),
                 ratePpm: 18000,
                 source: 'fixture',
@@ -94,7 +94,7 @@ class RecordingRepricingService implements InstallmentRepricingService {
           String stageId,
           DateTime reset,
           DateTime effective,
-          ReferenceRateType type,
+          InterestRateType type,
           int bp,
         })
       >[];
@@ -123,7 +123,7 @@ class RecordingRepricingService implements InstallmentRepricingService {
     required String stageId,
     required DateTime resetDate,
     required DateTime effectiveDate,
-    required ReferenceRateType referenceRateType,
+    required InterestRateType referenceRateType,
     required int spreadBp,
   }) async {
     created.add((

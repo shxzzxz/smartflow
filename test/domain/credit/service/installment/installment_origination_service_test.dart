@@ -15,8 +15,6 @@ void main() {
       terms: InstallmentOriginationTerms(
         principal: const Money(minorUnits: 10000),
         borrowingDate: DateTime(2026, 1, 1),
-        productId: 'template',
-        productName: '等额本金',
         stageTerms: InstallmentContractTerms.singleStage(
           id: 'stage',
           totalPeriods: 2,
@@ -30,7 +28,6 @@ void main() {
       createdAt: DateTime(2026),
       newScheduleId: () => 'schedule',
     );
-    expect(result.contract.productId, 'template');
     expect(result.schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
     expect(result.schedules.last.expectedRepaymentDate, DateTime(2026, 3, 1));
   });

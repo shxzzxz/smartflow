@@ -6,6 +6,8 @@ import '../../../domain/credit/port/installment_product_repository.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/valobj/day_count_convention.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
+import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/in_period_repricing_policy.dart';
 import '../../shared/transaction_runner.dart';
 
 class InstallmentProductReadModel {
@@ -110,12 +112,6 @@ class InstallmentProductServiceImpl implements InstallmentProductService {
   @override
   Future<void> delete(String id) => _runner.run(() async {
     await _require(id);
-    if (await _repository.isUsed(id)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '已有合同使用该产品，请归档产品',
-      );
-    }
     await _repository.delete(id);
   });
 
@@ -140,5 +136,11 @@ class InstallmentProductServiceImpl implements InstallmentProductService {
           ratePeriod: s.ratePeriod,
           accrual: s.accrual,
           amountAlgorithm: s.amountAlgorithm,
+          rateType: s.rateType ?? InterestRateType.fixed,
+          repricingCycleMonths: s.repricingCycleMonths ?? 12,
+          inPeriodRepricingPolicy:
+              s.inPeriodRepricingPolicy ??
+              InPeriodRepricingPolicy.preservePrincipal,
+          tailDifference: s.tailDifference,
         );
 }

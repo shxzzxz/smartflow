@@ -6,12 +6,12 @@ class ReferenceRateHistory {
     required this.asOf,
     required List<ReferenceRate> rates,
     this.updating = false,
-    Map<ReferenceRateType, ReferenceRateMissingReason> failures = const {},
+    Map<InterestRateType, ReferenceRateMissingReason> failures = const {},
   }) : rates = List.unmodifiable(rates),
        failures = Map.unmodifiable(failures);
 
   final DateTime asOf;
   final List<ReferenceRate> rates;
   final bool updating;
-  final Map<ReferenceRateType, ReferenceRateMissingReason> failures;
+  final Map<InterestRateType, ReferenceRateMissingReason> failures;
 }

@@ -156,6 +156,7 @@ class InstallmentPlanEngine {
         fee: repayment.fee,
         periodCount: dates.length,
         rounding: terms.rounding,
+        tailDifference: repayment.tailDifference,
       );
       if (custom) {
         for (var i = 0; i < dates.length; i++) {

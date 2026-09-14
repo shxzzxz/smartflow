@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../../helper/legacy_installment_tables.dart';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +20,7 @@ void main() {
       final file = File('${directory.path}/smartflow.sqlite');
       final old = _openDatabase(file);
       await old.customSelect('SELECT 1').get();
+      await prepareLegacyInstallmentTables(old);
       await old.customStatement('DROP TABLE installment_repricing_records');
       await old.customStatement('''CREATE TABLE installment_repricing_records (
       id TEXT PRIMARY KEY, contract_id TEXT NOT NULL, stage_id TEXT NOT NULL,
@@ -34,6 +37,8 @@ void main() {
           ['record-$applied', 'stage-$applied', applied * 86400, applied],
         );
       }
+      await prepareLegacyInstallmentTables(old);
+      await finishLegacyInstallmentTables(old);
       await old.customStatement('PRAGMA user_version = 38');
       await old.close();
       final db = _openDatabase(file);
@@ -84,6 +89,7 @@ void main() {
         final file = File('${directory.path}/smartflow.sqlite');
         final old = _openDatabase(file);
         await old.customSelect('SELECT 1').get();
+        await prepareLegacyInstallmentTables(old);
         await old
             .into(old.installmentContracts)
             .insert(
@@ -134,31 +140,21 @@ void main() {
             ['record-$index', 'stage-$index', index * 86400, tenor, index],
           );
         }
+        await prepareLegacyInstallmentTables(old);
+        await finishLegacyInstallmentTables(old);
         await old.customStatement('PRAGMA user_version = $version');
         await old.close();
         final db = _openDatabase(file);
         addTearDown(db.close);
         final stages =
             await (db.select(db.installmentStageConfigs)
-                  ..where(
-                    (s) =>
-                        s.ownerType.equals('contract') &
-                        s.ownerId.equals('loan'),
-                  )
+                  ..where((s) => s.contractId.equals('loan'))
                   ..orderBy([(s) => OrderingTerm.asc(s.position)]))
                 .get();
         final records = await (db.select(
           db.installmentRepricingRecords,
         )..orderBy([(r) => OrderingTerm.asc(r.id)])).get();
-        expect(
-          stages.every(
-            (stage) =>
-                stage.referenceRateType == null &&
-                stage.spreadBp == null &&
-                stage.repricingCycleMonths == null,
-          ),
-          isTrue,
-        );
+        expect(stages.map((stage) => stage.contractId).toSet(), {'loan'});
         final configurations = await (db.select(
           db.installmentRepricingConfigs,
         )..orderBy([(row) => OrderingTerm.asc(row.effectiveFrom)])).get();
@@ -172,7 +168,7 @@ void main() {
           ),
           isTrue,
         );
-        expect(stages.every((stage) => stage.ratePpm == 45000), isTrue);
+        expect(stages.every((stage) => stage.initialRatePpm == 45000), isTrue);
         expect(records.map((r) => r.referenceRateType), [
           'lprOneYear',
           'lprFiveYearPlus',
@@ -229,6 +225,7 @@ void main() {
       final file = File('${directory.path}/smartflow.sqlite');
       final old = _openDatabase(file);
       await old.customSelect('SELECT 1').get();
+      await prepareLegacyInstallmentTables(old);
       await old.customStatement('DROP TABLE reference_rates');
       await old.customStatement('''CREATE TABLE lpr_quotes (
       quote_date INTEGER NOT NULL, tenor TEXT NOT NULL, rate_ppm INTEGER NOT NULL,
@@ -237,6 +234,8 @@ void main() {
       await old.customStatement(
         "INSERT INTO lpr_quotes VALUES (1703030400, 'oneYear', 34500, 'legacy', 1703030401)",
       );
+      await prepareLegacyInstallmentTables(old);
+      await finishLegacyInstallmentTables(old);
       await old.customStatement('PRAGMA user_version = 36');
       await old.close();
       final db = _openDatabase(file);
@@ -271,6 +270,7 @@ void main() {
       final file = File('${directory.path}/smartflow.sqlite');
       final old = _openDatabase(file);
       await old.customSelect('SELECT 1').get();
+      await prepareLegacyInstallmentTables(old);
       await old.customStatement('DROP TABLE installment_repricing_records');
       await old.customStatement('DROP TABLE reference_rates');
       for (final name in [
@@ -293,6 +293,8 @@ void main() {
         "(id, contract_id, stage_id, period_no, expected_repayment_date, expected_principal_minor, expected_interest_minor, status) "
         "VALUES ('existing', 'loan', 'stage', 1, 1703000000, 87654, 1234, 'pending')",
       );
+      await prepareLegacyInstallmentTables(old);
+      await finishLegacyInstallmentTables(old);
       await old.customStatement('PRAGMA user_version = 35');
       await old.close();
       final db = _openDatabase(file);
@@ -324,15 +326,18 @@ void main() {
       final file = File('${directory.path}/smartflow.sqlite');
       final old = _openDatabase(file);
       await old.customSelect('SELECT 1').get();
+      await prepareLegacyInstallmentTables(old);
       await old.customStatement(
         'ALTER TABLE installment_contracts DROP COLUMN name',
       );
       final date = DateTime(2026, 12, 3);
       await old.customStatement(
-        "INSERT INTO installment_contracts (id, liability_account_id, source_type, principal_minor, start_date, status) "
+        "INSERT INTO installment_contracts (id, liability_account_id, source_type, principal_minor, borrowing_date, status) "
         "VALUES ('dated', 'loan', 'disbursement', 10000, ?, 'active')",
         [date.millisecondsSinceEpoch ~/ 1000],
       );
+      await prepareLegacyInstallmentTables(old);
+      await finishLegacyInstallmentTables(old);
       await old.customStatement('PRAGMA user_version = 33');
       await old.close();
       final current = _openDatabase(file);
@@ -388,7 +393,6 @@ void main() {
     );
     final before = <String, List<Map<String, Object?>>>{};
     for (final table in [
-      'installment_stage_configs',
       'installment_schedules',
       'repayments',
       'repayment_items',
@@ -397,6 +401,8 @@ void main() {
           .map((r) => r.data)
           .toList();
     }
+    await prepareLegacyInstallmentTables(old);
+    await finishLegacyInstallmentTables(old);
     await old.customStatement('PRAGMA user_version = 32');
     await old.close();
     final current = _openDatabase(file);
@@ -471,6 +477,8 @@ void main() {
       await stale.customStatement(
         'ALTER TABLE installment_schedules DROP COLUMN stage_id',
       );
+      await prepareLegacyInstallmentTables(stale);
+      await finishLegacyInstallmentTables(stale);
       await stale.customStatement('PRAGMA user_version = 31');
       await stale.close();
       final upgraded = _openDatabase(file);
@@ -478,10 +486,9 @@ void main() {
       final stage = await upgraded
           .select(upgraded.installmentStageConfigs)
           .getSingle();
-      expect(stage.ownerType, 'contract');
-      expect(stage.ownerId, 'legacy');
+      expect(stage.contractId, 'legacy');
       expect(stage.periods, 2);
-      expect(stage.ratePpm, 36000);
+      expect(stage.initialRatePpm, 36000);
       expect(stage.amountAlgorithm, 'actualRate');
       expect(stage.endPrincipalMinor, null);
       expect(stage.fixedAmountMinor, null);
@@ -567,6 +574,8 @@ INSERT INTO repayment_items
  allocated_interest_minor, allocated_fee_minor, allocated_discount_minor)
 VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
 ''');
+      await prepareLegacyInstallmentTables(stale);
+      await finishLegacyInstallmentTables(stale);
       await stale.customStatement('PRAGMA user_version = 30');
       await stale.close();
       final upgraded = _openDatabase(file);
@@ -634,6 +643,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "primary_amount_minor, source_kind) VALUES "
       "('tx-1', 'debtRepayment', 1700000200, 1700000300, 1000, 'manual')",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 29');
     await staleDatabase.close();
 
@@ -642,7 +653,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 41);
+    expect(version.read<int>('user_version'), 42);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -669,6 +680,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final staleDatabase = _openDatabase(file);
       await staleDatabase.customStatement('DROP TABLE installment_contracts');
       await staleDatabase.customStatement(_staleInstallmentContractsSql);
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 18');
       await expectLater(
         () => _insertNoTransactionContract(staleDatabase),
@@ -681,7 +694,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 41);
+      expect(version.read<int>('user_version'), 42);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -727,6 +740,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         "('tx-1-debit', 'tx-1', 'migration-food', 'debit', 1234), "
         "('tx-1-credit', 'tx-1', 'migration-cash', 'credit', 1234)",
       );
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 19');
       await staleDatabase.close();
 
@@ -735,7 +750,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 41);
+      expect(version.read<int>('user_version'), 42);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -837,6 +852,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         "'parent-middle', 1200, 1, 0, 0, 0, 'equalInstallment', "
         "'daily', 'active')",
       );
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 20');
       await staleDatabase.close();
 
@@ -846,7 +863,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 41);
+      expect(version.read<int>('user_version'), 42);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -965,6 +982,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         "'missing-transaction', 1200, 1, 0, 0, 0, 'equalInstallment', "
         "'daily', 'active')",
       );
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 20');
       await staleDatabase.close();
 
@@ -1005,6 +1024,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       await staleDatabase.customStatement('DROP TABLE import_batch_items');
       await staleDatabase.customStatement('DROP TABLE import_batches');
       await staleDatabase.customStatement('DROP TABLE import_entity_mappings');
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 21');
       await staleDatabase.close();
 
@@ -1013,7 +1034,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 41);
+      expect(version.read<int>('user_version'), 42);
 
       for (final table in [
         'import_entity_mappings',
@@ -1061,6 +1082,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         "INSERT INTO budgets (id, month_key, account_id, amount_minor) "
         "VALUES ('food-budget', 202608, 'food', 100000)",
       );
+      await prepareLegacyInstallmentTables(staleDatabase);
+      await finishLegacyInstallmentTables(staleDatabase);
       await staleDatabase.customStatement('PRAGMA user_version = 25');
       await staleDatabase.close();
 
@@ -1122,6 +1145,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "(id, month_key, account_id, amount_minor, sort_order) "
       "VALUES ('old-dining-budget', 202608, 'old-dining', 50000, 0)",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 24');
     await staleDatabase.close();
 
@@ -1277,6 +1302,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "(SELECT id FROM accounts WHERE system_key = 'openingBalance'), 'debit', 500), "
       "('adjustment-credit', 'adjustment', 'migration-bank', 'credit', 500)",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 28');
     await staleDatabase.close();
 
@@ -1400,6 +1427,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "('asset-old', '旧资产', 'asset', NULL, NULL, 20000, 'user'), "
       "('liability-old', '旧负债', 'liability', NULL, NULL, 30000, 'user')",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 27');
     await staleDatabase.close();
 
@@ -1457,6 +1486,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "(id, name, account_type, account_subtype, account_profile_key, source) "
       "VALUES ('conflict', '冲突', 'asset', 'fund', 'credit.credit', 'user')",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 27');
     await staleDatabase.close();
 
@@ -1530,6 +1561,8 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "(SELECT id FROM accounts WHERE system_key = 'debtReliefIncome'), "
       "'credit', 1000)",
     );
+    await prepareLegacyInstallmentTables(staleDatabase);
+    await finishLegacyInstallmentTables(staleDatabase);
     await staleDatabase.customStatement('PRAGMA user_version = 27');
     await staleDatabase.close();
 
@@ -1613,6 +1646,10 @@ Future<void> _insertNoTransactionContract(AppDatabase database) async {
   final columns = await database
       .customSelect('PRAGMA table_info(installment_contracts)')
       .get();
+  final dateColumn =
+      columns.any((row) => row.read<String>('name') == 'borrowing_date')
+      ? 'borrowing_date'
+      : 'start_date';
   if (columns.any((r) => r.read<String>('name') == 'total_periods')) {
     await database.customStatement(
       "INSERT INTO installment_contracts "
@@ -1623,13 +1660,15 @@ Future<void> _insertNoTransactionContract(AppDatabase database) async {
   } else {
     await database.customStatement(
       "INSERT INTO installment_contracts "
-      "(id, liability_account_id, source_type, principal_minor, start_date, status) "
+      "(id, liability_account_id, source_type, principal_minor, $dateColumn, status) "
       "VALUES ('migration-contract', 'loan-1', 'disbursement', 120000, 0, 'active')",
     );
   }
 }
 
 Future<void> _restoreFlatContractColumns(AppDatabase database) async {
+  await prepareLegacyInstallmentTables(database);
+  await finishLegacyInstallmentTables(database);
   final columns =
       (await database
               .customSelect('PRAGMA table_info(installment_contracts)')

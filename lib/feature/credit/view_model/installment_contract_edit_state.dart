@@ -12,14 +12,11 @@ part 'installment_contract_edit_state.freezed.dart';
 sealed class InstallmentContractEditState with _$InstallmentContractEditState {
   const factory InstallmentContractEditState.loaded({
     required InstallmentContractReadModel contract,
-    String? productId,
-    String? productName,
     ContractMetrics? metrics,
     required List<InstallmentContractDraftRow> draft,
     @Default({}) Set<int> manualPatchedPeriodNos,
     @Default(false) bool submitting,
     required InstallmentTermsDraft stageDraft,
-    @Default(false) bool customRules,
     @Default(false) bool stagePlanPreviewed,
     String? planPreviewToken,
   }) = InstallmentContractEditLoaded;

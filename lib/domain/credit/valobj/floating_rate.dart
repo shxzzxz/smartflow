@@ -4,7 +4,7 @@ import 'installment_enums.dart';
 import 'interest_rate.dart';
 import 'reference_rate.dart';
 
-enum RepricingPaymentTiming { nextPeriod, currentPeriod }
+export 'in_period_repricing_policy.dart';
 
 /// 首次日期是永久日历锚点；月底截断后不会逐次漂移。
 class FloatingRateRule {
@@ -14,18 +14,17 @@ class FloatingRateRule {
     required this.firstResetDate,
     required this.firstEffectiveDate,
     this.cycleMonths = 12,
-    this.paymentTiming = RepricingPaymentTiming.nextPeriod,
   });
 
-  final ReferenceRateType referenceRateType;
+  final InterestRateType referenceRateType;
   final int spreadBp;
   final DateTime firstResetDate;
   final DateTime firstEffectiveDate;
   final int cycleMonths;
-  final RepricingPaymentTiming paymentTiming;
 
   void validate() {
-    if (![3, 6, 12].contains(cycleMonths) ||
+    if (!referenceRateType.isFloating ||
+        ![3, 6, 12].contains(cycleMonths) ||
         referenceDate(
           firstEffectiveDate,
         ).isBefore(referenceDate(firstResetDate))) {
@@ -45,7 +44,6 @@ class FloatingRateRule {
       other.referenceRateType == referenceRateType &&
       other.spreadBp == spreadBp &&
       other.cycleMonths == cycleMonths &&
-      other.paymentTiming == paymentTiming &&
       referenceDate(other.firstResetDate) == referenceDate(firstResetDate) &&
       referenceDate(other.firstEffectiveDate) ==
           referenceDate(firstEffectiveDate);
@@ -54,7 +52,6 @@ class FloatingRateRule {
     referenceRateType,
     spreadBp,
     cycleMonths,
-    paymentTiming,
     referenceDate(firstResetDate),
     referenceDate(firstEffectiveDate),
   );

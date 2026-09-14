@@ -124,9 +124,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
             id: contract.id,
             name: Value(contract.name),
             liabilityAccountId: contract.liabilityAccountId,
-            productId: Value(contract.productId),
-            productName: Value(contract.productName),
-            customRules: Value(contract.customRules),
             dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
             rounding: Value(contract.stageTerms.rounding.name),
             sourceType: contract.sourceType,
@@ -170,10 +167,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
               row.stageId.isNotIn(retained),
         ))
         .go();
-    await (_database.delete(_database.installmentStageConfigs)..where(
-          (r) => r.ownerType.equals('contract') & r.ownerId.equals(contract.id),
-        ))
-        .go();
+    await (_database.delete(
+      _database.installmentStageConfigs,
+    )..where((r) => r.contractId.equals(contract.id))).go();
     await _database.batch(
       (batch) => batch.insertAll(_database.installmentStageConfigs, [
         for (var i = 0; i < contract.stageTerms.stages.length; i++)
@@ -205,10 +201,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
           )..where((row) => row.id.equals(contract.id))).write(
             InstallmentContractsCompanion(
               name: Value(contract.name),
-              productId: Value(contract.productId),
-              productName: Value(contract.productName),
               disbursementAccountId: Value(contract.disbursementAccountId),
-              customRules: Value(contract.customRules),
               dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
               rounding: Value(contract.stageTerms.rounding.name),
 
@@ -255,10 +248,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
     await (_database.delete(
       _database.installmentSchedules,
     )..where((s) => s.contractId.equals(contractId))).go();
-    await (_database.delete(_database.installmentStageConfigs)..where(
-          (s) => s.ownerType.equals('contract') & s.ownerId.equals(contractId),
-        ))
-        .go();
+    await (_database.delete(
+      _database.installmentStageConfigs,
+    )..where((s) => s.contractId.equals(contractId))).go();
     await (_database.delete(
       _database.installmentContracts,
     )..where((c) => c.id.equals(contractId))).go();
@@ -285,10 +277,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
   Future<InstallmentContract> _mapContract(InstallmentContractRow row) async {
     final stages =
         await (_database.select(_database.installmentStageConfigs)
-              ..where(
-                (s) =>
-                    s.ownerType.equals('contract') & s.ownerId.equals(row.id),
-              )
+              ..where((s) => s.contractId.equals(row.id))
               ..orderBy([(s) => OrderingTerm.asc(s.position)]))
             .get();
     if (stages.isEmpty) {
@@ -305,10 +294,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       disbursementTransactionId: row.disbursementTransactionId,
       sourceRepaymentId: row.sourceRepaymentId,
       principal: Money(minorUnits: row.principalMinor),
-      productId: row.productId,
-      productName: row.productName,
       name: row.name,
-      customRules: row.customRules,
       borrowingDate: row.borrowingDate,
       status: row.status,
       note: row.note,

@@ -7253,43 +7253,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _productIdMeta = const VerificationMeta(
-    'productId',
-  );
-  @override
-  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
-    'product_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _productNameMeta = const VerificationMeta(
-    'productName',
-  );
-  @override
-  late final GeneratedColumn<String> productName = GeneratedColumn<String>(
-    'product_name',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _customRulesMeta = const VerificationMeta(
-    'customRules',
-  );
-  @override
-  late final GeneratedColumn<bool> customRules = GeneratedColumn<bool>(
-    'custom_rules',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("custom_rules" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   static const VerificationMeta _dayCountMeta = const VerificationMeta(
     'dayCount',
   );
@@ -7313,18 +7276,6 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant('halfUp'),
-  );
-  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
-    'tailDifference',
-  );
-  @override
-  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
-    'tail_difference',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('lastPeriod'),
   );
   static const VerificationMeta _liabilityAccountIdMeta =
       const VerificationMeta('liabilityAccountId');
@@ -7400,7 +7351,7 @@ class $InstallmentContractsTable extends InstallmentContracts
   @override
   late final GeneratedColumn<DateTime> borrowingDate =
       GeneratedColumn<DateTime>(
-        'start_date',
+        'borrowing_date',
         aliasedName,
         false,
         type: DriftSqlType.dateTime,
@@ -7455,12 +7406,8 @@ class $InstallmentContractsTable extends InstallmentContracts
   List<GeneratedColumn> get $columns => [
     id,
     name,
-    productId,
-    productName,
-    customRules,
     dayCount,
     rounding,
-    tailDifference,
     liabilityAccountId,
     sourceType,
     disbursementAccountId,
@@ -7496,30 +7443,6 @@ class $InstallmentContractsTable extends InstallmentContracts
         name.isAcceptableOrUnknown(data['name']!, _nameMeta),
       );
     }
-    if (data.containsKey('product_id')) {
-      context.handle(
-        _productIdMeta,
-        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
-      );
-    }
-    if (data.containsKey('product_name')) {
-      context.handle(
-        _productNameMeta,
-        productName.isAcceptableOrUnknown(
-          data['product_name']!,
-          _productNameMeta,
-        ),
-      );
-    }
-    if (data.containsKey('custom_rules')) {
-      context.handle(
-        _customRulesMeta,
-        customRules.isAcceptableOrUnknown(
-          data['custom_rules']!,
-          _customRulesMeta,
-        ),
-      );
-    }
     if (data.containsKey('day_count')) {
       context.handle(
         _dayCountMeta,
@@ -7530,15 +7453,6 @@ class $InstallmentContractsTable extends InstallmentContracts
       context.handle(
         _roundingMeta,
         rounding.isAcceptableOrUnknown(data['rounding']!, _roundingMeta),
-      );
-    }
-    if (data.containsKey('tail_difference')) {
-      context.handle(
-        _tailDifferenceMeta,
-        tailDifference.isAcceptableOrUnknown(
-          data['tail_difference']!,
-          _tailDifferenceMeta,
-        ),
       );
     }
     if (data.containsKey('liability_account_id')) {
@@ -7590,11 +7504,11 @@ class $InstallmentContractsTable extends InstallmentContracts
     } else if (isInserting) {
       context.missing(_principalMinorMeta);
     }
-    if (data.containsKey('start_date')) {
+    if (data.containsKey('borrowing_date')) {
       context.handle(
         _borrowingDateMeta,
         borrowingDate.isAcceptableOrUnknown(
-          data['start_date']!,
+          data['borrowing_date']!,
           _borrowingDateMeta,
         ),
       );
@@ -7636,18 +7550,6 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      productId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}product_id'],
-      ),
-      productName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}product_name'],
-      ),
-      customRules: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}custom_rules'],
-      )!,
       dayCount: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}day_count'],
@@ -7655,10 +7557,6 @@ class $InstallmentContractsTable extends InstallmentContracts
       rounding: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}rounding'],
-      )!,
-      tailDifference: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}tail_difference'],
       )!,
       liabilityAccountId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -7688,7 +7586,7 @@ class $InstallmentContractsTable extends InstallmentContracts
       )!,
       borrowingDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}start_date'],
+        data['${effectivePrefix}borrowing_date'],
       )!,
       status: $InstallmentContractsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
@@ -7732,12 +7630,8 @@ class InstallmentContractRow extends DataClass
 
   /// 正常创建由合同填入借款日期名称；空值仅供迁移添加列后回填。
   final String name;
-  final String? productId;
-  final String? productName;
-  final bool customRules;
   final String dayCount;
   final String rounding;
-  final String tailDifference;
   final String liabilityAccountId;
   final InstallmentSourceType sourceType;
   final String? disbursementAccountId;
@@ -7754,12 +7648,8 @@ class InstallmentContractRow extends DataClass
   const InstallmentContractRow({
     required this.id,
     required this.name,
-    this.productId,
-    this.productName,
-    required this.customRules,
     required this.dayCount,
     required this.rounding,
-    required this.tailDifference,
     required this.liabilityAccountId,
     required this.sourceType,
     this.disbursementAccountId,
@@ -7777,16 +7667,8 @@ class InstallmentContractRow extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
-    if (!nullToAbsent || productId != null) {
-      map['product_id'] = Variable<String>(productId);
-    }
-    if (!nullToAbsent || productName != null) {
-      map['product_name'] = Variable<String>(productName);
-    }
-    map['custom_rules'] = Variable<bool>(customRules);
     map['day_count'] = Variable<String>(dayCount);
     map['rounding'] = Variable<String>(rounding);
-    map['tail_difference'] = Variable<String>(tailDifference);
     map['liability_account_id'] = Variable<String>(liabilityAccountId);
     {
       map['source_type'] = Variable<String>(
@@ -7805,7 +7687,7 @@ class InstallmentContractRow extends DataClass
       map['source_repayment_id'] = Variable<String>(sourceRepaymentId);
     }
     map['principal_minor'] = Variable<int>(principalMinor);
-    map['start_date'] = Variable<DateTime>(borrowingDate);
+    map['borrowing_date'] = Variable<DateTime>(borrowingDate);
     {
       map['status'] = Variable<String>(
         $InstallmentContractsTable.$converterstatus.toSql(status),
@@ -7823,16 +7705,8 @@ class InstallmentContractRow extends DataClass
     return InstallmentContractsCompanion(
       id: Value(id),
       name: Value(name),
-      productId: productId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(productId),
-      productName: productName == null && nullToAbsent
-          ? const Value.absent()
-          : Value(productName),
-      customRules: Value(customRules),
       dayCount: Value(dayCount),
       rounding: Value(rounding),
-      tailDifference: Value(tailDifference),
       liabilityAccountId: Value(liabilityAccountId),
       sourceType: Value(sourceType),
       disbursementAccountId: disbursementAccountId == null && nullToAbsent
@@ -7862,12 +7736,8 @@ class InstallmentContractRow extends DataClass
     return InstallmentContractRow(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      productId: serializer.fromJson<String?>(json['productId']),
-      productName: serializer.fromJson<String?>(json['productName']),
-      customRules: serializer.fromJson<bool>(json['customRules']),
       dayCount: serializer.fromJson<String>(json['dayCount']),
       rounding: serializer.fromJson<String>(json['rounding']),
-      tailDifference: serializer.fromJson<String>(json['tailDifference']),
       liabilityAccountId: serializer.fromJson<String>(
         json['liabilityAccountId'],
       ),
@@ -7899,12 +7769,8 @@ class InstallmentContractRow extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
-      'productId': serializer.toJson<String?>(productId),
-      'productName': serializer.toJson<String?>(productName),
-      'customRules': serializer.toJson<bool>(customRules),
       'dayCount': serializer.toJson<String>(dayCount),
       'rounding': serializer.toJson<String>(rounding),
-      'tailDifference': serializer.toJson<String>(tailDifference),
       'liabilityAccountId': serializer.toJson<String>(liabilityAccountId),
       'sourceType': serializer.toJson<String>(
         $InstallmentContractsTable.$convertersourceType.toJson(sourceType),
@@ -7930,12 +7796,8 @@ class InstallmentContractRow extends DataClass
   InstallmentContractRow copyWith({
     String? id,
     String? name,
-    Value<String?> productId = const Value.absent(),
-    Value<String?> productName = const Value.absent(),
-    bool? customRules,
     String? dayCount,
     String? rounding,
-    String? tailDifference,
     String? liabilityAccountId,
     InstallmentSourceType? sourceType,
     Value<String?> disbursementAccountId = const Value.absent(),
@@ -7950,12 +7812,8 @@ class InstallmentContractRow extends DataClass
   }) => InstallmentContractRow(
     id: id ?? this.id,
     name: name ?? this.name,
-    productId: productId.present ? productId.value : this.productId,
-    productName: productName.present ? productName.value : this.productName,
-    customRules: customRules ?? this.customRules,
     dayCount: dayCount ?? this.dayCount,
     rounding: rounding ?? this.rounding,
-    tailDifference: tailDifference ?? this.tailDifference,
     liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
     sourceType: sourceType ?? this.sourceType,
     disbursementAccountId: disbursementAccountId.present
@@ -7978,18 +7836,8 @@ class InstallmentContractRow extends DataClass
     return InstallmentContractRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      productId: data.productId.present ? data.productId.value : this.productId,
-      productName: data.productName.present
-          ? data.productName.value
-          : this.productName,
-      customRules: data.customRules.present
-          ? data.customRules.value
-          : this.customRules,
       dayCount: data.dayCount.present ? data.dayCount.value : this.dayCount,
       rounding: data.rounding.present ? data.rounding.value : this.rounding,
-      tailDifference: data.tailDifference.present
-          ? data.tailDifference.value
-          : this.tailDifference,
       liabilityAccountId: data.liabilityAccountId.present
           ? data.liabilityAccountId.value
           : this.liabilityAccountId,
@@ -8023,12 +7871,8 @@ class InstallmentContractRow extends DataClass
     return (StringBuffer('InstallmentContractRow(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('productId: $productId, ')
-          ..write('productName: $productName, ')
-          ..write('customRules: $customRules, ')
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
-          ..write('tailDifference: $tailDifference, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
@@ -8048,12 +7892,8 @@ class InstallmentContractRow extends DataClass
   int get hashCode => Object.hash(
     id,
     name,
-    productId,
-    productName,
-    customRules,
     dayCount,
     rounding,
-    tailDifference,
     liabilityAccountId,
     sourceType,
     disbursementAccountId,
@@ -8072,12 +7912,8 @@ class InstallmentContractRow extends DataClass
       (other is InstallmentContractRow &&
           other.id == this.id &&
           other.name == this.name &&
-          other.productId == this.productId &&
-          other.productName == this.productName &&
-          other.customRules == this.customRules &&
           other.dayCount == this.dayCount &&
           other.rounding == this.rounding &&
-          other.tailDifference == this.tailDifference &&
           other.liabilityAccountId == this.liabilityAccountId &&
           other.sourceType == this.sourceType &&
           other.disbursementAccountId == this.disbursementAccountId &&
@@ -8095,12 +7931,8 @@ class InstallmentContractsCompanion
     extends UpdateCompanion<InstallmentContractRow> {
   final Value<String> id;
   final Value<String> name;
-  final Value<String?> productId;
-  final Value<String?> productName;
-  final Value<bool> customRules;
   final Value<String> dayCount;
   final Value<String> rounding;
-  final Value<String> tailDifference;
   final Value<String> liabilityAccountId;
   final Value<InstallmentSourceType> sourceType;
   final Value<String?> disbursementAccountId;
@@ -8116,12 +7948,8 @@ class InstallmentContractsCompanion
   const InstallmentContractsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
-    this.productId = const Value.absent(),
-    this.productName = const Value.absent(),
-    this.customRules = const Value.absent(),
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
-    this.tailDifference = const Value.absent(),
     this.liabilityAccountId = const Value.absent(),
     this.sourceType = const Value.absent(),
     this.disbursementAccountId = const Value.absent(),
@@ -8138,12 +7966,8 @@ class InstallmentContractsCompanion
   InstallmentContractsCompanion.insert({
     required String id,
     this.name = const Value.absent(),
-    this.productId = const Value.absent(),
-    this.productName = const Value.absent(),
-    this.customRules = const Value.absent(),
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
-    this.tailDifference = const Value.absent(),
     required String liabilityAccountId,
     required InstallmentSourceType sourceType,
     this.disbursementAccountId = const Value.absent(),
@@ -8165,12 +7989,8 @@ class InstallmentContractsCompanion
   static Insertable<InstallmentContractRow> custom({
     Expression<String>? id,
     Expression<String>? name,
-    Expression<String>? productId,
-    Expression<String>? productName,
-    Expression<bool>? customRules,
     Expression<String>? dayCount,
     Expression<String>? rounding,
-    Expression<String>? tailDifference,
     Expression<String>? liabilityAccountId,
     Expression<String>? sourceType,
     Expression<String>? disbursementAccountId,
@@ -8187,12 +8007,8 @@ class InstallmentContractsCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
-      if (productId != null) 'product_id': productId,
-      if (productName != null) 'product_name': productName,
-      if (customRules != null) 'custom_rules': customRules,
       if (dayCount != null) 'day_count': dayCount,
       if (rounding != null) 'rounding': rounding,
-      if (tailDifference != null) 'tail_difference': tailDifference,
       if (liabilityAccountId != null)
         'liability_account_id': liabilityAccountId,
       if (sourceType != null) 'source_type': sourceType,
@@ -8202,7 +8018,7 @@ class InstallmentContractsCompanion
         'disbursement_transaction_id': disbursementTransactionId,
       if (sourceRepaymentId != null) 'source_repayment_id': sourceRepaymentId,
       if (principalMinor != null) 'principal_minor': principalMinor,
-      if (borrowingDate != null) 'start_date': borrowingDate,
+      if (borrowingDate != null) 'borrowing_date': borrowingDate,
       if (status != null) 'status': status,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
@@ -8214,12 +8030,8 @@ class InstallmentContractsCompanion
   InstallmentContractsCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
-    Value<String?>? productId,
-    Value<String?>? productName,
-    Value<bool>? customRules,
     Value<String>? dayCount,
     Value<String>? rounding,
-    Value<String>? tailDifference,
     Value<String>? liabilityAccountId,
     Value<InstallmentSourceType>? sourceType,
     Value<String?>? disbursementAccountId,
@@ -8236,12 +8048,8 @@ class InstallmentContractsCompanion
     return InstallmentContractsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
-      productId: productId ?? this.productId,
-      productName: productName ?? this.productName,
-      customRules: customRules ?? this.customRules,
       dayCount: dayCount ?? this.dayCount,
       rounding: rounding ?? this.rounding,
-      tailDifference: tailDifference ?? this.tailDifference,
       liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
       sourceType: sourceType ?? this.sourceType,
       disbursementAccountId:
@@ -8268,23 +8076,11 @@ class InstallmentContractsCompanion
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (productId.present) {
-      map['product_id'] = Variable<String>(productId.value);
-    }
-    if (productName.present) {
-      map['product_name'] = Variable<String>(productName.value);
-    }
-    if (customRules.present) {
-      map['custom_rules'] = Variable<bool>(customRules.value);
-    }
     if (dayCount.present) {
       map['day_count'] = Variable<String>(dayCount.value);
     }
     if (rounding.present) {
       map['rounding'] = Variable<String>(rounding.value);
-    }
-    if (tailDifference.present) {
-      map['tail_difference'] = Variable<String>(tailDifference.value);
     }
     if (liabilityAccountId.present) {
       map['liability_account_id'] = Variable<String>(liabilityAccountId.value);
@@ -8311,7 +8107,7 @@ class InstallmentContractsCompanion
       map['principal_minor'] = Variable<int>(principalMinor.value);
     }
     if (borrowingDate.present) {
-      map['start_date'] = Variable<DateTime>(borrowingDate.value);
+      map['borrowing_date'] = Variable<DateTime>(borrowingDate.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(
@@ -8338,12 +8134,8 @@ class InstallmentContractsCompanion
     return (StringBuffer('InstallmentContractsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('productId: $productId, ')
-          ..write('productName: $productName, ')
-          ..write('customRules: $customRules, ')
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
-          ..write('tailDifference: $tailDifference, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
           ..write('sourceType: $sourceType, ')
           ..write('disbursementAccountId: $disbursementAccountId, ')
@@ -8424,18 +8216,6 @@ class $InstallmentProductsTable extends InstallmentProducts
     requiredDuringInsert: false,
     defaultValue: const Constant('halfUp'),
   );
-  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
-    'tailDifference',
-  );
-  @override
-  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
-    'tail_difference',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('lastPeriod'),
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -8467,7 +8247,6 @@ class $InstallmentProductsTable extends InstallmentProducts
     archived,
     dayCount,
     rounding,
-    tailDifference,
     createdAt,
     updatedAt,
   ];
@@ -8514,15 +8293,6 @@ class $InstallmentProductsTable extends InstallmentProducts
         rounding.isAcceptableOrUnknown(data['rounding']!, _roundingMeta),
       );
     }
-    if (data.containsKey('tail_difference')) {
-      context.handle(
-        _tailDifferenceMeta,
-        tailDifference.isAcceptableOrUnknown(
-          data['tail_difference']!,
-          _tailDifferenceMeta,
-        ),
-      );
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -8564,10 +8334,6 @@ class $InstallmentProductsTable extends InstallmentProducts
         DriftSqlType.string,
         data['${effectivePrefix}rounding'],
       )!,
-      tailDifference: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}tail_difference'],
-      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -8592,7 +8358,6 @@ class InstallmentProductRow extends DataClass
   final bool archived;
   final String dayCount;
   final String rounding;
-  final String tailDifference;
   final DateTime createdAt;
   final DateTime updatedAt;
   const InstallmentProductRow({
@@ -8601,7 +8366,6 @@ class InstallmentProductRow extends DataClass
     required this.archived,
     required this.dayCount,
     required this.rounding,
-    required this.tailDifference,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -8613,7 +8377,6 @@ class InstallmentProductRow extends DataClass
     map['archived'] = Variable<bool>(archived);
     map['day_count'] = Variable<String>(dayCount);
     map['rounding'] = Variable<String>(rounding);
-    map['tail_difference'] = Variable<String>(tailDifference);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -8626,7 +8389,6 @@ class InstallmentProductRow extends DataClass
       archived: Value(archived),
       dayCount: Value(dayCount),
       rounding: Value(rounding),
-      tailDifference: Value(tailDifference),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -8643,7 +8405,6 @@ class InstallmentProductRow extends DataClass
       archived: serializer.fromJson<bool>(json['archived']),
       dayCount: serializer.fromJson<String>(json['dayCount']),
       rounding: serializer.fromJson<String>(json['rounding']),
-      tailDifference: serializer.fromJson<String>(json['tailDifference']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -8657,7 +8418,6 @@ class InstallmentProductRow extends DataClass
       'archived': serializer.toJson<bool>(archived),
       'dayCount': serializer.toJson<String>(dayCount),
       'rounding': serializer.toJson<String>(rounding),
-      'tailDifference': serializer.toJson<String>(tailDifference),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -8669,7 +8429,6 @@ class InstallmentProductRow extends DataClass
     bool? archived,
     String? dayCount,
     String? rounding,
-    String? tailDifference,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => InstallmentProductRow(
@@ -8678,7 +8437,6 @@ class InstallmentProductRow extends DataClass
     archived: archived ?? this.archived,
     dayCount: dayCount ?? this.dayCount,
     rounding: rounding ?? this.rounding,
-    tailDifference: tailDifference ?? this.tailDifference,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -8689,9 +8447,6 @@ class InstallmentProductRow extends DataClass
       archived: data.archived.present ? data.archived.value : this.archived,
       dayCount: data.dayCount.present ? data.dayCount.value : this.dayCount,
       rounding: data.rounding.present ? data.rounding.value : this.rounding,
-      tailDifference: data.tailDifference.present
-          ? data.tailDifference.value
-          : this.tailDifference,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -8705,7 +8460,6 @@ class InstallmentProductRow extends DataClass
           ..write('archived: $archived, ')
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
-          ..write('tailDifference: $tailDifference, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -8713,16 +8467,8 @@ class InstallmentProductRow extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    archived,
-    dayCount,
-    rounding,
-    tailDifference,
-    createdAt,
-    updatedAt,
-  );
+  int get hashCode =>
+      Object.hash(id, name, archived, dayCount, rounding, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8732,7 +8478,6 @@ class InstallmentProductRow extends DataClass
           other.archived == this.archived &&
           other.dayCount == this.dayCount &&
           other.rounding == this.rounding &&
-          other.tailDifference == this.tailDifference &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -8744,7 +8489,6 @@ class InstallmentProductsCompanion
   final Value<bool> archived;
   final Value<String> dayCount;
   final Value<String> rounding;
-  final Value<String> tailDifference;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -8754,7 +8498,6 @@ class InstallmentProductsCompanion
     this.archived = const Value.absent(),
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
-    this.tailDifference = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -8765,7 +8508,6 @@ class InstallmentProductsCompanion
     this.archived = const Value.absent(),
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
-    this.tailDifference = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -8777,7 +8519,6 @@ class InstallmentProductsCompanion
     Expression<bool>? archived,
     Expression<String>? dayCount,
     Expression<String>? rounding,
-    Expression<String>? tailDifference,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -8788,7 +8529,6 @@ class InstallmentProductsCompanion
       if (archived != null) 'archived': archived,
       if (dayCount != null) 'day_count': dayCount,
       if (rounding != null) 'rounding': rounding,
-      if (tailDifference != null) 'tail_difference': tailDifference,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -8801,7 +8541,6 @@ class InstallmentProductsCompanion
     Value<bool>? archived,
     Value<String>? dayCount,
     Value<String>? rounding,
-    Value<String>? tailDifference,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -8812,7 +8551,6 @@ class InstallmentProductsCompanion
       archived: archived ?? this.archived,
       dayCount: dayCount ?? this.dayCount,
       rounding: rounding ?? this.rounding,
-      tailDifference: tailDifference ?? this.tailDifference,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -8837,9 +8575,6 @@ class InstallmentProductsCompanion
     if (rounding.present) {
       map['rounding'] = Variable<String>(rounding.value);
     }
-    if (tailDifference.present) {
-      map['tail_difference'] = Variable<String>(tailDifference.value);
-    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -8860,6 +8595,926 @@ class InstallmentProductsCompanion
           ..write('archived: $archived, ')
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentProductStageConfigsTable
+    extends InstallmentProductStageConfigs
+    with
+        TableInfo<
+          $InstallmentProductStageConfigsTable,
+          InstallmentProductStageConfigRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentProductStageConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _productIdMeta = const VerificationMeta(
+    'productId',
+  );
+  @override
+  late final GeneratedColumn<String> productId = GeneratedColumn<String>(
+    'product_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stageKindMeta = const VerificationMeta(
+    'stageKind',
+  );
+  @override
+  late final GeneratedColumn<String> stageKind = GeneratedColumn<String>(
+    'stage_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _repaymentMethodMeta = const VerificationMeta(
+    'repaymentMethod',
+  );
+  @override
+  late final GeneratedColumn<String> repaymentMethod = GeneratedColumn<String>(
+    'repayment_method',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _intervalMonthsMeta = const VerificationMeta(
+    'intervalMonths',
+  );
+  @override
+  late final GeneratedColumn<int> intervalMonths = GeneratedColumn<int>(
+    'interval_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rateTypeMeta = const VerificationMeta(
+    'rateType',
+  );
+  @override
+  late final GeneratedColumn<String> rateType = GeneratedColumn<String>(
+    'rate_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratePeriodMeta = const VerificationMeta(
+    'ratePeriod',
+  );
+  @override
+  late final GeneratedColumn<String> ratePeriod = GeneratedColumn<String>(
+    'rate_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _accrualMeta = const VerificationMeta(
+    'accrual',
+  );
+  @override
+  late final GeneratedColumn<String> accrual = GeneratedColumn<String>(
+    'accrual',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountAlgorithmMeta = const VerificationMeta(
+    'amountAlgorithm',
+  );
+  @override
+  late final GeneratedColumn<String> amountAlgorithm = GeneratedColumn<String>(
+    'amount_algorithm',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repricingCycleMonthsMeta =
+      const VerificationMeta('repricingCycleMonths');
+  @override
+  late final GeneratedColumn<int> repricingCycleMonths = GeneratedColumn<int>(
+    'repricing_cycle_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _inPeriodRepricingPolicyMeta =
+      const VerificationMeta('inPeriodRepricingPolicy');
+  @override
+  late final GeneratedColumn<String> inPeriodRepricingPolicy =
+      GeneratedColumn<String>(
+        'in_period_repricing_policy',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
+    'tailDifference',
+  );
+  @override
+  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
+    'tail_difference',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    productId,
+    position,
+    stageKind,
+    repaymentMethod,
+    intervalMonths,
+    rateType,
+    ratePeriod,
+    accrual,
+    amountAlgorithm,
+    repricingCycleMonths,
+    inPeriodRepricingPolicy,
+    tailDifference,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_product_stage_configs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentProductStageConfigRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('product_id')) {
+      context.handle(
+        _productIdMeta,
+        productId.isAcceptableOrUnknown(data['product_id']!, _productIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_productIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('stage_kind')) {
+      context.handle(
+        _stageKindMeta,
+        stageKind.isAcceptableOrUnknown(data['stage_kind']!, _stageKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stageKindMeta);
+    }
+    if (data.containsKey('repayment_method')) {
+      context.handle(
+        _repaymentMethodMeta,
+        repaymentMethod.isAcceptableOrUnknown(
+          data['repayment_method']!,
+          _repaymentMethodMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interval_months')) {
+      context.handle(
+        _intervalMonthsMeta,
+        intervalMonths.isAcceptableOrUnknown(
+          data['interval_months']!,
+          _intervalMonthsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rate_type')) {
+      context.handle(
+        _rateTypeMeta,
+        rateType.isAcceptableOrUnknown(data['rate_type']!, _rateTypeMeta),
+      );
+    }
+    if (data.containsKey('rate_period')) {
+      context.handle(
+        _ratePeriodMeta,
+        ratePeriod.isAcceptableOrUnknown(data['rate_period']!, _ratePeriodMeta),
+      );
+    }
+    if (data.containsKey('accrual')) {
+      context.handle(
+        _accrualMeta,
+        accrual.isAcceptableOrUnknown(data['accrual']!, _accrualMeta),
+      );
+    }
+    if (data.containsKey('amount_algorithm')) {
+      context.handle(
+        _amountAlgorithmMeta,
+        amountAlgorithm.isAcceptableOrUnknown(
+          data['amount_algorithm']!,
+          _amountAlgorithmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('repricing_cycle_months')) {
+      context.handle(
+        _repricingCycleMonthsMeta,
+        repricingCycleMonths.isAcceptableOrUnknown(
+          data['repricing_cycle_months']!,
+          _repricingCycleMonthsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('in_period_repricing_policy')) {
+      context.handle(
+        _inPeriodRepricingPolicyMeta,
+        inPeriodRepricingPolicy.isAcceptableOrUnknown(
+          data['in_period_repricing_policy']!,
+          _inPeriodRepricingPolicyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('tail_difference')) {
+      context.handle(
+        _tailDifferenceMeta,
+        tailDifference.isAcceptableOrUnknown(
+          data['tail_difference']!,
+          _tailDifferenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentProductStageConfigRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentProductStageConfigRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      productId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}product_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      stageKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stage_kind'],
+      )!,
+      repaymentMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repayment_method'],
+      ),
+      intervalMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interval_months'],
+      ),
+      rateType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate_type'],
+      ),
+      ratePeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate_period'],
+      ),
+      accrual: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}accrual'],
+      ),
+      amountAlgorithm: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}amount_algorithm'],
+      ),
+      repricingCycleMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repricing_cycle_months'],
+      ),
+      inPeriodRepricingPolicy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}in_period_repricing_policy'],
+      ),
+      tailDifference: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tail_difference'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentProductStageConfigsTable createAlias(String alias) {
+    return $InstallmentProductStageConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentProductStageConfigRow extends DataClass
+    implements Insertable<InstallmentProductStageConfigRow> {
+  final String id;
+  final String productId;
+  final int position;
+  final String stageKind;
+  final String? repaymentMethod;
+  final int? intervalMonths;
+  final String? rateType;
+  final String? ratePeriod;
+  final String? accrual;
+  final String? amountAlgorithm;
+  final int? repricingCycleMonths;
+  final String? inPeriodRepricingPolicy;
+  final String? tailDifference;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentProductStageConfigRow({
+    required this.id,
+    required this.productId,
+    required this.position,
+    required this.stageKind,
+    this.repaymentMethod,
+    this.intervalMonths,
+    this.rateType,
+    this.ratePeriod,
+    this.accrual,
+    this.amountAlgorithm,
+    this.repricingCycleMonths,
+    this.inPeriodRepricingPolicy,
+    this.tailDifference,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['product_id'] = Variable<String>(productId);
+    map['position'] = Variable<int>(position);
+    map['stage_kind'] = Variable<String>(stageKind);
+    if (!nullToAbsent || repaymentMethod != null) {
+      map['repayment_method'] = Variable<String>(repaymentMethod);
+    }
+    if (!nullToAbsent || intervalMonths != null) {
+      map['interval_months'] = Variable<int>(intervalMonths);
+    }
+    if (!nullToAbsent || rateType != null) {
+      map['rate_type'] = Variable<String>(rateType);
+    }
+    if (!nullToAbsent || ratePeriod != null) {
+      map['rate_period'] = Variable<String>(ratePeriod);
+    }
+    if (!nullToAbsent || accrual != null) {
+      map['accrual'] = Variable<String>(accrual);
+    }
+    if (!nullToAbsent || amountAlgorithm != null) {
+      map['amount_algorithm'] = Variable<String>(amountAlgorithm);
+    }
+    if (!nullToAbsent || repricingCycleMonths != null) {
+      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths);
+    }
+    if (!nullToAbsent || inPeriodRepricingPolicy != null) {
+      map['in_period_repricing_policy'] = Variable<String>(
+        inPeriodRepricingPolicy,
+      );
+    }
+    if (!nullToAbsent || tailDifference != null) {
+      map['tail_difference'] = Variable<String>(tailDifference);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentProductStageConfigsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentProductStageConfigsCompanion(
+      id: Value(id),
+      productId: Value(productId),
+      position: Value(position),
+      stageKind: Value(stageKind),
+      repaymentMethod: repaymentMethod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repaymentMethod),
+      intervalMonths: intervalMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(intervalMonths),
+      rateType: rateType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rateType),
+      ratePeriod: ratePeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratePeriod),
+      accrual: accrual == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accrual),
+      amountAlgorithm: amountAlgorithm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amountAlgorithm),
+      repricingCycleMonths: repricingCycleMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(repricingCycleMonths),
+      inPeriodRepricingPolicy: inPeriodRepricingPolicy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(inPeriodRepricingPolicy),
+      tailDifference: tailDifference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tailDifference),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentProductStageConfigRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentProductStageConfigRow(
+      id: serializer.fromJson<String>(json['id']),
+      productId: serializer.fromJson<String>(json['productId']),
+      position: serializer.fromJson<int>(json['position']),
+      stageKind: serializer.fromJson<String>(json['stageKind']),
+      repaymentMethod: serializer.fromJson<String?>(json['repaymentMethod']),
+      intervalMonths: serializer.fromJson<int?>(json['intervalMonths']),
+      rateType: serializer.fromJson<String?>(json['rateType']),
+      ratePeriod: serializer.fromJson<String?>(json['ratePeriod']),
+      accrual: serializer.fromJson<String?>(json['accrual']),
+      amountAlgorithm: serializer.fromJson<String?>(json['amountAlgorithm']),
+      repricingCycleMonths: serializer.fromJson<int?>(
+        json['repricingCycleMonths'],
+      ),
+      inPeriodRepricingPolicy: serializer.fromJson<String?>(
+        json['inPeriodRepricingPolicy'],
+      ),
+      tailDifference: serializer.fromJson<String?>(json['tailDifference']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'productId': serializer.toJson<String>(productId),
+      'position': serializer.toJson<int>(position),
+      'stageKind': serializer.toJson<String>(stageKind),
+      'repaymentMethod': serializer.toJson<String?>(repaymentMethod),
+      'intervalMonths': serializer.toJson<int?>(intervalMonths),
+      'rateType': serializer.toJson<String?>(rateType),
+      'ratePeriod': serializer.toJson<String?>(ratePeriod),
+      'accrual': serializer.toJson<String?>(accrual),
+      'amountAlgorithm': serializer.toJson<String?>(amountAlgorithm),
+      'repricingCycleMonths': serializer.toJson<int?>(repricingCycleMonths),
+      'inPeriodRepricingPolicy': serializer.toJson<String?>(
+        inPeriodRepricingPolicy,
+      ),
+      'tailDifference': serializer.toJson<String?>(tailDifference),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentProductStageConfigRow copyWith({
+    String? id,
+    String? productId,
+    int? position,
+    String? stageKind,
+    Value<String?> repaymentMethod = const Value.absent(),
+    Value<int?> intervalMonths = const Value.absent(),
+    Value<String?> rateType = const Value.absent(),
+    Value<String?> ratePeriod = const Value.absent(),
+    Value<String?> accrual = const Value.absent(),
+    Value<String?> amountAlgorithm = const Value.absent(),
+    Value<int?> repricingCycleMonths = const Value.absent(),
+    Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+    Value<String?> tailDifference = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentProductStageConfigRow(
+    id: id ?? this.id,
+    productId: productId ?? this.productId,
+    position: position ?? this.position,
+    stageKind: stageKind ?? this.stageKind,
+    repaymentMethod: repaymentMethod.present
+        ? repaymentMethod.value
+        : this.repaymentMethod,
+    intervalMonths: intervalMonths.present
+        ? intervalMonths.value
+        : this.intervalMonths,
+    rateType: rateType.present ? rateType.value : this.rateType,
+    ratePeriod: ratePeriod.present ? ratePeriod.value : this.ratePeriod,
+    accrual: accrual.present ? accrual.value : this.accrual,
+    amountAlgorithm: amountAlgorithm.present
+        ? amountAlgorithm.value
+        : this.amountAlgorithm,
+    repricingCycleMonths: repricingCycleMonths.present
+        ? repricingCycleMonths.value
+        : this.repricingCycleMonths,
+    inPeriodRepricingPolicy: inPeriodRepricingPolicy.present
+        ? inPeriodRepricingPolicy.value
+        : this.inPeriodRepricingPolicy,
+    tailDifference: tailDifference.present
+        ? tailDifference.value
+        : this.tailDifference,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentProductStageConfigRow copyWithCompanion(
+    InstallmentProductStageConfigsCompanion data,
+  ) {
+    return InstallmentProductStageConfigRow(
+      id: data.id.present ? data.id.value : this.id,
+      productId: data.productId.present ? data.productId.value : this.productId,
+      position: data.position.present ? data.position.value : this.position,
+      stageKind: data.stageKind.present ? data.stageKind.value : this.stageKind,
+      repaymentMethod: data.repaymentMethod.present
+          ? data.repaymentMethod.value
+          : this.repaymentMethod,
+      intervalMonths: data.intervalMonths.present
+          ? data.intervalMonths.value
+          : this.intervalMonths,
+      rateType: data.rateType.present ? data.rateType.value : this.rateType,
+      ratePeriod: data.ratePeriod.present
+          ? data.ratePeriod.value
+          : this.ratePeriod,
+      accrual: data.accrual.present ? data.accrual.value : this.accrual,
+      amountAlgorithm: data.amountAlgorithm.present
+          ? data.amountAlgorithm.value
+          : this.amountAlgorithm,
+      repricingCycleMonths: data.repricingCycleMonths.present
+          ? data.repricingCycleMonths.value
+          : this.repricingCycleMonths,
+      inPeriodRepricingPolicy: data.inPeriodRepricingPolicy.present
+          ? data.inPeriodRepricingPolicy.value
+          : this.inPeriodRepricingPolicy,
+      tailDifference: data.tailDifference.present
+          ? data.tailDifference.value
+          : this.tailDifference,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentProductStageConfigRow(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('position: $position, ')
+          ..write('stageKind: $stageKind, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('intervalMonths: $intervalMonths, ')
+          ..write('rateType: $rateType, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('accrual: $accrual, ')
+          ..write('amountAlgorithm: $amountAlgorithm, ')
+          ..write('repricingCycleMonths: $repricingCycleMonths, ')
+          ..write('inPeriodRepricingPolicy: $inPeriodRepricingPolicy, ')
+          ..write('tailDifference: $tailDifference, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    productId,
+    position,
+    stageKind,
+    repaymentMethod,
+    intervalMonths,
+    rateType,
+    ratePeriod,
+    accrual,
+    amountAlgorithm,
+    repricingCycleMonths,
+    inPeriodRepricingPolicy,
+    tailDifference,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentProductStageConfigRow &&
+          other.id == this.id &&
+          other.productId == this.productId &&
+          other.position == this.position &&
+          other.stageKind == this.stageKind &&
+          other.repaymentMethod == this.repaymentMethod &&
+          other.intervalMonths == this.intervalMonths &&
+          other.rateType == this.rateType &&
+          other.ratePeriod == this.ratePeriod &&
+          other.accrual == this.accrual &&
+          other.amountAlgorithm == this.amountAlgorithm &&
+          other.repricingCycleMonths == this.repricingCycleMonths &&
+          other.inPeriodRepricingPolicy == this.inPeriodRepricingPolicy &&
+          other.tailDifference == this.tailDifference &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentProductStageConfigsCompanion
+    extends UpdateCompanion<InstallmentProductStageConfigRow> {
+  final Value<String> id;
+  final Value<String> productId;
+  final Value<int> position;
+  final Value<String> stageKind;
+  final Value<String?> repaymentMethod;
+  final Value<int?> intervalMonths;
+  final Value<String?> rateType;
+  final Value<String?> ratePeriod;
+  final Value<String?> accrual;
+  final Value<String?> amountAlgorithm;
+  final Value<int?> repricingCycleMonths;
+  final Value<String?> inPeriodRepricingPolicy;
+  final Value<String?> tailDifference;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InstallmentProductStageConfigsCompanion({
+    this.id = const Value.absent(),
+    this.productId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.stageKind = const Value.absent(),
+    this.repaymentMethod = const Value.absent(),
+    this.intervalMonths = const Value.absent(),
+    this.rateType = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.accrual = const Value.absent(),
+    this.amountAlgorithm = const Value.absent(),
+    this.repricingCycleMonths = const Value.absent(),
+    this.inPeriodRepricingPolicy = const Value.absent(),
+    this.tailDifference = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentProductStageConfigsCompanion.insert({
+    required String id,
+    required String productId,
+    required int position,
+    required String stageKind,
+    this.repaymentMethod = const Value.absent(),
+    this.intervalMonths = const Value.absent(),
+    this.rateType = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.accrual = const Value.absent(),
+    this.amountAlgorithm = const Value.absent(),
+    this.repricingCycleMonths = const Value.absent(),
+    this.inPeriodRepricingPolicy = const Value.absent(),
+    this.tailDifference = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       productId = Value(productId),
+       position = Value(position),
+       stageKind = Value(stageKind);
+  static Insertable<InstallmentProductStageConfigRow> custom({
+    Expression<String>? id,
+    Expression<String>? productId,
+    Expression<int>? position,
+    Expression<String>? stageKind,
+    Expression<String>? repaymentMethod,
+    Expression<int>? intervalMonths,
+    Expression<String>? rateType,
+    Expression<String>? ratePeriod,
+    Expression<String>? accrual,
+    Expression<String>? amountAlgorithm,
+    Expression<int>? repricingCycleMonths,
+    Expression<String>? inPeriodRepricingPolicy,
+    Expression<String>? tailDifference,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (productId != null) 'product_id': productId,
+      if (position != null) 'position': position,
+      if (stageKind != null) 'stage_kind': stageKind,
+      if (repaymentMethod != null) 'repayment_method': repaymentMethod,
+      if (intervalMonths != null) 'interval_months': intervalMonths,
+      if (rateType != null) 'rate_type': rateType,
+      if (ratePeriod != null) 'rate_period': ratePeriod,
+      if (accrual != null) 'accrual': accrual,
+      if (amountAlgorithm != null) 'amount_algorithm': amountAlgorithm,
+      if (repricingCycleMonths != null)
+        'repricing_cycle_months': repricingCycleMonths,
+      if (inPeriodRepricingPolicy != null)
+        'in_period_repricing_policy': inPeriodRepricingPolicy,
+      if (tailDifference != null) 'tail_difference': tailDifference,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentProductStageConfigsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? productId,
+    Value<int>? position,
+    Value<String>? stageKind,
+    Value<String?>? repaymentMethod,
+    Value<int?>? intervalMonths,
+    Value<String?>? rateType,
+    Value<String?>? ratePeriod,
+    Value<String?>? accrual,
+    Value<String?>? amountAlgorithm,
+    Value<int?>? repricingCycleMonths,
+    Value<String?>? inPeriodRepricingPolicy,
+    Value<String?>? tailDifference,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentProductStageConfigsCompanion(
+      id: id ?? this.id,
+      productId: productId ?? this.productId,
+      position: position ?? this.position,
+      stageKind: stageKind ?? this.stageKind,
+      repaymentMethod: repaymentMethod ?? this.repaymentMethod,
+      intervalMonths: intervalMonths ?? this.intervalMonths,
+      rateType: rateType ?? this.rateType,
+      ratePeriod: ratePeriod ?? this.ratePeriod,
+      accrual: accrual ?? this.accrual,
+      amountAlgorithm: amountAlgorithm ?? this.amountAlgorithm,
+      repricingCycleMonths: repricingCycleMonths ?? this.repricingCycleMonths,
+      inPeriodRepricingPolicy:
+          inPeriodRepricingPolicy ?? this.inPeriodRepricingPolicy,
+      tailDifference: tailDifference ?? this.tailDifference,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (productId.present) {
+      map['product_id'] = Variable<String>(productId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (stageKind.present) {
+      map['stage_kind'] = Variable<String>(stageKind.value);
+    }
+    if (repaymentMethod.present) {
+      map['repayment_method'] = Variable<String>(repaymentMethod.value);
+    }
+    if (intervalMonths.present) {
+      map['interval_months'] = Variable<int>(intervalMonths.value);
+    }
+    if (rateType.present) {
+      map['rate_type'] = Variable<String>(rateType.value);
+    }
+    if (ratePeriod.present) {
+      map['rate_period'] = Variable<String>(ratePeriod.value);
+    }
+    if (accrual.present) {
+      map['accrual'] = Variable<String>(accrual.value);
+    }
+    if (amountAlgorithm.present) {
+      map['amount_algorithm'] = Variable<String>(amountAlgorithm.value);
+    }
+    if (repricingCycleMonths.present) {
+      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths.value);
+    }
+    if (inPeriodRepricingPolicy.present) {
+      map['in_period_repricing_policy'] = Variable<String>(
+        inPeriodRepricingPolicy.value,
+      );
+    }
+    if (tailDifference.present) {
+      map['tail_difference'] = Variable<String>(tailDifference.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentProductStageConfigsCompanion(')
+          ..write('id: $id, ')
+          ..write('productId: $productId, ')
+          ..write('position: $position, ')
+          ..write('stageKind: $stageKind, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('intervalMonths: $intervalMonths, ')
+          ..write('rateType: $rateType, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('accrual: $accrual, ')
+          ..write('amountAlgorithm: $amountAlgorithm, ')
+          ..write('repricingCycleMonths: $repricingCycleMonths, ')
+          ..write('inPeriodRepricingPolicy: $inPeriodRepricingPolicy, ')
           ..write('tailDifference: $tailDifference, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -8884,23 +9539,12 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _ownerTypeMeta = const VerificationMeta(
-    'ownerType',
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
   );
   @override
-  late final GeneratedColumn<String> ownerType = GeneratedColumn<String>(
-    'owner_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
-    'ownerId',
-  );
-  @override
-  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
-    'owner_id',
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -8994,84 +9638,39 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _ratePpmMeta = const VerificationMeta(
-    'ratePpm',
+  static const VerificationMeta _initialRatePpmMeta = const VerificationMeta(
+    'initialRatePpm',
   );
   @override
-  late final GeneratedColumn<int> ratePpm = GeneratedColumn<int>(
-    'rate_ppm',
+  late final GeneratedColumn<int> initialRatePpm = GeneratedColumn<int>(
+    'initial_rate_ppm',
     aliasedName,
     true,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _referenceRateTypeMeta = const VerificationMeta(
-    'referenceRateType',
-  );
+  static const VerificationMeta _inPeriodRepricingPolicyMeta =
+      const VerificationMeta('inPeriodRepricingPolicy');
   @override
-  late final GeneratedColumn<String> referenceRateType =
+  late final GeneratedColumn<String> inPeriodRepricingPolicy =
       GeneratedColumn<String>(
-        'reference_rate_type',
+        'in_period_repricing_policy',
         aliasedName,
         true,
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _spreadBpMeta = const VerificationMeta(
-    'spreadBp',
+  static const VerificationMeta _tailDifferenceMeta = const VerificationMeta(
+    'tailDifference',
   );
   @override
-  late final GeneratedColumn<int> spreadBp = GeneratedColumn<int>(
-    'spread_bp',
+  late final GeneratedColumn<String> tailDifference = GeneratedColumn<String>(
+    'tail_difference',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _firstResetDateMeta = const VerificationMeta(
-    'firstResetDate',
-  );
-  @override
-  late final GeneratedColumn<DateTime> firstResetDate =
-      GeneratedColumn<DateTime>(
-        'first_reset_date',
-        aliasedName,
-        true,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _firstEffectiveDateMeta =
-      const VerificationMeta('firstEffectiveDate');
-  @override
-  late final GeneratedColumn<DateTime> firstEffectiveDate =
-      GeneratedColumn<DateTime>(
-        'first_effective_date',
-        aliasedName,
-        true,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _repricingCycleMonthsMeta =
-      const VerificationMeta('repricingCycleMonths');
-  @override
-  late final GeneratedColumn<int> repricingCycleMonths = GeneratedColumn<int>(
-    'repricing_cycle_months',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _repricingPaymentTimingMeta =
-      const VerificationMeta('repricingPaymentTiming');
-  @override
-  late final GeneratedColumn<String> repricingPaymentTiming =
-      GeneratedColumn<String>(
-        'repricing_payment_timing',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _endPrincipalMinorMeta = const VerificationMeta(
     'endPrincipalMinor',
   );
@@ -9105,16 +9704,16 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _untilDateMeta = const VerificationMeta(
-    'untilDate',
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
   );
   @override
-  late final GeneratedColumn<DateTime> untilDate = GeneratedColumn<DateTime>(
-    'until_date',
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _firstDateMeta = const VerificationMeta(
     'firstDate',
@@ -9122,17 +9721,6 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
   @override
   late final GeneratedColumn<DateTime> firstDate = GeneratedColumn<DateTime>(
     'first_date',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _lastDateMeta = const VerificationMeta(
-    'lastDate',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastDate = GeneratedColumn<DateTime>(
-    'last_date',
     aliasedName,
     true,
     type: DriftSqlType.dateTime,
@@ -9177,8 +9765,7 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    ownerType,
-    ownerId,
+    contractId,
     position,
     stageKind,
     repaymentMethod,
@@ -9187,19 +9774,14 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     accrual,
     amountAlgorithm,
     periods,
-    ratePpm,
-    referenceRateType,
-    spreadBp,
-    firstResetDate,
-    firstEffectiveDate,
-    repricingCycleMonths,
-    repricingPaymentTiming,
+    initialRatePpm,
+    inPeriodRepricingPolicy,
+    tailDifference,
     endPrincipalMinor,
     fixedAmountMinor,
     feeMinor,
-    untilDate,
+    endDate,
     firstDate,
-    lastDate,
     accrualStartDate,
     createdAt,
     updatedAt,
@@ -9221,21 +9803,13 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('owner_type')) {
+    if (data.containsKey('contract_id')) {
       context.handle(
-        _ownerTypeMeta,
-        ownerType.isAcceptableOrUnknown(data['owner_type']!, _ownerTypeMeta),
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_ownerTypeMeta);
-    }
-    if (data.containsKey('owner_id')) {
-      context.handle(
-        _ownerIdMeta,
-        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_ownerIdMeta);
+      context.missing(_contractIdMeta);
     }
     if (data.containsKey('position')) {
       context.handle(
@@ -9298,60 +9872,30 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         periods.isAcceptableOrUnknown(data['periods']!, _periodsMeta),
       );
     }
-    if (data.containsKey('rate_ppm')) {
+    if (data.containsKey('initial_rate_ppm')) {
       context.handle(
-        _ratePpmMeta,
-        ratePpm.isAcceptableOrUnknown(data['rate_ppm']!, _ratePpmMeta),
-      );
-    }
-    if (data.containsKey('reference_rate_type')) {
-      context.handle(
-        _referenceRateTypeMeta,
-        referenceRateType.isAcceptableOrUnknown(
-          data['reference_rate_type']!,
-          _referenceRateTypeMeta,
+        _initialRatePpmMeta,
+        initialRatePpm.isAcceptableOrUnknown(
+          data['initial_rate_ppm']!,
+          _initialRatePpmMeta,
         ),
       );
     }
-    if (data.containsKey('spread_bp')) {
+    if (data.containsKey('in_period_repricing_policy')) {
       context.handle(
-        _spreadBpMeta,
-        spreadBp.isAcceptableOrUnknown(data['spread_bp']!, _spreadBpMeta),
-      );
-    }
-    if (data.containsKey('first_reset_date')) {
-      context.handle(
-        _firstResetDateMeta,
-        firstResetDate.isAcceptableOrUnknown(
-          data['first_reset_date']!,
-          _firstResetDateMeta,
+        _inPeriodRepricingPolicyMeta,
+        inPeriodRepricingPolicy.isAcceptableOrUnknown(
+          data['in_period_repricing_policy']!,
+          _inPeriodRepricingPolicyMeta,
         ),
       );
     }
-    if (data.containsKey('first_effective_date')) {
+    if (data.containsKey('tail_difference')) {
       context.handle(
-        _firstEffectiveDateMeta,
-        firstEffectiveDate.isAcceptableOrUnknown(
-          data['first_effective_date']!,
-          _firstEffectiveDateMeta,
-        ),
-      );
-    }
-    if (data.containsKey('repricing_cycle_months')) {
-      context.handle(
-        _repricingCycleMonthsMeta,
-        repricingCycleMonths.isAcceptableOrUnknown(
-          data['repricing_cycle_months']!,
-          _repricingCycleMonthsMeta,
-        ),
-      );
-    }
-    if (data.containsKey('repricing_payment_timing')) {
-      context.handle(
-        _repricingPaymentTimingMeta,
-        repricingPaymentTiming.isAcceptableOrUnknown(
-          data['repricing_payment_timing']!,
-          _repricingPaymentTimingMeta,
+        _tailDifferenceMeta,
+        tailDifference.isAcceptableOrUnknown(
+          data['tail_difference']!,
+          _tailDifferenceMeta,
         ),
       );
     }
@@ -9379,22 +9923,18 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         feeMinor.isAcceptableOrUnknown(data['fee_minor']!, _feeMinorMeta),
       );
     }
-    if (data.containsKey('until_date')) {
+    if (data.containsKey('end_date')) {
       context.handle(
-        _untilDateMeta,
-        untilDate.isAcceptableOrUnknown(data['until_date']!, _untilDateMeta),
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
       );
+    } else if (isInserting) {
+      context.missing(_endDateMeta);
     }
     if (data.containsKey('first_date')) {
       context.handle(
         _firstDateMeta,
         firstDate.isAcceptableOrUnknown(data['first_date']!, _firstDateMeta),
-      );
-    }
-    if (data.containsKey('last_date')) {
-      context.handle(
-        _lastDateMeta,
-        lastDate.isAcceptableOrUnknown(data['last_date']!, _lastDateMeta),
       );
     }
     if (data.containsKey('accrual_start_date')) {
@@ -9434,13 +9974,9 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
-      ownerType: attachedDatabase.typeMapping.read(
+      contractId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}owner_type'],
-      )!,
-      ownerId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}owner_id'],
+        data['${effectivePrefix}contract_id'],
       )!,
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -9474,33 +10010,17 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         DriftSqlType.int,
         data['${effectivePrefix}periods'],
       ),
-      ratePpm: attachedDatabase.typeMapping.read(
+      initialRatePpm: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}rate_ppm'],
+        data['${effectivePrefix}initial_rate_ppm'],
       ),
-      referenceRateType: attachedDatabase.typeMapping.read(
+      inPeriodRepricingPolicy: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}reference_rate_type'],
+        data['${effectivePrefix}in_period_repricing_policy'],
       ),
-      spreadBp: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}spread_bp'],
-      ),
-      firstResetDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}first_reset_date'],
-      ),
-      firstEffectiveDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}first_effective_date'],
-      ),
-      repricingCycleMonths: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}repricing_cycle_months'],
-      ),
-      repricingPaymentTiming: attachedDatabase.typeMapping.read(
+      tailDifference: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}repricing_payment_timing'],
+        data['${effectivePrefix}tail_difference'],
       ),
       endPrincipalMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -9514,17 +10034,13 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
         DriftSqlType.int,
         data['${effectivePrefix}fee_minor'],
       ),
-      untilDate: attachedDatabase.typeMapping.read(
+      endDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
-        data['${effectivePrefix}until_date'],
-      ),
+        data['${effectivePrefix}end_date'],
+      )!,
       firstDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}first_date'],
-      ),
-      lastDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_date'],
       ),
       accrualStartDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -9550,8 +10066,7 @@ class $InstallmentStageConfigsTable extends InstallmentStageConfigs
 class InstallmentStageConfigRow extends DataClass
     implements Insertable<InstallmentStageConfigRow> {
   final String id;
-  final String ownerType;
-  final String ownerId;
+  final String contractId;
   final int position;
   final String stageKind;
   final String? repaymentMethod;
@@ -9560,26 +10075,20 @@ class InstallmentStageConfigRow extends DataClass
   final String? accrual;
   final String? amountAlgorithm;
   final int? periods;
-  final int? ratePpm;
-  final String? referenceRateType;
-  final int? spreadBp;
-  final DateTime? firstResetDate;
-  final DateTime? firstEffectiveDate;
-  final int? repricingCycleMonths;
-  final String? repricingPaymentTiming;
+  final int? initialRatePpm;
+  final String? inPeriodRepricingPolicy;
+  final String? tailDifference;
   final int? endPrincipalMinor;
   final int? fixedAmountMinor;
   final int? feeMinor;
-  final DateTime? untilDate;
+  final DateTime endDate;
   final DateTime? firstDate;
-  final DateTime? lastDate;
   final DateTime? accrualStartDate;
   final DateTime createdAt;
   final DateTime updatedAt;
   const InstallmentStageConfigRow({
     required this.id,
-    required this.ownerType,
-    required this.ownerId,
+    required this.contractId,
     required this.position,
     required this.stageKind,
     this.repaymentMethod,
@@ -9588,19 +10097,14 @@ class InstallmentStageConfigRow extends DataClass
     this.accrual,
     this.amountAlgorithm,
     this.periods,
-    this.ratePpm,
-    this.referenceRateType,
-    this.spreadBp,
-    this.firstResetDate,
-    this.firstEffectiveDate,
-    this.repricingCycleMonths,
-    this.repricingPaymentTiming,
+    this.initialRatePpm,
+    this.inPeriodRepricingPolicy,
+    this.tailDifference,
     this.endPrincipalMinor,
     this.fixedAmountMinor,
     this.feeMinor,
-    this.untilDate,
+    required this.endDate,
     this.firstDate,
-    this.lastDate,
     this.accrualStartDate,
     required this.createdAt,
     required this.updatedAt,
@@ -9609,8 +10113,7 @@ class InstallmentStageConfigRow extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['owner_type'] = Variable<String>(ownerType);
-    map['owner_id'] = Variable<String>(ownerId);
+    map['contract_id'] = Variable<String>(contractId);
     map['position'] = Variable<int>(position);
     map['stage_kind'] = Variable<String>(stageKind);
     if (!nullToAbsent || repaymentMethod != null) {
@@ -9631,28 +10134,16 @@ class InstallmentStageConfigRow extends DataClass
     if (!nullToAbsent || periods != null) {
       map['periods'] = Variable<int>(periods);
     }
-    if (!nullToAbsent || ratePpm != null) {
-      map['rate_ppm'] = Variable<int>(ratePpm);
+    if (!nullToAbsent || initialRatePpm != null) {
+      map['initial_rate_ppm'] = Variable<int>(initialRatePpm);
     }
-    if (!nullToAbsent || referenceRateType != null) {
-      map['reference_rate_type'] = Variable<String>(referenceRateType);
-    }
-    if (!nullToAbsent || spreadBp != null) {
-      map['spread_bp'] = Variable<int>(spreadBp);
-    }
-    if (!nullToAbsent || firstResetDate != null) {
-      map['first_reset_date'] = Variable<DateTime>(firstResetDate);
-    }
-    if (!nullToAbsent || firstEffectiveDate != null) {
-      map['first_effective_date'] = Variable<DateTime>(firstEffectiveDate);
-    }
-    if (!nullToAbsent || repricingCycleMonths != null) {
-      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths);
-    }
-    if (!nullToAbsent || repricingPaymentTiming != null) {
-      map['repricing_payment_timing'] = Variable<String>(
-        repricingPaymentTiming,
+    if (!nullToAbsent || inPeriodRepricingPolicy != null) {
+      map['in_period_repricing_policy'] = Variable<String>(
+        inPeriodRepricingPolicy,
       );
+    }
+    if (!nullToAbsent || tailDifference != null) {
+      map['tail_difference'] = Variable<String>(tailDifference);
     }
     if (!nullToAbsent || endPrincipalMinor != null) {
       map['end_principal_minor'] = Variable<int>(endPrincipalMinor);
@@ -9663,14 +10154,9 @@ class InstallmentStageConfigRow extends DataClass
     if (!nullToAbsent || feeMinor != null) {
       map['fee_minor'] = Variable<int>(feeMinor);
     }
-    if (!nullToAbsent || untilDate != null) {
-      map['until_date'] = Variable<DateTime>(untilDate);
-    }
+    map['end_date'] = Variable<DateTime>(endDate);
     if (!nullToAbsent || firstDate != null) {
       map['first_date'] = Variable<DateTime>(firstDate);
-    }
-    if (!nullToAbsent || lastDate != null) {
-      map['last_date'] = Variable<DateTime>(lastDate);
     }
     if (!nullToAbsent || accrualStartDate != null) {
       map['accrual_start_date'] = Variable<DateTime>(accrualStartDate);
@@ -9683,8 +10169,7 @@ class InstallmentStageConfigRow extends DataClass
   InstallmentStageConfigsCompanion toCompanion(bool nullToAbsent) {
     return InstallmentStageConfigsCompanion(
       id: Value(id),
-      ownerType: Value(ownerType),
-      ownerId: Value(ownerId),
+      contractId: Value(contractId),
       position: Value(position),
       stageKind: Value(stageKind),
       repaymentMethod: repaymentMethod == null && nullToAbsent
@@ -9705,27 +10190,15 @@ class InstallmentStageConfigRow extends DataClass
       periods: periods == null && nullToAbsent
           ? const Value.absent()
           : Value(periods),
-      ratePpm: ratePpm == null && nullToAbsent
+      initialRatePpm: initialRatePpm == null && nullToAbsent
           ? const Value.absent()
-          : Value(ratePpm),
-      referenceRateType: referenceRateType == null && nullToAbsent
+          : Value(initialRatePpm),
+      inPeriodRepricingPolicy: inPeriodRepricingPolicy == null && nullToAbsent
           ? const Value.absent()
-          : Value(referenceRateType),
-      spreadBp: spreadBp == null && nullToAbsent
+          : Value(inPeriodRepricingPolicy),
+      tailDifference: tailDifference == null && nullToAbsent
           ? const Value.absent()
-          : Value(spreadBp),
-      firstResetDate: firstResetDate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(firstResetDate),
-      firstEffectiveDate: firstEffectiveDate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(firstEffectiveDate),
-      repricingCycleMonths: repricingCycleMonths == null && nullToAbsent
-          ? const Value.absent()
-          : Value(repricingCycleMonths),
-      repricingPaymentTiming: repricingPaymentTiming == null && nullToAbsent
-          ? const Value.absent()
-          : Value(repricingPaymentTiming),
+          : Value(tailDifference),
       endPrincipalMinor: endPrincipalMinor == null && nullToAbsent
           ? const Value.absent()
           : Value(endPrincipalMinor),
@@ -9735,15 +10208,10 @@ class InstallmentStageConfigRow extends DataClass
       feeMinor: feeMinor == null && nullToAbsent
           ? const Value.absent()
           : Value(feeMinor),
-      untilDate: untilDate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(untilDate),
+      endDate: Value(endDate),
       firstDate: firstDate == null && nullToAbsent
           ? const Value.absent()
           : Value(firstDate),
-      lastDate: lastDate == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastDate),
       accrualStartDate: accrualStartDate == null && nullToAbsent
           ? const Value.absent()
           : Value(accrualStartDate),
@@ -9759,8 +10227,7 @@ class InstallmentStageConfigRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return InstallmentStageConfigRow(
       id: serializer.fromJson<String>(json['id']),
-      ownerType: serializer.fromJson<String>(json['ownerType']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      contractId: serializer.fromJson<String>(json['contractId']),
       position: serializer.fromJson<int>(json['position']),
       stageKind: serializer.fromJson<String>(json['stageKind']),
       repaymentMethod: serializer.fromJson<String?>(json['repaymentMethod']),
@@ -9769,27 +10236,16 @@ class InstallmentStageConfigRow extends DataClass
       accrual: serializer.fromJson<String?>(json['accrual']),
       amountAlgorithm: serializer.fromJson<String?>(json['amountAlgorithm']),
       periods: serializer.fromJson<int?>(json['periods']),
-      ratePpm: serializer.fromJson<int?>(json['ratePpm']),
-      referenceRateType: serializer.fromJson<String?>(
-        json['referenceRateType'],
+      initialRatePpm: serializer.fromJson<int?>(json['initialRatePpm']),
+      inPeriodRepricingPolicy: serializer.fromJson<String?>(
+        json['inPeriodRepricingPolicy'],
       ),
-      spreadBp: serializer.fromJson<int?>(json['spreadBp']),
-      firstResetDate: serializer.fromJson<DateTime?>(json['firstResetDate']),
-      firstEffectiveDate: serializer.fromJson<DateTime?>(
-        json['firstEffectiveDate'],
-      ),
-      repricingCycleMonths: serializer.fromJson<int?>(
-        json['repricingCycleMonths'],
-      ),
-      repricingPaymentTiming: serializer.fromJson<String?>(
-        json['repricingPaymentTiming'],
-      ),
+      tailDifference: serializer.fromJson<String?>(json['tailDifference']),
       endPrincipalMinor: serializer.fromJson<int?>(json['endPrincipalMinor']),
       fixedAmountMinor: serializer.fromJson<int?>(json['fixedAmountMinor']),
       feeMinor: serializer.fromJson<int?>(json['feeMinor']),
-      untilDate: serializer.fromJson<DateTime?>(json['untilDate']),
+      endDate: serializer.fromJson<DateTime>(json['endDate']),
       firstDate: serializer.fromJson<DateTime?>(json['firstDate']),
-      lastDate: serializer.fromJson<DateTime?>(json['lastDate']),
       accrualStartDate: serializer.fromJson<DateTime?>(
         json['accrualStartDate'],
       ),
@@ -9802,8 +10258,7 @@ class InstallmentStageConfigRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'ownerType': serializer.toJson<String>(ownerType),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'contractId': serializer.toJson<String>(contractId),
       'position': serializer.toJson<int>(position),
       'stageKind': serializer.toJson<String>(stageKind),
       'repaymentMethod': serializer.toJson<String?>(repaymentMethod),
@@ -9812,21 +10267,16 @@ class InstallmentStageConfigRow extends DataClass
       'accrual': serializer.toJson<String?>(accrual),
       'amountAlgorithm': serializer.toJson<String?>(amountAlgorithm),
       'periods': serializer.toJson<int?>(periods),
-      'ratePpm': serializer.toJson<int?>(ratePpm),
-      'referenceRateType': serializer.toJson<String?>(referenceRateType),
-      'spreadBp': serializer.toJson<int?>(spreadBp),
-      'firstResetDate': serializer.toJson<DateTime?>(firstResetDate),
-      'firstEffectiveDate': serializer.toJson<DateTime?>(firstEffectiveDate),
-      'repricingCycleMonths': serializer.toJson<int?>(repricingCycleMonths),
-      'repricingPaymentTiming': serializer.toJson<String?>(
-        repricingPaymentTiming,
+      'initialRatePpm': serializer.toJson<int?>(initialRatePpm),
+      'inPeriodRepricingPolicy': serializer.toJson<String?>(
+        inPeriodRepricingPolicy,
       ),
+      'tailDifference': serializer.toJson<String?>(tailDifference),
       'endPrincipalMinor': serializer.toJson<int?>(endPrincipalMinor),
       'fixedAmountMinor': serializer.toJson<int?>(fixedAmountMinor),
       'feeMinor': serializer.toJson<int?>(feeMinor),
-      'untilDate': serializer.toJson<DateTime?>(untilDate),
+      'endDate': serializer.toJson<DateTime>(endDate),
       'firstDate': serializer.toJson<DateTime?>(firstDate),
-      'lastDate': serializer.toJson<DateTime?>(lastDate),
       'accrualStartDate': serializer.toJson<DateTime?>(accrualStartDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -9835,8 +10285,7 @@ class InstallmentStageConfigRow extends DataClass
 
   InstallmentStageConfigRow copyWith({
     String? id,
-    String? ownerType,
-    String? ownerId,
+    String? contractId,
     int? position,
     String? stageKind,
     Value<String?> repaymentMethod = const Value.absent(),
@@ -9845,26 +10294,20 @@ class InstallmentStageConfigRow extends DataClass
     Value<String?> accrual = const Value.absent(),
     Value<String?> amountAlgorithm = const Value.absent(),
     Value<int?> periods = const Value.absent(),
-    Value<int?> ratePpm = const Value.absent(),
-    Value<String?> referenceRateType = const Value.absent(),
-    Value<int?> spreadBp = const Value.absent(),
-    Value<DateTime?> firstResetDate = const Value.absent(),
-    Value<DateTime?> firstEffectiveDate = const Value.absent(),
-    Value<int?> repricingCycleMonths = const Value.absent(),
-    Value<String?> repricingPaymentTiming = const Value.absent(),
+    Value<int?> initialRatePpm = const Value.absent(),
+    Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+    Value<String?> tailDifference = const Value.absent(),
     Value<int?> endPrincipalMinor = const Value.absent(),
     Value<int?> fixedAmountMinor = const Value.absent(),
     Value<int?> feeMinor = const Value.absent(),
-    Value<DateTime?> untilDate = const Value.absent(),
+    DateTime? endDate,
     Value<DateTime?> firstDate = const Value.absent(),
-    Value<DateTime?> lastDate = const Value.absent(),
     Value<DateTime?> accrualStartDate = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => InstallmentStageConfigRow(
     id: id ?? this.id,
-    ownerType: ownerType ?? this.ownerType,
-    ownerId: ownerId ?? this.ownerId,
+    contractId: contractId ?? this.contractId,
     position: position ?? this.position,
     stageKind: stageKind ?? this.stageKind,
     repaymentMethod: repaymentMethod.present
@@ -9879,23 +10322,15 @@ class InstallmentStageConfigRow extends DataClass
         ? amountAlgorithm.value
         : this.amountAlgorithm,
     periods: periods.present ? periods.value : this.periods,
-    ratePpm: ratePpm.present ? ratePpm.value : this.ratePpm,
-    referenceRateType: referenceRateType.present
-        ? referenceRateType.value
-        : this.referenceRateType,
-    spreadBp: spreadBp.present ? spreadBp.value : this.spreadBp,
-    firstResetDate: firstResetDate.present
-        ? firstResetDate.value
-        : this.firstResetDate,
-    firstEffectiveDate: firstEffectiveDate.present
-        ? firstEffectiveDate.value
-        : this.firstEffectiveDate,
-    repricingCycleMonths: repricingCycleMonths.present
-        ? repricingCycleMonths.value
-        : this.repricingCycleMonths,
-    repricingPaymentTiming: repricingPaymentTiming.present
-        ? repricingPaymentTiming.value
-        : this.repricingPaymentTiming,
+    initialRatePpm: initialRatePpm.present
+        ? initialRatePpm.value
+        : this.initialRatePpm,
+    inPeriodRepricingPolicy: inPeriodRepricingPolicy.present
+        ? inPeriodRepricingPolicy.value
+        : this.inPeriodRepricingPolicy,
+    tailDifference: tailDifference.present
+        ? tailDifference.value
+        : this.tailDifference,
     endPrincipalMinor: endPrincipalMinor.present
         ? endPrincipalMinor.value
         : this.endPrincipalMinor,
@@ -9903,9 +10338,8 @@ class InstallmentStageConfigRow extends DataClass
         ? fixedAmountMinor.value
         : this.fixedAmountMinor,
     feeMinor: feeMinor.present ? feeMinor.value : this.feeMinor,
-    untilDate: untilDate.present ? untilDate.value : this.untilDate,
+    endDate: endDate ?? this.endDate,
     firstDate: firstDate.present ? firstDate.value : this.firstDate,
-    lastDate: lastDate.present ? lastDate.value : this.lastDate,
     accrualStartDate: accrualStartDate.present
         ? accrualStartDate.value
         : this.accrualStartDate,
@@ -9917,8 +10351,9 @@ class InstallmentStageConfigRow extends DataClass
   ) {
     return InstallmentStageConfigRow(
       id: data.id.present ? data.id.value : this.id,
-      ownerType: data.ownerType.present ? data.ownerType.value : this.ownerType,
-      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
       position: data.position.present ? data.position.value : this.position,
       stageKind: data.stageKind.present ? data.stageKind.value : this.stageKind,
       repaymentMethod: data.repaymentMethod.present
@@ -9935,23 +10370,15 @@ class InstallmentStageConfigRow extends DataClass
           ? data.amountAlgorithm.value
           : this.amountAlgorithm,
       periods: data.periods.present ? data.periods.value : this.periods,
-      ratePpm: data.ratePpm.present ? data.ratePpm.value : this.ratePpm,
-      referenceRateType: data.referenceRateType.present
-          ? data.referenceRateType.value
-          : this.referenceRateType,
-      spreadBp: data.spreadBp.present ? data.spreadBp.value : this.spreadBp,
-      firstResetDate: data.firstResetDate.present
-          ? data.firstResetDate.value
-          : this.firstResetDate,
-      firstEffectiveDate: data.firstEffectiveDate.present
-          ? data.firstEffectiveDate.value
-          : this.firstEffectiveDate,
-      repricingCycleMonths: data.repricingCycleMonths.present
-          ? data.repricingCycleMonths.value
-          : this.repricingCycleMonths,
-      repricingPaymentTiming: data.repricingPaymentTiming.present
-          ? data.repricingPaymentTiming.value
-          : this.repricingPaymentTiming,
+      initialRatePpm: data.initialRatePpm.present
+          ? data.initialRatePpm.value
+          : this.initialRatePpm,
+      inPeriodRepricingPolicy: data.inPeriodRepricingPolicy.present
+          ? data.inPeriodRepricingPolicy.value
+          : this.inPeriodRepricingPolicy,
+      tailDifference: data.tailDifference.present
+          ? data.tailDifference.value
+          : this.tailDifference,
       endPrincipalMinor: data.endPrincipalMinor.present
           ? data.endPrincipalMinor.value
           : this.endPrincipalMinor,
@@ -9959,9 +10386,8 @@ class InstallmentStageConfigRow extends DataClass
           ? data.fixedAmountMinor.value
           : this.fixedAmountMinor,
       feeMinor: data.feeMinor.present ? data.feeMinor.value : this.feeMinor,
-      untilDate: data.untilDate.present ? data.untilDate.value : this.untilDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
       firstDate: data.firstDate.present ? data.firstDate.value : this.firstDate,
-      lastDate: data.lastDate.present ? data.lastDate.value : this.lastDate,
       accrualStartDate: data.accrualStartDate.present
           ? data.accrualStartDate.value
           : this.accrualStartDate,
@@ -9974,8 +10400,7 @@ class InstallmentStageConfigRow extends DataClass
   String toString() {
     return (StringBuffer('InstallmentStageConfigRow(')
           ..write('id: $id, ')
-          ..write('ownerType: $ownerType, ')
-          ..write('ownerId: $ownerId, ')
+          ..write('contractId: $contractId, ')
           ..write('position: $position, ')
           ..write('stageKind: $stageKind, ')
           ..write('repaymentMethod: $repaymentMethod, ')
@@ -9984,19 +10409,14 @@ class InstallmentStageConfigRow extends DataClass
           ..write('accrual: $accrual, ')
           ..write('amountAlgorithm: $amountAlgorithm, ')
           ..write('periods: $periods, ')
-          ..write('ratePpm: $ratePpm, ')
-          ..write('referenceRateType: $referenceRateType, ')
-          ..write('spreadBp: $spreadBp, ')
-          ..write('firstResetDate: $firstResetDate, ')
-          ..write('firstEffectiveDate: $firstEffectiveDate, ')
-          ..write('repricingCycleMonths: $repricingCycleMonths, ')
-          ..write('repricingPaymentTiming: $repricingPaymentTiming, ')
+          ..write('initialRatePpm: $initialRatePpm, ')
+          ..write('inPeriodRepricingPolicy: $inPeriodRepricingPolicy, ')
+          ..write('tailDifference: $tailDifference, ')
           ..write('endPrincipalMinor: $endPrincipalMinor, ')
           ..write('fixedAmountMinor: $fixedAmountMinor, ')
           ..write('feeMinor: $feeMinor, ')
-          ..write('untilDate: $untilDate, ')
+          ..write('endDate: $endDate, ')
           ..write('firstDate: $firstDate, ')
-          ..write('lastDate: $lastDate, ')
           ..write('accrualStartDate: $accrualStartDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -10007,8 +10427,7 @@ class InstallmentStageConfigRow extends DataClass
   @override
   int get hashCode => Object.hashAll([
     id,
-    ownerType,
-    ownerId,
+    contractId,
     position,
     stageKind,
     repaymentMethod,
@@ -10017,19 +10436,14 @@ class InstallmentStageConfigRow extends DataClass
     accrual,
     amountAlgorithm,
     periods,
-    ratePpm,
-    referenceRateType,
-    spreadBp,
-    firstResetDate,
-    firstEffectiveDate,
-    repricingCycleMonths,
-    repricingPaymentTiming,
+    initialRatePpm,
+    inPeriodRepricingPolicy,
+    tailDifference,
     endPrincipalMinor,
     fixedAmountMinor,
     feeMinor,
-    untilDate,
+    endDate,
     firstDate,
-    lastDate,
     accrualStartDate,
     createdAt,
     updatedAt,
@@ -10039,8 +10453,7 @@ class InstallmentStageConfigRow extends DataClass
       identical(this, other) ||
       (other is InstallmentStageConfigRow &&
           other.id == this.id &&
-          other.ownerType == this.ownerType &&
-          other.ownerId == this.ownerId &&
+          other.contractId == this.contractId &&
           other.position == this.position &&
           other.stageKind == this.stageKind &&
           other.repaymentMethod == this.repaymentMethod &&
@@ -10049,19 +10462,14 @@ class InstallmentStageConfigRow extends DataClass
           other.accrual == this.accrual &&
           other.amountAlgorithm == this.amountAlgorithm &&
           other.periods == this.periods &&
-          other.ratePpm == this.ratePpm &&
-          other.referenceRateType == this.referenceRateType &&
-          other.spreadBp == this.spreadBp &&
-          other.firstResetDate == this.firstResetDate &&
-          other.firstEffectiveDate == this.firstEffectiveDate &&
-          other.repricingCycleMonths == this.repricingCycleMonths &&
-          other.repricingPaymentTiming == this.repricingPaymentTiming &&
+          other.initialRatePpm == this.initialRatePpm &&
+          other.inPeriodRepricingPolicy == this.inPeriodRepricingPolicy &&
+          other.tailDifference == this.tailDifference &&
           other.endPrincipalMinor == this.endPrincipalMinor &&
           other.fixedAmountMinor == this.fixedAmountMinor &&
           other.feeMinor == this.feeMinor &&
-          other.untilDate == this.untilDate &&
+          other.endDate == this.endDate &&
           other.firstDate == this.firstDate &&
-          other.lastDate == this.lastDate &&
           other.accrualStartDate == this.accrualStartDate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -10070,8 +10478,7 @@ class InstallmentStageConfigRow extends DataClass
 class InstallmentStageConfigsCompanion
     extends UpdateCompanion<InstallmentStageConfigRow> {
   final Value<String> id;
-  final Value<String> ownerType;
-  final Value<String> ownerId;
+  final Value<String> contractId;
   final Value<int> position;
   final Value<String> stageKind;
   final Value<String?> repaymentMethod;
@@ -10080,27 +10487,21 @@ class InstallmentStageConfigsCompanion
   final Value<String?> accrual;
   final Value<String?> amountAlgorithm;
   final Value<int?> periods;
-  final Value<int?> ratePpm;
-  final Value<String?> referenceRateType;
-  final Value<int?> spreadBp;
-  final Value<DateTime?> firstResetDate;
-  final Value<DateTime?> firstEffectiveDate;
-  final Value<int?> repricingCycleMonths;
-  final Value<String?> repricingPaymentTiming;
+  final Value<int?> initialRatePpm;
+  final Value<String?> inPeriodRepricingPolicy;
+  final Value<String?> tailDifference;
   final Value<int?> endPrincipalMinor;
   final Value<int?> fixedAmountMinor;
   final Value<int?> feeMinor;
-  final Value<DateTime?> untilDate;
+  final Value<DateTime> endDate;
   final Value<DateTime?> firstDate;
-  final Value<DateTime?> lastDate;
   final Value<DateTime?> accrualStartDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const InstallmentStageConfigsCompanion({
     this.id = const Value.absent(),
-    this.ownerType = const Value.absent(),
-    this.ownerId = const Value.absent(),
+    this.contractId = const Value.absent(),
     this.position = const Value.absent(),
     this.stageKind = const Value.absent(),
     this.repaymentMethod = const Value.absent(),
@@ -10109,19 +10510,14 @@ class InstallmentStageConfigsCompanion
     this.accrual = const Value.absent(),
     this.amountAlgorithm = const Value.absent(),
     this.periods = const Value.absent(),
-    this.ratePpm = const Value.absent(),
-    this.referenceRateType = const Value.absent(),
-    this.spreadBp = const Value.absent(),
-    this.firstResetDate = const Value.absent(),
-    this.firstEffectiveDate = const Value.absent(),
-    this.repricingCycleMonths = const Value.absent(),
-    this.repricingPaymentTiming = const Value.absent(),
+    this.initialRatePpm = const Value.absent(),
+    this.inPeriodRepricingPolicy = const Value.absent(),
+    this.tailDifference = const Value.absent(),
     this.endPrincipalMinor = const Value.absent(),
     this.fixedAmountMinor = const Value.absent(),
     this.feeMinor = const Value.absent(),
-    this.untilDate = const Value.absent(),
+    this.endDate = const Value.absent(),
     this.firstDate = const Value.absent(),
-    this.lastDate = const Value.absent(),
     this.accrualStartDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -10129,8 +10525,7 @@ class InstallmentStageConfigsCompanion
   });
   InstallmentStageConfigsCompanion.insert({
     required String id,
-    required String ownerType,
-    required String ownerId,
+    required String contractId,
     required int position,
     required String stageKind,
     this.repaymentMethod = const Value.absent(),
@@ -10139,32 +10534,26 @@ class InstallmentStageConfigsCompanion
     this.accrual = const Value.absent(),
     this.amountAlgorithm = const Value.absent(),
     this.periods = const Value.absent(),
-    this.ratePpm = const Value.absent(),
-    this.referenceRateType = const Value.absent(),
-    this.spreadBp = const Value.absent(),
-    this.firstResetDate = const Value.absent(),
-    this.firstEffectiveDate = const Value.absent(),
-    this.repricingCycleMonths = const Value.absent(),
-    this.repricingPaymentTiming = const Value.absent(),
+    this.initialRatePpm = const Value.absent(),
+    this.inPeriodRepricingPolicy = const Value.absent(),
+    this.tailDifference = const Value.absent(),
     this.endPrincipalMinor = const Value.absent(),
     this.fixedAmountMinor = const Value.absent(),
     this.feeMinor = const Value.absent(),
-    this.untilDate = const Value.absent(),
+    required DateTime endDate,
     this.firstDate = const Value.absent(),
-    this.lastDate = const Value.absent(),
     this.accrualStartDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       ownerType = Value(ownerType),
-       ownerId = Value(ownerId),
+       contractId = Value(contractId),
        position = Value(position),
-       stageKind = Value(stageKind);
+       stageKind = Value(stageKind),
+       endDate = Value(endDate);
   static Insertable<InstallmentStageConfigRow> custom({
     Expression<String>? id,
-    Expression<String>? ownerType,
-    Expression<String>? ownerId,
+    Expression<String>? contractId,
     Expression<int>? position,
     Expression<String>? stageKind,
     Expression<String>? repaymentMethod,
@@ -10173,19 +10562,14 @@ class InstallmentStageConfigsCompanion
     Expression<String>? accrual,
     Expression<String>? amountAlgorithm,
     Expression<int>? periods,
-    Expression<int>? ratePpm,
-    Expression<String>? referenceRateType,
-    Expression<int>? spreadBp,
-    Expression<DateTime>? firstResetDate,
-    Expression<DateTime>? firstEffectiveDate,
-    Expression<int>? repricingCycleMonths,
-    Expression<String>? repricingPaymentTiming,
+    Expression<int>? initialRatePpm,
+    Expression<String>? inPeriodRepricingPolicy,
+    Expression<String>? tailDifference,
     Expression<int>? endPrincipalMinor,
     Expression<int>? fixedAmountMinor,
     Expression<int>? feeMinor,
-    Expression<DateTime>? untilDate,
+    Expression<DateTime>? endDate,
     Expression<DateTime>? firstDate,
-    Expression<DateTime>? lastDate,
     Expression<DateTime>? accrualStartDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -10193,8 +10577,7 @@ class InstallmentStageConfigsCompanion
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (ownerType != null) 'owner_type': ownerType,
-      if (ownerId != null) 'owner_id': ownerId,
+      if (contractId != null) 'contract_id': contractId,
       if (position != null) 'position': position,
       if (stageKind != null) 'stage_kind': stageKind,
       if (repaymentMethod != null) 'repayment_method': repaymentMethod,
@@ -10203,22 +10586,15 @@ class InstallmentStageConfigsCompanion
       if (accrual != null) 'accrual': accrual,
       if (amountAlgorithm != null) 'amount_algorithm': amountAlgorithm,
       if (periods != null) 'periods': periods,
-      if (ratePpm != null) 'rate_ppm': ratePpm,
-      if (referenceRateType != null) 'reference_rate_type': referenceRateType,
-      if (spreadBp != null) 'spread_bp': spreadBp,
-      if (firstResetDate != null) 'first_reset_date': firstResetDate,
-      if (firstEffectiveDate != null)
-        'first_effective_date': firstEffectiveDate,
-      if (repricingCycleMonths != null)
-        'repricing_cycle_months': repricingCycleMonths,
-      if (repricingPaymentTiming != null)
-        'repricing_payment_timing': repricingPaymentTiming,
+      if (initialRatePpm != null) 'initial_rate_ppm': initialRatePpm,
+      if (inPeriodRepricingPolicy != null)
+        'in_period_repricing_policy': inPeriodRepricingPolicy,
+      if (tailDifference != null) 'tail_difference': tailDifference,
       if (endPrincipalMinor != null) 'end_principal_minor': endPrincipalMinor,
       if (fixedAmountMinor != null) 'fixed_amount_minor': fixedAmountMinor,
       if (feeMinor != null) 'fee_minor': feeMinor,
-      if (untilDate != null) 'until_date': untilDate,
+      if (endDate != null) 'end_date': endDate,
       if (firstDate != null) 'first_date': firstDate,
-      if (lastDate != null) 'last_date': lastDate,
       if (accrualStartDate != null) 'accrual_start_date': accrualStartDate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -10228,8 +10604,7 @@ class InstallmentStageConfigsCompanion
 
   InstallmentStageConfigsCompanion copyWith({
     Value<String>? id,
-    Value<String>? ownerType,
-    Value<String>? ownerId,
+    Value<String>? contractId,
     Value<int>? position,
     Value<String>? stageKind,
     Value<String?>? repaymentMethod,
@@ -10238,19 +10613,14 @@ class InstallmentStageConfigsCompanion
     Value<String?>? accrual,
     Value<String?>? amountAlgorithm,
     Value<int?>? periods,
-    Value<int?>? ratePpm,
-    Value<String?>? referenceRateType,
-    Value<int?>? spreadBp,
-    Value<DateTime?>? firstResetDate,
-    Value<DateTime?>? firstEffectiveDate,
-    Value<int?>? repricingCycleMonths,
-    Value<String?>? repricingPaymentTiming,
+    Value<int?>? initialRatePpm,
+    Value<String?>? inPeriodRepricingPolicy,
+    Value<String?>? tailDifference,
     Value<int?>? endPrincipalMinor,
     Value<int?>? fixedAmountMinor,
     Value<int?>? feeMinor,
-    Value<DateTime?>? untilDate,
+    Value<DateTime>? endDate,
     Value<DateTime?>? firstDate,
-    Value<DateTime?>? lastDate,
     Value<DateTime?>? accrualStartDate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -10258,8 +10628,7 @@ class InstallmentStageConfigsCompanion
   }) {
     return InstallmentStageConfigsCompanion(
       id: id ?? this.id,
-      ownerType: ownerType ?? this.ownerType,
-      ownerId: ownerId ?? this.ownerId,
+      contractId: contractId ?? this.contractId,
       position: position ?? this.position,
       stageKind: stageKind ?? this.stageKind,
       repaymentMethod: repaymentMethod ?? this.repaymentMethod,
@@ -10268,20 +10637,15 @@ class InstallmentStageConfigsCompanion
       accrual: accrual ?? this.accrual,
       amountAlgorithm: amountAlgorithm ?? this.amountAlgorithm,
       periods: periods ?? this.periods,
-      ratePpm: ratePpm ?? this.ratePpm,
-      referenceRateType: referenceRateType ?? this.referenceRateType,
-      spreadBp: spreadBp ?? this.spreadBp,
-      firstResetDate: firstResetDate ?? this.firstResetDate,
-      firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
-      repricingCycleMonths: repricingCycleMonths ?? this.repricingCycleMonths,
-      repricingPaymentTiming:
-          repricingPaymentTiming ?? this.repricingPaymentTiming,
+      initialRatePpm: initialRatePpm ?? this.initialRatePpm,
+      inPeriodRepricingPolicy:
+          inPeriodRepricingPolicy ?? this.inPeriodRepricingPolicy,
+      tailDifference: tailDifference ?? this.tailDifference,
       endPrincipalMinor: endPrincipalMinor ?? this.endPrincipalMinor,
       fixedAmountMinor: fixedAmountMinor ?? this.fixedAmountMinor,
       feeMinor: feeMinor ?? this.feeMinor,
-      untilDate: untilDate ?? this.untilDate,
+      endDate: endDate ?? this.endDate,
       firstDate: firstDate ?? this.firstDate,
-      lastDate: lastDate ?? this.lastDate,
       accrualStartDate: accrualStartDate ?? this.accrualStartDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -10295,11 +10659,8 @@ class InstallmentStageConfigsCompanion
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (ownerType.present) {
-      map['owner_type'] = Variable<String>(ownerType.value);
-    }
-    if (ownerId.present) {
-      map['owner_id'] = Variable<String>(ownerId.value);
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
     }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
@@ -10325,30 +10686,16 @@ class InstallmentStageConfigsCompanion
     if (periods.present) {
       map['periods'] = Variable<int>(periods.value);
     }
-    if (ratePpm.present) {
-      map['rate_ppm'] = Variable<int>(ratePpm.value);
+    if (initialRatePpm.present) {
+      map['initial_rate_ppm'] = Variable<int>(initialRatePpm.value);
     }
-    if (referenceRateType.present) {
-      map['reference_rate_type'] = Variable<String>(referenceRateType.value);
-    }
-    if (spreadBp.present) {
-      map['spread_bp'] = Variable<int>(spreadBp.value);
-    }
-    if (firstResetDate.present) {
-      map['first_reset_date'] = Variable<DateTime>(firstResetDate.value);
-    }
-    if (firstEffectiveDate.present) {
-      map['first_effective_date'] = Variable<DateTime>(
-        firstEffectiveDate.value,
+    if (inPeriodRepricingPolicy.present) {
+      map['in_period_repricing_policy'] = Variable<String>(
+        inPeriodRepricingPolicy.value,
       );
     }
-    if (repricingCycleMonths.present) {
-      map['repricing_cycle_months'] = Variable<int>(repricingCycleMonths.value);
-    }
-    if (repricingPaymentTiming.present) {
-      map['repricing_payment_timing'] = Variable<String>(
-        repricingPaymentTiming.value,
-      );
+    if (tailDifference.present) {
+      map['tail_difference'] = Variable<String>(tailDifference.value);
     }
     if (endPrincipalMinor.present) {
       map['end_principal_minor'] = Variable<int>(endPrincipalMinor.value);
@@ -10359,14 +10706,11 @@ class InstallmentStageConfigsCompanion
     if (feeMinor.present) {
       map['fee_minor'] = Variable<int>(feeMinor.value);
     }
-    if (untilDate.present) {
-      map['until_date'] = Variable<DateTime>(untilDate.value);
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
     }
     if (firstDate.present) {
       map['first_date'] = Variable<DateTime>(firstDate.value);
-    }
-    if (lastDate.present) {
-      map['last_date'] = Variable<DateTime>(lastDate.value);
     }
     if (accrualStartDate.present) {
       map['accrual_start_date'] = Variable<DateTime>(accrualStartDate.value);
@@ -10387,8 +10731,7 @@ class InstallmentStageConfigsCompanion
   String toString() {
     return (StringBuffer('InstallmentStageConfigsCompanion(')
           ..write('id: $id, ')
-          ..write('ownerType: $ownerType, ')
-          ..write('ownerId: $ownerId, ')
+          ..write('contractId: $contractId, ')
           ..write('position: $position, ')
           ..write('stageKind: $stageKind, ')
           ..write('repaymentMethod: $repaymentMethod, ')
@@ -10397,19 +10740,14 @@ class InstallmentStageConfigsCompanion
           ..write('accrual: $accrual, ')
           ..write('amountAlgorithm: $amountAlgorithm, ')
           ..write('periods: $periods, ')
-          ..write('ratePpm: $ratePpm, ')
-          ..write('referenceRateType: $referenceRateType, ')
-          ..write('spreadBp: $spreadBp, ')
-          ..write('firstResetDate: $firstResetDate, ')
-          ..write('firstEffectiveDate: $firstEffectiveDate, ')
-          ..write('repricingCycleMonths: $repricingCycleMonths, ')
-          ..write('repricingPaymentTiming: $repricingPaymentTiming, ')
+          ..write('initialRatePpm: $initialRatePpm, ')
+          ..write('inPeriodRepricingPolicy: $inPeriodRepricingPolicy, ')
+          ..write('tailDifference: $tailDifference, ')
           ..write('endPrincipalMinor: $endPrincipalMinor, ')
           ..write('fixedAmountMinor: $fixedAmountMinor, ')
           ..write('feeMinor: $feeMinor, ')
-          ..write('untilDate: $untilDate, ')
+          ..write('endDate: $endDate, ')
           ..write('firstDate: $firstDate, ')
-          ..write('lastDate: $lastDate, ')
           ..write('accrualStartDate: $accrualStartDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -16170,6 +16508,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentContractsTable(this);
   late final $InstallmentProductsTable installmentProducts =
       $InstallmentProductsTable(this);
+  late final $InstallmentProductStageConfigsTable
+  installmentProductStageConfigs = $InstallmentProductStageConfigsTable(this);
   late final $InstallmentStageConfigsTable installmentStageConfigs =
       $InstallmentStageConfigsTable(this);
   late final $InstallmentSchedulesTable installmentSchedules =
@@ -16209,6 +16549,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     billGenerationSuppressions,
     installmentContracts,
     installmentProducts,
+    installmentProductStageConfigs,
     installmentStageConfigs,
     installmentSchedules,
     referenceRates,
@@ -19826,12 +20167,8 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
     InstallmentContractsCompanion Function({
       required String id,
       Value<String> name,
-      Value<String?> productId,
-      Value<String?> productName,
-      Value<bool> customRules,
       Value<String> dayCount,
       Value<String> rounding,
-      Value<String> tailDifference,
       required String liabilityAccountId,
       required InstallmentSourceType sourceType,
       Value<String?> disbursementAccountId,
@@ -19849,12 +20186,8 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
     InstallmentContractsCompanion Function({
       Value<String> id,
       Value<String> name,
-      Value<String?> productId,
-      Value<String?> productName,
-      Value<bool> customRules,
       Value<String> dayCount,
       Value<String> rounding,
-      Value<String> tailDifference,
       Value<String> liabilityAccountId,
       Value<InstallmentSourceType> sourceType,
       Value<String?> disbursementAccountId,
@@ -19888,21 +20221,6 @@ class $$InstallmentContractsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get productId => $composableBuilder(
-    column: $table.productId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get productName => $composableBuilder(
-    column: $table.productName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get customRules => $composableBuilder(
-    column: $table.customRules,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get dayCount => $composableBuilder(
     column: $table.dayCount,
     builder: (column) => ColumnFilters(column),
@@ -19910,11 +20228,6 @@ class $$InstallmentContractsTableFilterComposer
 
   ColumnFilters<String> get rounding => $composableBuilder(
     column: $table.rounding,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20003,21 +20316,6 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get productId => $composableBuilder(
-    column: $table.productId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get productName => $composableBuilder(
-    column: $table.productName,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get customRules => $composableBuilder(
-    column: $table.customRules,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get dayCount => $composableBuilder(
     column: $table.dayCount,
     builder: (column) => ColumnOrderings(column),
@@ -20025,11 +20323,6 @@ class $$InstallmentContractsTableOrderingComposer
 
   ColumnOrderings<String> get rounding => $composableBuilder(
     column: $table.rounding,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20104,29 +20397,11 @@ class $$InstallmentContractsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get productId =>
-      $composableBuilder(column: $table.productId, builder: (column) => column);
-
-  GeneratedColumn<String> get productName => $composableBuilder(
-    column: $table.productName,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get customRules => $composableBuilder(
-    column: $table.customRules,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get dayCount =>
       $composableBuilder(column: $table.dayCount, builder: (column) => column);
 
   GeneratedColumn<String> get rounding =>
       $composableBuilder(column: $table.rounding, builder: (column) => column);
-
-  GeneratedColumn<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<String> get liabilityAccountId => $composableBuilder(
     column: $table.liabilityAccountId,
@@ -20223,12 +20498,8 @@ class $$InstallmentContractsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String?> productId = const Value.absent(),
-                Value<String?> productName = const Value.absent(),
-                Value<bool> customRules = const Value.absent(),
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
-                Value<String> tailDifference = const Value.absent(),
                 Value<String> liabilityAccountId = const Value.absent(),
                 Value<InstallmentSourceType> sourceType = const Value.absent(),
                 Value<String?> disbursementAccountId = const Value.absent(),
@@ -20244,12 +20515,8 @@ class $$InstallmentContractsTableTableManager
               }) => InstallmentContractsCompanion(
                 id: id,
                 name: name,
-                productId: productId,
-                productName: productName,
-                customRules: customRules,
                 dayCount: dayCount,
                 rounding: rounding,
-                tailDifference: tailDifference,
                 liabilityAccountId: liabilityAccountId,
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
@@ -20267,12 +20534,8 @@ class $$InstallmentContractsTableTableManager
               ({
                 required String id,
                 Value<String> name = const Value.absent(),
-                Value<String?> productId = const Value.absent(),
-                Value<String?> productName = const Value.absent(),
-                Value<bool> customRules = const Value.absent(),
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
-                Value<String> tailDifference = const Value.absent(),
                 required String liabilityAccountId,
                 required InstallmentSourceType sourceType,
                 Value<String?> disbursementAccountId = const Value.absent(),
@@ -20288,12 +20551,8 @@ class $$InstallmentContractsTableTableManager
               }) => InstallmentContractsCompanion.insert(
                 id: id,
                 name: name,
-                productId: productId,
-                productName: productName,
-                customRules: customRules,
                 dayCount: dayCount,
                 rounding: rounding,
-                tailDifference: tailDifference,
                 liabilityAccountId: liabilityAccountId,
                 sourceType: sourceType,
                 disbursementAccountId: disbursementAccountId,
@@ -20343,7 +20602,6 @@ typedef $$InstallmentProductsTableCreateCompanionBuilder =
       Value<bool> archived,
       Value<String> dayCount,
       Value<String> rounding,
-      Value<String> tailDifference,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -20355,7 +20613,6 @@ typedef $$InstallmentProductsTableUpdateCompanionBuilder =
       Value<bool> archived,
       Value<String> dayCount,
       Value<String> rounding,
-      Value<String> tailDifference,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -20392,11 +20649,6 @@ class $$InstallmentProductsTableFilterComposer
 
   ColumnFilters<String> get rounding => $composableBuilder(
     column: $table.rounding,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20445,11 +20697,6 @@ class $$InstallmentProductsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -20484,11 +20731,6 @@ class $$InstallmentProductsTableAnnotationComposer
 
   GeneratedColumn<String> get rounding =>
       $composableBuilder(column: $table.rounding, builder: (column) => column);
-
-  GeneratedColumn<String> get tailDifference => $composableBuilder(
-    column: $table.tailDifference,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -20545,7 +20787,6 @@ class $$InstallmentProductsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
-                Value<String> tailDifference = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -20555,7 +20796,6 @@ class $$InstallmentProductsTableTableManager
                 archived: archived,
                 dayCount: dayCount,
                 rounding: rounding,
-                tailDifference: tailDifference,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -20567,7 +20807,6 @@ class $$InstallmentProductsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
-                Value<String> tailDifference = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -20577,7 +20816,6 @@ class $$InstallmentProductsTableTableManager
                 archived: archived,
                 dayCount: dayCount,
                 rounding: rounding,
-                tailDifference: tailDifference,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -20611,11 +20849,433 @@ typedef $$InstallmentProductsTableProcessedTableManager =
       InstallmentProductRow,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentProductStageConfigsTableCreateCompanionBuilder =
+    InstallmentProductStageConfigsCompanion Function({
+      required String id,
+      required String productId,
+      required int position,
+      required String stageKind,
+      Value<String?> repaymentMethod,
+      Value<int?> intervalMonths,
+      Value<String?> rateType,
+      Value<String?> ratePeriod,
+      Value<String?> accrual,
+      Value<String?> amountAlgorithm,
+      Value<int?> repricingCycleMonths,
+      Value<String?> inPeriodRepricingPolicy,
+      Value<String?> tailDifference,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentProductStageConfigsTableUpdateCompanionBuilder =
+    InstallmentProductStageConfigsCompanion Function({
+      Value<String> id,
+      Value<String> productId,
+      Value<int> position,
+      Value<String> stageKind,
+      Value<String?> repaymentMethod,
+      Value<int?> intervalMonths,
+      Value<String?> rateType,
+      Value<String?> ratePeriod,
+      Value<String?> accrual,
+      Value<String?> amountAlgorithm,
+      Value<int?> repricingCycleMonths,
+      Value<String?> inPeriodRepricingPolicy,
+      Value<String?> tailDifference,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentProductStageConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentProductStageConfigsTable> {
+  $$InstallmentProductStageConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stageKind => $composableBuilder(
+    column: $table.stageKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rateType => $composableBuilder(
+    column: $table.rateType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accrual => $composableBuilder(
+    column: $table.accrual,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentProductStageConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentProductStageConfigsTable> {
+  $$InstallmentProductStageConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get productId => $composableBuilder(
+    column: $table.productId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stageKind => $composableBuilder(
+    column: $table.stageKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rateType => $composableBuilder(
+    column: $table.rateType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accrual => $composableBuilder(
+    column: $table.accrual,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentProductStageConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentProductStageConfigsTable> {
+  $$InstallmentProductStageConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get productId =>
+      $composableBuilder(column: $table.productId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get stageKind =>
+      $composableBuilder(column: $table.stageKind, builder: (column) => column);
+
+  GeneratedColumn<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get intervalMonths => $composableBuilder(
+    column: $table.intervalMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rateType =>
+      $composableBuilder(column: $table.rateType, builder: (column) => column);
+
+  GeneratedColumn<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accrual =>
+      $composableBuilder(column: $table.accrual, builder: (column) => column);
+
+  GeneratedColumn<String> get amountAlgorithm => $composableBuilder(
+    column: $table.amountAlgorithm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get repricingCycleMonths => $composableBuilder(
+    column: $table.repricingCycleMonths,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentProductStageConfigsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentProductStageConfigsTable,
+          InstallmentProductStageConfigRow,
+          $$InstallmentProductStageConfigsTableFilterComposer,
+          $$InstallmentProductStageConfigsTableOrderingComposer,
+          $$InstallmentProductStageConfigsTableAnnotationComposer,
+          $$InstallmentProductStageConfigsTableCreateCompanionBuilder,
+          $$InstallmentProductStageConfigsTableUpdateCompanionBuilder,
+          (
+            InstallmentProductStageConfigRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentProductStageConfigsTable,
+              InstallmentProductStageConfigRow
+            >,
+          ),
+          InstallmentProductStageConfigRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentProductStageConfigsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentProductStageConfigsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentProductStageConfigsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentProductStageConfigsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentProductStageConfigsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> productId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> stageKind = const Value.absent(),
+                Value<String?> repaymentMethod = const Value.absent(),
+                Value<int?> intervalMonths = const Value.absent(),
+                Value<String?> rateType = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<String?> accrual = const Value.absent(),
+                Value<String?> amountAlgorithm = const Value.absent(),
+                Value<int?> repricingCycleMonths = const Value.absent(),
+                Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+                Value<String?> tailDifference = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentProductStageConfigsCompanion(
+                id: id,
+                productId: productId,
+                position: position,
+                stageKind: stageKind,
+                repaymentMethod: repaymentMethod,
+                intervalMonths: intervalMonths,
+                rateType: rateType,
+                ratePeriod: ratePeriod,
+                accrual: accrual,
+                amountAlgorithm: amountAlgorithm,
+                repricingCycleMonths: repricingCycleMonths,
+                inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+                tailDifference: tailDifference,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String productId,
+                required int position,
+                required String stageKind,
+                Value<String?> repaymentMethod = const Value.absent(),
+                Value<int?> intervalMonths = const Value.absent(),
+                Value<String?> rateType = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<String?> accrual = const Value.absent(),
+                Value<String?> amountAlgorithm = const Value.absent(),
+                Value<int?> repricingCycleMonths = const Value.absent(),
+                Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+                Value<String?> tailDifference = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentProductStageConfigsCompanion.insert(
+                id: id,
+                productId: productId,
+                position: position,
+                stageKind: stageKind,
+                repaymentMethod: repaymentMethod,
+                intervalMonths: intervalMonths,
+                rateType: rateType,
+                ratePeriod: ratePeriod,
+                accrual: accrual,
+                amountAlgorithm: amountAlgorithm,
+                repricingCycleMonths: repricingCycleMonths,
+                inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+                tailDifference: tailDifference,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentProductStageConfigsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentProductStageConfigsTable,
+      InstallmentProductStageConfigRow,
+      $$InstallmentProductStageConfigsTableFilterComposer,
+      $$InstallmentProductStageConfigsTableOrderingComposer,
+      $$InstallmentProductStageConfigsTableAnnotationComposer,
+      $$InstallmentProductStageConfigsTableCreateCompanionBuilder,
+      $$InstallmentProductStageConfigsTableUpdateCompanionBuilder,
+      (
+        InstallmentProductStageConfigRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentProductStageConfigsTable,
+          InstallmentProductStageConfigRow
+        >,
+      ),
+      InstallmentProductStageConfigRow,
+      PrefetchHooks Function()
+    >;
 typedef $$InstallmentStageConfigsTableCreateCompanionBuilder =
     InstallmentStageConfigsCompanion Function({
       required String id,
-      required String ownerType,
-      required String ownerId,
+      required String contractId,
       required int position,
       required String stageKind,
       Value<String?> repaymentMethod,
@@ -20624,19 +21284,14 @@ typedef $$InstallmentStageConfigsTableCreateCompanionBuilder =
       Value<String?> accrual,
       Value<String?> amountAlgorithm,
       Value<int?> periods,
-      Value<int?> ratePpm,
-      Value<String?> referenceRateType,
-      Value<int?> spreadBp,
-      Value<DateTime?> firstResetDate,
-      Value<DateTime?> firstEffectiveDate,
-      Value<int?> repricingCycleMonths,
-      Value<String?> repricingPaymentTiming,
+      Value<int?> initialRatePpm,
+      Value<String?> inPeriodRepricingPolicy,
+      Value<String?> tailDifference,
       Value<int?> endPrincipalMinor,
       Value<int?> fixedAmountMinor,
       Value<int?> feeMinor,
-      Value<DateTime?> untilDate,
+      required DateTime endDate,
       Value<DateTime?> firstDate,
-      Value<DateTime?> lastDate,
       Value<DateTime?> accrualStartDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -20645,8 +21300,7 @@ typedef $$InstallmentStageConfigsTableCreateCompanionBuilder =
 typedef $$InstallmentStageConfigsTableUpdateCompanionBuilder =
     InstallmentStageConfigsCompanion Function({
       Value<String> id,
-      Value<String> ownerType,
-      Value<String> ownerId,
+      Value<String> contractId,
       Value<int> position,
       Value<String> stageKind,
       Value<String?> repaymentMethod,
@@ -20655,19 +21309,14 @@ typedef $$InstallmentStageConfigsTableUpdateCompanionBuilder =
       Value<String?> accrual,
       Value<String?> amountAlgorithm,
       Value<int?> periods,
-      Value<int?> ratePpm,
-      Value<String?> referenceRateType,
-      Value<int?> spreadBp,
-      Value<DateTime?> firstResetDate,
-      Value<DateTime?> firstEffectiveDate,
-      Value<int?> repricingCycleMonths,
-      Value<String?> repricingPaymentTiming,
+      Value<int?> initialRatePpm,
+      Value<String?> inPeriodRepricingPolicy,
+      Value<String?> tailDifference,
       Value<int?> endPrincipalMinor,
       Value<int?> fixedAmountMinor,
       Value<int?> feeMinor,
-      Value<DateTime?> untilDate,
+      Value<DateTime> endDate,
       Value<DateTime?> firstDate,
-      Value<DateTime?> lastDate,
       Value<DateTime?> accrualStartDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -20688,13 +21337,8 @@ class $$InstallmentStageConfigsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get ownerType => $composableBuilder(
-    column: $table.ownerType,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get ownerId => $composableBuilder(
-    column: $table.ownerId,
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20738,38 +21382,18 @@ class $$InstallmentStageConfigsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get ratePpm => $composableBuilder(
-    column: $table.ratePpm,
+  ColumnFilters<int> get initialRatePpm => $composableBuilder(
+    column: $table.initialRatePpm,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get referenceRateType => $composableBuilder(
-    column: $table.referenceRateType,
+  ColumnFilters<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get spreadBp => $composableBuilder(
-    column: $table.spreadBp,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get firstResetDate => $composableBuilder(
-    column: $table.firstResetDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get firstEffectiveDate => $composableBuilder(
-    column: $table.firstEffectiveDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get repricingCycleMonths => $composableBuilder(
-    column: $table.repricingCycleMonths,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get repricingPaymentTiming => $composableBuilder(
-    column: $table.repricingPaymentTiming,
+  ColumnFilters<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20788,18 +21412,13 @@ class $$InstallmentStageConfigsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get untilDate => $composableBuilder(
-    column: $table.untilDate,
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get firstDate => $composableBuilder(
     column: $table.firstDate,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get lastDate => $composableBuilder(
-    column: $table.lastDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -20833,13 +21452,8 @@ class $$InstallmentStageConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get ownerType => $composableBuilder(
-    column: $table.ownerType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get ownerId => $composableBuilder(
-    column: $table.ownerId,
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20883,38 +21497,18 @@ class $$InstallmentStageConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get ratePpm => $composableBuilder(
-    column: $table.ratePpm,
+  ColumnOrderings<int> get initialRatePpm => $composableBuilder(
+    column: $table.initialRatePpm,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get referenceRateType => $composableBuilder(
-    column: $table.referenceRateType,
+  ColumnOrderings<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get spreadBp => $composableBuilder(
-    column: $table.spreadBp,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get firstResetDate => $composableBuilder(
-    column: $table.firstResetDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get firstEffectiveDate => $composableBuilder(
-    column: $table.firstEffectiveDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get repricingCycleMonths => $composableBuilder(
-    column: $table.repricingCycleMonths,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get repricingPaymentTiming => $composableBuilder(
-    column: $table.repricingPaymentTiming,
+  ColumnOrderings<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20933,18 +21527,13 @@ class $$InstallmentStageConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get untilDate => $composableBuilder(
-    column: $table.untilDate,
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<DateTime> get firstDate => $composableBuilder(
     column: $table.firstDate,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get lastDate => $composableBuilder(
-    column: $table.lastDate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -20976,11 +21565,10 @@ class $$InstallmentStageConfigsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get ownerType =>
-      $composableBuilder(column: $table.ownerType, builder: (column) => column);
-
-  GeneratedColumn<String> get ownerId =>
-      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
@@ -21014,34 +21602,18 @@ class $$InstallmentStageConfigsTableAnnotationComposer
   GeneratedColumn<int> get periods =>
       $composableBuilder(column: $table.periods, builder: (column) => column);
 
-  GeneratedColumn<int> get ratePpm =>
-      $composableBuilder(column: $table.ratePpm, builder: (column) => column);
-
-  GeneratedColumn<String> get referenceRateType => $composableBuilder(
-    column: $table.referenceRateType,
+  GeneratedColumn<int> get initialRatePpm => $composableBuilder(
+    column: $table.initialRatePpm,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get spreadBp =>
-      $composableBuilder(column: $table.spreadBp, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get firstResetDate => $composableBuilder(
-    column: $table.firstResetDate,
+  GeneratedColumn<String> get inPeriodRepricingPolicy => $composableBuilder(
+    column: $table.inPeriodRepricingPolicy,
     builder: (column) => column,
   );
 
-  GeneratedColumn<DateTime> get firstEffectiveDate => $composableBuilder(
-    column: $table.firstEffectiveDate,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get repricingCycleMonths => $composableBuilder(
-    column: $table.repricingCycleMonths,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get repricingPaymentTiming => $composableBuilder(
-    column: $table.repricingPaymentTiming,
+  GeneratedColumn<String> get tailDifference => $composableBuilder(
+    column: $table.tailDifference,
     builder: (column) => column,
   );
 
@@ -21058,14 +21630,11 @@ class $$InstallmentStageConfigsTableAnnotationComposer
   GeneratedColumn<int> get feeMinor =>
       $composableBuilder(column: $table.feeMinor, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get untilDate =>
-      $composableBuilder(column: $table.untilDate, builder: (column) => column);
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get firstDate =>
       $composableBuilder(column: $table.firstDate, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastDate =>
-      $composableBuilder(column: $table.lastDate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get accrualStartDate => $composableBuilder(
     column: $table.accrualStartDate,
@@ -21126,8 +21695,7 @@ class $$InstallmentStageConfigsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
-                Value<String> ownerType = const Value.absent(),
-                Value<String> ownerId = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<String> stageKind = const Value.absent(),
                 Value<String?> repaymentMethod = const Value.absent(),
@@ -21136,27 +21704,21 @@ class $$InstallmentStageConfigsTableTableManager
                 Value<String?> accrual = const Value.absent(),
                 Value<String?> amountAlgorithm = const Value.absent(),
                 Value<int?> periods = const Value.absent(),
-                Value<int?> ratePpm = const Value.absent(),
-                Value<String?> referenceRateType = const Value.absent(),
-                Value<int?> spreadBp = const Value.absent(),
-                Value<DateTime?> firstResetDate = const Value.absent(),
-                Value<DateTime?> firstEffectiveDate = const Value.absent(),
-                Value<int?> repricingCycleMonths = const Value.absent(),
-                Value<String?> repricingPaymentTiming = const Value.absent(),
+                Value<int?> initialRatePpm = const Value.absent(),
+                Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+                Value<String?> tailDifference = const Value.absent(),
                 Value<int?> endPrincipalMinor = const Value.absent(),
                 Value<int?> fixedAmountMinor = const Value.absent(),
                 Value<int?> feeMinor = const Value.absent(),
-                Value<DateTime?> untilDate = const Value.absent(),
+                Value<DateTime> endDate = const Value.absent(),
                 Value<DateTime?> firstDate = const Value.absent(),
-                Value<DateTime?> lastDate = const Value.absent(),
                 Value<DateTime?> accrualStartDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentStageConfigsCompanion(
                 id: id,
-                ownerType: ownerType,
-                ownerId: ownerId,
+                contractId: contractId,
                 position: position,
                 stageKind: stageKind,
                 repaymentMethod: repaymentMethod,
@@ -21165,19 +21727,14 @@ class $$InstallmentStageConfigsTableTableManager
                 accrual: accrual,
                 amountAlgorithm: amountAlgorithm,
                 periods: periods,
-                ratePpm: ratePpm,
-                referenceRateType: referenceRateType,
-                spreadBp: spreadBp,
-                firstResetDate: firstResetDate,
-                firstEffectiveDate: firstEffectiveDate,
-                repricingCycleMonths: repricingCycleMonths,
-                repricingPaymentTiming: repricingPaymentTiming,
+                initialRatePpm: initialRatePpm,
+                inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+                tailDifference: tailDifference,
                 endPrincipalMinor: endPrincipalMinor,
                 fixedAmountMinor: fixedAmountMinor,
                 feeMinor: feeMinor,
-                untilDate: untilDate,
+                endDate: endDate,
                 firstDate: firstDate,
-                lastDate: lastDate,
                 accrualStartDate: accrualStartDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -21186,8 +21743,7 @@ class $$InstallmentStageConfigsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
-                required String ownerType,
-                required String ownerId,
+                required String contractId,
                 required int position,
                 required String stageKind,
                 Value<String?> repaymentMethod = const Value.absent(),
@@ -21196,27 +21752,21 @@ class $$InstallmentStageConfigsTableTableManager
                 Value<String?> accrual = const Value.absent(),
                 Value<String?> amountAlgorithm = const Value.absent(),
                 Value<int?> periods = const Value.absent(),
-                Value<int?> ratePpm = const Value.absent(),
-                Value<String?> referenceRateType = const Value.absent(),
-                Value<int?> spreadBp = const Value.absent(),
-                Value<DateTime?> firstResetDate = const Value.absent(),
-                Value<DateTime?> firstEffectiveDate = const Value.absent(),
-                Value<int?> repricingCycleMonths = const Value.absent(),
-                Value<String?> repricingPaymentTiming = const Value.absent(),
+                Value<int?> initialRatePpm = const Value.absent(),
+                Value<String?> inPeriodRepricingPolicy = const Value.absent(),
+                Value<String?> tailDifference = const Value.absent(),
                 Value<int?> endPrincipalMinor = const Value.absent(),
                 Value<int?> fixedAmountMinor = const Value.absent(),
                 Value<int?> feeMinor = const Value.absent(),
-                Value<DateTime?> untilDate = const Value.absent(),
+                required DateTime endDate,
                 Value<DateTime?> firstDate = const Value.absent(),
-                Value<DateTime?> lastDate = const Value.absent(),
                 Value<DateTime?> accrualStartDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentStageConfigsCompanion.insert(
                 id: id,
-                ownerType: ownerType,
-                ownerId: ownerId,
+                contractId: contractId,
                 position: position,
                 stageKind: stageKind,
                 repaymentMethod: repaymentMethod,
@@ -21225,19 +21775,14 @@ class $$InstallmentStageConfigsTableTableManager
                 accrual: accrual,
                 amountAlgorithm: amountAlgorithm,
                 periods: periods,
-                ratePpm: ratePpm,
-                referenceRateType: referenceRateType,
-                spreadBp: spreadBp,
-                firstResetDate: firstResetDate,
-                firstEffectiveDate: firstEffectiveDate,
-                repricingCycleMonths: repricingCycleMonths,
-                repricingPaymentTiming: repricingPaymentTiming,
+                initialRatePpm: initialRatePpm,
+                inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+                tailDifference: tailDifference,
                 endPrincipalMinor: endPrincipalMinor,
                 fixedAmountMinor: fixedAmountMinor,
                 feeMinor: feeMinor,
-                untilDate: untilDate,
+                endDate: endDate,
                 firstDate: firstDate,
-                lastDate: lastDate,
                 accrualStartDate: accrualStartDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -24200,6 +24745,12 @@ class $AppDatabaseManager {
       $$InstallmentContractsTableTableManager(_db, _db.installmentContracts);
   $$InstallmentProductsTableTableManager get installmentProducts =>
       $$InstallmentProductsTableTableManager(_db, _db.installmentProducts);
+  $$InstallmentProductStageConfigsTableTableManager
+  get installmentProductStageConfigs =>
+      $$InstallmentProductStageConfigsTableTableManager(
+        _db,
+        _db.installmentProductStageConfigs,
+      );
   $$InstallmentStageConfigsTableTableManager get installmentStageConfigs =>
       $$InstallmentStageConfigsTableTableManager(
         _db,

@@ -687,8 +687,6 @@ void main() {
 
       expect(outcome, isA<UiActionSuccess<String>>());
       final command = repayment.billConversionCommands.single;
-      expect(command.productId, 'product-1');
-      expect(command.productName, '等额本金');
       expect(command.borrowingDate, DateTime(2026, 9, 10));
       expect(command.stageTerms.firstDate, DateTime(2026, 10, 10));
     },

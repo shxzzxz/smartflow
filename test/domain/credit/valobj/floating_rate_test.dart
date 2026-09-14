@@ -5,7 +5,7 @@ import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 void main() {
   test('calendar recurrence preserves month-end anchor', () {
     final config = FloatingRateRule(
-      referenceRateType: ReferenceRateType.lprOneYear,
+      referenceRateType: InterestRateType.lprOneYear,
       spreadBp: 0,
       firstResetDate: DateTime.utc(2026, 8, 31),
       firstEffectiveDate: DateTime.utc(2026, 8, 31),

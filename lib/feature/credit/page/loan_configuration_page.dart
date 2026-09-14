@@ -74,16 +74,18 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage> {
                       children: [
                         Row(
                           children: [
-                            Expanded(
-                              flex: 2,
-                              child: AppPlainSelectFormRow<String>(
-                                label: '产品模板',
-                                value: state.productName,
-                                placeholder: '请选择',
-                                onTap: (_) => _pickProduct(notifier),
+                            if (state.canSelectProduct) ...[
+                              Expanded(
+                                flex: 2,
+                                child: AppPlainSelectFormRow<String>(
+                                  label: '产品模板',
+                                  value: state.productName,
+                                  placeholder: '请选择',
+                                  onTap: (_) => _pickProduct(notifier),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: AppSpacing.space8),
+                              const SizedBox(width: AppSpacing.space8),
+                            ],
                             Expanded(
                               child: FilterChip(
                                 label: const Center(child: Text('高级配置')),

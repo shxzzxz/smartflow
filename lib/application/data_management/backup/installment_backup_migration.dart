@@ -26,7 +26,7 @@ void migrateInstallmentBackup(
       for (final row in tables.remove('lpr_quotes') ?? <BackupJson>[])
         {
             ...row,
-            'type': _legacyReferenceRateType(row['tenor']),
+            'type': _legacyInterestRateType(row['tenor']),
             'rateDate': row['quoteDate'],
           }
           ..remove('tenor')
@@ -99,7 +99,7 @@ void migrateInstallmentBackup(
             ...row,
             'referenceRateType': row['lprTenor'] == null
                 ? null
-                : _legacyReferenceRateType(row['lprTenor']),
+                : _legacyInterestRateType(row['lprTenor']),
           }..remove('lprTenor')
         else
           row,
@@ -109,7 +109,7 @@ void migrateInstallmentBackup(
           in tables['installment_repricing_records'] ?? <BackupJson>[])
         {
             ...row,
-            'referenceRateType': _legacyReferenceRateType(row['tenor']),
+            'referenceRateType': _legacyInterestRateType(row['tenor']),
             'referenceRateDate': row['quoteDate'],
             'referenceRatePpm': row['lprPpm'],
           }
@@ -128,6 +128,113 @@ void migrateInstallmentBackup(
   }
   if (schemaVersion < 40) _migrateContractOperations(tables);
   if (schemaVersion < 41) _migrateRepricingStageScope(tables);
+  if (schemaVersion < 42) _splitProductStages(tables);
+}
+
+void _splitProductStages(Map<String, Iterable<BackupJson>> tables) {
+  final products = {
+    for (final row in tables['installment_products'] ?? <BackupJson>[])
+      row['id']: row,
+  };
+  final contracts = {
+    for (final row in tables['installment_contracts'] ?? <BackupJson>[])
+      row['id']: row,
+  };
+  final productStages = <BackupJson>[];
+  final contractStages = <BackupJson>[];
+  for (final stage in tables['installment_stage_configs'] ?? <BackupJson>[]) {
+    final deferment = stage['stageKind'] == 'deferment';
+    final method = stage['repaymentMethod'];
+    final policy = method == 'equalInstallment'
+        ? switch (stage['repricingPaymentTiming']) {
+            null || 'nextPeriod' => 'preservePrincipal',
+            'currentPeriod' => 'dynamicPeriodRate',
+            _ => throw const BackupValidationException('旧期中重定价策略无效'),
+          }
+        : null;
+    final owner = stage['ownerId'];
+    if (stage['ownerType'] == 'product') {
+      final product = products[owner];
+      if (product == null) throw const BackupValidationException('产品阶段缺少所属产品');
+      productStages.add({
+        for (final field in [
+          'id',
+          'position',
+          'stageKind',
+          'repaymentMethod',
+          'intervalMonths',
+          'ratePeriod',
+          'accrual',
+          'amountAlgorithm',
+          'createdAt',
+          'updatedAt',
+        ])
+          field: stage[field],
+        'productId': owner,
+        'rateType': !deferment && method != 'flatFee' && method != 'custom'
+            ? 'fixed'
+            : null,
+        'repricingCycleMonths': null,
+        'inPeriodRepricingPolicy': policy,
+        'tailDifference': deferment ? null : product['tailDifference'],
+      });
+    } else if (stage['ownerType'] == 'contract') {
+      final contract = contracts[owner];
+      if (contract == null) throw const BackupValidationException('合同阶段缺少所属合同');
+      final end = deferment
+          ? _backupDate(stage, 'untilDate')
+          : IntervalRepaymentDates(
+              firstDate: _backupDate(stage, 'firstDate'),
+              count: stage['periods'] as int,
+              intervalMonths: stage['intervalMonths'] as int? ?? 1,
+              lastDate: stage['lastDate'] == null
+                  ? null
+                  : _backupDate(stage, 'lastDate'),
+            ).getDates().last;
+      contractStages.add(
+        {
+          ...stage,
+          'contractId': owner,
+          'endDate': end.millisecondsSinceEpoch,
+          'initialRatePpm': stage['ratePpm'],
+          'inPeriodRepricingPolicy': policy,
+          'tailDifference': deferment ? null : contract['tailDifference'],
+        }..removeWhere(
+          (key, _) => const {
+            'ownerType',
+            'ownerId',
+            'untilDate',
+            'lastDate',
+            'ratePpm',
+            'referenceRateType',
+            'spreadBp',
+            'firstResetDate',
+            'firstEffectiveDate',
+            'repricingCycleMonths',
+            'repricingPaymentTiming',
+          }.contains(key),
+        ),
+      );
+    } else {
+      throw const BackupValidationException('旧阶段归属类型无效');
+    }
+  }
+  tables['installment_product_stage_configs'] = productStages;
+  tables['installment_stage_configs'] = contractStages;
+  tables['installment_products'] = [
+    for (final row in products.values) {...row}..remove('tailDifference'),
+  ];
+  tables['installment_contracts'] = [
+    for (final row in contracts.values)
+      {...row}..removeWhere(
+        (key, _) => const {
+          'productId',
+          'productName',
+          'customRules',
+          'tailDifference',
+        }.contains(key),
+      ),
+  ];
 }
 
 void _migrateContractOperations(Map<String, Iterable<BackupJson>> tables) {
@@ -336,7 +443,7 @@ DateTime _backupDate(BackupJson row, String field) {
   return DateTime.fromMillisecondsSinceEpoch(value);
 }
 
-String _legacyReferenceRateType(Object? tenor) => switch (tenor) {
+String _legacyInterestRateType(Object? tenor) => switch (tenor) {
   'oneYear' => 'lprOneYear',
   'fiveYearPlus' => 'lprFiveYearPlus',
   _ => throw const BackupValidationException('旧 LPR 品种无效'),

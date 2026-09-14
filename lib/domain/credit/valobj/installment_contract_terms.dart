@@ -9,7 +9,6 @@ import 'installment_plan_terms.dart';
 import 'interest_rate.dart';
 import 'repayment_dates_strategy.dart';
 import 'reference_rate.dart';
-import 'tail_difference_policy.dart';
 
 /// 阶段身份与条款分开：规则修改后仍可识别原有计划所属的阶段。
 class InstallmentContractStage {
@@ -23,13 +22,11 @@ class InstallmentContractTerms {
     required List<InstallmentContractStage> stages,
     this.dayCount = DayCountConvention.thirty360,
     this.rounding = RoundingMode.halfUp,
-    this.tailDifference = TailDifferencePolicy.lastPeriod,
   }) : stages = List.unmodifiable(stages);
 
   final List<InstallmentContractStage> stages;
   final DayCountConvention dayCount;
   final RoundingMode rounding;
-  final TailDifferencePolicy tailDifference;
 
   bool hasSameLayout(InstallmentContractTerms other) {
     if (stages.length != other.stages.length) return false;
@@ -59,7 +56,6 @@ class InstallmentContractTerms {
         stages: [for (final stage in stages) stage.terms],
         dayCount: dayCount,
         rounding: rounding,
-        tailDifference: tailDifference,
       );
 
   void validate() {
@@ -101,6 +97,10 @@ class InstallmentContractTerms {
         }
         if (dates.count <= 0 || dates.intervalMonths <= 0) {
           _invalid('期数与间隔月数必须为正整数');
+        }
+        if (dates.lastDate != null &&
+            dates.lastDate!.isBefore(dates.firstDate)) {
+          _invalid('阶段结束日不得早于首期还款日');
         }
         if (fee.minorUnits < 0 ||
             (rate?.ppm ?? 0) < 0 ||

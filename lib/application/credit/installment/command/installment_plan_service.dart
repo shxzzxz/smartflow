@@ -347,7 +347,6 @@ Object _termsFacts(InstallmentContractTerms terms) => [
   terms.dayCount.daysPerMonth,
   terms.dayCount.daysPerYear,
   terms.rounding.name,
-  terms.tailDifference.name,
   for (final config in terms.stages)
     [
       config.id,
@@ -379,11 +378,11 @@ Object _termsFacts(InstallmentContractTerms terms) => [
               _day(rule.firstResetDate),
               _day(rule.firstEffectiveDate),
               rule.cycleMonths,
-              rule.paymentTiming.name,
             ]
           else
             null,
-          stage.repricingPaymentTiming.name,
+          stage.inPeriodRepricingPolicy.name,
+          stage.tailDifference.name,
         ],
       },
     ],

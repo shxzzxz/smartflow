@@ -123,7 +123,7 @@ class _InstallmentContractEditPageState
               ),
               AppPlainSelectFormRow<String>(
                 label: '分期配置',
-                value: loaded.productName ?? '自定义',
+                value: '${loaded.stageDraft.stages.length} 个阶段',
                 placeholder: '点击配置',
                 onTap: (_) => _configure(loaded),
               ),
@@ -157,8 +157,6 @@ class _InstallmentContractEditPageState
       principal: contract.principal,
       borrowingDate: contract.borrowingDate,
       terms: loaded.stageDraft,
-      productId: loaded.productId,
-      productName: loaded.productName,
       basicInfoReadOnly: true,
     );
     final configuration = await Navigator.of(context)

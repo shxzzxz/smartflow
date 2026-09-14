@@ -28,11 +28,11 @@ void main() {
         },
       );
       final rates = await source.fetch(
-        [ReferenceRateType.lprOneYear],
+        [InterestRateType.lprOneYear],
         from: DateTime(2019, 8, 20),
         through: DateTime(2026, 3),
       );
-      expect(rates[ReferenceRateType.lprOneYear]!.map((r) => r.ratePpm), [
+      expect(rates[InterestRateType.lprOneYear]!.map((r) => r.ratePpm), [
         30500,
         30500,
       ]);
@@ -70,7 +70,7 @@ void main() {
       );
       await expectLater(
         source.fetch(
-          [ReferenceRateType.lprOneYear],
+          [InterestRateType.lprOneYear],
           from: DateTime(2019, 8, 20),
           through: DateTime(2026, 3),
         ),
@@ -95,26 +95,26 @@ void main() {
         },
       );
       final rates = await source.fetch(
-        [ReferenceRateType.loanBenchmarkShortTerm],
+        [InterestRateType.loanBenchmarkShortTerm],
         from: DateTime(2015, 10, 24),
         through: DateTime(2026, 3),
       );
       expect(requests.single.queryParameters['filter'], contains("1991-04-21"));
-      expect(rates[ReferenceRateType.loanBenchmarkShortTerm], hasLength(1));
+      expect(rates[InterestRateType.loanBenchmarkShortTerm], hasLength(1));
       expect(
-        rates[ReferenceRateType.loanBenchmarkShortTerm]!.single.date,
+        rates[InterestRateType.loanBenchmarkShortTerm]!.single.date,
         DateTime.utc(2015, 10, 24),
       );
       expect(
-        rates[ReferenceRateType.loanBenchmarkShortTerm]!.single.ratePpm,
+        rates[InterestRateType.loanBenchmarkShortTerm]!.single.ratePpm,
         43500,
       );
       final absent = await source.fetch(
-        [ReferenceRateType.loanBenchmarkShortTerm],
+        [InterestRateType.loanBenchmarkShortTerm],
         from: DateTime(2026),
         through: DateTime(2026, 3),
       );
-      expect(absent[ReferenceRateType.loanBenchmarkShortTerm], isEmpty);
+      expect(absent[InterestRateType.loanBenchmarkShortTerm], isEmpty);
     },
   );
 
@@ -137,7 +137,7 @@ void main() {
         },
       );
       final rows = await source.fetch(
-        [ReferenceRateType.lprFiveYearPlus],
+        [InterestRateType.lprFiveYearPlus],
         from: DateTime(2025, 12),
         through: DateTime(2026, 1, 31),
       );
@@ -149,12 +149,12 @@ void main() {
         '2025-12-31',
         '2026-01-31',
       ]);
-      expect(rows[ReferenceRateType.lprFiveYearPlus]!.map((r) => r.ratePpm), [
+      expect(rows[InterestRateType.lprFiveYearPlus]!.map((r) => r.ratePpm), [
         35000,
         35000,
       ]);
       expect(
-        source.supportedTypes.contains(ReferenceRateType.loanBenchmarkLongTerm),
+        source.supportedTypes.contains(InterestRateType.loanBenchmarkLongTerm),
         isFalse,
       );
     },
@@ -172,7 +172,7 @@ void main() {
       );
       await expectLater(
         businessError.fetch(
-          [ReferenceRateType.lprOneYear],
+          [InterestRateType.lprOneYear],
           from: DateTime(2019, 8, 20),
           through: DateTime(2026),
         ),
@@ -193,7 +193,7 @@ void main() {
       );
       await expectLater(
         partial.fetch(
-          [ReferenceRateType.lprOneYear],
+          [InterestRateType.lprOneYear],
           from: DateTime(2025, 12),
           through: DateTime(2026, 2),
         ),
@@ -236,7 +236,7 @@ void main() {
         },
       );
       final result = await source.fetch(
-        ReferenceRateType.values,
+        InterestRateType.referenceTypes,
         from: DateTime(1991, 4, 21),
         through: DateTime(2026, 3),
       );
@@ -245,14 +245,14 @@ void main() {
         requests.first.queryParameters['columns'],
         'TRADE_DATE,LPR1Y,LPR5Y,RATE_1,RATE_2',
       );
-      expect(result[ReferenceRateType.lprOneYear], hasLength(2));
-      expect(result.containsKey(ReferenceRateType.lprFiveYearPlus), isFalse);
+      expect(result[InterestRateType.lprOneYear], hasLength(2));
+      expect(result.containsKey(InterestRateType.lprFiveYearPlus), isFalse);
       expect(
-        result[ReferenceRateType.loanBenchmarkShortTerm]!.single.ratePpm,
+        result[InterestRateType.loanBenchmarkShortTerm]!.single.ratePpm,
         43500,
       );
       expect(
-        result[ReferenceRateType.loanBenchmarkLongTerm]!.map((r) => r.ratePpm),
+        result[InterestRateType.loanBenchmarkLongTerm]!.map((r) => r.ratePpm),
         [49000, 48000],
       );
     },
@@ -274,17 +274,17 @@ void main() {
         ]),
       );
       final result = await source.fetch(
-        ReferenceRateType.values,
+        InterestRateType.referenceTypes,
         from: DateTime(1991, 4, 21),
         through: DateTime(2026, 3),
       );
-      expect(result.keys, unorderedEquals(ReferenceRateType.values));
+      expect(result.keys, unorderedEquals(InterestRateType.referenceTypes));
       expect(
-        result[ReferenceRateType.lprOneYear]!.single.date,
+        result[InterestRateType.lprOneYear]!.single.date,
         DateTime.utc(2026, 1, 20),
       );
       expect(
-        result[ReferenceRateType.loanBenchmarkShortTerm]!.single.date,
+        result[InterestRateType.loanBenchmarkShortTerm]!.single.date,
         DateTime.utc(2015, 10, 24),
       );
     },
@@ -309,16 +309,16 @@ void main() {
         },
       );
       final result = await source.fetch(
-        [ReferenceRateType.lprOneYear, ReferenceRateType.lprFiveYearPlus],
+        [InterestRateType.lprOneYear, InterestRateType.lprFiveYearPlus],
         from: DateTime(2025, 12),
         through: DateTime(2026, 1, 31),
       );
       expect(requests, hasLength(2));
-      expect(result[ReferenceRateType.lprOneYear]!.map((r) => r.ratePpm), [
+      expect(result[InterestRateType.lprOneYear]!.map((r) => r.ratePpm), [
         30000,
         30000,
       ]);
-      expect(result.containsKey(ReferenceRateType.lprFiveYearPlus), isFalse);
+      expect(result.containsKey(InterestRateType.lprFiveYearPlus), isFalse);
     },
   );
 }

@@ -16,6 +16,7 @@ import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_stage_rule.dart';
 import '../../../domain/credit/valobj/floating_rate.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/tail_difference_policy.dart';
 import '../../../design_system/widget/app_select.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
@@ -324,41 +325,38 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                     ),
                   ),
               ],
-              if (!flat && !custom && productMode)
+              if (!flat && !custom)
+                AppPlainSelectMenuFormRow<InterestRateType>(
+                  label: '利率类型',
+                  value: s.rateType,
+                  enabled:
+                      rulesEditable &&
+                      (productMode || widget.repricingConfigurationEditable),
+                  options: [
+                    for (final type in InterestRateType.values)
+                      AppSelectOption(
+                        value: type,
+                        label: referenceRateTypeLabel(type),
+                      ),
+                  ],
+                  onChanged: (v) => update(s.changeRateType(v)),
+                ),
+              if (!flat && !custom && productMode) ...[
                 AppPlainSelectMenuFormRow(
                   label: '利率单位',
                   value: s.ratePeriod,
                   options: interestRatePeriodOptions,
-                  enabled: rulesEditable,
+                  enabled: rulesEditable && !s.floating,
                   onChanged: (v) => update(s.copyWith(ratePeriod: v)),
                 ),
+                if (s.floating) _repricingCycle(s, update),
+              ],
               if (!flat && !custom && !productMode) ...[
-                if (widget.repricingConfigurationEditable)
-                  AppPlainSelectMenuFormRow<bool>(
-                    label: '利率规则',
-                    value: s.floating,
-                    options: const [
-                      AppSelectOption(value: false, label: '固定利率'),
-                      AppSelectOption(value: true, label: '参考利率加减基点'),
-                    ],
-                    onChanged: (v) => update(
-                      s.copyWith(
-                        floating: v,
-                        ratePeriod: v
-                            ? InterestRatePeriod.annual
-                            : s.ratePeriod,
-                        algorithm:
-                            v && s.algorithm == InstallmentAmountAlgorithm.fixed
-                            ? InstallmentAmountAlgorithm.nominalRate
-                            : s.algorithm,
-                      ),
-                    ),
-                  ),
                 _DraftInput(
                   key: ValueKey('${s.id}:rate'),
                   value: s.text(StageInput.rate),
-                  label: s.floating ? '初始执行利率' : '利率',
-                  hint: s.floating ? '当前适用的执行年利率' : '留空即免息',
+                  label: '利率',
+                  hint: s.floating ? '本阶段初始执行年利率' : '留空即免息',
                   enabled: true,
                   money: false,
                   ratePeriod: s.ratePeriod,
@@ -369,18 +367,6 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                   validator: _validateRate,
                 ),
                 if (s.floating && widget.repricingConfigurationEditable) ...[
-                  AppPlainSelectMenuFormRow<ReferenceRateType>(
-                    label: '参考利率类型',
-                    value: s.referenceRateType,
-                    options: [
-                      for (final type in ReferenceRateType.values)
-                        AppSelectOption(
-                          value: type,
-                          label: referenceRateTypeLabel(type),
-                        ),
-                    ],
-                    onChanged: (v) => update(s.copyWith(referenceRateType: v)),
-                  ),
                   _DraftInput(
                     key: ValueKey('${s.id}:spreadBp'),
                     value: s.text(StageInput.spreadBp),
@@ -407,17 +393,7 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                     s.firstEffectiveDate,
                     (d) => update(s.copyWith(firstEffectiveDate: d)),
                   ),
-                  AppPlainSelectMenuFormRow<int>(
-                    label: '重定价周期',
-                    value: s.repricingCycleMonths,
-                    options: const [
-                      AppSelectOption(value: 3, label: '3 个月'),
-                      AppSelectOption(value: 6, label: '6 个月'),
-                      AppSelectOption(value: 12, label: '12 个月'),
-                    ],
-                    onChanged: (v) =>
-                        update(s.copyWith(repricingCycleMonths: v)),
-                  ),
+                  _repricingCycle(s, update),
                   const Text('按重定价日前最近报价取值，不含重定价日当天。尚未确定的未来利率沿用已知利率预测。'),
                 ],
               ],
@@ -428,23 +404,24 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                 const Text(
                   '本阶段的重定价配置与记录请在合同详情的“利率与利息调整”中管理。删除阶段会同时删除它的重定价配置和记录。',
                 ),
-              if (!productMode &&
-                  s.method == InstallmentRepaymentMethod.equalInstallment)
-                AppPlainSelectMenuFormRow<RepricingPaymentTiming>(
-                  label: '固定额重算',
-                  value: s.repricingPaymentTiming,
+              if (widget.showAdvanced &&
+                  s.method == InstallmentRepaymentMethod.equalInstallment &&
+                  s.algorithm != InstallmentAmountAlgorithm.fixed)
+                AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>(
+                  label: '期中重定价',
+                  value: s.inPeriodRepricingPolicy,
                   options: const [
                     AppSelectOption(
-                      value: RepricingPaymentTiming.nextPeriod,
-                      label: '下一期，保留当期本金',
+                      value: InPeriodRepricingPolicy.preservePrincipal,
+                      label: '保留当期本金',
                     ),
                     AppSelectOption(
-                      value: RepricingPaymentTiming.currentPeriod,
-                      label: '跨调息当期',
+                      value: InPeriodRepricingPolicy.dynamicPeriodRate,
+                      label: '动态期利率重算',
                     ),
                   ],
                   onChanged: (v) =>
-                      update(s.copyWith(repricingPaymentTiming: v)),
+                      update(s.copyWith(inPeriodRepricingPolicy: v)),
                 ),
               if (!flat && !custom)
                 AppPlainSelectMenuFormRow(
@@ -480,6 +457,19 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                     money: true,
                   ),
               ],
+              if (widget.showAdvanced)
+                AppPlainSelectMenuFormRow<TailDifferencePolicy>(
+                  label: '尾差处理',
+                  value: s.tailDifference,
+                  enabled: rulesEditable,
+                  options: const [
+                    AppSelectOption(
+                      value: TailDifferencePolicy.lastPeriod,
+                      label: '计入阶段末期',
+                    ),
+                  ],
+                  onChanged: (v) => update(s.copyWith(tailDifference: v)),
+                ),
               if (!productMode) ...[
                 _input(
                   s,
@@ -505,6 +495,21 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
             ],
     );
   }
+
+  Widget _repricingCycle(
+    InstallmentStageDraft s,
+    ValueChanged<InstallmentStageDraft> update,
+  ) => AppPlainSelectMenuFormRow<int>(
+    label: '重定价周期',
+    value: s.repricingCycleMonths,
+    enabled: rulesEditable,
+    options: const [
+      AppSelectOption(value: 3, label: '3 个月'),
+      AppSelectOption(value: 6, label: '6 个月'),
+      AppSelectOption(value: 12, label: '12 个月'),
+    ],
+    onChanged: (v) => update(s.copyWith(repricingCycleMonths: v)),
+  );
 
   Widget _input(
     InstallmentStageDraft s,

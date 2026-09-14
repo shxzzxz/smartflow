@@ -4,7 +4,6 @@ import '../valobj/credit_error_code.dart';
 import '../valobj/day_count_convention.dart';
 import '../valobj/installment_stage_rule.dart';
 import '../valobj/installment_enums.dart';
-import '../valobj/tail_difference_policy.dart';
 
 class InstallmentProduct {
   InstallmentProduct({
@@ -15,7 +14,6 @@ class InstallmentProduct {
     this.archived = false,
     this.dayCount = DayCountConvention.thirty360,
     this.rounding = RoundingMode.halfUp,
-    this.tailDifference = TailDifferencePolicy.lastPeriod,
   }) : stages = List.unmodifiable(stages);
 
   final String id;
@@ -25,7 +23,6 @@ class InstallmentProduct {
   final List<InstallmentStageRule> stages;
   final DayCountConvention dayCount;
   final RoundingMode rounding;
-  final TailDifferencePolicy tailDifference;
 
   void validate() {
     if (stages.any(

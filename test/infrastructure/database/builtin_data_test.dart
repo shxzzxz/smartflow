@@ -77,16 +77,17 @@ void main() {
         product.validate();
       }
       final stages = await database
-          .select(database.installmentStageConfigs)
+          .select(database.installmentProductStageConfigs)
           .get();
       expect(stages, hasLength(7));
-      for (final stage in stages) {
-        expect(stage.ownerType, 'product');
-        expect(stage.ratePpm, isNull);
-        expect(stage.periods, isNull);
-        expect(stage.feeMinor, isNull);
-        expect(stage.endPrincipalMinor, isNull);
-      }
+      expect(
+        stages.map((stage) => stage.productId).toSet(),
+        products.map((product) => product.id).toSet(),
+      );
+      expect(
+        await database.select(database.installmentStageConfigs).get(),
+        isEmpty,
+      );
       await repository.delete(products.first.id);
       await ensureBuiltinData(database);
       expect(await repository.find(products.first.id), isNull);

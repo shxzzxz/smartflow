@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
+import 'v41_installment_schema.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../app_database.dart';
 
@@ -24,47 +24,52 @@ Future<void> migrateInstallmentOperations(
       await migrator.createTable(table);
     }
   }
-  final contracts = await database.select(database.installmentContracts).get();
+  final contracts = await database
+      .customSelect('SELECT * FROM installment_contracts')
+      .get();
   for (final contract in contracts) {
-    final stages =
-        await (database.select(database.installmentStageConfigs)
-              ..where(
-                (stage) =>
-                    stage.ownerType.equals('contract') &
-                    stage.ownerId.equals(contract.id),
-              )
-              ..orderBy([(stage) => OrderingTerm.asc(stage.position)]))
-            .get();
-    var start = contract.borrowingDate;
+    final contractId = contract.read<String>('id');
+    final stages = await database
+        .customSelect(
+          "SELECT * FROM installment_stage_configs WHERE owner_type = 'contract' AND owner_id = ? ORDER BY position",
+          variables: [Variable<String>(contractId)],
+        )
+        .get();
+    var start = legacyInstallmentDate(contract, 'start_date');
     for (final stage in stages) {
-      if (stage.stageKind == 'deferment') {
-        start = stage.untilDate!;
+      if (stage.read<String>('stage_kind') == 'deferment') {
+        start = legacyInstallmentStageEnd(stage);
         continue;
       }
-      if (stage.referenceRateType != null) {
+      final rateType = stage.readNullable<String>('reference_rate_type');
+      if (rateType != null) {
+        final stageId = stage.read<String>('id');
         await database
             .into(database.installmentRepricingConfigs)
             .insert(
               InstallmentRepricingConfigsCompanion.insert(
-                id: '${stage.id}:repricing',
-                contractId: contract.id,
-                stageId: stage.id,
-                effectiveFrom: referenceDate(stage.accrualStartDate ?? start),
-                referenceRateType: stage.referenceRateType!,
-                spreadBp: stage.spreadBp!,
-                firstResetDate: referenceDate(stage.firstResetDate!),
-                firstEffectiveDate: referenceDate(stage.firstEffectiveDate!),
-                cycleMonths: stage.repricingCycleMonths!,
-                createdAt: Value(stage.createdAt),
+                id: '$stageId:repricing',
+                contractId: contractId,
+                stageId: stageId,
+                effectiveFrom: referenceDate(
+                  stage.readNullable<int>('accrual_start_date') == null
+                      ? start
+                      : legacyInstallmentDate(stage, 'accrual_start_date'),
+                ),
+                referenceRateType: rateType,
+                spreadBp: stage.read<int>('spread_bp'),
+                firstResetDate: referenceDate(
+                  legacyInstallmentDate(stage, 'first_reset_date'),
+                ),
+                firstEffectiveDate: referenceDate(
+                  legacyInstallmentDate(stage, 'first_effective_date'),
+                ),
+                cycleMonths: stage.read<int>('repricing_cycle_months'),
+                createdAt: Value(legacyInstallmentDate(stage, 'created_at')),
               ),
             );
       }
-      start = IntervalRepaymentDates(
-        firstDate: stage.firstDate!,
-        count: stage.periods!,
-        lastDate: stage.lastDate,
-        intervalMonths: stage.intervalMonths ?? 1,
-      ).getDates().last;
+      start = legacyInstallmentStageEnd(stage);
     }
   }
   await mergeLegacyRepricingRecords(database);

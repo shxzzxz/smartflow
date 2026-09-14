@@ -5,6 +5,7 @@ import '../../../../../core/money/money.dart';
 import '../../../../../core/money/rounding_mode.dart';
 import '../../../valobj/credit_error_code.dart';
 import '../../../valobj/equal_installment_amount.dart';
+import '../../../valobj/tail_difference_policy.dart';
 import '../../../valobj/interest_accrual_segment.dart';
 import 'interest_accrual_policy.dart';
 
@@ -28,6 +29,7 @@ class RepaymentMethodCalculationInput {
     required this.rates,
     required this.rounding,
     this.installmentAmount = const EqualInstallmentAmount.nominalRate(),
+    this.tailDifference = TailDifferencePolicy.lastPeriod,
   });
 
   final Money openingPrincipal;
@@ -35,6 +37,7 @@ class RepaymentMethodCalculationInput {
   final List<PeriodRate> rates;
   final RoundingMode rounding;
   final EqualInstallmentAmount installmentAmount;
+  final TailDifferencePolicy tailDifference;
 
   int get periodCount => rates.length;
 }
@@ -86,7 +89,9 @@ class EqualInstallmentCalculator implements RepaymentMethodCalculator {
       final interest = _interestFor(balance, input.rates[i], input.rounding);
       int principal;
       if (i == n - 1) {
-        principal = balance - end;
+        principal = switch (input.tailDifference) {
+          TailDifferencePolicy.lastPeriod => balance - end,
+        };
         if (principal < 0) {
           throw _invalid(
             'Installment amount repays the principal before the final period.',
@@ -154,7 +159,12 @@ class EqualPrincipalCalculator implements RepaymentMethodCalculator {
     final n = input.periodCount;
     final total =
         input.openingPrincipal.minorUnits - input.endPrincipal.minorUnits;
-    final principals = splitEvenly(total, n, input.rounding);
+    final principals = splitEvenly(
+      total,
+      n,
+      input.rounding,
+      tailDifference: input.tailDifference,
+    );
     final allocations = <InstallmentAmountAllocation>[];
     var balance = input.openingPrincipal.minorUnits;
     for (var i = 0; i < n; i++) {
@@ -193,7 +203,12 @@ class InterestFirstCalculator implements RepaymentMethodCalculator {
 }
 
 /// 把 [totalMinor] 均分为 [count] 份：每份按 [rounding] 落到分，尾差记入最后一份。
-List<int> splitEvenly(int totalMinor, int count, RoundingMode rounding) {
+List<int> splitEvenly(
+  int totalMinor,
+  int count,
+  RoundingMode rounding, {
+  TailDifferencePolicy tailDifference = TailDifferencePolicy.lastPeriod,
+}) {
   if (count <= 0) {
     throw ArgumentError.value(count, 'count', 'Must be > 0');
   }
@@ -206,7 +221,12 @@ List<int> splitEvenly(int totalMinor, int count, RoundingMode rounding) {
     share = totalMinor ~/ count;
     last = totalMinor - share * (count - 1);
   }
-  return [for (var i = 0; i < count - 1; i++) share, last];
+  return switch (tailDifference) {
+    TailDifferencePolicy.lastPeriod => [
+      for (var i = 0; i < count - 1; i++) share,
+      last,
+    ],
+  };
 }
 
 int _interestFor(int balanceMinor, PeriodRate rate, RoundingMode rounding) {

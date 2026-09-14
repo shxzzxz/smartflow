@@ -11,11 +11,12 @@ class EastmoneyReferenceRateSource implements ReferenceRateSource {
   @override
   int get order => 100;
   @override
-  Set<ReferenceRateType> get supportedTypes => ReferenceRateType.values.toSet();
+  Set<InterestRateType> get supportedTypes =>
+      InterestRateType.referenceTypes.toSet();
 
   @override
-  Future<Map<ReferenceRateType, List<ReferenceRate>>> fetch(
-    List<ReferenceRateType> types, {
+  Future<Map<InterestRateType, List<ReferenceRate>>> fetch(
+    List<InterestRateType> types, {
     required DateTime from,
     required DateTime through,
   }) async {
@@ -27,17 +28,18 @@ class EastmoneyReferenceRateSource implements ReferenceRateSource {
     final columns = {
       for (final type in types)
         type: switch (type) {
-          ReferenceRateType.lprOneYear => 'LPR1Y',
-          ReferenceRateType.lprFiveYearPlus => 'LPR5Y',
-          ReferenceRateType.loanBenchmarkShortTerm => 'RATE_1',
-          ReferenceRateType.loanBenchmarkLongTerm => 'RATE_2',
+          InterestRateType.lprOneYear => 'LPR1Y',
+          InterestRateType.lprFiveYearPlus => 'LPR5Y',
+          InterestRateType.loanBenchmarkShortTerm => 'RATE_1',
+          InterestRateType.loanBenchmarkLongTerm => 'RATE_2',
+          InterestRateType.fixed => throw ArgumentError('固定利率没有公共报价'),
         },
     };
     if (columns.isEmpty) return const {};
     final fetchStart = types.any((type) => !type.isLpr)
-        ? ReferenceRateType.loanBenchmarkShortTerm.historyStart
-        : start.isBefore(ReferenceRateType.lprOneYear.historyStart)
-        ? ReferenceRateType.lprOneYear.historyStart
+        ? InterestRateType.loanBenchmarkShortTerm.historyStart
+        : start.isBefore(InterestRateType.lprOneYear.historyStart)
+        ? InterestRateType.lprOneYear.historyStart
         : start;
     final rows = {for (final type in columns.keys) type: <ReferenceRate>[]};
     if (fetchStart.isAfter(end)) return rows;
@@ -103,7 +105,7 @@ class EastmoneyReferenceRateSource implements ReferenceRateSource {
     if (seen.length != count) {
       throw const FormatException('Incomplete Eastmoney reference rate pages.');
     }
-    final rates = <ReferenceRateType, List<ReferenceRate>>{};
+    final rates = <InterestRateType, List<ReferenceRate>>{};
     for (final entry in rows.entries) {
       entry.value.sort((a, b) => a.date.compareTo(b.date));
       final history = rates[entry.key] = [];

@@ -1,15 +1,29 @@
 import '../../../core/error/app_error_code.dart';
 
-enum ReferenceRateType {
+enum InterestRateType {
+  fixed,
   lprOneYear,
   lprFiveYearPlus,
   loanBenchmarkShortTerm,
   loanBenchmarkLongTerm;
 
+  static const referenceTypes = [
+    lprOneYear,
+    lprFiveYearPlus,
+    loanBenchmarkShortTerm,
+    loanBenchmarkLongTerm,
+  ];
+
+  bool get isFloating => this != fixed;
+
   bool get isLpr => this == lprOneYear || this == lprFiveYearPlus;
 
-  DateTime get historyStart =>
-      isLpr ? DateTime.utc(2019, 8, 20) : DateTime.utc(1991, 4, 21);
+  DateTime get historyStart => switch (this) {
+    fixed => throw StateError('固定利率没有公共参考利率历史'),
+    lprOneYear || lprFiveYearPlus => DateTime.utc(2019, 8, 20),
+    loanBenchmarkShortTerm ||
+    loanBenchmarkLongTerm => DateTime.utc(1991, 4, 21),
+  };
 }
 
 class ReferenceRate {
@@ -20,7 +34,7 @@ class ReferenceRate {
     required this.source,
   });
 
-  final ReferenceRateType type;
+  final InterestRateType type;
   final DateTime date;
   final int ratePpm;
   final String source;

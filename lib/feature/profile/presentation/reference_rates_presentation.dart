@@ -12,23 +12,23 @@ enum ReferenceRateGroup {
 
   String get dateLabel => this == lpr ? '公布日期' : '数据日期';
 
-  List<ReferenceRateType> get types => switch (this) {
+  List<InterestRateType> get types => switch (this) {
     lpr => const [
-      ReferenceRateType.lprOneYear,
-      ReferenceRateType.lprFiveYearPlus,
+      InterestRateType.lprOneYear,
+      InterestRateType.lprFiveYearPlus,
     ],
     loanBenchmark => const [
-      ReferenceRateType.loanBenchmarkShortTerm,
-      ReferenceRateType.loanBenchmarkLongTerm,
+      InterestRateType.loanBenchmarkShortTerm,
+      InterestRateType.loanBenchmarkLongTerm,
     ],
   };
 }
 
 class ReferenceRateTableRow {
-  ReferenceRateTableRow(this.date, Map<ReferenceRateType, ReferenceRate> rates)
+  ReferenceRateTableRow(this.date, Map<InterestRateType, ReferenceRate> rates)
     : rates = Map.unmodifiable(rates);
   final DateTime date;
-  final Map<ReferenceRateType, ReferenceRate> rates;
+  final Map<InterestRateType, ReferenceRate> rates;
 }
 
 List<ReferenceRateTableRow> referenceRateTableRows(
@@ -36,7 +36,7 @@ List<ReferenceRateTableRow> referenceRateTableRows(
   ReferenceRateHistory? history, {
   int? year,
 }) {
-  final grouped = <DateTime, Map<ReferenceRateType, ReferenceRate>>{};
+  final grouped = <DateTime, Map<InterestRateType, ReferenceRate>>{};
   for (final rate in history?.rates ?? const <ReferenceRate>[]) {
     if (!group.types.contains(rate.type) ||
         rate.date.isAfter(history!.asOf) ||
@@ -52,7 +52,7 @@ List<ReferenceRateTableRow> referenceRateTableRows(
 }
 
 ReferenceRate? currentReferenceRate(
-  ReferenceRateType type,
+  InterestRateType type,
   ReferenceRateHistory? history,
 ) {
   ReferenceRate? current;

@@ -458,7 +458,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         stageTerms: InstallmentContractTerms(
           dayCount: command.stageTerms.dayCount,
           rounding: command.stageTerms.rounding,
-          tailDifference: command.stageTerms.tailDifference,
           stages: [
             for (final stage in command.stageTerms.stages)
               InstallmentContractStage(
@@ -467,8 +466,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
               ),
           ],
         ),
-        productId: command.productId,
-        productName: command.productName,
         note: command.note,
         createdAt: DateTime.now(),
         newScheduleId: _idGenerator.newId,

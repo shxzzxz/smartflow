@@ -14,6 +14,7 @@ import '../../../domain/credit/valobj/interest_rate.dart';
 import '../../../domain/credit/valobj/floating_rate.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
+import '../../../domain/credit/valobj/tail_difference_policy.dart';
 
 enum StageInput {
   periods,
@@ -37,10 +38,10 @@ class InstallmentStageDraft {
     this.lastDate,
     this.untilDate,
     this.accrualStartDate,
-    this.floating = false,
-    this.referenceRateType = ReferenceRateType.lprFiveYearPlus,
+    this.rateType = InterestRateType.fixed,
     this.repricingCycleMonths = 12,
-    this.repricingPaymentTiming = RepricingPaymentTiming.nextPeriod,
+    this.inPeriodRepricingPolicy = InPeriodRepricingPolicy.preservePrincipal,
+    this.tailDifference = TailDifferencePolicy.lastPeriod,
     this.firstResetDate,
     this.firstEffectiveDate,
     Map<StageInput, String> inputs = const {StageInput.interval: '1'},
@@ -53,10 +54,11 @@ class InstallmentStageDraft {
   final InstallmentAmountAlgorithm algorithm;
   final DateTime? firstDate, lastDate, untilDate, accrualStartDate;
   final Map<StageInput, String> inputs;
-  final bool floating;
-  final ReferenceRateType referenceRateType;
+  bool get floating => rateType.isFloating;
+  final InterestRateType rateType;
   final int repricingCycleMonths;
-  final RepricingPaymentTiming repricingPaymentTiming;
+  final InPeriodRepricingPolicy inPeriodRepricingPolicy;
+  final TailDifferencePolicy tailDifference;
   final DateTime? firstResetDate, firstEffectiveDate;
   String text(StageInput field) => inputs[field] ?? '';
 
@@ -70,10 +72,10 @@ class InstallmentStageDraft {
     Object? lastDate = _unchanged,
     DateTime? untilDate,
     Map<StageInput, String>? inputs,
-    bool? floating,
-    ReferenceRateType? referenceRateType,
+    InterestRateType? rateType,
     int? repricingCycleMonths,
-    RepricingPaymentTiming? repricingPaymentTiming,
+    InPeriodRepricingPolicy? inPeriodRepricingPolicy,
+    TailDifferencePolicy? tailDifference,
     DateTime? firstResetDate,
     DateTime? firstEffectiveDate,
   }) => InstallmentStageDraft(
@@ -88,11 +90,11 @@ class InstallmentStageDraft {
     untilDate: untilDate ?? this.untilDate,
     accrualStartDate: accrualStartDate,
     inputs: inputs ?? this.inputs,
-    floating: floating ?? this.floating,
-    referenceRateType: referenceRateType ?? this.referenceRateType,
+    rateType: rateType ?? this.rateType,
     repricingCycleMonths: repricingCycleMonths ?? this.repricingCycleMonths,
-    repricingPaymentTiming:
-        repricingPaymentTiming ?? this.repricingPaymentTiming,
+    inPeriodRepricingPolicy:
+        inPeriodRepricingPolicy ?? this.inPeriodRepricingPolicy,
+    tailDifference: tailDifference ?? this.tailDifference,
     firstResetDate: firstResetDate ?? this.firstResetDate,
     firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
   );
@@ -105,7 +107,7 @@ class InstallmentStageDraft {
     final custom = value == InstallmentRepaymentMethod.custom;
     return copyWith(
       method: value,
-      floating: flat || custom ? false : floating,
+      rateType: flat || custom ? InterestRateType.fixed : rateType,
       lastDate: flat ? null : lastDate,
       algorithm: value == InstallmentRepaymentMethod.equalInstallment
           ? algorithm
@@ -131,6 +133,14 @@ class InstallmentStageDraft {
         },
       );
 
+  InstallmentStageDraft changeRateType(InterestRateType value) => copyWith(
+    rateType: value,
+    ratePeriod: value.isFloating ? InterestRatePeriod.annual : ratePeriod,
+    algorithm: value.isFloating && algorithm == InstallmentAmountAlgorithm.fixed
+        ? InstallmentAmountAlgorithm.nominalRate
+        : algorithm,
+  );
+
   InstallmentStageRule toRule() {
     if (deferment) return InstallmentStageRule.deferment(id: id);
     final flat = method == InstallmentRepaymentMethod.flatFee;
@@ -145,10 +155,14 @@ class InstallmentStageDraft {
       amountAlgorithm: method == InstallmentRepaymentMethod.equalInstallment
           ? algorithm
           : null,
+      rateType: rateType,
+      repricingCycleMonths: repricingCycleMonths,
+      inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+      tailDifference: tailDifference,
     );
   }
 
-  InstallmentContractStage toContractStage() {
+  InstallmentContractStage toContractStage({bool includeRepricing = true}) {
     if (deferment) {
       if (untilDate == null) _invalid('请选择免还结束日');
       return InstallmentContractStage(
@@ -158,21 +172,20 @@ class InstallmentStageDraft {
     }
     if (firstDate == null) _invalid('请选择首期还款日');
     FloatingRateRule? floatingRule;
-    if (floating) {
+    if (floating && includeRepricing) {
       final spread = int.tryParse(text(StageInput.spreadBp).trim());
       if (spread == null ||
           firstResetDate == null ||
           firstEffectiveDate == null ||
           text(StageInput.rate).trim().isEmpty) {
-        _invalid('请填写初始执行年利率、加减基点和首次重定价日期');
+        _invalid('请填写利率、加减基点和首次重定价日期');
       }
       floatingRule = FloatingRateRule(
-        referenceRateType: referenceRateType,
+        referenceRateType: rateType,
         spreadBp: spread,
         firstResetDate: firstResetDate!,
         firstEffectiveDate: firstEffectiveDate!,
         cycleMonths: repricingCycleMonths,
-        paymentTiming: repricingPaymentTiming,
       );
       floatingRule.validate();
     }
@@ -207,7 +220,8 @@ class InstallmentStageDraft {
         accrual: accrual,
         rate: rate,
         floatingRate: floatingRule,
-        repricingPaymentTiming: repricingPaymentTiming,
+        inPeriodRepricingPolicy: inPeriodRepricingPolicy,
+        tailDifference: tailDifference,
         accrualStartDate: accrualStartDate,
         endPrincipal: _money(text(StageInput.endPrincipal), '期末本金'),
         fee: _money(text(StageInput.fee), '手续费') ?? Money.zero(),
@@ -340,11 +354,14 @@ class InstallmentTermsDraft {
   List<InstallmentStageRule> productRules() => [
     for (final s in stages) s.toRule(),
   ];
-  InstallmentContractTerms contractTerms() {
+  InstallmentContractTerms contractTerms({bool includeRepricing = true}) {
     final terms = InstallmentContractTerms(
       dayCount: dayCount,
       rounding: rounding,
-      stages: [for (final s in stages) s.toContractStage()],
+      stages: [
+        for (final s in stages)
+          s.toContractStage(includeRepricing: includeRepricing),
+      ],
     );
     terms.validate();
     return terms;
@@ -367,68 +384,78 @@ class InstallmentTermsDraft {
           accrual: s.accrual ?? InterestAccrualMethod.monthly,
           algorithm:
               s.amountAlgorithm ?? InstallmentAmountAlgorithm.nominalRate,
+          rateType: s.rateType ?? InterestRateType.fixed,
+          repricingCycleMonths: s.repricingCycleMonths ?? 12,
+          inPeriodRepricingPolicy:
+              s.inPeriodRepricingPolicy ??
+              InPeriodRepricingPolicy.preservePrincipal,
+          tailDifference: s.tailDifference ?? TailDifferencePolicy.lastPeriod,
           inputs: {StageInput.interval: '${s.intervalMonths ?? 1}'},
         ),
     ],
   );
 
-  factory InstallmentTermsDraft.contract(InstallmentContractTerms terms) =>
-      InstallmentTermsDraft(
-        dayCount: terms.dayCount,
-        rounding: terms.rounding,
-        stages: [
-          for (final config in terms.stages)
-            switch (config.terms) {
-              DefermentStage(:final until) => InstallmentStageDraft(
-                id: config.id,
-                deferment: true,
-                untilDate: until,
-              ),
-              AmortizingStage s => InstallmentStageDraft(
-                id: config.id,
-                floating: s.floatingRate != null,
-                referenceRateType:
-                    s.floatingRate?.referenceRateType ??
-                    ReferenceRateType.lprFiveYearPlus,
-                repricingCycleMonths: s.floatingRate?.cycleMonths ?? 12,
-                repricingPaymentTiming: s.repricingPaymentTiming,
-                firstResetDate: s.floatingRate?.firstResetDate,
-                firstEffectiveDate: s.floatingRate?.firstEffectiveDate,
-                method: s.method,
-                firstDate: s.dates.getDates().first,
-                lastDate: s.dates is IntervalRepaymentDates
-                    ? (s.dates as IntervalRepaymentDates).lastDate
-                    : s.dates.getDates().last,
-                accrualStartDate: s.accrualStartDate,
-                ratePeriod: s.rate?.period ?? InterestRatePeriod.annual,
-                accrual: s.accrual,
-                algorithm: switch (s.installmentAmount) {
-                  NominalRateInstallmentAmount() =>
-                    InstallmentAmountAlgorithm.nominalRate,
-                  ActualRateInstallmentAmount() =>
-                    InstallmentAmountAlgorithm.actualRate,
-                  FixedInstallmentAmount() => InstallmentAmountAlgorithm.fixed,
-                },
-                inputs: {
-                  StageInput.interval: '${s.dates.intervalMonths}',
-                  StageInput.spreadBp: '${s.floatingRate?.spreadBp ?? 0}',
-                  StageInput.periods: '${s.dates.getDates().length}',
-                  StageInput.rate: s.rate == null
-                      ? ''
-                      : '${s.rate!.ppm / 10000}',
-                  StageInput.fee: s.fee.format(),
-                  StageInput.endPrincipal: s.endPrincipal?.format() ?? '',
-                  StageInput.fixedAmount:
-                      s.installmentAmount is FixedInstallmentAmount
-                      ? (s.installmentAmount as FixedInstallmentAmount).amount
-                            .format()
-                      : '',
-                },
-              ),
-            },
-        ],
-      );
+  factory InstallmentTermsDraft.contract(
+    InstallmentContractTerms terms, {
+    Map<String, FloatingRateRule> repricingRules = const {},
+  }) => InstallmentTermsDraft(
+    dayCount: terms.dayCount,
+    rounding: terms.rounding,
+    stages: [
+      for (final config in terms.stages)
+        switch (config.terms) {
+          DefermentStage(:final until) => InstallmentStageDraft(
+            id: config.id,
+            deferment: true,
+            untilDate: until,
+          ),
+          AmortizingStage s => _contractRepaymentDraft(
+            config.id,
+            s,
+            repricingRules[config.id] ?? s.floatingRate,
+          ),
+        },
+    ],
+  );
 }
+
+InstallmentStageDraft _contractRepaymentDraft(
+  String id,
+  AmortizingStage s,
+  FloatingRateRule? rule,
+) => InstallmentStageDraft(
+  id: id,
+  rateType: rule?.referenceRateType ?? InterestRateType.fixed,
+  repricingCycleMonths: rule?.cycleMonths ?? 12,
+  inPeriodRepricingPolicy: s.inPeriodRepricingPolicy,
+  tailDifference: s.tailDifference,
+  firstResetDate: rule?.firstResetDate,
+  firstEffectiveDate: rule?.firstEffectiveDate,
+  method: s.method,
+  firstDate: s.dates.getDates().first,
+  lastDate: s.dates is IntervalRepaymentDates
+      ? (s.dates as IntervalRepaymentDates).lastDate
+      : s.dates.getDates().last,
+  accrualStartDate: s.accrualStartDate,
+  ratePeriod: s.rate?.period ?? InterestRatePeriod.annual,
+  accrual: s.accrual,
+  algorithm: switch (s.installmentAmount) {
+    NominalRateInstallmentAmount() => InstallmentAmountAlgorithm.nominalRate,
+    ActualRateInstallmentAmount() => InstallmentAmountAlgorithm.actualRate,
+    FixedInstallmentAmount() => InstallmentAmountAlgorithm.fixed,
+  },
+  inputs: {
+    StageInput.interval: '${s.dates.intervalMonths}',
+    StageInput.spreadBp: '${rule?.spreadBp ?? 0}',
+    StageInput.periods: '${s.dates.getDates().length}',
+    StageInput.rate: s.rate == null ? '' : '${s.rate!.ppm / 10000}',
+    StageInput.fee: s.fee.format(),
+    StageInput.endPrincipal: s.endPrincipal?.format() ?? '',
+    StageInput.fixedAmount: s.installmentAmount is FixedInstallmentAmount
+        ? (s.installmentAmount as FixedInstallmentAmount).amount.format()
+        : '',
+  },
+);
 
 const _unchanged = Object();
 

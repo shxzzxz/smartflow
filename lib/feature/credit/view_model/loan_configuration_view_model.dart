@@ -69,6 +69,8 @@ class LoanConfigurationState {
   final String? productId;
   final InstallmentConfigurationDraft? installment;
 
+  bool get canSelectProduct => installment?.basicInfoReadOnly != true;
+
   String get submitLabel =>
       selection || installment != null ? '使用此配置' : '生成还款计划';
 
@@ -141,6 +143,7 @@ class LoanConfigurationViewModel extends _$LoanConfigurationViewModel {
       });
 
   void selectProduct(InstallmentProductReadModel product) {
+    if (!state.canSelectProduct) return;
     var terms = InstallmentTermsDraft.product(
       product.stages,
       product.dayCount,
@@ -179,7 +182,7 @@ class LoanConfigurationViewModel extends _$LoanConfigurationViewModel {
         message: '请输入有效本金',
       );
     }
-    current.terms.contractTerms();
+    current.terms.contractTerms(includeRepricing: !initial.basicInfoReadOnly);
     return InstallmentConfigurationDraft(
       principal: principal,
       borrowingDate: current.borrowingDate,

@@ -16,8 +16,8 @@ import 'package:smartflow/application/data_management/backup/backup_models.dart'
 
 import '../../helper/test_app_database.dart';
 
-const _type = ReferenceRateType.lprOneYear;
-ReferenceRate _rate(String date, int ppm, {ReferenceRateType type = _type}) =>
+const _type = InterestRateType.lprOneYear;
+ReferenceRate _rate(String date, int ppm, {InterestRateType type = _type}) =>
     ReferenceRate(
       type: type,
       date: DateTime.parse('${date}T00:00:00Z'),
@@ -151,7 +151,7 @@ void main() {
   test(
     'history merges a whole group through today and shares one source request',
     () async {
-      const other = ReferenceRateType.lprFiveYearPlus;
+      const other = InterestRateType.lprFiveYearPlus;
       f.source.rows = [
         _rate('2026-01-20', 30000),
         _rate('2026-02-20', 29000),
@@ -223,7 +223,7 @@ void main() {
 
   for (final mode in ['complete', 'partial', 'failure']) {
     test('source priority overrides reverse injection: $mode', () async {
-      const other = ReferenceRateType.lprFiveYearPlus;
+      const other = InterestRateType.lprFiveYearPlus;
       await f.seed([_rate('2026-01-20', 30000)]);
       await f.seed([_rate('2026-01-20', 35000, type: other)]);
       final calls = <String>[];
@@ -386,7 +386,7 @@ void main() {
     'unsupported sources are skipped and failures try the next supported source',
     () async {
       final unsupported = _Source(key: 'unsupported', order: 0)
-        ..supported = {ReferenceRateType.loanBenchmarkLongTerm};
+        ..supported = {InterestRateType.loanBenchmarkLongTerm};
       final failing = _Source(key: 'failing', order: 50)..fail = true;
       f.sources.insertAll(0, [unsupported, failing]);
       f.source.rows = [_rate('2026-01-20', 30000)];
@@ -439,7 +439,7 @@ void main() {
   test(
     'multiple types share the earliest local anchor and latest requested date',
     () async {
-      const other = ReferenceRateType.lprFiveYearPlus;
+      const other = InterestRateType.lprFiveYearPlus;
       await f.seed([_rate('2026-01-20', 30000)]);
       await f.seed([_rate('2025-12-22', 35000, type: other)]);
       f.source.rows = [
@@ -480,7 +480,7 @@ void main() {
   test(
     'local coverage excludes a type from fetching and empty history expands the range',
     () async {
-      const other = ReferenceRateType.loanBenchmarkLongTerm;
+      const other = InterestRateType.loanBenchmarkLongTerm;
       await f.seed([_rate('2026-03-01', 30000)]);
       f.source.rows = [_rate('2015-10-24', 49000, type: other)];
       final results = await f.service.resolveMany(
@@ -497,8 +497,8 @@ void main() {
   test(
     'partial sources only retry remaining types and preserve successes on failure',
     () async {
-      const other = ReferenceRateType.lprFiveYearPlus;
-      const missing = ReferenceRateType.loanBenchmarkLongTerm;
+      const other = InterestRateType.lprFiveYearPlus;
+      const missing = InterestRateType.loanBenchmarkLongTerm;
       f.source.rows = [_rate('2026-01-20', 30000)];
       f.source.omitted = {other, missing};
       final failing = _Source(key: 'failing', order: 200)..fail = true;
@@ -528,7 +528,7 @@ void main() {
   test(
     'a conflict rolls back only its type while another type is committed',
     () async {
-      const other = ReferenceRateType.lprFiveYearPlus;
+      const other = InterestRateType.lprFiveYearPlus;
       await f.seed([_rate('2026-01-20', 30000)]);
       f.source.rows = [
         _rate('2026-02-20', 28000),
@@ -598,7 +598,7 @@ void main() {
       );
       expect(fallback.calls.single.types, [_type]);
       final missing = await f.service.resolveOne(
-        ReferenceRateType.loanBenchmarkLongTerm,
+        InterestRateType.loanBenchmarkLongTerm,
         DateTime(2026, 2),
       );
       expect(missing.reason, ReferenceRateMissingReason.noHistory);
@@ -628,7 +628,7 @@ void main() {
     'resolution isolates types and preserves input date order and boundaries',
     () async {
       await f.seed([_rate('2026-01-20', 30000), _rate('2026-02-20', 29000)]);
-      const otherType = ReferenceRateType.loanBenchmarkLongTerm;
+      const otherType = InterestRateType.loanBenchmarkLongTerm;
       await f.seed([
         _rate('2026-01-20', 49000, type: otherType),
         _rate('2026-02-20', 48000, type: otherType),
@@ -653,7 +653,7 @@ void main() {
   test(
     'all four types survive logical backup replacement without sync metadata',
     () async {
-      for (final type in ReferenceRateType.values) {
+      for (final type in InterestRateType.referenceTypes) {
         await f.seed([_rate('2026-01-20', 30000, type: type)]);
       }
       final snapshot = await DriftBackupGateway(f.db).readSnapshot();
@@ -723,21 +723,21 @@ class _Source implements ReferenceRateSource {
   final String key;
   @override
   final int order;
-  Set<ReferenceRateType> supported = ReferenceRateType.values.toSet();
+  Set<InterestRateType> supported = InterestRateType.referenceTypes.toSet();
   @override
-  Set<ReferenceRateType> get supportedTypes => supported;
+  Set<InterestRateType> get supportedTypes => supported;
   List<ReferenceRate> rows = [];
   bool fail = false;
   Exception? failure;
   StackTrace? failureStack;
   Completer<void>? gate;
   final started = Completer<void>();
-  Set<ReferenceRateType> omitted = {};
+  Set<InterestRateType> omitted = {};
   final calls =
-      <({List<ReferenceRateType> types, DateTime from, DateTime through})>[];
+      <({List<InterestRateType> types, DateTime from, DateTime through})>[];
   @override
-  Future<Map<ReferenceRateType, List<ReferenceRate>>> fetch(
-    List<ReferenceRateType> types, {
+  Future<Map<InterestRateType, List<ReferenceRate>>> fetch(
+    List<InterestRateType> types, {
     required DateTime from,
     required DateTime through,
   }) async {

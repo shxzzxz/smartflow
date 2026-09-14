@@ -1,3 +1,4 @@
+import '../../helper/legacy_installment_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
 import 'package:smartflow/application/credit/installment/query/installment_query_service.dart';
@@ -64,7 +65,7 @@ void main() {
               ),
               endPrincipal: const Money(minorUnits: 5000000),
               floatingRate: FloatingRateRule(
-                referenceRateType: ReferenceRateType.lprFiveYearPlus,
+                referenceRateType: InterestRateType.lprFiveYearPlus,
                 spreadBp: -30,
                 firstResetDate: DateTime.utc(2026, 3, 15),
                 firstEffectiveDate: DateTime.utc(2026, 3, 15),
@@ -205,7 +206,7 @@ void main() {
           ),
           endPrincipal: end,
           floatingRate: FloatingRateRule(
-            referenceRateType: ReferenceRateType.lprFiveYearPlus,
+            referenceRateType: InterestRateType.lprFiveYearPlus,
             spreadBp: -30,
             firstResetDate: reset,
             firstEffectiveDate: effective,
@@ -291,7 +292,7 @@ void main() {
                     period: InterestRatePeriod.annual,
                   ),
                   floatingRate: FloatingRateRule(
-                    referenceRateType: ReferenceRateType.lprFiveYearPlus,
+                    referenceRateType: InterestRateType.lprFiveYearPlus,
                     spreadBp: -30,
                     firstResetDate: DateTime(2026, 9, 20),
                     firstEffectiveDate: DateTime(2026, 10, 1),
@@ -567,7 +568,7 @@ void main() {
       await f.service.prepare('loan', f.currentDate);
       final snapshot = await DriftBackupGateway(f.db).readSnapshot();
       final tables = <String, Iterable<BackupJson>>{
-        ...snapshot.tables,
+        ...legacyInstallmentSnapshot(snapshot, stageRepricing: true),
         'installment_repricing_records': [
           for (final row in snapshot.rows('installment_repricing_records'))
             {...row, 'applied': row['status'] == 'applied'}..remove('status'),
@@ -610,7 +611,7 @@ void main() {
       f.currentDate = now;
       f.source.rates.add(
         ReferenceRate(
-          type: ReferenceRateType.lprFiveYearPlus,
+          type: InterestRateType.lprFiveYearPlus,
           date: DateTime.utc(2025, 12, 20),
           ratePpm: 30000,
           source: f.source.key,
@@ -626,7 +627,7 @@ void main() {
       expect(change.rate.ppm, 36000);
       // General loan rate lookup still includes a published quote on the day.
       final inclusive = await f.referenceRates.resolveOne(
-        ReferenceRateType.lprFiveYearPlus,
+        InterestRateType.lprFiveYearPlus,
         DateTime(2025, 12, 20),
       );
       expect(inclusive.rate?.ratePpm, 30000);
@@ -640,7 +641,7 @@ void main() {
         ..clear()
         ..add(
           ReferenceRate(
-            type: ReferenceRateType.lprFiveYearPlus,
+            type: InterestRateType.lprFiveYearPlus,
             date: DateTime.utc(2025, 12, 20),
             ratePpm: 30000,
             source: f.source.key,
@@ -659,7 +660,7 @@ void main() {
     () async {
       await f.service.prepare('loan', DateTime(2026, 1, 5));
       f.currentDate = DateTime(2026, 3, 20);
-      f.source.omitted.add(ReferenceRateType.lprFiveYearPlus);
+      f.source.omitted.add(InterestRateType.lprFiveYearPlus);
       expect(await f.service.runDue(f.currentDate), (
         changed: true,
         needsRetry: true,
@@ -889,14 +890,14 @@ void main() {
   test(
     'due loans with different rate types share one source request',
     () async {
-      await f.seed(id: 'other', type: ReferenceRateType.lprOneYear);
+      await f.seed(id: 'other', type: InterestRateType.lprOneYear);
       final result = await f.service.runDue(DateTime(2026, 1, 5));
       expect(result, (changed: true, needsRetry: false));
       expect(
         f.source.calls.single,
         unorderedEquals([
-          ReferenceRateType.lprOneYear,
-          ReferenceRateType.lprFiveYearPlus,
+          InterestRateType.lprOneYear,
+          InterestRateType.lprFiveYearPlus,
         ]),
       );
       expect((await f.records.list('loan')).single.applied, isTrue);
@@ -907,8 +908,8 @@ void main() {
   test(
     'a failed type leaves only its loan waiting and can retry the same day',
     () async {
-      await f.seed(id: 'other', type: ReferenceRateType.lprOneYear);
-      f.source.omitted.add(ReferenceRateType.lprOneYear);
+      await f.seed(id: 'other', type: InterestRateType.lprOneYear);
+      f.source.omitted.add(InterestRateType.lprOneYear);
       expect(await f.service.runDue(DateTime(2026, 1, 5)), (
         changed: true,
         needsRetry: true,
@@ -920,12 +921,12 @@ void main() {
         changed: true,
         needsRetry: false,
       ));
-      expect(f.source.calls.last, [ReferenceRateType.lprOneYear]);
+      expect(f.source.calls.last, [InterestRateType.lprOneYear]);
       expect((await f.records.list('other')).single.applied, isTrue);
     },
   );
 
-  for (final type in ReferenceRateType.values) {
+  for (final type in InterestRateType.referenceTypes) {
     test(
       '${type.name} survives repricing, persistence and backup replacement',
       () async {
@@ -967,22 +968,25 @@ void main() {
     () async {
       await f.service.runDue(DateTime(2026, 1, 5));
       final snapshot = await DriftBackupGateway(f.db).readSnapshot();
-      final tables = <String, Iterable<BackupJson>>{...snapshot.tables};
+      final tables = legacyInstallmentSnapshot(snapshot, stageRepricing: true);
       final configuration = snapshot
           .rows('installment_repricing_configs')
           .single;
       tables.remove('installment_repricing_configs');
       tables.remove('installment_interest_adjustments');
       tables['installment_stage_configs'] = [
-        for (final row in snapshot.rows('installment_stage_configs'))
-          {
-            ...row,
-            'lprTenor': 'fiveYearPlus',
-            'spreadBp': configuration['spreadBp'],
-            'firstResetDate': configuration['firstResetDate'],
-            'firstEffectiveDate': configuration['firstEffectiveDate'],
-            'repricingCycleMonths': configuration['cycleMonths'],
-          }..remove('referenceRateType'),
+        for (final row in tables['installment_stage_configs']!)
+          if (row['ownerType'] != 'contract' || row['stageKind'] != 'repayment')
+            row
+          else
+            {
+              ...row,
+              'lprTenor': 'fiveYearPlus',
+              'spreadBp': configuration['spreadBp'],
+              'firstResetDate': configuration['firstResetDate'],
+              'firstEffectiveDate': configuration['firstEffectiveDate'],
+              'repricingCycleMonths': configuration['cycleMonths'],
+            }..remove('referenceRateType'),
       ];
       tables['installment_repricing_records'] = [
         for (final row in snapshot.rows('installment_repricing_records'))
@@ -1011,7 +1015,7 @@ void main() {
       ).findContract('loan'))!;
       expect(
         restored.repricingConfigurations.single.rule.referenceRateType,
-        ReferenceRateType.lprFiveYearPlus,
+        InterestRateType.lprFiveYearPlus,
       );
       expect(
         restored.repricingConfigurations.single.lastGeneratedDate,
@@ -1287,18 +1291,19 @@ void main() {
 }
 
 class _Source implements ReferenceRateSource {
-  final calls = <List<ReferenceRateType>>[];
-  final omitted = <ReferenceRateType>{};
+  final calls = <List<InterestRateType>>[];
+  final omitted = <InterestRateType>{};
   @override
   String get key => 'fixture';
   @override
   int get order => 100;
   @override
-  Set<ReferenceRateType> get supportedTypes => ReferenceRateType.values.toSet();
+  Set<InterestRateType> get supportedTypes =>
+      InterestRateType.referenceTypes.toSet();
 
   final rates = [
     ReferenceRate(
-      type: ReferenceRateType.lprFiveYearPlus,
+      type: InterestRateType.lprFiveYearPlus,
       date: DateTime.utc(2025, 12, 19),
       ratePpm: 39000,
       source: 'fixture',
@@ -1306,8 +1311,8 @@ class _Source implements ReferenceRateSource {
   ];
 
   @override
-  Future<Map<ReferenceRateType, List<ReferenceRate>>> fetch(
-    List<ReferenceRateType> types, {
+  Future<Map<InterestRateType, List<ReferenceRate>>> fetch(
+    List<InterestRateType> types, {
     required DateTime from,
     required DateTime through,
   }) async {
@@ -1355,7 +1360,7 @@ class _Fixture {
   );
   Future<void> seed({
     String id = 'loan',
-    ReferenceRateType type = ReferenceRateType.lprFiveYearPlus,
+    InterestRateType type = InterestRateType.lprFiveYearPlus,
     InstallmentContractTerms? stageTerms,
     Money principal = const Money(minorUnits: 8000000),
     DateTime? borrowingDate,
@@ -1439,7 +1444,7 @@ class _Fixture {
                 period: InterestRatePeriod.annual,
               ),
               floatingRate: FloatingRateRule(
-                referenceRateType: ReferenceRateType.lprFiveYearPlus,
+                referenceRateType: InterestRateType.lprFiveYearPlus,
                 spreadBp: -30,
                 firstResetDate: DateTime.utc(2025, 1, 1),
                 firstEffectiveDate: DateTime.utc(2025, 1, 2),
@@ -1452,7 +1457,7 @@ class _Fixture {
     );
     source.rates.add(
       ReferenceRate(
-        type: ReferenceRateType.lprFiveYearPlus,
+        type: InterestRateType.lprFiveYearPlus,
         date: DateTime.utc(2024, 12, 20),
         ratePpm: 39000,
         source: source.key,

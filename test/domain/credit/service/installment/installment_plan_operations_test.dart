@@ -38,7 +38,7 @@ RateChange rateChange(int month, int day, int ppm) => RateChange(
   resetDate: date(month, day),
   effectiveDate: date(month, day),
   referenceRate: ReferenceRate(
-    type: ReferenceRateType.lprOneYear,
+    type: InterestRateType.lprOneYear,
     date: date(month, day - 1),
     ratePpm: ppm,
     source: 'test',

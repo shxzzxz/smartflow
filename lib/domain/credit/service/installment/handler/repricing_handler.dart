@@ -86,8 +86,8 @@ class RepricingHandler {
     );
     final nextPeriod =
         context.stage.method == InstallmentRepaymentMethod.equalInstallment &&
-        context.stage.repricingPaymentTiming ==
-            RepricingPaymentTiming.nextPeriod;
+        context.stage.inPeriodRepricingPolicy ==
+            InPeriodRepricingPolicy.preservePrincipal;
     if (nextPeriod) {
       return (
         allocation: InstallmentAmountAllocation(

@@ -279,7 +279,7 @@ class _OperationDialogState extends State<_OperationDialog> {
   late DateTime _start, _reset, _end;
   late final TextEditingController _number;
   late String _stageId;
-  var _type = ReferenceRateType.lprFiveYearPlus;
+  var _type = InterestRateType.lprFiveYearPlus;
   var _cycle = 12;
   bool _submitting = false;
   String? _error;
@@ -318,7 +318,7 @@ class _OperationDialogState extends State<_OperationDialog> {
         : range.start;
     _reset = _start;
     _end = _start;
-    _type = config?.rule.referenceRateType ?? ReferenceRateType.lprFiveYearPlus;
+    _type = config?.rule.referenceRateType ?? InterestRateType.lprFiveYearPlus;
     _cycle = config?.rule.cycleMonths ?? 12;
     _number.text = '${config?.rule.spreadBp ?? 0}';
   }
@@ -375,11 +375,11 @@ class _OperationDialogState extends State<_OperationDialog> {
                 _dateField('重定价生效日', _end, (date) => _end = date),
               ],
               if (widget.kind != _OperationKind.adjustment) ...[
-                AppDropdownFormField<ReferenceRateType>(
-                  labelText: '参考利率类型',
+                AppDropdownFormField<InterestRateType>(
+                  labelText: '利率类型',
                   value: _type,
                   items: [
-                    for (final type in ReferenceRateType.values)
+                    for (final type in InterestRateType.referenceTypes)
                       DropdownMenuItem(
                         value: type,
                         child: Text(referenceRateTypeLabel(type)),

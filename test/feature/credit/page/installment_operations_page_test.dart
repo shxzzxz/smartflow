@@ -62,7 +62,7 @@ void main() {
       await pump(tester);
       await tester.tap(find.text('新增重定价'));
       await tester.pumpAndSettle();
-      expect(find.text('参考利率类型'), findsOneWidget);
+      expect(find.text('利率类型'), findsOneWidget);
       expect(find.text('加减基点（BP）'), findsOneWidget);
       expect(find.text('重定价周期'), findsNothing);
       await tester.enterText(find.byType(TextFormField), '-30');
@@ -70,7 +70,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(repricing.created.single.bp, -30);
       expect(repricing.created.single.stageId, 'stage');
-      expect(repricing.created.single.type, ReferenceRateType.lprFiveYearPlus);
+      expect(repricing.created.single.type, InterestRateType.lprFiveYearPlus);
       expect(find.byType(AlertDialog), findsNothing);
       expect(tester.takeException(), isNull);
     },

@@ -114,8 +114,6 @@ void main() {
                   )
                   .requireValue
               as InstallmentFormLoaded;
-      expect(loaded.productId, 'builtin-loan-equal-principal');
-      expect(loaded.customRules, isTrue);
       expect(loaded.termsDraft.stages.single.text(StageInput.periods), '6');
       expect(tester.takeException(), isNull);
     },

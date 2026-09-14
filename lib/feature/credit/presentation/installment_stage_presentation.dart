@@ -98,7 +98,7 @@ InstallmentStageSummaryPresentation presentInstallmentStageSummary({
               : '$unit利率 $rate%',
       ].join(' · '),
       if (stage.floating)
-        '${referenceRateTypeLabel(stage.referenceRateType)} ${stage.text(StageInput.spreadBp)} BP · 每 ${stage.repricingCycleMonths} 个月重定价',
+        '${referenceRateTypeLabel(stage.rateType)} ${stage.text(StageInput.spreadBp)} BP · 每 ${stage.repricingCycleMonths} 个月重定价',
       range,
     ],
     endDate: endDate,

@@ -46,9 +46,6 @@ class InstallmentContract {
     this.sourceRepaymentId,
     this.note,
     required InstallmentContractTerms stageTerms,
-    this.productId,
-    this.productName,
-    this.customRules = false,
     List<InstallmentRepricingConfiguration> repricingConfigurations = const [],
     List<InstallmentRepricing> repricings = const [],
     this.interestAdjustments = const [],
@@ -73,9 +70,6 @@ class InstallmentContract {
   InstallmentContractStatus _status;
   String? note;
   final DateTime createdAt;
-  String? productId;
-  String? productName;
-  bool customRules;
   List<InstallmentRepricingConfiguration> _repricingConfigurations;
   List<InstallmentRepricingConfiguration> get repricingConfigurations =>
       _repricingConfigurations;
@@ -85,12 +79,7 @@ class InstallmentContract {
   InstallmentContractTerms _stageTerms;
   InstallmentContractTerms get stageTerms => _stageTerms;
 
-  void reviseStageTerms(
-    InstallmentContractTerms terms, {
-    bool? customRules,
-    String? productId,
-    String? productName,
-  }) {
+  void reviseStageTerms(InstallmentContractTerms terms) {
     terms.validate();
     _stageTerms = terms;
     final retained = {
@@ -105,11 +94,6 @@ class InstallmentContract {
     _repricings = List.unmodifiable(
       _repricings.where((record) => retained.contains(record.stageId)),
     );
-    if (customRules != null) this.customRules = customRules;
-    if (productId != null) {
-      this.productId = productId;
-      this.productName = productName;
-    }
   }
 
   InstallmentContractStatus get status => _status;
@@ -278,7 +262,6 @@ class InstallmentContract {
       InstallmentContractTerms(
         dayCount: change.terms.dayCount,
         rounding: change.terms.rounding,
-        tailDifference: change.terms.tailDifference,
         stages: [
           for (final stage in change.terms.stages)
             InstallmentContractStage(

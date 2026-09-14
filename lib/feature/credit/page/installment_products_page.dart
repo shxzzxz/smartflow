@@ -117,7 +117,7 @@ class InstallmentProductsPage extends ConsumerWidget {
                     },
                   ),
                   AppPopupMenuAction(
-                    label: '删除未使用产品',
+                    label: '删除产品',
                     onPressed: () async {
                       final outcome = await ref
                           .read(installmentProductsViewModelProvider.notifier)

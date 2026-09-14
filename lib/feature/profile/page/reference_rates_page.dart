@@ -257,7 +257,7 @@ class _CurrentRate extends StatelessWidget {
     required this.group,
     required this.state,
   });
-  final ReferenceRateType type;
+  final InterestRateType type;
   final ReferenceRateGroup group;
   final ReferenceRatesGroupState state;
 

@@ -10,6 +10,126 @@ import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
 
 void main() {
   testWidgets(
+    'one rate selector and advanced repricing preserve the chosen policy',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(600, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var advanced = false;
+      late StateSetter rebuild;
+      var draft = InstallmentTermsDraft(
+        stages: [
+          InstallmentStageDraft(
+            id: 'loan',
+            rateType: InterestRateType.lprFiveYearPlus,
+            inPeriodRepricingPolicy: InPeriodRepricingPolicy.dynamicPeriodRate,
+            firstDate: DateTime(2026, 2, 1),
+            inputs: const {
+              StageInput.periods: '12',
+              StageInput.interval: '1',
+              StageInput.rate: '3.2',
+            },
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                rebuild = setState;
+                return SingleChildScrollView(
+                  child: Form(
+                    child: InstallmentTermsEditor(
+                      value: draft,
+                      showAdvanced: advanced,
+                      onChanged: (value) => setState(() => draft = value),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      expect(find.text('利率类型'), findsOneWidget);
+      expect(find.text('利率'), findsOneWidget);
+      expect(find.text('利率规则'), findsNothing);
+      expect(find.text('参考利率类型'), findsNothing);
+      expect(find.text('期中重定价'), findsNothing);
+      final types = tester.widget<AppPlainSelectMenuFormRow<InterestRateType>>(
+        find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
+      );
+      expect(
+        types.options.map((option) => option.value),
+        InterestRateType.values,
+      );
+      rebuild(() => advanced = true);
+      await tester.pumpAndSettle();
+      expect(find.text('期中重定价'), findsOneWidget);
+      expect(find.text('尾差处理'), findsOneWidget);
+      await tester.tap(
+        find.byType(AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('保留当期本金').last);
+      await tester.pumpAndSettle();
+      rebuild(() => advanced = false);
+      await tester.pumpAndSettle();
+      expect(find.text('期中重定价'), findsNothing);
+      expect(
+        draft.stages.single.inPeriodRepricingPolicy,
+        InPeriodRepricingPolicy.preservePrincipal,
+      );
+      expect(draft.stages.single.rateType, InterestRateType.lprFiveYearPlus);
+      expect(draft.stages.single.text(StageInput.rate), '3.2');
+    },
+  );
+
+  testWidgets(
+    'product editor offers benchmark rules without per-loan rate or BP',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(600, 2000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var draft = InstallmentTermsDraft.initial();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => SingleChildScrollView(
+                child: Form(
+                  child: InstallmentTermsEditor(
+                    value: draft,
+                    mode: InstallmentTermsEditorMode.product,
+                    onChanged: (value) => setState(() => draft = value),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(
+        find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('LPR 五年期以上').last);
+      await tester.pumpAndSettle();
+      expect(find.text('重定价周期'), findsOneWidget);
+      expect(find.text('期中重定价'), findsOneWidget);
+      expect(find.text('利率'), findsNothing);
+      expect(find.text('加减基点'), findsNothing);
+      expect(find.text('首次重定价日'), findsNothing);
+      final rule = draft.productRules().single;
+      expect(rule.rateType, InterestRateType.lprFiveYearPlus);
+      expect(rule.repricingCycleMonths, 12);
+      expect(draft.stages.single.text(StageInput.rate), isEmpty);
+      expect(draft.stages.single.text(StageInput.spreadBp), isEmpty);
+    },
+  );
+
+  testWidgets(
     'floating loan exposes reset dates, signed BP and payment timing',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(600, 2400));
@@ -18,7 +138,7 @@ void main() {
         stages: [
           InstallmentStageDraft(
             id: 'floating',
-            floating: true,
+            rateType: InterestRateType.lprFiveYearPlus,
             firstDate: DateTime(2026, 1, 20),
             firstResetDate: DateTime(2025, 12, 20),
             firstEffectiveDate: DateTime(2026, 1, 1),
@@ -51,14 +171,14 @@ void main() {
       expect(find.text('首次重定价日'), findsOneWidget);
       expect(find.text('首次生效日'), findsOneWidget);
       await tester.tap(
-        find.byType(AppPlainSelectMenuFormRow<ReferenceRateType>),
+        find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('中长期贷款基准利率').last);
       await tester.pumpAndSettle();
       expect(
         draft.contractTerms().repayments.single.floatingRate!.referenceRateType,
-        ReferenceRateType.loanBenchmarkLongTerm,
+        InterestRateType.loanBenchmarkLongTerm,
       );
       final field = find.descendant(
         of: find.widgetWithText(AppPlainTextFormRow, '加减基点'),
@@ -68,10 +188,10 @@ void main() {
       await tester.pump();
       expect(draft.stages.single.text(StageInput.spreadBp), '-45');
       final timing = tester
-          .widget<AppPlainSelectMenuFormRow<RepricingPaymentTiming>>(
-            find.byType(AppPlainSelectMenuFormRow<RepricingPaymentTiming>),
+          .widget<AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>>(
+            find.byType(AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>),
           );
-      expect(timing.value, RepricingPaymentTiming.nextPeriod);
+      expect(timing.value, InPeriodRepricingPolicy.preservePrincipal);
       expect(
         draft.contractTerms().repayments.single.floatingRate!.spreadBp,
         -45,

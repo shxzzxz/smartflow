@@ -52,7 +52,7 @@ class InstallmentRepricingService {
     required String stageId,
     required DateTime resetDate,
     required DateTime effectiveDate,
-    required ReferenceRateType referenceRateType,
+    required InterestRateType referenceRateType,
     required int spreadBp,
   }) async {
     final contract = await _requireContract(contractId);
@@ -114,7 +114,7 @@ class InstallmentRepricingService {
   Future<bool> prepare(
     String contractId,
     DateTime now, {
-    Map<(ReferenceRateType, DateTime), ReferenceRate?>? resolvedRates,
+    Map<(InterestRateType, DateTime), ReferenceRate?>? resolvedRates,
   }) async {
     final contract = await installments.findContract(contractId);
     if (contract == null) return true;
@@ -268,7 +268,7 @@ class InstallmentRepricingService {
     now: now,
   );
 
-  Future<Map<(ReferenceRateType, DateTime), ReferenceRate?>> _resolvePending(
+  Future<Map<(InterestRateType, DateTime), ReferenceRate?>> _resolvePending(
     List<InstallmentRepricingCandidate> pending,
   ) async {
     if (pending.isEmpty) return {};

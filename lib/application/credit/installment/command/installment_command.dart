@@ -11,8 +11,6 @@ class CreateDisbursementContractCommand {
     this.note,
     this.counterpartyName,
     required this.stageTerms,
-    this.productId,
-    this.customRules = false,
   });
 
   final String liabilityAccountId;
@@ -27,8 +25,6 @@ class CreateDisbursementContractCommand {
   final String? note;
   final String? counterpartyName;
   final InstallmentContractTerms stageTerms;
-  final String? productId;
-  final bool customRules;
 }
 
 class DeleteContractCommand {
@@ -126,20 +122,17 @@ class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,
     this.name,
-    this.productId,
     this.borrowingDate,
     this.disbursementAccountId,
     this.note,
     this.schedulePatches = const [],
     this.stageTerms,
-    this.customRules,
     this.regeneratePlan = false,
     this.planPreviewToken,
   });
 
   final String contractId;
   final String? name;
-  final String? productId;
   final DateTime? borrowingDate;
 
   /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。
@@ -149,7 +142,6 @@ class UpdateContractCommand {
   final Patch<String>? note;
   final List<SchedulePendingPatch> schedulePatches;
   final InstallmentContractTerms? stageTerms;
-  final bool? customRules;
   final bool regeneratePlan;
   final String? planPreviewToken;
 }

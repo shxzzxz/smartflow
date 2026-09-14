@@ -28,10 +28,8 @@ class DriftInstallmentProductRepository
 
   Future<InstallmentProduct> _map(InstallmentProductRow row) async {
     final stages =
-        await (database.select(database.installmentStageConfigs)
-              ..where(
-                (r) => r.ownerType.equals('product') & r.ownerId.equals(row.id),
-              )
+        await (database.select(database.installmentProductStageConfigs)
+              ..where((r) => r.productId.equals(row.id))
               ..orderBy([(r) => OrderingTerm.asc(r.position)]))
             .get();
     return InstallmentProduct(
@@ -60,12 +58,11 @@ class DriftInstallmentProductRepository
             updatedAt: Value(DateTime.now()),
           ),
         );
-    await (database.delete(database.installmentStageConfigs)..where(
-          (r) => r.ownerType.equals('product') & r.ownerId.equals(product.id),
-        ))
-        .go();
+    await (database.delete(
+      database.installmentProductStageConfigs,
+    )..where((r) => r.productId.equals(product.id))).go();
     await database.batch(
-      (batch) => batch.insertAll(database.installmentStageConfigs, [
+      (batch) => batch.insertAll(database.installmentProductStageConfigs, [
         for (var i = 0; i < product.stages.length; i++)
           encodeProductStage(product.stages[i], product.id, i),
       ]),
@@ -73,18 +70,10 @@ class DriftInstallmentProductRepository
   }
 
   @override
-  Future<bool> isUsed(String id) async =>
-      (await (database.select(database.installmentContracts)
-                ..where((r) => r.productId.equals(id))
-                ..limit(1))
-              .get())
-          .isNotEmpty;
-
-  @override
   Future<void> delete(String id) async {
     await (database.delete(
-      database.installmentStageConfigs,
-    )..where((r) => r.ownerType.equals('product') & r.ownerId.equals(id))).go();
+      database.installmentProductStageConfigs,
+    )..where((r) => r.productId.equals(id))).go();
     await (database.delete(
       database.installmentProducts,
     )..where((r) => r.id.equals(id))).go();

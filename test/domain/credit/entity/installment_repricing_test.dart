@@ -16,7 +16,7 @@ void main() {
           resetDate: DateTime.utc(2026, 1, 1),
           effectiveDate: DateTime.utc(2026, 1, 1),
           referenceRate: ReferenceRate(
-            type: ReferenceRateType.lprOneYear,
+            type: InterestRateType.lprOneYear,
             date: DateTime.utc(2025, 12, 20),
             ratePpm: 30000,
             source: 'test',

@@ -15,6 +15,7 @@ import '../../database/app_database.dart';
 import '../../../domain/credit/entity/installment_repricing_configuration.dart';
 import '../../../domain/credit/entity/installment_interest_adjustment.dart';
 import '../../../domain/credit/valobj/installment_plan_operation.dart';
+import '../../../domain/credit/valobj/tail_difference_policy.dart';
 
 String encodeDayCount(DayCountConvention value) =>
     value == DayCountConvention.thirty365 ? 'thirty365' : 'thirty360';
@@ -36,26 +37,29 @@ InstallmentContractTerms decodeContractTerms(
       InstallmentContractStage(
         id: row.id,
         terms: row.stageKind == 'deferment'
-            ? DefermentStage(until: row.untilDate!)
+            ? DefermentStage(until: row.endDate)
             : AmortizingStage(
-                repricingPaymentTiming: row.repricingPaymentTiming == null
-                    ? RepricingPaymentTiming.nextPeriod
-                    : RepricingPaymentTiming.values.byName(
-                        row.repricingPaymentTiming!,
+                inPeriodRepricingPolicy: row.inPeriodRepricingPolicy == null
+                    ? InPeriodRepricingPolicy.preservePrincipal
+                    : InPeriodRepricingPolicy.values.byName(
+                        row.inPeriodRepricingPolicy!,
                       ),
+                tailDifference: TailDifferencePolicy.values.byName(
+                  row.tailDifference!,
+                ),
                 dates: IntervalRepaymentDates(
                   firstDate: row.firstDate!,
                   count: row.periods!,
-                  lastDate: row.lastDate,
+                  lastDate: row.endDate,
                   intervalMonths: row.intervalMonths ?? 1,
                 ),
                 method: InstallmentRepaymentMethod.values.byName(
                   row.repaymentMethod!,
                 ),
-                rate: row.ratePpm == null
+                rate: row.initialRatePpm == null
                     ? null
                     : InterestRate(
-                        ppm: row.ratePpm!,
+                        ppm: row.initialRatePpm!,
                         period: InterestRatePeriod.values.byName(
                           row.ratePeriod!,
                         ),
@@ -80,7 +84,7 @@ InstallmentContractTerms decodeContractTerms(
   ],
 );
 
-InstallmentStageRule decodeProductStage(InstallmentStageConfigRow row) =>
+InstallmentStageRule decodeProductStage(InstallmentProductStageConfigRow row) =>
     row.stageKind == 'deferment'
     ? InstallmentStageRule.deferment(id: row.id)
     : InstallmentStageRule.repayment(
@@ -96,16 +100,25 @@ InstallmentStageRule decodeProductStage(InstallmentStageConfigRow row) =>
         amountAlgorithm: row.amountAlgorithm == null
             ? null
             : InstallmentAmountAlgorithm.values.byName(row.amountAlgorithm!),
+        rateType: row.rateType == null
+            ? InterestRateType.fixed
+            : InterestRateType.values.byName(row.rateType!),
+        repricingCycleMonths: row.repricingCycleMonths ?? 12,
+        inPeriodRepricingPolicy: row.inPeriodRepricingPolicy == null
+            ? InPeriodRepricingPolicy.preservePrincipal
+            : InPeriodRepricingPolicy.values.byName(
+                row.inPeriodRepricingPolicy!,
+              ),
+        tailDifference: TailDifferencePolicy.values.byName(row.tailDifference!),
       );
 
-InstallmentStageConfigsCompanion encodeProductStage(
+InstallmentProductStageConfigsCompanion encodeProductStage(
   InstallmentStageRule rule,
   String ownerId,
   int position,
-) => InstallmentStageConfigsCompanion.insert(
+) => InstallmentProductStageConfigsCompanion.insert(
   id: rule.id,
-  ownerType: 'product',
-  ownerId: ownerId,
+  productId: ownerId,
   position: position,
   stageKind: rule.kind.name,
   repaymentMethod: Value(rule.method?.name),
@@ -113,6 +126,10 @@ InstallmentStageConfigsCompanion encodeProductStage(
   ratePeriod: Value(rule.ratePeriod?.name),
   accrual: Value(rule.accrual?.name),
   amountAlgorithm: Value(rule.amountAlgorithm?.name),
+  rateType: Value(rule.rateType?.name),
+  repricingCycleMonths: Value(rule.repricingCycleMonths),
+  inPeriodRepricingPolicy: Value(rule.inPeriodRepricingPolicy?.name),
+  tailDifference: Value(rule.tailDifference?.name),
 );
 
 InstallmentStageConfigsCompanion encodeContractStage(
@@ -124,11 +141,10 @@ InstallmentStageConfigsCompanion encodeContractStage(
   if (terms is DefermentStage) {
     return InstallmentStageConfigsCompanion.insert(
       id: stage.id,
-      ownerType: 'contract',
-      ownerId: ownerId,
+      contractId: ownerId,
       position: position,
       stageKind: 'deferment',
-      untilDate: Value(terms.until),
+      endDate: terms.until,
     );
   }
   final repayment = terms as AmortizingStage;
@@ -141,19 +157,21 @@ InstallmentStageConfigsCompanion encodeContractStage(
   final equal = repayment.method == InstallmentRepaymentMethod.equalInstallment;
   return InstallmentStageConfigsCompanion.insert(
     id: stage.id,
-    ownerType: 'contract',
-    ownerId: ownerId,
+    contractId: ownerId,
     position: position,
     stageKind: 'repayment',
     repaymentMethod: Value(repayment.method.name),
     intervalMonths: Value(dates.intervalMonths),
     periods: Value(dates.count),
     firstDate: Value(dates.firstDate),
-    lastDate: Value(dates.lastDate),
+    endDate: dates.getDates().last,
     accrualStartDate: Value(repayment.accrualStartDate),
     ratePeriod: Value(repayment.rate?.period.name),
-    ratePpm: Value(repayment.rate?.ppm),
-    repricingPaymentTiming: Value(repayment.repricingPaymentTiming.name),
+    initialRatePpm: Value(repayment.rate?.ppm),
+    inPeriodRepricingPolicy: Value(
+      equal ? repayment.inPeriodRepricingPolicy.name : null,
+    ),
+    tailDifference: Value(repayment.tailDifference.name),
     accrual: Value(repayment.accrual.name),
     feeMinor: Value(repayment.fee.minorUnits),
     endPrincipalMinor: Value(repayment.endPrincipal?.minorUnits),
@@ -182,7 +200,7 @@ RateChange decodeRateChange(InstallmentRepricingRow row) => RateChange(
   spreadBp: row.spreadBp,
   referenceRate: ReferenceRate(
     date: row.referenceRateDate.toUtc(),
-    type: ReferenceRateType.values.byName(row.referenceRateType),
+    type: InterestRateType.referenceTypes.byName(row.referenceRateType),
     ratePpm: row.referenceRatePpm,
     source: row.source,
   ),
@@ -197,7 +215,9 @@ InstallmentRepricingConfiguration decodeRepricingConfiguration(
   effectiveFrom: row.effectiveFrom.toUtc(),
   lastGeneratedDate: row.lastGeneratedDate?.toUtc(),
   rule: FloatingRateRule(
-    referenceRateType: ReferenceRateType.values.byName(row.referenceRateType),
+    referenceRateType: InterestRateType.referenceTypes.byName(
+      row.referenceRateType,
+    ),
     spreadBp: row.spreadBp,
     firstResetDate: row.firstResetDate.toUtc(),
     firstEffectiveDate: row.firstEffectiveDate.toUtc(),

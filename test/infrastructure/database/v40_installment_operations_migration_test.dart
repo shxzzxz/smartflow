@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../../helper/legacy_installment_tables.dart';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,19 +53,13 @@ void main() {
         contains('stage_id'),
       );
       final stages = await db.select(db.installmentStageConfigs).get();
-      expect(
-        stages.every(
-          (stage) =>
-              stage.referenceRateType == null && stage.firstResetDate == null,
-        ),
-        isTrue,
-      );
+      expect(stages.map((stage) => stage.contractId).toSet(), {'loan'});
       expect(
         stages
             .where((stage) => stage.id == 'first')
             .single
-            .repricingPaymentTiming,
-        'currentPeriod',
+            .inPeriodRepricingPolicy,
+        'dynamicPeriodRate',
       );
       expect(
         (await db.select(db.installmentSchedules).getSingle()).id,
@@ -73,7 +69,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        41,
+        42,
       );
       for (final table in db.allTables) {
         expect(
@@ -165,6 +161,7 @@ Future<File> _legacyDatabase({bool conflict = false}) async {
   final file = File('${directory.path}/loan.sqlite');
   final db = AppDatabase(NativeDatabase(file));
   await db.customSelect('SELECT 1').get();
+  await prepareLegacyInstallmentTables(db);
   await db.customStatement('DROP TABLE installment_repricing_configs');
   await db.customStatement('DROP TABLE installment_interest_adjustments');
   await db.customStatement('DROP TABLE installment_repricing_records');
@@ -187,49 +184,38 @@ Future<File> _legacyDatabase({bool conflict = false}) async {
           status: InstallmentContractStatus.active,
         ),
       );
-  await db
-      .into(db.installmentStageConfigs)
-      .insert(
-        InstallmentStageConfigsCompanion.insert(
-          id: 'deferment',
-          ownerType: 'contract',
-          ownerId: 'loan',
-          position: 0,
-          stageKind: 'deferment',
-          untilDate: Value(DateTime(2026, 8, 15)),
-        ),
-      );
+  await insertLegacyInstallmentStage(db, {
+    'id': 'deferment',
+    'owner_type': 'contract',
+    'owner_id': 'loan',
+    'position': 0,
+    'stage_kind': 'deferment',
+    'until_date': DateTime(2026, 8, 15),
+  });
   for (final first in [true, false]) {
-    await db
-        .into(db.installmentStageConfigs)
-        .insert(
-          InstallmentStageConfigsCompanion.insert(
-            id: first ? 'first' : 'second',
-            ownerType: 'contract',
-            ownerId: 'loan',
-            position: first ? 1 : 2,
-            stageKind: 'repayment',
-            repaymentMethod: const Value('equalPrincipal'),
-            intervalMonths: const Value(1),
-            ratePeriod: const Value('annual'),
-            ratePpm: const Value(36000),
-            accrual: const Value('monthly'),
-            periods: Value(first ? 3 : 2),
-            firstDate: Value(DateTime(2026, first ? 9 : 12, 8)),
-            accrualStartDate: Value(first ? DateTime(2026, 8, 16) : null),
-            endPrincipalMinor: Value(first ? 5000000 : 0),
-            referenceRateType: const Value('lprOneYear'),
-            spreadBp: Value(first ? -30 : -10),
-            firstResetDate: Value(
-              DateTime(2026, first ? 8 : 11, first ? 20 : 1),
-            ),
-            firstEffectiveDate: Value(
-              DateTime(2026, first ? 8 : 11, first ? 20 : 8),
-            ),
-            repricingCycleMonths: const Value(3),
-            repricingPaymentTiming: const Value('currentPeriod'),
-          ),
-        );
+    await insertLegacyInstallmentStage(db, {
+      'id': first ? 'first' : 'second',
+      'owner_type': 'contract',
+      'owner_id': 'loan',
+      'position': first ? 1 : 2,
+      'stage_kind': 'repayment',
+      'repayment_method': 'equalInstallment',
+      'amount_algorithm': 'nominalRate',
+      'interval_months': 1,
+      'rate_period': 'annual',
+      'rate_ppm': 36000,
+      'accrual': 'monthly',
+      'periods': first ? 3 : 2,
+      'first_date': DateTime(2026, first ? 9 : 12, 8),
+      'accrual_start_date': first ? DateTime(2026, 8, 16) : null,
+      'end_principal_minor': first ? 5000000 : 0,
+      'reference_rate_type': 'lprOneYear',
+      'spread_bp': first ? -30 : -10,
+      'first_reset_date': DateTime(2026, first ? 8 : 11, first ? 20 : 1),
+      'first_effective_date': DateTime(2026, first ? 8 : 11, first ? 20 : 8),
+      'repricing_cycle_months': 3,
+      'repricing_payment_timing': 'currentPeriod',
+    });
   }
   await db
       .into(db.installmentSchedules)
@@ -275,6 +261,7 @@ Future<File> _legacyDatabase({bool conflict = false}) async {
       ],
     );
   }
+  await finishLegacyInstallmentTables(db);
   await db.customStatement('PRAGMA user_version = 39');
   await db.close();
   return file;

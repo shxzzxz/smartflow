@@ -1,17 +1,19 @@
 import '../../../domain/credit/valobj/reference_rate.dart';
 
-String referenceRateTypeLabel(ReferenceRateType type) => switch (type) {
-  ReferenceRateType.lprOneYear => 'LPR 一年期',
-  ReferenceRateType.lprFiveYearPlus => 'LPR 五年期以上',
-  ReferenceRateType.loanBenchmarkShortTerm => '短期贷款基准利率',
-  ReferenceRateType.loanBenchmarkLongTerm => '中长期贷款基准利率',
+String referenceRateTypeLabel(InterestRateType type) => switch (type) {
+  InterestRateType.fixed => '固定利率',
+  InterestRateType.lprOneYear => 'LPR 一年期',
+  InterestRateType.lprFiveYearPlus => 'LPR 五年期以上',
+  InterestRateType.loanBenchmarkShortTerm => '短期贷款基准利率',
+  InterestRateType.loanBenchmarkLongTerm => '中长期贷款基准利率',
 };
 
-String referenceRateTermLabel(ReferenceRateType type) => switch (type) {
-  ReferenceRateType.lprOneYear => '一年期',
-  ReferenceRateType.lprFiveYearPlus => '五年期以上',
-  ReferenceRateType.loanBenchmarkShortTerm => '六个月至一年（含）',
-  ReferenceRateType.loanBenchmarkLongTerm => '五年以上',
+String referenceRateTermLabel(InterestRateType type) => switch (type) {
+  InterestRateType.fixed => '',
+  InterestRateType.lprOneYear => '一年期',
+  InterestRateType.lprFiveYearPlus => '五年期以上',
+  InterestRateType.loanBenchmarkShortTerm => '六个月至一年（含）',
+  InterestRateType.loanBenchmarkLongTerm => '五年以上',
 };
 
 String referenceRateSourceLabel(String source) => switch (source) {

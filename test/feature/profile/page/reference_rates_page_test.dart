@@ -25,9 +25,9 @@ void main() {
       expect(find.text('数据源'), findsNothing);
       expect(_table(tester).rows, hasLength(3));
       expect(_table(tester).columns, hasLength(3));
-      expect(_metric(ReferenceRateType.lprOneYear, '3.00%'), findsOneWidget);
+      expect(_metric(InterestRateType.lprOneYear, '3.00%'), findsOneWidget);
       expect(
-        _metric(ReferenceRateType.lprFiveYearPlus, '3.50%'),
+        _metric(InterestRateType.lprFiveYearPlus, '3.50%'),
         findsOneWidget,
       );
       expect(
@@ -37,15 +37,15 @@ void main() {
 
       await _selectYear(tester, '2025 年');
       expect(_table(tester).rows, hasLength(1));
-      expect(_metric(ReferenceRateType.lprOneYear, '3.00%'), findsOneWidget);
+      expect(_metric(InterestRateType.lprOneYear, '3.00%'), findsOneWidget);
       await _switchGroup(tester, '贷款基准利率');
       expect(_table(tester).rows, hasLength(2));
       expect(
-        _metric(ReferenceRateType.loanBenchmarkShortTerm, '4.35%'),
+        _metric(InterestRateType.loanBenchmarkShortTerm, '4.35%'),
         findsOneWidget,
       );
       expect(
-        _metric(ReferenceRateType.loanBenchmarkLongTerm, '4.90%'),
+        _metric(InterestRateType.loanBenchmarkLongTerm, '4.90%'),
         findsOneWidget,
       );
       expect(find.text('全部年份'), findsOneWidget);
@@ -75,12 +75,12 @@ void main() {
       updates.add(_history(ReferenceRateGroup.lpr, updating: true));
       await tester.pump();
       expect(_table(tester).rows, hasLength(3));
-      expect(_metric(ReferenceRateType.lprOneYear, '3.00%'), findsOneWidget);
+      expect(_metric(InterestRateType.lprOneYear, '3.00%'), findsOneWidget);
       updates.add(
         _history(
           ReferenceRateGroup.lpr,
           failures: {
-            ReferenceRateType.lprFiveYearPlus:
+            InterestRateType.lprFiveYearPlus:
                 ReferenceRateMissingReason.sourceUnavailable,
           },
         ),
@@ -97,7 +97,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('五年期以上暂未更新'), findsNothing);
       expect(
-        _metric(ReferenceRateType.lprFiveYearPlus, '3.50%'),
+        _metric(InterestRateType.lprFiveYearPlus, '3.50%'),
         findsOneWidget,
       );
     },
@@ -118,11 +118,11 @@ void main() {
       lpr.add(_history(ReferenceRateGroup.lpr));
       await tester.pumpAndSettle();
       expect(
-        _metric(ReferenceRateType.loanBenchmarkLongTerm, '4.90%'),
+        _metric(InterestRateType.loanBenchmarkLongTerm, '4.90%'),
         findsOneWidget,
       );
       await _switchGroup(tester, 'LPR');
-      expect(_metric(ReferenceRateType.lprOneYear, '3.00%'), findsOneWidget);
+      expect(_metric(InterestRateType.lprOneYear, '3.00%'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       lpr.add(_history(ReferenceRateGroup.lpr));
       await lpr.close();
@@ -262,7 +262,7 @@ _Service _service() {
 ReferenceRateHistory _history(
   ReferenceRateGroup group, {
   bool updating = false,
-  Map<ReferenceRateType, ReferenceRateMissingReason> failures = const {},
+  Map<InterestRateType, ReferenceRateMissingReason> failures = const {},
 }) => ReferenceRateHistory(
   asOf: DateTime.utc(2026, 9, 10),
   updating: updating,
@@ -270,20 +270,20 @@ ReferenceRateHistory _history(
   rates: group == ReferenceRateGroup.lpr
       ? [
           ReferenceRate(
-            type: ReferenceRateType.lprOneYear,
+            type: InterestRateType.lprOneYear,
             date: DateTime.utc(2025, 12, 22),
             ratePpm: 31000,
             source: 'eastmoney',
           ),
           for (final month in [7, 8]) ...[
             ReferenceRate(
-              type: ReferenceRateType.lprOneYear,
+              type: InterestRateType.lprOneYear,
               date: DateTime.utc(2026, month, 20),
               ratePpm: 30000,
               source: 'eastmoney',
             ),
             ReferenceRate(
-              type: ReferenceRateType.lprFiveYearPlus,
+              type: InterestRateType.lprFiveYearPlus,
               date: DateTime.utc(2026, month, 20),
               ratePpm: 35000,
               source: 'chinamoney',
@@ -292,25 +292,25 @@ ReferenceRateHistory _history(
         ]
       : [
           ReferenceRate(
-            type: ReferenceRateType.loanBenchmarkShortTerm,
+            type: InterestRateType.loanBenchmarkShortTerm,
             date: DateTime.utc(2015, 8, 26),
             ratePpm: 46000,
             source: 'eastmoney',
           ),
           ReferenceRate(
-            type: ReferenceRateType.loanBenchmarkLongTerm,
+            type: InterestRateType.loanBenchmarkLongTerm,
             date: DateTime.utc(2015, 8, 26),
             ratePpm: 51500,
             source: 'eastmoney',
           ),
           ReferenceRate(
-            type: ReferenceRateType.loanBenchmarkShortTerm,
+            type: InterestRateType.loanBenchmarkShortTerm,
             date: DateTime.utc(2015, 10, 24),
             ratePpm: 43500,
             source: 'eastmoney',
           ),
           ReferenceRate(
-            type: ReferenceRateType.loanBenchmarkLongTerm,
+            type: InterestRateType.loanBenchmarkLongTerm,
             date: DateTime.utc(2015, 10, 24),
             ratePpm: 49000,
             source: 'eastmoney',
@@ -335,7 +335,7 @@ Widget _app(_Service service, {bool dark = false, double scale = 1}) {
   );
 }
 
-Finder _metric(ReferenceRateType type, String text) => find.descendant(
+Finder _metric(InterestRateType type, String text) => find.descendant(
   of: find.byKey(ValueKey('current-${type.name}')),
   matching: find.text(text),
 );

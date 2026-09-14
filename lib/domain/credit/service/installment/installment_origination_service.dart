@@ -18,18 +18,12 @@ class InstallmentOriginationTerms {
     required this.borrowingDate,
     this.note,
     required this.stageTerms,
-    this.productId,
-    this.productName,
-    this.customRules = false,
   });
 
   final Money principal;
   final DateTime borrowingDate;
   final String? note;
   final InstallmentContractTerms stageTerms;
-  final String? productId;
-  final String? productName;
-  final bool customRules;
 }
 
 class InstallmentOriginationResult {
@@ -71,9 +65,6 @@ class InstallmentOriginationService {
         principal: terms.principal,
         borrowingDate: terms.borrowingDate,
         note: terms.note,
-        productId: terms.productId,
-        productName: terms.productName,
-        customRules: terms.customRules,
         stageTerms: terms.stageTerms,
       ),
       createdAt: createdAt,
@@ -90,8 +81,6 @@ class InstallmentOriginationService {
     required InstallmentContractTerms stageTerms,
     required DateTime createdAt,
     required String Function() newScheduleId,
-    String? productId,
-    String? productName,
     String? note,
   }) => _originate(
     contractId: contractId,
@@ -102,10 +91,7 @@ class InstallmentOriginationService {
       principal: principal,
       borrowingDate: borrowingDate,
       stageTerms: stageTerms,
-      productId: productId,
-      productName: productName,
       note: note,
-      customRules: true,
     ),
     createdAt: createdAt,
     newScheduleId: newScheduleId,
@@ -147,9 +133,6 @@ class InstallmentOriginationService {
       disbursementTransactionId: disbursementTransactionId,
       principal: terms.principal,
       borrowingDate: terms.borrowingDate,
-      productId: terms.productId,
-      productName: terms.productName,
-      customRules: terms.customRules,
       status: InstallmentContractStatus.active,
       note: terms.note,
       createdAt: createdAt,

@@ -11,6 +11,8 @@ import 'transaction_line_migration.dart';
 import 'transaction_line_migration_error.dart';
 import 'v40_installment_operations_migration.dart';
 import 'v41_repricing_stage_scope_migration.dart';
+import 'v41_installment_schema.dart';
+import 'v42_installment_product_split_migration.dart';
 
 final _logger = Logger('infra.database');
 
@@ -221,29 +223,27 @@ SET repayment_date = COALESCE(
         await database.transaction(() async {
           if (from < 32) {
             if (!await _hasColumn(database, 'installment_products', 'id')) {
-              await migrator.createTable(database.installmentProducts);
+              await database.customStatement(legacyInstallmentProductsSql);
             }
             if (!await _hasColumn(
               database,
               'installment_stage_configs',
               'id',
             )) {
-              await migrator.createTable(database.installmentStageConfigs);
+              await database.customStatement(legacyInstallmentStagesSql);
             }
-            for (final column in [
-              database.installmentContracts.productId,
-              database.installmentContracts.productName,
-              database.installmentContracts.customRules,
-              database.installmentContracts.dayCount,
-              database.installmentContracts.rounding,
-              database.installmentContracts.tailDifference,
+            for (final (name, definition) in [
+              ('product_id', 'TEXT'),
+              ('product_name', 'TEXT'),
+              ('custom_rules', 'INTEGER NOT NULL DEFAULT 0'),
+              ('day_count', "TEXT NOT NULL DEFAULT 'thirty360'"),
+              ('rounding', "TEXT NOT NULL DEFAULT 'halfUp'"),
+              ('tail_difference', "TEXT NOT NULL DEFAULT 'lastPeriod'"),
             ]) {
-              if (!await _hasColumn(
-                database,
-                'installment_contracts',
-                column.$name,
-              )) {
-                await migrator.addColumn(database.installmentContracts, column);
+              if (!await _hasColumn(database, 'installment_contracts', name)) {
+                await database.customStatement(
+                  'ALTER TABLE installment_contracts ADD COLUMN $name $definition',
+                );
               }
             }
             if (!await _hasColumn(
@@ -289,9 +289,8 @@ WHERE NOT EXISTS (
             "SET repayment_method = 'equalPrincipal', rate_period = NULL, rate_ppm = NULL "
             "WHERE owner_type = 'contract' AND repayment_method = 'flatFee' AND periods > 1",
           );
-          await migrator.alterTable(
-            TableMigration(database.installmentContracts),
-          );
+          // Contract columns are rebuilt after all historical stages have been
+          // converted by v42; older upgrade steps still read their original names.
           await database.customStatement(
             'CREATE INDEX IF NOT EXISTS installment_contracts_liability_status_idx '
             'ON installment_contracts (liability_account_id, status)',
@@ -308,21 +307,22 @@ WHERE NOT EXISTS (
       }
       if (from < 36) {
         await database.transaction(() async {
-          final stages = database.installmentStageConfigs;
-          for (final column in [
-            stages.referenceRateType,
-            stages.spreadBp,
-            stages.firstResetDate,
-            stages.firstEffectiveDate,
-            stages.repricingCycleMonths,
-            stages.repricingPaymentTiming,
+          for (final (name, definition) in [
+            ('reference_rate_type', 'TEXT'),
+            ('spread_bp', 'INTEGER'),
+            ('first_reset_date', 'INTEGER'),
+            ('first_effective_date', 'INTEGER'),
+            ('repricing_cycle_months', 'INTEGER'),
+            ('repricing_payment_timing', 'TEXT'),
           ]) {
             if (!await _hasColumn(
               database,
-              stages.actualTableName,
-              column.$name,
+              'installment_stage_configs',
+              name,
             )) {
-              await migrator.addColumn(stages, column);
+              await database.customStatement(
+                'ALTER TABLE installment_stage_configs ADD COLUMN $name $definition',
+              );
             }
           }
           if (!await _hasColumn(
@@ -384,18 +384,22 @@ WHERE NOT EXISTS (
         await database.transaction(() async {
           // v36/v37 used LPR-only terms and snapshots. Older upgrades may
           // already have created these tables with the current column names.
-          final stages = database.installmentStageConfigs;
-          if (await _hasColumn(database, stages.actualTableName, 'lpr_tenor')) {
-            await migrator.alterTable(
-              TableMigration(
-                stages,
-                columnTransformer: {
-                  stages.referenceRateType: const CustomExpression<String>(
-                    "CASE lpr_tenor WHEN 'oneYear' THEN 'lprOneYear' "
-                    "WHEN 'fiveYearPlus' THEN 'lprFiveYearPlus' ELSE lpr_tenor END",
-                  ),
-                },
-              ),
+          if (await _hasColumn(
+            database,
+            'installment_stage_configs',
+            'lpr_tenor',
+          )) {
+            if (!await _hasColumn(
+              database,
+              'installment_stage_configs',
+              'reference_rate_type',
+            )) {
+              await database.customStatement(
+                'ALTER TABLE installment_stage_configs ADD COLUMN reference_rate_type TEXT',
+              );
+            }
+            await database.customStatement(
+              "UPDATE installment_stage_configs SET reference_rate_type = CASE lpr_tenor WHEN 'oneYear' THEN 'lprOneYear' WHEN 'fiveYearPlus' THEN 'lprFiveYearPlus' ELSE lpr_tenor END",
             );
           }
           final records = database.installmentRepricingRecords;
@@ -445,6 +449,9 @@ WHERE NOT EXISTS (
       }
       if (from < 41) {
         await migrateRepricingStageScope(database, migrator);
+      }
+      if (from < 42) {
+        await migrateInstallmentProductSplit(database, migrator);
       }
     }),
   );

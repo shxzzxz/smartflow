@@ -31,7 +31,7 @@ class RepricingConfigurationInput extends InstallmentOperationInput {
   });
   final DateTime effectiveFrom, firstResetDate, firstEffectiveDate;
   final String stageId;
-  final ReferenceRateType referenceRateType;
+  final InterestRateType referenceRateType;
   final int cycleMonths;
   final String spreadBp;
 }
@@ -46,7 +46,7 @@ class RepricingRecordInput extends InstallmentOperationInput {
   });
   final DateTime resetDate, effectiveDate;
   final String stageId;
-  final ReferenceRateType referenceRateType;
+  final InterestRateType referenceRateType;
   final String spreadBp;
 }
 

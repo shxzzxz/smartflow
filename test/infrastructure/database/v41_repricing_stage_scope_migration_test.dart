@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../../helper/legacy_installment_tables.dart';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +34,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        41,
+        42,
       );
       await db.customStatement(
         'INSERT INTO installment_repricing_records '
@@ -103,6 +105,7 @@ Future<File> legacyDatabase({bool unassignable = false}) async {
   final file = File('${directory.path}/loan.sqlite');
   final db = AppDatabase(NativeDatabase(file));
   await db.customSelect('SELECT 1').get();
+  await prepareLegacyInstallmentTables(db);
   await db
       .into(db.installmentContracts)
       .insert(
@@ -116,24 +119,20 @@ Future<File> legacyDatabase({bool unassignable = false}) async {
         ),
       );
   for (final (id, position, month) in [('first', 0, 9), ('second', 1, 11)]) {
-    await db
-        .into(db.installmentStageConfigs)
-        .insert(
-          InstallmentStageConfigsCompanion.insert(
-            id: id,
-            ownerType: 'contract',
-            ownerId: 'loan',
-            position: position,
-            stageKind: 'repayment',
-            repaymentMethod: const Value('interestFirst'),
-            intervalMonths: const Value(1),
-            periods: const Value(2),
-            firstDate: Value(DateTime(2026, month, 8)),
-            ratePeriod: const Value('annual'),
-            ratePpm: const Value(36000),
-            accrual: const Value('daily'),
-          ),
-        );
+    await insertLegacyInstallmentStage(db, {
+      'id': id,
+      'owner_type': 'contract',
+      'owner_id': 'loan',
+      'position': position,
+      'stage_kind': 'repayment',
+      'repayment_method': 'interestFirst',
+      'interval_months': 1,
+      'periods': 2,
+      'first_date': DateTime(2026, month, 8),
+      'rate_period': 'annual',
+      'rate_ppm': 36000,
+      'accrual': 'daily',
+    });
   }
   await db.customStatement('DROP TABLE installment_repricing_configs');
   await db.customStatement('DROP TABLE installment_repricing_records');
@@ -185,6 +184,7 @@ Future<File> legacyDatabase({bool unassignable = false}) async {
       ],
     );
   }
+  await finishLegacyInstallmentTables(db);
   await db.customStatement('PRAGMA user_version = 40');
   await db.close();
   return file;

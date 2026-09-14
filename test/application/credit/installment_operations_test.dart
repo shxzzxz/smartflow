@@ -1,3 +1,4 @@
+import '../../helper/legacy_installment_snapshot.dart';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -79,7 +80,7 @@ void main() {
           .into(f.db.referenceRates)
           .insert(
             ReferenceRatesCompanion.insert(
-              type: ReferenceRateType.lprFiveYearPlus.name,
+              type: InterestRateType.lprFiveYearPlus.name,
               rateDate: referenceDate(date),
               ratePpm: 40000,
               source: 'fixture',
@@ -98,7 +99,7 @@ void main() {
       stageId: 'second',
       effectiveFrom: day(8, 10),
       rule: FloatingRateRule(
-        referenceRateType: ReferenceRateType.lprFiveYearPlus,
+        referenceRateType: InterestRateType.lprFiveYearPlus,
         spreadBp: -20,
         firstResetDate: day(11, 20),
         firstEffectiveDate: day(11, 20),
@@ -146,7 +147,7 @@ void main() {
         stageId: 'second',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: 100,
       );
       expect(await f.repricing.runDue(day(8, 20)), (
@@ -168,7 +169,7 @@ void main() {
           stageId: 'first',
           resetDate: day(8, 20),
           effectiveDate: day(8, 20),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           spreadBp: 0,
         ),
         throwsA(isA<BusinessException>()),
@@ -201,7 +202,7 @@ void main() {
             stageId: stageId,
             resetDate: day(8, 20),
             effectiveDate: day(8, 20),
-            referenceRateType: ReferenceRateType.lprOneYear,
+            referenceRateType: InterestRateType.lprOneYear,
             spreadBp: 0,
           ),
           throwsA(isA<BusinessException>()),
@@ -235,7 +236,7 @@ void main() {
           stageId: stageId,
           resetDate: day(8, 20),
           effectiveDate: day(8, 20),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           spreadBp: bp,
         );
       }
@@ -274,7 +275,7 @@ void main() {
           stageId: stageId,
           resetDate: day(8, 20),
           effectiveDate: day(8, 20),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           spreadBp: stageId == 'first' ? 0 : 100,
         );
       }
@@ -342,7 +343,7 @@ void main() {
       await f.configure();
       await f.repricing.runDue(day(8, 20));
       final snapshot = await DriftBackupGateway(f.db).readSnapshot();
-      final tables = {...snapshot.tables};
+      final tables = legacyInstallmentSnapshot(snapshot);
       for (final table in [
         'installment_repricing_configs',
         'installment_repricing_records',
@@ -401,7 +402,7 @@ void main() {
           stageId: 'stage',
           resetDate: day(9, 1),
           effectiveDate: day(9, 6),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           spreadBp: 0,
         ),
         throwsA(isA<BusinessException>()),
@@ -447,7 +448,7 @@ void main() {
         stageId: 'stage',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: -10,
       );
       final record = (await f.records.list('loan')).single;
@@ -462,7 +463,7 @@ void main() {
           stageId: 'stage',
           resetDate: day(8, 20),
           effectiveDate: day(8, 20),
-          referenceRateType: ReferenceRateType.lprOneYear,
+          referenceRateType: InterestRateType.lprOneYear,
           spreadBp: 0,
         ),
         throwsA(isA<BusinessException>()),
@@ -485,7 +486,7 @@ void main() {
         stageId: 'stage',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: -10,
       );
       await f.configure();
@@ -527,7 +528,7 @@ void main() {
         stageId: 'stage',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: -10,
       );
       await f.repricing.delete(
@@ -554,7 +555,7 @@ void main() {
       await f.seed();
       await f.configure();
       final lateRate = ReferenceRate(
-        type: ReferenceRateType.lprOneYear,
+        type: InterestRateType.lprOneYear,
         date: DateTime.utc(2026, 11, 19),
         ratePpm: 15000,
         source: 'fixture',
@@ -564,9 +565,8 @@ void main() {
           'loan',
           day(11, 20),
           resolvedRates: {
-            (ReferenceRateType.lprOneYear, DateTime.utc(2026, 8, 19)): null,
-            (ReferenceRateType.lprOneYear, DateTime.utc(2026, 11, 19)):
-                lateRate,
+            (InterestRateType.lprOneYear, DateTime.utc(2026, 8, 19)): null,
+            (InterestRateType.lprOneYear, DateTime.utc(2026, 11, 19)): lateRate,
           },
         ),
         isFalse,
@@ -584,16 +584,15 @@ void main() {
           day(11, 20),
           resolvedRates: {
             (
-              ReferenceRateType.lprOneYear,
+              InterestRateType.lprOneYear,
               DateTime.utc(2026, 8, 19),
             ): ReferenceRate(
-              type: ReferenceRateType.lprOneYear,
+              type: InterestRateType.lprOneYear,
               date: DateTime.utc(2026, 8, 19),
               ratePpm: 18000,
               source: 'fixture',
             ),
-            (ReferenceRateType.lprOneYear, DateTime.utc(2026, 11, 19)):
-                lateRate,
+            (InterestRateType.lprOneYear, DateTime.utc(2026, 11, 19)): lateRate,
           },
         ),
         isTrue,
@@ -625,10 +624,10 @@ void main() {
           day(11, 20),
           resolvedRates: {
             (
-              ReferenceRateType.lprOneYear,
+              InterestRateType.lprOneYear,
               DateTime.utc(2026, 11, 19),
             ): ReferenceRate(
-              type: ReferenceRateType.lprOneYear,
+              type: InterestRateType.lprOneYear,
               date: DateTime.utc(2026, 11, 19),
               ratePpm: 18000,
               source: 'fixture',
@@ -793,7 +792,7 @@ void main() {
         stageId: 'stage',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: 0,
       );
       await f.adjustments.save(
@@ -1033,7 +1032,7 @@ void main() {
         stageId: 'stage',
         resetDate: day(8, 20),
         effectiveDate: day(8, 20),
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: 0,
       );
       expect(await instance.records.list('loan'), hasLength(1));
@@ -1253,7 +1252,7 @@ class _Fixture {
 
   FloatingRateRule rule({DateTime? reset, DateTime? effective, int bp = 0}) =>
       FloatingRateRule(
-        referenceRateType: ReferenceRateType.lprOneYear,
+        referenceRateType: InterestRateType.lprOneYear,
         spreadBp: bp,
         cycleMonths: 3,
         firstResetDate: reset ?? day(8, 20),
@@ -1306,7 +1305,7 @@ class _Fixture {
           .into(db.referenceRates)
           .insert(
             ReferenceRatesCompanion.insert(
-              type: ReferenceRateType.lprOneYear.name,
+              type: InterestRateType.lprOneYear.name,
               rateDate: referenceDate(record.$1),
               ratePpm: record.$2,
               source: 'fixture',

@@ -82,6 +82,11 @@ class DriftBackupGateway
             (await database.select(database.installmentStageConfigs).get()).map(
               _json,
             ),
+        'installment_product_stage_configs':
+            (await database
+                    .select(database.installmentProductStageConfigs)
+                    .get())
+                .map(_json),
         'installment_contracts':
             (await database.select(database.installmentContracts).get()).map(
               _json,
@@ -148,6 +153,7 @@ class DriftBackupGateway
         'repayments',
         'installment_schedules',
         'installment_stage_configs',
+        'installment_product_stage_configs',
         'installment_contracts',
         'installment_products',
         'bill_items',
@@ -302,6 +308,16 @@ class DriftBackupGateway
               ),
         );
         batch.insertAll(
+          database.installmentProductStageConfigs,
+          snapshot
+              .rows('installment_product_stage_configs')
+              .map(
+                (row) => InstallmentProductStageConfigRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
           database.installmentContracts,
           snapshot
               .rows('installment_contracts')
@@ -413,6 +429,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is InstallmentStageConfigRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentProductStageConfigRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is InstallmentContractRow) {

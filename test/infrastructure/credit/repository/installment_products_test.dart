@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
-import 'package:drift/drift.dart' show Value, BooleanExpressionOperators;
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/product/installment_product_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -22,6 +22,9 @@ import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
+import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/in_period_repricing_policy.dart';
+import 'package:smartflow/domain/credit/valobj/tail_difference_policy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
@@ -40,6 +43,52 @@ void main() {
     contracts = DriftInstallmentRepository(db);
   });
   tearDown(() => db.close());
+
+  test(
+    'product service round-trips benchmark rules and stage policies',
+    () async {
+      final service = InstallmentProductServiceImpl(
+        repository: products,
+        runner: DriftTransactionRunner(db),
+        ids: SequentialIdGenerator(),
+      );
+      final id = await service.save(
+        name: '浮动利率模板',
+        dayCount: DayCountConvention.thirty365,
+        rounding: RoundingMode.halfEven,
+        stages: const [
+          InstallmentStageRule.repayment(
+            id: 'draft',
+            method: InstallmentRepaymentMethod.equalInstallment,
+            intervalMonths: 1,
+            ratePeriod: InterestRatePeriod.annual,
+            accrual: InterestAccrualMethod.daily,
+            amountAlgorithm: InstallmentAmountAlgorithm.actualRate,
+            rateType: InterestRateType.loanBenchmarkLongTerm,
+            repricingCycleMonths: 6,
+            inPeriodRepricingPolicy: InPeriodRepricingPolicy.dynamicPeriodRate,
+            tailDifference: TailDifferencePolicy.lastPeriod,
+          ),
+        ],
+      );
+      final product = (await products.find(id))!;
+      final rule = product.stages.single;
+      expect(rule.rateType, InterestRateType.loanBenchmarkLongTerm);
+      expect(rule.repricingCycleMonths, 6);
+      expect(
+        rule.inPeriodRepricingPolicy,
+        InPeriodRepricingPolicy.dynamicPeriodRate,
+      );
+      expect(rule.tailDifference, TailDifferencePolicy.lastPeriod);
+      expect(rule.amountAlgorithm, InstallmentAmountAlgorithm.actualRate);
+      final row = await (db.select(
+        db.installmentProductStageConfigs,
+      )..where((row) => row.productId.equals(id))).getSingle();
+      expect(row.rateType, 'loanBenchmarkLongTerm');
+      expect(row.repricingCycleMonths, 6);
+      expect(await db.select(db.installmentStageConfigs).get(), isEmpty);
+    },
+  );
 
   test(
     'current schema stores no contract stage fields and missing stages fail instead of falling back',
@@ -65,9 +114,7 @@ void main() {
       );
       final loan = _loan();
       await contracts.insertAggregate(loan.contract, loan.schedules);
-      await db.customStatement(
-        "DELETE FROM installment_stage_configs WHERE owner_type = 'contract'",
-      );
+      await db.customStatement("DELETE FROM installment_stage_configs");
       await expectLater(
         contracts.findContract('loan'),
         throwsA(isA<BusinessException>()),
@@ -86,6 +133,11 @@ void main() {
         'repaymentMethod': 'interestFirst',
         'periods': 12,
         'ratePpm': 12000,
+        'position': 0,
+        'intervalMonths': 1,
+        'firstDate': DateTime(2027, 1).millisecondsSinceEpoch,
+        'ratePeriod': 'annual',
+        'accrual': 'monthly',
       };
       final tables = <String, Iterable<BackupJson>>{
         'installment_contracts': [
@@ -107,7 +159,15 @@ void main() {
         'borrowingDate': DateTime(2026, 12, 3).millisecondsSinceEpoch,
         'name': '20261203',
       });
-      expect(tables['installment_stage_configs']!.single, same(stage));
+      expect(
+        tables['installment_stage_configs']!.single['initialRatePpm'],
+        stage['ratePpm'],
+      );
+      expect(tables['installment_stage_configs']!.single['contractId'], 'c');
+      expect(
+        tables['installment_stage_configs']!.single['endDate'],
+        DateTime(2027, 12).millisecondsSinceEpoch,
+      );
     },
   );
 
@@ -115,26 +175,29 @@ void main() {
     'product rows contain only stable rules and enforce absence of variable data',
     () async {
       await products.save(_product());
-      final rows =
-          await (db.select(db.installmentStageConfigs)..where(
-                (s) =>
-                    s.ownerType.equals('product') & s.ownerId.equals('product'),
-              ))
-              .get();
+      final rows = await (db.select(
+        db.installmentProductStageConfigs,
+      )..where((s) => s.productId.equals('product'))).get();
       expect(rows, hasLength(3));
-      for (final row in rows) {
-        expect([
-          row.periods,
-          row.ratePpm,
-          row.endPrincipalMinor,
-          row.fixedAmountMinor,
-          row.feeMinor,
-          row.untilDate,
-          row.firstDate,
-          row.lastDate,
-          row.accrualStartDate,
-        ], everyElement(isNull));
-      }
+      final columns =
+          (await db
+                  .customSelect(
+                    'PRAGMA table_info(installment_product_stage_configs)',
+                  )
+                  .get())
+              .map((row) => row.read<String>('name'))
+              .toSet();
+      expect(
+        columns.intersection({
+          'periods',
+          'initial_rate_ppm',
+          'spread_bp',
+          'end_date',
+          'fixed_amount_minor',
+          'fee_minor',
+        }),
+        isEmpty,
+      );
       for (final field in [
         'periods',
         'rate_ppm',
@@ -148,7 +211,7 @@ void main() {
       ]) {
         await expectLater(
           db.customStatement(
-            "UPDATE installment_stage_configs SET $field = 1 WHERE id = 'p2'",
+            "UPDATE installment_product_stage_configs SET $field = 1 WHERE id = 'p2'",
           ),
           throwsA(isA<Exception>()),
         );
@@ -182,7 +245,6 @@ void main() {
         ),
       );
       final loaded = (await contracts.findContract('loan'))!;
-      expect(loaded.productName, '原产品');
       expect(loaded.stageTerms.stages, hasLength(3));
       expect(
         (loaded.stageTerms.stages[1].terms as AmortizingStage).method,
@@ -238,13 +300,12 @@ void main() {
         after.map((r) => r.expectedInterest),
         before.map((r) => r.expectedInterest),
       );
-      expect(restored.productName, '原产品');
       expect(restored.name, '保留的合同名称');
     },
   );
 
   test(
-    'referenced products archive instead of deletion and invalid save is atomic',
+    'product deletion preserves existing contracts and invalid save is atomic',
     () async {
       await products.save(_product());
       final loan = _loan();
@@ -253,10 +314,6 @@ void main() {
         repository: products,
         runner: DriftTransactionRunner(db),
         ids: SequentialIdGenerator(prefix: 'p'),
-      );
-      await expectLater(
-        service.delete('product'),
-        throwsA(isA<BusinessException>()),
       );
       await service.setArchived('product', true);
       expect((await products.find('product'))!.archived, isTrue);
@@ -271,22 +328,18 @@ void main() {
         throwsA(isA<BusinessException>()),
       );
       expect((await products.find('product'))!.name, '原产品');
-      await contracts.deleteContract('loan');
+      await service.delete('product');
+      expect(await products.find('product'), isNull);
+      expect(await contracts.findContract('loan'), isNotNull);
+      expect(await contracts.listSchedules('loan'), hasLength(4));
       expect(
         await (db.select(
-          db.installmentStageConfigs,
-        )..where((s) => s.ownerType.equals('contract'))).get(),
+          db.installmentProductStageConfigs,
+        )..where((s) => s.productId.equals('product'))).get(),
         isEmpty,
       );
-      await service.delete('product');
-      expect(
-        await (db.select(db.installmentStageConfigs)..where(
-              (s) =>
-                  s.ownerType.equals('product') & s.ownerId.equals('product'),
-            ))
-            .get(),
-        isEmpty,
-      );
+      await contracts.deleteContract('loan');
+      expect(await db.select(db.installmentStageConfigs).get(), isEmpty);
     },
   );
 
@@ -602,8 +655,6 @@ InstallmentOriginationResult _loan() {
     terms: InstallmentOriginationTerms(
       principal: const Money(minorUnits: 10000),
       borrowingDate: DateTime(2026),
-      productId: 'product',
-      productName: '原产品',
       stageTerms: stages,
     ),
   );

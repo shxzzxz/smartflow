@@ -36,13 +36,18 @@ class InstallmentContractEditViewModel
     } on Exception catch (error, stack) {
       _logger.warning('Load saved contract metrics', error, stack);
     }
+    final configurations = [...contract.repricingConfigurations]
+      ..sort((a, b) => b.effectiveFrom.compareTo(a.effectiveFrom));
     return InstallmentContractEditState.loaded(
       metrics: metrics,
       contract: contract,
-      productId: contract.productId,
-      productName: contract.productName,
-      stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
-      customRules: contract.customRules,
+      stageDraft: InstallmentTermsDraft.contract(
+        contract.stageTerms,
+        repricingRules: {
+          for (final configuration in configurations)
+            configuration.stageId: configuration.rule,
+        },
+      ),
       draft: [
         for (final schedule in schedules)
           InstallmentContractDraftRow(
@@ -67,14 +72,9 @@ class InstallmentContractEditViewModel
             planPreviewToken: null,
           ),
   );
-  void setCustomRules(bool value) =>
-      _updateLoaded((s) => s.copyWith(customRules: value));
   void applyConfiguration(InstallmentConfigurationDraft value) => _updateLoaded(
     (s) => s.copyWith(
       stageDraft: value.terms,
-      productId: value.productId,
-      productName: value.productName,
-      customRules: true,
       stagePlanPreviewed:
           identical(s.stageDraft, value.terms) && s.stagePlanPreviewed,
       planPreviewToken: identical(s.stageDraft, value.terms)
@@ -86,7 +86,7 @@ class InstallmentContractEditViewModel
   Future<UiActionOutcome<void>> _recalculateStages(
     InstallmentContractEditLoaded loaded,
   ) => guardUiAction(_logger, 'Preview staged contract', () async {
-    final terms = loaded.stageDraft.contractTerms();
+    final terms = loaded.stageDraft.contractTerms(includeRepricing: false);
     final preview = await ref
         .read(installmentAppServiceProvider)
         .previewContractRecalculation(
@@ -126,16 +126,14 @@ class InstallmentContractEditViewModel
     _setLoaded(loaded.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Save staged contract', () async {
-        final terms = loaded.stageDraft.contractTerms();
+        final terms = loaded.stageDraft.contractTerms(includeRepricing: false);
         await ref
             .read(installmentAppServiceProvider)
             .updateContract(
               UpdateContractCommand(
                 contractId: contractId,
                 name: nameText,
-                productId: loaded.productId,
                 stageTerms: terms,
-                customRules: loaded.customRules,
                 regeneratePlan: loaded.stagePlanPreviewed,
                 planPreviewToken: loaded.planPreviewToken,
                 schedulePatches: [

@@ -6,6 +6,8 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/installment_contract_edit_page.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
@@ -21,7 +23,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           installmentContractProvider.overrideWith(
-            (ref, contractId) async => _contract(),
+            (ref, contractId) async => _contract(floating: true),
           ),
           installmentSchedulesProvider.overrideWith(
             (ref, contractId) async => [_schedule()],
@@ -57,6 +59,14 @@ void main() {
       await tester.tap(find.text('分期配置'));
       await tester.pumpAndSettle();
       expect(find.byType(LoanConfigurationPage), findsOneWidget);
+      expect(find.text('产品模板'), findsNothing);
+      expect(find.text('高级配置'), findsOneWidget);
+      final rateType = tester
+          .widget<AppPlainSelectMenuFormRow<InterestRateType>>(
+            find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
+          );
+      expect(rateType.value, InterestRateType.lprFiveYearPlus);
+      expect(rateType.enabled, isFalse);
       await tester.enterText(
         find.descendant(
           of: find.byKey(const ValueKey('contract-1:stage:1:rate')),
@@ -100,6 +110,16 @@ void main() {
       expect(patch.expectedPrincipal, const Money(minorUnits: 6000));
       expect(service.updateCommands.single.name, '家庭贷款');
       expect(service.updateCommands.single.regeneratePlan, isFalse);
+      expect(
+        service
+            .updateCommands
+            .single
+            .stageTerms!
+            .repayments
+            .single
+            .floatingRate,
+        isNull,
+      );
       expect(
         service.updateCommands.single.stageTerms!.repayments.single.rate!.ppm,
         20000,
@@ -171,7 +191,7 @@ const _metrics = ContractMetrics(
   unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
 );
 
-InstallmentContractReadModel _contract() {
+InstallmentContractReadModel _contract({bool floating = false}) {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
@@ -182,13 +202,29 @@ InstallmentContractReadModel _contract() {
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    repricingConfigurations: [
+      if (floating)
+        InstallmentRepricingConfigurationReadModel(
+          id: 'configuration',
+          stageId: 'contract-1:stage:1',
+          effectiveFrom: DateTime.utc(2026, 1, 1),
+          rule: FloatingRateRule(
+            referenceRateType: InterestRateType.lprFiveYearPlus,
+            spreadBp: -30,
+            firstResetDate: DateTime.utc(2026, 1, 20),
+            firstEffectiveDate: DateTime.utc(2026, 1, 25),
+          ),
+        ),
+    ],
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 1,
       firstDate: DateTime(2026, 2, 1),
       lastDate: DateTime(2026, 2, 1),
       method: InstallmentRepaymentMethod.equalPrincipal,
-      ratePeriod: InterestRatePeriod.monthly,
+      ratePeriod: floating
+          ? InterestRatePeriod.annual
+          : InterestRatePeriod.monthly,
       ratePpm: 10000,
       accrual: InterestAccrualMethod.daily,
       feeMinor: 0,

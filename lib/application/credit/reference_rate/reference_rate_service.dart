@@ -32,11 +32,11 @@ class ReferenceRateService {
 
   /// Reads one coherent local snapshot, then supplements it through today.
   /// Source selection, merging and partial failures stay inside this service.
-  Stream<ReferenceRateHistory> history(List<ReferenceRateType> types) async* {
+  Stream<ReferenceRateHistory> history(List<InterestRateType> types) async* {
     final today = referenceDate(clock());
     final uniqueTypes = types.toSet();
     final local = <ReferenceRate>[];
-    final starts = <ReferenceRateType, DateTime>{};
+    final starts = <InterestRateType, DateTime>{};
     for (final type in uniqueTypes) {
       final rows = (await repository.read(
         type,
@@ -74,19 +74,19 @@ class ReferenceRateService {
   }
 
   Future<ReferenceRateResolution> resolveOne(
-    ReferenceRateType type,
+    InterestRateType type,
     DateTime date,
   ) async => (await resolveMany([type], [date]))[type]!.single;
 
   Future<List<ReferenceRateResolution>> resolve(
-    ReferenceRateType type,
+    InterestRateType type,
     List<DateTime> dates,
   ) async => (await resolveMany([type], dates))[type]!;
 
   /// Every type is resolved for every date. Duplicate types are collapsed;
   /// date order and duplicate dates are preserved within each result list.
-  Future<Map<ReferenceRateType, List<ReferenceRateResolution>>> resolveMany(
-    List<ReferenceRateType> types,
+  Future<Map<InterestRateType, List<ReferenceRateResolution>>> resolveMany(
+    List<InterestRateType> types,
     List<DateTime> dates,
   ) async {
     final uniqueTypes = types.toSet();
@@ -97,9 +97,9 @@ class ReferenceRateService {
       });
     }
     final today = referenceDate(clock());
-    final local = <ReferenceRateType, List<ReferenceRate>>{};
-    final needsSync = <ReferenceRateType, List<bool>>{};
-    final starts = <ReferenceRateType, DateTime>{};
+    final local = <InterestRateType, List<ReferenceRate>>{};
+    final needsSync = <InterestRateType, List<bool>>{};
+    final starts = <InterestRateType, DateTime>{};
     DateTime? through;
     for (final type in uniqueTypes) {
       final rows = local[type] = await repository.read(type);
@@ -121,7 +121,7 @@ class ReferenceRateService {
       }
     }
     final failures = through == null
-        ? <ReferenceRateType, ReferenceRateMissingReason?>{}
+        ? <InterestRateType, ReferenceRateMissingReason?>{}
         : await _synchronize(starts, through);
     for (final type in starts.keys) {
       local[type] = await repository.read(type);
@@ -158,13 +158,13 @@ class ReferenceRateService {
     );
   }
 
-  Future<Map<ReferenceRateType, ReferenceRateMissingReason?>> _synchronize(
-    Map<ReferenceRateType, DateTime> starts,
+  Future<Map<InterestRateType, ReferenceRateMissingReason?>> _synchronize(
+    Map<InterestRateType, DateTime> starts,
     DateTime through,
   ) async {
-    final remaining = Map<ReferenceRateType, DateTime>.of(starts);
+    final remaining = Map<InterestRateType, DateTime>.of(starts);
     final pending =
-        <Future<Map<ReferenceRateType, ReferenceRateMissingReason?>>>[];
+        <Future<Map<InterestRateType, ReferenceRateMissingReason?>>>[];
     for (final active in _synchronizations) {
       if (active.through.isBefore(through)) continue;
       final covered = remaining.keys
@@ -195,12 +195,12 @@ class ReferenceRateService {
     return {for (final result in await Future.wait(pending)) ...result};
   }
 
-  Future<Map<ReferenceRateType, ReferenceRateMissingReason?>> _fetchAndMerge(
-    Map<ReferenceRateType, DateTime> starts,
+  Future<Map<InterestRateType, ReferenceRateMissingReason?>> _fetchAndMerge(
+    Map<InterestRateType, DateTime> starts,
     DateTime through,
   ) async {
     final remaining = starts.keys.toSet();
-    final results = <ReferenceRateType, ReferenceRateMissingReason?>{
+    final results = <InterestRateType, ReferenceRateMissingReason?>{
       for (final type in remaining)
         type: ReferenceRateMissingReason.sourceUnavailable,
     };
@@ -208,7 +208,7 @@ class ReferenceRateService {
       final types = remaining.where(source.supportedTypes.contains).toList();
       if (types.isEmpty) continue;
       final from = types.map((type) => starts[type]!).reduce(_earlier);
-      Map<ReferenceRateType, List<ReferenceRate>> histories;
+      Map<InterestRateType, List<ReferenceRate>> histories;
       try {
         histories = await source.fetch(types, from: from, through: through);
       } on Exception catch (error, stack) {
@@ -292,7 +292,7 @@ class ReferenceRateService {
 
   void _validate(
     List<ReferenceRate> rows,
-    ReferenceRateType type,
+    InterestRateType type,
     String source,
     DateTime from,
     DateTime through,
@@ -332,7 +332,7 @@ DateTime _earlier(DateTime a, DateTime b) => a.isBefore(b) ? a : b;
 
 class _Synchronization {
   _Synchronization(this.starts, this.through);
-  final Map<ReferenceRateType, DateTime> starts;
+  final Map<InterestRateType, DateTime> starts;
   final DateTime through;
-  late final Future<Map<ReferenceRateType, ReferenceRateMissingReason?>> result;
+  late final Future<Map<InterestRateType, ReferenceRateMissingReason?>> result;
 }

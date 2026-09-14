@@ -2908,7 +2908,7 @@ final class InstallmentAppServiceProvider
 }
 
 String _$installmentAppServiceHash() =>
-    r'547e1558242ff7d3edee34b794a38958d3421178';
+    r'f3c34eed4ff3c82d4c4c7ad06171abe66645d95c';
 
 @ProviderFor(installmentStatusRepairAppService)
 final installmentStatusRepairAppServiceProvider =
