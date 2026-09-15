@@ -7,7 +7,6 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
-import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/installment_contract_edit_page.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
@@ -61,12 +60,8 @@ void main() {
       expect(find.byType(LoanConfigurationPage), findsOneWidget);
       expect(find.text('产品模板'), findsNothing);
       expect(find.text('高级配置'), findsOneWidget);
-      final rateType = tester
-          .widget<AppPlainSelectMenuFormRow<InterestRateType>>(
-            find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
-          );
-      expect(rateType.value, InterestRateType.fixed);
-      expect(rateType.enabled, isTrue);
+      expect(find.text('利率类型'), findsNothing);
+      expect(find.text('初始利率'), findsOneWidget);
       await tester.enterText(
         find.descendant(
           of: find.byKey(const ValueKey('contract-1:stage:1:rate')),

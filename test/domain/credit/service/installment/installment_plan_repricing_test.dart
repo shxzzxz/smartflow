@@ -8,12 +8,99 @@ import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/valobj/equal_installment_amount.dart';
+import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 
 void main() {
   const engine = InstallmentPlanEngine();
   final start = DateTime.utc(2025, 12, 20);
   final effective = DateTime.utc(2026, 1, 1);
+  for (final dates in [
+    (DateTime.utc(2025, 8, 30), DateTime.utc(2025, 9, 1)),
+    (DateTime.utc(2025, 8, 20), DateTime.utc(2025, 8, 25)),
+  ]) {
+    test(
+      'stage opening uses the latest effective rate through ${dates.$2}',
+      () {
+        RateChange repricing(DateTime reset, DateTime effective, int ppm) =>
+            RateChange(
+              resetDate: reset,
+              effectiveDate: effective,
+              referenceRate: ReferenceRate(
+                type: InterestRateType.lprOneYear,
+                date: reset.subtract(const Duration(days: 1)),
+                ratePpm: ppm,
+                source: 'test',
+              ),
+              spreadBp: 0,
+            );
+        final result = engine.generate(
+          InstallmentPlanTerms(
+            principal: const Money(minorUnits: 10000000),
+            borrowingDate: DateTime.utc(2024, 9, 1),
+            stages: [
+              DefermentStage(until: DateTime.utc(2025, 8, 31)),
+              AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime.utc(2025, 12, 20),
+                  count: 5,
+                  intervalMonths: 12,
+                ),
+                method: InstallmentRepaymentMethod.interestFirst,
+                rate: const InterestRate(
+                  ppm: 48000,
+                  period: InterestRatePeriod.annual,
+                ),
+                accrual: InterestAccrualMethod.daily,
+              ),
+              AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime.utc(2030, 12, 20),
+                  count: 1,
+                ),
+                method: InstallmentRepaymentMethod.equalPrincipal,
+                rate: const InterestRate(
+                  ppm: 50000,
+                  period: InterestRatePeriod.annual,
+                ),
+                accrual: InterestAccrualMethod.daily,
+              ),
+            ],
+          ),
+          operations: InstallmentPlanOperations(
+            rateChangesByStage: {
+              1: [
+                // 重定价日和传入顺序均不决定阶段头部采用哪一条。
+                repricing(DateTime.utc(2025, 8, 1), dates.$2, 36000),
+                repricing(DateTime.utc(2025, 8, 2), dates.$1, 42000),
+                repricing(
+                  DateTime.utc(2025, 8, 3),
+                  DateTime.utc(2025, 12, 21),
+                  30000,
+                ),
+              ],
+              2: [
+                repricing(
+                  DateTime.utc(2024, 12, 21),
+                  DateTime.utc(2024, 12, 21),
+                  24000,
+                ),
+              ],
+            },
+          ),
+        );
+        final first = result.entries.first;
+        expect(first.interestSegments, hasLength(1));
+        expect(first.interestSegments.single.start, DateTime.utc(2025, 9, 1));
+        expect(first.interestSegments.single.rate!.ppm, 36000);
+        // 9/1 至 12/20 共 111 天，100000 * 3.6% * 111/360 = 1110。
+        expect(first.expectedInterest.minorUnits, 111000);
+        expect(result.entries[1].interestSegments.single.rate!.ppm, 30000);
+        expect(result.entries.last.interestSegments.single.rate!.ppm, 24000);
+      },
+    );
+  }
+
   test(
     'annual reset on December 21 applies to the complete following period',
     () {
@@ -392,4 +479,159 @@ void main() {
       );
     },
   );
+
+  for (final (accrual, dayCount, annualPpm) in [
+    (InterestAccrualMethod.monthly, DayCountConvention.thirty365, 36000),
+    (InterestAccrualMethod.annual, DayCountConvention.thirty365, 36000),
+    (InterestAccrualMethod.daily, DayCountConvention.thirty360, 36000),
+    (InterestAccrualMethod.daily, DayCountConvention.thirty365, 36500),
+  ]) {
+    for (final date in [effective, DateTime.utc(2026, 1, 21)]) {
+      test(
+        'equivalent ${accrual.name} rate with $dayCount on $date keeps the plan',
+        () {
+          final terms = InstallmentPlanTerms(
+            principal: const Money(minorUnits: 8000000),
+            borrowingDate: start,
+            dayCount: dayCount,
+            stages: [
+              AmortizingStage(
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime.utc(2026, 1, 20),
+                  count: 3,
+                ),
+                method: InstallmentRepaymentMethod.equalInstallment,
+                rate: const InterestRate(
+                  ppm: 3000,
+                  period: InterestRatePeriod.monthly,
+                ),
+                accrual: accrual,
+                installmentAmount: const EqualInstallmentAmount.actualRate(),
+              ),
+            ],
+          );
+          final before = engine.generate(terms);
+          final after = engine.generate(
+            terms,
+            operations: InstallmentPlanOperations(
+              rateChangesByStage: {
+                0: [change(date, annualPpm)],
+              },
+            ),
+          );
+          expect(
+            after.entries.map((e) => (e.expectedPrincipal, e.expectedInterest)),
+            before.entries.map(
+              (e) => (e.expectedPrincipal, e.expectedInterest),
+            ),
+          );
+          expect(
+            after.entries.every(
+              (e) =>
+                  e.interestSegments.length == 1 &&
+                  e.interestSegments.single.accrual == accrual,
+            ),
+            isTrue,
+          );
+          // 仅单位改变不触发固定还款额重算，也不使固定额汇总失效。
+          expect(
+            after.stages.single.installmentAmount,
+            before.stages.single.installmentAmount,
+          );
+        },
+      );
+    }
+  }
+
+  test(
+    'a later real change keeps the earlier effective rate facts for daily segments',
+    () {
+      final terms = InstallmentPlanTerms(
+        principal: const Money(minorUnits: 10000000),
+        borrowingDate: start,
+        dayCount: DayCountConvention.thirty365,
+        stages: [
+          AmortizingStage(
+            dates: IntervalRepaymentDates(
+              firstDate: DateTime.utc(2026, 1, 20),
+              count: 2,
+            ),
+            method: InstallmentRepaymentMethod.interestFirst,
+            rate: const InterestRate(
+              ppm: 3000,
+              period: InterestRatePeriod.monthly,
+            ),
+            accrual: InterestAccrualMethod.monthly,
+          ),
+        ],
+      );
+      final result = engine.generate(
+        terms,
+        operations: InstallmentPlanOperations(
+          rateChangesByStage: {
+            0: [
+              change(effective, 36000),
+              change(DateTime.utc(2026, 1, 10), 48000),
+            ],
+          },
+        ),
+      );
+      // 100000 * (0.3%/30*11 + 3.6%/365*9 + 4.8%/365*11) = 343.42465...
+      expect(result.entries.first.expectedInterest.minorUnits, 34342);
+      expect(
+        result.entries.first.interestSegments.map(
+          (s) => (s.rate!.ppm, s.rate!.period),
+        ),
+        [
+          (3000, InterestRatePeriod.monthly),
+          (36000, InterestRatePeriod.annual),
+          (48000, InterestRatePeriod.annual),
+        ],
+      );
+      expect(result.entries[1].expectedInterest.minorUnits, 40000);
+    },
+  );
+
+  test('daily comparison respects 365 days and exact rate differences', () {
+    final terms = InstallmentPlanTerms(
+      principal: const Money(minorUnits: 10000000),
+      borrowingDate: start,
+      dayCount: DayCountConvention.thirty365,
+      stages: [
+        AmortizingStage(
+          dates: IntervalRepaymentDates(
+            firstDate: DateTime.utc(2026, 1, 20),
+            count: 2,
+          ),
+          method: InstallmentRepaymentMethod.interestFirst,
+          rate: const InterestRate(
+            ppm: 3000,
+            period: InterestRatePeriod.monthly,
+          ),
+          accrual: InterestAccrualMethod.daily,
+        ),
+      ],
+    );
+    final result = engine.generate(
+      terms,
+      operations: InstallmentPlanOperations(
+        rateChangesByStage: {
+          0: [change(effective, 36000)],
+        },
+      ),
+    );
+    // 100000 * (0.3% / 30 * 11 + 3.6% / 365 * 20) = 307.26027...
+    expect(result.entries.first.expectedInterest.minorUnits, 30726);
+    expect(result.entries.first.interestSegments, hasLength(2));
+    final tiny = engine.generate(
+      terms,
+      operations: InstallmentPlanOperations(
+        rateChangesByStage: {
+          0: [change(effective, 36501)],
+        },
+      ),
+    );
+    expect(tiny.entries.first.interestSegments, hasLength(2));
+    expect(tiny.entries.first.interestSegments.last.rate!.ppm, 36501);
+  });
 }

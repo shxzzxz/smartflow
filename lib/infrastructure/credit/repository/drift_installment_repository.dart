@@ -176,6 +176,18 @@ class DriftInstallmentRepository implements InstallmentRepository {
           encodeContractStage(contract.stageTerms.stages[i], contract.id, i),
       ]),
     );
+    for (final configuration in contract.repricingConfigurations) {
+      await (_database.update(_database.installmentRepricingConfigs)..where(
+            (row) =>
+                row.id.equals(configuration.id) &
+                row.contractId.equals(contract.id),
+          ))
+          .write(
+            InstallmentRepricingConfigsCompanion(
+              generationCompleted: Value(configuration.generationCompleted),
+            ),
+          );
+    }
   }
 
   @override

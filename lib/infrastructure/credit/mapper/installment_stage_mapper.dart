@@ -214,6 +214,7 @@ InstallmentRepricingConfiguration decodeRepricingConfiguration(
   stageId: row.stageId,
   effectiveFrom: row.effectiveFrom.toUtc(),
   lastGeneratedDate: row.lastGeneratedDate?.toUtc(),
+  generationCompleted: row.generationCompleted,
   rule: FloatingRateRule(
     referenceRateType: InterestRateType.referenceTypes.byName(
       row.referenceRateType,
@@ -237,6 +238,7 @@ InstallmentRepricingConfigsCompanion encodeRepricingConfiguration(
   firstResetDate: referenceDate(value.rule.firstResetDate),
   firstEffectiveDate: referenceDate(value.rule.firstEffectiveDate),
   cycleMonths: value.rule.cycleMonths,
+  generationCompleted: Value(value.generationCompleted),
   lastGeneratedDate: Value(
     value.lastGeneratedDate == null
         ? null

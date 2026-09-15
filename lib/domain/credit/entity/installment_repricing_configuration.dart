@@ -11,6 +11,7 @@ class InstallmentRepricingConfiguration {
     required this.effectiveFrom,
     required this.rule,
     this.lastGeneratedDate,
+    this.generationCompleted = false,
   });
 
   final String id, contractId, stageId;
@@ -19,6 +20,20 @@ class InstallmentRepricingConfiguration {
 
   /// 已成功处理的最后一个重定价日；删除结果不会回退此进度。
   final DateTime? lastGeneratedDate;
+
+  /// 当前配置区间及阶段末日内，已无尚待处理的周期。
+  final bool generationCompleted;
+
+  InstallmentRepricingConfiguration withGenerationCompleted(bool completed) =>
+      InstallmentRepricingConfiguration(
+        id: id,
+        contractId: contractId,
+        stageId: stageId,
+        effectiveFrom: effectiveFrom,
+        rule: rule,
+        lastGeneratedDate: lastGeneratedDate,
+        generationCompleted: completed,
+      );
 
   void validate() {
     rule.validate();

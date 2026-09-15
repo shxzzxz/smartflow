@@ -38,6 +38,17 @@ class FloatingRateRule {
   DateTime resetDate(int index) => _advance(firstResetDate, index);
   DateTime effectiveDate(int index) => _advance(firstEffectiveDate, index);
 
+  /// 指定重定价日及之后的首个周期；直接定位，避免反复遍历历史周期。
+  int resetCycleOnOrAfter(DateTime date) {
+    final from = referenceDate(date);
+    final first = referenceDate(firstResetDate);
+    if (!from.isAfter(first)) return 0;
+    final months = (from.year - first.year) * 12 + from.month - first.month;
+    var index = months ~/ cycleMonths;
+    if (resetDate(index).isBefore(from)) index++;
+    return index;
+  }
+
   /// 不晚于指定生效日期的最后一个周期，早于首次生效日时返回空。
   int? effectiveCycleOnOrBefore(DateTime date) {
     final through = referenceDate(date);

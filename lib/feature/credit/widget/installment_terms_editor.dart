@@ -40,9 +40,6 @@ class InstallmentTermsEditor extends StatefulWidget {
     this.beforePlanAction,
     this.rulesEditable = true,
     this.showAdvanced = true,
-    this.rateMessages = const {},
-    this.retryableRateStageIds = const {},
-    this.onRetryReferenceRates,
     super.key,
   });
   final InstallmentTermsDraft value;
@@ -56,9 +53,6 @@ class InstallmentTermsEditor extends StatefulWidget {
 
   /// 在基础字段之外展示计算约定和高级策略，不修改草稿或隐藏基础信息。
   final bool showAdvanced;
-  final Map<String, String> rateMessages;
-  final Set<String> retryableRateStageIds;
-  final VoidCallback? onRetryReferenceRates;
 
   @override
   State<InstallmentTermsEditor> createState() => _InstallmentTermsEditorState();
@@ -332,7 +326,7 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                         ),
                       ),
                   ],
-                  if (!flat && !custom)
+                  if (!flat && !custom && productMode)
                     AppPlainSelectMenuFormRow<InterestRateType>(
                       label: '利率类型',
                       value: s.rateType,
@@ -357,41 +351,22 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                     ),
                     if (s.floating) _repricingCycle(s, update),
                   ],
-                  if (!flat && !custom && !productMode) ...[
-                    if (!s.floating)
-                      _DraftInput(
-                        key: ValueKey('${s.id}:rate'),
-                        value: s.text(StageInput.rate),
-                        label: '利率',
-                        hint: '留空即免息',
-                        enabled: true,
-                        money: false,
-                        ratePeriod: s.ratePeriod,
-                        unitEnabled: rulesEditable && !s.floating,
-                        onRatePeriodChanged: (v) =>
-                            update(s.copyWith(ratePeriod: v)),
-                        onChanged: (text) =>
-                            update(s.setInput(StageInput.rate, text)),
-                        validator: _validateRate,
-                      ),
-                    if (s.floating) ...[
-                      _DraftInput(
-                        key: ValueKey('${s.id}:spreadBp'),
-                        value: s.text(StageInput.spreadBp),
-                        label: '加减基点',
-                        hint: '例如 -30；1 BP = 0.01 个百分点',
-                        enabled: true,
-                        money: false,
-                        signed: true,
-                        validator: (v) => int.tryParse((v ?? '').trim()) == null
-                            ? '请输入整数基点，可为负数'
-                            : null,
-                        onChanged: (v) =>
-                            update(s.setInput(StageInput.spreadBp, v)),
-                      ),
-                      _calculatedRate(s),
-                    ],
-                  ],
+                  if (!flat && !custom && !productMode)
+                    _DraftInput(
+                      key: ValueKey('${s.id}:rate'),
+                      value: s.text(StageInput.rate),
+                      label: '初始利率',
+                      hint: '填写合同约定利率，留空即免息',
+                      enabled: true,
+                      money: false,
+                      ratePeriod: s.ratePeriod,
+                      unitEnabled: rulesEditable,
+                      onRatePeriodChanged: (v) =>
+                          update(s.copyWith(ratePeriod: v)),
+                      onChanged: (text) =>
+                          update(s.setInput(StageInput.rate, text)),
+                      validator: _validateRate,
+                    ),
                   if (!flat && !custom)
                     AppPlainSelectMenuFormRow(
                       label: '计息方式',
@@ -486,35 +461,6 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
       ],
     );
   }
-
-  Widget _calculatedRate(InstallmentStageDraft stage) =>
-      AppControlledFormField<String>(
-        key: ValueKey('${stage.id}:calculated-rate'),
-        value: stage.text(StageInput.rate),
-        validator: (value) => value == null || value.isEmpty
-            ? widget.rateMessages[stage.id] ?? '参考利率尚未确定'
-            : _validateRate(value),
-        builder: (context, value, error, _) => AppPlainFormRow(
-          label: '利率',
-          supportingText: error == null ? widget.rateMessages[stage.id] : null,
-          errorText: error,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  value == null || value.isEmpty ? '—' : '$value% / 年',
-                  style: context.appTextStyles.formValue,
-                ),
-              ),
-              if (widget.retryableRateStageIds.contains(stage.id))
-                TextButton(
-                  onPressed: widget.onRetryReferenceRates,
-                  child: const Text('重试'),
-                ),
-            ],
-          ),
-        ),
-      );
 
   Widget _repricingCycle(
     InstallmentStageDraft s,
@@ -643,7 +589,6 @@ class _DraftInput extends StatefulWidget {
     this.ratePeriod,
     this.onRatePeriodChanged,
     this.unitEnabled = true,
-    this.signed = false,
     super.key,
   });
   final String value, label;
@@ -653,7 +598,6 @@ class _DraftInput extends StatefulWidget {
   final InterestRatePeriod? ratePeriod;
   final ValueChanged<InterestRatePeriod>? onRatePeriodChanged;
   final bool unitEnabled;
-  final bool signed;
   final ValueChanged<String> onChanged;
   @override
   State<_DraftInput> createState() => _DraftInputState();
@@ -693,16 +637,6 @@ class _DraftInputState extends State<_DraftInput> {
           label: widget.label,
           controller: controller,
           hintText: widget.hint,
-          onChanged: widget.onChanged,
-          validator: widget.validator,
-        )
-      : widget.signed
-      ? AppPlainTextFormRow(
-          label: widget.label,
-          controller: controller,
-          hintText: widget.hint,
-          enabled: widget.enabled,
-          keyboardType: const TextInputType.numberWithOptions(signed: true),
           onChanged: widget.onChanged,
           validator: widget.validator,
         )

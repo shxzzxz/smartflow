@@ -69,7 +69,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        43,
+        44,
       );
       for (final table in db.allTables) {
         expect(

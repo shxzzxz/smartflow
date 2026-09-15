@@ -62,7 +62,7 @@ class InstallmentStageHandler {
         context.periodRange(i).start,
         changes,
       );
-      if (openingRate != rate) {
+      if (!repricingHandler.hasSameRate(context, openingRate, rate)) {
         projection = null;
         changed = true;
       }

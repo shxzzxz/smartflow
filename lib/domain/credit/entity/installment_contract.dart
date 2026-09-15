@@ -81,16 +81,25 @@ class InstallmentContract {
 
   void reviseStageTerms(InstallmentContractTerms terms) {
     terms.validate();
+    final previousEnds = {
+      for (final config in _repricingConfigurations)
+        config.stageId: _stageTerms
+            .repaymentRange(config.stageId, borrowingDate)
+            .end,
+    };
     _stageTerms = terms;
     final retained = {
       for (final stage in terms.stages)
         if (stage.terms is AmortizingStage) stage.id,
     };
-    _repricingConfigurations = List.unmodifiable(
-      _repricingConfigurations.where(
-        (config) => retained.contains(config.stageId),
-      ),
-    );
+    _repricingConfigurations = List.unmodifiable([
+      for (final config in _repricingConfigurations)
+        if (retained.contains(config.stageId))
+          previousEnds[config.stageId] !=
+                  terms.repaymentRange(config.stageId, borrowingDate).end
+              ? config.withGenerationCompleted(false)
+              : config,
+    ]);
     _repricings = List.unmodifiable(
       _repricings.where((record) => retained.contains(record.stageId)),
     );

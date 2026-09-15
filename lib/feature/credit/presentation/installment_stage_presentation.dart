@@ -93,16 +93,11 @@ InstallmentStageSummaryPresentation presentInstallmentStageSummary({
         if (!flat && !custom)
           productMode
               ? '$unit利率（本笔填写）'
-              : rate == null ||
-                    rate < Decimal.zero ||
-                    (stage.floating && rateText.isEmpty)
+              : rate == null || rate < Decimal.zero
               ? '$unit利率待完善'
               : '$unit利率 $rate%',
       ].join(' · '),
-      if (stage.floating)
-        productMode
-            ? referenceRateTypeLabel(stage.rateType)
-            : '${referenceRateTypeLabel(stage.rateType)} ${stage.text(StageInput.spreadBp)} BP',
+      if (productMode && stage.floating) referenceRateTypeLabel(stage.rateType),
       range,
     ],
     endDate: endDate,

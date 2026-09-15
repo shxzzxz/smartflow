@@ -78,22 +78,18 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
               actions: [
                 if (state.canUseCalculatorActions) ...[
                   LoanCalculatorActionButton.compare(
-                    onPressed: state.resolvingRates
-                        ? null
-                        : () => _submit(
-                            notifier,
-                            false,
-                            destination: _LoanDestination.comparison,
-                          ),
+                    onPressed: () => _submit(
+                      notifier,
+                      false,
+                      destination: _LoanDestination.comparison,
+                    ),
                   ),
                   LoanCalculatorActionButton.change(
-                    onPressed: state.resolvingRates
-                        ? null
-                        : () => _submit(
-                            notifier,
-                            false,
-                            destination: _LoanDestination.changes,
-                          ),
+                    onPressed: () => _submit(
+                      notifier,
+                      false,
+                      destination: _LoanDestination.changes,
+                    ),
                   ),
                 ],
               ],
@@ -173,13 +169,8 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
                       onChanged: notifier.setTerms,
                       borrowingDate: state.borrowingDate,
                       showAdvanced: state.advanced,
-                      rateMessages: state.rateMessages,
-                      retryableRateStageIds: state.retryableRateStageIds,
-                      onRetryReferenceRates: () =>
-                          notifier.refreshReferenceRates(retry: true),
                       planAction: AppSubmitButton(
                         label: state.submitLabel,
-                        loading: state.resolvingRates,
                         onPressed: () => _submit(notifier, state.selection),
                       ),
                     ),

@@ -131,6 +131,13 @@ void migrateInstallmentBackup(
   if (schemaVersion < 41) _migrateRepricingStageScope(tables);
   if (schemaVersion < 42) _splitProductStages(tables);
   if (schemaVersion < 43) _migrateRepricingGenerationDates(tables);
+  if (schemaVersion < 44) {
+    tables['installment_repricing_configs'] = [
+      for (final row
+          in tables['installment_repricing_configs'] ?? <BackupJson>[])
+        {...row, 'generationCompleted': false},
+    ];
+  }
 }
 
 void _migrateRepricingGenerationDates(

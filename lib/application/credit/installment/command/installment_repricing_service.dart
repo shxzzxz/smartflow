@@ -45,6 +45,7 @@ class InstallmentRepricingService {
     );
     configuration.validate();
     await records.insertConfiguration(configuration);
+    await _completeGeneration(contractId);
   });
 
   Future<void> deleteConfiguration(String contractId, String configurationId) =>
@@ -55,6 +56,17 @@ class InstallmentRepricingService {
             .firstOrNull;
         if (configuration == null) _invalid('重定价配置已不存在');
         await records.deleteConfiguration(configuration);
+        // 后续配置删除后，前一配置可能重新拥有尚未处理的周期。
+        for (final previous in contract.repricingConfigurations) {
+          if (previous.stageId == configuration.stageId &&
+              previous.generationCompleted &&
+              previous.effectiveFrom.isBefore(configuration.effectiveFrom)) {
+            await records.updateGenerationState(
+              previous.withGenerationCompleted(false),
+            );
+          }
+        }
+        await _completeGeneration(contractId);
       });
 
   Future<void> create(
@@ -184,6 +196,7 @@ class InstallmentRepricingService {
           candidate.configuration.id,
           candidate.resetDate,
         );
+        await _completeGeneration(contractId);
         return true;
       });
       if (!processed) {
@@ -191,7 +204,21 @@ class InstallmentRepricingService {
         blockedConfigurations.add(candidate.configuration.id);
       }
     }
+    await runner.run(() => _completeGeneration(contractId));
     return complete;
+  }
+
+  Future<void> _completeGeneration(String contractId) async {
+    final contract = await installments.findContract(contractId);
+    if (contract == null) return;
+    final completed = const InstallmentRepricingPlanner().completed(
+      configurations: contract.repricingConfigurations,
+      borrowingDate: contract.borrowingDate,
+      terms: contract.stageTerms,
+    );
+    for (final configuration in completed) {
+      await records.updateGenerationState(configuration);
+    }
   }
 
   Future<bool> _applyPending(String contractId) => runner.run(() async {

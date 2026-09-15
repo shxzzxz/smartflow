@@ -2,7 +2,7 @@ import '../entity/installment_repricing.dart';
 import '../entity/installment_repricing_configuration.dart';
 
 abstract interface class InstallmentRepricingRepository {
-  /// 自动生成配置或待应用记录所涉及的合同；记录不依赖配置继续存在。
+  /// 未完成的自动生成配置或待应用记录所涉及的合同。
   Future<List<String>> contractIdsForRepricing();
   Future<List<InstallmentRepricing>> list(String contractId);
 
@@ -23,6 +23,11 @@ abstract interface class InstallmentRepricingRepository {
 
   /// 按重定价日单调推进配置进度；与候选处理在同一事务中提交。
   Future<void> advanceGeneration(String configurationId, DateTime resetDate);
+
+  /// 保存配置生成状态，保留已处理进度；参与调用方事务。
+  Future<void> updateGenerationState(
+    InstallmentRepricingConfiguration configuration,
+  );
 
   /// 删除事实，保留配置的生成进度；参与调用方事务。
   Future<void> delete(InstallmentRepricing record);

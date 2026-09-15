@@ -19,14 +19,11 @@ class DriftInstallmentRepricingRepository
         in await database
             .customSelect(
               '''
-      SELECT c.id FROM installment_contracts c
-      WHERE EXISTS (
-        SELECT 1 FROM installment_repricing_configs config
-        WHERE config.contract_id = c.id
-      ) OR EXISTS (
-        SELECT 1 FROM installment_repricing_records record
-        WHERE record.contract_id = c.id AND record.status = 'pending'
-      )
+      SELECT contract_id AS id FROM installment_repricing_configs
+      WHERE generation_completed = 0
+      UNION
+      SELECT contract_id AS id FROM installment_repricing_records
+      WHERE status = 'pending'
     ''',
               readsFrom: {
                 database.installmentContracts,
@@ -164,6 +161,27 @@ class DriftInstallmentRepricingRepository
         .write(
           InstallmentRepricingConfigsCompanion(lastGeneratedDate: Value(date)),
         );
+  }
+
+  @override
+  Future<void> updateGenerationState(
+    InstallmentRepricingConfiguration configuration,
+  ) async {
+    final updated =
+        await (database.update(database.installmentRepricingConfigs)..where(
+              (row) =>
+                  row.id.equals(configuration.id) &
+                  row.contractId.equals(configuration.contractId) &
+                  row.stageId.equals(configuration.stageId),
+            ))
+            .write(
+              InstallmentRepricingConfigsCompanion(
+                generationCompleted: Value(configuration.generationCompleted),
+              ),
+            );
+    if (updated == 0) {
+      throw BusinessException(CreditErrorCode.contractPersistenceConflict);
+    }
   }
 
   @override

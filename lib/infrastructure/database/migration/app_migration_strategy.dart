@@ -448,6 +448,18 @@ WHERE NOT EXISTS (
       if (from < 40) {
         await migrateInstallmentOperations(database, migrator);
       }
+      // 旧迁移使用当前表结构和行映射，先补齐新增列；不回退历史生成进度。
+      if (from < 44 &&
+          !await _hasColumn(
+            database,
+            'installment_repricing_configs',
+            'generation_completed',
+          )) {
+        await migrator.addColumn(
+          database.installmentRepricingConfigs,
+          database.installmentRepricingConfigs.generationCompleted,
+        );
+      }
       if (from < 41) {
         await migrateRepricingStageScope(database, migrator);
       }
@@ -456,6 +468,18 @@ WHERE NOT EXISTS (
       }
       if (from < 43) {
         await migrateRepricingResetProgress(database);
+      }
+      if (from < 44) {
+        await database.customStatement(
+          'CREATE INDEX IF NOT EXISTS installment_repricing_configs_active_idx '
+          'ON installment_repricing_configs (contract_id) '
+          'WHERE generation_completed = 0',
+        );
+        await database.customStatement(
+          'CREATE INDEX IF NOT EXISTS installment_repricing_records_pending_idx '
+          'ON installment_repricing_records (contract_id) '
+          "WHERE status = 'pending'",
+        );
       }
     }),
   );

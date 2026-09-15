@@ -10,7 +10,7 @@ import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
 
 void main() {
   testWidgets(
-    'one rate selector and advanced repricing preserve the chosen policy',
+    'manual initial rate and advanced repricing preserve the chosen policy',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(600, 2600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -52,18 +52,11 @@ void main() {
           ),
         ),
       );
-      expect(find.text('利率类型'), findsOneWidget);
-      expect(find.text('利率'), findsOneWidget);
+      expect(find.text('利率类型'), findsNothing);
+      expect(find.text('初始利率'), findsOneWidget);
       expect(find.text('利率规则'), findsNothing);
       expect(find.text('参考利率类型'), findsNothing);
       expect(find.text('期中重定价'), findsNothing);
-      final types = tester.widget<AppPlainSelectMenuFormRow<InterestRateType>>(
-        find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
-      );
-      expect(
-        types.options.map((option) => option.value),
-        InterestRateType.values,
-      );
       rebuild(() => advanced = true);
       await tester.pumpAndSettle();
       expect(find.text('期中重定价'), findsOneWidget);
@@ -125,12 +118,11 @@ void main() {
       expect(rule.rateType, InterestRateType.lprFiveYearPlus);
       expect(rule.repricingCycleMonths, 12);
       expect(draft.stages.single.text(StageInput.rate), isEmpty);
-      expect(draft.stages.single.text(StageInput.spreadBp), isEmpty);
     },
   );
 
   testWidgets(
-    'reference rate input shows a calculated initial rate without repricing configuration',
+    'contract rate remains editable when the product has a reference rate rule',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(600, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -142,7 +134,6 @@ void main() {
             firstDate: DateTime(2026, 1, 20),
             inputs: const {
               StageInput.rate: '3.2',
-              StageInput.spreadBp: '-30',
               StageInput.periods: '120',
               StageInput.interval: '1',
             },
@@ -169,22 +160,16 @@ void main() {
       expect(find.text('首次重定价日'), findsNothing);
       expect(find.text('首次生效日'), findsNothing);
       expect(find.text('重定价周期'), findsNothing);
-      expect(find.text('3.2% / 年'), findsOneWidget);
-      expect(find.byKey(const ValueKey('floating:rate')), findsNothing);
-      await tester.tap(
-        find.byType(AppPlainSelectMenuFormRow<InterestRateType>),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('中长期贷款基准利率').last);
-      await tester.pumpAndSettle();
-      expect(draft.contractTerms().repayments.single.rate!.ppm, 32000);
+      expect(find.text('利率类型'), findsNothing);
+      expect(find.text('加减基点'), findsNothing);
       final field = find.descendant(
-        of: find.widgetWithText(AppPlainTextFormRow, '加减基点'),
+        of: find.byKey(const ValueKey('floating:rate')),
         matching: find.byType(TextField),
       );
-      await tester.enterText(field, '-45');
+      await tester.enterText(field, '4.35');
       await tester.pump();
-      expect(draft.stages.single.text(StageInput.spreadBp), '-45');
+      expect(draft.stages.single.text(StageInput.rate), '4.35');
+      expect(draft.contractTerms().repayments.single.rate!.ppm, 43500);
       final timing = tester
           .widget<AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>>(
             find.byType(AppPlainSelectMenuFormRow<InPeriodRepricingPolicy>),

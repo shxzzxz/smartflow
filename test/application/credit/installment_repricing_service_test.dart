@@ -46,6 +46,158 @@ void main() {
   tearDown(() => f.db.close());
 
   test(
+    'completed generation skips scans, retries pending application and reopens on extension',
+    () async {
+      f.currentDate = DateTime.utc(2026, 12, 20);
+      await f.service.prepare('loan', DateTime.utc(2026, 12, 20));
+      var contract = (await f.installments.findContract('loan'))!;
+      expect(
+        contract.repricingConfigurations.single.generationCompleted,
+        isTrue,
+      );
+      final last = contract.repricingConfigurations.single.lastGeneratedDate;
+      expect(last, DateTime.utc(2026, 9, 20));
+      // 最后一条已生成，但应用失败仍必须被任务扫描和重试。
+      await f.db.customStatement(
+        "CREATE TRIGGER reject_completion_apply BEFORE UPDATE ON installment_repricing_records BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+      );
+      expect(
+        (await f.service.runDue(DateTime.utc(2026, 12, 20))).needsRetry,
+        isTrue,
+      );
+      expect(await f.records.contractIdsForRepricing(), contains('loan'));
+      await f.db.customStatement('DROP TRIGGER reject_completion_apply');
+      expect(
+        (await f.service.runDue(DateTime.utc(2026, 12, 20))).needsRetry,
+        isFalse,
+      );
+      expect(
+        await f.records.contractIdsForRepricing(),
+        isNot(contains('loan')),
+      );
+      final records = await f.records.list('loan');
+      await f.service.delete('loan', records.first.id);
+      expect(
+        await f.records.contractIdsForRepricing(),
+        isNot(contains('loan')),
+      );
+
+      // 延长阶段重新检查配置，保持进度且不重建用户删除的结果。
+      contract = (await f.installments.findContract('loan'))!;
+      contract.reviseStageTerms(
+        InstallmentContractTerms.singleStage(
+          id: 'stage',
+          totalPeriods: 24,
+          firstDate: DateTime(2026, 1, 20),
+          method: InstallmentRepaymentMethod.equalInstallment,
+          accrual: InterestAccrualMethod.monthly,
+          ratePeriod: InterestRatePeriod.annual,
+          ratePpm: 48000,
+        ),
+      );
+      await f.installments.saveAggregate(
+        contract,
+        await f.installments.listSchedules('loan'),
+      );
+      expect(await f.records.contractIdsForRepricing(), contains('loan'));
+      contract = (await f.installments.findContract('loan'))!;
+      expect(
+        contract.repricingConfigurations.single.generationCompleted,
+        isFalse,
+      );
+      expect(contract.repricingConfigurations.single.lastGeneratedDate, last);
+      await f.service.prepare('loan', DateTime.utc(2026, 12, 20));
+      final after = await f.records.list('loan');
+      expect(after.any((r) => r.id == records.first.id), isFalse);
+      expect(after.last.change.resetDate, DateTime.utc(2026, 12, 20));
+    },
+  );
+
+  test(
+    'deleting a successor reopens its predecessor without resetting progress',
+    () async {
+      f.currentDate = DateTime.utc(2026, 3, 20);
+      await f.service.prepare('loan', DateTime.utc(2026, 1, 5));
+      final before = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      await f.service.addConfiguration(
+        'loan',
+        stageId: 'stage',
+        effectiveFrom: DateTime.utc(2026, 3, 20),
+        rule: FloatingRateRule(
+          referenceRateType: InterestRateType.lprFiveYearPlus,
+          spreadBp: -30,
+          firstResetDate: DateTime.utc(2026, 3, 20),
+          firstEffectiveDate: DateTime.utc(2026, 4, 1),
+          cycleMonths: 3,
+        ),
+      );
+      var configurations = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations;
+      expect(configurations.first.generationCompleted, isTrue);
+      expect(configurations.last.generationCompleted, isFalse);
+      await f.service.deleteConfiguration('loan', configurations.last.id);
+      configurations = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations;
+      expect(configurations.single.generationCompleted, isFalse);
+      expect(configurations.single.lastGeneratedDate, before.lastGeneratedDate);
+      await f.service.prepare('loan', DateTime.utc(2026, 3, 20));
+      expect((await f.records.list('loan')).map((r) => r.change.resetDate), [
+        DateTime.utc(2025, 12, 20),
+        DateTime.utc(2026, 3, 20),
+      ]);
+    },
+  );
+
+  test(
+    'last-period quote failure leaves generation open and final status is atomic',
+    () async {
+      f.currentDate = DateTime.utc(2026, 9, 20);
+      await f.service.prepare('loan', DateTime.utc(2026, 6, 20));
+      expect(
+        await f.service.prepare(
+          'loan',
+          DateTime.utc(2026, 9, 20),
+          resolvedRates: {},
+        ),
+        isFalse,
+      );
+      var config = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      expect(config.generationCompleted, isFalse);
+      expect(config.lastGeneratedDate, DateTime.utc(2026, 6, 20));
+      await f.db.customStatement(
+        "CREATE TRIGGER reject_generation_completion BEFORE UPDATE OF generation_completed ON installment_repricing_configs WHEN NEW.generation_completed = 1 BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+      );
+      await expectLater(
+        f.service.prepare('loan', DateTime.utc(2026, 9, 20)),
+        throwsException,
+      );
+      config = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      expect(config.generationCompleted, isFalse);
+      expect(config.lastGeneratedDate, DateTime.utc(2026, 6, 20));
+      expect(
+        (await f.records.list('loan')).last.change.resetDate,
+        DateTime.utc(2026, 6, 20),
+      );
+      await f.db.customStatement('DROP TRIGGER reject_generation_completion');
+      await f.service.prepare('loan', DateTime.utc(2026, 9, 20));
+      expect(
+        (await f.installments.findContract(
+          'loan',
+        ))!.repricingConfigurations.single.generationCompleted,
+        isTrue,
+      );
+    },
+  );
+
+  test(
     'pending repricing is applied even after its generating configuration is deleted',
     () async {
       expect(await f.service.prepare('loan', f.currentDate), isTrue);

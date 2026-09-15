@@ -532,6 +532,7 @@ class BackupService {
           !_isUtcCalendarDate(row['firstEffectiveDate']) ||
           (row['firstResetDate'] as int) > (row['firstEffectiveDate'] as int) ||
           row['spreadBp'] is! int ||
+          row['generationCompleted'] is! bool ||
           !const {3, 6, 12}.contains(row['cycleMonths']) ||
           (row['lastGeneratedDate'] != null &&
               (!_isUtcCalendarDate(row['lastGeneratedDate']) ||

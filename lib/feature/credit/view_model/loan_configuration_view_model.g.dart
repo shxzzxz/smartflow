@@ -66,7 +66,7 @@ final class LoanConfigurationViewModelProvider
 }
 
 String _$loanConfigurationViewModelHash() =>
-    r'01567486121fe48f985c88b6e88ca18e23b20c10';
+    r'7c7e4bd7c2b6eeaaac7a100982a3bc779173d2a7';
 
 final class LoanConfigurationViewModelFamily extends $Family
     with

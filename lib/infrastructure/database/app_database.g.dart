@@ -12770,6 +12770,20 @@ class $InstallmentRepricingConfigsTable extends InstallmentRepricingConfigs
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _generationCompletedMeta =
+      const VerificationMeta('generationCompleted');
+  @override
+  late final GeneratedColumn<bool> generationCompleted = GeneratedColumn<bool>(
+    'generation_completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("generation_completed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -12794,6 +12808,7 @@ class $InstallmentRepricingConfigsTable extends InstallmentRepricingConfigs
     firstEffectiveDate,
     cycleMonths,
     lastGeneratedDate,
+    generationCompleted,
     createdAt,
   ];
   @override
@@ -12901,6 +12916,15 @@ class $InstallmentRepricingConfigsTable extends InstallmentRepricingConfigs
         ),
       );
     }
+    if (data.containsKey('generation_completed')) {
+      context.handle(
+        _generationCompletedMeta,
+        generationCompleted.isAcceptableOrUnknown(
+          data['generation_completed']!,
+          _generationCompletedMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -12959,6 +12983,10 @@ class $InstallmentRepricingConfigsTable extends InstallmentRepricingConfigs
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_generated_date'],
       ),
+      generationCompleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}generation_completed'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -12984,6 +13012,7 @@ class InstallmentRepricingConfigRow extends DataClass
   final DateTime firstEffectiveDate;
   final int cycleMonths;
   final DateTime? lastGeneratedDate;
+  final bool generationCompleted;
   final DateTime createdAt;
   const InstallmentRepricingConfigRow({
     required this.id,
@@ -12996,6 +13025,7 @@ class InstallmentRepricingConfigRow extends DataClass
     required this.firstEffectiveDate,
     required this.cycleMonths,
     this.lastGeneratedDate,
+    required this.generationCompleted,
     required this.createdAt,
   });
   @override
@@ -13013,6 +13043,7 @@ class InstallmentRepricingConfigRow extends DataClass
     if (!nullToAbsent || lastGeneratedDate != null) {
       map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate);
     }
+    map['generation_completed'] = Variable<bool>(generationCompleted);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -13031,6 +13062,7 @@ class InstallmentRepricingConfigRow extends DataClass
       lastGeneratedDate: lastGeneratedDate == null && nullToAbsent
           ? const Value.absent()
           : Value(lastGeneratedDate),
+      generationCompleted: Value(generationCompleted),
       createdAt: Value(createdAt),
     );
   }
@@ -13055,6 +13087,9 @@ class InstallmentRepricingConfigRow extends DataClass
       lastGeneratedDate: serializer.fromJson<DateTime?>(
         json['lastGeneratedDate'],
       ),
+      generationCompleted: serializer.fromJson<bool>(
+        json['generationCompleted'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -13072,6 +13107,7 @@ class InstallmentRepricingConfigRow extends DataClass
       'firstEffectiveDate': serializer.toJson<DateTime>(firstEffectiveDate),
       'cycleMonths': serializer.toJson<int>(cycleMonths),
       'lastGeneratedDate': serializer.toJson<DateTime?>(lastGeneratedDate),
+      'generationCompleted': serializer.toJson<bool>(generationCompleted),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -13087,6 +13123,7 @@ class InstallmentRepricingConfigRow extends DataClass
     DateTime? firstEffectiveDate,
     int? cycleMonths,
     Value<DateTime?> lastGeneratedDate = const Value.absent(),
+    bool? generationCompleted,
     DateTime? createdAt,
   }) => InstallmentRepricingConfigRow(
     id: id ?? this.id,
@@ -13101,6 +13138,7 @@ class InstallmentRepricingConfigRow extends DataClass
     lastGeneratedDate: lastGeneratedDate.present
         ? lastGeneratedDate.value
         : this.lastGeneratedDate,
+    generationCompleted: generationCompleted ?? this.generationCompleted,
     createdAt: createdAt ?? this.createdAt,
   );
   InstallmentRepricingConfigRow copyWithCompanion(
@@ -13131,6 +13169,9 @@ class InstallmentRepricingConfigRow extends DataClass
       lastGeneratedDate: data.lastGeneratedDate.present
           ? data.lastGeneratedDate.value
           : this.lastGeneratedDate,
+      generationCompleted: data.generationCompleted.present
+          ? data.generationCompleted.value
+          : this.generationCompleted,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -13148,6 +13189,7 @@ class InstallmentRepricingConfigRow extends DataClass
           ..write('firstEffectiveDate: $firstEffectiveDate, ')
           ..write('cycleMonths: $cycleMonths, ')
           ..write('lastGeneratedDate: $lastGeneratedDate, ')
+          ..write('generationCompleted: $generationCompleted, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -13165,6 +13207,7 @@ class InstallmentRepricingConfigRow extends DataClass
     firstEffectiveDate,
     cycleMonths,
     lastGeneratedDate,
+    generationCompleted,
     createdAt,
   );
   @override
@@ -13181,6 +13224,7 @@ class InstallmentRepricingConfigRow extends DataClass
           other.firstEffectiveDate == this.firstEffectiveDate &&
           other.cycleMonths == this.cycleMonths &&
           other.lastGeneratedDate == this.lastGeneratedDate &&
+          other.generationCompleted == this.generationCompleted &&
           other.createdAt == this.createdAt);
 }
 
@@ -13196,6 +13240,7 @@ class InstallmentRepricingConfigsCompanion
   final Value<DateTime> firstEffectiveDate;
   final Value<int> cycleMonths;
   final Value<DateTime?> lastGeneratedDate;
+  final Value<bool> generationCompleted;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const InstallmentRepricingConfigsCompanion({
@@ -13209,6 +13254,7 @@ class InstallmentRepricingConfigsCompanion
     this.firstEffectiveDate = const Value.absent(),
     this.cycleMonths = const Value.absent(),
     this.lastGeneratedDate = const Value.absent(),
+    this.generationCompleted = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -13223,6 +13269,7 @@ class InstallmentRepricingConfigsCompanion
     required DateTime firstEffectiveDate,
     required int cycleMonths,
     this.lastGeneratedDate = const Value.absent(),
+    this.generationCompleted = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -13245,6 +13292,7 @@ class InstallmentRepricingConfigsCompanion
     Expression<DateTime>? firstEffectiveDate,
     Expression<int>? cycleMonths,
     Expression<DateTime>? lastGeneratedDate,
+    Expression<bool>? generationCompleted,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -13260,6 +13308,8 @@ class InstallmentRepricingConfigsCompanion
         'first_effective_date': firstEffectiveDate,
       if (cycleMonths != null) 'cycle_months': cycleMonths,
       if (lastGeneratedDate != null) 'last_generated_date': lastGeneratedDate,
+      if (generationCompleted != null)
+        'generation_completed': generationCompleted,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -13276,6 +13326,7 @@ class InstallmentRepricingConfigsCompanion
     Value<DateTime>? firstEffectiveDate,
     Value<int>? cycleMonths,
     Value<DateTime?>? lastGeneratedDate,
+    Value<bool>? generationCompleted,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -13290,6 +13341,7 @@ class InstallmentRepricingConfigsCompanion
       firstEffectiveDate: firstEffectiveDate ?? this.firstEffectiveDate,
       cycleMonths: cycleMonths ?? this.cycleMonths,
       lastGeneratedDate: lastGeneratedDate ?? this.lastGeneratedDate,
+      generationCompleted: generationCompleted ?? this.generationCompleted,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -13330,6 +13382,9 @@ class InstallmentRepricingConfigsCompanion
     if (lastGeneratedDate.present) {
       map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate.value);
     }
+    if (generationCompleted.present) {
+      map['generation_completed'] = Variable<bool>(generationCompleted.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -13352,6 +13407,7 @@ class InstallmentRepricingConfigsCompanion
           ..write('firstEffectiveDate: $firstEffectiveDate, ')
           ..write('cycleMonths: $cycleMonths, ')
           ..write('lastGeneratedDate: $lastGeneratedDate, ')
+          ..write('generationCompleted: $generationCompleted, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -16529,6 +16585,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ImportBatchItemsTable importBatchItems = $ImportBatchItemsTable(
     this,
   );
+  late final Index installmentRepricingRecordsPendingIdx = Index(
+    'installment_repricing_records_pending_idx',
+    'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
+  );
+  late final Index installmentRepricingConfigsActiveIdx = Index(
+    'installment_repricing_configs_active_idx',
+    'CREATE INDEX installment_repricing_configs_active_idx ON installment_repricing_configs (contract_id) WHERE generation_completed = 0',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -16561,6 +16625,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     importEntityMappings,
     importBatches,
     importBatchItems,
+    installmentRepricingRecordsPendingIdx,
+    installmentRepricingConfigsActiveIdx,
   ];
 }
 
@@ -22783,6 +22849,7 @@ typedef $$InstallmentRepricingConfigsTableCreateCompanionBuilder =
       required DateTime firstEffectiveDate,
       required int cycleMonths,
       Value<DateTime?> lastGeneratedDate,
+      Value<bool> generationCompleted,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -22798,6 +22865,7 @@ typedef $$InstallmentRepricingConfigsTableUpdateCompanionBuilder =
       Value<DateTime> firstEffectiveDate,
       Value<int> cycleMonths,
       Value<DateTime?> lastGeneratedDate,
+      Value<bool> generationCompleted,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -22858,6 +22926,11 @@ class $$InstallmentRepricingConfigsTableFilterComposer
 
   ColumnFilters<DateTime> get lastGeneratedDate => $composableBuilder(
     column: $table.lastGeneratedDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get generationCompleted => $composableBuilder(
+    column: $table.generationCompleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22926,6 +22999,11 @@ class $$InstallmentRepricingConfigsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get generationCompleted => $composableBuilder(
+    column: $table.generationCompleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -22982,6 +23060,11 @@ class $$InstallmentRepricingConfigsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastGeneratedDate => $composableBuilder(
     column: $table.lastGeneratedDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get generationCompleted => $composableBuilder(
+    column: $table.generationCompleted,
     builder: (column) => column,
   );
 
@@ -23045,6 +23128,7 @@ class $$InstallmentRepricingConfigsTableTableManager
                 Value<DateTime> firstEffectiveDate = const Value.absent(),
                 Value<int> cycleMonths = const Value.absent(),
                 Value<DateTime?> lastGeneratedDate = const Value.absent(),
+                Value<bool> generationCompleted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentRepricingConfigsCompanion(
@@ -23058,6 +23142,7 @@ class $$InstallmentRepricingConfigsTableTableManager
                 firstEffectiveDate: firstEffectiveDate,
                 cycleMonths: cycleMonths,
                 lastGeneratedDate: lastGeneratedDate,
+                generationCompleted: generationCompleted,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -23073,6 +23158,7 @@ class $$InstallmentRepricingConfigsTableTableManager
                 required DateTime firstEffectiveDate,
                 required int cycleMonths,
                 Value<DateTime?> lastGeneratedDate = const Value.absent(),
+                Value<bool> generationCompleted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => InstallmentRepricingConfigsCompanion.insert(
@@ -23086,6 +23172,7 @@ class $$InstallmentRepricingConfigsTableTableManager
                 firstEffectiveDate: firstEffectiveDate,
                 cycleMonths: cycleMonths,
                 lastGeneratedDate: lastGeneratedDate,
+                generationCompleted: generationCompleted,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

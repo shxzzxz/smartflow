@@ -1,6 +1,10 @@
 import 'package:drift/drift.dart';
 
 @DataClassName('InstallmentRepricingRow')
+@TableIndex.sql('''
+  CREATE INDEX installment_repricing_records_pending_idx
+  ON installment_repricing_records (contract_id) WHERE status = 'pending'
+''')
 class InstallmentRepricingRecords extends Table {
   TextColumn get id => text()();
   TextColumn get contractId => text()();

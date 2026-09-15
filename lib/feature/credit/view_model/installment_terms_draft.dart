@@ -16,15 +16,7 @@ import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../../domain/credit/valobj/tail_difference_policy.dart';
 
-enum StageInput {
-  periods,
-  interval,
-  rate,
-  endPrincipal,
-  fixedAmount,
-  fee,
-  spreadBp,
-}
+enum StageInput { periods, interval, rate, endPrincipal, fixedAmount, fee }
 
 class InstallmentStageDraft {
   InstallmentStageDraft({
@@ -193,11 +185,6 @@ class InstallmentStageDraft {
       );
     }
     if (firstDate == null) _invalid('请选择首期还款日');
-    if (floating &&
-        (int.tryParse(text(StageInput.spreadBp).trim()) == null ||
-            text(StageInput.rate).trim().isEmpty)) {
-      _invalid('请填写加减基点，并等待初始利率计算完成');
-    }
     final flat = method == InstallmentRepaymentMethod.flatFee;
     final hasInterest = !flat && method != InstallmentRepaymentMethod.custom;
     // 零利率仍保留所选单位，重新打开合同后规则不会漂移。

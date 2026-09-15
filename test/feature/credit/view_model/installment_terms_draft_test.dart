@@ -24,7 +24,7 @@ void main() {
   });
 
   test(
-    'reference rate entry saves only the initial rate and repayment policy',
+    'contract entry saves the manual initial rate without reference rate inputs',
     () {
       final draft = InstallmentStageDraft(
         id: 'floating',
@@ -33,7 +33,6 @@ void main() {
         repricingCycleMonths: 6,
         inputs: const {
           StageInput.rate: '3.2',
-          StageInput.spreadBp: '-30',
           StageInput.interval: '1',
           StageInput.periods: '120',
         },
@@ -42,7 +41,6 @@ void main() {
       final reopened = InstallmentTermsDraft.contract(terms).stages.single;
       expect(reopened.floating, isFalse);
       expect(reopened.rateType, InterestRateType.fixed);
-      expect(reopened.text(StageInput.spreadBp), isEmpty);
       expect(terms.repayments.single.floatingRate, isNull);
       expect(terms.repayments.single.rate!.ppm, 32000);
       expect(

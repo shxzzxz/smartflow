@@ -1,6 +1,10 @@
 import 'package:drift/drift.dart';
 
 @DataClassName('InstallmentRepricingConfigRow')
+@TableIndex.sql('''
+  CREATE INDEX installment_repricing_configs_active_idx
+  ON installment_repricing_configs (contract_id) WHERE generation_completed = 0
+''')
 class InstallmentRepricingConfigs extends Table {
   TextColumn get id => text()();
   TextColumn get contractId => text()();
@@ -12,6 +16,8 @@ class InstallmentRepricingConfigs extends Table {
   DateTimeColumn get firstEffectiveDate => dateTime()();
   IntColumn get cycleMonths => integer()();
   DateTimeColumn get lastGeneratedDate => dateTime().nullable()();
+  BoolColumn get generationCompleted =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
