@@ -11,11 +11,11 @@ import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
 import '../../../shared/transaction_runner.dart';
-import '../../reference_rate/reference_rate_service.dart';
-import 'installment_plan_service.dart';
+import '../../reference_rate/reference_rate_app_service.dart';
+import 'installment_plan_app_service.dart';
 
-class InstallmentRepricingService {
-  InstallmentRepricingService({
+class InstallmentRepricingAppService {
+  InstallmentRepricingAppService({
     required this.installments,
     required this.records,
     required this.referenceRates,
@@ -24,8 +24,8 @@ class InstallmentRepricingService {
   });
   final InstallmentRepository installments;
   final InstallmentRepricingRepository records;
-  final ReferenceRateService referenceRates;
-  final InstallmentPlanService plans;
+  final ReferenceRateAppService referenceRates;
+  final InstallmentPlanAppService plans;
   final TransactionRunner runner;
 
   Future<void> addConfiguration(

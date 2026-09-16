@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
@@ -14,7 +14,7 @@ void main() {
       () async {
         final rates = _Rates();
         final container = ProviderContainer(
-          overrides: [referenceRateServiceProvider.overrideWithValue(rates)],
+          overrides: [referenceRateAppServiceProvider.overrideWithValue(rates)],
         );
         addTearDown(container.dispose);
         final terms = InstallmentTermsDraft(
@@ -122,7 +122,7 @@ InstallmentStageDraft _stage(String id, DateTime firstDate, String rate) =>
       },
     );
 
-class _Rates implements ReferenceRateService {
+class _Rates implements ReferenceRateAppService {
   final requests = <(InterestRateType, DateTime)>[];
 
   @override

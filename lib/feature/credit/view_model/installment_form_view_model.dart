@@ -48,7 +48,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
       guardUiAction(
         _logger,
         'Load installment products',
-        () async => ref.read(installmentProductServiceProvider).list(),
+        () async => ref.read(installmentProductAppServiceProvider).list(),
       );
 
   void selectProduct(InstallmentProductReadModel product) => _updateLoaded(
@@ -136,7 +136,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
         'Create staged installment',
         () async {
           final result = await ref
-              .read(installmentAppServiceProvider)
+              .read(installmentContractAppServiceProvider)
               .createDisbursementContract(
                 CreateDisbursementContractCommand(
                   liabilityAccountId: current.liability.id,

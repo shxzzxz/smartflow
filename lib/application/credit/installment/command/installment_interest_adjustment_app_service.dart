@@ -8,10 +8,10 @@ import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../shared/transaction_runner.dart';
-import 'installment_plan_service.dart';
+import 'installment_plan_app_service.dart';
 
-class InstallmentInterestAdjustmentService {
-  const InstallmentInterestAdjustmentService({
+class InstallmentInterestAdjustmentAppService {
+  const InstallmentInterestAdjustmentAppService({
     required this.installments,
     required this.records,
     required this.plans,
@@ -20,7 +20,7 @@ class InstallmentInterestAdjustmentService {
   });
   final InstallmentRepository installments;
   final InstallmentInterestAdjustmentRepository records;
-  final InstallmentPlanService plans;
+  final InstallmentPlanAppService plans;
   final TransactionRunner runner;
   final IdGenerator ids;
 

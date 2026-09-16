@@ -42,7 +42,7 @@ final class ReferenceRatesViewModelProvider
 }
 
 String _$referenceRatesViewModelHash() =>
-    r'5ffb3f7dec6945766727bcb49f219e3aef45e12f';
+    r'd92dfd9fb3be6bc9ca21e552cdf9e2bb68e26213';
 
 abstract class _$ReferenceRatesViewModel
     extends $Notifier<ReferenceRatesState> {

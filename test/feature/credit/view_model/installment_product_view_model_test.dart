@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/feature/credit/view_model/installment_product_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
-class _Products extends Mock implements InstallmentProductService {}
+class _Products extends Mock implements InstallmentProductAppService {}
 
 void main() {
   setUpAll(() {
@@ -58,7 +58,7 @@ void main() {
           });
           final container = ProviderContainer(
             overrides: [
-              installmentProductServiceProvider.overrideWithValue(service),
+              installmentProductAppServiceProvider.overrideWithValue(service),
             ],
           );
           addTearDown(container.dispose);

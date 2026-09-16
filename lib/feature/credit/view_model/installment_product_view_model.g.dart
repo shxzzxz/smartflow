@@ -39,7 +39,7 @@ final class InstallmentProductsViewModelProvider
 }
 
 String _$installmentProductsViewModelHash() =>
-    r'b609761ca35ffe55a75fb59250902d0393818bea';
+    r'1347136c7dcd06cc407f445f1cd57576f34b15f3';
 
 abstract class _$InstallmentProductsViewModel
     extends $AsyncNotifier<List<InstallmentProductReadModel>> {
@@ -116,7 +116,7 @@ final class InstallmentProductEditViewModelProvider
 }
 
 String _$installmentProductEditViewModelHash() =>
-    r'f606ef6416d1e1090f3a769c1811f19128291f8b';
+    r'2b18c2c2d31a0c1bc07f502ec85d87656c1e71ce';
 
 final class InstallmentProductEditViewModelFamily extends $Family
     with

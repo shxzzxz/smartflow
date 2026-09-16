@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/infrastructure/credit/initial_installment_products.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -43,7 +43,7 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
-          installmentProductServiceProvider.overrideWithValue(products),
+          installmentProductAppServiceProvider.overrideWithValue(products),
           accountsForSelectionPurposeProvider.overrideWith(
             (ref, purpose) => Stream.value(
               purpose == AccountSelectionPurpose.repaymentTarget
@@ -277,7 +277,7 @@ void main() {
   );
 }
 
-class _Products extends Mock implements InstallmentProductService {}
+class _Products extends Mock implements InstallmentProductAppService {}
 
 Account _loanAccount() {
   return Account(

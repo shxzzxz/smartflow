@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/credit/installment/command/installment_interest_adjustment_service.dart';
-import 'package:smartflow/application/credit/installment/command/installment_plan_service.dart';
-import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_interest_adjustment_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_repricing_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_status_repair_app_service.dart';
-import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
@@ -1217,7 +1217,7 @@ class _Fixture {
   late final bills = DriftBillRepository(db);
   late final runner = DriftTransactionRunner(db);
   late final records = DriftInstallmentRepricingRepository(db);
-  late final plans = InstallmentPlanService(
+  late final plans = InstallmentPlanAppService(
     installments: installments,
     repayments: repayments,
     bills: bills,
@@ -1230,19 +1230,19 @@ class _Fixture {
     repayments: repayments,
     transactionRunner: runner,
   );
-  late final repricing = InstallmentRepricingService(
+  late final repricing = InstallmentRepricingAppService(
     installments: installments,
     records: records,
     plans: plans,
     runner: runner,
-    referenceRates: ReferenceRateService(
+    referenceRates: ReferenceRateAppService(
       repository: DriftReferenceRateRepository(db),
       sources: [],
       runner: runner,
       clock: () => DateTime(2027, 1, 1),
     ),
   );
-  late final adjustments = InstallmentInterestAdjustmentService(
+  late final adjustments = InstallmentInterestAdjustmentAppService(
     installments: installments,
     records: DriftInstallmentInterestAdjustmentRepository(db),
     plans: plans,

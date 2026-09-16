@@ -20,6 +20,7 @@ import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../shared/transaction_runner.dart';
+import 'installment_command.dart';
 import 'installment_status_repair_app_service.dart';
 
 class InstallmentPlanPreview {
@@ -29,8 +30,8 @@ class InstallmentPlanPreview {
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。
-class InstallmentPlanService {
-  InstallmentPlanService({
+class InstallmentPlanAppService {
+  InstallmentPlanAppService({
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required BillRepository bills,
@@ -50,6 +51,81 @@ class InstallmentPlanService {
   final TransactionRunner _runner;
   final IdGenerator _ids;
   final InstallmentPlanEngine _engine;
+
+  Future<ContractRecalculationPreview> previewContractRecalculation(
+    PreviewContractRecalculationCommand command,
+  ) => _runner.run(() async {
+    final contract = await _installments.findContract(command.contractId);
+    if (contract == null) {
+      throw BusinessException(CreditErrorCode.contractNotFound);
+    }
+    final preview = await previewChange(
+      contract.id,
+      RecalculateFromTerms(command.stageTerms ?? contract.stageTerms),
+    );
+    return ContractRecalculationPreview(
+      token: preview.token,
+      schedules: List.unmodifiable([
+        for (final row in preview.change.rows)
+          RecalculatedSchedulePreview(
+            scheduleId: row.id,
+            periodNo: row.periodNo,
+            expectedRepaymentDate: row.date,
+            expectedPrincipal: row.principal,
+            expectedInterest: row.interest,
+            expectedFee: row.fee,
+          ),
+      ]),
+    );
+  });
+
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
+    final aggregate = await _requireAggregate(command.contractId);
+    final schedule = _ownedSchedule(aggregate.schedules, command.scheduleId);
+    aggregate.contract.skipSchedule(schedule, schedules: aggregate.schedules);
+    await _runner.run<void>(
+      () =>
+          _installments.saveAggregate(aggregate.contract, aggregate.schedules),
+    );
+  }
+
+  Future<void> restoreSchedule(
+    RestoreInstallmentScheduleCommand command,
+  ) async {
+    final aggregate = await _requireAggregate(command.contractId);
+    final schedule = _ownedSchedule(aggregate.schedules, command.scheduleId);
+    aggregate.contract.restoreSchedule(
+      schedule,
+      schedules: aggregate.schedules,
+    );
+    await _runner.run<void>(
+      () =>
+          _installments.saveAggregate(aggregate.contract, aggregate.schedules),
+    );
+  }
+
+  Future<({InstallmentContract contract, List<InstallmentSchedule> schedules})>
+  _requireAggregate(String contractId) async {
+    final contract = await _installments.findContract(contractId);
+    if (contract == null) {
+      throw BusinessException(CreditErrorCode.contractNotFound);
+    }
+    final schedules = await _installments.listSchedules(contractId);
+    return (contract: contract, schedules: schedules);
+  }
+
+  InstallmentSchedule _ownedSchedule(
+    List<InstallmentSchedule> schedules,
+    String scheduleId,
+  ) {
+    for (final schedule in schedules) {
+      if (schedule.id == scheduleId) return schedule;
+    }
+    throw BusinessException(
+      CreditErrorCode.scheduleNotFound,
+      message: 'Schedule does not belong to the contract.',
+    );
+  }
 
   Future<InstallmentPlanPreview> previewChange(
     String contractId,
@@ -76,6 +152,42 @@ class InstallmentPlanService {
     }
     await _save(prepared);
   });
+
+  Future<void> recalculateContractPlan(
+    RecalculateContractPlanCommand command,
+  ) => confirmChange(
+    command.contractId,
+    RecalculateFromTerms(command.stageTerms),
+    token: command.planPreviewToken,
+  );
+
+  Future<void> patchSchedule(PatchInstallmentScheduleCommand command) async {
+    final aggregate = await _requireAggregate(command.contractId);
+    aggregate.contract.reviseSchedules(
+      schedules: aggregate.schedules,
+      revisions: [
+        for (final patch in command.schedulePatches)
+          InstallmentScheduleRevision(
+            periodNo: patch.periodNo,
+            expectedPrincipal: patch.expectedPrincipal,
+            expectedInterest: patch.expectedInterest,
+            expectedFee: patch.expectedFee,
+            expectedRepaymentDate: patch.expectedRepaymentDate,
+          ),
+      ],
+    );
+    await _runner.run<void>(
+      () => _installments.saveAggregate(aggregate.contract, aggregate.schedules),
+    );
+    if (command.schedulePatches.isNotEmpty) {
+      await InstallmentStatusRepairAppService(
+        installments: _installments,
+        bills: _bills,
+        repayments: _repayments,
+        transactionRunner: _runner,
+      ).validateAndRepair(command.contractId);
+    }
+  }
 
   Future<void> applyAutomaticChange(
     String contractId,

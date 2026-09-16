@@ -39,8 +39,8 @@ void main() {
               multipleStages: multipleStages,
             ),
           ),
-          installmentRepricingServiceProvider.overrideWithValue(repricing),
-          installmentInterestAdjustmentServiceProvider.overrideWithValue(
+          installmentRepricingAppServiceProvider.overrideWithValue(repricing),
+          installmentInterestAdjustmentAppServiceProvider.overrideWithValue(
             adjustments,
           ),
         ],

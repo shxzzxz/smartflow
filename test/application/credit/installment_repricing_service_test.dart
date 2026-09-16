@@ -1,8 +1,8 @@
 import '../../helper/legacy_installment_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_repricing_app_service.dart';
 import 'package:smartflow/application/credit/installment/query/installment_query_service.dart';
-import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/application/credit/task/installment_repricing_task.dart';
 import 'package:smartflow/application/shared/task/app_task.dart';
 import 'package:smartflow/domain/credit/port/reference_rate_source.dart';
@@ -13,7 +13,7 @@ import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
-import 'package:smartflow/application/credit/installment/command/installment_plan_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
@@ -1661,20 +1661,20 @@ class _Fixture {
   late final installments = DriftInstallmentRepository(db);
   late final records = DriftInstallmentRepricingRepository(db);
   final source = _Source();
-  late final referenceRates = ReferenceRateService(
+  late final referenceRates = ReferenceRateAppService(
     repository: DriftReferenceRateRepository(db),
     sources: [source],
     runner: DriftTransactionRunner(db),
     clock: () => currentDate,
   );
-  late final service = InstallmentRepricingService(
+  late final service = InstallmentRepricingAppService(
     installments: installments,
     records: records,
     referenceRates: referenceRates,
     plans: plans,
     runner: DriftTransactionRunner(db),
   );
-  late final plans = InstallmentPlanService(
+  late final plans = InstallmentPlanAppService(
     installments: installments,
     repayments: DriftRepaymentRepository(db),
     bills: DriftBillRepository(db),

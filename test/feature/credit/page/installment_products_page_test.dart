@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
@@ -20,7 +20,7 @@ import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
-class _Products extends Mock implements InstallmentProductService {}
+class _Products extends Mock implements InstallmentProductAppService {}
 
 void main() {
   setUpAll(() {
@@ -37,7 +37,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          installmentProductServiceProvider.overrideWithValue(service),
+          installmentProductAppServiceProvider.overrideWithValue(service),
         ],
         child: const MaterialApp(home: InstallmentProductsPage()),
       ),
@@ -59,7 +59,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          installmentProductServiceProvider.overrideWithValue(service),
+          installmentProductAppServiceProvider.overrideWithValue(service),
         ],
         child: const MaterialApp(
           home: InstallmentProductEditPage(productId: 'p'),
@@ -92,7 +92,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final container = ProviderContainer(
         overrides: [
-          installmentProductServiceProvider.overrideWithValue(service),
+          installmentProductAppServiceProvider.overrideWithValue(service),
           accountsForSelectionPurposeProvider.overrideWith(
             (ref, purpose) => Stream.value(
               purpose == AccountSelectionPurpose.repaymentTarget

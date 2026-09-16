@@ -12,8 +12,8 @@ import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
-import '../../installment/command/installment_plan_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
+import '../../installment/command/installment_plan_app_service.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart'
     as domain_repayment;
@@ -76,16 +76,16 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-    InstallmentOriginationService origination =
-        const InstallmentOriginationService(),
+    InstallmentContractOriginationService origination =
+        const InstallmentContractOriginationService(),
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
     domain_repayment.RepaymentPolicyService repaymentPolicy =
         const domain_repayment.RepaymentPolicyService(),
-    InstallmentPlanService? plans,
+    InstallmentPlanAppService? plans,
     SettlementAppService? repaymentSettlement,
   }) : _plans =
            plans ??
-           InstallmentPlanService(
+           InstallmentPlanAppService(
              installments: installments,
              repayments: repayments,
              bills: bills,
@@ -109,14 +109,14 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
              installments: installments,
            );
 
-  final InstallmentPlanService _plans;
+  final InstallmentPlanAppService _plans;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final InstallmentRepository _installments;
   final CreditLedgerPort _ledger;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
-  final InstallmentOriginationService _origination;
+  final InstallmentContractOriginationService _origination;
   final CreditDebtBucketService _debtBuckets;
   final domain_repayment.RepaymentPolicyService _repaymentPolicy;
   final SettlementAppService _repaymentSettlement;

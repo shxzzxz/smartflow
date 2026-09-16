@@ -10,8 +10,8 @@ import 'reference_rate_history.dart';
 export '../../../domain/credit/valobj/reference_rate.dart';
 export 'reference_rate_history.dart';
 
-class ReferenceRateService {
-  ReferenceRateService({
+class ReferenceRateAppService {
+  ReferenceRateAppService({
     required this.repository,
     required List<ReferenceRateSource> sources,
     required this.runner,

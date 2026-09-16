@@ -132,7 +132,7 @@ class LoanConfigurationViewModel extends _$LoanConfigurationViewModel {
   Future<UiActionOutcome<List<InstallmentProductReadModel>>> loadProducts() =>
       guardUiAction(_logger, 'Load loan products', () async {
         final products = await ref
-            .read(installmentProductServiceProvider)
+            .read(installmentProductAppServiceProvider)
             .list();
         return products
             .where(

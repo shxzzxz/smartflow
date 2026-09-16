@@ -14,7 +14,7 @@ import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import '../../helper/sequential_id_generator.dart';
 
 void main() {
-  group('InstallmentAppServiceImpl', () {
+  group('InstallmentContractAppServiceImpl', () {
     test(
       'creates disbursement contract without borrowing transaction',
       () async {
@@ -185,7 +185,7 @@ void main() {
             feeMinor: 500,
           ),
         );
-        final preview = await fixture.service.previewContractRecalculation(
+        final preview = await fixture.planService.previewContractRecalculation(
           command,
         );
         await fixture.service.updateContract(
@@ -254,7 +254,7 @@ void main() {
           ),
         ]);
 
-        final preview = await fixture.service.previewContractRecalculation(
+        final preview = await fixture.planService.previewContractRecalculation(
           PreviewContractRecalculationCommand(contractId: 'contract-1'),
         );
         expect(
@@ -286,7 +286,7 @@ void main() {
           ),
         );
 
-        final preview = await fixture.service.previewContractRecalculation(
+        final preview = await fixture.planService.previewContractRecalculation(
           PreviewContractRecalculationCommand(
             contractId: result.contractId,
             stageTerms: InstallmentContractTerms.singleStage(
@@ -423,7 +423,7 @@ void main() {
         _schedule(id: 'schedule-1', contractId: 'contract-1', periodNo: 1),
       ]);
 
-      await fixture.service.skipSchedule(
+      await fixture.planService.skipSchedule(
         const SkipInstallmentScheduleCommand(
           contractId: 'contract-1',
           scheduleId: 'schedule-1',
@@ -434,7 +434,7 @@ void main() {
         InstallmentScheduleStatus.skipped,
       );
 
-      await fixture.service.restoreSchedule(
+      await fixture.planService.restoreSchedule(
         const RestoreInstallmentScheduleCommand(
           contractId: 'contract-1',
           scheduleId: 'schedule-1',
@@ -602,13 +602,21 @@ class _Fixture {
     update: update,
   );
 
-  late final InstallmentAppService service = InstallmentAppServiceImpl(
+  late final InstallmentContractAppService service = InstallmentContractAppServiceImpl(
     repository: installments,
     bills: bills,
     ledger: ledger,
     repayments: repayments,
     transactionRunner: const _ImmediateRunner(),
     idGenerator: SequentialIdGenerator(prefix: 'contract-test'),
+  );
+
+  late final InstallmentPlanAppService planService = InstallmentPlanAppService(
+    installments: installments,
+    repayments: repayments,
+    bills: bills,
+    runner: const _ImmediateRunner(),
+    idGenerator: SequentialIdGenerator(prefix: 'plan-test'),
   );
 }
 

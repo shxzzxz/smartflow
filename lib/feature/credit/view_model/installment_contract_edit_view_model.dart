@@ -80,7 +80,7 @@ class InstallmentContractEditViewModel
   ) => guardUiAction(_logger, 'Preview staged contract', () async {
     final terms = loaded.stageDraft.contractTerms();
     final preview = await ref
-        .read(installmentAppServiceProvider)
+        .read(installmentPlanAppServiceProvider)
         .previewContractRecalculation(
           PreviewContractRecalculationCommand(
             contractId: contractId,
@@ -120,7 +120,7 @@ class InstallmentContractEditViewModel
       return await guardSubmit(_logger, 'Save staged contract', () async {
         final terms = loaded.stageDraft.contractTerms();
         await ref
-            .read(installmentAppServiceProvider)
+            .read(installmentContractAppServiceProvider)
             .updateContract(
               UpdateContractCommand(
                 contractId: contractId,

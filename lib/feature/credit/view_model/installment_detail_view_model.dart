@@ -40,7 +40,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     return guardUiAction(_logger, 'Contract delete', () async {
       await ref
-          .read(installmentAppServiceProvider)
+          .read(installmentContractAppServiceProvider)
           .deleteContract(
             DeleteContractCommand(contractId: loaded.contract.id),
           );
@@ -63,7 +63,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     try {
       return await guardUiAction(_logger, 'Confirm loan repricing', () async {
         await ref
-            .read(installmentRepricingServiceProvider)
+            .read(installmentRepricingAppServiceProvider)
             .confirm(
               contractId,
               loaded.contract.unconfirmedRepricingIds.toSet(),
@@ -107,7 +107,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     return guardUiAction(_logger, 'Schedule skip', () async {
       await ref
-          .read(installmentAppServiceProvider)
+          .read(installmentPlanAppServiceProvider)
           .skipSchedule(
             SkipInstallmentScheduleCommand(
               contractId: loaded.contract.id,
@@ -123,7 +123,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return _invalidAction('合同尚未加载');
     return guardUiAction(_logger, 'Schedule restore', () async {
       await ref
-          .read(installmentAppServiceProvider)
+          .read(installmentPlanAppServiceProvider)
           .restoreSchedule(
             RestoreInstallmentScheduleCommand(
               contractId: loaded.contract.id,

@@ -1,8 +1,8 @@
 /// 信贷写侧 application API。
 library;
 
-export 'product/installment_product_service.dart'
-    show InstallmentProductService;
+export 'product/installment_product_app_service.dart'
+    show InstallmentProductAppService;
 
 export '../../domain/credit/entity/credit_liability_account.dart';
 export '../../domain/credit/entity/bill.dart';
@@ -21,13 +21,16 @@ export 'account/command/credit_account_app_service.dart';
 export 'account/command/credit_account_command.dart';
 export 'bill/command/credit_bill_generation_app_service.dart';
 export 'task/credit_bill_generation_task.dart';
-export 'installment/command/installment_app_service.dart';
+export 'installment/command/installment_contract_app_service.dart';
+export 'installment/command/installment_plan_app_service.dart';
+export 'installment/command/installment_repricing_app_service.dart';
+export 'installment/command/installment_interest_adjustment_app_service.dart';
 export 'installment/command/installment_command.dart';
 export 'installment/command/installment_status_repair_app_service.dart';
 export 'installment/command/contract_status_validation_result.dart';
 export 'repayment/command/repayment_app_service.dart';
 export 'repayment/command/repayment_command.dart';
 export 'repayment/repayment_amount_dto.dart';
-export 'reference_rate/reference_rate_service.dart'
-    show ReferenceRateService, ReferenceRateHistory;
+export 'reference_rate/reference_rate_app_service.dart'
+    show ReferenceRateAppService, ReferenceRateHistory;
 export '../../domain/credit/valobj/reference_rate.dart';

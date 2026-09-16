@@ -5,13 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/profile/page/reference_rates_page.dart';
 import 'package:smartflow/feature/profile/presentation/reference_rates_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/reference_rate_presentation.dart';
 
-class _Service extends Mock implements ReferenceRateService {}
+class _Service extends Mock implements ReferenceRateAppService {}
 
 void main() {
   testWidgets(
@@ -321,7 +321,7 @@ ReferenceRateHistory _history(
 Widget _app(_Service service, {bool dark = false, double scale = 1}) {
   final base = dark ? AppTheme.dark() : AppTheme.light();
   return ProviderScope(
-    overrides: [referenceRateServiceProvider.overrideWithValue(service)],
+    overrides: [referenceRateAppServiceProvider.overrideWithValue(service)],
     child: MaterialApp(
       theme: base,
       builder: (context, child) => MediaQuery(

@@ -1,11 +1,8 @@
-import '../application/credit/installment/command/installment_plan_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../infrastructure/credit/adapter/chinamoney_reference_rate_source.dart';
 import '../infrastructure/credit/adapter/eastmoney_reference_rate_source.dart';
 import '../infrastructure/credit/repository/drift_reference_rate_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_repricing_repository.dart';
-import '../application/credit/installment/command/installment_repricing_service.dart';
-import '../application/credit/installment/command/installment_interest_adjustment_service.dart';
 import '../infrastructure/credit/repository/drift_installment_interest_adjustment_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 
@@ -31,7 +28,7 @@ import '../infrastructure/credit/repository/drift_credit_bill_source_repository.
 import '../infrastructure/credit/repository/drift_installment_repository.dart';
 import '../infrastructure/credit/repository/drift_installment_product_repository.dart';
 import '../domain/credit/port/installment_product_repository.dart';
-import '../application/credit/product/installment_product_service.dart';
+import '../application/credit/product/installment_product_app_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
@@ -58,6 +55,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/task/pull_task_scheduler.dart';
 import '../application/credit/task/installment_repricing_task.dart';
+import '../application/credit/task/installment_repricing_task_coordinator.dart';
 import '../domain/ledger/port/account_repository.dart';
 import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/ledger/port/budget_repository.dart';
@@ -524,8 +522,8 @@ InstallmentProductRepository installmentProductRepository(Ref ref) =>
     DriftInstallmentProductRepository(ref.watch(appDatabaseProvider));
 
 @Riverpod(keepAlive: true)
-InstallmentProductService installmentProductService(Ref ref) =>
-    InstallmentProductServiceImpl(
+InstallmentProductAppService installmentProductAppService(Ref ref) =>
+    InstallmentProductAppServiceImpl(
       repository: ref.watch(installmentProductRepositoryProvider),
       runner: ref.watch(transactionRunnerProvider),
       ids: ref.watch(idGeneratorProvider),
@@ -558,7 +556,7 @@ CreditLedgerPort creditLedgerPort(Ref ref) {
 @Riverpod(keepAlive: true)
 RepaymentAppService repaymentAppService(Ref ref) {
   return RepaymentAppServiceImpl(
-    plans: ref.watch(installmentPlanServiceProvider),
+    plans: ref.watch(installmentPlanAppServiceProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
@@ -569,9 +567,9 @@ RepaymentAppService repaymentAppService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-InstallmentAppService installmentAppService(Ref ref) {
-  return InstallmentAppServiceImpl(
-    plans: ref.watch(installmentPlanServiceProvider),
+InstallmentContractAppService installmentContractAppService(Ref ref) {
+  return InstallmentContractAppServiceImpl(
+    plans: ref.watch(installmentPlanAppServiceProvider),
     repository: ref.watch(installmentRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
@@ -648,7 +646,9 @@ PullTaskScheduler pullTaskScheduler(Ref ref) {
     tasks: [
       ref.watch(creditBillGenerationTaskProvider),
       InstallmentRepricingTask(
-        ref.watch(installmentRepricingServiceProvider),
+        InstallmentRepricingTaskCoordinator(
+          ref.watch(installmentRepricingAppServiceProvider),
+        ),
         onChanged: () {
           ref.invalidate(installmentQueryServiceProvider);
           ref.invalidate(contractMetricsQueryProvider);
@@ -660,15 +660,19 @@ PullTaskScheduler pullTaskScheduler(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-ReferenceRateService referenceRateService(Ref ref) => ReferenceRateService(
-  repository: DriftReferenceRateRepository(ref.watch(appDatabaseProvider)),
-  sources: [EastmoneyReferenceRateSource(), ChinamoneyReferenceRateSource()],
-  runner: ref.watch(transactionRunnerProvider),
-);
+ReferenceRateAppService referenceRateAppService(Ref ref) =>
+    ReferenceRateAppService(
+      repository: DriftReferenceRateRepository(ref.watch(appDatabaseProvider)),
+      sources: [
+        EastmoneyReferenceRateSource(),
+        ChinamoneyReferenceRateSource(),
+      ],
+      runner: ref.watch(transactionRunnerProvider),
+    );
 
 @Riverpod(keepAlive: true)
-InstallmentPlanService installmentPlanService(Ref ref) =>
-    InstallmentPlanService(
+InstallmentPlanAppService installmentPlanAppService(Ref ref) =>
+    InstallmentPlanAppService(
       installments: ref.watch(installmentRepositoryProvider),
       repayments: ref.watch(repaymentRepositoryProvider),
       bills: ref.watch(billRepositoryProvider),
@@ -677,26 +681,26 @@ InstallmentPlanService installmentPlanService(Ref ref) =>
     );
 
 @Riverpod(keepAlive: true)
-InstallmentRepricingService installmentRepricingService(Ref ref) =>
-    InstallmentRepricingService(
+InstallmentRepricingAppService installmentRepricingAppService(Ref ref) =>
+    InstallmentRepricingAppService(
       installments: ref.watch(installmentRepositoryProvider),
       records: DriftInstallmentRepricingRepository(
         ref.watch(appDatabaseProvider),
       ),
-      referenceRates: ref.watch(referenceRateServiceProvider),
-      plans: ref.watch(installmentPlanServiceProvider),
+      referenceRates: ref.watch(referenceRateAppServiceProvider),
+      plans: ref.watch(installmentPlanAppServiceProvider),
       runner: ref.watch(transactionRunnerProvider),
     );
 
 @Riverpod(keepAlive: true)
-InstallmentInterestAdjustmentService installmentInterestAdjustmentService(
+InstallmentInterestAdjustmentAppService installmentInterestAdjustmentAppService(
   Ref ref,
-) => InstallmentInterestAdjustmentService(
+) => InstallmentInterestAdjustmentAppService(
   installments: ref.watch(installmentRepositoryProvider),
   records: DriftInstallmentInterestAdjustmentRepository(
     ref.watch(appDatabaseProvider),
   ),
-  plans: ref.watch(installmentPlanServiceProvider),
+  plans: ref.watch(installmentPlanAppServiceProvider),
   runner: ref.watch(transactionRunnerProvider),
   ids: ref.watch(idGeneratorProvider),
 );

@@ -66,7 +66,7 @@ void main() {
     });
 
     test('delete delegates to command service', () async {
-      final service = _FakeInstallmentAppService();
+      final service = _FakeInstallmentContractAppService();
       final container = _container(contract: _contract(), service: service);
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
@@ -99,7 +99,7 @@ void main() {
     });
 
     test('skip pending schedule delegates to command service', () async {
-      final service = _FakeInstallmentAppService();
+      final service = _FakeInstallmentContractAppService();
       final container = _container(
         contract: _contract(),
         schedules: [_schedule(1)],
@@ -119,7 +119,7 @@ void main() {
     });
 
     test('restore skipped schedule delegates to command service', () async {
-      final service = _FakeInstallmentAppService();
+      final service = _FakeInstallmentContractAppService();
       final container = _container(
         contract: _contract(),
         schedules: [_schedule(1, status: InstallmentScheduleStatus.skipped)],
@@ -182,7 +182,7 @@ void main() {
     });
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         deleteException: BusinessException(
           CreditErrorCode.contractPersistenceConflict,
           message: '合同数据已变化，请刷新后重试。',
@@ -232,10 +232,11 @@ ProviderContainer _container({
   required InstallmentContractReadModel? contract,
   List<InstallmentScheduleReadModel> schedules = const [],
   List<ContractRepayment> cashflows = const [],
-  _FakeInstallmentAppService? service,
+  _FakeInstallmentContractAppService? service,
   _FakeRepaymentAppService? repaymentAppService,
   _FakeStatusRepairAppService? statusRepair,
 }) {
+  final planService = service?.planService ?? _FakeInstallmentPlanAppService();
   final container = ProviderContainer(
     overrides: [
       installmentStatusRepairAppServiceProvider.overrideWithValue(
@@ -250,9 +251,10 @@ ProviderContainer _container({
       installmentRepaymentsProvider.overrideWith(
         (ref, contractId) async => cashflows,
       ),
-      installmentAppServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentAppService(),
+      installmentContractAppServiceProvider.overrideWithValue(
+        service ?? _FakeInstallmentContractAppService(),
       ),
+      installmentPlanAppServiceProvider.overrideWithValue(planService),
       repaymentAppServiceProvider.overrideWithValue(
         repaymentAppService ?? _FakeRepaymentAppService(),
       ),
@@ -314,13 +316,17 @@ ContractRepayment _cashflow() {
   );
 }
 
-class _FakeInstallmentAppService implements InstallmentAppService {
-  _FakeInstallmentAppService({this.deleteException});
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
+  _FakeInstallmentContractAppService({this.deleteException});
+  final planService = _FakeInstallmentPlanAppService();
+  List<SkipInstallmentScheduleCommand> get skipCommands =>
+      planService.skipCommands;
+  List<RestoreInstallmentScheduleCommand> get restoreCommands =>
+      planService.restoreCommands;
 
   final Object? deleteException;
   final deleteCommands = <DeleteContractCommand>[];
-  final skipCommands = <SkipInstallmentScheduleCommand>[];
-  final restoreCommands = <RestoreInstallmentScheduleCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
@@ -328,6 +334,24 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     final exception = deleteException;
     if (exception != null) throw exception;
   }
+
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
+    skipCommands.add(command);
+  }
+
+  Future<void> restoreSchedule(
+    RestoreInstallmentScheduleCommand command,
+  ) async {
+    restoreCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {
+  final skipCommands = <SkipInstallmentScheduleCommand>[];
+  final restoreCommands = <RestoreInstallmentScheduleCommand>[];
 
   @override
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {

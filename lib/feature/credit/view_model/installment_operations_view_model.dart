@@ -87,7 +87,7 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
         if (bp == null) return _invalid('请输入整数基点，可为负数');
         return _run(
           () => ref
-              .read(installmentRepricingServiceProvider)
+              .read(installmentRepricingAppServiceProvider)
               .addConfiguration(
                 contractId,
                 stageId: input.stageId,
@@ -106,7 +106,7 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
         if (bp == null) return _invalid('请输入整数基点，可为负数');
         return _run(
           () => ref
-              .read(installmentRepricingServiceProvider)
+              .read(installmentRepricingAppServiceProvider)
               .create(
                 contractId,
                 stageId: input.stageId,
@@ -125,7 +125,7 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
         if (scaled != scaled.round()) return _invalid('利息比例最多保留四位小数');
         return _run(() async {
           await ref
-              .read(installmentInterestAdjustmentServiceProvider)
+              .read(installmentInterestAdjustmentAppServiceProvider)
               .save(
                 contractId,
                 InterestAdjustment(
@@ -141,16 +141,17 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
 
   Future<UiActionOutcome<void>> deleteConfiguration(String id) => _run(
     () => ref
-        .read(installmentRepricingServiceProvider)
+        .read(installmentRepricingAppServiceProvider)
         .deleteConfiguration(contractId, id),
   );
 
   Future<UiActionOutcome<void>> deleteRepricing(String id) => _run(
-    () => ref.read(installmentRepricingServiceProvider).delete(contractId, id),
+    () =>
+        ref.read(installmentRepricingAppServiceProvider).delete(contractId, id),
   );
   Future<UiActionOutcome<void>> deleteAdjustment(String id) => _run(
     () => ref
-        .read(installmentInterestAdjustmentServiceProvider)
+        .read(installmentInterestAdjustmentAppServiceProvider)
         .delete(contractId, id),
   );
 

@@ -120,6 +120,46 @@ class SchedulePendingPatch {
 /// - 普通 nullable 字段（`T?`）：`null` 表示"不改"，传值表示"设置"。
 /// - 三态字段（`Patch<T>?`）：`null`=不改，`Patch.set`=设置，`Patch.clear`=清除。
 /// - `disbursementAccountId`：仅对已有放款交易的放款合同有效；业务上禁止清除。
+class UpdateContractDetailsCommand {
+  const UpdateContractDetailsCommand({
+    required this.contractId,
+    this.name,
+    this.borrowingDate,
+    this.disbursementAccountId,
+    this.note,
+  });
+
+  final String contractId;
+  final String? name;
+  final DateTime? borrowingDate;
+  final String? disbursementAccountId;
+  final Patch<String>? note;
+}
+
+class RecalculateContractPlanCommand {
+  const RecalculateContractPlanCommand({
+    required this.contractId,
+    required this.stageTerms,
+    required this.planPreviewToken,
+  });
+
+  final String contractId;
+  final InstallmentContractTerms stageTerms;
+  final String planPreviewToken;
+}
+
+class PatchInstallmentScheduleCommand {
+  const PatchInstallmentScheduleCommand({
+    required this.contractId,
+    required this.schedulePatches,
+  });
+
+  final String contractId;
+  final List<SchedulePendingPatch> schedulePatches;
+}
+
+/// Legacy combined contract edit command. Prefer the three capability-specific
+/// commands above for new callers.
 class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,

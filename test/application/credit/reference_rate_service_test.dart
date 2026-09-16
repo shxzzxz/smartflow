@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:smartflow/core/error/app_exception.dart';
-import 'package:smartflow/application/credit/reference_rate/reference_rate_service.dart';
+import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/domain/credit/port/reference_rate_source.dart';
 import 'package:smartflow/infrastructure/credit/adapter/chinamoney_reference_rate_source.dart';
 import 'package:smartflow/infrastructure/credit/adapter/eastmoney_reference_rate_source.dart';
@@ -186,7 +186,7 @@ void main() {
       final other = _Source(key: 'z-source')
         ..rows = [_rate('2026-02-20', 35000)];
       final sources = <ReferenceRateSource>[other, preferred];
-      final service = ReferenceRateService(
+      final service = ReferenceRateAppService(
         repository: f.repository,
         sources: sources,
         runner: f.runner,
@@ -268,7 +268,7 @@ void main() {
           };
         },
       );
-      final service = ReferenceRateService(
+      final service = ReferenceRateAppService(
         repository: f.repository,
         sources: [chinamoney, eastmoney],
         runner: f.runner,
@@ -707,7 +707,7 @@ class _Fixture {
   late final sources = <ReferenceRateSource>[source];
   late final repository = DriftReferenceRateRepository(db);
   late final runner = DriftTransactionRunner(db);
-  late final service = ReferenceRateService(
+  late final service = ReferenceRateAppService(
     repository: repository,
     sources: sources,
     runner: runner,

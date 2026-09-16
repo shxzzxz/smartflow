@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:smartflow/application/credit/installment/command/installment_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_contract_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_command.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -31,17 +32,25 @@ void main() {
   late AppDatabase db;
   late DriftInstallmentRepository repository;
   late DriftInstallmentProductRepository products;
-  late InstallmentAppService service;
+  late InstallmentContractAppService service;
+  late InstallmentPlanAppService plans;
   setUp(() async {
     db = createTestDatabase();
     repository = DriftInstallmentRepository(db);
     products = DriftInstallmentProductRepository(db);
-    service = InstallmentAppServiceImpl(
+    service = InstallmentContractAppServiceImpl(
       repository: repository,
       bills: DriftBillRepository(db),
       repayments: DriftRepaymentRepository(db),
       ledger: _Ledger(),
       transactionRunner: DriftTransactionRunner(db),
+      idGenerator: SequentialIdGenerator(),
+    );
+    plans = InstallmentPlanAppService(
+      installments: repository,
+      bills: DriftBillRepository(db),
+      repayments: DriftRepaymentRepository(db),
+      runner: DriftTransactionRunner(db),
       idGenerator: SequentialIdGenerator(),
     );
     await products.save(
@@ -139,7 +148,7 @@ void main() {
             ),
           ],
         );
-        final editing = InstallmentAppServiceImpl(
+        final editing = InstallmentContractAppServiceImpl(
           repository: repository,
           bills: DriftBillRepository(db),
           repayments: DriftRepaymentRepository(db),
@@ -147,7 +156,7 @@ void main() {
           transactionRunner: DriftTransactionRunner(db),
           idGenerator: SequentialIdGenerator(),
         );
-        final preview = await editing.previewContractRecalculation(
+        final preview = await plans.previewContractRecalculation(
           PreviewContractRecalculationCommand(
             contractId: original.id,
             stageTerms: terms,
@@ -295,7 +304,7 @@ void main() {
           ),
         ],
       );
-      final preview = await service.previewContractRecalculation(
+      final preview = await plans.previewContractRecalculation(
         PreviewContractRecalculationCommand(
           contractId: original.id,
           stageTerms: changed,
@@ -350,7 +359,7 @@ void main() {
           ),
         ],
       );
-      final preview = await service.previewContractRecalculation(
+      final preview = await plans.previewContractRecalculation(
         PreviewContractRecalculationCommand(
           contractId: original.id,
           stageTerms: changed,

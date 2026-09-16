@@ -123,7 +123,7 @@ void main() {
     test(
       'dispatches installment disbursement account change to credit app service',
       () async {
-        final installment = _FakeInstallmentAppService();
+        final installment = _FakeInstallmentContractAppService();
         final detail = _detail(
           purpose: BusinessPurpose.borrowing,
           ownership: const TransactionOwnership(
@@ -153,7 +153,7 @@ void main() {
     test(
       'maps installment disbursement update exception to action failure',
       () async {
-        final installment = _FakeInstallmentAppService(
+        final installment = _FakeInstallmentContractAppService(
           updateContractException: BusinessException(
             CreditErrorCode.contractPersistenceConflict,
             message: '合同数据已变化，请刷新后重试。',
@@ -251,7 +251,7 @@ void main() {
     test(
       'maps installment disbursement regular exception to unknown failure',
       () async {
-        final installment = _FakeInstallmentAppService(
+        final installment = _FakeInstallmentContractAppService(
           updateContractException: Exception('database failed'),
         );
         final detail = _detail(
@@ -483,7 +483,7 @@ ProviderContainer _container({
   _FakeTransactionUpdateAppService? update,
   _FakeTransactionEditAppService? editService,
   _FakeTransactionPostingAppService? posting,
-  _FakeInstallmentAppService? installment,
+  _FakeInstallmentContractAppService? installment,
   _FakeRepaymentAppService? repayment,
 }) {
   final accounts = <String, Account>{
@@ -519,8 +519,8 @@ ProviderContainer _container({
       transactionPostingAppServiceProvider.overrideWithValue(
         posting ?? _FakeTransactionPostingAppService(),
       ),
-      installmentAppServiceProvider.overrideWithValue(
-        installment ?? _FakeInstallmentAppService(),
+      installmentContractAppServiceProvider.overrideWithValue(
+        installment ?? _FakeInstallmentContractAppService(),
       ),
       repaymentAppServiceProvider.overrideWithValue(
         repayment ?? _FakeRepaymentAppService(),
@@ -898,8 +898,9 @@ class _FakeTransactionPostingAppService
   }
 }
 
-class _FakeInstallmentAppService implements InstallmentAppService {
-  _FakeInstallmentAppService({this.updateContractException});
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
+  _FakeInstallmentContractAppService({this.updateContractException});
 
   final Object? updateContractException;
   final updateContractCommands = <UpdateContractCommand>[];
@@ -913,18 +914,18 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
+      throw UnimplementedError();
   Future<ContractRecalculationPreview> previewContractRecalculation(
     PreviewContractRecalculationCommand command,
   ) {
     throw UnimplementedError();
   }
 
-  @override
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
     throw UnimplementedError();
   }
 
-  @override
   Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
     throw UnimplementedError();
   }

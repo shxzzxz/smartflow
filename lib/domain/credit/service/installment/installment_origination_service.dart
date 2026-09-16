@@ -37,8 +37,8 @@ class InstallmentOriginationResult {
   final List<InstallmentSchedule> schedules;
 }
 
-class InstallmentOriginationService {
-  const InstallmentOriginationService({
+class InstallmentContractOriginationService {
+  const InstallmentContractOriginationService({
     InstallmentPlanEngine planEngine = const InstallmentPlanEngine(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
   }) : _planEngine = planEngine,
@@ -154,4 +154,10 @@ class InstallmentOriginationService {
       ),
     );
   }
+}
+
+@Deprecated('Use InstallmentContractOriginationService')
+class InstallmentOriginationService
+    extends InstallmentContractOriginationService {
+  const InstallmentOriginationService({super.planEngine, super.lifecycle});
 }

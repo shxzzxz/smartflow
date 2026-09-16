@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
@@ -83,7 +83,7 @@ void main() {
     );
 
     test('submits disbursement contract command', () async {
-      final service = _FakeInstallmentAppService();
+      final service = _FakeInstallmentContractAppService();
       final args = _args('loan');
       final container = _container(service: service);
       await _readState(container, args);
@@ -140,7 +140,7 @@ void main() {
     test(
       'submits migration contract without disbursement transaction',
       () async {
-        final service = _FakeInstallmentAppService();
+        final service = _FakeInstallmentContractAppService();
         final queryService = _FakeCreditAccountQueryService();
         final args = _args('loan');
         final container = _container(
@@ -178,7 +178,7 @@ void main() {
     test(
       'submits credit account installment as disbursement command',
       () async {
-        final service = _FakeInstallmentAppService();
+        final service = _FakeInstallmentContractAppService();
         final args = _args(
           'card',
           lockedSourceType: InstallmentSourceType.billConversion,
@@ -223,7 +223,7 @@ void main() {
     test(
       'rejects a multi-period contract whose last date is not later',
       () async {
-        final service = _FakeInstallmentAppService();
+        final service = _FakeInstallmentContractAppService();
         final args = _args('loan');
         final container = _container(service: service);
         await _readState(container, args);
@@ -263,7 +263,7 @@ void main() {
     );
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         createException: BusinessException(
           CreditErrorCode.contractInvalidCommand,
           message: '合同参数无效',
@@ -290,7 +290,7 @@ void main() {
       final records = <LogRecord>[];
       final subscription = Logger.root.onRecord.listen(records.add);
       addTearDown(subscription.cancel);
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         createException: Exception('database failed'),
       );
       final args = _args('loan');
@@ -342,9 +342,9 @@ InstallmentFormArgs _args(
 }
 
 ProviderContainer _container({
-  _FakeInstallmentAppService? service,
+  _FakeInstallmentContractAppService? service,
   _FakeCreditAccountQueryService? creditQueryService,
-  InstallmentProductService? products,
+  InstallmentProductAppService? products,
 }) {
   final liabilities = [
     _account(
@@ -362,7 +362,7 @@ ProviderContainer _container({
   final container = ProviderContainer(
     overrides: [
       if (products != null)
-        installmentProductServiceProvider.overrideWithValue(products),
+        installmentProductAppServiceProvider.overrideWithValue(products),
       accountsForSelectionPurposeProvider.overrideWith(
         (ref, purpose) => Stream.value(switch (purpose) {
           AccountSelectionPurpose.repaymentTarget => liabilities,
@@ -370,8 +370,8 @@ ProviderContainer _container({
           _ => const <Account>[],
         }),
       ),
-      installmentAppServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentAppService(),
+      installmentContractAppServiceProvider.overrideWithValue(
+        service ?? _FakeInstallmentContractAppService(),
       ),
       if (creditQueryService != null)
         creditAccountQueryServiceProvider.overrideWithValue(creditQueryService),
@@ -381,7 +381,7 @@ ProviderContainer _container({
   return container;
 }
 
-class _Products extends Mock implements InstallmentProductService {}
+class _Products extends Mock implements InstallmentProductAppService {}
 
 class _FakeCreditAccountQueryService implements CreditAccountQueryService {
   int findOverviewCalls = 0;
@@ -412,8 +412,8 @@ Account _account(
   );
 }
 
-class _FakeInstallmentAppService implements InstallmentAppService {
-  _FakeInstallmentAppService({this.createException});
+class _FakeInstallmentContractAppService implements InstallmentContractAppService {
+  _FakeInstallmentContractAppService({this.createException});
 
   final Object? createException;
   final disbursementCommands = <CreateDisbursementContractCommand>[];

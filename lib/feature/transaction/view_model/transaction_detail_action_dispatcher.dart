@@ -27,7 +27,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required TransactionReadModel transaction,
   required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
-  required InstallmentAppService installmentAppService,
+  required InstallmentContractAppService installmentAppService,
   required RepaymentAppService repaymentAppService,
 }) {
   final ownership = transaction.ownership;
@@ -379,7 +379,7 @@ final class _InstallmentActionDispatcher
   });
 
   final TransactionReadModel transaction;
-  final InstallmentAppService installmentAppService;
+  final InstallmentContractAppService installmentAppService;
   final TransactionUpdateAppService updateService;
   final String contractId;
 

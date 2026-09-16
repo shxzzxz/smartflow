@@ -27,7 +27,7 @@ class InstallmentProductReadModel {
   final RoundingMode rounding;
 }
 
-abstract interface class InstallmentProductService {
+abstract interface class InstallmentProductAppService {
   Future<List<InstallmentProductReadModel>> list();
   Future<String> save({
     String? id,
@@ -40,8 +40,8 @@ abstract interface class InstallmentProductService {
   Future<void> delete(String id);
 }
 
-class InstallmentProductServiceImpl implements InstallmentProductService {
-  const InstallmentProductServiceImpl({
+class InstallmentProductAppServiceImpl implements InstallmentProductAppService {
+  const InstallmentProductAppServiceImpl({
     required InstallmentProductRepository repository,
     required TransactionRunner runner,
     required IdGenerator ids,

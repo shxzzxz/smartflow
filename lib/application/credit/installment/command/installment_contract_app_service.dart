@@ -9,7 +9,7 @@ import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_lifecycle_service.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
@@ -18,48 +18,42 @@ import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
-import 'installment_plan_service.dart';
+import 'installment_plan_app_service.dart';
 import 'installment_status_repair_app_service.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../settlement/settlement_app_service.dart';
 
-abstract interface class InstallmentAppService {
+abstract interface class InstallmentContractAppService {
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   );
 
   Future<void> updateContract(UpdateContractCommand command);
 
-  /// 预览按候选条款重建完整计划，返回确认所需的事实指纹。
-  Future<ContractRecalculationPreview> previewContractRecalculation(
-    PreviewContractRecalculationCommand command,
-  );
-
-  Future<void> skipSchedule(SkipInstallmentScheduleCommand command);
-
-  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command);
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command);
 
   /// 删除合同：仅允许无提前还款且所有计划均未发生还款的合同。
   Future<void> deleteContract(DeleteContractCommand command);
 }
 
-class InstallmentAppServiceImpl implements InstallmentAppService {
-  InstallmentAppServiceImpl({
+class InstallmentContractAppServiceImpl
+    implements InstallmentContractAppService {
+  InstallmentContractAppServiceImpl({
     required InstallmentRepository repository,
     required BillRepository bills,
     required RepaymentRepository repayments,
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-    InstallmentPlanService? plans,
-    InstallmentOriginationService origination =
-        const InstallmentOriginationService(),
+    InstallmentPlanAppService? plans,
+    InstallmentContractOriginationService origination =
+        const InstallmentContractOriginationService(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
     RepaymentPolicyService repaymentPolicy = const RepaymentPolicyService(),
   }) : _plans =
            plans ??
-           InstallmentPlanService(
+           InstallmentPlanAppService(
              installments: repository,
              repayments: repayments,
              bills: bills,
@@ -81,14 +75,14 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
          installments: repository,
        );
 
-  final InstallmentPlanService _plans;
+  final InstallmentPlanAppService _plans;
   final InstallmentRepository _repository;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final CreditLedgerPort _ledger;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
-  final InstallmentOriginationService _origination;
+  final InstallmentContractOriginationService _origination;
   final InstallmentLifecycleService _lifecycle;
   final RepaymentPolicyService _repaymentPolicy;
   final SettlementAppService _repaymentSettlement;
@@ -163,6 +157,30 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
   @override
   Future<void> updateContract(UpdateContractCommand command) =>
       _runner.run(() => _updateContract(command));
+
+  @override
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
+      _runner.run(() async {
+        final contract = await _repository.findContract(command.contractId) ??
+            (throw BusinessException(CreditErrorCode.contractNotFound));
+        contract.reviseDetails(
+          name: command.name,
+          borrowingDate: command.borrowingDate,
+          note: command.note,
+          disbursementAccountId: command.disbursementAccountId,
+        );
+        await _synchronizeBorrowing(
+          contract,
+          UpdateContractCommand(
+            contractId: command.contractId,
+            borrowingDate: command.borrowingDate,
+            disbursementAccountId: command.disbursementAccountId,
+            note: command.note,
+          ),
+        );
+        final schedules = await _repository.listSchedules(command.contractId);
+        await _repository.saveAggregate(contract, schedules);
+      });
 
   Future<void> _updateContract(UpdateContractCommand command) async {
     final prepared = await _prepareContractUpdate(command);
@@ -293,82 +311,6 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     }
   }
 
-  @override
-  Future<ContractRecalculationPreview> previewContractRecalculation(
-    PreviewContractRecalculationCommand command,
-  ) => _runner.run(() async {
-    final contract = await _repository.findContract(command.contractId);
-    if (contract == null) {
-      throw BusinessException(CreditErrorCode.contractNotFound);
-    }
-    final preview = await _plans.previewChange(
-      contract.id,
-      RecalculateFromTerms(command.stageTerms ?? contract.stageTerms),
-    );
-    return ContractRecalculationPreview(
-      token: preview.token,
-      schedules: List.unmodifiable([
-        for (final row in preview.change.rows)
-          RecalculatedSchedulePreview(
-            scheduleId: row.id,
-            periodNo: row.periodNo,
-            expectedRepaymentDate: row.date,
-            expectedPrincipal: row.principal,
-            expectedInterest: row.interest,
-            expectedFee: row.fee,
-          ),
-      ]),
-    );
-  });
-
-  @override
-  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
-    final aggregate = await _requireAggregate(command.contractId);
-    final schedule = _ownedSchedule(aggregate.schedules, command.scheduleId);
-    aggregate.contract.skipSchedule(schedule, schedules: aggregate.schedules);
-    await _runner.run<void>(
-      () => _repository.saveAggregate(aggregate.contract, aggregate.schedules),
-    );
-  }
-
-  @override
-  Future<void> restoreSchedule(
-    RestoreInstallmentScheduleCommand command,
-  ) async {
-    final aggregate = await _requireAggregate(command.contractId);
-    final schedule = _ownedSchedule(aggregate.schedules, command.scheduleId);
-    aggregate.contract.restoreSchedule(
-      schedule,
-      schedules: aggregate.schedules,
-    );
-    await _runner.run<void>(
-      () => _repository.saveAggregate(aggregate.contract, aggregate.schedules),
-    );
-  }
-
-  Future<({InstallmentContract contract, List<InstallmentSchedule> schedules})>
-  _requireAggregate(String contractId) async {
-    final contract = await _repository.findContract(contractId);
-    if (contract == null) {
-      throw BusinessException(CreditErrorCode.contractNotFound);
-    }
-    final schedules = await _repository.listSchedules(contractId);
-    return (contract: contract, schedules: schedules);
-  }
-
-  InstallmentSchedule _ownedSchedule(
-    List<InstallmentSchedule> schedules,
-    String scheduleId,
-  ) {
-    for (final schedule in schedules) {
-      if (schedule.id == scheduleId) return schedule;
-    }
-    throw BusinessException(
-      CreditErrorCode.scheduleNotFound,
-      message: 'Schedule does not belong to the contract.',
-    );
-  }
-
   Patch<String?>? _nullableStringPatch(Patch<String>? patch) {
     return switch (patch) {
       null => null,
@@ -453,3 +395,4 @@ class InstallmentAppServiceImpl implements InstallmentAppService {
     );
   }
 }
+

@@ -1,6 +1,6 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/installment/command/installment_interest_adjustment_service.dart';
-import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_interest_adjustment_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_repricing_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
@@ -92,7 +92,7 @@ InstallmentContractReadModel operationsContract({
       : [],
 );
 
-class RecordingRepricingService implements InstallmentRepricingService {
+class RecordingRepricingService implements InstallmentRepricingAppService {
   final configurations =
       <
         ({
@@ -173,7 +173,7 @@ class RecordingRepricingService implements InstallmentRepricingService {
 }
 
 class RecordingInterestAdjustments
-    implements InstallmentInterestAdjustmentService {
+    implements InstallmentInterestAdjustmentAppService {
   final saved =
       <({String contractId, String? id, InterestAdjustment adjustment})>[];
   final deleted = <(String, String)>[];

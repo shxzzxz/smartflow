@@ -1,7 +1,7 @@
 /// 信贷读侧 application API。
 library;
 
-export 'product/installment_product_service.dart'
+export 'product/installment_product_app_service.dart'
     show InstallmentProductReadModel;
 
 export '../../domain/credit/valobj/bill_enums.dart';

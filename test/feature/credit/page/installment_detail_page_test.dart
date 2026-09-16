@@ -7,7 +7,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/installment/command/installment_repricing_service.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
@@ -22,7 +21,7 @@ void main() {
   testWidgets(
     'contract operations live in the more menu and deletion remains confirmed',
     (tester) async {
-      final service = _FakeInstallmentAppService();
+      final service = _FakeInstallmentContractAppService();
       await tester.pumpWidget(
         _app(
           service: service,
@@ -58,7 +57,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         _app(
-          service: _FakeInstallmentAppService(),
+          service: _FakeInstallmentContractAppService(),
           scheduleStatus: InstallmentScheduleStatus.pending,
           repricingService: service,
           unconfirmedRepricingIds: () => ids,
@@ -107,7 +106,7 @@ void main() {
       );
       await tester.pumpWidget(
         _app(
-          service: _FakeInstallmentAppService(),
+          service: _FakeInstallmentContractAppService(),
           scheduleStatus: InstallmentScheduleStatus.pending,
           repricingService: service,
           unconfirmedRepricingIds: () => ids,
@@ -134,7 +133,7 @@ void main() {
   );
 
   testWidgets('pending schedule exposes skip action', (tester) async {
-    final service = _FakeInstallmentAppService();
+    final service = _FakeInstallmentContractAppService();
     await tester.pumpWidget(
       _app(service: service, scheduleStatus: InstallmentScheduleStatus.pending),
     );
@@ -161,7 +160,7 @@ void main() {
   });
 
   testWidgets('skipped schedule exposes restore action', (tester) async {
-    final service = _FakeInstallmentAppService();
+    final service = _FakeInstallmentContractAppService();
     await tester.pumpWidget(
       _app(service: service, scheduleStatus: InstallmentScheduleStatus.skipped),
     );
@@ -180,7 +179,7 @@ void main() {
     final repaymentService = _FakeRepaymentAppService();
     await tester.pumpWidget(
       _app(
-        service: _FakeInstallmentAppService(),
+        service: _FakeInstallmentContractAppService(),
         repaymentService: repaymentService,
         scheduleStatus: InstallmentScheduleStatus.paid,
         repayments: [_repayment('repayment-1')],
@@ -221,7 +220,7 @@ void main() {
       );
       await tester.pumpWidget(
         _app(
-          service: _FakeInstallmentAppService(),
+          service: _FakeInstallmentContractAppService(),
           statusRepair: repair,
           scheduleStatus: InstallmentScheduleStatus.paid,
           contractStatus: InstallmentContractStatus.settled,
@@ -245,7 +244,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       _app(
-        service: _FakeInstallmentAppService(),
+        service: _FakeInstallmentContractAppService(),
         scheduleStatus: InstallmentScheduleStatus.pending,
         scheduleCount: 2,
         repayments: [_repayment('repayment-1'), _repayment('repayment-2')],
@@ -268,19 +267,20 @@ void main() {
 }
 
 class _MockRepricingService extends Mock
-    implements InstallmentRepricingService {}
+    implements InstallmentRepricingAppService {}
 
 Widget _app({
-  required _FakeInstallmentAppService service,
+  required _FakeInstallmentContractAppService service,
   required InstallmentScheduleStatus scheduleStatus,
   InstallmentContractStatus contractStatus = InstallmentContractStatus.active,
   _FakeRepaymentAppService? repaymentService,
   _FakeStatusRepairAppService? statusRepair,
   int scheduleCount = 1,
   List<ContractRepayment> repayments = const [],
-  InstallmentRepricingService? repricingService,
+  InstallmentRepricingAppService? repricingService,
   List<String> Function()? unconfirmedRepricingIds,
 }) {
+  final planService = service.planService;
   final container = ProviderContainer(
     overrides: [
       installmentStatusRepairAppServiceProvider.overrideWithValue(
@@ -301,9 +301,12 @@ Widget _app({
       installmentRepaymentsProvider.overrideWith(
         (ref, contractId) async => repayments,
       ),
-      installmentAppServiceProvider.overrideWithValue(service),
+      installmentContractAppServiceProvider.overrideWithValue(service),
+      installmentPlanAppServiceProvider.overrideWithValue(planService),
       if (repricingService != null)
-        installmentRepricingServiceProvider.overrideWithValue(repricingService),
+        installmentRepricingAppServiceProvider.overrideWithValue(
+          repricingService,
+        ),
       if (repaymentService != null)
         repaymentAppServiceProvider.overrideWithValue(repaymentService),
     ],
@@ -372,21 +375,38 @@ ContractRepayment _repayment(String id) {
   );
 }
 
-class _FakeInstallmentAppService implements InstallmentAppService {
-  final skipCommands = <SkipInstallmentScheduleCommand>[];
-  final restoreCommands = <RestoreInstallmentScheduleCommand>[];
-
-  @override
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
+  final planService = _FakeInstallmentPlanAppService();
+  List<SkipInstallmentScheduleCommand> get skipCommands =>
+      planService.skipCommands;
+  List<RestoreInstallmentScheduleCommand> get restoreCommands =>
+      planService.restoreCommands;
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
     skipCommands.add(command);
   }
 
-  @override
   Future<void> restoreSchedule(
     RestoreInstallmentScheduleCommand command,
   ) async {
     restoreCommands.add(command);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {
+  final skipCommands = <SkipInstallmentScheduleCommand>[];
+  final restoreCommands = <RestoreInstallmentScheduleCommand>[];
+  @override
+  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async =>
+      skipCommands.add(command);
+
+  @override
+  Future<void> restoreSchedule(
+    RestoreInstallmentScheduleCommand command,
+  ) async => restoreCommands.add(command);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

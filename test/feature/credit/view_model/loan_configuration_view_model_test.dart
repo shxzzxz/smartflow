@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
@@ -13,7 +13,7 @@ import 'package:smartflow/feature/credit/view_model/loan_comparison_view_model.d
 import 'package:smartflow/feature/credit/view_model/loan_change_view_model.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
-class _Products extends Mock implements InstallmentProductService {}
+class _Products extends Mock implements InstallmentProductAppService {}
 
 void main() {
   late ProviderContainer scope;
@@ -99,7 +99,7 @@ void main() {
       when(() => products.list()).thenAnswer((_) async => [_product]);
       final container = ProviderContainer(
         overrides: [
-          installmentProductServiceProvider.overrideWithValue(products),
+          installmentProductAppServiceProvider.overrideWithValue(products),
         ],
       );
       addTearDown(container.dispose);

@@ -18,7 +18,7 @@ void main() {
     test(
       'metrics exceptions allow editing but programming errors propagate',
       () async {
-        final service = _FakeInstallmentAppService(
+        final service = _FakeInstallmentContractAppService(
           contract: _contract(),
           schedules: [_schedule(1)],
         );
@@ -38,7 +38,7 @@ void main() {
     );
 
     test('loads contract and schedules into draft state', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -59,7 +59,7 @@ void main() {
     test(
       'uses application preview to recalculate pending rows for submit',
       () async {
-        final service = _FakeInstallmentAppService(
+        final service = _FakeInstallmentContractAppService(
           contract: _contract(),
           schedules: [_schedule(1), _schedule(2)],
           previewResults: [
@@ -99,8 +99,8 @@ void main() {
         final outcome = await viewModel.recalculate();
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        expect(service.previewCommands, hasLength(1));
-        final previewCommand = service.previewCommands.single;
+        expect(service.planService.previewCommands, hasLength(1));
+        final previewCommand = service.planService.previewCommands.single;
         expect(previewCommand.stageTerms!.totalPeriods, 3);
         expect(previewCommand.stageTerms!.firstDate, DateTime(2026, 3, 1));
         expect(previewCommand.stageTerms!.lastDate, DateTime(2026, 5, 1));
@@ -152,7 +152,7 @@ void main() {
     );
 
     test('edits draft row amount and date', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
       );
@@ -182,7 +182,7 @@ void main() {
     });
 
     test('submits update command and returns success', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1), _schedule(2)],
       );
@@ -230,7 +230,7 @@ void main() {
     });
 
     test('maps business exception to submit failure', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: BusinessException(
@@ -256,7 +256,7 @@ void main() {
     });
 
     test('maps regular exception to unknown submit failure', () async {
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: Exception('database failed'),
@@ -283,7 +283,7 @@ void main() {
 
     test('rethrows unexpected exception after resetting submitting', () async {
       final unexpected = StateError('unexpected');
-      final service = _FakeInstallmentAppService(
+      final service = _FakeInstallmentContractAppService(
         contract: _contract(),
         schedules: [_schedule(1)],
         updateException: unexpected,
@@ -306,7 +306,7 @@ void main() {
 }
 
 ProviderContainer _container(
-  _FakeInstallmentAppService service, {
+  _FakeInstallmentContractAppService service, {
   Object? metricsError,
 }) {
   final container = ProviderContainer(
@@ -331,7 +331,8 @@ ProviderContainer _container(
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => service.schedules,
       ),
-      installmentAppServiceProvider.overrideWithValue(service),
+      installmentContractAppServiceProvider.overrideWithValue(service),
+      installmentPlanAppServiceProvider.overrideWithValue(service.planService),
     ],
   );
   addTearDown(container.dispose);
@@ -403,20 +404,22 @@ InstallmentScheduleReadModel _schedule(
   );
 }
 
-class _FakeInstallmentAppService implements InstallmentAppService {
-  _FakeInstallmentAppService({
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
+  _FakeInstallmentContractAppService({
     required this.contract,
     required this.schedules,
     this.updateException,
-    this.previewResults = const [],
-  });
+    List<RecalculatedSchedulePreview> previewResults = const [],
+  }) {
+    planService.previewResults = previewResults;
+  }
 
   final InstallmentContractReadModel? contract;
   final List<InstallmentScheduleReadModel> schedules;
   final Object? updateException;
-  final List<RecalculatedSchedulePreview> previewResults;
+  final planService = _FakeInstallmentPlanAppService();
   final updateCommands = <UpdateContractCommand>[];
-  final previewCommands = <PreviewContractRecalculationCommand>[];
 
   @override
   Future<void> updateContract(UpdateContractCommand command) async {
@@ -424,6 +427,27 @@ class _FakeInstallmentAppService implements InstallmentAppService {
     final exception = updateException;
     if (exception != null) throw exception;
   }
+
+  @override
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
+      throw UnimplementedError();
+
+  @override
+  Future<CreateContractResult> createDisbursementContract(
+    CreateDisbursementContractCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteContract(DeleteContractCommand command) {
+    throw UnimplementedError();
+  }
+}
+
+class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {
+  List<RecalculatedSchedulePreview> previewResults = const [];
+  final previewCommands = <PreviewContractRecalculationCommand>[];
 
   @override
   Future<ContractRecalculationPreview> previewContractRecalculation(
@@ -437,26 +461,7 @@ class _FakeInstallmentAppService implements InstallmentAppService {
   }
 
   @override
-  Future<void> skipSchedule(SkipInstallmentScheduleCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> restoreSchedule(RestoreInstallmentScheduleCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<CreateContractResult> createDisbursementContract(
-    CreateDisbursementContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteContract(DeleteContractCommand command) {
-    throw UnimplementedError();
-  }
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 InstallmentTermsDraft _draft({

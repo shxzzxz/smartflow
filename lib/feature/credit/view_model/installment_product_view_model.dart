@@ -15,18 +15,18 @@ final _logger = Logger('feature.credit.products');
 class InstallmentProductsViewModel extends _$InstallmentProductsViewModel {
   @override
   Future<List<InstallmentProductReadModel>> build() =>
-      ref.watch(installmentProductServiceProvider).list();
+      ref.watch(installmentProductAppServiceProvider).list();
 
   Future<UiActionOutcome<void>> archive(String id, bool archived) =>
       guardUiAction(_logger, 'Archive installment product', () async {
         await ref
-            .read(installmentProductServiceProvider)
+            .read(installmentProductAppServiceProvider)
             .setArchived(id, archived);
         ref.invalidateSelf();
       });
   Future<UiActionOutcome<void>> delete(String id) =>
       guardUiAction(_logger, 'Delete installment product', () async {
-        await ref.read(installmentProductServiceProvider).delete(id);
+        await ref.read(installmentProductAppServiceProvider).delete(id);
         ref.invalidateSelf();
       });
 }
@@ -65,7 +65,9 @@ class InstallmentProductEditViewModel
         terms: InstallmentTermsDraft.initial(),
       );
     }
-    final products = await ref.watch(installmentProductServiceProvider).list();
+    final products = await ref
+        .watch(installmentProductAppServiceProvider)
+        .list();
     final product = products.where((p) => p.id == productId).first;
     return InstallmentProductEditState(
       name: '${product.name}${copy ? ' 副本' : ''}',
@@ -98,7 +100,7 @@ class InstallmentProductEditViewModel
     try {
       return await guardUiAction(_logger, 'Save installment product', () async {
         final id = await ref
-            .read(installmentProductServiceProvider)
+            .read(installmentProductAppServiceProvider)
             .save(
               id: copy ? null : productId,
               name: name,

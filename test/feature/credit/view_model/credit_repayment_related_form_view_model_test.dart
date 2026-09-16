@@ -759,7 +759,7 @@ void main() {
 }
 
 ProviderContainer _container({
-  _FakeInstallmentAppService? installmentAppService,
+  _FakeInstallmentContractAppService? installmentAppService,
   _FakeRepaymentAppService? repaymentAppService,
   _FakePostingService? postingService,
   credit_query.BillDetailReadModel? billDetail,
@@ -805,8 +805,8 @@ ProviderContainer _container({
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),
-      installmentAppServiceProvider.overrideWithValue(
-        installmentAppService ?? _FakeInstallmentAppService(),
+      installmentContractAppServiceProvider.overrideWithValue(
+        installmentAppService ?? _FakeInstallmentContractAppService(),
       ),
       repaymentAppServiceProvider.overrideWithValue(
         repaymentAppService ?? _FakeRepaymentAppService(),
@@ -820,7 +820,7 @@ ProviderContainer _container({
   return container;
 }
 
-class _FakeInstallmentAppService implements credit.InstallmentAppService {
+class _FakeInstallmentContractAppService implements credit.InstallmentContractAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

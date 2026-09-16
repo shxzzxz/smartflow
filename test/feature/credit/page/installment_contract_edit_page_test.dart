@@ -18,7 +18,7 @@ void main() {
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(700, 1400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      final service = _FailingInstallmentAppService();
+      final service = _FailingInstallmentContractAppService();
       final container = ProviderContainer(
         overrides: [
           installmentContractProvider.overrideWith(
@@ -30,7 +30,7 @@ void main() {
           installmentMetricsProvider.overrideWith(
             (ref, contractId) async => _metrics,
           ),
-          installmentAppServiceProvider.overrideWithValue(service),
+          installmentContractAppServiceProvider.overrideWithValue(service),
         ],
       );
       addTearDown(container.dispose);
@@ -244,7 +244,7 @@ InstallmentScheduleReadModel _schedule({
   );
 }
 
-class _FailingInstallmentAppService implements InstallmentAppService {
+class _FailingInstallmentContractAppService implements InstallmentContractAppService {
   final updateCommands = <UpdateContractCommand>[];
 
   @override

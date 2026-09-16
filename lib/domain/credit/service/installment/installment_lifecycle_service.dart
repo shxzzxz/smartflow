@@ -4,6 +4,7 @@ import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'installment_schedule_factory.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
@@ -54,21 +55,13 @@ class InstallmentLifecycleService {
     required String Function() newId,
     Map<int, String> stageIdsByPeriod = const {},
   }) {
-    return [
-      for (final entry in entries)
-        InstallmentSchedule(
-          id: newId(),
-          contractId: contractId,
-          stageId: stageIdsByPeriod[entry.periodNo],
-          periodNo: entry.periodNo,
-          expectedRepaymentDate: entry.expectedRepaymentDate,
-          expectedPrincipal: entry.expectedPrincipal,
-          expectedInterest: entry.expectedInterest,
-          expectedFee: entry.expectedFee,
-          status: InstallmentScheduleStatus.pending,
-          createdAt: createdAt,
-        ),
-    ];
+    return const InstallmentScheduleFactory().fromEntries(
+      contractId: contractId,
+      entries: entries,
+      createdAt: createdAt,
+      newId: newId,
+      stageIdsByPeriod: stageIdsByPeriod,
+    );
   }
 
   int prepaymentPrincipalMinor(List<Repayment> repayments) {

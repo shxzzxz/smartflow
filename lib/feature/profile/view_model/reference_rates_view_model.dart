@@ -102,7 +102,7 @@ class ReferenceRatesViewModel extends _$ReferenceRatesViewModel {
       'Load reference rate history',
       () async {
         await for (final history
-            in ref.read(referenceRateServiceProvider).history(group.types)) {
+            in ref.read(referenceRateAppServiceProvider).history(group.types)) {
           if (!ref.mounted || _requests[group] != request) return;
           _update(
             group,

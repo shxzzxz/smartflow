@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/credit/installment/command/installment_plan_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
@@ -21,14 +21,14 @@ void main() {
   late AppDatabase db;
   late DriftInstallmentRepository installments;
   late DriftRepaymentRepository repayments;
-  late InstallmentPlanService service;
+  late InstallmentPlanAppService service;
   final date = DateTime(2026, 1, 15);
   setUp(() async {
     db = createTestDatabase();
     installments = DriftInstallmentRepository(db);
     repayments = DriftRepaymentRepository(db);
     final ids = SequentialIdGenerator();
-    service = InstallmentPlanService(
+    service = InstallmentPlanAppService(
       installments: installments,
       repayments: repayments,
       bills: DriftBillRepository(db),

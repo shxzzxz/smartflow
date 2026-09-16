@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/credit/product/installment_product_service.dart';
+import 'package:smartflow/application/credit/product/installment_product_app_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
@@ -47,7 +47,7 @@ void main() {
   test(
     'product service round-trips benchmark rules and stage policies',
     () async {
-      final service = InstallmentProductServiceImpl(
+      final service = InstallmentProductAppServiceImpl(
         repository: products,
         runner: DriftTransactionRunner(db),
         ids: SequentialIdGenerator(),
@@ -310,7 +310,7 @@ void main() {
       await products.save(_product());
       final loan = _loan();
       await contracts.insertAggregate(loan.contract, loan.schedules);
-      final service = InstallmentProductServiceImpl(
+      final service = InstallmentProductAppServiceImpl(
         repository: products,
         runner: DriftTransactionRunner(db),
         ids: SequentialIdGenerator(prefix: 'p'),
