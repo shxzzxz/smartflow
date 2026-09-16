@@ -6,7 +6,6 @@ import '../../../../core/id/id_generator.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_schedule.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
-import '../../../../domain/credit/port/installment_plan_change_port.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
 import '../../../../domain/credit/entity/bill.dart';
 import '../../../../domain/credit/port/bill_repository.dart';
@@ -31,7 +30,7 @@ class InstallmentPlanPreview {
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。
-class InstallmentPlanAppService implements InstallmentPlanChangePort {
+class InstallmentPlanAppService {
   InstallmentPlanAppService({
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
@@ -197,7 +196,8 @@ class InstallmentPlanAppService implements InstallmentPlanChangePort {
       ],
     );
     await _runner.run<void>(
-      () => _installments.saveAggregate(aggregate.contract, aggregate.schedules),
+      () =>
+          _installments.saveAggregate(aggregate.contract, aggregate.schedules),
     );
     if (command.schedulePatches.isNotEmpty) {
       await InstallmentStatusRepairAppService(
@@ -209,7 +209,6 @@ class InstallmentPlanAppService implements InstallmentPlanChangePort {
     }
   }
 
-  @override
   Future<void> applyAutomaticChange(
     String contractId,
     InstallmentPlanChangeRequest request,

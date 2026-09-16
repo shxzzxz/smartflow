@@ -31,6 +31,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_rea
 import '../../helper/fake_transaction_tag_repository.dart';
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 void main() {
   group('CreditBillGenerationAppService', () {
@@ -900,12 +901,14 @@ class _Fixture {
       idGenerator: ids,
     );
     repaymentAppService = RepaymentAppServiceImpl(
-      plans: InstallmentPlanAppService(
-        installments: installmentRepository,
-        repayments: repaymentRepository,
-        bills: billRepository,
-        runner: runner,
-        idGenerator: ids,
+      plans: InstallmentPlanChangeAdapter(
+        InstallmentPlanAppService(
+          installments: installmentRepository,
+          repayments: repaymentRepository,
+          bills: billRepository,
+          runner: runner,
+          idGenerator: ids,
+        ),
       ),
       bills: billRepository,
       repayments: repaymentRepository,

@@ -13,7 +13,7 @@ import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
-import '../../../../domain/credit/port/installment_plan_change_port.dart';
+import '../../installment/port/installment_plan_change_port.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart'
     as domain_repayment;

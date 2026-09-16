@@ -54,7 +54,9 @@ import '../application/import/import_workflow_app_service.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/task/pull_task_scheduler.dart';
+import '../application/credit/installment/port/installment_plan_change_port.dart';
 import '../application/credit/task/installment_repricing_task.dart';
+import '../infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 import '../domain/ledger/port/account_repository.dart';
 import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/ledger/port/budget_repository.dart';
@@ -555,7 +557,7 @@ CreditLedgerPort creditLedgerPort(Ref ref) {
 @Riverpod(keepAlive: true)
 RepaymentAppService repaymentAppService(Ref ref) {
   return RepaymentAppServiceImpl(
-    plans: ref.watch(installmentPlanAppServiceProvider),
+    plans: ref.watch(installmentPlanChangePortProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     installments: ref.watch(installmentRepositoryProvider),
@@ -686,6 +688,10 @@ InstallmentPlanAppService installmentPlanAppService(Ref ref) =>
     );
 
 @Riverpod(keepAlive: true)
+InstallmentPlanChangePort installmentPlanChangePort(Ref ref) =>
+    InstallmentPlanChangeAdapter(ref.watch(installmentPlanAppServiceProvider));
+
+@Riverpod(keepAlive: true)
 InstallmentRepricingAppService installmentRepricingAppService(Ref ref) =>
     InstallmentRepricingAppService(
       installments: ref.watch(installmentRepositoryProvider),
@@ -693,7 +699,7 @@ InstallmentRepricingAppService installmentRepricingAppService(Ref ref) =>
         ref.watch(appDatabaseProvider),
       ),
       referenceRates: ref.watch(referenceRateAppServiceProvider),
-      plans: ref.watch(installmentPlanAppServiceProvider),
+      plans: ref.watch(installmentPlanChangePortProvider),
       runner: ref.watch(transactionRunnerProvider),
     );
 
@@ -705,7 +711,7 @@ InstallmentInterestAdjustmentAppService installmentInterestAdjustmentAppService(
   records: DriftInstallmentInterestAdjustmentRepository(
     ref.watch(appDatabaseProvider),
   ),
-  plans: ref.watch(installmentPlanAppServiceProvider),
+  plans: ref.watch(installmentPlanChangePortProvider),
   runner: ref.watch(transactionRunnerProvider),
   ids: ref.watch(idGeneratorProvider),
 );

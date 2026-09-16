@@ -40,6 +40,7 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 DateTime day(int month, int date) => DateTime(2026, month, date);
 
@@ -174,17 +175,18 @@ void main() {
         ),
         throwsA(isA<BusinessException>()),
       );
-      final other = const InstallmentContractOriginationService().originateDisbursement(
-        contractId: 'other',
-        liabilityAccountId: 'account',
-        terms: InstallmentOriginationTerms(
-          principal: const Money(minorUnits: 10000000),
-          borrowingDate: day(8, 8),
-          stageTerms: f.terms(),
-        ),
-        createdAt: day(8, 8),
-        newScheduleId: f.ids.newId,
-      );
+      final other = const InstallmentContractOriginationService()
+          .originateDisbursement(
+            contractId: 'other',
+            liabilityAccountId: 'account',
+            terms: InstallmentOriginationTerms(
+              principal: const Money(minorUnits: 10000000),
+              borrowingDate: day(8, 8),
+              stageTerms: f.terms(),
+            ),
+            createdAt: day(8, 8),
+            newScheduleId: f.ids.newId,
+          );
       await f.installments.insertAggregate(other.contract, other.schedules);
       for (final stageId in ['missing', 'stage']) {
         await expectLater(
@@ -1233,7 +1235,7 @@ class _Fixture {
   late final repricing = InstallmentRepricingAppService(
     installments: installments,
     records: records,
-    plans: plans,
+    plans: InstallmentPlanChangeAdapter(plans),
     runner: runner,
     referenceRates: ReferenceRateAppService(
       repository: DriftReferenceRateRepository(db),
@@ -1245,7 +1247,7 @@ class _Fixture {
   late final adjustments = InstallmentInterestAdjustmentAppService(
     installments: installments,
     records: DriftInstallmentInterestAdjustmentRepository(db),
-    plans: plans,
+    plans: InstallmentPlanChangeAdapter(plans),
     runner: runner,
     ids: ids,
   );

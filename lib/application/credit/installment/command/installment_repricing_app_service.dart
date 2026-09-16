@@ -5,7 +5,7 @@ import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_repricing.dart';
 import '../../../../domain/credit/entity/installment_repricing_configuration.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
-import '../../../../domain/credit/port/installment_plan_change_port.dart';
+import '../port/installment_plan_change_port.dart';
 import '../../../../domain/credit/port/installment_repricing_repository.dart';
 import '../../../../domain/credit/service/installment/installment_repricing_planner.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';

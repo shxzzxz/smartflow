@@ -2861,7 +2861,7 @@ final class RepaymentAppServiceProvider
 }
 
 String _$repaymentAppServiceHash() =>
-    r'de0b9f945707dac8e66fde9372e58722ce19e987';
+    r'c7b04f3e20e9b51b17a42ef4dc0e2669e2ce3258';
 
 @ProviderFor(installmentContractAppService)
 final installmentContractAppServiceProvider =
@@ -3452,6 +3452,54 @@ final class InstallmentPlanAppServiceProvider
 String _$installmentPlanAppServiceHash() =>
     r'45ad2643fb7ad3a8a6fa09fb25d003422a3ae910';
 
+@ProviderFor(installmentPlanChangePort)
+final installmentPlanChangePortProvider = InstallmentPlanChangePortProvider._();
+
+final class InstallmentPlanChangePortProvider
+    extends
+        $FunctionalProvider<
+          InstallmentPlanChangePort,
+          InstallmentPlanChangePort,
+          InstallmentPlanChangePort
+        >
+    with $Provider<InstallmentPlanChangePort> {
+  InstallmentPlanChangePortProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentPlanChangePortProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentPlanChangePortHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentPlanChangePort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentPlanChangePort create(Ref ref) {
+    return installmentPlanChangePort(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentPlanChangePort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstallmentPlanChangePort>(value),
+    );
+  }
+}
+
+String _$installmentPlanChangePortHash() =>
+    r'406907e0e606eec0e6b5bd527df7112854091680';
+
 @ProviderFor(installmentRepricingAppService)
 final installmentRepricingAppServiceProvider =
     InstallmentRepricingAppServiceProvider._();
@@ -3501,7 +3549,7 @@ final class InstallmentRepricingAppServiceProvider
 }
 
 String _$installmentRepricingAppServiceHash() =>
-    r'd3e8e253eefd6b6b26679266843dcb86a0957ae6';
+    r'f44ecb71d8f532385b2ce907cfabcc5553d43fed';
 
 @ProviderFor(installmentInterestAdjustmentAppService)
 final installmentInterestAdjustmentAppServiceProvider =
@@ -3552,7 +3600,7 @@ final class InstallmentInterestAdjustmentAppServiceProvider
 }
 
 String _$installmentInterestAdjustmentAppServiceHash() =>
-    r'82d2e3256c91024c20eb67ebf0b2ac04f07c08ce';
+    r'576ffe0fe106f9ea6f745987126f4953e3976aea';
 
 @ProviderFor(billQueryService)
 final billQueryServiceProvider = BillQueryServiceProvider._();

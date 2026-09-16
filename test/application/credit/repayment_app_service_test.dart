@@ -25,6 +25,7 @@ import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart'
 
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 void main() {
   group('RepaymentAppService', () {
@@ -1726,12 +1727,14 @@ class _Fixture {
     runner = DriftTransactionRunner(database);
     edit.onDeleteTransaction = _recordDeletedTransactionInDatabase;
     service = credit.RepaymentAppServiceImpl(
-      plans: credit.InstallmentPlanAppService(
-        installments: installments,
-        repayments: repayments,
-        bills: bills,
-        runner: runner,
-        idGenerator: ids,
+      plans: InstallmentPlanChangeAdapter(
+        credit.InstallmentPlanAppService(
+          installments: installments,
+          repayments: repayments,
+          bills: bills,
+          runner: runner,
+          idGenerator: ids,
+        ),
       ),
       bills: bills,
       repayments: repayments,

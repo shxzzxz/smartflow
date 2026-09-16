@@ -36,6 +36,7 @@ import 'package:smartflow/application/data_management/backup/backup_service.dart
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
 import '../../helper/test_app_database.dart';
+import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 void main() {
   late _Fixture f;
@@ -1671,7 +1672,7 @@ class _Fixture {
     installments: installments,
     records: records,
     referenceRates: referenceRates,
-    plans: plans,
+    plans: InstallmentPlanChangeAdapter(plans),
     runner: DriftTransactionRunner(db),
   );
   late final plans = InstallmentPlanAppService(

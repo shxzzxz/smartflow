@@ -3,7 +3,7 @@ import '../../../../core/id/id_generator.dart';
 import '../../../../domain/credit/entity/installment_interest_adjustment.dart';
 import '../../../../domain/credit/port/installment_interest_adjustment_repository.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
-import '../../../../domain/credit/port/installment_plan_change_port.dart';
+import '../port/installment_plan_change_port.dart';
 import '../../../../domain/credit/service/installment/handler/interest_adjustment_handler.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
