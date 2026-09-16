@@ -4,7 +4,6 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
-import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
@@ -18,18 +17,12 @@ import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
-import 'installment_plan_app_service.dart';
-import 'installment_status_repair_app_service.dart';
-import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
-import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../settlement/settlement_app_service.dart';
 
 abstract interface class InstallmentContractAppService {
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
   );
-
-  Future<void> updateContract(UpdateContractCommand command);
 
   Future<void> updateContractDetails(UpdateContractDetailsCommand command);
 
@@ -46,21 +39,11 @@ class InstallmentContractAppServiceImpl
     required CreditLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
-    InstallmentPlanAppService? plans,
     InstallmentContractOriginationService origination =
         const InstallmentContractOriginationService(),
     InstallmentLifecycleService lifecycle = const InstallmentLifecycleService(),
     RepaymentPolicyService repaymentPolicy = const RepaymentPolicyService(),
-  }) : _plans =
-           plans ??
-           InstallmentPlanAppService(
-             installments: repository,
-             repayments: repayments,
-             bills: bills,
-             runner: transactionRunner,
-             idGenerator: idGenerator,
-           ),
-       _repository = repository,
+  }) : _repository = repository,
        _bills = bills,
        _repayments = repayments,
        _ledger = ledger,
@@ -75,7 +58,6 @@ class InstallmentContractAppServiceImpl
          installments: repository,
        );
 
-  final InstallmentPlanAppService _plans;
   final InstallmentRepository _repository;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
@@ -155,10 +137,6 @@ class InstallmentContractAppServiceImpl
   }
 
   @override
-  Future<void> updateContract(UpdateContractCommand command) =>
-      _runner.run(() => _updateContract(command));
-
-  @override
   Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
       _runner.run(() async {
         final contract = await _repository.findContract(command.contractId) ??
@@ -171,122 +149,15 @@ class InstallmentContractAppServiceImpl
         );
         await _synchronizeBorrowing(
           contract,
-          UpdateContractCommand(
-            contractId: command.contractId,
-            borrowingDate: command.borrowingDate,
-            disbursementAccountId: command.disbursementAccountId,
-            note: command.note,
-          ),
+          command,
         );
         final schedules = await _repository.listSchedules(command.contractId);
         await _repository.saveAggregate(contract, schedules);
       });
 
-  Future<void> _updateContract(UpdateContractCommand command) async {
-    final prepared = await _prepareContractUpdate(command);
-    final contract = prepared.contract;
-    final schedules = prepared.schedules;
-    final terms = command.stageTerms;
-    if (terms != null) {
-      await _reviseContractTerms(contract, command, terms);
-    }
-    contract.reviseDetails(
-      name: command.name,
-      borrowingDate: command.borrowingDate,
-      note: command.note,
-      disbursementAccountId: command.disbursementAccountId,
-    );
-    contract.reviseSchedules(
-      schedules: schedules,
-      revisions: [
-        for (final patch in command.schedulePatches)
-          InstallmentScheduleRevision(
-            periodNo: patch.periodNo,
-            expectedPrincipal: patch.expectedPrincipal,
-            expectedInterest: patch.expectedInterest,
-            expectedFee: patch.expectedFee,
-            expectedRepaymentDate: patch.expectedRepaymentDate,
-          ),
-      ],
-    );
-
-    await _synchronizeBorrowing(contract, command);
-    await _repository.saveAggregate(contract, schedules);
-    if (command.schedulePatches.isNotEmpty) {
-      await InstallmentStatusRepairAppService(
-        installments: _repository,
-        bills: _bills,
-        repayments: _repayments,
-        transactionRunner: _runner,
-      ).validateAndRepair(contract.id);
-    }
-  }
-
-  Future<
-    ({
-      InstallmentContract contract,
-      List<InstallmentSchedule> schedules,
-      InstallmentContractTerms previousTerms,
-    })
-  >
-  _prepareContractUpdate(UpdateContractCommand command) async {
-    var contract =
-        await _repository.findContract(command.contractId) ??
-        (throw BusinessException(CreditErrorCode.contractNotFound));
-    var schedules = await _repository.listSchedules(command.contractId);
-    final previousTerms = contract.stageTerms;
-    final terms = command.stageTerms ?? previousTerms;
-    terms.validate();
-    if (command.regeneratePlan) {
-      final token = command.planPreviewToken;
-      if (token == null ||
-          (command.borrowingDate != null &&
-              command.borrowingDate != contract.borrowingDate)) {
-        throw BusinessException(
-          CreditErrorCode.contractPersistenceConflict,
-          message: '请按当前借款日期重新预览计划后保存',
-        );
-      }
-      await _plans.confirmChange(
-        contract.id,
-        RecalculateFromTerms(terms),
-        token: token,
-      );
-      contract = (await _repository.findContract(command.contractId))!;
-      schedules = await _repository.listSchedules(command.contractId);
-    } else if (!terms.hasSameLayout(previousTerms)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '阶段结构或期数已改变，请先按参数重算计划',
-      );
-    } else if (command.stageTerms != null || command.borrowingDate != null) {
-      const InstallmentPlanEngine().generate(
-        terms.planTerms(
-          contract.principal,
-          command.borrowingDate ?? contract.borrowingDate,
-        ),
-      );
-    }
-    return (
-      contract: contract,
-      schedules: schedules,
-      previousTerms: previousTerms,
-    );
-  }
-
-  Future<void> _reviseContractTerms(
-    InstallmentContract contract,
-    UpdateContractCommand command,
-    InstallmentContractTerms terms,
-  ) async {
-    contract.reviseStageTerms(
-      command.regeneratePlan ? contract.stageTerms : terms,
-    );
-  }
-
   Future<void> _synchronizeBorrowing(
     InstallmentContract contract,
-    UpdateContractCommand command,
+    UpdateContractDetailsCommand command,
   ) async {
     if (contract.sourceType != InstallmentSourceType.disbursement) return;
     final txId = contract.disbursementTransactionId;

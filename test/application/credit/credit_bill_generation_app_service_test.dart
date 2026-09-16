@@ -900,6 +900,13 @@ class _Fixture {
       idGenerator: ids,
     );
     repaymentAppService = RepaymentAppServiceImpl(
+      plans: InstallmentPlanAppService(
+        installments: installmentRepository,
+        repayments: repaymentRepository,
+        bills: billRepository,
+        runner: runner,
+        idGenerator: ids,
+      ),
       bills: billRepository,
       repayments: repaymentRepository,
       installments: installmentRepository,

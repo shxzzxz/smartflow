@@ -24,7 +24,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -1731,7 +1731,7 @@ class _Fixture {
           ],
         );
     var period = 0;
-    final aggregate = const InstallmentOriginationService()
+    final aggregate = const InstallmentContractOriginationService()
         .originateDisbursement(
           contractId: id,
           liabilityAccountId: 'account',

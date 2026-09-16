@@ -906,7 +906,6 @@ class _FakeInstallmentContractAppService
   final updateContractCommands = <UpdateContractCommand>[];
   final deleteContractCommands = <DeleteContractCommand>[];
 
-  @override
   Future<void> updateContract(UpdateContractCommand command) async {
     updateContractCommands.add(command);
     final exception = updateContractException;
@@ -914,8 +913,19 @@ class _FakeInstallmentContractAppService
   }
 
   @override
-  Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
-      throw UnimplementedError();
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command) async {
+    updateContractCommands.add(
+      UpdateContractCommand(
+        contractId: command.contractId,
+        name: command.name,
+        borrowingDate: command.borrowingDate,
+        disbursementAccountId: command.disbursementAccountId,
+        note: command.note,
+      ),
+    );
+    final exception = updateContractException;
+    if (exception != null) throw exception;
+  }
   Future<ContractRecalculationPreview> previewContractRecalculation(
     PreviewContractRecalculationCommand command,
   ) {

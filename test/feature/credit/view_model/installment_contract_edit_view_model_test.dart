@@ -332,6 +332,7 @@ ProviderContainer _container(
         (ref, contractId) async => service.schedules,
       ),
       installmentContractAppServiceProvider.overrideWithValue(service),
+      installmentContractEditAppServiceProvider.overrideWithValue(service),
       installmentPlanAppServiceProvider.overrideWithValue(service.planService),
     ],
   );
@@ -405,7 +406,7 @@ InstallmentScheduleReadModel _schedule(
 }
 
 class _FakeInstallmentContractAppService
-    implements InstallmentContractAppService {
+    implements InstallmentContractAppService, InstallmentContractEditAppService {
   _FakeInstallmentContractAppService({
     required this.contract,
     required this.schedules,

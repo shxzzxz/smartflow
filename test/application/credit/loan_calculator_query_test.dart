@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
@@ -186,7 +186,7 @@ void main() {
           ],
         );
         var nextId = 0;
-        final loan = const InstallmentOriginationService()
+        final loan = const InstallmentContractOriginationService()
             .originateDisbursement(
               contractId: 'loan',
               liabilityAccountId: 'liability',

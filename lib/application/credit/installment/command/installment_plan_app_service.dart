@@ -6,6 +6,7 @@ import '../../../../core/id/id_generator.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_schedule.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
+import '../../../../domain/credit/port/installment_plan_change_port.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
 import '../../../../domain/credit/entity/bill.dart';
 import '../../../../domain/credit/port/bill_repository.dart';
@@ -30,7 +31,7 @@ class InstallmentPlanPreview {
 }
 
 /// 统一计划变更的事实加载、预览校验和保存。嵌套调用参与外层用例事务。
-class InstallmentPlanAppService {
+class InstallmentPlanAppService implements InstallmentPlanChangePort {
   InstallmentPlanAppService({
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
@@ -161,6 +162,25 @@ class InstallmentPlanAppService {
     token: command.planPreviewToken,
   );
 
+  /// Updates the contract's term snapshot without rebuilding its schedules.
+  /// The layout must stay stable; changing the schedule shape requires an
+  /// explicit preview and confirmation through [recalculateContractPlan].
+  Future<void> updateTermsSnapshot(
+    String contractId,
+    InstallmentContractTerms terms,
+  ) => _runner.run(() async {
+    final aggregate = await _requireAggregate(contractId);
+    terms.validate();
+    if (!terms.hasSameLayout(aggregate.contract.stageTerms)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '阶段结构或期数已改变，请先按参数重算计划',
+      );
+    }
+    aggregate.contract.reviseStageTerms(terms);
+    await _installments.saveAggregate(aggregate.contract, aggregate.schedules);
+  });
+
   Future<void> patchSchedule(PatchInstallmentScheduleCommand command) async {
     final aggregate = await _requireAggregate(command.contractId);
     aggregate.contract.reviseSchedules(
@@ -189,6 +209,7 @@ class InstallmentPlanAppService {
     }
   }
 
+  @override
   Future<void> applyAutomaticChange(
     String contractId,
     InstallmentPlanChangeRequest request,

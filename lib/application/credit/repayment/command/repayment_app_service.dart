@@ -13,7 +13,7 @@ import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
-import '../../installment/command/installment_plan_app_service.dart';
+import '../../../../domain/credit/port/installment_plan_change_port.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/service/repayment/repayment_policy_service.dart'
     as domain_repayment;
@@ -81,17 +81,9 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     CreditDebtBucketService debtBuckets = const CreditDebtBucketService(),
     domain_repayment.RepaymentPolicyService repaymentPolicy =
         const domain_repayment.RepaymentPolicyService(),
-    InstallmentPlanAppService? plans,
+    required InstallmentPlanChangePort plans,
     SettlementAppService? repaymentSettlement,
-  }) : _plans =
-           plans ??
-           InstallmentPlanAppService(
-             installments: installments,
-             repayments: repayments,
-             bills: bills,
-             runner: transactionRunner,
-             idGenerator: idGenerator,
-           ),
+  }) : _plans = plans,
        _bills = bills,
        _repayments = repayments,
        _installments = installments,
@@ -109,7 +101,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
              installments: installments,
            );
 
-  final InstallmentPlanAppService _plans;
+  final InstallmentPlanChangePort _plans;
   final BillRepository _bills;
   final RepaymentRepository _repayments;
   final InstallmentRepository _installments;

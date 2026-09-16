@@ -35,7 +35,7 @@ class DeleteContractCommand {
   final String contractId;
 }
 
-/// 只生成重算预览；确认通过 [UpdateContractCommand] 提交预览指纹。
+/// 只生成重算预览；确认通过合同编辑用例提交预览指纹。
 class PreviewContractRecalculationCommand {
   const PreviewContractRecalculationCommand({
     required this.contractId,
@@ -158,8 +158,7 @@ class PatchInstallmentScheduleCommand {
   final List<SchedulePendingPatch> schedulePatches;
 }
 
-/// Legacy combined contract edit command. Prefer the three capability-specific
-/// commands above for new callers.
+/// 合同编辑用例的组合命令。
 class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,

@@ -31,6 +31,7 @@ void main() {
             (ref, contractId) async => _metrics,
           ),
           installmentContractAppServiceProvider.overrideWithValue(service),
+          installmentContractEditAppServiceProvider.overrideWithValue(service),
         ],
       );
       addTearDown(container.dispose);
@@ -244,7 +245,8 @@ InstallmentScheduleReadModel _schedule({
   );
 }
 
-class _FailingInstallmentContractAppService implements InstallmentContractAppService {
+class _FailingInstallmentContractAppService
+    implements InstallmentContractAppService, InstallmentContractEditAppService {
   final updateCommands = <UpdateContractCommand>[];
 
   @override

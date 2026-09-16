@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
@@ -60,6 +61,25 @@ void main() {
       },
     );
 
+    test('updates contract details through the dedicated details command', () async {
+      final fixture = _Fixture();
+      final created = await fixture.service.createDisbursementContract(
+        _createDisbursementCommand(disbursementAccountId: null),
+      );
+
+      await fixture.service.updateContractDetails(
+        UpdateContractDetailsCommand(
+          contractId: created.contractId,
+          name: '家庭贷款',
+          note: Patch<String>.set('已核对'),
+        ),
+      );
+
+      final contract = fixture.installments.contracts[created.contractId]!;
+      expect(contract.name, '家庭贷款');
+      expect(contract.note, '已核对');
+    });
+
     test('keeps configured dates for cash installment schedules', () async {
       final fixture = _Fixture();
       fixture.creditAccounts.accounts['credit-liability'] =
@@ -108,7 +128,7 @@ void main() {
           ),
         ]);
 
-        await fixture.service.updateContract(
+        await fixture.editing.updateContract(
           UpdateContractCommand(
             contractId: 'contract-1',
             stageTerms: InstallmentContractTerms.singleStage(
@@ -188,7 +208,7 @@ void main() {
         final preview = await fixture.planService.previewContractRecalculation(
           command,
         );
-        await fixture.service.updateContract(
+        await fixture.editing.updateContract(
           UpdateContractCommand(
             contractId: command.contractId,
             stageTerms: command.stageTerms,
@@ -335,7 +355,7 @@ void main() {
           ),
         ]);
 
-        await fixture.service.updateContract(
+        await fixture.editing.updateContract(
           UpdateContractCommand(
             contractId: 'contract-1',
             schedulePatches: [
@@ -383,7 +403,7 @@ void main() {
         ]);
 
         await expectLater(
-          fixture.service.updateContract(
+          fixture.editing.updateContract(
             const UpdateContractCommand(
               contractId: 'contract-1',
               schedulePatches: [
@@ -618,6 +638,12 @@ class _Fixture {
     runner: const _ImmediateRunner(),
     idGenerator: SequentialIdGenerator(prefix: 'plan-test'),
   );
+  late final InstallmentContractEditAppService editing =
+      InstallmentContractEditAppServiceImpl(
+        contracts: service,
+        plans: planService,
+        runner: const _ImmediateRunner(),
+      );
 }
 
 class _FakeBillRepository implements BillRepository {

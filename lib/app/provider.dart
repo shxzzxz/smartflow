@@ -55,7 +55,6 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/task/pull_task_scheduler.dart';
 import '../application/credit/task/installment_repricing_task.dart';
-import '../application/credit/task/installment_repricing_task_coordinator.dart';
 import '../domain/ledger/port/account_repository.dart';
 import '../domain/ledger/port/account_group_repository.dart';
 import '../domain/ledger/port/budget_repository.dart';
@@ -569,13 +568,21 @@ RepaymentAppService repaymentAppService(Ref ref) {
 @Riverpod(keepAlive: true)
 InstallmentContractAppService installmentContractAppService(Ref ref) {
   return InstallmentContractAppServiceImpl(
-    plans: ref.watch(installmentPlanAppServiceProvider),
     repository: ref.watch(installmentRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InstallmentContractEditAppService installmentContractEditAppService(Ref ref) {
+  return InstallmentContractEditAppServiceImpl(
+    contracts: ref.watch(installmentContractAppServiceProvider),
+    plans: ref.watch(installmentPlanAppServiceProvider),
+    runner: ref.watch(transactionRunnerProvider),
   );
 }
 
@@ -646,9 +653,7 @@ PullTaskScheduler pullTaskScheduler(Ref ref) {
     tasks: [
       ref.watch(creditBillGenerationTaskProvider),
       InstallmentRepricingTask(
-        InstallmentRepricingTaskCoordinator(
-          ref.watch(installmentRepricingAppServiceProvider),
-        ),
+        ref.watch(installmentRepricingAppServiceProvider),
         onChanged: () {
           ref.invalidate(installmentQueryServiceProvider);
           ref.invalidate(contractMetricsQueryProvider);

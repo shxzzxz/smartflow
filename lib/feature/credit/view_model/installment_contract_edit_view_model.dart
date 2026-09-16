@@ -120,7 +120,7 @@ class InstallmentContractEditViewModel
       return await guardSubmit(_logger, 'Save staged contract', () async {
         final terms = loaded.stageDraft.contractTerms();
         await ref
-            .read(installmentContractAppServiceProvider)
+            .read(installmentContractEditAppServiceProvider)
             .updateContract(
               UpdateContractCommand(
                 contractId: contractId,

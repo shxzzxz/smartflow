@@ -22,6 +22,7 @@ export 'account/command/credit_account_command.dart';
 export 'bill/command/credit_bill_generation_app_service.dart';
 export 'task/credit_bill_generation_task.dart';
 export 'installment/command/installment_contract_app_service.dart';
+export 'installment/command/installment_contract_edit_app_service.dart';
 export 'installment/command/installment_plan_app_service.dart';
 export 'installment/command/installment_repricing_app_service.dart';
 export 'installment/command/installment_interest_adjustment_app_service.dart';

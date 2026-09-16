@@ -395,8 +395,8 @@ final class _InstallmentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContract(
-        UpdateContractCommand(
+      return installmentAppService.updateContractDetails(
+        UpdateContractDetailsCommand(
           contractId: contractId,
           note: value == null
               ? const Patch<String>.clear()
@@ -414,8 +414,11 @@ final class _InstallmentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContract(
-        UpdateContractCommand(contractId: contractId, borrowingDate: value),
+      return installmentAppService.updateContractDetails(
+        UpdateContractDetailsCommand(
+          contractId: contractId,
+          borrowingDate: value,
+        ),
       );
     });
   }
@@ -434,8 +437,8 @@ final class _InstallmentActionDispatcher
     String accountId,
   ) async {
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContract(
-        UpdateContractCommand(
+      return installmentAppService.updateContractDetails(
+        UpdateContractDetailsCommand(
           contractId: contractId,
           disbursementAccountId: accountId,
         ),

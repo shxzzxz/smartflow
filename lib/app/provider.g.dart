@@ -2912,7 +2912,59 @@ final class InstallmentContractAppServiceProvider
 }
 
 String _$installmentContractAppServiceHash() =>
-    r'8b78a7853f73cc7ccd27e3be2e992d6f2d975c83';
+    r'78b6a534af7e3e3fdb6294cafc469fabc00089e2';
+
+@ProviderFor(installmentContractEditAppService)
+final installmentContractEditAppServiceProvider =
+    InstallmentContractEditAppServiceProvider._();
+
+final class InstallmentContractEditAppServiceProvider
+    extends
+        $FunctionalProvider<
+          InstallmentContractEditAppService,
+          InstallmentContractEditAppService,
+          InstallmentContractEditAppService
+        >
+    with $Provider<InstallmentContractEditAppService> {
+  InstallmentContractEditAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentContractEditAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$installmentContractEditAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentContractEditAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentContractEditAppService create(Ref ref) {
+    return installmentContractEditAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentContractEditAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstallmentContractEditAppService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$installmentContractEditAppServiceHash() =>
+    r'b8249b0138c82fd08b4bc49fefb860f7cab7ee66';
 
 @ProviderFor(installmentStatusRepairAppService)
 final installmentStatusRepairAppServiceProvider =

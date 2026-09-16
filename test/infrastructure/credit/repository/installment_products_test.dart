@@ -11,7 +11,7 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/domain/credit/entity/installment_product.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/day_count_convention.dart';
@@ -352,7 +352,7 @@ void main() {
           "VALUES ('liability', '贷款', 'liability', 'loan', 'credit.loan')",
         );
         var next = 0;
-        final loan = const InstallmentOriginationService()
+        final loan = const InstallmentContractOriginationService()
             .originateDisbursement(
               contractId: 'old',
               liabilityAccountId: 'liability',
@@ -647,7 +647,7 @@ InstallmentOriginationResult _loan() {
       ),
     ],
   );
-  return const InstallmentOriginationService().originateDisbursement(
+  return const InstallmentContractOriginationService().originateDisbursement(
     contractId: 'loan',
     liabilityAccountId: 'liability',
     createdAt: DateTime(2026),

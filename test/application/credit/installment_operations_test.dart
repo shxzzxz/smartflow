@@ -16,7 +16,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
@@ -174,7 +174,7 @@ void main() {
         ),
         throwsA(isA<BusinessException>()),
       );
-      final other = const InstallmentOriginationService().originateDisbursement(
+      final other = const InstallmentContractOriginationService().originateDisbursement(
         contractId: 'other',
         liabilityAccountId: 'account',
         terms: InstallmentOriginationTerms(
@@ -1312,7 +1312,7 @@ class _Fixture {
             ),
           );
     }
-    final aggregate = const InstallmentOriginationService()
+    final aggregate = const InstallmentContractOriginationService()
         .originateDisbursement(
           contractId: 'loan',
           liabilityAccountId: 'account',

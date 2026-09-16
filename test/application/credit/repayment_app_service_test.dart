@@ -1726,6 +1726,13 @@ class _Fixture {
     runner = DriftTransactionRunner(database);
     edit.onDeleteTransaction = _recordDeletedTransactionInDatabase;
     service = credit.RepaymentAppServiceImpl(
+      plans: credit.InstallmentPlanAppService(
+        installments: installments,
+        repayments: repayments,
+        bills: bills,
+        runner: runner,
+        idGenerator: ids,
+      ),
       bills: bills,
       repayments: repayments,
       installments: installments,

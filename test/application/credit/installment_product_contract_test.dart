@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/application/credit/installment/command/installment_contract_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/installment_contract_edit_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_command.dart';
 import 'package:smartflow/core/error/app_exception.dart';
@@ -34,8 +35,11 @@ void main() {
   late DriftInstallmentProductRepository products;
   late InstallmentContractAppService service;
   late InstallmentPlanAppService plans;
+  late InstallmentContractEditAppService editing;
+  late SequentialIdGenerator ids;
   setUp(() async {
     db = createTestDatabase();
+    ids = SequentialIdGenerator();
     repository = DriftInstallmentRepository(db);
     products = DriftInstallmentProductRepository(db);
     service = InstallmentContractAppServiceImpl(
@@ -44,14 +48,19 @@ void main() {
       repayments: DriftRepaymentRepository(db),
       ledger: _Ledger(),
       transactionRunner: DriftTransactionRunner(db),
-      idGenerator: SequentialIdGenerator(),
+      idGenerator: ids,
     );
     plans = InstallmentPlanAppService(
       installments: repository,
       bills: DriftBillRepository(db),
       repayments: DriftRepaymentRepository(db),
       runner: DriftTransactionRunner(db),
-      idGenerator: SequentialIdGenerator(),
+      idGenerator: ids,
+    );
+    editing = InstallmentContractEditAppServiceImpl(
+      contracts: service,
+      plans: plans,
+      runner: DriftTransactionRunner(db),
     );
     await products.save(
       InstallmentProduct(
@@ -148,14 +157,6 @@ void main() {
             ),
           ],
         );
-        final editing = InstallmentContractAppServiceImpl(
-          repository: repository,
-          bills: DriftBillRepository(db),
-          repayments: DriftRepaymentRepository(db),
-          ledger: _Ledger(),
-          transactionRunner: DriftTransactionRunner(db),
-          idGenerator: SequentialIdGenerator(),
-        );
         final preview = await plans.previewContractRecalculation(
           PreviewContractRecalculationCommand(
             contractId: original.id,
@@ -216,7 +217,7 @@ void main() {
     final contract = (await repository.findContract(created.contractId))!;
     expect(contract.name, '20260101');
     final before = await repository.listSchedules(contract.id);
-    await service.updateContract(
+    await editing.updateContract(
       UpdateContractCommand(
         contractId: contract.id,
         name: '家庭贷款',
@@ -232,7 +233,7 @@ void main() {
       before.map((s) => s.expectedPrincipal),
     );
     await expectLater(
-      service.updateContract(
+      editing.updateContract(
         UpdateContractCommand(contractId: contract.id, name: ' '),
       ),
       throwsA(isA<BusinessException>()),
@@ -317,12 +318,12 @@ void main() {
       );
       expect((await repository.listSchedules(original.id)), hasLength(2));
       await expectLater(
-        service.updateContract(
+        editing.updateContract(
           UpdateContractCommand(contractId: original.id, stageTerms: changed),
         ),
         throwsA(isA<BusinessException>()),
       );
-      await service.updateContract(
+      await editing.updateContract(
         UpdateContractCommand(
           contractId: original.id,
           stageTerms: changed,
@@ -370,7 +371,7 @@ void main() {
         "WHEN NEW.period_no = 2 BEGIN SELECT RAISE(ABORT, 'test failure'); END",
       );
       await expectLater(
-        service.updateContract(
+        editing.updateContract(
           UpdateContractCommand(
             contractId: original.id,
             stageTerms: changed,
@@ -390,7 +391,7 @@ void main() {
         original.stageTerms.stages.single.id,
       );
       await db.customStatement('DROP TRIGGER reject_plan');
-      await service.updateContract(
+      await editing.updateContract(
         UpdateContractCommand(
           contractId: original.id,
           stageTerms: changed,

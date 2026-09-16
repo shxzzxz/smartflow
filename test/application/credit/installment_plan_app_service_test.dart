@@ -3,7 +3,7 @@ import 'package:smartflow/application/credit/installment/command/installment_pla
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
-import 'package:smartflow/domain/credit/service/installment/installment_origination_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_contract_origination_service.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
@@ -35,7 +35,7 @@ void main() {
       runner: DriftTransactionRunner(db),
       idGenerator: ids,
     );
-    final aggregate = const InstallmentOriginationService()
+    final aggregate = const InstallmentContractOriginationService()
         .originateDisbursement(
           contractId: 'loan',
           liabilityAccountId: 'account',
