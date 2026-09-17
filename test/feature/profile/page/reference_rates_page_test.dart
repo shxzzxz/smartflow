@@ -1,3 +1,5 @@
+// ignore_for_file: riverpod_lint/scoped_providers_should_specify_dependencies
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';

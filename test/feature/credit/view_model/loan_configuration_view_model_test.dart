@@ -69,12 +69,13 @@ void main() {
       );
       addTearDown(container.dispose);
       final date = DateTime(2026, 1, 10);
+      final installment = InstallmentConfigurationDraft(
+        principal: const Money(minorUnits: 100000),
+        borrowingDate: date,
+        terms: InstallmentTermsDraft.loan(date),
+      );
       final configProvider = loanConfigurationViewModelProvider(
-        installment: InstallmentConfigurationDraft(
-          principal: const Money(minorUnits: 100000),
-          borrowingDate: date,
-          terms: InstallmentTermsDraft.loan(date),
-        ),
+        installment: installment,
       );
       container.listen(configProvider, (_, _) {});
       final editor = container.read(configProvider.notifier);
