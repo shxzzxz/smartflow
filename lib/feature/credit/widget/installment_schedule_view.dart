@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/theme/app_theme_extension.dart';
+import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../presentation/installment_schedule_presentation.dart';
@@ -26,8 +28,8 @@ class InstallmentScheduleView extends StatelessWidget {
             padding: EdgeInsets.all(AppSpacing.space16),
             child: Text('暂无还款计划'),
           ),
-        for (final item in items) ...[
-          if (item.stageLabel case final label?)
+        for (var i = 0; i < items.length; i++) ...[
+          if (items[i].stageLabel case final label?)
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.space12,
@@ -41,10 +43,14 @@ class InstallmentScheduleView extends StatelessWidget {
               ),
             ),
           KeyedSubtree(
-            key: ValueKey(item.id),
+            key: ValueKey(items[i].id),
             child:
-                rowWrapper?.call(context, item, _ScheduleRow(item: item)) ??
-                _ScheduleRow(item: item),
+                rowWrapper?.call(
+                  context,
+                  items[i],
+                  _ScheduleRow(item: items[i]),
+                ) ??
+                _ScheduleRow(item: items[i]),
           ),
         ],
       ],
@@ -60,6 +66,7 @@ class _ScheduleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
+    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final supporting = styles.listSupporting.copyWith(
       color: colors.onSurfaceVariant,
     );
@@ -72,11 +79,24 @@ class _ScheduleRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 48,
-            child: Text(
-              item.periodLabel ?? '${item.periodNo}',
-              style: styles.formLabel,
+            height: 40,
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+                ),
+                child: Text(
+                  item.periodLabel ?? item.periodNo.toString().padLeft(2, '0'),
+                  style: styles.formLabel.copyWith(color: colors.primary),
+                ),
+              ),
             ),
           ),
+          const SizedBox(width: AppSpacing.space8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,31 +113,36 @@ class _ScheduleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.space8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                item.amountLabel ?? item.total.format(),
-                style: styles.formLabel,
-              ),
-              if (item.statusLabel case final customStatus?)
+          SizedBox(
+            width: 96,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 Text(
-                  customStatus,
-                  style: supporting.copyWith(color: colors.primary),
-                )
-              else if (item.status case final status?)
-                Text(
-                  installmentScheduleStatusLabel(status),
-                  style: supporting.copyWith(
-                    color: switch (status) {
-                      InstallmentScheduleStatus.pending => colors.primary,
-                      InstallmentScheduleStatus.partiallyPaid => colors.error,
-                      InstallmentScheduleStatus.paid => colors.tertiary,
-                      InstallmentScheduleStatus.skipped => colors.outline,
-                    },
-                  ),
+                  item.amountLabel ?? item.total.format(),
+                  style: styles.formLabel,
+                  textAlign: TextAlign.right,
                 ),
-            ],
+                if (item.statusLabel case final customStatus?)
+                  Text(
+                    customStatus,
+                    style: supporting.copyWith(color: colors.primary),
+                  )
+                else if (item.status case final status?)
+                  Text(
+                    installmentScheduleStatusLabel(status),
+                    style: supporting.copyWith(
+                      color: switch (status) {
+                        InstallmentScheduleStatus.pending => colors.primary,
+                        InstallmentScheduleStatus.partiallyPaid =>
+                          financeColors.warning,
+                        InstallmentScheduleStatus.paid => financeColors.success,
+                        InstallmentScheduleStatus.skipped => colors.outline,
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

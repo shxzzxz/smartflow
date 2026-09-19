@@ -239,7 +239,7 @@ void main() {
     },
   );
 
-  testWidgets('schedule and repayment rows use whitespace without dividers', (
+  testWidgets('schedule and repayment rows use badges and whitespace', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -253,16 +253,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(Divider), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
-    expect(
-      tester
-          .widget<SizedBox>(
-            find.byKey(const ValueKey('installment-repayment-gap-0')),
-          )
-          .height,
-      AppSpacing.space4,
-    );
+    expect(find.text('01'), findsOneWidget);
+    expect(find.text('02'), findsOneWidget);
   });
 }
 

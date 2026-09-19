@@ -236,7 +236,7 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-        Text('实际还款记录', style: context.appTextStyles.dateSectionTitle),
+        Text('还款记录', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
         if (cashflows.isEmpty)
           AppSurface(
@@ -251,11 +251,6 @@ class _Body extends StatelessWidget {
               children: [
                 for (var i = 0; i < cashflows.length; i++) ...[
                   _RepaymentRow(cashflow: cashflows[i], contract: contract),
-                  if (i < cashflows.length - 1)
-                    SizedBox(
-                      key: ValueKey('installment-repayment-gap-$i'),
-                      height: AppSpacing.space4,
-                    ),
                 ],
               ],
             ),
@@ -560,20 +555,24 @@ class _RepaymentRow extends ConsumerWidget {
         child: Row(
           children: [
             SizedBox(
-              width: 64,
-              child: Text(
-                _repaymentTypeLabel(cashflow.repaymentType),
-                style: styles.formLabel.copyWith(
-                  color: _repaymentTypeColor(cashflow.repaymentType, colors),
+              width: 48,
+              height: 48,
+              child: Center(
+                child: Icon(
+                  _repaymentTypeIcon(cashflow.repaymentType),
+                  color: colors.primary,
+                  size: 24,
                 ),
               ),
             ),
+            const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    formatDateLabel(cashflow.occurredAt),
+                    '${_repaymentTypeLabel(cashflow.repaymentType)} · '
+                    '${formatDateLabel(cashflow.occurredAt)}',
                     style: styles.formLabel,
                   ),
                   Text(
@@ -588,7 +587,14 @@ class _RepaymentRow extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.space8),
-            Text(total.format(), style: styles.formLabel),
+            SizedBox(
+              width: 96,
+              child: Text(
+                total.format(),
+                style: styles.formLabel,
+                textAlign: TextAlign.right,
+              ),
+            ),
           ],
         ),
       ),
@@ -665,12 +671,12 @@ String _repaymentTypeLabel(RepaymentType type) {
   };
 }
 
-Color _repaymentTypeColor(RepaymentType type, ColorScheme colors) {
+IconData _repaymentTypeIcon(RepaymentType type) {
   return switch (type) {
-    RepaymentType.bill => colors.tertiary,
-    RepaymentType.installment => colors.tertiary,
-    RepaymentType.prepayment => colors.primary,
-    RepaymentType.unattributed => colors.outline,
+    RepaymentType.bill => RemixIcons.wallet_3_line,
+    RepaymentType.installment => RemixIcons.calendar_schedule_line,
+    RepaymentType.prepayment => RemixIcons.arrow_up_circle_line,
+    RepaymentType.unattributed => RemixIcons.question_line,
   };
 }
 
