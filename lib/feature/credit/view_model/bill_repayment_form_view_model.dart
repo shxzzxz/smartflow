@@ -495,9 +495,11 @@ List<BillRepaymentAllocationLine> _allocationLines(
   };
   return [
     for (final item in detail.items)
-      if (item.status == credit.BillItemStatus.pending ||
-          item.status == credit.BillItemStatus.partiallyPaid ||
-          editingByItem.containsKey(item.id))
+      if (item.status != credit.BillItemStatus.skipped &&
+          (detail.summary.status == credit.BillStatus.settled ||
+              item.status == credit.BillItemStatus.pending ||
+              item.status == credit.BillItemStatus.partiallyPaid ||
+              editingByItem.containsKey(item.id)))
         BillRepaymentAllocationLine(
           billItemId: item.id,
           itemType: item.itemType,

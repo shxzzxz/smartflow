@@ -384,6 +384,45 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
       expect(bill!.items.single.status, credit.BillItemStatus.partiallyPaid);
     });
 
+    test(
+      'allows multiple interest-only repayments after bill settles by principal',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBillItems(
+          status: credit.BillStatus.billed,
+          items: [
+            const _BillItemSeed(
+              id: 'bill-item-1',
+              itemType: credit.BillItemType.consumption,
+              expectedPrincipal: 0,
+              expectedInterest: 20,
+            ),
+          ],
+        );
+
+        for (final interest in [10, 10]) {
+          await fixture.service.createBillRepayment(
+            credit.CreateBillRepaymentCommand(
+              billId: 'bill-1',
+              allocations: [
+                _allocation(
+                  billItemId: 'bill-item-1',
+                  principal: 0,
+                  interest: interest,
+                ),
+              ],
+              repaymentDate: DateTime(2026, 6, 20),
+            ),
+          );
+        }
+
+        final bill = await fixture.bills.findBill('bill-1');
+        expect(bill!.items.single.status, credit.BillItemStatus.paid);
+        expect(bill.status, credit.BillStatus.settled);
+      },
+    );
+
     test('edits bill repayment allocations and reopens settled bill', () async {
       final fixture = _Fixture();
       addTearDown(fixture.close);
@@ -1828,7 +1867,7 @@ class _Fixture {
           scheduleId: item.scheduleId,
           repaymentDate: DateTime(2026, 6, 25),
           expectedPrincipal: Money(minorUnits: item.expectedPrincipal),
-          expectedInterest: Money.zero(),
+          expectedInterest: Money(minorUnits: item.expectedInterest),
           expectedFee: Money.zero(),
           status: credit.BillItemStatus.pending,
         ),
@@ -2097,6 +2136,7 @@ class _BillItemSeed {
     required this.id,
     required this.itemType,
     required this.expectedPrincipal,
+    this.expectedInterest = 0,
     this.contractId,
     this.scheduleId,
   });
@@ -2104,6 +2144,7 @@ class _BillItemSeed {
   final String id;
   final credit.BillItemType itemType;
   final int expectedPrincipal;
+  final int expectedInterest;
   final String? contractId;
   final String? scheduleId;
 }

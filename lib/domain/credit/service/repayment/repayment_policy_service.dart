@@ -26,10 +26,8 @@ class RepaymentPolicyService {
   void validateBillRepayment({
     required Bill bill,
     required List<BillRepaymentAllocationDraft> allocations,
-    bool allowSettled = false,
   }) {
-    if ((!allowSettled && bill.status == BillStatus.settled) ||
-        allocations.isEmpty) {
+    if (allocations.isEmpty) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);
     }
 

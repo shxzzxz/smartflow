@@ -255,6 +255,46 @@ void main() {
     );
   });
 
+  test(
+    'bill repayment form keeps settled bill items for remaining interest',
+    () async {
+      final repayment = _FakeRepaymentAppService();
+      final container = _container(
+        repaymentAppService: repayment,
+        billDetail: _settledInterestOnlyBillDetail(),
+      );
+      final provider = billRepaymentFormViewModelProvider(
+        const BillRepaymentFormArgs.create('bill'),
+      );
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+
+      final state = await container.read(provider.future);
+      expect(state.isLoaded, isTrue);
+      expect(state.lines.single.billItemId, 'bill-item');
+      expect(state.principalText, '0.00');
+      expect(state.interestText, '10.00');
+
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(
+            principalText: state.principalText,
+            interestText: state.interestText,
+            feeText: state.feeText,
+            discountText: state.discountText,
+            noteText: '',
+          );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final allocation = repayment.billRepaymentCommands.single.allocations;
+      expect(allocation.single.allocated.principal, Money.zero());
+      expect(
+        allocation.single.allocated.interest,
+        const Money(minorUnits: 1000),
+      );
+    },
+  );
+
   test('bill repayment form can submit without ledger transaction', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
@@ -820,7 +860,8 @@ ProviderContainer _container({
   return container;
 }
 
-class _FakeInstallmentContractAppService implements credit.InstallmentContractAppService {
+class _FakeInstallmentContractAppService
+    implements credit.InstallmentContractAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -1022,6 +1063,43 @@ credit_query.BillDetailReadModel _billDetail() {
         expectedInterest: const Money(minorUnits: 300),
         expectedFee: const Money(minorUnits: 100),
         allocated: allocated,
+        isOverdue: false,
+      ),
+    ],
+    repayments: const [],
+  );
+}
+
+credit_query.BillDetailReadModel _settledInterestOnlyBillDetail() {
+  final period = credit_query.BillPeriod(year: 2026, month: 6);
+  return credit_query.BillDetailReadModel(
+    summary: credit_query.BillSummaryReadModel(
+      id: 'bill',
+      accountId: 'loan',
+      period: period,
+      status: credit_query.BillStatus.settled,
+      expectedPrincipal: Money.zero(),
+      expectedInterest: const Money(minorUnits: 2000),
+      expectedFee: Money.zero(),
+      pendingPrincipal: Money.zero(),
+      itemCount: 1,
+      overdueItemCount: 0,
+    ),
+    items: [
+      credit_query.BillItemReadModel(
+        id: 'bill-item',
+        itemType: credit_query.BillItemType.consumption,
+        status: credit_query.BillItemStatus.paid,
+        repaymentDate: DateTime(2026, 6, 20),
+        expectedPrincipal: Money.zero(),
+        expectedInterest: const Money(minorUnits: 2000),
+        expectedFee: Money.zero(),
+        allocated: const credit_query.RepaymentAmountDto(
+          principal: Money(minorUnits: 0),
+          interest: Money(minorUnits: 1000),
+          fee: Money(minorUnits: 0),
+          discount: Money(minorUnits: 0),
+        ),
         isOverdue: false,
       ),
     ],

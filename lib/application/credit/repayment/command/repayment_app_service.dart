@@ -353,7 +353,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     _repaymentPolicy.validateBillRepayment(
       bill: bill,
       allocations: allocations,
-      allowSettled: true,
     );
     final oldAllocations = _repaymentPolicy.allocationsFromItems(
       repayment.items,
