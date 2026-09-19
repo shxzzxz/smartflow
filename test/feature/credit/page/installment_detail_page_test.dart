@@ -11,7 +11,6 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
