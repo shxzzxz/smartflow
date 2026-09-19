@@ -481,6 +481,13 @@ WHERE NOT EXISTS (
           "WHERE status = 'pending'",
         );
       }
+      if (from < 45) {
+        // 旧版零本金还款会保存一条金额为 0 的分录。当前写入路径不再
+        // 生成零金额分录，升级时清理这些不影响余额的历史行。
+        await database.customStatement(
+          'DELETE FROM entries WHERE amount_minor = 0',
+        );
+      }
     }),
   );
 }
