@@ -1,7 +1,5 @@
 import '../../../core/error/app_exception.dart';
 import 'credit_error_code.dart';
-import 'installment_enums.dart';
-import 'interest_rate.dart';
 import 'reference_rate.dart';
 
 export 'in_period_repricing_policy.dart';
@@ -87,35 +85,5 @@ class FloatingRateRule {
       month.month,
       anchor.day > last ? last : anchor.day,
     );
-  }
-}
-
-/// 已确定的贷款执行利率；初始执行利率仍由阶段 rate 表达。
-class RateChange {
-  const RateChange({
-    required this.resetDate,
-    required this.effectiveDate,
-    required this.referenceRate,
-    required this.spreadBp,
-  });
-  final DateTime resetDate;
-  final DateTime effectiveDate;
-  final ReferenceRate referenceRate;
-  final int spreadBp;
-  InterestRate get rate => InterestRate(
-    ppm: referenceRate.ratePpm + spreadBp * 100,
-    period: InterestRatePeriod.annual,
-  );
-
-  void validate() {
-    if (referenceDate(effectiveDate).isBefore(referenceDate(resetDate)) ||
-        referenceDate(referenceRate.date).isAfter(referenceDate(resetDate)) ||
-        referenceRate.ratePpm < 0 ||
-        rate.ppm < 0) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '重定价日期或参考利率无效，执行利率不得为负',
-      );
-    }
   }
 }

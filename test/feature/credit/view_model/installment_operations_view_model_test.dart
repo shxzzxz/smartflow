@@ -6,6 +6,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/installment_operations_view_model.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -36,6 +37,44 @@ void main() {
     vm = container.read(provider.notifier);
   });
   tearDown(() => container.dispose());
+
+  test(
+    'direct input forwards only the effective date and precise rate with its unit',
+    () async {
+      for (final text in ['', '-1', '0.00001', 'invalid']) {
+        expect(
+          await vm.submit(
+            DirectRepricingRecordInput(
+              stageId: 'stage',
+              effectiveDate: DateTime(2026, 8, 25),
+              rateText: text,
+              ratePeriod: InterestRatePeriod.daily,
+            ),
+          ),
+          isA<UiActionFailure<void>>(),
+        );
+      }
+      expect(repricing.directCreated, isEmpty);
+      expect(
+        await vm.submit(
+          DirectRepricingRecordInput(
+            stageId: 'stage',
+            effectiveDate: DateTime(2026, 8, 25),
+            rateText: ' 0.0105 ',
+            ratePeriod: InterestRatePeriod.daily,
+          ),
+        ),
+        isA<UiActionSuccess<void>>(),
+      );
+      final saved = repricing.directCreated.single;
+      expect(saved.stageId, 'stage');
+      expect(saved.effective, DateTime(2026, 8, 25));
+      expect(saved.rate.ppm, 105);
+      expect(saved.rate.period, InterestRatePeriod.daily);
+      expect(repricing.created, isEmpty);
+      expect(repricing.configurations, isEmpty);
+    },
+  );
 
   RepricingRecordInput manual({String bp = '-25'}) => RepricingRecordInput(
     stageId: 'stage',

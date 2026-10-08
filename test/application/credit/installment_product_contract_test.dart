@@ -16,6 +16,7 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
@@ -128,7 +129,7 @@ void main() {
             id: 'pending-reset',
             contractId: original.id,
             stageId: original.stageTerms.stages.first.id,
-            change: RateChange(
+            change: ReferenceRateChange(
               resetDate: rule.firstResetDate,
               effectiveDate: rule.firstEffectiveDate,
               referenceRate: ReferenceRate(

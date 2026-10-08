@@ -16,6 +16,8 @@ import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_operations_view_model.dart';
+import '../presentation/repricing_presentation.dart';
+import '../widget/installment_field_options.dart';
 
 class InstallmentRepricingPage extends _InstallmentOperationsPage {
   const InstallmentRepricingPage({required super.contractId, super.key})
@@ -138,11 +140,9 @@ class _InstallmentOperationsPage extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    '${_stageLabel(contract, record.stageId)} · ${formatDateLabel(record.change.effectiveDate)} 起 · 年利率 ${_percent(record.change.rate.ppm)}%',
+                    '${_stageLabel(contract, record.stageId)} · ${formatDateLabel(record.change.effectiveDate)} 起 · ${repricingRateLabel(record.change)}',
                   ),
-                  subtitle: Text(
-                    '重定价日 ${formatDateLabel(record.change.resetDate)}\n${referenceRateTypeLabel(record.change.referenceRate.type)} ${_percent(record.change.referenceRate.ratePpm)}% · ${record.change.spreadBp} BP',
-                  ),
+                  subtitle: Text(repricingBasisLabel(record.change)),
                   trailing: IconButton(
                     tooltip: '删除重定价',
                     icon: const Icon(RemixIcons.delete_bin_line),
@@ -315,6 +315,9 @@ class _OperationDialogState extends State<_OperationDialog> {
   final _formKey = GlobalKey<FormState>();
   late DateTime _start, _reset, _end;
   late final TextEditingController _number;
+  final _rate = TextEditingController();
+  var _directRate = true;
+  var _ratePeriod = InterestRatePeriod.annual;
   late String _stageId;
   var _type = InterestRateType.lprFiveYearPlus;
   var _cycle = 12;
@@ -358,11 +361,18 @@ class _OperationDialogState extends State<_OperationDialog> {
     _type = config?.rule.referenceRateType ?? InterestRateType.lprFiveYearPlus;
     _cycle = config?.rule.cycleMonths ?? 12;
     _number.text = '${config?.rule.spreadBp ?? 0}';
+    final stage =
+        contract.stageTerms.stages
+                .firstWhere((stage) => stage.id == stageId)
+                .terms
+            as AmortizingStage;
+    _ratePeriod = stage.rate?.period ?? InterestRatePeriod.annual;
   }
 
   @override
   void dispose() {
     _number.dispose();
+    _rate.dispose();
     super.dispose();
   }
 
@@ -410,10 +420,43 @@ class _OperationDialogState extends State<_OperationDialog> {
                 _dateField('首次生效日', _end, (date) => _end = date),
               ],
               if (widget.kind == _OperationKind.repricing) ...[
-                _dateField('重定价日', _reset, (date) => _reset = date),
+                _selectField<bool>(
+                  label: '利率确定方式',
+                  value: _directRate,
+                  options: const [
+                    AppSelectOption(value: true, label: '直接指定'),
+                    AppSelectOption(value: false, label: '参考利率计算'),
+                  ],
+                  onChanged: (direct) => _directRate = direct,
+                ),
+                if (!_directRate)
+                  _dateField('重定价日', _reset, (date) => _reset = date),
                 _dateField('重定价生效日', _end, (date) => _end = date),
+                if (_directRate) ...[
+                  _field(
+                    '执行利率（%）',
+                    AppTextFormField(
+                      key: const ValueKey('repricing-rate'),
+                      controller: _rate,
+                      enabled: !_submitting,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (value) =>
+                          _validatePercent(value, label: '利率'),
+                    ),
+                  ),
+                  _selectField<InterestRatePeriod>(
+                    label: '利率单位',
+                    value: _ratePeriod,
+                    options: interestRatePeriodOptions,
+                    onChanged: (period) => _ratePeriod = period,
+                  ),
+                ],
               ],
-              if (widget.kind != _OperationKind.adjustment) ...[
+              if (widget.kind == _OperationKind.configuration ||
+                  (widget.kind == _OperationKind.repricing &&
+                      !_directRate)) ...[
                 _selectField<InterestRateType>(
                   label: '利率类型',
                   value: _type,
@@ -454,7 +497,11 @@ class _OperationDialogState extends State<_OperationDialog> {
                 ),
               ],
               if (widget.kind == _OperationKind.repricing)
-                _supporting('引用重定价日前的最近参考利率，加减基点后确定执行利率。'),
+                _supporting(
+                  _directRate
+                      ? '从生效日起采用填写的利率，后续自动重定价仍按原配置继续。'
+                      : '引用重定价日前的最近参考利率，加减基点后确定执行利率。',
+                ),
               if (widget.kind == _OperationKind.adjustment) ...[
                 _dateField('开始日期', _start, (date) => _start = date),
                 _dateField('结束日期', _end, (date) => _end = date),
@@ -590,6 +637,12 @@ class _OperationDialogState extends State<_OperationDialog> {
         cycleMonths: _cycle,
         spreadBp: _number.text,
       ),
+      _OperationKind.repricing when _directRate => DirectRepricingRecordInput(
+        stageId: _stageId,
+        effectiveDate: _end,
+        rateText: _rate.text,
+        ratePeriod: _ratePeriod,
+      ),
       _OperationKind.repricing => RepricingRecordInput(
         stageId: _stageId,
         resetDate: _reset,
@@ -618,11 +671,11 @@ class _OperationDialogState extends State<_OperationDialog> {
   }
 }
 
-String? _validatePercent(String? value) {
+String? _validatePercent(String? value, {String label = '利息比例'}) {
   final percent = Decimal.tryParse(value?.trim() ?? '');
-  if (percent == null || percent < Decimal.zero) return '请输入非负利息比例';
+  if (percent == null || percent < Decimal.zero) return '请输入非负$label';
   final scaled = percent * Decimal.fromInt(10000);
-  return scaled == scaled.round() ? null : '利息比例最多保留四位小数';
+  return scaled == scaled.round() ? null : '$label最多保留四位小数';
 }
 
 String _percent(int ppm) =>

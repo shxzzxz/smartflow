@@ -6,6 +6,7 @@ import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 
 InstallmentContractReadModel operationsContract({
   bool withRecords = false,
@@ -49,7 +50,7 @@ InstallmentContractReadModel operationsContract({
             id: 'rate',
             stageId: 'stage',
             status: InstallmentRepricingStatus.applied,
-            change: RateChange(
+            change: ReferenceRateChange(
               resetDate: DateTime(2026, 8, 20),
               effectiveDate: DateTime(2026, 8, 20),
               referenceRate: ReferenceRate(
@@ -93,6 +94,15 @@ InstallmentContractReadModel operationsContract({
 );
 
 class RecordingRepricingService implements InstallmentRepricingAppService {
+  final directCreated =
+      <
+        ({
+          String contractId,
+          String stageId,
+          DateTime effective,
+          InterestRate rate,
+        })
+      >[];
   final configurations =
       <
         ({
@@ -129,6 +139,22 @@ class RecordingRepricingService implements InstallmentRepricingAppService {
       stageId: stageId,
       effectiveFrom: effectiveFrom,
       rule: rule,
+    ));
+    await onWrite?.call();
+  }
+
+  @override
+  Future<void> createDirect(
+    String contractId, {
+    required String stageId,
+    required DateTime effectiveDate,
+    required InterestRate rate,
+  }) async {
+    directCreated.add((
+      contractId: contractId,
+      stageId: stageId,
+      effective: effectiveDate,
+      rate: rate,
     ));
     await onWrite?.call();
   }

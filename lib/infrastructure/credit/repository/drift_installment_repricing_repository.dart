@@ -42,7 +42,7 @@ class DriftInstallmentRepricingRepository
               ..where((r) => r.contractId.equals(contractId))
               ..orderBy([
                 (r) => OrderingTerm.asc(r.effectiveDate),
-                (r) => OrderingTerm.asc(r.resetDate),
+                (r) => OrderingTerm.asc(r.stageId),
               ]))
             .get())
       InstallmentRepricing(
@@ -57,22 +57,11 @@ class DriftInstallmentRepricingRepository
   @override
   Future<bool> insert(InstallmentRepricing record) async {
     await _requireStage(record.contractId, record.stageId);
-    final c = record.change;
+    record.change.validate();
     final inserted = await database
         .into(database.installmentRepricingRecords)
         .insertReturningOrNull(
-          InstallmentRepricingRecordsCompanion.insert(
-            id: record.id,
-            contractId: record.contractId,
-            stageId: record.stageId,
-            resetDate: referenceDate(c.resetDate),
-            effectiveDate: referenceDate(c.effectiveDate),
-            referenceRateDate: referenceDate(c.referenceRate.date),
-            referenceRateType: c.referenceRate.type.name,
-            referenceRatePpm: c.referenceRate.ratePpm,
-            spreadBp: c.spreadBp,
-            source: c.referenceRate.source,
-          ),
+          encodeRepricingRecord(record),
           onConflict: DoNothing(
             target: [
               database.installmentRepricingRecords.contractId,

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/installment_enums.dart';
 
 import 'backup_models.dart';
 import 'installment_backup_migration.dart';
@@ -513,6 +514,43 @@ class BackupService {
         stage['stageKind'] == 'repayment';
   }
 
+  static bool _isValidRepricingRate(
+    BackupJson row,
+    Set<String> referenceRateKeys,
+  ) => switch (row['pricingMethod']) {
+    'direct' =>
+      row['ratePpm'] is int &&
+          (row['ratePpm'] as int) >= 0 &&
+          InterestRatePeriod.values.any(
+            (period) => period.name == row['ratePeriod'],
+          ) &&
+          const [
+            'resetDate',
+            'referenceRateDate',
+            'referenceRateType',
+            'referenceRatePpm',
+            'spreadBp',
+            'source',
+          ].every((field) => row[field] == null),
+    'reference' =>
+      row['ratePpm'] == null &&
+          row['ratePeriod'] == null &&
+          referenceRateKeys.contains(
+            '${row['referenceRateDate']}:${row['referenceRateType']}',
+          ) &&
+          _isUtcCalendarDate(row['resetDate']) &&
+          _isUtcCalendarDate(row['referenceRateDate']) &&
+          (row['referenceRateDate'] as int) <= (row['resetDate'] as int) &&
+          (row['resetDate'] as int) <= (row['effectiveDate'] as int) &&
+          row['referenceRatePpm'] is int &&
+          row['spreadBp'] is int &&
+          row['source'] is String &&
+          (row['referenceRatePpm'] as int) >= 0 &&
+          (row['referenceRatePpm'] as int) + (row['spreadBp'] as int) * 100 >=
+              0,
+    _ => false,
+  };
+
   static void _validateInstallmentOperations(
     BackupSnapshot snapshot,
     Map<String, BackupJson> contracts,
@@ -630,19 +668,8 @@ class BackupService {
           }.contains(row['status']) ||
           !contracts.containsKey(row['contractId']) ||
           !_isRepricingStage(row, stages) ||
-          !referenceRateKeys.contains(
-            '${row['referenceRateDate']}:${row['referenceRateType']}',
-          ) ||
-          !_isUtcCalendarDate(row['resetDate']) ||
           !_isUtcCalendarDate(row['effectiveDate']) ||
-          row['referenceRateDate'] is! int ||
-          (row['referenceRateDate'] as int) > (row['resetDate'] as int) ||
-          (row['resetDate'] as int) > (row['effectiveDate'] as int) ||
-          row['referenceRatePpm'] is! int ||
-          row['spreadBp'] is! int ||
-          (row['referenceRatePpm'] as int) < 0 ||
-          (row['referenceRatePpm'] as int) + (row['spreadBp'] as int) * 100 <
-              0 ||
+          !_isValidRepricingRate(row, referenceRateKeys) ||
           !resetKeys.add(
             '${row['contractId']}:${row['stageId']}:${row['effectiveDate']}',
           )) {

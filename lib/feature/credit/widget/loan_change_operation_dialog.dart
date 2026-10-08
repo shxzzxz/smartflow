@@ -8,6 +8,8 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_select.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/rate_change.dart';
+import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -15,6 +17,7 @@ import '../presentation/loan_calculator_presentation.dart';
 import '../presentation/loan_change_presentation.dart';
 import '../view_model/loan_change_state.dart';
 import '../view_model/loan_change_view_model.dart';
+import 'installment_field_options.dart';
 
 class LoanChangeOperationDialog extends StatefulWidget {
   const LoanChangeOperationDialog({
@@ -39,6 +42,9 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
   final _number = TextEditingController();
   final _referenceRate = TextEditingController();
   final _spread = TextEditingController(text: '0');
+  final _rate = TextEditingController();
+  var _directRate = true;
+  var _ratePeriod = InterestRatePeriod.annual;
   late DateTime _start, _end;
   String? _stageId;
   var _type = InterestRateType.lprFiveYearPlus;
@@ -66,13 +72,21 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
         if (widget.state.repricingStages.any((stage) => stage.id == stageId)) {
           _stageId = stageId;
         }
-        _start = change.resetDate;
         _end = change.effectiveDate;
-        _type = change.referenceRate.type;
-        _referenceRate.text = formatLoanChangePercent(
-          change.referenceRate.ratePpm,
-        );
-        _spread.text = '${change.spreadBp}';
+        switch (change) {
+          case DirectRateChange(:final rate):
+            _directRate = true;
+            _rate.text = formatLoanChangePercent(rate.ppm);
+            _ratePeriod = rate.period;
+          case ReferenceRateChange():
+            _directRate = false;
+            _start = change.resetDate;
+            _type = change.referenceRate.type;
+            _referenceRate.text = formatLoanChangePercent(
+              change.referenceRate.ratePpm,
+            );
+            _spread.text = '${change.spreadBp}';
+        }
       case LoanInterestAdjustmentOperation(:final adjustment):
         _start = adjustment.start;
         _end = adjustment.end;
@@ -97,6 +111,7 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
     _type = stage.rateType.isFloating
         ? stage.rateType
         : InterestRateType.lprFiveYearPlus;
+    _ratePeriod = stage.ratePeriod;
   }
 
   @override
@@ -104,6 +119,7 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
     _number.dispose();
     _referenceRate.dispose();
     _spread.dispose();
+    _rate.dispose();
     super.dispose();
   }
 
@@ -160,52 +176,85 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
                     ],
                     onChanged: _selectStage,
                   ),
-                _dateField('重定价日', _start, (date) => _start = date),
-                _dateField('重定价生效日', _end, (date) => _end = date),
-                _selectField<InterestRateType>(
-                  label: '参考利率类型',
-                  value: _type,
-                  options: [
-                    for (final type in InterestRateType.referenceTypes)
-                      AppSelectOption(
-                        value: type,
-                        label: referenceRateTypeLabel(type),
-                      ),
+                _selectField<bool>(
+                  label: '利率确定方式',
+                  value: _directRate,
+                  options: const [
+                    AppSelectOption(value: true, label: '直接指定'),
+                    AppSelectOption(value: false, label: '参考利率计算'),
                   ],
-                  onChanged: (type) => _type = type,
+                  onChanged: (direct) => _directRate = direct,
                 ),
-                _field(
-                  '试算参考年利率（%）',
-                  AppTextFormField(
-                    key: const ValueKey('operation-reference-rate'),
-                    controller: _referenceRate,
-                    enabled: !_submitting,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                if (!_directRate)
+                  _dateField('重定价日', _start, (date) => _start = date),
+                _dateField('重定价生效日', _end, (date) => _end = date),
+                if (_directRate) ...[
+                  _field(
+                    '执行利率（%）',
+                    AppTextFormField(
+                      key: const ValueKey('operation-rate'),
+                      controller: _rate,
+                      enabled: !_submitting,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (text) =>
+                          validateLoanChangePercent(text, label: '利率'),
                     ),
-                    validator: (text) =>
-                        validateLoanChangePercent(text, label: '试算参考利率'),
                   ),
-                ),
-                _field(
-                  '加减基点（BP）',
-                  AppTextFormField(
-                    key: const ValueKey('operation-spread'),
-                    controller: _spread,
-                    enabled: !_submitting,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      signed: true,
+                  _selectField<InterestRatePeriod>(
+                    label: '利率单位',
+                    value: _ratePeriod,
+                    options: interestRatePeriodOptions,
+                    onChanged: (period) => _ratePeriod = period,
+                  ),
+                ],
+                if (!_directRate) ...[
+                  _selectField<InterestRateType>(
+                    label: '参考利率类型',
+                    value: _type,
+                    options: [
+                      for (final type in InterestRateType.referenceTypes)
+                        AppSelectOption(
+                          value: type,
+                          label: referenceRateTypeLabel(type),
+                        ),
+                    ],
+                    onChanged: (type) => _type = type,
+                  ),
+                  _field(
+                    '试算参考年利率（%）',
+                    AppTextFormField(
+                      key: const ValueKey('operation-reference-rate'),
+                      controller: _referenceRate,
+                      enabled: !_submitting,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (text) =>
+                          validateLoanChangePercent(text, label: '试算参考利率'),
                     ),
-                    validator: (text) =>
-                        int.tryParse(text?.trim() ?? '') == null
-                        ? '请输入整数基点，可为负数'
-                        : null,
                   ),
-                ),
-                Text(
-                  '填写本次假设的参考利率，加减基点后确定执行年利率。',
-                  style: context.appTextStyles.formSupporting,
-                ),
+                  _field(
+                    '加减基点（BP）',
+                    AppTextFormField(
+                      key: const ValueKey('operation-spread'),
+                      controller: _spread,
+                      enabled: !_submitting,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        signed: true,
+                      ),
+                      validator: (text) =>
+                          int.tryParse(text?.trim() ?? '') == null
+                          ? '请输入整数基点，可为负数'
+                          : null,
+                    ),
+                  ),
+                  Text(
+                    '填写本次假设的参考利率，加减基点后确定执行年利率。',
+                    style: context.appTextStyles.formSupporting,
+                  ),
+                ],
               ],
               if (kind == LoanChangeOperationKind.interestAdjustment) ...[
                 _dateField('开始日期', _start, (date) => _start = date),
@@ -343,6 +392,14 @@ class _LoanChangeOperationDialogState extends State<LoanChangeOperationDialog> {
         date: _start,
         principalText: _number.text,
       ),
+      LoanChangeOperationKind.repricing when _directRate =>
+        notifier.saveDirectRepricing(
+          id: widget.initial?.id,
+          stageId: _stageId!,
+          effectiveDate: _end,
+          rateText: _rate.text,
+          ratePeriod: _ratePeriod,
+        ),
       LoanChangeOperationKind.repricing => notifier.saveRepricing(
         id: widget.initial?.id,
         stageId: _stageId!,

@@ -179,10 +179,10 @@ void main() {
           expect(record.spreadBp, -30);
           expect(record.source, 'legacy');
           expect(
-            record.referenceRateDate.millisecondsSinceEpoch ~/ 1000,
+            record.referenceRateDate!.millisecondsSinceEpoch ~/ 1000,
             1703030400,
           );
-          expect(record.resetDate.millisecondsSinceEpoch ~/ 1000, 1703030400);
+          expect(record.resetDate!.millisecondsSinceEpoch ~/ 1000, 1703030400);
           expect(
             record.effectiveDate.millisecondsSinceEpoch ~/ 1000,
             1704067200 + (record.id == 'record-1' ? 86400 : 0),
@@ -653,7 +653,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 45);
+    expect(version.read<int>('user_version'), 46);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -694,7 +694,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 45);
+      expect(version.read<int>('user_version'), 46);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -750,7 +750,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 45);
+      expect(version.read<int>('user_version'), 46);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -863,7 +863,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 45);
+      expect(version.read<int>('user_version'), 46);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -1034,7 +1034,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 45);
+      expect(version.read<int>('user_version'), 46);
 
       for (final table in [
         'import_entity_mappings',

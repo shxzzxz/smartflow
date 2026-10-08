@@ -26,6 +26,7 @@ import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
@@ -397,7 +398,7 @@ void main() {
       final records = await f.records.list('loan');
       expect(records, hasLength(1));
       expect(records.single.change.effectiveDate, DateTime.utc(2026, 9, 6));
-      expect(records.single.change.spreadBp, 0);
+      expect((records.single.change as ReferenceRateChange).spreadBp, 0);
       await expectLater(
         f.repricing.create(
           'loan',
@@ -504,7 +505,7 @@ void main() {
         needsRetry: false,
       ));
       final record = (await f.records.list('loan')).single;
-      expect(record.change.spreadBp, -10);
+      expect((record.change as ReferenceRateChange).spreadBp, -10);
       expect(
         (await f.installments.findContract(
           'loan',
@@ -547,7 +548,11 @@ void main() {
         changed: true,
         needsRetry: false,
       ));
-      expect((await f.records.list('loan')).single.change.spreadBp, 0);
+      expect(
+        ((await f.records.list('loan')).single.change as ReferenceRateChange)
+            .spreadBp,
+        0,
+      );
     },
   );
 
@@ -645,7 +650,11 @@ void main() {
         null,
         DateTime.utc(2026, 11, 20),
       ]);
-      expect((await f.records.list('loan')).single.change.spreadBp, -10);
+      expect(
+        ((await f.records.list('loan')).single.change as ReferenceRateChange)
+            .spreadBp,
+        -10,
+      );
       await f.repricing.runDue(day(11, 20));
       final updated = (await f.installments.findContract(
         'loan',

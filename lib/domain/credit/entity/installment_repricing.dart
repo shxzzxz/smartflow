@@ -1,6 +1,6 @@
+import '../valobj/rate_change.dart';
 import '../../../core/error/app_exception.dart';
 import '../valobj/credit_error_code.dart';
-import '../valobj/floating_rate.dart';
 import '../valobj/installment_enums.dart';
 
 class InstallmentRepricing {

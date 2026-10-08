@@ -3,8 +3,8 @@ import 'package:rational/rational.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import 'credit_error_code.dart';
-import 'floating_rate.dart';
 import 'reference_rate.dart';
+import 'rate_change.dart';
 
 /// 只表达影响计算的本金事实，不包含还款状态或息费。
 class PrincipalReduction {

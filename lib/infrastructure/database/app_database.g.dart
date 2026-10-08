@@ -11955,15 +11955,15 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _resetDateMeta = const VerificationMeta(
-    'resetDate',
+  static const VerificationMeta _pricingMethodMeta = const VerificationMeta(
+    'pricingMethod',
   );
   @override
-  late final GeneratedColumn<DateTime> resetDate = GeneratedColumn<DateTime>(
-    'reset_date',
+  late final GeneratedColumn<String> pricingMethod = GeneratedColumn<String>(
+    'pricing_method',
     aliasedName,
     false,
-    type: DriftSqlType.dateTime,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _effectiveDateMeta = const VerificationMeta(
@@ -11978,6 +11978,39 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
         type: DriftSqlType.dateTime,
         requiredDuringInsert: true,
       );
+  static const VerificationMeta _ratePpmMeta = const VerificationMeta(
+    'ratePpm',
+  );
+  @override
+  late final GeneratedColumn<int> ratePpm = GeneratedColumn<int>(
+    'rate_ppm',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratePeriodMeta = const VerificationMeta(
+    'ratePeriod',
+  );
+  @override
+  late final GeneratedColumn<String> ratePeriod = GeneratedColumn<String>(
+    'rate_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _resetDateMeta = const VerificationMeta(
+    'resetDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resetDate = GeneratedColumn<DateTime>(
+    'reset_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _referenceRateDateMeta = const VerificationMeta(
     'referenceRateDate',
   );
@@ -11986,9 +12019,9 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
       GeneratedColumn<DateTime>(
         'reference_rate_date',
         aliasedName,
-        false,
+        true,
         type: DriftSqlType.dateTime,
-        requiredDuringInsert: true,
+        requiredDuringInsert: false,
       );
   static const VerificationMeta _referenceRateTypeMeta = const VerificationMeta(
     'referenceRateType',
@@ -11998,9 +12031,9 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
       GeneratedColumn<String>(
         'reference_rate_type',
         aliasedName,
-        false,
+        true,
         type: DriftSqlType.string,
-        requiredDuringInsert: true,
+        requiredDuringInsert: false,
       );
   static const VerificationMeta _referenceRatePpmMeta = const VerificationMeta(
     'referenceRatePpm',
@@ -12009,9 +12042,9 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
   late final GeneratedColumn<int> referenceRatePpm = GeneratedColumn<int>(
     'reference_rate_ppm',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _spreadBpMeta = const VerificationMeta(
     'spreadBp',
@@ -12020,18 +12053,18 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
   late final GeneratedColumn<int> spreadBp = GeneratedColumn<int>(
     'spread_bp',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _sourceMeta = const VerificationMeta('source');
   @override
   late final GeneratedColumn<String> source = GeneratedColumn<String>(
     'source',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
@@ -12060,8 +12093,11 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     id,
     contractId,
     stageId,
-    resetDate,
+    pricingMethod,
     effectiveDate,
+    ratePpm,
+    ratePeriod,
+    resetDate,
     referenceRateDate,
     referenceRateType,
     referenceRatePpm,
@@ -12103,13 +12139,16 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     } else if (isInserting) {
       context.missing(_stageIdMeta);
     }
-    if (data.containsKey('reset_date')) {
+    if (data.containsKey('pricing_method')) {
       context.handle(
-        _resetDateMeta,
-        resetDate.isAcceptableOrUnknown(data['reset_date']!, _resetDateMeta),
+        _pricingMethodMeta,
+        pricingMethod.isAcceptableOrUnknown(
+          data['pricing_method']!,
+          _pricingMethodMeta,
+        ),
       );
     } else if (isInserting) {
-      context.missing(_resetDateMeta);
+      context.missing(_pricingMethodMeta);
     }
     if (data.containsKey('effective_date')) {
       context.handle(
@@ -12122,6 +12161,24 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
     } else if (isInserting) {
       context.missing(_effectiveDateMeta);
     }
+    if (data.containsKey('rate_ppm')) {
+      context.handle(
+        _ratePpmMeta,
+        ratePpm.isAcceptableOrUnknown(data['rate_ppm']!, _ratePpmMeta),
+      );
+    }
+    if (data.containsKey('rate_period')) {
+      context.handle(
+        _ratePeriodMeta,
+        ratePeriod.isAcceptableOrUnknown(data['rate_period']!, _ratePeriodMeta),
+      );
+    }
+    if (data.containsKey('reset_date')) {
+      context.handle(
+        _resetDateMeta,
+        resetDate.isAcceptableOrUnknown(data['reset_date']!, _resetDateMeta),
+      );
+    }
     if (data.containsKey('reference_rate_date')) {
       context.handle(
         _referenceRateDateMeta,
@@ -12130,8 +12187,6 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
           _referenceRateDateMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_referenceRateDateMeta);
     }
     if (data.containsKey('reference_rate_type')) {
       context.handle(
@@ -12141,8 +12196,6 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
           _referenceRateTypeMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_referenceRateTypeMeta);
     }
     if (data.containsKey('reference_rate_ppm')) {
       context.handle(
@@ -12152,24 +12205,18 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
           _referenceRatePpmMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_referenceRatePpmMeta);
     }
     if (data.containsKey('spread_bp')) {
       context.handle(
         _spreadBpMeta,
         spreadBp.isAcceptableOrUnknown(data['spread_bp']!, _spreadBpMeta),
       );
-    } else if (isInserting) {
-      context.missing(_spreadBpMeta);
     }
     if (data.containsKey('source')) {
       context.handle(
         _sourceMeta,
         source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
       );
-    } else if (isInserting) {
-      context.missing(_sourceMeta);
     }
     if (data.containsKey('status')) {
       context.handle(
@@ -12207,34 +12254,46 @@ class $InstallmentRepricingRecordsTable extends InstallmentRepricingRecords
         DriftSqlType.string,
         data['${effectivePrefix}stage_id'],
       )!,
-      resetDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}reset_date'],
+      pricingMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pricing_method'],
       )!,
       effectiveDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}effective_date'],
       )!,
+      ratePpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_ppm'],
+      ),
+      ratePeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rate_period'],
+      ),
+      resetDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reset_date'],
+      ),
       referenceRateDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}reference_rate_date'],
-      )!,
+      ),
       referenceRateType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reference_rate_type'],
-      )!,
+      ),
       referenceRatePpm: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}reference_rate_ppm'],
-      )!,
+      ),
       spreadBp: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}spread_bp'],
-      )!,
+      ),
       source: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}source'],
-      )!,
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -12257,26 +12316,32 @@ class InstallmentRepricingRow extends DataClass
   final String id;
   final String contractId;
   final String stageId;
-  final DateTime resetDate;
+  final String pricingMethod;
   final DateTime effectiveDate;
-  final DateTime referenceRateDate;
-  final String referenceRateType;
-  final int referenceRatePpm;
-  final int spreadBp;
-  final String source;
+  final int? ratePpm;
+  final String? ratePeriod;
+  final DateTime? resetDate;
+  final DateTime? referenceRateDate;
+  final String? referenceRateType;
+  final int? referenceRatePpm;
+  final int? spreadBp;
+  final String? source;
   final String status;
   final DateTime createdAt;
   const InstallmentRepricingRow({
     required this.id,
     required this.contractId,
     required this.stageId,
-    required this.resetDate,
+    required this.pricingMethod,
     required this.effectiveDate,
-    required this.referenceRateDate,
-    required this.referenceRateType,
-    required this.referenceRatePpm,
-    required this.spreadBp,
-    required this.source,
+    this.ratePpm,
+    this.ratePeriod,
+    this.resetDate,
+    this.referenceRateDate,
+    this.referenceRateType,
+    this.referenceRatePpm,
+    this.spreadBp,
+    this.source,
     required this.status,
     required this.createdAt,
   });
@@ -12286,13 +12351,32 @@ class InstallmentRepricingRow extends DataClass
     map['id'] = Variable<String>(id);
     map['contract_id'] = Variable<String>(contractId);
     map['stage_id'] = Variable<String>(stageId);
-    map['reset_date'] = Variable<DateTime>(resetDate);
+    map['pricing_method'] = Variable<String>(pricingMethod);
     map['effective_date'] = Variable<DateTime>(effectiveDate);
-    map['reference_rate_date'] = Variable<DateTime>(referenceRateDate);
-    map['reference_rate_type'] = Variable<String>(referenceRateType);
-    map['reference_rate_ppm'] = Variable<int>(referenceRatePpm);
-    map['spread_bp'] = Variable<int>(spreadBp);
-    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || ratePpm != null) {
+      map['rate_ppm'] = Variable<int>(ratePpm);
+    }
+    if (!nullToAbsent || ratePeriod != null) {
+      map['rate_period'] = Variable<String>(ratePeriod);
+    }
+    if (!nullToAbsent || resetDate != null) {
+      map['reset_date'] = Variable<DateTime>(resetDate);
+    }
+    if (!nullToAbsent || referenceRateDate != null) {
+      map['reference_rate_date'] = Variable<DateTime>(referenceRateDate);
+    }
+    if (!nullToAbsent || referenceRateType != null) {
+      map['reference_rate_type'] = Variable<String>(referenceRateType);
+    }
+    if (!nullToAbsent || referenceRatePpm != null) {
+      map['reference_rate_ppm'] = Variable<int>(referenceRatePpm);
+    }
+    if (!nullToAbsent || spreadBp != null) {
+      map['spread_bp'] = Variable<int>(spreadBp);
+    }
+    if (!nullToAbsent || source != null) {
+      map['source'] = Variable<String>(source);
+    }
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -12303,13 +12387,32 @@ class InstallmentRepricingRow extends DataClass
       id: Value(id),
       contractId: Value(contractId),
       stageId: Value(stageId),
-      resetDate: Value(resetDate),
+      pricingMethod: Value(pricingMethod),
       effectiveDate: Value(effectiveDate),
-      referenceRateDate: Value(referenceRateDate),
-      referenceRateType: Value(referenceRateType),
-      referenceRatePpm: Value(referenceRatePpm),
-      spreadBp: Value(spreadBp),
-      source: Value(source),
+      ratePpm: ratePpm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratePpm),
+      ratePeriod: ratePeriod == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratePeriod),
+      resetDate: resetDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resetDate),
+      referenceRateDate: referenceRateDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceRateDate),
+      referenceRateType: referenceRateType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceRateType),
+      referenceRatePpm: referenceRatePpm == null && nullToAbsent
+          ? const Value.absent()
+          : Value(referenceRatePpm),
+      spreadBp: spreadBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spreadBp),
+      source: source == null && nullToAbsent
+          ? const Value.absent()
+          : Value(source),
       status: Value(status),
       createdAt: Value(createdAt),
     );
@@ -12324,15 +12427,20 @@ class InstallmentRepricingRow extends DataClass
       id: serializer.fromJson<String>(json['id']),
       contractId: serializer.fromJson<String>(json['contractId']),
       stageId: serializer.fromJson<String>(json['stageId']),
-      resetDate: serializer.fromJson<DateTime>(json['resetDate']),
+      pricingMethod: serializer.fromJson<String>(json['pricingMethod']),
       effectiveDate: serializer.fromJson<DateTime>(json['effectiveDate']),
-      referenceRateDate: serializer.fromJson<DateTime>(
+      ratePpm: serializer.fromJson<int?>(json['ratePpm']),
+      ratePeriod: serializer.fromJson<String?>(json['ratePeriod']),
+      resetDate: serializer.fromJson<DateTime?>(json['resetDate']),
+      referenceRateDate: serializer.fromJson<DateTime?>(
         json['referenceRateDate'],
       ),
-      referenceRateType: serializer.fromJson<String>(json['referenceRateType']),
-      referenceRatePpm: serializer.fromJson<int>(json['referenceRatePpm']),
-      spreadBp: serializer.fromJson<int>(json['spreadBp']),
-      source: serializer.fromJson<String>(json['source']),
+      referenceRateType: serializer.fromJson<String?>(
+        json['referenceRateType'],
+      ),
+      referenceRatePpm: serializer.fromJson<int?>(json['referenceRatePpm']),
+      spreadBp: serializer.fromJson<int?>(json['spreadBp']),
+      source: serializer.fromJson<String?>(json['source']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -12344,13 +12452,16 @@ class InstallmentRepricingRow extends DataClass
       'id': serializer.toJson<String>(id),
       'contractId': serializer.toJson<String>(contractId),
       'stageId': serializer.toJson<String>(stageId),
-      'resetDate': serializer.toJson<DateTime>(resetDate),
+      'pricingMethod': serializer.toJson<String>(pricingMethod),
       'effectiveDate': serializer.toJson<DateTime>(effectiveDate),
-      'referenceRateDate': serializer.toJson<DateTime>(referenceRateDate),
-      'referenceRateType': serializer.toJson<String>(referenceRateType),
-      'referenceRatePpm': serializer.toJson<int>(referenceRatePpm),
-      'spreadBp': serializer.toJson<int>(spreadBp),
-      'source': serializer.toJson<String>(source),
+      'ratePpm': serializer.toJson<int?>(ratePpm),
+      'ratePeriod': serializer.toJson<String?>(ratePeriod),
+      'resetDate': serializer.toJson<DateTime?>(resetDate),
+      'referenceRateDate': serializer.toJson<DateTime?>(referenceRateDate),
+      'referenceRateType': serializer.toJson<String?>(referenceRateType),
+      'referenceRatePpm': serializer.toJson<int?>(referenceRatePpm),
+      'spreadBp': serializer.toJson<int?>(spreadBp),
+      'source': serializer.toJson<String?>(source),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -12360,26 +12471,38 @@ class InstallmentRepricingRow extends DataClass
     String? id,
     String? contractId,
     String? stageId,
-    DateTime? resetDate,
+    String? pricingMethod,
     DateTime? effectiveDate,
-    DateTime? referenceRateDate,
-    String? referenceRateType,
-    int? referenceRatePpm,
-    int? spreadBp,
-    String? source,
+    Value<int?> ratePpm = const Value.absent(),
+    Value<String?> ratePeriod = const Value.absent(),
+    Value<DateTime?> resetDate = const Value.absent(),
+    Value<DateTime?> referenceRateDate = const Value.absent(),
+    Value<String?> referenceRateType = const Value.absent(),
+    Value<int?> referenceRatePpm = const Value.absent(),
+    Value<int?> spreadBp = const Value.absent(),
+    Value<String?> source = const Value.absent(),
     String? status,
     DateTime? createdAt,
   }) => InstallmentRepricingRow(
     id: id ?? this.id,
     contractId: contractId ?? this.contractId,
     stageId: stageId ?? this.stageId,
-    resetDate: resetDate ?? this.resetDate,
+    pricingMethod: pricingMethod ?? this.pricingMethod,
     effectiveDate: effectiveDate ?? this.effectiveDate,
-    referenceRateDate: referenceRateDate ?? this.referenceRateDate,
-    referenceRateType: referenceRateType ?? this.referenceRateType,
-    referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
-    spreadBp: spreadBp ?? this.spreadBp,
-    source: source ?? this.source,
+    ratePpm: ratePpm.present ? ratePpm.value : this.ratePpm,
+    ratePeriod: ratePeriod.present ? ratePeriod.value : this.ratePeriod,
+    resetDate: resetDate.present ? resetDate.value : this.resetDate,
+    referenceRateDate: referenceRateDate.present
+        ? referenceRateDate.value
+        : this.referenceRateDate,
+    referenceRateType: referenceRateType.present
+        ? referenceRateType.value
+        : this.referenceRateType,
+    referenceRatePpm: referenceRatePpm.present
+        ? referenceRatePpm.value
+        : this.referenceRatePpm,
+    spreadBp: spreadBp.present ? spreadBp.value : this.spreadBp,
+    source: source.present ? source.value : this.source,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -12392,10 +12515,17 @@ class InstallmentRepricingRow extends DataClass
           ? data.contractId.value
           : this.contractId,
       stageId: data.stageId.present ? data.stageId.value : this.stageId,
-      resetDate: data.resetDate.present ? data.resetDate.value : this.resetDate,
+      pricingMethod: data.pricingMethod.present
+          ? data.pricingMethod.value
+          : this.pricingMethod,
       effectiveDate: data.effectiveDate.present
           ? data.effectiveDate.value
           : this.effectiveDate,
+      ratePpm: data.ratePpm.present ? data.ratePpm.value : this.ratePpm,
+      ratePeriod: data.ratePeriod.present
+          ? data.ratePeriod.value
+          : this.ratePeriod,
+      resetDate: data.resetDate.present ? data.resetDate.value : this.resetDate,
       referenceRateDate: data.referenceRateDate.present
           ? data.referenceRateDate.value
           : this.referenceRateDate,
@@ -12418,8 +12548,11 @@ class InstallmentRepricingRow extends DataClass
           ..write('id: $id, ')
           ..write('contractId: $contractId, ')
           ..write('stageId: $stageId, ')
-          ..write('resetDate: $resetDate, ')
+          ..write('pricingMethod: $pricingMethod, ')
           ..write('effectiveDate: $effectiveDate, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('resetDate: $resetDate, ')
           ..write('referenceRateDate: $referenceRateDate, ')
           ..write('referenceRateType: $referenceRateType, ')
           ..write('referenceRatePpm: $referenceRatePpm, ')
@@ -12436,8 +12569,11 @@ class InstallmentRepricingRow extends DataClass
     id,
     contractId,
     stageId,
-    resetDate,
+    pricingMethod,
     effectiveDate,
+    ratePpm,
+    ratePeriod,
+    resetDate,
     referenceRateDate,
     referenceRateType,
     referenceRatePpm,
@@ -12453,8 +12589,11 @@ class InstallmentRepricingRow extends DataClass
           other.id == this.id &&
           other.contractId == this.contractId &&
           other.stageId == this.stageId &&
-          other.resetDate == this.resetDate &&
+          other.pricingMethod == this.pricingMethod &&
           other.effectiveDate == this.effectiveDate &&
+          other.ratePpm == this.ratePpm &&
+          other.ratePeriod == this.ratePeriod &&
+          other.resetDate == this.resetDate &&
           other.referenceRateDate == this.referenceRateDate &&
           other.referenceRateType == this.referenceRateType &&
           other.referenceRatePpm == this.referenceRatePpm &&
@@ -12469,13 +12608,16 @@ class InstallmentRepricingRecordsCompanion
   final Value<String> id;
   final Value<String> contractId;
   final Value<String> stageId;
-  final Value<DateTime> resetDate;
+  final Value<String> pricingMethod;
   final Value<DateTime> effectiveDate;
-  final Value<DateTime> referenceRateDate;
-  final Value<String> referenceRateType;
-  final Value<int> referenceRatePpm;
-  final Value<int> spreadBp;
-  final Value<String> source;
+  final Value<int?> ratePpm;
+  final Value<String?> ratePeriod;
+  final Value<DateTime?> resetDate;
+  final Value<DateTime?> referenceRateDate;
+  final Value<String?> referenceRateType;
+  final Value<int?> referenceRatePpm;
+  final Value<int?> spreadBp;
+  final Value<String?> source;
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
@@ -12483,8 +12625,11 @@ class InstallmentRepricingRecordsCompanion
     this.id = const Value.absent(),
     this.contractId = const Value.absent(),
     this.stageId = const Value.absent(),
-    this.resetDate = const Value.absent(),
+    this.pricingMethod = const Value.absent(),
     this.effectiveDate = const Value.absent(),
+    this.ratePpm = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.resetDate = const Value.absent(),
     this.referenceRateDate = const Value.absent(),
     this.referenceRateType = const Value.absent(),
     this.referenceRatePpm = const Value.absent(),
@@ -12498,32 +12643,33 @@ class InstallmentRepricingRecordsCompanion
     required String id,
     required String contractId,
     required String stageId,
-    required DateTime resetDate,
+    required String pricingMethod,
     required DateTime effectiveDate,
-    required DateTime referenceRateDate,
-    required String referenceRateType,
-    required int referenceRatePpm,
-    required int spreadBp,
-    required String source,
+    this.ratePpm = const Value.absent(),
+    this.ratePeriod = const Value.absent(),
+    this.resetDate = const Value.absent(),
+    this.referenceRateDate = const Value.absent(),
+    this.referenceRateType = const Value.absent(),
+    this.referenceRatePpm = const Value.absent(),
+    this.spreadBp = const Value.absent(),
+    this.source = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        contractId = Value(contractId),
        stageId = Value(stageId),
-       resetDate = Value(resetDate),
-       effectiveDate = Value(effectiveDate),
-       referenceRateDate = Value(referenceRateDate),
-       referenceRateType = Value(referenceRateType),
-       referenceRatePpm = Value(referenceRatePpm),
-       spreadBp = Value(spreadBp),
-       source = Value(source);
+       pricingMethod = Value(pricingMethod),
+       effectiveDate = Value(effectiveDate);
   static Insertable<InstallmentRepricingRow> custom({
     Expression<String>? id,
     Expression<String>? contractId,
     Expression<String>? stageId,
-    Expression<DateTime>? resetDate,
+    Expression<String>? pricingMethod,
     Expression<DateTime>? effectiveDate,
+    Expression<int>? ratePpm,
+    Expression<String>? ratePeriod,
+    Expression<DateTime>? resetDate,
     Expression<DateTime>? referenceRateDate,
     Expression<String>? referenceRateType,
     Expression<int>? referenceRatePpm,
@@ -12537,8 +12683,11 @@ class InstallmentRepricingRecordsCompanion
       if (id != null) 'id': id,
       if (contractId != null) 'contract_id': contractId,
       if (stageId != null) 'stage_id': stageId,
-      if (resetDate != null) 'reset_date': resetDate,
+      if (pricingMethod != null) 'pricing_method': pricingMethod,
       if (effectiveDate != null) 'effective_date': effectiveDate,
+      if (ratePpm != null) 'rate_ppm': ratePpm,
+      if (ratePeriod != null) 'rate_period': ratePeriod,
+      if (resetDate != null) 'reset_date': resetDate,
       if (referenceRateDate != null) 'reference_rate_date': referenceRateDate,
       if (referenceRateType != null) 'reference_rate_type': referenceRateType,
       if (referenceRatePpm != null) 'reference_rate_ppm': referenceRatePpm,
@@ -12554,13 +12703,16 @@ class InstallmentRepricingRecordsCompanion
     Value<String>? id,
     Value<String>? contractId,
     Value<String>? stageId,
-    Value<DateTime>? resetDate,
+    Value<String>? pricingMethod,
     Value<DateTime>? effectiveDate,
-    Value<DateTime>? referenceRateDate,
-    Value<String>? referenceRateType,
-    Value<int>? referenceRatePpm,
-    Value<int>? spreadBp,
-    Value<String>? source,
+    Value<int?>? ratePpm,
+    Value<String?>? ratePeriod,
+    Value<DateTime?>? resetDate,
+    Value<DateTime?>? referenceRateDate,
+    Value<String?>? referenceRateType,
+    Value<int?>? referenceRatePpm,
+    Value<int?>? spreadBp,
+    Value<String?>? source,
     Value<String>? status,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
@@ -12569,8 +12721,11 @@ class InstallmentRepricingRecordsCompanion
       id: id ?? this.id,
       contractId: contractId ?? this.contractId,
       stageId: stageId ?? this.stageId,
-      resetDate: resetDate ?? this.resetDate,
+      pricingMethod: pricingMethod ?? this.pricingMethod,
       effectiveDate: effectiveDate ?? this.effectiveDate,
+      ratePpm: ratePpm ?? this.ratePpm,
+      ratePeriod: ratePeriod ?? this.ratePeriod,
+      resetDate: resetDate ?? this.resetDate,
       referenceRateDate: referenceRateDate ?? this.referenceRateDate,
       referenceRateType: referenceRateType ?? this.referenceRateType,
       referenceRatePpm: referenceRatePpm ?? this.referenceRatePpm,
@@ -12594,11 +12749,20 @@ class InstallmentRepricingRecordsCompanion
     if (stageId.present) {
       map['stage_id'] = Variable<String>(stageId.value);
     }
-    if (resetDate.present) {
-      map['reset_date'] = Variable<DateTime>(resetDate.value);
+    if (pricingMethod.present) {
+      map['pricing_method'] = Variable<String>(pricingMethod.value);
     }
     if (effectiveDate.present) {
       map['effective_date'] = Variable<DateTime>(effectiveDate.value);
+    }
+    if (ratePpm.present) {
+      map['rate_ppm'] = Variable<int>(ratePpm.value);
+    }
+    if (ratePeriod.present) {
+      map['rate_period'] = Variable<String>(ratePeriod.value);
+    }
+    if (resetDate.present) {
+      map['reset_date'] = Variable<DateTime>(resetDate.value);
     }
     if (referenceRateDate.present) {
       map['reference_rate_date'] = Variable<DateTime>(referenceRateDate.value);
@@ -12633,8 +12797,11 @@ class InstallmentRepricingRecordsCompanion
           ..write('id: $id, ')
           ..write('contractId: $contractId, ')
           ..write('stageId: $stageId, ')
-          ..write('resetDate: $resetDate, ')
+          ..write('pricingMethod: $pricingMethod, ')
           ..write('effectiveDate: $effectiveDate, ')
+          ..write('ratePpm: $ratePpm, ')
+          ..write('ratePeriod: $ratePeriod, ')
+          ..write('resetDate: $resetDate, ')
           ..write('referenceRateDate: $referenceRateDate, ')
           ..write('referenceRateType: $referenceRateType, ')
           ..write('referenceRatePpm: $referenceRatePpm, ')
@@ -22480,13 +22647,16 @@ typedef $$InstallmentRepricingRecordsTableCreateCompanionBuilder =
       required String id,
       required String contractId,
       required String stageId,
-      required DateTime resetDate,
+      required String pricingMethod,
       required DateTime effectiveDate,
-      required DateTime referenceRateDate,
-      required String referenceRateType,
-      required int referenceRatePpm,
-      required int spreadBp,
-      required String source,
+      Value<int?> ratePpm,
+      Value<String?> ratePeriod,
+      Value<DateTime?> resetDate,
+      Value<DateTime?> referenceRateDate,
+      Value<String?> referenceRateType,
+      Value<int?> referenceRatePpm,
+      Value<int?> spreadBp,
+      Value<String?> source,
       Value<String> status,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -22496,13 +22666,16 @@ typedef $$InstallmentRepricingRecordsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> contractId,
       Value<String> stageId,
-      Value<DateTime> resetDate,
+      Value<String> pricingMethod,
       Value<DateTime> effectiveDate,
-      Value<DateTime> referenceRateDate,
-      Value<String> referenceRateType,
-      Value<int> referenceRatePpm,
-      Value<int> spreadBp,
-      Value<String> source,
+      Value<int?> ratePpm,
+      Value<String?> ratePeriod,
+      Value<DateTime?> resetDate,
+      Value<DateTime?> referenceRateDate,
+      Value<String?> referenceRateType,
+      Value<int?> referenceRatePpm,
+      Value<int?> spreadBp,
+      Value<String?> source,
       Value<String> status,
       Value<DateTime> createdAt,
       Value<int> rowid,
@@ -22532,13 +22705,28 @@ class $$InstallmentRepricingRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get resetDate => $composableBuilder(
-    column: $table.resetDate,
+  ColumnFilters<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get effectiveDate => $composableBuilder(
     column: $table.effectiveDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resetDate => $composableBuilder(
+    column: $table.resetDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22602,13 +22790,28 @@ class $$InstallmentRepricingRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get resetDate => $composableBuilder(
-    column: $table.resetDate,
+  ColumnOrderings<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<DateTime> get effectiveDate => $composableBuilder(
     column: $table.effectiveDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ratePpm => $composableBuilder(
+    column: $table.ratePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resetDate => $composableBuilder(
+    column: $table.resetDate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -22668,13 +22871,26 @@ class $$InstallmentRepricingRecordsTableAnnotationComposer
   GeneratedColumn<String> get stageId =>
       $composableBuilder(column: $table.stageId, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get resetDate =>
-      $composableBuilder(column: $table.resetDate, builder: (column) => column);
+  GeneratedColumn<String> get pricingMethod => $composableBuilder(
+    column: $table.pricingMethod,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get effectiveDate => $composableBuilder(
     column: $table.effectiveDate,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get ratePpm =>
+      $composableBuilder(column: $table.ratePpm, builder: (column) => column);
+
+  GeneratedColumn<String> get ratePeriod => $composableBuilder(
+    column: $table.ratePeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get resetDate =>
+      $composableBuilder(column: $table.resetDate, builder: (column) => column);
 
   GeneratedColumn<DateTime> get referenceRateDate => $composableBuilder(
     column: $table.referenceRateDate,
@@ -22753,13 +22969,16 @@ class $$InstallmentRepricingRecordsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> contractId = const Value.absent(),
                 Value<String> stageId = const Value.absent(),
-                Value<DateTime> resetDate = const Value.absent(),
+                Value<String> pricingMethod = const Value.absent(),
                 Value<DateTime> effectiveDate = const Value.absent(),
-                Value<DateTime> referenceRateDate = const Value.absent(),
-                Value<String> referenceRateType = const Value.absent(),
-                Value<int> referenceRatePpm = const Value.absent(),
-                Value<int> spreadBp = const Value.absent(),
-                Value<String> source = const Value.absent(),
+                Value<int?> ratePpm = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<DateTime?> resetDate = const Value.absent(),
+                Value<DateTime?> referenceRateDate = const Value.absent(),
+                Value<String?> referenceRateType = const Value.absent(),
+                Value<int?> referenceRatePpm = const Value.absent(),
+                Value<int?> spreadBp = const Value.absent(),
+                Value<String?> source = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -22767,8 +22986,11 @@ class $$InstallmentRepricingRecordsTableTableManager
                 id: id,
                 contractId: contractId,
                 stageId: stageId,
-                resetDate: resetDate,
+                pricingMethod: pricingMethod,
                 effectiveDate: effectiveDate,
+                ratePpm: ratePpm,
+                ratePeriod: ratePeriod,
+                resetDate: resetDate,
                 referenceRateDate: referenceRateDate,
                 referenceRateType: referenceRateType,
                 referenceRatePpm: referenceRatePpm,
@@ -22783,13 +23005,16 @@ class $$InstallmentRepricingRecordsTableTableManager
                 required String id,
                 required String contractId,
                 required String stageId,
-                required DateTime resetDate,
+                required String pricingMethod,
                 required DateTime effectiveDate,
-                required DateTime referenceRateDate,
-                required String referenceRateType,
-                required int referenceRatePpm,
-                required int spreadBp,
-                required String source,
+                Value<int?> ratePpm = const Value.absent(),
+                Value<String?> ratePeriod = const Value.absent(),
+                Value<DateTime?> resetDate = const Value.absent(),
+                Value<DateTime?> referenceRateDate = const Value.absent(),
+                Value<String?> referenceRateType = const Value.absent(),
+                Value<int?> referenceRatePpm = const Value.absent(),
+                Value<int?> spreadBp = const Value.absent(),
+                Value<String?> source = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -22797,8 +23022,11 @@ class $$InstallmentRepricingRecordsTableTableManager
                 id: id,
                 contractId: contractId,
                 stageId: stageId,
-                resetDate: resetDate,
+                pricingMethod: pricingMethod,
                 effectiveDate: effectiveDate,
+                ratePpm: ratePpm,
+                ratePeriod: ratePeriod,
+                resetDate: resetDate,
                 referenceRateDate: referenceRateDate,
                 referenceRateType: referenceRateType,
                 referenceRatePpm: referenceRatePpm,

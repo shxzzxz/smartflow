@@ -1,3 +1,4 @@
+import '../../../../domain/credit/valobj/rate_change.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
@@ -14,7 +15,6 @@ import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/equal_installment_amount.dart';
-import '../../../../domain/credit/valobj/floating_rate.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
@@ -466,14 +466,23 @@ Object _operationFacts(InstallmentPlanOperations operations) => [
   ],
 ];
 
-Object _rateFacts(RateChange value) => [
-  _day(value.resetDate),
-  _day(value.effectiveDate),
-  value.spreadBp,
-  value.referenceRate.type.name,
-  _day(value.referenceRate.date),
-  value.referenceRate.ratePpm,
-];
+Object _rateFacts(RateChange value) => switch (value) {
+  DirectRateChange(:final rate) => [
+    'direct',
+    _day(value.effectiveDate),
+    rate.ppm,
+    rate.period.name,
+  ],
+  ReferenceRateChange() => [
+    'reference',
+    _day(value.resetDate),
+    _day(value.effectiveDate),
+    value.spreadBp,
+    value.referenceRate.type.name,
+    _day(value.referenceRate.date),
+    value.referenceRate.ratePpm,
+  ],
+};
 
 Object _termsFacts(InstallmentContractTerms terms) => [
   terms.dayCount.daysPerMonth,

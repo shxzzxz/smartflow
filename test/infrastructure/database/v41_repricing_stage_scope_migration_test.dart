@@ -34,11 +34,13 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        45,
+        46,
       );
       await db.customStatement(
         'INSERT INTO installment_repricing_records '
-        'SELECT id || ?, contract_id, ?, reset_date, effective_date, reference_rate_date, '
+        '(id, contract_id, stage_id, pricing_method, effective_date, rate_ppm, rate_period, '
+        'reset_date, reference_rate_date, reference_rate_type, reference_rate_ppm, spread_bp, source, status, created_at) '
+        'SELECT id || ?, contract_id, ?, pricing_method, effective_date, rate_ppm, rate_period, reset_date, reference_rate_date, '
         'reference_rate_type, reference_rate_ppm, spread_bp, source, status, created_at '
         'FROM installment_repricing_records WHERE id = ?',
         ['-other-stage', 'second', 'first-result'],

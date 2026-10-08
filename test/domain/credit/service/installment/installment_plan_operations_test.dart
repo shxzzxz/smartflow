@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
-import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 
 const engine = InstallmentPlanEngine();
@@ -34,17 +34,18 @@ AmortizingStage stage({
   endPrincipal: end == null ? null : money(end),
 );
 
-RateChange rateChange(int month, int day, int ppm) => RateChange(
-  resetDate: date(month, day),
-  effectiveDate: date(month, day),
-  referenceRate: ReferenceRate(
-    type: InterestRateType.lprOneYear,
-    date: date(month, day - 1),
-    ratePpm: ppm,
-    source: 'test',
-  ),
-  spreadBp: 0,
-);
+ReferenceRateChange rateChange(int month, int day, int ppm) =>
+    ReferenceRateChange(
+      resetDate: date(month, day),
+      effectiveDate: date(month, day),
+      referenceRate: ReferenceRate(
+        type: InterestRateType.lprOneYear,
+        date: date(month, day - 1),
+        ratePpm: ppm,
+        source: 'test',
+      ),
+      spreadBp: 0,
+    );
 
 InstallmentPlanTerms terms(AmortizingStage value) => InstallmentPlanTerms(
   principal: money(10000000),
@@ -76,7 +77,7 @@ void main() {
     );
     final changes = [
       for (final (year, ppm) in [(2025, 18000), (2026, 9000)])
-        RateChange(
+        ReferenceRateChange(
           resetDate: DateTime.utc(year, 12, 21),
           effectiveDate: DateTime.utc(year, 12, 21),
           referenceRate: ReferenceRate(
@@ -424,13 +425,13 @@ void main() {
 
   test('rate facts reject impossible dates and negative reference rates', () {
     for (final change in [
-      RateChange(
+      ReferenceRateChange(
         resetDate: date(8, 21),
         effectiveDate: date(8, 20),
         referenceRate: rateChange(8, 20, 18000).referenceRate,
         spreadBp: 0,
       ),
-      RateChange(
+      ReferenceRateChange(
         resetDate: date(8, 19),
         effectiveDate: date(8, 20),
         referenceRate: rateChange(8, 21, 18000).referenceRate,

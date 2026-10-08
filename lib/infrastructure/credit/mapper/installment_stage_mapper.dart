@@ -10,9 +10,11 @@ import '../../../domain/credit/valobj/equal_installment_amount.dart';
 import '../../../domain/credit/valobj/interest_rate.dart';
 import '../../../domain/credit/valobj/floating_rate.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/rate_change.dart';
 import '../../../domain/credit/valobj/repayment_dates_strategy.dart';
 import '../../database/app_database.dart';
 import '../../../domain/credit/entity/installment_repricing_configuration.dart';
+import '../../../domain/credit/entity/installment_repricing.dart';
 import '../../../domain/credit/entity/installment_interest_adjustment.dart';
 import '../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../domain/credit/valobj/tail_difference_policy.dart';
@@ -194,17 +196,59 @@ InstallmentStageConfigsCompanion encodeContractStage(
   );
 }
 
-RateChange decodeRateChange(InstallmentRepricingRow row) => RateChange(
-  resetDate: row.resetDate.toUtc(),
-  effectiveDate: row.effectiveDate.toUtc(),
-  spreadBp: row.spreadBp,
-  referenceRate: ReferenceRate(
-    date: row.referenceRateDate.toUtc(),
-    type: InterestRateType.referenceTypes.byName(row.referenceRateType),
-    ratePpm: row.referenceRatePpm,
-    source: row.source,
-  ),
-);
+RateChange decodeRateChange(InstallmentRepricingRow row) =>
+    switch (row.pricingMethod) {
+      'direct' => DirectRateChange(
+        effectiveDate: row.effectiveDate.toUtc(),
+        rate: InterestRate(
+          ppm: row.ratePpm!,
+          period: InterestRatePeriod.values.byName(row.ratePeriod!),
+        ),
+      ),
+      'reference' => ReferenceRateChange(
+        resetDate: row.resetDate!.toUtc(),
+        effectiveDate: row.effectiveDate.toUtc(),
+        spreadBp: row.spreadBp!,
+        referenceRate: ReferenceRate(
+          date: row.referenceRateDate!.toUtc(),
+          type: InterestRateType.referenceTypes.byName(row.referenceRateType!),
+          ratePpm: row.referenceRatePpm!,
+          source: row.source!,
+        ),
+      ),
+      _ => throw StateError('未知的重定价利率确定方式'),
+    };
+
+InstallmentRepricingRecordsCompanion encodeRepricingRecord(
+  InstallmentRepricing record,
+) {
+  final change = record.change;
+  final common = InstallmentRepricingRecordsCompanion.insert(
+    id: record.id,
+    contractId: record.contractId,
+    stageId: record.stageId,
+    pricingMethod: switch (change) {
+      DirectRateChange() => 'direct',
+      ReferenceRateChange() => 'reference',
+    },
+    effectiveDate: referenceDate(change.effectiveDate),
+    status: Value(record.status.name),
+  );
+  return switch (change) {
+    DirectRateChange(:final rate) => common.copyWith(
+      ratePpm: Value(rate.ppm),
+      ratePeriod: Value(rate.period.name),
+    ),
+    ReferenceRateChange() => common.copyWith(
+      resetDate: Value(referenceDate(change.resetDate)),
+      referenceRateDate: Value(referenceDate(change.referenceRate.date)),
+      referenceRateType: Value(change.referenceRate.type.name),
+      referenceRatePpm: Value(change.referenceRate.ratePpm),
+      spreadBp: Value(change.spreadBp),
+      source: Value(change.referenceRate.source),
+    ),
+  };
+}
 
 InstallmentRepricingConfiguration decodeRepricingConfiguration(
   InstallmentRepricingConfigRow row,

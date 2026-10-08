@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
@@ -23,7 +24,7 @@ void main() {
       'stage opening uses the latest effective rate through ${dates.$2}',
       () {
         RateChange repricing(DateTime reset, DateTime effective, int ppm) =>
-            RateChange(
+            ReferenceRateChange(
               resetDate: reset,
               effectiveDate: effective,
               referenceRate: ReferenceRate(
@@ -127,7 +128,7 @@ void main() {
         operations: InstallmentPlanOperations(
           rateChangesByStage: {
             0: [
-              RateChange(
+              ReferenceRateChange(
                 resetDate: DateTime.utc(2025, 12, 21),
                 effectiveDate: DateTime.utc(2025, 12, 21),
                 referenceRate: ReferenceRate(
@@ -188,7 +189,7 @@ void main() {
         operations: InstallmentPlanOperations(
           rateChangesByStage: {
             0: [
-              RateChange(
+              ReferenceRateChange(
                 resetDate: effective,
                 effectiveDate: effective,
                 spreadBp: 0,
@@ -219,7 +220,7 @@ void main() {
       );
     },
   );
-  RateChange change(DateTime date, int ratePpm) => RateChange(
+  RateChange change(DateTime date, int ratePpm) => ReferenceRateChange(
     resetDate: DateTime.utc(date.year, date.month, 1),
     effectiveDate: date,
     spreadBp: -30,
@@ -266,6 +267,38 @@ void main() {
       },
     ),
   );
+
+  for (final rate in const [
+    InterestRate(ppm: 36000, period: InterestRatePeriod.annual),
+    InterestRate(ppm: 3000, period: InterestRatePeriod.monthly),
+    InterestRate(ppm: 100, period: InterestRatePeriod.daily),
+  ]) {
+    test(
+      'direct ${rate.period.name} rate splits interest and yields to the next reference rate',
+      () {
+        final result = plan(
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          count: 4,
+          changes: [
+            change(DateTime.utc(2026, 1, 21), 18000),
+            DirectRateChange(effectiveDate: effective, rate: rate),
+          ],
+        );
+        // 首期 11 天按 4.8%、20 天按 3.6%；随后每月按年利率 1.8%。
+        expect(result.entries.map((row) => row.expectedInterest.minorUnits), [
+          27733,
+          9000,
+          6000,
+          3000,
+        ]);
+        expect(result.entries.first.interestSegments.last.rate, rate);
+        expect(
+          result.entries.map((row) => row.expectedPrincipal.minorUnits),
+          everyElement(2000000),
+        );
+      },
+    );
+  }
 
   test(
     '(12/20, 1/20] uses 80000 for both rate segments and rounds only their sum',

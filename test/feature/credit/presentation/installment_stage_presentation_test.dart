@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/feature/credit/presentation/installment_stage_presentation.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 
@@ -23,7 +23,7 @@ void main() {
           id: 'repricing-$stageId',
           stageId: stageId,
           status: InstallmentRepricingStatus.applied,
-          change: RateChange(
+          change: ReferenceRateChange(
             resetDate: date,
             effectiveDate: date,
             spreadBp: 0,

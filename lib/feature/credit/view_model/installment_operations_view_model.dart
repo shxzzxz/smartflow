@@ -36,6 +36,20 @@ class RepricingConfigurationInput extends InstallmentOperationInput {
   final String spreadBp;
 }
 
+class DirectRepricingRecordInput extends InstallmentOperationInput {
+  const DirectRepricingRecordInput({
+    required this.stageId,
+    required this.effectiveDate,
+    required this.rateText,
+    required this.ratePeriod,
+  });
+
+  final String stageId;
+  final DateTime effectiveDate;
+  final String rateText;
+  final InterestRatePeriod ratePeriod;
+}
+
 class RepricingRecordInput extends InstallmentOperationInput {
   const RepricingRecordInput({
     required this.stageId,
@@ -98,6 +112,26 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
                   firstResetDate: input.firstResetDate,
                   firstEffectiveDate: input.firstEffectiveDate,
                   cycleMonths: input.cycleMonths,
+                ),
+              ),
+        );
+      case DirectRepricingRecordInput():
+        final percent = Decimal.tryParse(input.rateText.trim());
+        if (percent == null || percent < Decimal.zero) {
+          return _invalid('请输入非负利率');
+        }
+        final scaled = percent * Decimal.fromInt(10000);
+        if (scaled != scaled.round()) return _invalid('利率最多保留四位小数');
+        return _run(
+          () => ref
+              .read(installmentRepricingAppServiceProvider)
+              .createDirect(
+                contractId,
+                stageId: input.stageId,
+                effectiveDate: input.effectiveDate,
+                rate: InterestRate(
+                  ppm: scaled.toBigInt().toInt(),
+                  period: input.ratePeriod,
                 ),
               ),
         );

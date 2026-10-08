@@ -6,6 +6,7 @@ import '../../../valobj/floating_rate.dart';
 import '../../../valobj/installment_enums.dart';
 import '../../../valobj/interest_rate.dart';
 import '../../../valobj/reference_rate.dart';
+import '../../../valobj/rate_change.dart';
 import '../calculator/interest_accrual_policy.dart';
 import '../calculator/repayment_method_calculator.dart';
 import 'base_plan_generation_handler.dart';

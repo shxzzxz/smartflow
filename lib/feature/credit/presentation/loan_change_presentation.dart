@@ -8,6 +8,7 @@ import '../view_model/loan_change_state.dart';
 import 'installment_schedule_presentation.dart';
 import 'loan_calculator_presentation.dart';
 import 'loan_comparison_presentation.dart';
+import 'repricing_presentation.dart';
 
 String loanChangeOperationLabel(LoanChangeOperationKind kind) => switch (kind) {
   LoanChangeOperationKind.prepayment => '提前还款',
@@ -40,7 +41,7 @@ String loanChangeOperationDescription(
           -1;
       final stage = index < 0 ? '所属阶段已移除' : '阶段 ${index + 1}';
       return '${formatDateLabel(change.effectiveDate)} 生效 · $stage\n'
-          '执行年利率 ${formatLoanChangePercent(change.rate.ppm)}%';
+          '执行${repricingRateLabel(change)}';
     case LoanInterestAdjustmentOperation(:final adjustment):
       return '${formatDateLabel(adjustment.start)} 至 ${formatDateLabel(adjustment.end)}\n'
           '原利息的 ${formatLoanChangePercent(adjustment.ratioPpm)}%（不含开始日）';
@@ -113,7 +114,9 @@ List<InstallmentScheduleViewItem> loanChangeScheduleItems(
           principal: Money.zero(),
           interest: Money.zero(),
           fee: Money.zero(),
-          detailsLabel: '阶段 ${entry.key + 1} · 执行年利率',
+          detailsLabel:
+              '阶段 ${entry.key + 1} · '
+              '执行${repricingRatePeriodLabel(entry.value[i].rate.period)}利率',
           amountLabel: '${formatLoanChangePercent(entry.value[i].rate.ppm)}%',
           statusLabel: '重定价',
         ),

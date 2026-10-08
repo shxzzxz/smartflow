@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 
 void main() {
   const query = LoanCalculatorQueryImpl();
@@ -224,14 +224,15 @@ void main() {
   );
 }
 
-RateChange _rateChange(DateTime effectiveDate, int ratePpm) => RateChange(
-  resetDate: effectiveDate,
-  effectiveDate: effectiveDate,
-  referenceRate: ReferenceRate(
-    type: InterestRateType.lprFiveYearPlus,
-    date: effectiveDate.subtract(const Duration(days: 1)),
-    ratePpm: ratePpm,
-    source: 'test',
-  ),
-  spreadBp: 0,
-);
+RateChange _rateChange(DateTime effectiveDate, int ratePpm) =>
+    ReferenceRateChange(
+      resetDate: effectiveDate,
+      effectiveDate: effectiveDate,
+      referenceRate: ReferenceRate(
+        type: InterestRateType.lprFiveYearPlus,
+        date: effectiveDate.subtract(const Duration(days: 1)),
+        ratePpm: ratePpm,
+        source: 'test',
+      ),
+      spreadBp: 0,
+    );

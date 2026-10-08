@@ -11,6 +11,8 @@ import '../../../../domain/credit/service/installment/installment_repricing_plan
 import '../../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../../domain/credit/valobj/installment_plan_change.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
+import '../../../../domain/credit/valobj/interest_rate.dart';
+import '../../../../domain/credit/valobj/rate_change.dart';
 import '../../../shared/transaction_runner.dart';
 import '../../reference_rate/reference_rate_app_service.dart';
 
@@ -80,7 +82,7 @@ class InstallmentRepricingAppService {
     final contract = await _requireContract(contractId);
     final reset = referenceDate(resetDate),
         effective = referenceDate(effectiveDate);
-    _validateDates(contract, stageId, reset, effective);
+    _validateDates(contract, stageId, effective, resetDate: reset);
     if (contract.repricings.any(
       (record) =>
           record.stageId == stageId &&
@@ -93,7 +95,7 @@ class InstallmentRepricingAppService {
       _rateThrough(reset),
     )).rate;
     if (referenceRate == null) _invalid('重定价所需参考利率暂不可用，请稍后重试');
-    final change = RateChange(
+    final change = ReferenceRateChange(
       resetDate: reset,
       effectiveDate: effective,
       referenceRate: referenceRate,
@@ -104,19 +106,38 @@ class InstallmentRepricingAppService {
         !referenceDate(referenceRate.date).isBefore(reset)) {
       _invalid('参考利率须属于所选类型且严格早于重定价日');
     }
-    await runner.run(() async {
-      final current = await _requireContract(contractId);
-      _validateDates(current, stageId, reset, effective);
-      final record = InstallmentRepricing(
-        id: '$contractId:$stageId:rate:${effective.toIso8601String()}',
-        contractId: contractId,
-        stageId: stageId,
-        change: change,
-      );
-      if (!await records.insert(record)) _invalid('该阶段的重定价生效日已有记录');
-      await _applyPending(contractId);
-    });
+    await _saveChange(contractId, stageId, change);
   }
+
+  Future<void> createDirect(
+    String contractId, {
+    required String stageId,
+    required DateTime effectiveDate,
+    required InterestRate rate,
+  }) => _saveChange(
+    contractId,
+    stageId,
+    DirectRateChange(effectiveDate: referenceDate(effectiveDate), rate: rate),
+  );
+
+  Future<void> _saveChange(
+    String contractId,
+    String stageId,
+    RateChange change,
+  ) => runner.run(() async {
+    change.validate();
+    final current = await _requireContract(contractId);
+    final effective = referenceDate(change.effectiveDate);
+    _validateDates(current, stageId, effective);
+    final record = InstallmentRepricing(
+      id: '$contractId:$stageId:rate:${effective.toIso8601String()}',
+      contractId: contractId,
+      stageId: stageId,
+      change: change,
+    );
+    if (!await records.insert(record)) _invalid('该阶段的重定价生效日已有记录');
+    await _applyPending(contractId);
+  });
 
   Future<void> delete(String contractId, String recordId) =>
       runner.run(() async {
@@ -331,7 +352,7 @@ class InstallmentRepricingAppService {
     ReferenceRate rate,
   ) {
     final rule = candidate.configuration.rule;
-    final change = RateChange(
+    final change = ReferenceRateChange(
       resetDate: candidate.resetDate,
       effectiveDate: candidate.effectiveDate,
       referenceRate: rate,
@@ -348,17 +369,21 @@ class InstallmentRepricingAppService {
   void _validateDates(
     InstallmentContract contract,
     String stageId,
-    DateTime resetDate,
-    DateTime effectiveDate,
-  ) {
+    DateTime effectiveDate, {
+    DateTime? resetDate,
+  }) {
     final range = contract.stageTerms.repaymentRange(
       stageId,
       contract.borrowingDate,
     );
-    if (effectiveDate.isBefore(resetDate) ||
+    if ((resetDate != null && effectiveDate.isBefore(resetDate)) ||
         effectiveDate.isBefore(referenceDate(contract.borrowingDate)) ||
         !effectiveDate.isBefore(range.end)) {
-      _invalid('重定价生效日不得早于重定价日或借款日，且不得晚于所属阶段末期还款日');
+      _invalid(
+        resetDate == null
+            ? '重定价生效日不得早于借款日，且不得晚于所属阶段末期还款日'
+            : '重定价生效日不得早于重定价日或借款日，且不得晚于所属阶段末期还款日',
+      );
     }
   }
 

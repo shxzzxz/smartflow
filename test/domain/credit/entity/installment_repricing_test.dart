@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/credit/entity/installment_repricing.dart';
-import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 
 void main() {
   InstallmentRepricing record(InstallmentRepricingStatus status) =>
@@ -12,7 +12,7 @@ void main() {
         contractId: 'loan',
         stageId: 'stage',
         status: status,
-        change: RateChange(
+        change: ReferenceRateChange(
           resetDate: DateTime.utc(2026, 1, 1),
           effectiveDate: DateTime.utc(2026, 1, 1),
           referenceRate: ReferenceRate(

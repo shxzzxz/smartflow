@@ -48,6 +48,24 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         return;
       }
       _logger.info('Upgrading database schema: v$from -> v$to.');
+      // 历史迁移会按当前表定义重建记录表，先补齐新列再执行这些步骤。
+      if (from < 46 &&
+          await _hasColumn(database, 'installment_repricing_records', 'id') &&
+          !await _hasColumn(
+            database,
+            'installment_repricing_records',
+            'pricing_method',
+          )) {
+        for (final (name, definition) in [
+          ('pricing_method', "TEXT NOT NULL DEFAULT 'reference'"),
+          ('rate_ppm', 'INTEGER'),
+          ('rate_period', 'TEXT'),
+        ]) {
+          await database.customStatement(
+            'ALTER TABLE installment_repricing_records ADD COLUMN $name $definition',
+          );
+        }
+      }
       // v33 的表重建使用当前表定义，先补名称列以支持跨版本升级。
       if (from < 34) {
         await database.transaction(() async {
@@ -486,6 +504,16 @@ WHERE NOT EXISTS (
         // 生成零金额分录，升级时清理这些不影响余额的历史行。
         await database.customStatement(
           'DELETE FROM entries WHERE amount_minor = 0',
+        );
+      }
+      if (from < 46) {
+        await migrator.alterTable(
+          TableMigration(database.installmentRepricingRecords),
+        );
+        await database.customStatement(
+          'CREATE INDEX IF NOT EXISTS installment_repricing_records_pending_idx '
+          'ON installment_repricing_records (contract_id) '
+          "WHERE status = 'pending'",
         );
       }
     }),

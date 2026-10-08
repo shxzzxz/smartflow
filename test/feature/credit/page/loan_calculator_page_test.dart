@@ -492,6 +492,10 @@ void main() {
       await enter('operation-principal', '800');
       await save();
       await add('重定价');
+      await tester.tap(find.text('直接指定').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('参考利率计算').last);
+      await tester.pumpAndSettle();
       await enter('operation-reference-rate', '6');
       await save();
       await add('利息调整');

@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
+import 'package:smartflow/feature/credit/view_model/loan_change_state.dart';
+import 'package:smartflow/feature/credit/presentation/loan_change_presentation.dart';
 import 'package:smartflow/feature/credit/view_model/installment_terms_draft.dart';
 import 'package:smartflow/feature/credit/view_model/loan_change_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/loan_configuration_view_model.dart';
@@ -22,6 +25,85 @@ void main() {
   Future<LoanConfiguration> configuration() async =>
       (await editor.submit('12000') as UiActionSuccess<LoanConfiguration>)
           .value;
+
+  test(
+    'direct simulation preserves its unit and supports editing between pricing methods',
+    () async {
+      final initial = await configuration();
+      final provider = loanChangeViewModelProvider(initial: initial);
+      scope.listen(provider, (_, _) {});
+      final vm = scope.read(provider.notifier);
+      final stageId = initial.terms.stages.first.id;
+      expect(
+        await vm.saveDirectRepricing(
+          stageId: stageId,
+          effectiveDate: DateTime(2026, 2, 11),
+          rateText: '0.25',
+          ratePeriod: InterestRatePeriod.monthly,
+        ),
+        isA<UiActionSuccess<void>>(),
+      );
+      final operation =
+          scope.read(provider).operations.single as LoanRepricingOperation;
+      expect(operation.change, isA<DirectRateChange>());
+      expect(operation.change.rate.ppm, 2500);
+      expect(operation.change.rate.period, InterestRatePeriod.monthly);
+      expect(
+        loanChangeOperationDescription(operation, scope.read(provider)),
+        contains('执行月利率 0.25%'),
+      );
+      final result =
+          (await vm.simulate() as UiActionSuccess<LoanChangeSimulation>).value;
+      expect(
+        loanChangeScheduleItems(
+          result,
+        ).singleWhere((row) => row.periodLabel == '调').detailsLabel,
+        contains('执行月利率'),
+      );
+      expect(
+        await vm.saveDirectRepricing(
+          id: operation.id,
+          stageId: stageId,
+          effectiveDate: operation.date,
+          rateText: '-1',
+          ratePeriod: InterestRatePeriod.monthly,
+        ),
+        isA<UiActionFailure<void>>(),
+      );
+      expect(scope.read(provider).operations.single, same(operation));
+      expect(
+        await vm.saveRepricing(
+          id: operation.id,
+          stageId: stageId,
+          resetDate: DateTime(2026, 2, 10),
+          effectiveDate: operation.date,
+          referenceRateType: InterestRateType.lprOneYear,
+          referenceRateText: '3',
+          spreadBpText: '-30',
+        ),
+        isA<UiActionSuccess<void>>(),
+      );
+      expect(
+        (scope.read(provider).operations.single as LoanRepricingOperation)
+            .change,
+        isA<ReferenceRateChange>(),
+      );
+      expect(
+        await vm.saveDirectRepricing(
+          id: operation.id,
+          stageId: stageId,
+          effectiveDate: operation.date,
+          rateText: '0.01',
+          ratePeriod: InterestRatePeriod.daily,
+        ),
+        isA<UiActionSuccess<void>>(),
+      );
+      final edited =
+          scope.read(provider).operations.single as LoanRepricingOperation;
+      expect(edited.id, operation.id);
+      expect(edited.change.rate.period, InterestRatePeriod.daily);
+    },
+  );
 
   test(
     'failed operation edits preserve the existing draft and result',

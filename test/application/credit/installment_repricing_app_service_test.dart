@@ -19,6 +19,7 @@ import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
@@ -45,6 +46,190 @@ void main() {
     await f.seed();
   });
   tearDown(() => f.db.close());
+
+  List<(int, int, int)> amounts(List<InstallmentSchedule> schedules) => [
+    for (final row in schedules)
+      (
+        row.expectedPrincipal.minorUnits,
+        row.expectedInterest.minorUnits,
+        row.expectedFee.minorUnits,
+      ),
+  ];
+
+  test(
+    'direct repricing needs no configuration or quote and survives backup with its unit',
+    () async {
+      final configuration = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      await f.service.deleteConfiguration('loan', configuration.id);
+      final original = amounts(await f.installments.listSchedules('loan'));
+      const rate = InterestRate(ppm: 2000, period: InterestRatePeriod.monthly);
+      await f.service.createDirect(
+        'loan',
+        stageId: 'stage',
+        effectiveDate: DateTime.utc(2026, 2, 1),
+        rate: rate,
+      );
+      expect(f.source.calls, isEmpty);
+      expect(await f.db.select(f.db.referenceRates).get(), isEmpty);
+      final record = (await f.records.list('loan')).single;
+      expect(record.change, isA<DirectRateChange>());
+      expect(record.change.rate, rate);
+      expect(record.status, InstallmentRepricingStatus.applied);
+      final row = await f.db
+          .select(f.db.installmentRepricingRecords)
+          .getSingle();
+      expect(row.pricingMethod, 'direct');
+      expect(row.ratePpm, 2000);
+      expect(row.ratePeriod, 'monthly');
+      expect([
+        row.resetDate,
+        row.referenceRateDate,
+        row.referenceRateType,
+        row.referenceRatePpm,
+        row.spreadBp,
+        row.source,
+      ], everyElement(isNull));
+      final changed = amounts(await f.installments.listSchedules('loan'));
+      expect(changed, isNot(original));
+
+      await f.service.confirm('loan', {record.id});
+      final snapshot = await DriftBackupGateway(f.db).readSnapshot();
+      BackupService.validateSnapshot(snapshot);
+      final target = createTestDatabase();
+      addTearDown(target.close);
+      await DriftBackupGateway(target).replaceSnapshot(snapshot);
+      final restored = (await DriftInstallmentRepository(
+        target,
+      ).findContract('loan'))!;
+      expect(restored.repricings.single.change, isA<DirectRateChange>());
+      expect(restored.repricings.single.change.rate, rate);
+      expect(
+        restored.repricings.single.status,
+        InstallmentRepricingStatus.userConfirmed,
+      );
+      expect(
+        amounts(await DriftInstallmentRepository(target).listSchedules('loan')),
+        changed,
+      );
+      for (final invalid in [
+        {'resetDate': DateTime.utc(2026, 1, 1).millisecondsSinceEpoch},
+        {'referenceRatePpm': 39000},
+        {'ratePeriod': null},
+        {'ratePpm': -1},
+        {'pricingMethod': 'unknown'},
+      ]) {
+        final invalidSnapshot = snapshot.copyWith(
+          tables: {
+            ...snapshot.tables,
+            'installment_repricing_records': [
+              {
+                ...snapshot.rows('installment_repricing_records').single,
+                ...invalid,
+              },
+            ],
+          },
+        );
+        expect(
+          () => BackupService.validateSnapshot(invalidSnapshot),
+          throwsA(isA<BackupValidationException>()),
+        );
+      }
+      await f.service.delete('loan', record.id);
+      expect(await f.records.list('loan'), isEmpty);
+      expect(amounts(await f.installments.listSchedules('loan')), original);
+    },
+  );
+
+  test(
+    'automatic repricing skips a direct result on the same date and continues with the original rule',
+    () async {
+      const rate = InterestRate(ppm: 32000, period: InterestRatePeriod.annual);
+      await f.service.createDirect(
+        'loan',
+        stageId: 'stage',
+        effectiveDate: DateTime.utc(2026, 1, 1),
+        rate: rate,
+      );
+      final before = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      expect(before.lastGeneratedDate, isNull);
+      final initialRun = await f.service.runDue(DateTime.utc(2026, 1, 5));
+      expect(initialRun.needsRetry, isFalse);
+      expect(f.source.calls, isEmpty);
+      expect((await f.records.list('loan')).single.change.rate, rate);
+      await expectLater(
+        f.service.createDirect(
+          'loan',
+          stageId: 'stage',
+          effectiveDate: DateTime.utc(2026, 1, 1),
+          rate: rate,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      await expectLater(
+        f.service.create(
+          'loan',
+          stageId: 'stage',
+          resetDate: DateTime.utc(2025, 12, 20),
+          effectiveDate: DateTime.utc(2026, 1, 1),
+          referenceRateType: InterestRateType.lprFiveYearPlus,
+          spreadBp: -30,
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      expect(f.source.calls, isEmpty);
+
+      f.currentDate = DateTime.utc(2026, 3, 20);
+      final nextRun = await f.service.runDue(f.currentDate);
+      expect(nextRun.needsRetry, isFalse);
+      expect(nextRun.changed, isTrue);
+      final records = await f.records.list('loan');
+      expect(records, hasLength(2));
+      expect(records.first.change, isA<DirectRateChange>());
+      expect(records.first.change.rate, rate);
+      expect(records.last.change, isA<ReferenceRateChange>());
+      expect(records.last.change.effectiveDate, DateTime.utc(2026, 4, 1));
+      expect(records.last.change.rate.ppm, 36000);
+      final after = (await f.installments.findContract(
+        'loan',
+      ))!.repricingConfigurations.single;
+      expect(after.rule, before.rule);
+      expect(after.lastGeneratedDate, DateTime.utc(2026, 3, 20));
+    },
+  );
+
+  test(
+    'failed direct application rolls back its record and regenerated plan',
+    () async {
+      final original = amounts(await f.installments.listSchedules('loan'));
+      await f.db.customStatement(
+        "CREATE TRIGGER reject_direct_application BEFORE UPDATE ON installment_repricing_records BEGIN SELECT RAISE(ABORT, 'test failure'); END",
+      );
+      await expectLater(
+        f.service.createDirect(
+          'loan',
+          stageId: 'stage',
+          effectiveDate: DateTime.utc(2026, 2, 1),
+          rate: const InterestRate(ppm: 0, period: InterestRatePeriod.daily),
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect(await f.records.list('loan'), isEmpty);
+      expect(amounts(await f.installments.listSchedules('loan')), original);
+      expect(f.source.calls, isEmpty);
+      await f.db.customStatement('DROP TRIGGER reject_direct_application');
+      await f.service.createDirect(
+        'loan',
+        stageId: 'stage',
+        effectiveDate: DateTime.utc(2026, 2, 1),
+        rate: const InterestRate(ppm: 0, period: InterestRatePeriod.daily),
+      );
+      expect((await f.records.list('loan')).single.change.rate.ppm, 0);
+    },
+  );
 
   test(
     'completed generation skips scans, retries pending application and reopens on extension',
@@ -110,7 +295,10 @@ void main() {
       await f.service.prepare('loan', DateTime.utc(2026, 12, 20));
       final after = await f.records.list('loan');
       expect(after.any((r) => r.id == records.first.id), isFalse);
-      expect(after.last.change.resetDate, DateTime.utc(2026, 12, 20));
+      expect(
+        (after.last.change as ReferenceRateChange).resetDate,
+        DateTime.utc(2026, 12, 20),
+      );
     },
   );
 
@@ -146,10 +334,12 @@ void main() {
       expect(configurations.single.generationCompleted, isFalse);
       expect(configurations.single.lastGeneratedDate, before.lastGeneratedDate);
       await f.service.prepare('loan', DateTime.utc(2026, 3, 20));
-      expect((await f.records.list('loan')).map((r) => r.change.resetDate), [
-        DateTime.utc(2025, 12, 20),
-        DateTime.utc(2026, 3, 20),
-      ]);
+      expect(
+        (await f.records.list(
+          'loan',
+        )).map((r) => (r.change as ReferenceRateChange).resetDate),
+        [DateTime.utc(2025, 12, 20), DateTime.utc(2026, 3, 20)],
+      );
     },
   );
 
@@ -184,7 +374,8 @@ void main() {
       expect(config.generationCompleted, isFalse);
       expect(config.lastGeneratedDate, DateTime.utc(2026, 6, 20));
       expect(
-        (await f.records.list('loan')).last.change.resetDate,
+        ((await f.records.list('loan')).last.change as ReferenceRateChange)
+            .resetDate,
         DateTime.utc(2026, 6, 20),
       );
       await f.db.customStatement('DROP TRIGGER reject_generation_completion');
@@ -341,7 +532,10 @@ void main() {
       expect(await f.service.prepare('annual-scope', f.currentDate), isTrue);
       final records = await f.records.list('annual-scope');
       expect(records, hasLength(1));
-      expect(records.single.change.resetDate, DateTime.utc(2026, 6, 20));
+      expect(
+        (records.single.change as ReferenceRateChange).resetDate,
+        DateTime.utc(2026, 6, 20),
+      );
       expect(records.single.change.effectiveDate, DateTime.utc(2026, 6, 21));
       expect(records.single.change.rate.ppm, 36000);
       var contract = (await f.installments.findContract('annual-scope'))!;
@@ -943,7 +1137,10 @@ void main() {
       );
       await f.service.prepare('loan', now);
       final change = (await f.records.list('loan')).single.change;
-      expect(referenceDate(change.resetDate), DateTime.utc(2025, 12, 20));
+      expect(
+        referenceDate((change as ReferenceRateChange).resetDate),
+        DateTime.utc(2025, 12, 20),
+      );
       expect(
         referenceDate(change.referenceRate.date),
         DateTime.utc(2025, 12, 19),
@@ -1271,8 +1468,18 @@ void main() {
           restored.repricingConfigurations.single.rule.referenceRateType,
           type,
         );
-        expect(restored.repricings.single.change.referenceRate.type, type);
-        expect(restored.repricings.single.change.referenceRate.ratePpm, 39000);
+        expect(
+          (restored.repricings.single.change as ReferenceRateChange)
+              .referenceRate
+              .type,
+          type,
+        );
+        expect(
+          (restored.repricings.single.change as ReferenceRateChange)
+              .referenceRate
+              .ratePpm,
+          39000,
+        );
         expect(restored.repricings.single.change.rate.ppm, 36000);
         expect(
           (await target.select(target.referenceRates).getSingle()).type,

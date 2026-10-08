@@ -7,9 +7,9 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
-import '../../../domain/credit/valobj/floating_rate.dart';
 import '../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
+import '../../../domain/credit/valobj/rate_change.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'loan_change_state.dart';
@@ -59,6 +59,28 @@ class LoanChangeViewModel extends _$LoanChangeViewModel {
     );
   });
 
+  Future<UiActionOutcome<void>> saveDirectRepricing({
+    int? id,
+    required String stageId,
+    required DateTime effectiveDate,
+    required String rateText,
+    required InterestRatePeriod ratePeriod,
+  }) => guardUiAction(_logger, 'Set simulated direct repricing', () async {
+    _save(
+      LoanRepricingOperation(
+        id: id ?? _nextId++,
+        stageId: stageId,
+        change: DirectRateChange(
+          effectiveDate: referenceDate(effectiveDate),
+          rate: InterestRate(
+            ppm: _parsePercent(rateText, '利率'),
+            period: ratePeriod,
+          ),
+        ),
+      ),
+    );
+  });
+
   Future<UiActionOutcome<void>> saveRepricing({
     int? id,
     required String stageId,
@@ -75,7 +97,7 @@ class LoanChangeViewModel extends _$LoanChangeViewModel {
       LoanRepricingOperation(
         id: id ?? _nextId++,
         stageId: stageId,
-        change: RateChange(
+        change: ReferenceRateChange(
           resetDate: referenceDate(resetDate),
           effectiveDate: referenceDate(effectiveDate),
           referenceRate: ReferenceRate(

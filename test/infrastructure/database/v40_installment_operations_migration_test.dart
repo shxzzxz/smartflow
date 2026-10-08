@@ -69,7 +69,7 @@ void main() {
         (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
           'user_version',
         ),
-        45,
+        46,
       );
       for (final table in db.allTables) {
         expect(
@@ -81,7 +81,10 @@ void main() {
       }
       await expectLater(
         db.customStatement(
-          'INSERT INTO installment_repricing_records SELECT id || ?, contract_id, stage_id, reset_date, effective_date, '
+          'INSERT INTO installment_repricing_records '
+          '(id, contract_id, stage_id, pricing_method, effective_date, rate_ppm, rate_period, '
+          'reset_date, reference_rate_date, reference_rate_type, reference_rate_ppm, spread_bp, source, status, created_at) '
+          'SELECT id || ?, contract_id, stage_id, pricing_method, effective_date, rate_ppm, rate_period, reset_date, '
           'reference_rate_date, reference_rate_type, reference_rate_ppm, spread_bp, source, status, created_at '
           'FROM installment_repricing_records WHERE id = ?',
           ['-duplicate', 'confirmed'],

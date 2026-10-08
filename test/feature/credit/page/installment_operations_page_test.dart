@@ -9,6 +9,7 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/feature/credit/page/installment_operations_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import '../fixture/installment_operations_fixture.dart';
@@ -61,12 +62,65 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> selectReference(WidgetTester tester) async {
+    await tester.tap(find.text('直接指定').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('参考利率计算').last);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'direct mode hides reference dates and preserves its rate when switching modes',
+    (tester) async {
+      await pump(tester, textScale: 1.4);
+      await tester.tap(find.text('新增重定价'));
+      await tester.pumpAndSettle();
+      expect(find.text('重定价生效日'), findsOneWidget);
+      expect(find.text('重定价日'), findsNothing);
+      expect(find.text('加减基点（BP）'), findsNothing);
+      await tester.enterText(
+        find.byKey(const ValueKey('repricing-rate')),
+        '0.25',
+      );
+      await tester.ensureVisible(find.text('年'));
+      await tester.tap(find.text('年'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('月').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('直接指定'));
+      await selectReference(tester);
+      expect(find.text('重定价日'), findsOneWidget);
+      await tester.ensureVisible(find.byType(TextFormField));
+      await tester.enterText(find.byType(TextFormField), '-30');
+      await tester.ensureVisible(find.text('参考利率计算'));
+      await tester.tap(find.text('参考利率计算'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('直接指定').last);
+      await tester.pumpAndSettle();
+      expect(find.text('0.25'), findsOneWidget);
+      expect(find.text('月'), findsOneWidget);
+      expect(find.text('重定价日'), findsNothing);
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+      expect(repricing.directCreated.single.rate.ppm, 2500);
+      expect(
+        repricing.directCreated.single.rate.period,
+        InterestRatePeriod.monthly,
+      );
+      expect(repricing.directCreated.single.stageId, 'stage');
+      expect(repricing.created, isEmpty);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'manual repricing has independent inputs and works on a narrow screen',
     (tester) async {
       await pump(tester);
       await tester.tap(find.text('新增重定价'));
       await tester.pumpAndSettle();
+      await selectReference(tester);
       expect(find.text('利率类型'), findsOneWidget);
       expect(find.text('加减基点（BP）'), findsOneWidget);
       expect(find.text('重定价周期'), findsNothing);
@@ -149,6 +203,7 @@ void main() {
         await tester.ensureVisible(find.text(sample.action));
         await tester.tap(find.text(sample.action));
         await tester.pumpAndSettle();
+        if (sample.action == '新增重定价') await selectReference(tester);
         final records = <LogRecord>[];
         final subscription = Logger.root.onRecord.listen(records.add);
         addTearDown(subscription.cancel);
@@ -219,6 +274,7 @@ void main() {
       await pump(tester, multipleStages: true);
       await tester.tap(find.text(action));
       await tester.pumpAndSettle();
+      if (action == '新增重定价') await selectReference(tester);
       await tester.tap(find.text('阶段 1').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('阶段 2').last);

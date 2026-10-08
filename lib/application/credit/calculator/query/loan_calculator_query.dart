@@ -5,10 +5,10 @@ import '../../../../domain/credit/service/installment/calculator/installment_met
 import '../../../../domain/credit/service/installment/installment_plan_engine.dart';
 import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../../domain/credit/valobj/credit_error_code.dart';
-import '../../../../domain/credit/valobj/floating_rate.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../../domain/credit/valobj/reference_rate.dart';
+import '../../../../domain/credit/valobj/rate_change.dart';
 import '../../installment/query/contract_metrics_read_model.dart';
 import 'loan_calculator_read_model.dart';
 

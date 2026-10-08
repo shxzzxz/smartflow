@@ -3,6 +3,7 @@ import '../../../../core/time/date_label.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/credit/valobj/floating_rate.dart';
+import '../../../../domain/credit/valobj/rate_change.dart';
 import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 
 class InstallmentContractReadModel {

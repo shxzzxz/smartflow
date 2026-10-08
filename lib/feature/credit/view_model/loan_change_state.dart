@@ -1,4 +1,4 @@
-import '../../../domain/credit/valobj/floating_rate.dart';
+import '../../../domain/credit/valobj/rate_change.dart';
 import '../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import 'installment_terms_draft.dart';

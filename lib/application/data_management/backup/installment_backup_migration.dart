@@ -138,6 +138,18 @@ void migrateInstallmentBackup(
         {...row, 'generationCompleted': false},
     ];
   }
+  if (schemaVersion < 46) {
+    tables['installment_repricing_records'] = [
+      for (final row
+          in tables['installment_repricing_records'] ?? <BackupJson>[])
+        {
+          ...row,
+          'pricingMethod': 'reference',
+          'ratePpm': null,
+          'ratePeriod': null,
+        },
+    ];
+  }
 }
 
 void _migrateRepricingGenerationDates(
