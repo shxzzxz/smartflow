@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import '../../../application/import/import_api.dart';
+import '../../../application/ledger/ledger_query_api.dart' show BusinessPurpose;
 import '../../../core/money/money_formatter.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
@@ -179,10 +180,9 @@ ImportMappingAnalysisSummary summarizeImportMappings(ImportPlanReview review) {
       continue;
     }
     final targetId = item.targetId ?? review.effectiveMappings[item.key];
-    final target =
-        review.targets
-            .where((candidate) => candidate.id == targetId)
-            .firstOrNull;
+    final target = review.targets
+        .where((candidate) => candidate.id == targetId)
+        .firstOrNull;
     if (target == null || target.isArchived) {
       unmapped++;
     } else {
@@ -276,8 +276,9 @@ List<ImportSourceEntity> importGroupEntities(
   ImportTransactionGroupDraft group,
   List<ImportSourceEntity> sourceEntities,
 ) {
-  final keys =
-      group.transactions.expand((draft) => draft.sourceEntityKeys).toSet();
+  final keys = group.transactions
+      .expand((draft) => draft.sourceEntityKeys)
+      .toSet();
   return sourceEntities
       .where((entity) => keys.contains(entity.sourceEntityKey))
       .toList(growable: false);
@@ -316,12 +317,11 @@ TransactionRowPresentation _buildImportPreviewRow(
   bool showSelectionControls = false,
 }) {
   final draft = groupReview.group.topLevel;
-  final amountPrefix =
-      _isIncomeDraft(draft)
-          ? '+'
-          : _isExpenseDraft(draft)
-          ? '-'
-          : '';
+  final amountPrefix = _isIncomeDraft(draft)
+      ? '+'
+      : _isExpenseDraft(draft)
+      ? '-'
+      : '';
   final amount = formatMoney(draft.amount.abs());
   final compactAmount = formatMoney(
     draft.amount.abs(),
@@ -329,17 +329,35 @@ TransactionRowPresentation _buildImportPreviewRow(
   );
   return TransactionRowPresentation(
     transactionId: 'import-group-${groupReview.index}',
-    iconKey: _previewIconKey(draft),
+    iconKey: null,
+    businessPurpose: switch (draft.operationKind) {
+      ImportOperationKind.expense ||
+      ImportOperationKind.interestExpense => BusinessPurpose.dailyExpense,
+      ImportOperationKind.income => BusinessPurpose.dailyIncome,
+      ImportOperationKind.transfer => BusinessPurpose.transfer,
+      ImportOperationKind.refund => BusinessPurpose.refund,
+      ImportOperationKind.reimbursementAdvance =>
+        BusinessPurpose.reimbursementAdvance,
+      ImportOperationKind.reimbursementReceipt =>
+        BusinessPurpose.reimbursementReceipt,
+      ImportOperationKind.reimbursementClose =>
+        BusinessPurpose.reimbursementClose,
+      ImportOperationKind.repayment => BusinessPurpose.debtRepayment,
+      ImportOperationKind.borrowing => BusinessPurpose.borrowing,
+      ImportOperationKind.lending => BusinessPurpose.lending,
+      ImportOperationKind.receivableCollection =>
+        BusinessPurpose.receivableCollection,
+      ImportOperationKind.openingBalance => BusinessPurpose.openingBalance,
+    },
     title: _previewTitle(review, groupReview, draft),
     subtitle: _timeFormat.format(draft.occurredAt),
     amountText: '$amountPrefix$amount',
     compactAmountText: '$amountPrefix$compactAmount',
-    amountTone:
-        _isIncomeDraft(draft)
-            ? FinanceTone.income
-            : _isExpenseDraft(draft)
-            ? FinanceTone.expense
-            : FinanceTone.neutral,
+    amountTone: _isIncomeDraft(draft)
+        ? FinanceTone.income
+        : _isExpenseDraft(draft)
+        ? FinanceTone.expense
+        : FinanceTone.neutral,
     accountFlow: _previewAccountFlow(review, groupReview, draft),
     badges: [
       if (groupReview.group.children.isNotEmpty)
@@ -525,18 +543,6 @@ bool _isIncomeDraft(ImportTransactionDraft draft) {
 
 bool _isExpenseDraft(ImportTransactionDraft draft) {
   return draft is ImportExpenseDraft || draft is ImportInterestExpenseDraft;
-}
-
-String? _previewIconKey(ImportTransactionDraft draft) {
-  return switch (draft.operationKind) {
-    ImportOperationKind.transfer => 'transfer',
-    ImportOperationKind.repayment => 'loan',
-    ImportOperationKind.borrowing => 'hand-coin-line',
-    ImportOperationKind.lending => 'logout-box-r-line',
-    ImportOperationKind.receivableCollection => 'login-box-r-line',
-    ImportOperationKind.openingBalance => 'wallet-line',
-    _ => null,
-  };
 }
 
 final DateFormat _timeFormat = DateFormat('HH:mm');

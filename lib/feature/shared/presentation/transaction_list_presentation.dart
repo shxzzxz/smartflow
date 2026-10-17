@@ -70,6 +70,8 @@ class TransactionRowPresentation {
     required this.accountFlow,
     required this.badges,
     required this.canQuickEdit,
+    this.businessPurpose = BusinessPurpose.dailyExpense,
+    this.hasMultipleCategories = false,
     this.compactAmountText,
     this.originalAmountText,
     this.originalCompactAmountText,
@@ -79,6 +81,8 @@ class TransactionRowPresentation {
   });
 
   final String transactionId;
+  final BusinessPurpose businessPurpose;
+  final bool hasMultipleCategories;
   final String? iconKey;
   final String title;
   final String subtitle;
@@ -105,6 +109,8 @@ class TransactionRowPresentation {
   }) {
     return TransactionRowPresentation(
       transactionId: transactionId,
+      businessPurpose: businessPurpose,
+      hasMultipleCategories: hasMultipleCategories,
       iconKey: iconKey,
       title: title,
       subtitle: subtitle,
@@ -306,6 +312,8 @@ TransactionRowPresentation buildTransactionRowPresentation({
   final transactionAmount = categoryAmount ?? comparison?.actual;
   return TransactionRowPresentation(
     transactionId: item.id,
+    businessPurpose: item.businessPurpose,
+    hasMultipleCategories: item.categoryLines.length > 1,
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
@@ -350,9 +358,20 @@ String? _flowAccountId(
   TransactionReadModel item, {
   required EntryDirection direction,
 }) {
-  final role = direction == EntryDirection.debit
-      ? TransactionRole.settlementIn
-      : TransactionRole.settlementOut;
+  final role = switch ((item.businessPurpose, direction)) {
+    (BusinessPurpose.lending, EntryDirection.debit) ||
+    (
+      BusinessPurpose.receivableCollection,
+      EntryDirection.credit,
+    ) => TransactionRole.receivable,
+    (BusinessPurpose.borrowing, EntryDirection.credit) ||
+    (
+      BusinessPurpose.debtRepayment,
+      EntryDirection.debit,
+    ) => TransactionRole.liability,
+    (_, EntryDirection.debit) => TransactionRole.settlementIn,
+    (_, EntryDirection.credit) => TransactionRole.settlementOut,
+  };
   final accountId = item.accountOf(role);
   if (accountId != null) return accountId;
   return switch (item.businessPurpose) {
@@ -561,18 +580,7 @@ String? resolveCategoryIconKey(
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.reimbursementAdvance => category?.iconKey,
-    BusinessPurpose.transfer => 'transfer',
-    BusinessPurpose.debtRepayment => 'loan',
-    BusinessPurpose.borrowing => 'hand-coin-line',
-    BusinessPurpose.lending => 'logout-box-r-line',
-    BusinessPurpose.receivableCollection => 'login-box-r-line',
-    BusinessPurpose.badDebt => 'close-circle-line',
-    BusinessPurpose.debtRelief => 'hand-coin-line',
-    BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => 'wallet-line',
-    BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose => null,
+    _ => null,
   };
 }
 

@@ -12,8 +12,8 @@ import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 
 import '../account/account_endpoint.dart';
 import '../account/account_endpoint_view.dart';
-import '../category/category_avatar.dart';
 import '../finance/finance_tone_color.dart';
+import 'transaction_avatar.dart';
 import 'transaction_progress_badges.dart';
 
 class TransactionRow extends StatelessWidget {
@@ -79,7 +79,9 @@ class TransactionRow extends StatelessWidget {
                       ),
                     )
                   else
-                    CategoryAvatar(
+                    TransactionAvatar(
+                      businessPurpose: presentation.businessPurpose,
+                      hasMultipleCategories: presentation.hasMultipleCategories,
                       iconKey: presentation.iconKey,
                       size: AppSpacing.space32,
                     ),
