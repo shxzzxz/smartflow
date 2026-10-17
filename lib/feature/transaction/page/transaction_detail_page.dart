@@ -13,11 +13,11 @@ import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
-import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
+import 'package:smartflow/widget/business/transaction/transaction_avatar.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_detail_presentation.dart';
@@ -305,8 +305,11 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
           children: [
-            BusinessIconBubble(
-              child: BusinessIcon(iconKey: hero.iconKey, size: 28),
+            TransactionAvatar(
+              businessPurpose: hero.businessPurpose,
+              hasMultipleCategories: hero.hasMultipleCategories,
+              iconKey: hero.iconKey,
+              iconSize: AppSpacing.space28,
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(

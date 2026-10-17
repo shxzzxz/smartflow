@@ -94,6 +94,13 @@ List<DetailAccountRow> _accountRows(
     );
   }
 
+  List<DetailAccountRow> counterpartRows(String label, TransactionRole role) {
+    final lines = detail.linesOf(role).toList();
+    return lines.isEmpty
+        ? [placeholder(label)]
+        : [for (final line in lines) info(label, line)];
+  }
+
   switch (purpose) {
     case BusinessPurpose.transfer:
       final out = detail.linesOf(TransactionRole.settlementOut).toList();
@@ -128,12 +135,16 @@ List<DetailAccountRow> _accountRows(
               purpose == BusinessPurpose.reimbursementReceipt ||
               purpose == BusinessPurpose.reimbursementClose);
       if (usesBreakdown) return const [];
-      if (incoming.isEmpty) {
-        return [placeholder('收支账户', editPurpose: editPurpose)];
-      }
       return [
-        for (final line in incoming)
-          info('收支账户', line, editPurpose: editPurpose),
+        if (purpose == BusinessPurpose.borrowing)
+          ...counterpartRows('负债账户', TransactionRole.liability),
+        if (purpose == BusinessPurpose.receivableCollection)
+          ...counterpartRows('应收账户', TransactionRole.receivable),
+        if (incoming.isEmpty)
+          placeholder('收支账户', editPurpose: editPurpose)
+        else
+          for (final line in incoming)
+            info('收支账户', line, editPurpose: editPurpose),
       ];
     case BusinessPurpose.dailyExpense:
     case BusinessPurpose.debtRepayment:
@@ -152,12 +163,16 @@ List<DetailAccountRow> _accountRows(
       if (purpose == BusinessPurpose.dailyExpense && outgoing.length > 1) {
         return const [];
       }
-      if (outgoing.isEmpty) {
-        return [placeholder(label, editPurpose: editPurpose)];
-      }
       return [
-        for (final line in outgoing)
-          info(label, line, editPurpose: editPurpose),
+        if (outgoing.isEmpty)
+          placeholder(label, editPurpose: editPurpose)
+        else
+          for (final line in outgoing)
+            info(label, line, editPurpose: editPurpose),
+        if (purpose == BusinessPurpose.lending)
+          ...counterpartRows('应收账户', TransactionRole.receivable),
+        if (purpose == BusinessPurpose.debtRepayment)
+          ...counterpartRows('负债账户', TransactionRole.liability),
       ];
     case BusinessPurpose.reimbursementAdvance:
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();

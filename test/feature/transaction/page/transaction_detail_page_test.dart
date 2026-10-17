@@ -20,6 +20,127 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 
 void main() {
+  for (final scenario in [
+    (BusinessPurpose.debtRepayment, RemixIcons.refund_2_line),
+    (BusinessPurpose.borrowing, RemixIcons.hand_coin_line),
+    (BusinessPurpose.receivableCollection, RemixIcons.login_box_line),
+  ]) {
+    testWidgets('renders the ${scenario.$1.name} detail purpose icon', (
+      tester,
+    ) async {
+      final detail = TransactionReadModel(
+        id: 'purpose-icon',
+        businessPurpose: scenario.$1,
+        occurredAt: DateTime(2026, 10, 17),
+        primaryAmount: const Money(minorUnits: 10000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            transactionDetailProvider(
+              'purpose-icon',
+            ).overrideWith((ref) => Stream.value(detail)),
+            accountLookupProvider.overrideWith(
+              (ref) => Stream.value(AccountLookup(_accounts)),
+            ),
+            tagListProvider.overrideWithValue(const AsyncData([])),
+            transactionTagIdsProvider(
+              'purpose-icon',
+            ).overrideWithValue(const AsyncData({})),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const TransactionDetailPage(transactionId: 'purpose-icon'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final icon = find.descendant(
+        of: find.byKey(const ValueKey('detail-category-card')),
+        matching: find.byIcon(scenario.$2),
+      );
+      expect(icon, findsOneWidget);
+      expect(tester.widget<Icon>(icon).size, 28);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('shows payment and receivable accounts in lending details', (
+    tester,
+  ) async {
+    final detail = TransactionReadModel(
+      id: 'lending',
+      businessPurpose: BusinessPurpose.lending,
+      occurredAt: DateTime(2026, 10, 17),
+      primaryAmount: const Money(minorUnits: 10000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      lines: const [
+        TransactionLine(
+          id: 'paid',
+          transactionId: 'lending',
+          lineNo: 1,
+          role: TransactionRole.settlementOut,
+          accountId: 'cash',
+          amount: Money(minorUnits: 10000),
+        ),
+        TransactionLine(
+          id: 'receivable',
+          transactionId: 'lending',
+          lineNo: 2,
+          role: TransactionRole.receivable,
+          accountId: 'ordinary-receivable',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionDetailProvider(
+            'lending',
+          ).overrideWith((ref) => Stream.value(detail)),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(
+              AccountLookup({
+                ..._accounts,
+                'ordinary-receivable': _account(
+                  'ordinary-receivable',
+                  '借给朋友',
+                  subtype: AccountSubtype.receivable,
+                  profileKey: 'ledger.receivable',
+                  iconKey: 'receivable',
+                ),
+              }),
+            ),
+          ),
+          tagListProvider.overrideWithValue(const AsyncData([])),
+          transactionTagIdsProvider(
+            'lending',
+          ).overrideWithValue(const AsyncData({})),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(transactionId: 'lending'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('付款账户'), findsOneWidget);
+    expect(find.text('现金'), findsOneWidget);
+    expect(find.text('应收账户'), findsOneWidget);
+    expect(find.text('借给朋友'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('detail-category-card')),
+        matching: find.byIcon(RemixIcons.logout_box_r_line),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('renders detail state and forwards inline edits', (tester) async {
     final update = _FakeTransactionUpdateAppService();
     final editService = _FakeTransactionEditAppService();
@@ -51,6 +172,14 @@ void main() {
 
     expect(find.text('交易详情'), findsOneWidget);
     expect(find.text('午餐'), findsOneWidget);
+    final categoryIcon = tester.widget<BusinessIcon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('detail-category-card')),
+        matching: find.byType(BusinessIcon),
+      ),
+    );
+    expect(categoryIcon.iconKey, 'meal');
+    expect(categoryIcon.size, 28);
     expect(find.text('退款'), findsOneWidget);
     expect(find.text('交易时间'), findsOneWidget);
     expect(find.text('入账时间'), findsOneWidget);
@@ -139,6 +268,13 @@ void main() {
 
     expect(find.text('手续费'), findsOneWidget);
     expect(find.text('3.00'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('detail-category-card')),
+        matching: find.byIcon(RemixIcons.arrow_left_right_line),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -197,7 +333,7 @@ void main() {
       expect(
         find.descendant(
           of: categoryCard,
-          matching: find.byIcon(RemixIcons.more_line),
+          matching: find.byIcon(RemixIcons.layout_grid_line),
         ),
         findsOneWidget,
       );

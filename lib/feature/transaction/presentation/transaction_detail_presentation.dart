@@ -7,6 +7,8 @@ import 'package:smartflow/widget/business/finance/money_text.dart';
 
 class DetailHero {
   const DetailHero({
+    required this.businessPurpose,
+    required this.hasMultipleCategories,
     required this.title,
     required this.amount,
     required this.semantic,
@@ -16,6 +18,8 @@ class DetailHero {
   });
 
   final String title;
+  final BusinessPurpose businessPurpose;
+  final bool hasMultipleCategories;
   final String? subtitle;
   final String? iconKey;
   final Money amount;
@@ -85,6 +89,8 @@ DetailHero transactionDetailHero({
       : null;
 
   return DetailHero(
+    businessPurpose: transaction.businessPurpose,
+    hasMultipleCategories: hasMultipleCategories,
     title: title,
     subtitle: subtitle,
     iconKey: hasMultipleCategories ? null : category?.iconKey,

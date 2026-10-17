@@ -27,6 +27,8 @@ void main() {
       accountLookup: AccountLookup({'salary': salary}),
     );
     expect(hero.title, '工资');
+    expect(hero.businessPurpose, BusinessPurpose.dailyIncome);
+    expect(hero.hasMultipleCategories, isFalse);
   });
 
   test('bad debt falls back to its purpose label', () {
@@ -35,6 +37,7 @@ void main() {
       accountLookup: const AccountLookup({}),
     );
     expect(hero.title, '坏账');
+    expect(hero.businessPurpose, BusinessPurpose.badDebt);
     expect(hero.amount.minorUnits, -10000);
   });
 
@@ -80,6 +83,7 @@ void main() {
     );
 
     expect(hero.title, '多分类');
+    expect(hero.hasMultipleCategories, isTrue);
     expect(hero.iconKey, isNull);
     expect(breakdowns.single.kind, DetailAllocationKind.category);
     expect(breakdowns.single.title, '分类构成');

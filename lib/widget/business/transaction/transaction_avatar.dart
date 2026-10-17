@@ -12,12 +12,14 @@ class TransactionAvatar extends StatelessWidget {
     required this.iconKey,
     super.key,
     this.size = 32,
+    this.iconSize,
     this.hasMultipleCategories = false,
   });
 
   final BusinessPurpose businessPurpose;
   final String? iconKey;
   final double size;
+  final double? iconSize;
   final bool hasMultipleCategories;
 
   @override
@@ -41,11 +43,11 @@ class TransactionAvatar extends StatelessWidget {
       BusinessPurpose.reimbursementClose => RemixIcons.check_double_line,
     };
     if (icon == null) {
-      return CategoryAvatar(iconKey: iconKey, size: size);
+      return CategoryAvatar(iconKey: iconKey, size: size, iconSize: iconSize);
     }
     return BusinessIconBubble(
       size: size,
-      child: Icon(icon, size: size * 0.7),
+      child: Icon(icon, size: iconSize ?? size * 0.7),
     );
   }
 }

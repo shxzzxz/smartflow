@@ -7,6 +7,63 @@ import 'package:smartflow/feature/transaction/view_model/transaction_detail_stat
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
+  for (final scenario in [
+    (
+      BusinessPurpose.lending,
+      TransactionRole.receivable,
+      'receivable',
+      ['付款账户', '应收账户'],
+      ['cash', 'receivable'],
+    ),
+    (
+      BusinessPurpose.debtRepayment,
+      TransactionRole.liability,
+      'loan',
+      ['还款账户', '负债账户'],
+      ['cash', 'loan'],
+    ),
+    (
+      BusinessPurpose.borrowing,
+      TransactionRole.liability,
+      'loan',
+      ['负债账户', '收支账户'],
+      ['loan', 'cash'],
+    ),
+    (
+      BusinessPurpose.receivableCollection,
+      TransactionRole.receivable,
+      'receivable',
+      ['应收账户', '收支账户'],
+      ['receivable', 'cash'],
+    ),
+  ]) {
+    test('shows both account roles for ${scenario.$1.name}', () {
+      final state = _build(
+        purpose: scenario.$1,
+        parentTransactionId: null,
+        counterpart: TransactionLine(
+          id: 'counterpart',
+          transactionId: 'child',
+          lineNo: 2,
+          role: scenario.$2,
+          accountId: scenario.$3,
+          amount: const Money(minorUnits: 1000),
+        ),
+      );
+      expect(state.accountRows.map((row) => row.label), scenario.$4);
+      expect(state.accountRows.map((row) => row.accountId), scenario.$5);
+      final counterpart = state.accountRows.singleWhere(
+        (row) => row.accountId == scenario.$3,
+      );
+      expect(
+        counterpart.endpoint.label,
+        scenario.$3 == 'receivable' ? '应收款' : '借款',
+      );
+      expect(counterpart.endpoint.iconKey, scenario.$3);
+      expect(counterpart.editPurpose, isNull);
+    });
+  }
+
   test(
     'routes refund child to refund edit and locks it after reimbursement close',
     () {
@@ -148,7 +205,9 @@ void main() {
   test('uses fund accounts for lending payment account edits', () {
     final state = _build(purpose: BusinessPurpose.lending);
 
-    final paymentAccount = state.accountRows.single;
+    final paymentAccount = state.accountRows.singleWhere(
+      (row) => row.label == '付款账户',
+    );
     expect(paymentAccount.label, '付款账户');
     expect(paymentAccount.editPurpose, AccountSelectionPurpose.fund);
   });
@@ -160,6 +219,7 @@ TransactionDetailLoaded _build({
   Money? refundedTotal,
   ReimbursementSummary? reimbursementSummary,
   List<TransactionReadModel> children = const [],
+  TransactionLine? counterpart,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -178,6 +238,7 @@ TransactionDetailLoaded _build({
     ),
     createdAt: DateTime(2026, 7, 23),
     lines: [
+      ?counterpart,
       TransactionLine(
         id: 'account-line',
         transactionId: 'child',
@@ -228,6 +289,22 @@ TransactionDetailLoaded _build({
           ],
         );
   final accounts = <String, Account>{
+    'receivable': Account(
+      id: 'receivable',
+      name: '应收款',
+      type: AccountType.asset,
+      subtype: AccountSubtype.receivable,
+      iconKey: 'receivable',
+      balance: Money.zero(),
+    ),
+    'loan': Account(
+      id: 'loan',
+      name: '借款',
+      type: AccountType.liability,
+      subtype: AccountSubtype.loan,
+      iconKey: 'loan',
+      balance: Money.zero(),
+    ),
     'cash': Account(
       id: 'cash',
       name: '现金',
