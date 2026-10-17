@@ -665,9 +665,6 @@ class _ExclusionCard extends ConsumerWidget {
         if (state.showExcludeStats)
           AppPlainSwitchRow(
             label: '不计入收支',
-            description: !state.canEditReportingFlags
-                ? '跟随所属交易组设置'
-                : '当前交易组的收入、支出项不计入收支统计',
             enabled: state.canEditReportingFlags && !state.submitting,
             value: state.excludeStats,
             onChanged: (next) => _toggleExcludeStats(context, ref, next),
@@ -675,9 +672,6 @@ class _ExclusionCard extends ConsumerWidget {
         if (state.showExcludeBudget)
           AppPlainSwitchRow(
             label: '不计入预算',
-            description: !state.canEditReportingFlags
-                ? '跟随所属交易组设置'
-                : '当前交易组的支出项不占用预算，不影响收支统计',
             enabled: state.canEditReportingFlags && !state.submitting,
             value: state.excludeBudget,
             onChanged: (next) => _toggleExcludeBudget(context, ref, next),

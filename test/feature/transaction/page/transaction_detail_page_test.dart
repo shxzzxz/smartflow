@@ -563,7 +563,7 @@ void main() {
           .toList();
       expect(rows, hasLength(2));
       expect(rows.every((row) => row.value && !row.enabled), isTrue);
-      expect(find.text('跟随所属交易组设置'), findsNWidgets(2));
+      expect(find.text('跟随所属交易组设置'), findsNothing);
       expect(
         tester
             .widgetList<Switch>(find.byType(Switch))
