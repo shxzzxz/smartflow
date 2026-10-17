@@ -23,13 +23,12 @@ Future<HomeTransactionFilter?> showHomeTransactionFilterSheet({
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (context) => _HomeTransactionFilterSheet(
-          initialFilter: initialFilter,
-          expenseTree: expenseTree,
-          incomeTree: incomeTree,
-          accounts: accounts,
-        ),
+    builder: (context) => _HomeTransactionFilterSheet(
+      initialFilter: initialFilter,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
+      accounts: accounts,
+    ),
   );
 }
 
@@ -62,16 +61,12 @@ class _HomeTransactionFilterSheetState
   };
   late Set<String> _selectedCategoryIds =
       widget.initialFilter.categoryAccountIds == null
-          ? Set.of(_allCategoryIds)
-          : widget.initialFilter.categoryAccountIds!.intersection(
-            _allCategoryIds,
-          );
+      ? <String>{}
+      : widget.initialFilter.categoryAccountIds!.intersection(_allCategoryIds);
   late Set<String> _selectedAccountIds =
       widget.initialFilter.settlementAccountIds == null
-          ? Set.of(_allAccountIds)
-          : widget.initialFilter.settlementAccountIds!.intersection(
-            _allAccountIds,
-          );
+      ? <String>{}
+      : widget.initialFilter.settlementAccountIds!.intersection(_allAccountIds);
   late Set<String> _selectedTagIds = Set.of(
     widget.initialFilter.tagIds ?? const <String>{},
   );
@@ -112,27 +107,25 @@ class _HomeTransactionFilterSheetState
                   ),
                 ),
                 TextButton(
-                  onPressed:
-                      _allSelected
-                          ? null
-                          : () => setState(() {
-                            _selectedCategoryIds = Set.of(_allCategoryIds);
-                            _selectedAccountIds = Set.of(_allAccountIds);
-                            _selectedTagIds = {};
-                            _untaggedOnly = false;
-                          }),
+                  onPressed: _allSelected
+                      ? null
+                      : () => setState(() {
+                          _selectedCategoryIds = Set.of(_allCategoryIds);
+                          _selectedAccountIds = Set.of(_allAccountIds);
+                          _selectedTagIds = {};
+                          _untaggedOnly = false;
+                        }),
                   child: const Text('全部'),
                 ),
                 TextButton(
-                  onPressed:
-                      _noneSelected
-                          ? null
-                          : () => setState(() {
-                            _selectedCategoryIds = {};
-                            _selectedAccountIds = {};
-                            _selectedTagIds = {};
-                            _untaggedOnly = false;
-                          }),
+                  onPressed: _noneSelected
+                      ? null
+                      : () => setState(() {
+                          _selectedCategoryIds = {};
+                          _selectedAccountIds = {};
+                          _selectedTagIds = {};
+                          _untaggedOnly = false;
+                        }),
                   child: const Text('清除'),
                 ),
               ],
@@ -214,8 +207,9 @@ class _HomeTransactionFilterSheetState
       HomeTransactionFilter(
         categoryAccountIds: _normalize(_selectedCategoryIds, _allCategoryIds),
         settlementAccountIds: _normalize(_selectedAccountIds, _allAccountIds),
-        tagIds:
-            _untaggedOnly || _selectedTagIds.isEmpty ? null : _selectedTagIds,
+        tagIds: _untaggedOnly || _selectedTagIds.isEmpty
+            ? null
+            : _selectedTagIds,
         untaggedOnly: _untaggedOnly,
       ),
     );
@@ -230,8 +224,8 @@ class _HomeTransactionFilterSheetState
   }
 
   String _selectionLabel(Set<String> selected, Set<String> all) {
+    if (selected.isEmpty) return '不限';
     if (selected.length == all.length && selected.containsAll(all)) return '全部';
-    if (selected.isEmpty) return '未选择';
     return '已选 ${selected.length} 项';
   }
 }

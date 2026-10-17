@@ -14,6 +14,29 @@ import 'package:smartflow/feature/home/widget/home_transaction_filter_sheet.dart
 import '../../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
+  testWidgets('unrestricted dimensions display no condition', (tester) async {
+    HomeTransactionFilter? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: _TestHost(
+          initialFilter: const HomeTransactionFilter.all(),
+          onResult: (value) => result = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('不限'), findsNWidgets(3));
+
+    await tester.tap(find.text('应用'));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.isActive, isFalse);
+  });
+
   testWidgets('all normalizes both filter dimensions to null', (tester) async {
     HomeTransactionFilter? result;
     await tester.pumpWidget(
@@ -23,8 +46,8 @@ void main() {
         ],
         child: _TestHost(
           initialFilter: HomeTransactionFilter(
-            categoryAccountIds: const {},
-            settlementAccountIds: const {},
+            categoryAccountIds: const {'cat-lunch'},
+            settlementAccountIds: const {'acc-cash'},
           ),
           onResult: (value) => result = value,
         ),
@@ -37,11 +60,46 @@ void main() {
     await tester.tap(find.text('应用'));
     await tester.pumpAndSettle();
 
+    expect(result, isNotNull);
     expect(result?.categoryAccountIds, isNull);
     expect(result?.settlementAccountIds, isNull);
   });
 
   testWidgets('clear treats both filter dimensions as no condition', (
+    tester,
+  ) async {
+    HomeTransactionFilter? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+        ],
+        child: _TestHost(
+          initialFilter: HomeTransactionFilter(
+            categoryAccountIds: const {'cat-lunch'},
+            settlementAccountIds: const {'acc-cash'},
+            tagIds: const {'tag-travel'},
+          ),
+          onResult: (value) => result = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清除'));
+    await tester.pumpAndSettle();
+    expect(find.text('不限'), findsNWidgets(3));
+    await tester.tap(find.text('应用'));
+    await tester.pumpAndSettle();
+
+    expect(result?.categoryAccountIds, isNull);
+    expect(result?.settlementAccountIds, isNull);
+    expect(result, isNotNull);
+    expect(result!.isActive, isFalse);
+  });
+
+  testWidgets('selects an account directly without clearing first', (
     tester,
   ) async {
     HomeTransactionFilter? result;
@@ -59,21 +117,30 @@ void main() {
 
     await tester.tap(find.text('打开'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('清除'));
+    await tester.tap(find.text('账户'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile)),
+      everyElement(
+        isA<CheckboxListTile>().having((tile) => tile.value, 'value', isFalse),
+      ),
+    );
+    await tester.tap(find.text('现金'));
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('应用'));
     await tester.pumpAndSettle();
 
     expect(result?.categoryAccountIds, isNull);
-    expect(result?.settlementAccountIds, isNull);
+    expect(result?.settlementAccountIds, {'acc-cash'});
   });
 
-  testWidgets('clear allows selecting a subset afterward', (tester) async {
+  testWidgets('selects a category directly without clearing first', (
+    tester,
+  ) async {
     HomeTransactionFilter? result;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
-        ],
         child: _TestHost(
           initialFilter: const HomeTransactionFilter.all(),
           onResult: (value) => result = value,
@@ -83,17 +150,78 @@ void main() {
 
     await tester.tap(find.text('打开'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('清除'));
-    await tester.tap(find.text('账户'));
+    await tester.tap(find.text('分类'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('现金'));
+    expect(
+      tester.widgetList<Checkbox>(find.byType(Checkbox)),
+      everyElement(
+        isA<Checkbox>().having((checkbox) => checkbox.value, 'value', isFalse),
+      ),
+    );
+    await tester.tap(find.text('支出'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('餐饮'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).last);
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('应用'));
     await tester.pumpAndSettle();
 
-    expect(result?.categoryAccountIds, isNull);
-    expect(result?.settlementAccountIds, {'acc-cash'});
+    expect(result, isNotNull);
+    expect(result!.categoryAccountIds, {'cat-lunch'});
+    expect(result!.settlementAccountIds, isNull);
+  });
+
+  testWidgets('preserves existing selections when selectors are cancelled', (
+    tester,
+  ) async {
+    HomeTransactionFilter? result;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: _TestHost(
+          initialFilter: HomeTransactionFilter(
+            categoryAccountIds: const {'cat-lunch'},
+            settlementAccountIds: const {'acc-cash'},
+          ),
+          onResult: (value) => result = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('打开'));
+    await tester.pumpAndSettle();
+    expect(find.text('已选 1 项'), findsNWidgets(2));
+
+    await tester.tap(find.text('分类'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('支出'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('餐饮'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox).last).value, isTrue);
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('账户'));
+    await tester.pumpAndSettle();
+    final accountTiles = tester
+        .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
+        .toList();
+    expect(accountTiles.first.value, isTrue);
+    expect(accountTiles.last.value, isFalse);
+    await tester.tap(find.text('现金'));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('已选 1 项'), findsNWidgets(2));
+
+    await tester.tap(find.text('应用'));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.categoryAccountIds, {'cat-lunch'});
+    expect(result!.settlementAccountIds, {'acc-cash'});
   });
 
   testWidgets('selects multiple tags in the home filter', (tester) async {
