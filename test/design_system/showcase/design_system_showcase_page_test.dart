@@ -472,7 +472,7 @@ void main() {
 
     expect(find.text('交易日卡片'), findsOneWidget);
     expect(find.text('5月20日'), findsOneWidget);
-    expect(find.byType(TransactionRow), findsNWidgets(2));
+    expect(find.byType(TransactionRow), findsNWidgets(6));
     expect(find.byType(EmptyTransactionCard), findsNothing);
 
     await tester.tap(find.text('餐饮'));
