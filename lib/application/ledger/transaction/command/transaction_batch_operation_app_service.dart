@@ -1,5 +1,4 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../query/port/transaction_read_repository.dart';
 import '../../tag/query/port/tag_repository.dart';
@@ -84,8 +83,7 @@ class TransactionBatchOperationAppServiceImpl
       );
       var updatedGroupCount = 0;
       for (final transaction in transactions) {
-        if (!_canEditTags(transaction.businessPurpose) ||
-            transaction.ownership != null) {
+        if (transaction.parentTransactionId != null) {
           continue;
         }
         final currentTagIds = await _transactionTagRepository.transactionTagIds(
@@ -112,25 +110,5 @@ class TransactionBatchOperationAppServiceImpl
         skippedGroupCount: command.transactionIds.length - updatedGroupCount,
       );
     });
-  }
-
-  bool _canEditTags(BusinessPurpose purpose) {
-    return switch (purpose) {
-      BusinessPurpose.dailyExpense ||
-      BusinessPurpose.dailyIncome ||
-      BusinessPurpose.transfer ||
-      BusinessPurpose.reimbursementAdvance ||
-      BusinessPurpose.borrowing ||
-      BusinessPurpose.lending ||
-      BusinessPurpose.receivableCollection ||
-      BusinessPurpose.badDebt ||
-      BusinessPurpose.debtRelief ||
-      BusinessPurpose.debtRepayment => true,
-      BusinessPurpose.refund ||
-      BusinessPurpose.reimbursementReceipt ||
-      BusinessPurpose.reimbursementClose ||
-      BusinessPurpose.openingBalance ||
-      BusinessPurpose.balanceAdjustment => false,
-    };
   }
 }

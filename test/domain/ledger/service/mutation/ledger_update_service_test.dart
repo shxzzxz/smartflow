@@ -1,4 +1,3 @@
-import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
@@ -16,7 +15,7 @@ import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test(
-    'closed reimbursement rejects basic-info edits to an earlier receipt',
+    'closed reimbursement allows basic-info edits to an earlier receipt',
     () async {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
@@ -63,15 +62,15 @@ void main() {
         transactionGroupRepository: repository,
       );
 
-      await expectLater(
-        service.updateBasicInfo(
-          UpdateTransactionBasicInfoInstruction(
-            transactionId: receipt.id,
-            note: const Patch<String?>.set('changed'),
-          ),
+      final result = await service.updateBasicInfo(
+        UpdateTransactionBasicInfoInstruction(
+          transactionId: receipt.id,
+          note: const Patch<String?>.set('changed'),
         ),
-        throwsA(isA<BusinessException>()),
       );
+      expect(result.currentTransaction.note, 'changed');
+      expect(result.accounts, isEmpty);
+      expect(result.currentTransaction.primaryAmount, Money.parse('60'));
     },
   );
 }

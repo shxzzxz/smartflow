@@ -876,6 +876,7 @@ void _openTagTransactions(
         'from': from.toIso8601String(),
         'until': until.toIso8601String(),
         'title': item.title,
+        'accountType': item.accountType.name,
         'scope': StatisticsDrilldownScope.cashflow.name,
       },
     ).toString(),

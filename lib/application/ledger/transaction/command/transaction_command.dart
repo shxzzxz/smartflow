@@ -769,6 +769,16 @@ class UpdateTransactionReportingFlagCommand {
   final bool? isExcludedFromBudget;
 }
 
+class UpdateTransactionTagsCommand {
+  UpdateTransactionTagsCommand({
+    required this.transactionId,
+    required Set<String> tagIds,
+  }) : tagIds = Set.unmodifiable(tagIds);
+
+  final String transactionId;
+  final Set<String> tagIds;
+}
+
 class UpdateTransactionOwnershipCommand {
   const UpdateTransactionOwnershipCommand({
     required this.transactionId,

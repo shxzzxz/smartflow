@@ -17,6 +17,13 @@ final class TransactionGroupAmountSource extends TransactionListAmountSource {
   const TransactionGroupAmountSource();
 }
 
+/// A contribution from income/expense entries only, independent of purpose.
+final class TransactionCashflowImpactAmountSource
+    extends TransactionListAmountSource {
+  const TransactionCashflowImpactAmountSource(this.accountIds);
+  final Set<String> accountIds;
+}
+
 final class TransactionAccountImpactAmountSource
     extends TransactionListAmountSource {
   const TransactionAccountImpactAmountSource(this.accountId);
@@ -291,6 +298,21 @@ TransactionRowPresentation buildTransactionRowPresentation({
   TransactionListAmountSource amountSource =
       const TransactionGroupAmountSource(),
 }) {
+  final cashflowDelta = amountSource is TransactionCashflowImpactAmountSource
+      ? Money(
+          minorUnits: amountSource.accountIds.fold<int>(0, (sum, id) {
+            final type = accountLookup.find(id)?.type;
+            final change =
+                item.impactsByAccountId[id]?.netChange.minorUnits ?? 0;
+            return sum +
+                (type == AccountType.income
+                    ? change
+                    : type == AccountType.expense
+                    ? -change
+                    : 0);
+          }),
+        )
+      : null;
   final accountDelta = switch (amountSource) {
     TransactionAccountImpactAmountSource(:final accountId) =>
       item.impactsByAccountId[accountId]?.netChange ?? Money.zero(),
@@ -317,14 +339,18 @@ TransactionRowPresentation buildTransactionRowPresentation({
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
-    amountText: accountDelta == null
+    amountText: cashflowDelta != null
+        ? formatAccountDelta(cashflowDelta, style: MoneyFormatStyle.plain)
+        : accountDelta == null
         ? formatTransactionAmount(
             item,
             amount: transactionAmount,
             style: MoneyFormatStyle.plain,
           )
         : formatAccountDelta(accountDelta, style: MoneyFormatStyle.plain),
-    compactAmountText: accountDelta == null
+    compactAmountText: cashflowDelta != null
+        ? formatAccountDelta(cashflowDelta, style: MoneyFormatStyle.compact)
+        : accountDelta == null
         ? formatTransactionAmount(
             item,
             amount: transactionAmount,
@@ -345,7 +371,11 @@ TransactionRowPresentation buildTransactionRowPresentation({
             amount: comparison.original,
             style: MoneyFormatStyle.compact,
           ),
-    amountTone: accountDelta == null
+    amountTone: cashflowDelta != null
+        ? (cashflowDelta.minorUnits < 0
+              ? FinanceTone.expense
+              : FinanceTone.income)
+        : accountDelta == null
         ? amountTone(item.businessPurpose)
         : FinanceTone.neutral,
     accountFlow: resolveAccountFlow(item, accountLookup),

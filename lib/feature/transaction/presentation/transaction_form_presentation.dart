@@ -147,7 +147,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         noteText: noteText,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
-        excludeBudget: false,
+        excludeBudget: transaction.isExcludedFromBudget,
         incomeCategoryId: categoryId,
         incomeRootId: rootCategoryId(incomeTree, categoryId),
         toAccountId: settlementAccountId(
@@ -163,8 +163,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         feeText: _lineAmountText(detail, TransactionRole.fee),
         noteText: noteText,
         occurredAt: transaction.occurredAt,
-        excludeStats: false,
-        excludeBudget: false,
+        excludeStats: transaction.isExcludedFromStats,
+        excludeBudget: transaction.isExcludedFromBudget,
         fromAccountId: settlementAccountId(
           detail,
           accountsById,
@@ -182,8 +182,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         amountText: amountText,
         noteText: noteText,
         occurredAt: transaction.occurredAt,
-        excludeStats: false,
-        excludeBudget: false,
+        excludeStats: transaction.isExcludedFromStats,
+        excludeBudget: transaction.isExcludedFromBudget,
         liabilityAccountId: _firstAccountId(
           detail,
           accountsById,
@@ -202,8 +202,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         amountText: amountText,
         noteText: noteText,
         occurredAt: transaction.occurredAt,
-        excludeStats: false,
-        excludeBudget: true,
+        excludeStats: transaction.isExcludedFromStats,
+        excludeBudget: transaction.isExcludedFromBudget,
         ordinaryReceivableAccountId: _firstAccountId(
           detail,
           accountsById,

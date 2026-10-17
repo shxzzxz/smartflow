@@ -196,7 +196,6 @@ class TransactionGroup {
       transaction.updateReportingFlags(
         isExcludedFromStats: isExcludedFromStats,
         isExcludedFromBudget: isExcludedFromBudget,
-        parentPurpose: parentTransaction.businessPurpose,
       );
     }
   }

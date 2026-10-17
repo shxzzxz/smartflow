@@ -17,6 +17,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
     required this.occurredFrom,
     required this.occurredUntil,
     required this.scope,
+    this.accountType,
     super.key,
   });
 
@@ -28,6 +29,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
   final DateTime? occurredFrom;
   final DateTime occurredUntil;
   final StatisticsDrilldownScope scope;
+  final AccountType? accountType;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,6 +43,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
         occurredFrom: occurredFrom,
         occurredUntil: occurredUntil,
         scope: scope,
+        accountType: accountType,
       ),
     );
     return Scaffold(
@@ -49,10 +52,9 @@ class StatisticsTransactionsPage extends ConsumerWidget {
           children: [
             AppPageHeader(
               title: title,
-              subtitle:
-                  occurredFrom == null
-                      ? '截至${cutoffDate.year}年${cutoffDate.month}月的贡献流水'
-                      : '${occurredFrom!.year}年${occurredFrom!.month}月贡献流水',
+              subtitle: occurredFrom == null
+                  ? '截至${cutoffDate.year}年${cutoffDate.month}月的贡献流水'
+                  : '${occurredFrom!.year}年${occurredFrom!.month}月贡献流水',
             ),
             Expanded(
               child: switch (content) {

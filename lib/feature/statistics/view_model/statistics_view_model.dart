@@ -211,10 +211,21 @@ Stream<List<TransactionReadModel>> statisticsTransactions(
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
   required StatisticsDrilldownScope scope,
+  AccountType? accountType,
 }) async* {
   final accountLookup = await ref.watch(accountLookupProvider.future);
   final categoryAccountIds = category == null
-      ? null
+      ? scope == StatisticsDrilldownScope.cashflow
+            ? accountLookup.byId.values
+                  .where(
+                    (account) => accountType == null
+                        ? account.type == AccountType.income ||
+                              account.type == AccountType.expense
+                        : account.type == accountType,
+                  )
+                  .map((account) => account.id)
+                  .toSet()
+            : null
       : resolveCategoryAccountIds([category], accountLookup.byId);
   yield* ref
       .watch(transactionQueryServiceProvider)
@@ -249,6 +260,7 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
   required DateTime? occurredFrom,
   required DateTime occurredUntil,
   required StatisticsDrilldownScope scope,
+  AccountType? accountType,
 }) {
   final transactions = ref.watch(
     statisticsTransactionsProvider(
@@ -259,6 +271,7 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
+      accountType: accountType,
     ),
   );
   final accountLookup = ref.watch(accountLookupProvider);
@@ -277,7 +290,22 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
   if (transactionValues == null || lookup == null) {
     return const StatisticsTransactionsContentState.loading();
   }
-  final amountSource = category != null
+  final cashflowAccountIds = lookup.byId.values
+      .where(
+        (account) => accountType == null
+            ? account.type == AccountType.income ||
+                  account.type == AccountType.expense
+            : account.type == accountType,
+      )
+      .map((account) => account.id)
+      .toSet();
+  final amountSource = scope == StatisticsDrilldownScope.cashflow
+      ? TransactionCashflowImpactAmountSource(
+          category != null
+              ? resolveCategoryAccountIds([category], lookup.byId)
+              : cashflowAccountIds,
+        )
+      : category != null
       ? TransactionCategoryImpactAmountSource(
           resolveCategoryAccountIds([category], lookup.byId),
         )

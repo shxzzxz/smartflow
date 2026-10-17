@@ -553,6 +553,7 @@ final class StatisticsTransactionsProvider
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
+      AccountType? accountType,
     })
     super.argument,
   }) : super(
@@ -591,6 +592,7 @@ final class StatisticsTransactionsProvider
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
+              AccountType? accountType,
             });
     return statisticsTransactions(
       ref,
@@ -601,6 +603,7 @@ final class StatisticsTransactionsProvider
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
+      accountType: argument.accountType,
     );
   }
 
@@ -617,7 +620,7 @@ final class StatisticsTransactionsProvider
 }
 
 String _$statisticsTransactionsHash() =>
-    r'8ae12d444ffd303e981d1be415b0e2f2d47e8253';
+    r'2f37d2daa53282f988b5d66656f592416f71b29e';
 
 final class StatisticsTransactionsFamily extends $Family
     with
@@ -631,6 +634,7 @@ final class StatisticsTransactionsFamily extends $Family
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
+            AccountType? accountType,
           })
         > {
   StatisticsTransactionsFamily._()
@@ -650,6 +654,7 @@ final class StatisticsTransactionsFamily extends $Family
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
+    AccountType? accountType,
   }) => StatisticsTransactionsProvider._(
     argument: (
       category: category,
@@ -659,6 +664,7 @@ final class StatisticsTransactionsFamily extends $Family
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
+      accountType: accountType,
     ),
     from: this,
   );
@@ -689,6 +695,7 @@ final class StatisticsTransactionsContentProvider
       DateTime? occurredFrom,
       DateTime occurredUntil,
       StatisticsDrilldownScope scope,
+      AccountType? accountType,
     })
     super.argument,
   }) : super(
@@ -727,6 +734,7 @@ final class StatisticsTransactionsContentProvider
               DateTime? occurredFrom,
               DateTime occurredUntil,
               StatisticsDrilldownScope scope,
+              AccountType? accountType,
             });
     return statisticsTransactionsContent(
       ref,
@@ -737,6 +745,7 @@ final class StatisticsTransactionsContentProvider
       occurredFrom: argument.occurredFrom,
       occurredUntil: argument.occurredUntil,
       scope: argument.scope,
+      accountType: argument.accountType,
     );
   }
 
@@ -763,7 +772,7 @@ final class StatisticsTransactionsContentProvider
 }
 
 String _$statisticsTransactionsContentHash() =>
-    r'd72ee4e172cd24fca64b7dc2125acd7a3cb7ccde';
+    r'ee48f50de9c12739d6b41b254c754cc9c6a3f582';
 
 final class StatisticsTransactionsContentFamily extends $Family
     with
@@ -777,6 +786,7 @@ final class StatisticsTransactionsContentFamily extends $Family
             DateTime? occurredFrom,
             DateTime occurredUntil,
             StatisticsDrilldownScope scope,
+            AccountType? accountType,
           })
         > {
   StatisticsTransactionsContentFamily._()
@@ -796,6 +806,7 @@ final class StatisticsTransactionsContentFamily extends $Family
     required DateTime? occurredFrom,
     required DateTime occurredUntil,
     required StatisticsDrilldownScope scope,
+    AccountType? accountType,
   }) => StatisticsTransactionsContentProvider._(
     argument: (
       category: category,
@@ -805,6 +816,7 @@ final class StatisticsTransactionsContentFamily extends $Family
       occurredFrom: occurredFrom,
       occurredUntil: occurredUntil,
       scope: scope,
+      accountType: accountType,
     ),
     from: this,
   );

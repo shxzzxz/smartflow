@@ -31,7 +31,6 @@ void main() {
       final state = await _readState(container);
 
       final loaded = state as TransactionDetailLoaded;
-      expect(loaded.behavior.bannerText, isNull);
       expect(loaded.hero.title, '午餐');
       expect(loaded.hero.iconKey, 'meal');
       expect(loaded.refund?.hasRefund, true);
@@ -72,26 +71,23 @@ void main() {
       },
     );
 
-    test(
-      'dispatches plain expense tag change to ledger edit service',
-      () async {
-        final editService = _FakeTransactionEditAppService();
-        final container = _container(
-          detail: _detail(purpose: BusinessPurpose.dailyExpense),
-          editService: editService,
-        );
-        await _readState(container);
+    test('updates tags through the common transaction capability', () async {
+      final update = _FakeTransactionUpdateAppService();
+      final container = _container(
+        detail: _detail(purpose: BusinessPurpose.dailyExpense),
+        update: update,
+      );
+      await _readState(container);
 
-        final outcome = await container
-            .read(transactionDetailViewModelProvider('tx-1').notifier)
-            .changeTags({'tag-1', 'tag-2'});
+      final outcome = await container
+          .read(transactionDetailViewModelProvider('tx-1').notifier)
+          .changeTags({'tag-1', 'tag-2'});
 
-        expect(outcome, isA<UiActionSuccess<void>>());
-        final command = editService.expenseCommands.single;
-        expect(command.transactionId, 'tx-1');
-        expect(command.tagIds, {'tag-1', 'tag-2'});
-      },
-    );
+      expect(outcome, isA<UiActionSuccess<void>>());
+      final command = update.tagCommands.single;
+      expect(command.transactionId, 'tx-1');
+      expect(command.tagIds, {'tag-1', 'tag-2'});
+    });
 
     test(
       'dispatches plain income account change to ledger edit service',
@@ -204,7 +200,6 @@ void main() {
 
         final state = await _readState(container);
         final loaded = state as TransactionDetailLoaded;
-        expect(loaded.behavior.bannerText, contains('金额调整请在信贷页面处理'));
         expect(
           loaded.behavior.editRoute,
           '/repayments/repayment-1/edit?transactionId=tx-1',
@@ -276,6 +271,178 @@ void main() {
       },
     );
 
+    for (final purpose in BusinessPurpose.values) {
+      test(
+        'allows group reporting flags for top-level ${purpose.name}',
+        () async {
+          final update = _FakeTransactionUpdateAppService();
+          final container = _container(
+            detail: _detail(purpose: purpose),
+            update: update,
+          );
+          final state = await _readState(container) as TransactionDetailLoaded;
+          expect(state.showExcludeStats, isTrue);
+          expect(state.showExcludeBudget, isTrue);
+          expect(state.canEditReportingFlags, isTrue);
+          final notifier = container.read(
+            transactionDetailViewModelProvider('tx-1').notifier,
+          );
+          expect(
+            await notifier.toggleExcludeStats(true),
+            isA<UiActionSuccess<void>>(),
+          );
+          expect(
+            await notifier.toggleExcludeBudget(true),
+            isA<UiActionSuccess<void>>(),
+          );
+          expect(update.reportingFlagCommands, hasLength(2));
+        },
+      );
+    }
+
+    test(
+      'child reporting flags are read only and never reach the update service',
+      () async {
+        final update = _FakeTransactionUpdateAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.refund,
+            parentTransactionId: 'parent',
+          ),
+          update: update,
+        );
+        final state = await _readState(container) as TransactionDetailLoaded;
+        expect(state.canEditReportingFlags, isFalse);
+        expect(state.behavior.canEditTags, isA<DetailEditDenied>());
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.toggleExcludeStats(true),
+          isA<UiActionFailure<void>>(),
+        );
+        expect(
+          await notifier.toggleExcludeBudget(true),
+          isA<UiActionFailure<void>>(),
+        );
+        expect(
+          await notifier.changeTags({'tag-1'}),
+          isA<UiActionFailure<void>>(),
+        );
+        expect(update.reportingFlagCommands, isEmpty);
+        expect(update.tagCommands, isEmpty);
+      },
+    );
+
+    test(
+      'business-owned transactions use common reporting and tag updates',
+      () async {
+        final update = _FakeTransactionUpdateAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.debtRepayment,
+            ownership: const TransactionOwnership(
+              ownerType: creditRepaymentOwnerType,
+              ownerId: 'repayment',
+              ownerRole: 'BILL',
+            ),
+          ),
+          update: update,
+        );
+        await _readState(container);
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.toggleExcludeStats(true),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.toggleExcludeBudget(true),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(
+          await notifier.changeTags({'travel'}),
+          isA<UiActionSuccess<void>>(),
+        );
+        expect(update.reportingFlagCommands, hasLength(2));
+        expect(update.tagCommands.single.tagIds, {'travel'});
+      },
+    );
+
+    test(
+      'transfer edits the selected account without changing the opposite side',
+      () async {
+        final editing = _FakeTransactionEditAppService();
+        final container = _container(
+          detail: _detail(purpose: BusinessPurpose.transfer),
+          editService: editing,
+        );
+        await _readState(container);
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.changeAccount(
+            AccountSelectionPurpose.settlement,
+            'bank',
+            currentAccountId: 'cash',
+          ),
+          isA<UiActionSuccess<void>>(),
+        );
+        final command = editing.transferCommands.single;
+        expect(command.fromAccountId, 'bank');
+        expect(command.toAccountId, isNull);
+        expect(command.feeAmount, isNull);
+        expect(
+          await notifier.changeAccount(
+            AccountSelectionPurpose.settlement,
+            'bank',
+          ),
+          isA<UiActionFailure<void>>(),
+        );
+        expect(editing.transferCommands, hasLength(1));
+      },
+    );
+
+    for (final purpose in [
+      BusinessPurpose.refund,
+      BusinessPurpose.reimbursementReceipt,
+      BusinessPurpose.reimbursementClose,
+    ]) {
+      test('supports single receipt account editing for $purpose', () async {
+        final editing = _FakeTransactionEditAppService();
+        final container = _container(
+          detail: _detail(purpose: purpose, parentTransactionId: 'parent'),
+          editService: editing,
+        );
+        final state = await _readState(container) as TransactionDetailLoaded;
+        expect(
+          state.accountRows.first.editPurpose,
+          AccountSelectionPurpose.settlement,
+        );
+        final notifier = container.read(
+          transactionDetailViewModelProvider('tx-1').notifier,
+        );
+        expect(
+          await notifier.changeAccount(
+            AccountSelectionPurpose.settlement,
+            'bank',
+          ),
+          isA<UiActionSuccess<void>>(),
+        );
+        final allocations = switch (purpose) {
+          BusinessPurpose.refund =>
+            editing.refundCommands.single.settlementAllocations!,
+          BusinessPurpose.reimbursementReceipt =>
+            editing.receiptCommands.single.settlementAllocations!,
+          _ => editing.closeCommands.single.settlementAllocations!,
+        };
+        expect(allocations.single.accountId, 'bank');
+        expect(allocations.single.amount, const Money(minorUnits: 10000));
+      });
+    }
+
     test('maps update exception to UI action failure', () async {
       final update = _FakeTransactionUpdateAppService(
         reportingFlagException: BusinessException(
@@ -318,7 +485,7 @@ void main() {
         expect(badDebt.showExcludeStats, isTrue);
         expect(badDebt.showExcludeBudget, isTrue);
         expect(relief.showExcludeStats, isTrue);
-        expect(relief.showExcludeBudget, isFalse);
+        expect(relief.showExcludeBudget, isTrue);
 
         final outcome = await reliefContainer
             .read(transactionDetailViewModelProvider('tx-1').notifier)
@@ -451,9 +618,8 @@ void main() {
 
       final state = await _readState(container);
       final loaded = state as TransactionDetailLoaded;
-      expect(loaded.behavior.bannerText, contains('unknown-owner'));
       expect(loaded.behavior.canEditPostedAt, isA<DetailEditAllowed>());
-      expect(loaded.showExcludeStats, false);
+      expect(loaded.showExcludeStats, true);
       final editAction = loaded.actionButtons.singleWhere(
         (button) => button.kind == DetailActionKind.edit,
       );
@@ -504,6 +670,10 @@ ProviderContainer _container({
       transactionDetailProvider(
         'tx-1',
       ).overrideWith((ref) => Stream.value(detail)),
+      if (detail.parentTransactionId != null)
+        transactionDetailProvider(
+          detail.parentTransactionId!,
+        ).overrideWith((ref) => Stream.value(_detail())),
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
@@ -543,6 +713,7 @@ Future<TransactionDetailUiState> _readState(ProviderContainer container) {
 TransactionReadModel _detail({
   BusinessPurpose purpose = BusinessPurpose.dailyExpense,
   TransactionOwnership? ownership,
+  String? parentTransactionId,
   List<Entry>? entries,
   Money? refundedTotal,
   RefundSummary? refundSummary,
@@ -591,6 +762,7 @@ TransactionReadModel _detail({
   return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
+      parentTransactionId: parentTransactionId,
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
@@ -717,6 +889,16 @@ class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
   _FakeTransactionUpdateAppService({this.reportingFlagException});
 
   final Object? reportingFlagException;
+  final tagCommands = <UpdateTransactionTagsCommand>[];
+
+  @override
+  Future<PostedTransactionResult> updateTags(
+    UpdateTransactionTagsCommand command,
+  ) async {
+    tagCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'tx-1');
+  }
+
   final basicInfoCommands = <UpdateTransactionBasicInfoCommand>[];
   final reportingFlagCommands = <UpdateTransactionReportingFlagCommand>[];
 
@@ -751,6 +933,10 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   final expenseCommands = <EditExpenseCommand>[];
   final incomeCommands = <EditIncomeCommand>[];
   final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
+  final transferCommands = <EditTransferCommand>[];
+  final refundCommands = <EditRefundCommand>[];
+  final receiptCommands = <EditReimbursementReceiptCommand>[];
+  final closeCommands = <EditReimbursementCloseCommand>[];
 
   @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {
@@ -785,22 +971,25 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   }
 
   @override
-  Future<PostedTransactionResult> editRefund(EditRefundCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> editRefund(EditRefundCommand command) async {
+    refundCommands.add(command);
+    return _posted();
   }
 
   @override
   Future<PostedTransactionResult> editReimbursementClose(
     EditReimbursementCloseCommand command,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    closeCommands.add(command);
+    return _posted();
   }
 
   @override
   Future<PostedTransactionResult> editReimbursementReceipt(
     EditReimbursementReceiptCommand command,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    receiptCommands.add(command);
+    return _posted();
   }
 
   @override
@@ -809,8 +998,11 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   }
 
   @override
-  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) {
-    throw UnimplementedError();
+  Future<PostedTransactionResult> editTransfer(
+    EditTransferCommand command,
+  ) async {
+    transferCommands.add(command);
+    return _posted();
   }
 
   @override
@@ -913,7 +1105,9 @@ class _FakeInstallmentContractAppService
   }
 
   @override
-  Future<void> updateContractDetails(UpdateContractDetailsCommand command) async {
+  Future<void> updateContractDetails(
+    UpdateContractDetailsCommand command,
+  ) async {
     updateContractCommands.add(
       UpdateContractCommand(
         contractId: command.contractId,
@@ -926,6 +1120,7 @@ class _FakeInstallmentContractAppService
     final exception = updateContractException;
     if (exception != null) throw exception;
   }
+
   Future<ContractRecalculationPreview> previewContractRecalculation(
     PreviewContractRecalculationCommand command,
   ) {

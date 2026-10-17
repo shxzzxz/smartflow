@@ -14,13 +14,14 @@ abstract interface class TransactionDetailActionDispatcher {
 
   Future<UiActionOutcome<void>> changeNote(String? value);
 
-  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds);
-
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value);
 
   Future<UiActionOutcome<void>> changePostedAt(DateTime value);
 
-  Future<UiActionOutcome<void>> changeSettlementAccount(String accountId);
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId, {
+    String? currentAccountId,
+  });
 }
 
 TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
@@ -108,100 +109,6 @@ Patch<String?> _nullableStringPatch(String? value) {
   return value == null ? const Patch<String?>.clear() : Patch.set(value);
 }
 
-Future<UiActionOutcome<void>> _changeTagsForPlainTransaction({
-  required TransactionReadModel transaction,
-  required TransactionEditAppService editService,
-  required Set<String> tagIds,
-}) {
-  switch (transaction.businessPurpose) {
-    case BusinessPurpose.dailyExpense:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editExpense(
-          EditExpenseCommand(transactionId: transaction.id, tagIds: tagIds),
-        );
-      });
-    case BusinessPurpose.dailyIncome:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editIncome(
-          EditIncomeCommand(transactionId: transaction.id, tagIds: tagIds),
-        );
-      });
-    case BusinessPurpose.transfer:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editTransfer(
-          EditTransferCommand(transactionId: transaction.id, tagIds: tagIds),
-        );
-      });
-    case BusinessPurpose.reimbursementAdvance:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editReimbursementAdvance(
-          EditReimbursementAdvanceCommand(
-            transactionId: transaction.id,
-            tagIds: tagIds,
-          ),
-        );
-      });
-    case BusinessPurpose.borrowing:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editBorrowing(
-          EditBorrowingCommand(transactionId: transaction.id, tagIds: tagIds),
-        );
-      });
-    case BusinessPurpose.debtRepayment:
-      return detailVoidOutcomeFromAction(() {
-        return editService.editRepayment(
-          EditRepaymentCommand(transactionId: transaction.id, tagIds: tagIds),
-        );
-      });
-    case BusinessPurpose.lending:
-      return detailVoidOutcomeFromAction(
-        () => (editService as ReceivableTransactionEditAppService).editLending(
-          EditLendingCommand(transactionId: transaction.id, tagIds: tagIds),
-        ),
-      );
-    case BusinessPurpose.receivableCollection:
-      return detailVoidOutcomeFromAction(
-        () => (editService as ReceivableTransactionEditAppService)
-            .editReceivableCollection(
-              EditReceivableCollectionCommand(
-                transactionId: transaction.id,
-                tagIds: tagIds,
-              ),
-            ),
-      );
-    case BusinessPurpose.badDebt:
-      return detailVoidOutcomeFromAction(
-        () => (editService as ReceivableTransactionEditAppService).editBadDebt(
-          EditBadDebtCommand(
-            transactionId: transaction.id,
-            isExcludedFromStats: transaction.isExcludedFromStats,
-            isExcludedFromBudget: transaction.isExcludedFromBudget,
-            tagIds: tagIds,
-          ),
-        ),
-      );
-    case BusinessPurpose.debtRelief:
-      return detailVoidOutcomeFromAction(
-        () =>
-            (editService as ReceivableTransactionEditAppService).editDebtRelief(
-              EditDebtReliefCommand(
-                transactionId: transaction.id,
-                isExcludedFromStats: transaction.isExcludedFromStats,
-                tagIds: tagIds,
-              ),
-            ),
-      );
-    case BusinessPurpose.refund:
-    case BusinessPurpose.reimbursementReceipt:
-    case BusinessPurpose.reimbursementClose:
-    case BusinessPurpose.openingBalance:
-    case BusinessPurpose.balanceAdjustment:
-      return Future.value(detailNotEditable(_tagEditDeniedMessage));
-  }
-}
-
-const String _tagEditDeniedMessage = '当前交易类型不支持修改标签';
-
 Future<UiActionOutcome<void>> _changePostedAt({
   required TransactionReadModel transaction,
   required TransactionUpdateAppService updateService,
@@ -251,15 +158,6 @@ final class _DefaultActionDispatcher
   }
 
   @override
-  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds) {
-    return _changeTagsForPlainTransaction(
-      transaction: transaction,
-      editService: editService,
-      tagIds: tagIds,
-    );
-  }
-
-  @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
       return updateService.updateBasicInfo(
@@ -282,8 +180,9 @@ final class _DefaultActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId,
-  ) async {
+    String accountId, {
+    String? currentAccountId,
+  }) async {
     switch (transaction.businessPurpose) {
       case BusinessPurpose.dailyExpense:
         return detailVoidOutcomeFromAction(() {
@@ -357,9 +256,56 @@ final class _DefaultActionDispatcher
               ),
         );
       case BusinessPurpose.transfer:
+        final from = transaction.accountOf(TransactionRole.settlementOut);
+        final to = transaction.accountOf(TransactionRole.settlementIn);
+        if (currentAccountId != from && currentAccountId != to) {
+          return detailInvalidCommand('无法确定要修改的转账账户');
+        }
+        return detailVoidOutcomeFromAction(
+          () => editService.editTransfer(
+            EditTransferCommand(
+              transactionId: transaction.id,
+              fromAccountId: currentAccountId == from ? accountId : null,
+              toAccountId: currentAccountId == to ? accountId : null,
+            ),
+          ),
+        );
       case BusinessPurpose.refund:
+        return detailVoidOutcomeFromAction(
+          () => editService.editRefund(
+            EditRefundCommand(
+              transactionId: transaction.id,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.amountOf(TransactionRole.settlementIn),
+              ),
+            ),
+          ),
+        );
       case BusinessPurpose.reimbursementReceipt:
+        return detailVoidOutcomeFromAction(
+          () => editService.editReimbursementReceipt(
+            EditReimbursementReceiptCommand(
+              transactionId: transaction.id,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.amountOf(TransactionRole.settlementIn),
+              ),
+            ),
+          ),
+        );
       case BusinessPurpose.reimbursementClose:
+        return detailVoidOutcomeFromAction(
+          () => editService.editReimbursementClose(
+            EditReimbursementCloseCommand(
+              transactionId: transaction.id,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.amountOf(TransactionRole.settlementIn),
+              ),
+            ),
+          ),
+        );
       case BusinessPurpose.openingBalance:
       case BusinessPurpose.balanceAdjustment:
       case BusinessPurpose.badDebt:
@@ -407,11 +353,6 @@ final class _InstallmentActionDispatcher
   }
 
   @override
-  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds) {
-    return Future.value(detailNotEditable(_tagEditDeniedMessage));
-  }
-
-  @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
       return installmentAppService.updateContractDetails(
@@ -434,8 +375,9 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId,
-  ) async {
+    String accountId, {
+    String? currentAccountId,
+  }) async {
     return detailVoidOutcomeFromAction(() {
       return installmentAppService.updateContractDetails(
         UpdateContractDetailsCommand(
@@ -483,11 +425,6 @@ final class _CreditRepaymentActionDispatcher
   }
 
   @override
-  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds) {
-    return Future.value(detailNotEditable(_tagEditDeniedMessage));
-  }
-
-  @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
       return repaymentAppService.editRepaymentTransaction(
@@ -510,8 +447,9 @@ final class _CreditRepaymentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId,
-  ) async {
+    String accountId, {
+    String? currentAccountId,
+  }) async {
     return detailVoidOutcomeFromAction(() {
       return repaymentAppService.editRepaymentTransaction(
         EditCreditRepaymentTransactionCommand(
@@ -535,7 +473,7 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> delete() async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
+    return detailNotEditable('未识别的业务来源不支持此操作');
   }
 
   @override
@@ -551,13 +489,8 @@ final class _UnknownActionDispatcher
   }
 
   @override
-  Future<UiActionOutcome<void>> changeTags(Set<String> tagIds) {
-    return Future.value(detailNotEditable(_tagEditDeniedMessage));
-  }
-
-  @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
+    return detailNotEditable('未识别的业务来源不支持此操作');
   }
 
   @override
@@ -571,8 +504,9 @@ final class _UnknownActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId,
-  ) async {
-    return detailNotEditable('该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间');
+    String accountId, {
+    String? currentAccountId,
+  }) async {
+    return detailNotEditable('未识别的业务来源不支持此操作');
   }
 }

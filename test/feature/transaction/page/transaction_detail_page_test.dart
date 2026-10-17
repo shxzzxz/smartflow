@@ -9,6 +9,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -186,7 +187,7 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await tester.pumpAndSettle();
-    expect(find.text('删除后交易及其账务记录将无法恢复。'), findsOneWidget);
+    expect(find.text('此操作将删除整个交易组及其账务记录（包括退款、报销等子交易），无法恢复。'), findsOneWidget);
     expect(find.textContaining('冲销记录'), findsNothing);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
@@ -511,8 +512,69 @@ void main() {
     );
   });
 
+  testWidgets(
+    'child reporting switches show inherited state and are disabled',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1300));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final child = TransactionReadModel(
+        id: 'child',
+        parentTransactionId: 'parent',
+        businessPurpose: BusinessPurpose.refund,
+        occurredAt: DateTime(2026, 10, 17),
+        primaryAmount: const Money(minorUnits: 1000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      );
+      final parent = TransactionReadModel(
+        id: 'parent',
+        businessPurpose: BusinessPurpose.dailyExpense,
+        occurredAt: DateTime(2026, 10, 17),
+        primaryAmount: const Money(minorUnits: 10000),
+        isExcludedFromStats: true,
+        isExcludedFromBudget: true,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            transactionDetailProvider(
+              'child',
+            ).overrideWith((ref) => Stream.value(child)),
+            transactionDetailProvider(
+              'parent',
+            ).overrideWith((ref) => Stream.value(parent)),
+            accountLookupProvider.overrideWith(
+              (ref) => Stream.value(AccountLookup(_accounts)),
+            ),
+            tagListProvider.overrideWithValue(const AsyncData([])),
+            transactionTagIdsProvider(
+              'child',
+            ).overrideWithValue(const AsyncData({})),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const TransactionDetailPage(transactionId: 'child'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final rows = tester
+          .widgetList<AppPlainSwitchRow>(find.byType(AppPlainSwitchRow))
+          .toList();
+      expect(rows, hasLength(2));
+      expect(rows.every((row) => row.value && !row.enabled), isTrue);
+      expect(find.text('跟随所属交易组设置'), findsNWidgets(2));
+      expect(
+        tester
+            .widgetList<Switch>(find.byType(Switch))
+            .every((widget) => widget.onChanged == null),
+        isTrue,
+      );
+    },
+  );
+
   testWidgets('edits transaction tags from the detail tag row', (tester) async {
-    final editService = _FakeTransactionEditAppService();
+    final updateService = _FakeTransactionUpdateAppService();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -531,10 +593,10 @@ void main() {
           transactionTagIdsProvider(
             'tx-1',
           ).overrideWithValue(const AsyncData({'tag-1'})),
-          transactionUpdateAppServiceProvider.overrideWithValue(
-            _FakeTransactionUpdateAppService(),
+          transactionUpdateAppServiceProvider.overrideWithValue(updateService),
+          transactionEditAppServiceProvider.overrideWithValue(
+            _FakeTransactionEditAppService(),
           ),
-          transactionEditAppServiceProvider.overrideWithValue(editService),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -553,7 +615,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '确定'));
     await tester.pumpAndSettle();
 
-    expect(editService.expenseCommands.single.tagIds, {'tag-1', 'tag-2'});
+    expect(updateService.tagCommands.single.tagIds, {'tag-1', 'tag-2'});
     expect(find.text('标签已更新'), findsOneWidget);
   });
 
@@ -1028,6 +1090,16 @@ Account _account(
 }
 
 class _FakeTransactionUpdateAppService implements TransactionUpdateAppService {
+  final tagCommands = <UpdateTransactionTagsCommand>[];
+
+  @override
+  Future<PostedTransactionResult> updateTags(
+    UpdateTransactionTagsCommand command,
+  ) async {
+    tagCommands.add(command);
+    return const PostedTransactionResult(transactionId: 'tx-1');
+  }
+
   final basicInfoCommands = <UpdateTransactionBasicInfoCommand>[];
 
   @override

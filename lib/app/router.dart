@@ -120,6 +120,11 @@ final appRouter = GoRouter(
             : CategorySelection.withDescendants(categoryId);
         final settlementAccountId = query['accountId'];
         final tagId = query['tagId'];
+        final accountType = switch (query['accountType']) {
+          'income' => AccountType.income,
+          'expense' => AccountType.expense,
+          _ => null,
+        };
         final untaggedOnly = query['untagged'] == '1';
         if (until == null ||
             (categoryId == null &&
@@ -137,6 +142,7 @@ final appRouter = GoRouter(
           occurredFrom: from,
           occurredUntil: until,
           scope: scope,
+          accountType: accountType,
         );
       },
     ),

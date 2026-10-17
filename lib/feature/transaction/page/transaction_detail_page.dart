@@ -75,11 +75,16 @@ class TransactionDetailPage extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final loaded = ref
+        .read(transactionDetailViewModelProvider(transactionId))
+        .value;
+    if (loaded is! TransactionDetailLoaded) return;
+    final message = loaded.behavior.deleteMessage;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除交易'),
-        content: const Text('删除后交易及其账务记录将无法恢复。'),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -120,10 +125,6 @@ class _DetailBody extends ConsumerWidget {
             ),
             children: [
               _HeroCard(hero: state.hero),
-              if (state.behavior.bannerText != null) ...[
-                const SizedBox(height: AppSpacing.space12),
-                _HandlerBanner(text: state.behavior.bannerText!),
-              ],
               if (state.refund != null || state.reimbursement != null) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _RefundReimbursementCard(
@@ -285,7 +286,11 @@ class _DetailBody extends ConsumerWidget {
       selectedId: row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
-    final outcome = await viewModel.changeAccount(editPurpose, selectedId);
+    final outcome = await viewModel.changeAccount(
+      editPurpose,
+      selectedId,
+      currentAccountId: row.accountId,
+    );
     if (!context.mounted) return;
     _handleActionOutcome(context, outcome, successMessage: '${row.label}已更新');
   }
@@ -660,12 +665,20 @@ class _ExclusionCard extends ConsumerWidget {
         if (state.showExcludeStats)
           AppPlainSwitchRow(
             label: '不计入收支',
+            description: !state.canEditReportingFlags
+                ? '跟随所属交易组设置'
+                : '当前交易组的收入、支出项不计入收支统计',
+            enabled: state.canEditReportingFlags && !state.submitting,
             value: state.excludeStats,
             onChanged: (next) => _toggleExcludeStats(context, ref, next),
           ),
         if (state.showExcludeBudget)
           AppPlainSwitchRow(
             label: '不计入预算',
+            description: !state.canEditReportingFlags
+                ? '跟随所属交易组设置'
+                : '当前交易组的支出项不占用预算，不影响收支统计',
+            enabled: state.canEditReportingFlags && !state.submitting,
             value: state.excludeBudget,
             onChanged: (next) => _toggleExcludeBudget(context, ref, next),
           ),
@@ -877,41 +890,6 @@ class _SecondaryAction extends StatelessWidget {
     return SizedBox(
       height: AppSpacing.space48,
       child: OutlinedButton(onPressed: onPressed, child: Text(label)),
-    );
-  }
-}
-
-class _HandlerBanner extends StatelessWidget {
-  const _HandlerBanner({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final styles = context.appTextStyles;
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: Row(
-          children: [
-            Icon(
-              RemixIcons.information_2_line,
-              color: colors.primary,
-              size: AppSpacing.space20,
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            Expanded(
-              child: Text(
-                text,
-                style: styles.listSupporting.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

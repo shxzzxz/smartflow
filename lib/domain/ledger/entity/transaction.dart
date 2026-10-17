@@ -121,22 +121,12 @@ class Transaction {
   void updateReportingFlags({
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
-    required BusinessPurpose parentPurpose,
   }) {
-    if (!parentPurpose.isIncomeOrExpense) {
-      this.isExcludedFromStats = false;
-      this.isExcludedFromBudget = false;
-      return;
-    }
     if (isExcludedFromStats != null) {
       this.isExcludedFromStats = isExcludedFromStats;
     }
-    if (parentPurpose.isExpense) {
-      if (isExcludedFromBudget != null) {
-        this.isExcludedFromBudget = isExcludedFromBudget;
-      }
-    } else {
-      this.isExcludedFromBudget = false;
+    if (isExcludedFromBudget != null) {
+      this.isExcludedFromBudget = isExcludedFromBudget;
     }
   }
 
@@ -197,10 +187,9 @@ class Transaction {
       );
     }
     // 结算腿允许为零:结束报销可以一分未收,还款可以只付利息。
-    final signValid =
-        roleAmountIsSigned(line.role)
-            ? line.amount.minorUnits != 0
-            : line.amount.minorUnits >= 0;
+    final signValid = roleAmountIsSigned(line.role)
+        ? line.amount.minorUnits != 0
+        : line.amount.minorUnits >= 0;
     if (!signValid) {
       LedgerViolationReason.lineAmountSignInvalid.throwException(
         message: '${line.role.name} amount has an invalid sign.',
@@ -270,8 +259,9 @@ class Transaction {
             for (final line in this.lines)
               TransactionLine(
                 id: line.id,
-                transactionId:
-                    line.transactionId == this.id ? nextId : line.transactionId,
+                transactionId: line.transactionId == this.id
+                    ? nextId
+                    : line.transactionId,
                 lineNo: line.lineNo,
                 role: line.role,
                 accountId: line.accountId,
@@ -284,10 +274,9 @@ class Transaction {
             for (final entry in this.entries)
               Entry(
                 id: entry.id,
-                transactionId:
-                    entry.transactionId == this.id
-                        ? nextId
-                        : entry.transactionId,
+                transactionId: entry.transactionId == this.id
+                    ? nextId
+                    : entry.transactionId,
                 accountId: entry.accountId,
                 direction: entry.direction,
                 amount: entry.amount,

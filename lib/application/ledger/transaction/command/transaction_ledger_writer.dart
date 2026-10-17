@@ -8,6 +8,8 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_update_resu
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
 
+import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
+
 import 'transaction_command.dart';
 
 class TransactionLedgerWriter {
@@ -28,6 +30,29 @@ class TransactionLedgerWriter {
   final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
   final TransactionTagRepository _transactionTagRepository;
+
+  Future<PostedTransactionResult> updateTags(
+    UpdateTransactionTagsCommand command,
+  ) {
+    return _transactionRunner.run(() async {
+      final transaction = await _transactionRepository.findCompleteById(
+        command.transactionId,
+      );
+      if (transaction == null) {
+        LedgerViolationReason.transactionNotFound.throwException();
+      }
+      if (transaction.parentTransactionId != null) {
+        LedgerViolationReason.parentTransactionRequired.throwException(
+          message: '子交易跟随所属交易组标签，请在顶层交易修改。',
+        );
+      }
+      await _transactionTagRepository.replaceTransactionTags(
+        transactionId: transaction.id,
+        tagIds: command.tagIds,
+      );
+      return PostedTransactionResult(transactionId: transaction.id);
+    });
+  }
 
   /// [tagIds] 为 null 表示本次重写不改标签；非 null 集合表示用该集合
   /// 整体替换交易标签（空集合即清空）。

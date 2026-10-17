@@ -13,6 +13,6 @@ List<TransactionDayGroup> budgetTransactionGroups({
   return groupTransactionsByDay(
     items: transactions,
     accountLookup: accountLookup,
-    amountSource: TransactionCategoryImpactAmountSource(categoryIds),
+    amountSource: TransactionCashflowImpactAmountSource(categoryIds),
   );
 }

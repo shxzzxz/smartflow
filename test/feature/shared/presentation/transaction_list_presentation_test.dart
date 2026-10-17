@@ -21,6 +21,103 @@ void main() {
       expect(groups.single.rows.single.amountText, '-12.34');
     });
 
+    for (final purpose in [
+      BusinessPurpose.transfer,
+      BusinessPurpose.debtRepayment,
+    ]) {
+      test('cashflow contribution uses fee entries for $purpose', () {
+        final item = _item(
+          businessPurpose: purpose,
+          primaryAmount: const Money(minorUnits: 10000),
+          impactsByAccountId: {
+            'food': const TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 500),
+              creditAmount: Money(minorUnits: 0),
+              netChange: Money(minorUnits: 500),
+            ),
+            'cash': const TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 0),
+              creditAmount: Money(minorUnits: 10500),
+              netChange: Money(minorUnits: -10500),
+            ),
+          },
+        );
+        final row = buildTransactionRowPresentation(
+          item: item,
+          accountLookup: _lookup,
+          amountSource: const TransactionCashflowImpactAmountSource({'food'}),
+        );
+        expect(row.amountText, '-5');
+        expect(row.amountTone, FinanceTone.expense);
+        expect(row.originalAmountText, isNull);
+        final budget = budgetTransactionGroups(
+          transactions: [item],
+          accountLookup: _lookup,
+          categoryId: 'food',
+        );
+        expect(budget.single.rows.single.amountText, '-5');
+      });
+    }
+
+    test(
+      'mixed repayment contribution shows the selected income or expense direction',
+      () {
+        final lookup = AccountLookup({
+          ..._lookup.byId,
+          'discount': _account('discount', '优惠', type: AccountType.income),
+        });
+        final item = _item(
+          businessPurpose: BusinessPurpose.debtRepayment,
+          primaryAmount: const Money(minorUnits: 10400),
+          impactsByAccountId: {
+            'food': const TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 500),
+              creditAmount: Money(minorUnits: 0),
+              netChange: Money(minorUnits: 500),
+            ),
+            'discount': const TransactionAccountImpact(
+              debitAmount: Money(minorUnits: 0),
+              creditAmount: Money(minorUnits: 100),
+              netChange: Money(minorUnits: 100),
+            ),
+          },
+        );
+        final expense = buildTransactionRowPresentation(
+          item: item,
+          accountLookup: lookup,
+          amountSource: const TransactionCashflowImpactAmountSource({'food'}),
+        );
+        final income = buildTransactionRowPresentation(
+          item: item,
+          accountLookup: lookup,
+          amountSource: const TransactionCashflowImpactAmountSource({
+            'discount',
+          }),
+        );
+        expect(expense.amountText, '-5');
+        expect(income.amountText, '+1');
+      },
+    );
+
+    test('refund contribution follows credit expense entries', () {
+      final item = _item(
+        businessPurpose: BusinessPurpose.refund,
+        impactsByAccountId: {
+          'food': const TransactionAccountImpact(
+            debitAmount: Money(minorUnits: 0),
+            creditAmount: Money(minorUnits: 500),
+            netChange: Money(minorUnits: -500),
+          ),
+        },
+      );
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+        amountSource: const TransactionCashflowImpactAmountSource({'food'}),
+      );
+      expect(row.amountText, '+5');
+    });
+
     test('groups transactions with daily summaries by descending date', () {
       final jan1 = DateTime(2026, 1, 1, 8);
       final jan2 = DateTime(2026, 1, 2, 9);

@@ -136,13 +136,12 @@ void main() {
     badDebt.updateReportingFlags(
       isExcludedFromStats: true,
       isExcludedFromBudget: true,
-      parentPurpose: badDebt.businessPurpose,
     );
     expect(badDebt.isExcludedFromStats, isTrue);
     expect(badDebt.isExcludedFromBudget, isTrue);
   });
 
-  test('debt relief reporting flags behave like income', () {
+  test('debt relief keeps independent reporting flags', () {
     final relief = engine.createDebtRelief(
       DebtReliefInstruction(
         amount: Money.parse('30'),
@@ -155,9 +154,8 @@ void main() {
     relief.updateReportingFlags(
       isExcludedFromStats: true,
       isExcludedFromBudget: true,
-      parentPurpose: relief.businessPurpose,
     );
     expect(relief.isExcludedFromStats, isTrue);
-    expect(relief.isExcludedFromBudget, isFalse);
+    expect(relief.isExcludedFromBudget, isTrue);
   });
 }

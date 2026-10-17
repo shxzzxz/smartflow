@@ -23,6 +23,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required List<DetailAccountRow> accountRows,
     required DetailRefund? refund,
     required DetailReimbursement? reimbursement,
+    @Default(true) bool canEditReportingFlags,
     required bool showExcludeStats,
     required bool showExcludeBudget,
     required bool excludeStats,
@@ -43,7 +44,7 @@ abstract class DetailBehaviorConfig with _$DetailBehaviorConfig {
     required DetailEditPermission canEditNote,
     required DetailEditPermission canEditSettlementAccount,
     required DetailEditPermission canEditTags,
-    String? bannerText,
+    @Default('删除后交易及其账务记录将无法恢复。') String deleteMessage,
     String? editRoute,
   }) = _DetailBehaviorConfig;
 }

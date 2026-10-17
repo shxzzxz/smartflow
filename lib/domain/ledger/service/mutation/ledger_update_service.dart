@@ -1,6 +1,5 @@
 import '../../port/transaction_group_repository.dart';
 import '../../port/transaction_repository.dart';
-import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import 'transaction_update_result.dart';
@@ -31,20 +30,6 @@ class LedgerUpdateService {
     if (transaction == null) {
       LedgerViolationReason.transactionNotFound.throwException();
     }
-    if (transaction.parentTransactionId != null &&
-        (transaction.businessPurpose == BusinessPurpose.refund ||
-            transaction.businessPurpose ==
-                BusinessPurpose.reimbursementReceipt)) {
-      final group = await _transactionGroupRepository.findByTransactionId(
-        transaction.id,
-      );
-      if (group == null) {
-        LedgerViolationReason.transactionNotFound.throwException();
-      }
-      if (group.reimbursementClosed) {
-        LedgerViolationReason.reimbursementAlreadyClosed.throwException();
-      }
-    }
     transaction.assertCanBeBasicsUpdated();
 
     transaction.updateBasicInfo(
@@ -73,6 +58,11 @@ class LedgerUpdateService {
     );
     if (group == null) {
       LedgerViolationReason.transactionNotFound.throwException();
+    }
+    if (instruction.transactionId != group.parentTransaction.id) {
+      LedgerViolationReason.parentTransactionRequired.throwException(
+        message: '子交易跟随所属交易组设置，请在顶层交易修改统计与预算配置。',
+      );
     }
     group.updateReportingFlags(
       isExcludedFromStats: instruction.isExcludedFromStats,

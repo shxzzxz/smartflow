@@ -90,20 +90,13 @@ class TransactionGroupRewriteService {
       counterpartyName: instruction.counterpartyName,
       note: instruction.note,
     );
-    if (candidateParent.businessPurpose ==
-        BusinessPurpose.reimbursementAdvance) {
-      candidateParent.updateReportingFlags(
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
-        parentPurpose: BusinessPurpose.dailyExpense,
-      );
-    } else {
-      candidateParent.updateReportingFlags(
-        isExcludedFromStats: instruction.isExcludedFromStats,
-        isExcludedFromBudget: instruction.isExcludedFromBudget,
-        parentPurpose: candidateParent.businessPurpose,
-      );
-    }
+    candidateParent.updateReportingFlags(
+      isExcludedFromStats:
+          instruction.isExcludedFromStats ?? currentParent.isExcludedFromStats,
+      isExcludedFromBudget:
+          instruction.isExcludedFromBudget ??
+          currentParent.isExcludedFromBudget,
+    );
 
     final plan = await _rewritePlanner.planParentRewrite(
       currentGroup: currentGroup,
@@ -165,13 +158,22 @@ class TransactionGroupRewriteService {
         currentRefund.businessPurpose != BusinessPurpose.refund) {
       LedgerViolationReason.refundTransactionRequired.throwException();
     }
-    if (group.reimbursementClosed) {
-      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
-    }
     final currentInstruction = _postingInstructionResolver.resolveRefund(
       currentRefund,
     );
     final editedInstruction = instruction.editPatch.applyTo(currentInstruction);
+    if (group.reimbursementClosed &&
+        (editedInstruction.amount != currentInstruction.amount ||
+            !allocationsFitAvailable(
+              requested: editedInstruction.categoryAllocations,
+              available: currentInstruction.categoryAllocations,
+            ) ||
+            !allocationsFitAvailable(
+              requested: currentInstruction.categoryAllocations,
+              available: editedInstruction.categoryAllocations,
+            ))) {
+      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
+    }
     final remaining =
         group.parentTransaction.businessPurpose ==
             BusinessPurpose.reimbursementAdvance
@@ -227,13 +229,16 @@ class TransactionGroupRewriteService {
       purpose: BusinessPurpose.reimbursementReceipt,
       targetViolation:
           LedgerViolationReason.reimbursementReceiptTransactionRequired,
-      requireOpenGroup: true,
+      requireOpenGroup: false,
     );
     final group = target.group;
     final currentReceipt = target.child;
     final remaining =
         group.reimbursementOutstanding() + currentReceipt.primaryAmount;
     final amount = instruction.amount ?? currentReceipt.primaryAmount;
+    if (group.reimbursementClosed && amount != currentReceipt.primaryAmount) {
+      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
+    }
     if (amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.reimbursementReceiptExceedsOutstanding
           .throwException();

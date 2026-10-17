@@ -14,7 +14,9 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
   TransactionReadModel? parentDetail,
   required AccountLookup accountLookup,
 }) {
-  final behavior = _behaviorConfigFor(detail, parentDetail);
+  final behavior = _behaviorConfigFor(
+    detail,
+  ).copyWith(deleteMessage: _transactionDetailDeleteMessage(detail));
   return TransactionDetailUiState.loaded(
     transactionId: transactionId,
     detail: detail,
@@ -33,31 +35,16 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     accountRows: _accountRows(detail, accountLookup, behavior),
     refund: _refundState(detail),
     reimbursement: _reimbursementState(detail),
-    showExcludeStats: canShowExcludeStats(detail),
-    showExcludeBudget: canShowExcludeBudget(detail),
-    excludeStats: detail.isExcludedFromStats,
-    excludeBudget: detail.isExcludedFromBudget,
+    canEditReportingFlags: detail.parentTransactionId == null,
+    showExcludeStats: true,
+    showExcludeBudget: true,
+    excludeStats:
+        parentDetail?.isExcludedFromStats ?? detail.isExcludedFromStats,
+    excludeBudget:
+        parentDetail?.isExcludedFromBudget ?? detail.isExcludedFromBudget,
     actionButtons: _actionButtons(detail, parentDetail, behavior),
     submitting: false,
   );
-}
-
-bool canShowExcludeStats(TransactionReadModel transaction) {
-  return isPlainTransaction(transaction) &&
-      (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-          transaction.businessPurpose == BusinessPurpose.dailyIncome ||
-          transaction.businessPurpose == BusinessPurpose.badDebt ||
-          transaction.businessPurpose == BusinessPurpose.debtRelief);
-}
-
-bool canShowExcludeBudget(TransactionReadModel transaction) {
-  return isPlainTransaction(transaction) &&
-      (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
-          transaction.businessPurpose == BusinessPurpose.badDebt);
-}
-
-bool isPlainTransaction(TransactionReadModel transaction) {
-  return transaction.ownership == null;
 }
 
 List<DetailAccountRow> _accountRows(
@@ -107,13 +94,15 @@ List<DetailAccountRow> _accountRows(
       final incoming = detail.linesOf(TransactionRole.settlementIn).toList();
       return [
         if (out.isEmpty)
-          placeholder('转出账户')
+          placeholder('转出账户', editPurpose: AccountSelectionPurpose.settlement)
         else
-          for (final line in out) info('转出账户', line),
+          for (final line in out)
+            info('转出账户', line, editPurpose: AccountSelectionPurpose.settlement),
         if (incoming.isEmpty)
-          placeholder('转入账户')
+          placeholder('转入账户', editPurpose: AccountSelectionPurpose.settlement)
         else
-          for (final line in incoming) info('转入账户', line),
+          for (final line in incoming)
+            info('转入账户', line, editPurpose: AccountSelectionPurpose.settlement),
       ];
     case BusinessPurpose.dailyIncome:
     case BusinessPurpose.refund:
@@ -121,13 +110,9 @@ List<DetailAccountRow> _accountRows(
     case BusinessPurpose.reimbursementClose:
     case BusinessPurpose.borrowing:
     case BusinessPurpose.receivableCollection:
-      final editPurpose =
-          purpose == BusinessPurpose.dailyIncome ||
-              purpose == BusinessPurpose.borrowing
-          ? purpose == BusinessPurpose.borrowing
-                ? AccountSelectionPurpose.fund
-                : AccountSelectionPurpose.settlement
-          : null;
+      final editPurpose = purpose == BusinessPurpose.borrowing
+          ? AccountSelectionPurpose.fund
+          : AccountSelectionPurpose.settlement;
       final incoming = detail.linesOf(TransactionRole.settlementIn).toList();
       final usesBreakdown =
           incoming.length > 1 &&
@@ -342,21 +327,12 @@ DetailEditPermission _accountEditPermission(
   };
 }
 
-DetailBehaviorConfig _behaviorConfigFor(
-  TransactionReadModel detail,
-  TransactionReadModel? parentDetail,
-) {
+DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
   final transaction = detail;
   const postedAtPermission = DetailEditPermission.allowed();
-  final editLocked = _isEarlierReimbursementChildLocked(detail, parentDetail);
   if (transaction.businessPurpose == BusinessPurpose.refund ||
       transaction.businessPurpose == BusinessPurpose.reimbursementReceipt ||
       transaction.businessPurpose == BusinessPurpose.reimbursementClose) {
-    final editPermission = editLocked
-        ? const DetailEditPermission.denied(
-            reason: _reimbursementClosedEditReason,
-          )
-        : const DetailEditPermission.allowed();
     return DetailBehaviorConfig(
       editRoute: switch (transaction.businessPurpose) {
         BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
@@ -365,10 +341,10 @@ DetailBehaviorConfig _behaviorConfigFor(
           '/transaction/${transaction.id}/reimbursement/edit',
         _ => null,
       },
-      canEditOccurredAt: editPermission,
-      canEditPostedAt: editPermission,
-      canEditNote: editPermission,
-      canEditSettlementAccount: editPermission,
+      canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditPostedAt: const DetailEditPermission.allowed(),
+      canEditNote: const DetailEditPermission.allowed(),
+      canEditSettlementAccount: const DetailEditPermission.allowed(),
       canEditTags: _tagEditPermissionFor(transaction),
     );
   }
@@ -410,7 +386,6 @@ DetailBehaviorConfig _behaviorConfigFor(
     final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
     if (role != null) {
       return DetailBehaviorConfig(
-        bannerText: '此为分期合同放款，金额、账户、日期等需在合同详情页内调整',
         editRoute: '/installments/${ownership.ownerId}',
         canEditOccurredAt: const DetailEditPermission.allowed(),
         canEditPostedAt: postedAtPermission,
@@ -426,7 +401,6 @@ DetailBehaviorConfig _behaviorConfigFor(
     final repaymentType = _repaymentTypeFromOwnerRole(ownership.ownerRole);
     if (repaymentType != null) {
       return DetailBehaviorConfig(
-        bannerText: '此为信贷${repaymentType.label}交易，金额调整请在信贷页面处理',
         editRoute: repaymentType == RepaymentType.bill
             ? '/repayments/${ownership.ownerId}/edit'
                   '?transactionId=${transaction.id}'
@@ -441,44 +415,22 @@ DetailBehaviorConfig _behaviorConfigFor(
   }
 
   return DetailBehaviorConfig(
-    bannerText:
-        '该交易属于当前版本未识别的业务来源：${ownership.ownerType}；'
-        '仅允许修改备注和入账时间',
     canEditOccurredAt: const DetailEditPermission.denied(
-      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间',
+      reason: '未识别的业务来源不支持修改交易时间或账户',
     ),
     canEditPostedAt: postedAtPermission,
     canEditNote: const DetailEditPermission.allowed(),
     canEditSettlementAccount: const DetailEditPermission.denied(
-      reason: '该交易属于当前版本未识别的业务来源，仅允许修改备注和入账时间',
+      reason: '未识别的业务来源不支持修改交易时间或账户',
     ),
     canEditTags: _tagEditPermissionFor(transaction),
   );
 }
 
 DetailEditPermission _tagEditPermissionFor(TransactionReadModel transaction) {
-  if (transaction.ownership != null) {
-    return const DetailEditPermission.denied(reason: _tagEditDeniedReason);
-  }
-  return switch (transaction.businessPurpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.dailyIncome ||
-    BusinessPurpose.transfer ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.borrowing ||
-    BusinessPurpose.debtRepayment => const DetailEditPermission.allowed(),
-    BusinessPurpose.lending ||
-    BusinessPurpose.receivableCollection ||
-    BusinessPurpose.badDebt ||
-    BusinessPurpose.debtRelief => const DetailEditPermission.allowed(),
-    BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose ||
-    BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => const DetailEditPermission.denied(
-      reason: _tagEditDeniedReason,
-    ),
-  };
+  return transaction.parentTransactionId == null
+      ? const DetailEditPermission.allowed()
+      : const DetailEditPermission.denied(reason: '跟随所属交易组标签，请在顶层交易修改');
 }
 
 bool _isEarlierReimbursementChildLocked(
@@ -494,7 +446,6 @@ bool _isEarlierReimbursementChildLocked(
 }
 
 const String _reimbursementClosedEditReason = '报销已结束，请先删除结束报销';
-const String _tagEditDeniedReason = '当前交易类型不支持修改标签';
 
 RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
   if (ownerRole == null) return null;
@@ -503,4 +454,19 @@ RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
   } on ArgumentError {
     return null;
   }
+}
+
+String _transactionDetailDeleteMessage(TransactionReadModel detail) {
+  final owner = detail.ownership;
+  if (owner?.ownerType == installmentOwnerType &&
+      owner?.ownerId != null &&
+      InstallmentOwnerRole.fromWire(owner?.ownerRole) != null) {
+    return '此操作将删除关联分期合同、还款计划及其关联账务记录，无法恢复。';
+  }
+  if (owner?.ownerType == creditRepaymentOwnerType && owner?.ownerId != null) {
+    return '此操作将删除还款记录及其关联交易，并重新计算相关账单与合同的还款状态，无法恢复。';
+  }
+  return detail.parentTransactionId == null
+      ? '此操作将删除整个交易组及其账务记录（包括退款、报销等子交易），无法恢复。'
+      : '此操作仅删除当前子交易及其账务记录，无法恢复。';
 }

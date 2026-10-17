@@ -7,6 +7,10 @@ import 'transaction_command.dart';
 import 'transaction_ledger_writer.dart';
 
 abstract interface class TransactionUpdateAppService {
+  Future<PostedTransactionResult> updateTags(
+    UpdateTransactionTagsCommand command,
+  );
+
   Future<PostedTransactionResult> updateBasicInfo(
     UpdateTransactionBasicInfoCommand command,
   );
@@ -36,6 +40,13 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
 
   final TransactionLedgerWriter _ledgerWriter;
   final LedgerUpdateService _ledgerUpdateService;
+
+  @override
+  Future<PostedTransactionResult> updateTags(
+    UpdateTransactionTagsCommand command,
+  ) {
+    return _ledgerWriter.updateTags(command);
+  }
 
   @override
   Future<PostedTransactionResult> updateBasicInfo(

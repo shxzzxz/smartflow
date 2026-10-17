@@ -260,6 +260,70 @@ void main() {
     expect(balance.limit, isNull);
   });
 
+  test(
+    'tag contribution queries match income and expense entries only',
+    () async {
+      final service = _RecordingTransactionQueryService();
+      final container = ProviderContainer(
+        overrides: [
+          transactionQueryServiceProvider.overrideWithValue(service),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(
+              AccountLookup({
+                'cash': _account('cash', 'cash', AccountType.asset),
+                'fee': _account('fee', 'fee', AccountType.expense),
+                'interest': _account(
+                  'interest',
+                  'interest',
+                  AccountType.income,
+                ),
+              }),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final provider = statisticsTransactionsProvider(
+        category: null,
+        settlementAccountId: null,
+        tagId: 'travel',
+        untaggedOnly: false,
+        occurredFrom: DateTime(2026, 10),
+        occurredUntil: DateTime(2026, 11),
+        scope: StatisticsDrilldownScope.cashflow,
+      );
+      final sub = container.listen(provider, (_, _) {});
+      addTearDown(sub.close);
+      await container.read(provider.future);
+      expect(service.queries.single.match.categoryAccountIds, {
+        'fee',
+        'interest',
+      });
+      expect(service.queries.single.tagIds, {'travel'});
+      expect(service.queries.single.scope, same(TransactionScopeFilter.stats));
+      expect(service.queries.single.topLevelOnly, isFalse);
+      for (final type in [AccountType.income, AccountType.expense]) {
+        final directional = statisticsTransactionsProvider(
+          category: null,
+          settlementAccountId: null,
+          tagId: 'travel',
+          untaggedOnly: false,
+          occurredFrom: DateTime(2026, 10),
+          occurredUntil: DateTime(2026, 11),
+          scope: StatisticsDrilldownScope.cashflow,
+          accountType: type,
+        );
+        final sub = container.listen(directional, (_, _) {});
+        addTearDown(sub.close);
+        await container.read(directional.future);
+        expect(
+          service.queries.last.match.categoryAccountIds,
+          type == AccountType.income ? {'interest'} : {'fee'},
+        );
+      }
+    },
+  );
+
   test('re-resolves category ids when the account lookup changes', () async {
     final accountLookups = StreamController<AccountLookup>();
     addTearDown(accountLookups.close);

@@ -108,7 +108,7 @@ void main() {
     expect(editService.deletedIds, ['plain-1']);
   });
 
-  test('批量标签操作会跳过不支持标签的交易', () async {
+  test('批量标签操作支持所有顶层交易类型', () async {
     final tagRepository = FakeTransactionTagRepository();
     final service = _service(
       tagRepository: tagRepository,
@@ -126,10 +126,10 @@ void main() {
       ),
     );
 
-    expect(result.updatedGroupCount, 1);
-    expect(result.skippedGroupCount, 1);
+    expect(result.updatedGroupCount, 2);
+    expect(result.skippedGroupCount, 0);
     expect(await tagRepository.transactionTagIds('tx-1'), {'new'});
-    expect(await tagRepository.transactionTagIds('tx-2'), isEmpty);
+    expect(await tagRepository.transactionTagIds('tx-2'), {'new'});
   });
 }
 

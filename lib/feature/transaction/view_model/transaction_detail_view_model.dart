@@ -75,9 +75,16 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         DetailEditDenied(:final reason) => Future.value(
           detailNotEditable(reason),
         ),
-        DetailEditAllowed() => _actionDispatcherFor(
-          loaded.detail,
-        ).changeTags(Set.of(tagIds)),
+        DetailEditAllowed() => detailVoidOutcomeFromAction(
+          () => ref
+              .read(transactionUpdateAppServiceProvider)
+              .updateTags(
+                UpdateTransactionTagsCommand(
+                  transactionId: loaded.detail.id,
+                  tagIds: tagIds,
+                ),
+              ),
+        ),
         _ => Future.value(detailNotEditable('当前交易类型不支持修改标签')),
       },
     );
@@ -97,16 +104,18 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> changeAccount(
     AccountSelectionPurpose purpose,
-    String accountId,
-  ) {
+    String accountId, {
+    String? currentAccountId,
+  }) {
     return _runAction((loaded) async {
       switch (purpose) {
         case AccountSelectionPurpose.settlement:
         case AccountSelectionPurpose.fund:
         case AccountSelectionPurpose.repaymentSource:
-          return _actionDispatcherFor(
-            loaded.detail,
-          ).changeSettlementAccount(accountId);
+          return _actionDispatcherFor(loaded.detail).changeSettlementAccount(
+            accountId,
+            currentAccountId: currentAccountId,
+          );
         case AccountSelectionPurpose.reimbursementReceivable:
           await ref
               .read(transactionEditAppServiceProvider)
@@ -129,8 +138,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> toggleExcludeStats(bool value) {
     return _runAction((loaded) async {
-      if (!isPlainTransaction(loaded.detail)) {
-        return detailNotEditable('该交易当前不可修改统计口径');
+      if (loaded.detail.parentTransactionId != null) {
+        return detailNotEditable('跟随所属交易组设置，请在顶层交易修改');
       }
       await ref
           .read(transactionUpdateAppServiceProvider)
@@ -146,8 +155,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> toggleExcludeBudget(bool value) {
     return _runAction((loaded) async {
-      if (!isPlainTransaction(loaded.detail)) {
-        return detailNotEditable('该交易当前不可修改统计口径');
+      if (loaded.detail.parentTransactionId != null) {
+        return detailNotEditable('跟随所属交易组设置，请在顶层交易修改');
       }
       await ref
           .read(transactionUpdateAppServiceProvider)

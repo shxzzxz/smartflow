@@ -83,7 +83,7 @@ void main() {
       );
       expect(edit.enabled, isFalse);
       expect(edit.deniedReason, '报销已结束，请先删除结束报销');
-      expect(state.behavior.canEditNote, isA<DetailEditDenied>());
+      expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
     },
   );
 
@@ -199,7 +199,19 @@ void main() {
     final state = _build(purpose: BusinessPurpose.debtRelief);
 
     expect(state.showExcludeStats, isTrue);
-    expect(state.showExcludeBudget, isFalse);
+    expect(state.showExcludeBudget, isTrue);
+  });
+
+  test('only top-level detail allows changing reporting flags', () {
+    final parent = _build(
+      purpose: BusinessPurpose.transfer,
+      parentTransactionId: null,
+    );
+    final child = _build(purpose: BusinessPurpose.refund);
+    expect(parent.canEditReportingFlags, isTrue);
+    expect(child.canEditReportingFlags, isFalse);
+    expect(child.showExcludeStats, isTrue);
+    expect(child.showExcludeBudget, isTrue);
   });
 
   test('uses fund accounts for lending payment account edits', () {
