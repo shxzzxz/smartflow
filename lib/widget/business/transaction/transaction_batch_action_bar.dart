@@ -7,10 +7,10 @@ import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 
-/// 首页批量模式的底部动作栏。占用底部导航栏的槽位，因此复用导航栏的高度、
+/// 交易批量模式的底部动作栏。占用底部导航栏的槽位，因此复用导航栏的高度、
 /// 图标字形和分割线，让两者互换时几何连续；选中计数由页头承载，这里只放动作。
-class HomeBatchActionBar extends StatefulWidget {
-  const HomeBatchActionBar({
+class TransactionBatchActionBar extends StatefulWidget {
+  const TransactionBatchActionBar({
     required this.selectedCount,
     required this.enabled,
     required this.onDelete,
@@ -26,10 +26,11 @@ class HomeBatchActionBar extends StatefulWidget {
   final VoidCallback onManageTags;
 
   @override
-  State<HomeBatchActionBar> createState() => _HomeBatchActionBarState();
+  State<TransactionBatchActionBar> createState() =>
+      _TransactionBatchActionBarState();
 }
 
-class _HomeBatchActionBarState extends State<HomeBatchActionBar>
+class _TransactionBatchActionBarState extends State<TransactionBatchActionBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _entrance = AnimationController(
     vsync: this,
@@ -113,21 +114,20 @@ class _TopEdge extends StatelessWidget {
 
     return SizedBox(
       height: AppSpacing.space2,
-      child:
-          processing
-              ? const LinearProgressIndicator(minHeight: AppSpacing.space2)
-              : Align(
-                alignment: Alignment.topCenter,
-                child: ColoredBox(
-                  color: colors.outlineVariant.withValues(
-                    alpha: AppComponentTokens.mutedOutlineOpacity,
-                  ),
-                  child: const SizedBox(
-                    width: double.infinity,
-                    height: AppComponentTokens.outlineWidth,
-                  ),
+      child: processing
+          ? const LinearProgressIndicator(minHeight: AppSpacing.space2)
+          : Align(
+              alignment: Alignment.topCenter,
+              child: ColoredBox(
+                color: colors.outlineVariant.withValues(
+                  alpha: AppComponentTokens.mutedOutlineOpacity,
+                ),
+                child: const SizedBox(
+                  width: double.infinity,
+                  height: AppComponentTokens.outlineWidth,
                 ),
               ),
+            ),
     );
   }
 }
@@ -151,12 +151,9 @@ class _BatchAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final baseColor = destructive ? colors.error : colors.onSurface;
-    final color =
-        onPressed == null
-            ? baseColor.withValues(
-              alpha: AppComponentTokens.disabledContentOpacity,
-            )
-            : baseColor;
+    final color = onPressed == null
+        ? baseColor.withValues(alpha: AppComponentTokens.disabledContentOpacity)
+        : baseColor;
 
     return Expanded(
       child: Tooltip(

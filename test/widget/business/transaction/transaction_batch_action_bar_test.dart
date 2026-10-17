@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/token/motion.dart';
-import 'package:smartflow/feature/home/widget/home_batch_action_bar.dart';
+import 'package:smartflow/widget/business/transaction/transaction_batch_action_bar.dart';
 
 void main() {
   Future<void> pumpBar(
@@ -18,7 +18,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.light(),
         home: Scaffold(
-          bottomNavigationBar: HomeBatchActionBar(
+          bottomNavigationBar: TransactionBatchActionBar(
             selectedCount: selectedCount,
             enabled: enabled,
             processing: processing,
@@ -60,15 +60,20 @@ void main() {
   testWidgets('批量操作栏动作等分铺满并与导航栏同高', (tester) async {
     await pumpBar(tester, selectedCount: 1);
 
-    final barWidth = tester.getSize(find.byType(HomeBatchActionBar)).width;
-    final tagWidth = tester.getSize(find.byWidget(actionOf(tester, '标签'))).width;
-    final deleteWidth =
-        tester.getSize(find.byWidget(actionOf(tester, '删除'))).width;
+    final barWidth = tester
+        .getSize(find.byType(TransactionBatchActionBar))
+        .width;
+    final tagWidth = tester
+        .getSize(find.byWidget(actionOf(tester, '标签')))
+        .width;
+    final deleteWidth = tester
+        .getSize(find.byWidget(actionOf(tester, '删除')))
+        .width;
 
     expect(tagWidth, deleteWidth);
     expect(tagWidth + deleteWidth, barWidth);
     expect(
-      tester.getSize(find.byType(HomeBatchActionBar)).height,
+      tester.getSize(find.byType(TransactionBatchActionBar)).height,
       greaterThanOrEqualTo(AppComponentTokens.navigationBarHeight),
     );
   });

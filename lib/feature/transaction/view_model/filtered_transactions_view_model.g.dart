@@ -258,7 +258,7 @@ final class FilteredTransactionsViewModelProvider
 }
 
 String _$filteredTransactionsViewModelHash() =>
-    r'21a4a2e95d04126e1197e54b289b78a5d28e9082';
+    r'0cc291c10adf8ea6c44496c1fbcbb3f886212caf';
 
 final class FilteredTransactionsViewModelFamily extends $Family
     with

@@ -7,7 +7,6 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/shared/app_settings_store.dart';
-import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/spacing.dart';
@@ -21,7 +20,8 @@ import 'package:smartflow/feature/shared/presentation/transaction_list_presentat
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../view_model/home_view_model.dart';
 import '../widget/home_pull_to_create.dart';
-import '../widget/home_batch_action_bar.dart';
+import '../../../widget/business/transaction/transaction_batch_action_bar.dart';
+import '../../../widget/business/transaction/transaction_batch_tag_action_sheet.dart';
 import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/tag/tag_multi_select_sheet.dart';
@@ -190,7 +190,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               )
             : null,
         bottomNavigationBar: _batchMode
-            ? HomeBatchActionBar(
+            ? TransactionBatchActionBar(
                 selectedCount: selectedVisibleCount,
                 enabled: !_batchSubmitting,
                 processing: _batchSubmitting,
@@ -346,14 +346,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
     if (!mounted) return;
 
-    final action = await showModalBottomSheet<_BatchTagAction>(
+    final action = await showModalBottomSheet<TransactionTagBatchOperation>(
       context: context,
       showDragHandle: true,
-      builder: (context) => const _BatchTagActionSheet(),
+      builder: (context) => const TransactionBatchTagActionSheet(),
     );
     if (action == null || !mounted) return;
 
-    if (action == _BatchTagAction.clear) {
+    if (action == TransactionTagBatchOperation.clear) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -385,12 +385,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       tags: tags,
       selectedIds: const {},
-      allowCreate: action == _BatchTagAction.add,
+      allowCreate: action == TransactionTagBatchOperation.add,
     );
     if (result == null || !mounted || result.selectedTagIds.isEmpty) return;
     await _runTagBatch(
       ids: ids,
-      operation: action == _BatchTagAction.add
+      operation: action == TransactionTagBatchOperation.add
           ? TransactionTagBatchOperation.add
           : TransactionTagBatchOperation.remove,
       tagIds: result.selectedTagIds,
@@ -566,48 +566,6 @@ class _HomeSettingsMenu extends ConsumerWidget {
           onChanged: notifier.setCashflowPeriodMetric,
         ),
       ],
-    );
-  }
-}
-
-enum _BatchTagAction { add, remove, clear }
-
-class _BatchTagActionSheet extends StatelessWidget {
-  const _BatchTagActionSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              0,
-              AppSpacing.space16,
-              AppSpacing.space8,
-            ),
-            child: Text('标签管理', style: context.appTextStyles.subsectionTitle),
-          ),
-          ListTile(
-            leading: const Icon(RemixIcons.add_line),
-            title: const Text('新增标签'),
-            onTap: () => Navigator.of(context).pop(_BatchTagAction.add),
-          ),
-          ListTile(
-            leading: const Icon(RemixIcons.subtract_line),
-            title: const Text('删除标签'),
-            onTap: () => Navigator.of(context).pop(_BatchTagAction.remove),
-          ),
-          ListTile(
-            leading: const Icon(RemixIcons.delete_bin_line),
-            title: const Text('清空标签'),
-            onTap: () => Navigator.of(context).pop(_BatchTagAction.clear),
-          ),
-        ],
-      ),
     );
   }
 }

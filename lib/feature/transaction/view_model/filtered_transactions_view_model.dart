@@ -53,6 +53,7 @@ Stream<List<TransactionReadModel>> filteredTransactions(
 @riverpod
 class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
   List<TransactionReadModel> _previousItems = const [];
+  var _batch = const FilteredTransactionBatchState();
 
   @override
   FilteredTransactionsState build(
@@ -125,6 +126,104 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     };
   }
 
+  void enterBatchMode(String transactionId) {
+    if (target != FilteredTransactionTarget.category ||
+        _batch.active ||
+        state is! FilteredTransactionsLoaded) {
+      return;
+    }
+    _setBatch(
+      FilteredTransactionBatchState(
+        active: true,
+        selectedIds: Set.unmodifiable({transactionId}),
+      ),
+    );
+  }
+
+  void exitBatchMode() {
+    if (_batch.submitting) return;
+    _setBatch(const FilteredTransactionBatchState());
+  }
+
+  void setTransactionSelected(String transactionId, bool selected) {
+    if (!_batch.active || _batch.submitting) return;
+    final ids = {..._batch.selectedIds};
+    if (selected) {
+      ids.add(transactionId);
+    } else {
+      ids.remove(transactionId);
+    }
+    _setBatch(_batch.copyWith(selectedIds: ids));
+  }
+
+  void toggleSelectAll() {
+    final current = state;
+    if (!_batch.active ||
+        _batch.submitting ||
+        current is! FilteredTransactionsLoaded) {
+      return;
+    }
+    final ids = current.visibleTransactionIds;
+    final selected = _batch.selectedIds.intersection(ids);
+    final next = {..._batch.selectedIds};
+    if (selected.length == ids.length) {
+      next.removeAll(ids);
+    } else {
+      next.addAll(ids);
+    }
+    _setBatch(_batch.copyWith(selectedIds: next));
+  }
+
+  Future<List<TagView>> loadTags() {
+    return ref.read(tagApplicationServiceProvider).listTags();
+  }
+
+  Future<TransactionCleanupResult> deleteTransactions(Set<String> ids) async {
+    _setBatch(_batch.copyWith(submitting: true));
+    try {
+      final result = await ref
+          .read(transactionBatchOperationAppServiceProvider)
+          .deleteTransactions(
+            BatchDeleteTransactionsCommand(transactionIds: ids),
+          );
+      if (ref.mounted && result.skippedGroupCount == 0) {
+        _setBatch(const FilteredTransactionBatchState());
+      }
+      return result;
+    } finally {
+      if (ref.mounted) _setBatch(_batch.copyWith(submitting: false));
+    }
+  }
+
+  Future<TransactionBatchTagResult> updateTags({
+    required Set<String> ids,
+    required TransactionTagBatchOperation operation,
+    required Set<String> tagIds,
+  }) async {
+    _setBatch(_batch.copyWith(submitting: true));
+    try {
+      return await ref
+          .read(transactionBatchOperationAppServiceProvider)
+          .updateTags(
+            BatchTransactionTagsCommand(
+              transactionIds: ids,
+              operation: operation,
+              tagIds: tagIds,
+            ),
+          );
+    } finally {
+      if (ref.mounted) _setBatch(_batch.copyWith(submitting: false));
+    }
+  }
+
+  void _setBatch(FilteredTransactionBatchState batch) {
+    _batch = batch;
+    final current = state;
+    if (current is FilteredTransactionsLoaded) {
+      state = current.copyWith(batch: batch);
+    }
+  }
+
   void loadMore() {
     if (state case FilteredTransactionsLoaded(
       hasMore: true,
@@ -170,6 +269,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,
+      batch: _batch,
     );
   }
 }
@@ -255,6 +355,7 @@ sealed class FilteredTransactionsState {
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
+    FilteredTransactionBatchState batch,
   }) = FilteredTransactionsLoaded;
 }
 
@@ -277,6 +378,7 @@ final class FilteredTransactionsLoaded extends FilteredTransactionsState {
     required this.hasMore,
     required this.isLoadingMore,
     this.loadMoreErrorMessage,
+    this.batch = const FilteredTransactionBatchState(),
   });
 
   final String title;
@@ -286,8 +388,52 @@ final class FilteredTransactionsLoaded extends FilteredTransactionsState {
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final FilteredTransactionBatchState batch;
+
+  Set<String> get visibleTransactionIds => {
+    for (final row in rows) row.transactionId,
+  };
+
+  Set<String> get selectedVisibleIds =>
+      batch.selectedIds.intersection(visibleTransactionIds);
+
+  FilteredTransactionsLoaded copyWith({FilteredTransactionBatchState? batch}) {
+    return FilteredTransactionsLoaded(
+      title: title,
+      subtitle: subtitle,
+      emptyMessage: emptyMessage,
+      groups: groups,
+      hasMore: hasMore,
+      isLoadingMore: isLoadingMore,
+      loadMoreErrorMessage: loadMoreErrorMessage,
+      batch: batch ?? this.batch,
+    );
+  }
 
   List<TransactionRowPresentation> get rows => [
     for (final group in groups) ...group.rows,
   ];
+}
+
+class FilteredTransactionBatchState {
+  const FilteredTransactionBatchState({
+    this.active = false,
+    this.submitting = false,
+    this.selectedIds = const {},
+  });
+
+  final bool active;
+  final bool submitting;
+  final Set<String> selectedIds;
+
+  FilteredTransactionBatchState copyWith({
+    bool? submitting,
+    Set<String>? selectedIds,
+  }) {
+    return FilteredTransactionBatchState(
+      active: active,
+      submitting: submitting ?? this.submitting,
+      selectedIds: Set.unmodifiable(selectedIds ?? this.selectedIds),
+    );
+  }
 }
