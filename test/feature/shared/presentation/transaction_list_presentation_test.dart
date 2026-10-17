@@ -121,6 +121,115 @@ void main() {
       expect(row.canQuickEdit, true);
     });
 
+    for (final scenario in [
+      (
+        BusinessPurpose.transfer,
+        TransactionRole.settlementOut,
+        'cash',
+        TransactionRole.settlementIn,
+        'card',
+        '现金 -> 银行卡',
+      ),
+      (
+        BusinessPurpose.lending,
+        TransactionRole.settlementOut,
+        'cash',
+        TransactionRole.receivable,
+        'receivable',
+        '现金 -> 应收款',
+      ),
+      (
+        BusinessPurpose.borrowing,
+        TransactionRole.liability,
+        'loan',
+        TransactionRole.settlementIn,
+        'cash',
+        '借款 -> 现金',
+      ),
+      (
+        BusinessPurpose.debtRepayment,
+        TransactionRole.settlementOut,
+        'cash',
+        TransactionRole.liability,
+        'loan',
+        '现金 -> 借款',
+      ),
+      (
+        BusinessPurpose.receivableCollection,
+        TransactionRole.receivable,
+        'receivable',
+        TransactionRole.settlementIn,
+        'cash',
+        '应收款 -> 现金',
+      ),
+    ]) {
+      test('shows both account endpoints for ${scenario.$1.name}', () {
+        final item = TransactionReadModel(
+          id: 'flow',
+          businessPurpose: scenario.$1,
+          occurredAt: DateTime(2026, 10, 17),
+          primaryAmount: const Money(minorUnits: 10000),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          lines: [
+            TransactionLine(
+              id: 'out',
+              transactionId: 'flow',
+              lineNo: 1,
+              role: scenario.$2,
+              accountId: scenario.$3,
+              amount: const Money(minorUnits: 10000),
+            ),
+            TransactionLine(
+              id: 'in',
+              transactionId: 'flow',
+              lineNo: 2,
+              role: scenario.$4,
+              accountId: scenario.$5,
+              amount: const Money(minorUnits: 10000),
+            ),
+          ],
+        );
+        final lookup = AccountLookup({
+          ..._accounts,
+          'receivable': _account('receivable', '应收款', iconKey: 'receivable'),
+          'loan': _account(
+            'loan',
+            '借款',
+            type: AccountType.liability,
+            iconKey: 'loan',
+          ),
+        });
+        final row = buildTransactionRowPresentation(
+          item: item,
+          accountLookup: lookup,
+        );
+        final flow = row.accountFlow;
+
+        expect(transactionAccountLabel(item, lookup), scenario.$6);
+        expect(
+          flow.effectiveOutEndpoints.single.label,
+          lookup.find(scenario.$3)!.name,
+        );
+        expect(
+          flow.effectiveInEndpoints.single.label,
+          lookup.find(scenario.$5)!.name,
+        );
+        expect(
+          flow.effectiveOutEndpoints.single.iconKey,
+          lookup.find(scenario.$3)!.iconKey,
+        );
+        expect(
+          flow.effectiveInEndpoints.single.iconKey,
+          lookup.find(scenario.$5)!.iconKey,
+        );
+        expect(flow.separator, '->');
+        expect(row.amountText, '100');
+        expect(row.iconKey, isNull);
+        expect(row.copyWith(selected: true).businessPurpose, scenario.$1);
+      });
+    }
+
     test('keeps every combined payment account for icon-only rendering', () {
       final item = TransactionReadModel(
         id: 'combined-payment',

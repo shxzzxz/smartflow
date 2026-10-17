@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/import/import_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart'
+    show BusinessPurpose;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/import/presentation/import_presentation.dart';
 
@@ -47,11 +49,10 @@ void main() {
       defaultMappings: const {},
       effectiveMappings: {
         const ImportMappingKey(
-              source: ImportSource.yimu,
-              entityKind: ImportEntityKind.account,
-              sourceEntityKey: 'account:cash',
-            ):
-            'cash',
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.account,
+          sourceEntityKey: 'account:cash',
+        ): 'cash',
       },
       suggestions: const [],
       targets: const [
@@ -92,6 +93,10 @@ void main() {
     );
     final preview = buildImportPreviewGroups(review);
     expect(preview.single.rows.single.title, '转账');
+    expect(
+      preview.single.rows.single.businessPurpose,
+      BusinessPurpose.transfer,
+    );
     expect(preview.single.rows.single.amountText, '10.00');
     expect(preview.single.rows.single.accountFlow.out?.label, '资产 / 现金');
     expect(takeImportPreviewRows(preview, 1).single.rows, hasLength(1));
@@ -375,19 +380,17 @@ ImportPlanReview _previewReview({
       ImportGroupReview(
         index: 0,
         group: group,
-        issues:
-            includeWarning
-                ? [
-                  ImportIssue(
-                    code: 'warning',
-                    message: '来源记录需要确认。',
-                    severity:
-                        blocking
-                            ? ImportIssueSeverity.blocking
-                            : ImportIssueSeverity.warning,
-                  ),
-                ]
-                : const [],
+        issues: includeWarning
+            ? [
+                ImportIssue(
+                  code: 'warning',
+                  message: '来源记录需要确认。',
+                  severity: blocking
+                      ? ImportIssueSeverity.blocking
+                      : ImportIssueSeverity.warning,
+                ),
+              ]
+            : const [],
         isExactDuplicate: exactDuplicate,
         isSuspectedDuplicate: suspectedDuplicate,
       ),

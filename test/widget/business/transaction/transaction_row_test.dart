@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -13,6 +14,115 @@ import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
 
 void main() {
+  for (final purpose in [
+    BusinessPurpose.dailyExpense,
+    BusinessPurpose.dailyIncome,
+    BusinessPurpose.reimbursementAdvance,
+  ]) {
+    testWidgets('renders multiple categories for ${purpose.name}', (
+      tester,
+    ) async {
+      final row = buildTransactionRowPresentation(
+        item: _item(purpose: purpose, multipleCategories: true),
+        accountLookup: _lookup,
+      ).copyWith(dimmed: true);
+      expect(row.hasMultipleCategories, isTrue);
+      expect(row.iconKey, isNull);
+      expect(row.title, '多类别');
+      expect(row.amountText, switch (purpose) {
+        BusinessPurpose.dailyIncome => '+12.34',
+        BusinessPurpose.dailyExpense => '-12.34',
+        _ => '12.34',
+      });
+      expect(row.accountFlow.singleEndpoint.label, '现金');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: TransactionRow(presentation: row)),
+        ),
+      );
+      expect(find.text('多类别'), findsOneWidget);
+      expect(find.byIcon(RemixIcons.layout_grid_line), findsOneWidget);
+      expect(find.byType(CategoryAvatar), findsNothing);
+      expect(find.text(row.amountText), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: TransactionRow(presentation: row.copyWith(selectable: true)),
+          ),
+        ),
+      );
+      expect(find.byType(Checkbox), findsOneWidget);
+      expect(find.byIcon(RemixIcons.layout_grid_line), findsNothing);
+    });
+  }
+
+  for (final scenario in [
+    (BusinessPurpose.transfer, RemixIcons.arrow_left_right_line, '现金', '银行卡'),
+    (BusinessPurpose.lending, RemixIcons.logout_box_r_line, '现金', '应收款'),
+    (BusinessPurpose.debtRepayment, RemixIcons.refund_2_line, '现金', '借款'),
+    (BusinessPurpose.borrowing, RemixIcons.hand_coin_line, '借款', '现金'),
+    (
+      BusinessPurpose.receivableCollection,
+      RemixIcons.login_box_line,
+      '应收款',
+      '现金',
+    ),
+  ]) {
+    testWidgets(
+      'renders purpose icon and account direction for ${scenario.$1}',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark(),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 320,
+                  child: TransactionRow(
+                    presentation: TransactionRowPresentation(
+                      transactionId: 'flow',
+                      businessPurpose: scenario.$1,
+                      iconKey: null,
+                      title: '交易',
+                      subtitle: '08:30',
+                      amountText: '100',
+                      amountTone: FinanceTone.neutral,
+                      accountFlow: TransactionAccountFlowPresentation(
+                        out: AccountEndpointPresentation(label: scenario.$3),
+                        in_: AccountEndpointPresentation(label: scenario.$4),
+                      ),
+                      badges: const [],
+                      canQuickEdit: false,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(find.byIcon(scenario.$2), findsOneWidget);
+        expect(find.byType(CategoryAvatar), findsNothing);
+        expect(find.text(scenario.$3), findsOneWidget);
+        expect(find.text(scenario.$4), findsOneWidget);
+        expect(find.text('->'), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.text(scenario.$3)).dx,
+          lessThan(tester.getTopLeft(find.text('->')).dx),
+        );
+        expect(
+          tester.getTopLeft(find.text('->')).dx,
+          lessThan(tester.getTopLeft(find.text(scenario.$4)).dx),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('renders controlled transaction row presentation', (
     tester,
   ) async {
@@ -487,17 +597,49 @@ TransactionRowPresentation _presentationWithBadgeLabels(
   );
 }
 
-TransactionReadModel _item() {
+TransactionReadModel _item({
+  BusinessPurpose purpose = BusinessPurpose.dailyExpense,
+  bool multipleCategories = false,
+}) {
   return TransactionReadModel(
     id: 'tx-1',
-    businessPurpose: BusinessPurpose.dailyExpense,
+    businessPurpose: purpose,
     occurredAt: DateTime(2026, 1, 1, 8, 30),
     primaryAmount: const Money(minorUnits: 1234),
     isExcludedFromStats: true,
     isExcludedFromBudget: false,
-    lines: const [
-      TransactionLine(id: 'category', transactionId: 'tx-1', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
-      TransactionLine(id: 'settlement', transactionId: 'tx-1', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+    lines: [
+      TransactionLine(
+        id: 'category',
+        transactionId: 'tx-1',
+        lineNo: 1,
+        role: purpose == BusinessPurpose.reimbursementAdvance
+            ? TransactionRole.reimbursementExpenseCategory
+            : TransactionRole.category,
+        accountId: 'food',
+        amount: Money(minorUnits: multipleCategories ? 600 : 1234),
+      ),
+      if (multipleCategories)
+        TransactionLine(
+          id: 'second-category',
+          transactionId: 'tx-1',
+          lineNo: 3,
+          role: purpose == BusinessPurpose.reimbursementAdvance
+              ? TransactionRole.reimbursementExpenseCategory
+              : TransactionRole.category,
+          accountId: 'other-category',
+          amount: const Money(minorUnits: 634),
+        ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'tx-1',
+        lineNo: 2,
+        role: purpose == BusinessPurpose.dailyIncome
+            ? TransactionRole.settlementIn
+            : TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: const Money(minorUnits: 1234),
+      ),
     ],
     impactsByAccountId: const {
       'food': TransactionAccountImpact(
