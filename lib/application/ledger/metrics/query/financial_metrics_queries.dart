@@ -19,12 +19,26 @@ class StatisticsRangeReportQuery {
     required this.from,
     required this.until,
     this.balancePointIntervalDays = 1,
+    this.comparisonFrom,
+    this.comparisonUntil,
   }) : assert(from.isBefore(until)),
-       assert(balancePointIntervalDays > 0);
+       assert(balancePointIntervalDays > 0),
+       assert(
+         (comparisonFrom == null) == (comparisonUntil == null),
+         'comparisonFrom and comparisonUntil must be provided together',
+       ),
+       assert(
+         comparisonFrom == null ||
+             (comparisonFrom.isBefore(comparisonUntil!) &&
+                 !comparisonUntil.isAfter(from)),
+         'comparison range must be complete and not overlap the current range',
+       );
 
   final DateTime from;
   final DateTime until;
   final int balancePointIntervalDays;
+  final DateTime? comparisonFrom;
+  final DateTime? comparisonUntil;
 }
 
 class BalanceSheetComparisonQuery {

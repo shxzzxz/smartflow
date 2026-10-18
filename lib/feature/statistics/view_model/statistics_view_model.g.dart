@@ -42,7 +42,7 @@ final class StatisticsViewModelProvider
 }
 
 String _$statisticsViewModelHash() =>
-    r'504b2c6f2c05a204c19a4028d02156247a4665cb';
+    r'23fe79da1afddc980ff350befce049bda929e57f';
 
 abstract class _$StatisticsViewModel extends $Notifier<StatisticsControlState> {
   StatisticsControlState build();
@@ -108,7 +108,7 @@ final class StatisticsPageProvider
   }
 }
 
-String _$statisticsPageHash() => r'24be91a30bc368b0c3140826d1a09a6e840a3150';
+String _$statisticsPageHash() => r'f5cb07b5a7cbb0f873225c86417543e932f026ed';
 
 @ProviderFor(statisticsRangeReport)
 final statisticsRangeReportProvider = StatisticsRangeReportFamily._();
@@ -125,7 +125,7 @@ final class StatisticsRangeReportProvider
         $StreamProvider<StatisticsRangeReport> {
   StatisticsRangeReportProvider._({
     required StatisticsRangeReportFamily super.from,
-    required (DateTime, DateTime, int) super.argument,
+    required (DateTime, DateTime, int, DateTime?, DateTime?) super.argument,
   }) : super(
          retry: null,
          name: r'statisticsRangeReportProvider',
@@ -152,8 +152,16 @@ final class StatisticsRangeReportProvider
 
   @override
   Stream<StatisticsRangeReport> create(Ref ref) {
-    final argument = this.argument as (DateTime, DateTime, int);
-    return statisticsRangeReport(ref, argument.$1, argument.$2, argument.$3);
+    final argument =
+        this.argument as (DateTime, DateTime, int, DateTime?, DateTime?);
+    return statisticsRangeReport(
+      ref,
+      argument.$1,
+      argument.$2,
+      argument.$3,
+      argument.$4,
+      argument.$5,
+    );
   }
 
   @override
@@ -168,13 +176,13 @@ final class StatisticsRangeReportProvider
 }
 
 String _$statisticsRangeReportHash() =>
-    r'5c4a467dc5bb8426e01d8c3abff8dc49bf9d29ab';
+    r'7d96873c709954f9a6fc735398d886b3767b9cff';
 
 final class StatisticsRangeReportFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<StatisticsRangeReport>,
-          (DateTime, DateTime, int)
+          (DateTime, DateTime, int, DateTime?, DateTime?)
         > {
   StatisticsRangeReportFamily._()
     : super(
@@ -189,8 +197,16 @@ final class StatisticsRangeReportFamily extends $Family
     DateTime from,
     DateTime until,
     int balancePointIntervalDays,
+    DateTime? comparisonFrom,
+    DateTime? comparisonUntil,
   ) => StatisticsRangeReportProvider._(
-    argument: (from, until, balancePointIntervalDays),
+    argument: (
+      from,
+      until,
+      balancePointIntervalDays,
+      comparisonFrom,
+      comparisonUntil,
+    ),
     from: this,
   );
 
@@ -263,7 +279,7 @@ final class StatisticsRangeContentProvider
 }
 
 String _$statisticsRangeContentHash() =>
-    r'8e9b19b45e6e49156e918b7cc1af4ddce7a27553';
+    r'3fabf77a023375258cb42d522cd9d46b22467081';
 
 final class StatisticsRangeContentFamily extends $Family
     with
@@ -291,243 +307,6 @@ final class StatisticsRangeContentFamily extends $Family
 
   @override
   String toString() => r'statisticsRangeContentProvider';
-}
-
-@ProviderFor(statisticsCashflowReport)
-final statisticsCashflowReportProvider = StatisticsCashflowReportFamily._();
-
-final class StatisticsCashflowReportProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<CashflowReport>,
-          CashflowReport,
-          Stream<CashflowReport>
-        >
-    with $FutureModifier<CashflowReport>, $StreamProvider<CashflowReport> {
-  StatisticsCashflowReportProvider._({
-    required StatisticsCashflowReportFamily super.from,
-    required DateTime super.argument,
-  }) : super(
-         retry: null,
-         name: r'statisticsCashflowReportProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$statisticsCashflowReportHash();
-
-  @override
-  String toString() {
-    return r'statisticsCashflowReportProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $StreamProviderElement<CashflowReport> $createElement(
-    $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
-
-  @override
-  Stream<CashflowReport> create(Ref ref) {
-    final argument = this.argument as DateTime;
-    return statisticsCashflowReport(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is StatisticsCashflowReportProvider &&
-        other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$statisticsCashflowReportHash() =>
-    r'3ca8e21a202dded28617e7c64c33c0273527f083';
-
-final class StatisticsCashflowReportFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<CashflowReport>, DateTime> {
-  StatisticsCashflowReportFamily._()
-    : super(
-        retry: null,
-        name: r'statisticsCashflowReportProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  StatisticsCashflowReportProvider call(DateTime visibleMonth) =>
-      StatisticsCashflowReportProvider._(argument: visibleMonth, from: this);
-
-  @override
-  String toString() => r'statisticsCashflowReportProvider';
-}
-
-@ProviderFor(statisticsBalanceReport)
-final statisticsBalanceReportProvider = StatisticsBalanceReportFamily._();
-
-final class StatisticsBalanceReportProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<BalanceReport>,
-          BalanceReport,
-          Stream<BalanceReport>
-        >
-    with $FutureModifier<BalanceReport>, $StreamProvider<BalanceReport> {
-  StatisticsBalanceReportProvider._({
-    required StatisticsBalanceReportFamily super.from,
-    required DateTime super.argument,
-  }) : super(
-         retry: null,
-         name: r'statisticsBalanceReportProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$statisticsBalanceReportHash();
-
-  @override
-  String toString() {
-    return r'statisticsBalanceReportProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $StreamProviderElement<BalanceReport> $createElement(
-    $ProviderPointer pointer,
-  ) => $StreamProviderElement(pointer);
-
-  @override
-  Stream<BalanceReport> create(Ref ref) {
-    final argument = this.argument as DateTime;
-    return statisticsBalanceReport(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is StatisticsBalanceReportProvider &&
-        other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$statisticsBalanceReportHash() =>
-    r'1f4408a3b70dce6eccf3ce4d85509cd8e4ab7190';
-
-final class StatisticsBalanceReportFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<BalanceReport>, DateTime> {
-  StatisticsBalanceReportFamily._()
-    : super(
-        retry: null,
-        name: r'statisticsBalanceReportProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  StatisticsBalanceReportProvider call(DateTime visibleMonth) =>
-      StatisticsBalanceReportProvider._(argument: visibleMonth, from: this);
-
-  @override
-  String toString() => r'statisticsBalanceReportProvider';
-}
-
-@ProviderFor(statisticsContent)
-final statisticsContentProvider = StatisticsContentFamily._();
-
-final class StatisticsContentProvider
-    extends
-        $FunctionalProvider<
-          StatisticsContentState,
-          StatisticsContentState,
-          StatisticsContentState
-        >
-    with $Provider<StatisticsContentState> {
-  StatisticsContentProvider._({
-    required StatisticsContentFamily super.from,
-    required DateTime super.argument,
-  }) : super(
-         retry: null,
-         name: r'statisticsContentProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$statisticsContentHash();
-
-  @override
-  String toString() {
-    return r'statisticsContentProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $ProviderElement<StatisticsContentState> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  StatisticsContentState create(Ref ref) {
-    final argument = this.argument as DateTime;
-    return statisticsContent(ref, argument);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(StatisticsContentState value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<StatisticsContentState>(value),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is StatisticsContentProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$statisticsContentHash() => r'13753b0910408280af0cd7c31874da5f0723572e';
-
-final class StatisticsContentFamily extends $Family
-    with $FunctionalFamilyOverride<StatisticsContentState, DateTime> {
-  StatisticsContentFamily._()
-    : super(
-        retry: null,
-        name: r'statisticsContentProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  StatisticsContentProvider call(DateTime visibleMonth) =>
-      StatisticsContentProvider._(argument: visibleMonth, from: this);
-
-  @override
-  String toString() => r'statisticsContentProvider';
 }
 
 @ProviderFor(statisticsTransactions)

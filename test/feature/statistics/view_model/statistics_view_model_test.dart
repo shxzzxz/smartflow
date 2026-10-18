@@ -6,7 +6,6 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
-import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
@@ -22,9 +21,10 @@ void main() {
     addTearDown(container.dispose);
 
     final state = container.read(statisticsViewModelProvider);
-    expect(state.visibleMonth, DateTime(2026, 7));
     expect(state.granularity, StatisticsPeriodGranularity.month);
     expect(state.mode, StatisticsPeriodMode.single);
+    expect(state.viewType, StatisticsViewType.period);
+    expect(state.comparisonMode, StatisticsComparisonMode.previousPeriod);
     expect(state.periodFrom, DateTime(2026, 7));
     expect(state.periodUntil, DateTime(2026, 8));
     expect(state.chartForm, CashflowChartForm.bar);
@@ -50,10 +50,6 @@ void main() {
       isA<StatisticsDateRange>()
           .having((range) => range.from, 'from', DateTime(2026, 3))
           .having((range) => range.until, 'until', DateTime(2026, 4)),
-    );
-    expect(
-      container.read(statisticsViewModelProvider).visibleMonth,
-      DateTime(2026, 3),
     );
 
     notifier.applyPeriodSelection(
@@ -114,63 +110,79 @@ void main() {
     );
   });
 
-  test('combines reports into a category-rollup page state', () async {
-    final visibleMonth = DateTime(2026, 1);
+  test(
+    'resolves comparison windows without comparing partial periods to full periods',
+    () {
+      final container = ProviderContainer(
+        overrides: [
+          currentDateTimeProvider.overrideWithValue(DateTime(2026, 7, 18)),
+        ],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(statisticsViewModelProvider.notifier);
+      final now = DateTime(2026, 7, 18);
+
+      var comparison = container
+          .read(statisticsViewModelProvider)
+          .comparisonRange(now);
+      expect(comparison?.from, DateTime(2026, 6));
+      expect(comparison?.until, DateTime(2026, 6, 19));
+      expect(comparison?.label, '环比');
+
+      notifier.applyPeriodSelection(
+        granularity: StatisticsPeriodGranularity.month,
+        mode: StatisticsPeriodMode.single,
+        from: DateTime(2026, 6),
+        untilExclusive: DateTime(2026, 7),
+      );
+      comparison = container
+          .read(statisticsViewModelProvider)
+          .comparisonRange(now);
+      expect(comparison?.from, DateTime(2026, 5));
+      expect(comparison?.until, DateTime(2026, 6));
+      expect(comparison?.label, '环比');
+
+      notifier.applyPeriodSelection(
+        granularity: StatisticsPeriodGranularity.date,
+        mode: StatisticsPeriodMode.range,
+        from: DateTime(2026, 2, 3),
+        untilExclusive: DateTime(2026, 2, 9),
+      );
+      comparison = container
+          .read(statisticsViewModelProvider)
+          .comparisonRange(now);
+      expect(comparison?.from, DateTime(2026, 1, 28));
+      expect(comparison?.until, DateTime(2026, 2, 3));
+      expect(comparison?.label, '环比');
+
+      notifier.selectComparisonMode(StatisticsComparisonMode.none);
+      expect(
+        container.read(statisticsViewModelProvider).comparisonRange(now),
+        isNull,
+      );
+    },
+  );
+
+  test('uses the same calendar dates for year-over-year comparison', () {
     final container = ProviderContainer(
       overrides: [
-        currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
-        accountsByIdProvider.overrideWith(
-          (ref) => Stream.value({
-            'food': _account('food', '餐饮', AccountType.expense),
-            'dining': _account(
-              'dining',
-              '聚餐',
-              AccountType.expense,
-              parentId: 'food',
-            ),
-            'salary': _account('salary', '工资', AccountType.income),
-            'cash': _account('cash', '现金', AccountType.asset),
-          }),
-        ),
-        statisticsCashflowReportProvider(
-          visibleMonth,
-        ).overrideWith((ref) => Stream.value(_cashflowReport())),
-        statisticsBalanceReportProvider(
-          visibleMonth,
-        ).overrideWith((ref) => Stream.value(_balanceReport())),
+        currentDateTimeProvider.overrideWithValue(DateTime(2026, 7, 18)),
       ],
     );
     addTearDown(container.dispose);
+    final notifier = container.read(statisticsViewModelProvider.notifier)
+      ..selectComparisonMode(StatisticsComparisonMode.previousYear);
+    final comparison = container
+        .read(statisticsViewModelProvider)
+        .comparisonRange(DateTime(2026, 7, 18));
 
-    final viewModelSub = container.listen(
-      statisticsViewModelProvider,
-      (_, _) {},
-    );
-    final contentSub = container.listen(
-      statisticsContentProvider(visibleMonth),
-      (_, _) {},
-    );
-    addTearDown(viewModelSub.close);
-    addTearDown(contentSub.close);
-    await container.read(statisticsCashflowReportProvider(visibleMonth).future);
-    await container.read(statisticsBalanceReportProvider(visibleMonth).future);
-    await container.read(accountsByIdProvider.future);
-    await container.pump();
+    expect(comparison?.from, DateTime(2025, 7));
+    expect(comparison?.until, DateTime(2025, 7, 19));
+    expect(comparison?.label, '同比');
 
-    final content = container.read(statisticsContentProvider(visibleMonth));
-    expect(content, isA<StatisticsContentLoaded>());
-    final loaded = content as StatisticsContentLoaded;
-    final expense = loaded.presentation.expenseCategories.single;
-    expect(expense.title, '餐饮');
-    expect(expense.amount.minorUnits, 700);
-    expect(expense.id, 'food');
-    expect(expense.children.single.title, '聚餐');
-    expect(expense.children.single.id, 'dining');
-    final income = loaded.presentation.incomeCategories.single;
-    expect(income.title, '工资');
-    expect(income.children.single.title, '未细分');
-    expect(income.children.single.isUnsubdivided, isTrue);
-    expect(loaded.presentation.balanceAccounts.single.title, '现金');
+    notifier.selectView(StatisticsViewType.state);
+    final state = container.read(statisticsViewModelProvider);
+    expect(state.viewType, StatisticsViewType.state);
   });
 
   test('uses report windows and scopes for contribution drilldowns', () async {
@@ -391,13 +403,14 @@ StatisticsControlState _control({
   required DateTime until,
 }) {
   return StatisticsControlState(
-    visibleMonth: DateTime(2026, 1),
-    section: StatisticsSection.cashflow,
+    viewType: StatisticsViewType.period,
     granularity: StatisticsPeriodGranularity.date,
     mode: StatisticsPeriodMode.range,
     periodFrom: from,
     periodUntil: until,
+    comparisonMode: StatisticsComparisonMode.previousPeriod,
     chartForm: CashflowChartForm.bar,
+    comparisonMetric: StatisticsComparisonMetric.expense,
     categoryKind: StatisticsCategoryKind.expense,
     categoryLevel: StatisticsCategoryLevel.primary,
   );
@@ -410,94 +423,6 @@ Account _account(String id, String name, AccountType type, {String? parentId}) {
     type: type,
     parentId: parentId,
     balance: const Money(minorUnits: 0),
-  );
-}
-
-CashflowReport _cashflowReport() {
-  return CashflowReport(
-    comparison: const CashflowComparison(
-      current: CashflowSummary(
-        income: Money(minorUnits: 2000),
-        expense: Money(minorUnits: 700),
-      ),
-      previousSamePeriod: CashflowSummary(
-        income: Money(minorUnits: 1000),
-        expense: Money(minorUnits: 400),
-      ),
-      previousFullPeriod: CashflowSummary(
-        income: Money(minorUnits: 1000),
-        expense: Money(minorUnits: 400),
-      ),
-    ),
-    dailySummaries: [
-      DailyCashflowSummary(
-        date: DateTime(2026, 1, 5),
-        income: const Money(minorUnits: 2000),
-        expense: const Money(minorUnits: 700),
-      ),
-    ],
-    categories: [
-      CategoryMetricGroup(
-        id: 'food',
-        name: '餐饮',
-        iconKey: null,
-        accountType: AccountType.expense,
-        total: const Money(minorUnits: 700),
-        items: const [
-          CategoryMetricItem(
-            id: 'dining',
-            name: '聚餐',
-            iconKey: null,
-            isUnsubdivided: false,
-            amount: Money(minorUnits: 700),
-          ),
-        ],
-      ),
-      CategoryMetricGroup(
-        id: 'salary',
-        name: '工资',
-        iconKey: null,
-        accountType: AccountType.income,
-        total: const Money(minorUnits: 2000),
-        items: const [
-          CategoryMetricItem(
-            id: 'salary',
-            name: '工资',
-            iconKey: null,
-            isUnsubdivided: true,
-            amount: Money(minorUnits: 2000),
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
-BalanceReport _balanceReport() {
-  return BalanceReport(
-    comparison: const BalanceSheetComparison(
-      current: BalanceSheetSnapshot(
-        assets: Money(minorUnits: 10000),
-        liabilities: Money(minorUnits: 2000),
-      ),
-      previous: BalanceSheetSnapshot(
-        assets: Money(minorUnits: 9000),
-        liabilities: Money(minorUnits: 2000),
-      ),
-    ),
-    trend: [
-      NetAssetTrendPoint(
-        month: MonthKey(year: 2026, month: 1),
-        netAssets: const Money(minorUnits: 8000),
-      ),
-    ],
-    accounts: const [
-      AccountMetric(
-        accountId: 'cash',
-        accountType: AccountType.asset,
-        amountMinor: 10000,
-      ),
-    ],
   );
 }
 

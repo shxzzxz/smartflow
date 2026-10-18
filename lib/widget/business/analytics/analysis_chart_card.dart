@@ -8,6 +8,21 @@ import 'chart/app_chart_expand_button.dart';
 
 typedef ExpandedChartBuilder = Widget Function(double height);
 
+void openAnalysisChartExpanded(
+  BuildContext context, {
+  required ExpandedChartBuilder chartBuilder,
+  double reservedHeight = 0,
+}) {
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute<void>(
+      builder: (_) => _ExpandedChartPage(
+        chartBuilder: chartBuilder,
+        reservedHeight: reservedHeight,
+      ),
+    ),
+  );
+}
+
 class AnalysisChartCard extends StatelessWidget {
   const AnalysisChartCard({
     required this.title,
@@ -30,23 +45,22 @@ class AnalysisChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chartContent =
-        showExpandIcon
-            ? Stack(
-              children: [
-                chart,
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: AppChartExpandButton(
-                    key: ValueKey('chart-expand-$title'),
-                    tooltip: '横屏查看$title',
-                    onTap: () => _openExpandedChart(context),
-                  ),
+    final chartContent = showExpandIcon
+        ? Stack(
+            children: [
+              chart,
+              Positioned(
+                top: 0,
+                right: 0,
+                child: AppChartExpandButton(
+                  key: ValueKey('chart-expand-$title'),
+                  tooltip: '横屏查看$title',
+                  onTap: () => _openExpandedChart(context),
                 ),
-              ],
-            )
-            : chart;
+              ),
+            ],
+          )
+        : chart;
     return AnalysisSectionCard(
       title: title,
       subtitle: subtitle,
@@ -68,14 +82,10 @@ class AnalysisChartCard extends StatelessWidget {
   }
 
   void _openExpandedChart(BuildContext context) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(
-        builder:
-            (_) => _ExpandedChartPage(
-              chartBuilder: expandedChartBuilder,
-              reservedHeight: expandedReservedHeight,
-            ),
-      ),
+    openAnalysisChartExpanded(
+      context,
+      chartBuilder: expandedChartBuilder,
+      reservedHeight: expandedReservedHeight,
     );
   }
 }
@@ -116,12 +126,11 @@ class _ExpandedChartPageState extends State<_ExpandedChartPage> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space8),
           child: LayoutBuilder(
-            builder:
-                (context, constraints) => widget.chartBuilder(
-                  (constraints.maxHeight - widget.reservedHeight)
-                      .clamp(0, constraints.maxHeight)
-                      .toDouble(),
-                ),
+            builder: (context, constraints) => widget.chartBuilder(
+              (constraints.maxHeight - widget.reservedHeight)
+                  .clamp(0, constraints.maxHeight)
+                  .toDouble(),
+            ),
           ),
         ),
       ),

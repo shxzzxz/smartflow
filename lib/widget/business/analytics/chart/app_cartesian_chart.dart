@@ -42,12 +42,14 @@ class AppChartSeries {
     required this.color,
     required this.points,
     this.fillArea = false,
+    this.dashArray,
   });
 
   final String label;
   final Color color;
   final List<AppChartPoint> points;
   final bool fillArea;
+  final List<int>? dashArray;
 }
 
 class AppCartesianChartData {
@@ -124,25 +126,21 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
       ],
     );
 
-    final chart =
-        visibleData.series.isEmpty
-            ? SizedBox(
-              height: widget.height,
-              child: const AppChartEmptyState(message: '未选择数据系列'),
-            )
-            : SizedBox(
-              height: widget.height,
-              child: switch (widget.form) {
-                AppCartesianChartForm.line => _buildLineChart(
-                  context,
-                  visibleData,
-                ),
-                AppCartesianChartForm.bar => _buildBarChart(
-                  context,
-                  visibleData,
-                ),
-              },
-            );
+    final chart = visibleData.series.isEmpty
+        ? SizedBox(
+            height: widget.height,
+            child: const AppChartEmptyState(message: '未选择数据系列'),
+          )
+        : SizedBox(
+            height: widget.height,
+            child: switch (widget.form) {
+              AppCartesianChartForm.line => _buildLineChart(
+                context,
+                visibleData,
+              ),
+              AppCartesianChartForm.bar => _buildBarChart(context, visibleData),
+            },
+          );
     if (!widget.showLegend) return chart;
     return Column(
       children: [
@@ -159,14 +157,13 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
                 label: series.label,
                 color: series.color,
                 selected: _visibleSeries.contains(series.label),
-                onTap:
-                    () => setState(() {
-                      if (_visibleSeries.contains(series.label)) {
-                        _visibleSeries.remove(series.label);
-                      } else {
-                        _visibleSeries.add(series.label);
-                      }
-                    }),
+                onTap: () => setState(() {
+                  if (_visibleSeries.contains(series.label)) {
+                    _visibleSeries.remove(series.label);
+                  } else {
+                    _visibleSeries.add(series.label);
+                  }
+                }),
               ),
           ],
         ),
@@ -203,17 +200,17 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
               ],
               color: series.color,
               barWidth: AppChartGeometry.lineWidth,
+              dashArray: series.dashArray,
               isCurved: series.points.length > 2,
               preventCurveOverShooting: true,
               dotData: FlDotData(
                 show: series.points.length <= 12,
-                getDotPainter:
-                    (_, _, _, _) => FlDotCirclePainter(
-                      radius: AppChartGeometry.lineDotRadius,
-                      color: series.color,
-                      strokeWidth: AppChartGeometry.lineDotStrokeWidth,
-                      strokeColor: colors.surfaceContainerLowest,
-                    ),
+                getDotPainter: (_, _, _, _) => FlDotCirclePainter(
+                  radius: AppChartGeometry.lineDotRadius,
+                  color: series.color,
+                  strokeWidth: AppChartGeometry.lineDotStrokeWidth,
+                  strokeColor: colors.surfaceContainerLowest,
+                ),
               ),
               belowBarData: BarAreaData(
                 show: series.fillArea,
@@ -328,15 +325,19 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
     final series = data.series[spot.barIndex];
     final point = series.points[spot.spotIndex];
     final axisLabel = _axisLabelForX(data, point.x);
-    final seriesLabel =
-        widget.showSeriesLabelInTooltip ? '${series.label} ' : '';
+    final seriesLabel = widget.showSeriesLabelInTooltip
+        ? '${series.label} '
+        : '';
     return LineTooltipItem(
       showAxisLabel ? '$axisLabel\n' : '',
       TextStyle(color: colors.onInverseSurface),
       textAlign: TextAlign.left,
       children: [
         if (widget.showSeriesLabelInTooltip)
-          TextSpan(text: '● ', style: TextStyle(color: series.color)),
+          TextSpan(
+            text: '● ',
+            style: TextStyle(color: series.color),
+          ),
         TextSpan(text: '$seriesLabel${point.formattedValue}'),
       ],
     );
@@ -383,16 +384,14 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
     return FlGridData(
       drawVerticalLine: false,
       horizontalInterval: scale.interval,
-      getDrawingHorizontalLine:
-          (value) => FlLine(
-            color: colors.outlineVariant.withValues(
-              alpha:
-                  value == 0 && scale.min < 0
-                      ? AppChartGeometry.zeroLineOpacity
-                      : AppChartGeometry.gridLineOpacity,
-            ),
-            strokeWidth: AppChartGeometry.gridLineWidth,
-          ),
+      getDrawingHorizontalLine: (value) => FlLine(
+        color: colors.outlineVariant.withValues(
+          alpha: value == 0 && scale.min < 0
+              ? AppChartGeometry.zeroLineOpacity
+              : AppChartGeometry.gridLineOpacity,
+        ),
+        strokeWidth: AppChartGeometry.gridLineWidth,
+      ),
     );
   }
 
@@ -427,17 +426,16 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
           showTitles: true,
           reservedSize: leftAxisReservedWidth,
           interval: scale.interval,
-          getTitlesWidget:
-              (value, meta) => SideTitleWidget(
-                meta: meta,
-                space: AppSpacing.space6,
-                child: Text(
-                  appChartAxisLabel(value),
-                  style: style,
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                ),
-              ),
+          getTitlesWidget: (value, meta) => SideTitleWidget(
+            meta: meta,
+            space: AppSpacing.space6,
+            child: Text(
+              appChartAxisLabel(value),
+              style: style,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+            ),
+          ),
         ),
       ),
       bottomTitles: AxisTitles(
@@ -448,12 +446,11 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
           minIncluded: true,
           maxIncluded: true,
           getTitlesWidget: (value, meta) {
-            final index =
-                useAxisIndex
-                    ? value.round()
-                    : data.axisPoints.indexWhere(
-                      (point) => (point.x - value).abs() < .0001,
-                    );
+            final index = useAxisIndex
+                ? value.round()
+                : data.axisPoints.indexWhere(
+                    (point) => (point.x - value).abs() < .0001,
+                  );
             if (index < 0 || index >= data.axisPoints.length) {
               return const SizedBox.shrink();
             }
@@ -545,12 +542,9 @@ double _barWidth(double maxWidth, int slotCount) =>
             AppChartGeometry.barWidthRatio)
         .clamp(AppChartGeometry.barWidthMin, AppChartGeometry.barWidthMax);
 
-BorderRadius _barRadius(double value) =>
-    value < 0
-        ? const BorderRadius.vertical(
-          bottom: Radius.circular(AppRadius.radiusSm),
-        )
-        : const BorderRadius.vertical(top: Radius.circular(AppRadius.radiusSm));
+BorderRadius _barRadius(double value) => value < 0
+    ? const BorderRadius.vertical(bottom: Radius.circular(AppRadius.radiusSm))
+    : const BorderRadius.vertical(top: Radius.circular(AppRadius.radiusSm));
 
 class _AppChartLegendItem extends StatelessWidget {
   const _AppChartLegendItem({
@@ -589,12 +583,11 @@ class _AppChartLegendItem extends StatelessWidget {
                   width: AppSpacing.space12,
                   height: AppSpacing.space4,
                   decoration: BoxDecoration(
-                    color:
-                        selected
-                            ? color
-                            : color.withValues(
-                              alpha: AppChartGeometry.hiddenLegendMarkerOpacity,
-                            ),
+                    color: selected
+                        ? color
+                        : color.withValues(
+                            alpha: AppChartGeometry.hiddenLegendMarkerOpacity,
+                          ),
                     borderRadius: BorderRadius.circular(AppRadius.radiusSm),
                   ),
                 ),
@@ -602,14 +595,13 @@ class _AppChartLegendItem extends StatelessWidget {
                 Text(
                   label,
                   style: context.appTextStyles.listSupporting.copyWith(
-                    color:
-                        selected
-                            ? null
-                            : Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant.withValues(
-                              alpha: AppChartGeometry.hiddenLegendLabelOpacity,
-                            ),
+                    color: selected
+                        ? null
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant.withValues(
+                            alpha: AppChartGeometry.hiddenLegendLabelOpacity,
+                          ),
                     decoration: selected ? null : TextDecoration.lineThrough,
                   ),
                 ),

@@ -75,6 +75,7 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       final categoriesFuture = _loadCategoryGroups(window);
       final tagsFuture = _loadTagMetrics(window);
       final balanceTrendFuture = _loadBalanceTrend(query);
+      final comparisonFuture = _loadRangeComparison(query);
       return StatisticsRangeReport(
         from: query.from,
         until: query.until,
@@ -83,8 +84,35 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         categories: await categoriesFuture,
         tags: await tagsFuture,
         balanceTrend: await balanceTrendFuture,
+        comparison: await comparisonFuture,
       );
     });
+  }
+
+  Future<StatisticsRangeComparisonReport?> _loadRangeComparison(
+    StatisticsRangeReportQuery query,
+  ) async {
+    final from = query.comparisonFrom;
+    final until = query.comparisonUntil;
+    if (from == null || until == null) return null;
+
+    final window = DateTimeWindow(from: from, until: until);
+    final cashflowFuture = _aggregate.aggregateByAccountType(
+      accountTypes: _cashflowTypes,
+      scope: TransactionScopeFilter.stats,
+      window: window,
+    );
+    final dailySummariesFuture = _loadDailyCashflowSummaries(window);
+    final categoriesFuture = _loadCategoryGroups(window);
+    final tagsFuture = _loadTagMetrics(window);
+    return StatisticsRangeComparisonReport(
+      from: from,
+      until: until,
+      cashflow: _toCashflowSummary(await cashflowFuture),
+      dailySummaries: await dailySummariesFuture,
+      categories: await categoriesFuture,
+      tags: await tagsFuture,
+    );
   }
 
   Future<List<BalanceTrendPoint>> _loadBalanceTrend(
@@ -316,22 +344,20 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       for (final month in months)
         NetAssetTrendPoint(
           month: month,
-          netAssets:
-              _toBalanceSnapshot(
-                running
-                  ..update(
-                    AccountType.asset,
-                    (value) =>
-                        value + (byMonth[month]?[AccountType.asset] ?? 0),
-                    ifAbsent: () => byMonth[month]?[AccountType.asset] ?? 0,
-                  )
-                  ..update(
-                    AccountType.liability,
-                    (value) =>
-                        value + (byMonth[month]?[AccountType.liability] ?? 0),
-                    ifAbsent: () => byMonth[month]?[AccountType.liability] ?? 0,
-                  ),
-              ).netAssets,
+          netAssets: _toBalanceSnapshot(
+            running
+              ..update(
+                AccountType.asset,
+                (value) => value + (byMonth[month]?[AccountType.asset] ?? 0),
+                ifAbsent: () => byMonth[month]?[AccountType.asset] ?? 0,
+              )
+              ..update(
+                AccountType.liability,
+                (value) =>
+                    value + (byMonth[month]?[AccountType.liability] ?? 0),
+                ifAbsent: () => byMonth[month]?[AccountType.liability] ?? 0,
+              ),
+          ).netAssets,
         ),
     ];
   }
@@ -346,18 +372,12 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
         query.asOfDate != null &&
         query.asOfDate!.year == query.month.year &&
         query.asOfDate!.month == query.month.month;
-    final currentUntil =
-        isCurrentMonth
-            ? DateTime(
-              query.month.year,
-              query.month.month,
-              query.asOfDate!.day + 1,
-            )
-            : query.month.nextMonthStart;
-    final previousSamePeriodUntil =
-        isCurrentMonth
-            ? _samePeriodUntil(previousMonth, query.asOfDate!.day)
-            : currentStart;
+    final currentUntil = isCurrentMonth
+        ? DateTime(query.month.year, query.month.month, query.asOfDate!.day + 1)
+        : query.month.nextMonthStart;
+    final previousSamePeriodUntil = isCurrentMonth
+        ? _samePeriodUntil(previousMonth, query.asOfDate!.day)
+        : currentStart;
     return _CashflowPeriods(
       current: DateTimeWindow(from: currentStart, until: currentUntil),
       previousSame: DateTimeWindow(
@@ -471,10 +491,9 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
       for (final aggregate in aggregates)
         TagMetricItem(
           tagId: aggregate.tagId,
-          name:
-              aggregate.tagId == null
-                  ? '未打标签'
-                  : nameByTagId[aggregate.tagId] ?? '已删除标签',
+          name: aggregate.tagId == null
+              ? '未打标签'
+              : nameByTagId[aggregate.tagId] ?? '已删除标签',
           accountType: aggregate.accountType,
           amount: Money(minorUnits: aggregate.amountMinor),
         ),

@@ -18,12 +18,11 @@ void main() {
     );
     final service = _service(aggregate);
 
-    final summaries =
-        await service
-            .watchDailyCashflowSummaries(
-              DailyCashflowSummaryQuery(month: MonthKey(year: 2026, month: 1)),
-            )
-            .first;
+    final summaries = await service
+        .watchDailyCashflowSummaries(
+          DailyCashflowSummaryQuery(month: MonthKey(year: 2026, month: 1)),
+        )
+        .first;
 
     expect(summaries.map((item) => item.date), [DateTime(2026, 1, 2)]);
     expect(summaries.single.income.minorUnits, 3000);
@@ -60,15 +59,14 @@ void main() {
       );
       final service = _service(aggregate, categories: [_category('food')]);
 
-      final report =
-          await service
-              .watchStatisticsRangeReport(
-                StatisticsRangeReportQuery(
-                  from: DateTime(2026, 1, 1),
-                  until: DateTime(2026, 1, 4),
-                ),
-              )
-              .first;
+      final report = await service
+          .watchStatisticsRangeReport(
+            StatisticsRangeReportQuery(
+              from: DateTime(2026, 1, 1),
+              until: DateTime(2026, 1, 4),
+            ),
+          )
+          .first;
 
       expect(report.cashflow.net.minorUnits, 1800);
       expect(report.dailySummaries.map((item) => item.date), [
@@ -100,6 +98,59 @@ void main() {
     },
   );
 
+  test('builds an optional comparison projection for a range', () async {
+    final aggregate = _FakeLedgerMetricsSource(
+      accountTypeResults: const [
+        {AccountType.income: 3000, AccountType.expense: 1200},
+        {AccountType.asset: 10000, AccountType.liability: 2000},
+        {AccountType.income: 2000, AccountType.expense: 800},
+      ],
+      byDayResults: [
+        {
+          DateTime(2026, 1, 2): const {
+            AccountType.income: 3000,
+            AccountType.expense: 1200,
+          },
+        },
+        {},
+        {
+          DateTime(2025, 12, 27): const {
+            AccountType.income: 2000,
+            AccountType.expense: 800,
+          },
+        },
+      ],
+      byAccountResult: const [
+        AccountAggregate(
+          accountId: 'food',
+          accountType: AccountType.expense,
+          amountMinor: 1200,
+        ),
+      ],
+    );
+    final service = _service(aggregate, categories: [_category('food')]);
+
+    final report = await service
+        .watchStatisticsRangeReport(
+          StatisticsRangeReportQuery(
+            from: DateTime(2026, 1, 1),
+            until: DateTime(2026, 1, 4),
+            comparisonFrom: DateTime(2025, 12, 25),
+            comparisonUntil: DateTime(2025, 12, 28),
+          ),
+        )
+        .first;
+
+    expect(report.cashflow.expense.minorUnits, 1200);
+    expect(report.comparison?.cashflow.income.minorUnits, 2000);
+    expect(report.comparison?.cashflow.expense.minorUnits, 800);
+    expect(
+      report.comparison?.dailySummaries.single.date,
+      DateTime(2025, 12, 27),
+    );
+    expect(report.comparison?.categories.single.id, 'food');
+  });
+
   test('composes tag metrics with names and the untagged bucket', () async {
     final aggregate = _FakeLedgerMetricsSource(
       accountTypeResults: const [
@@ -127,15 +178,14 @@ void main() {
       tagRepository: tagRepository,
     );
 
-    final report =
-        await service
-            .watchStatisticsRangeReport(
-              StatisticsRangeReportQuery(
-                from: DateTime(2026, 1, 1),
-                until: DateTime(2026, 1, 4),
-              ),
-            )
-            .first;
+    final report = await service
+        .watchStatisticsRangeReport(
+          StatisticsRangeReportQuery(
+            from: DateTime(2026, 1, 1),
+            until: DateTime(2026, 1, 4),
+          ),
+        )
+        .first;
 
     expect(report.tags.map((tag) => tag.name), ['旅行', '未打标签']);
     expect(report.tags.first.tagId, 'tag-a');
@@ -182,15 +232,14 @@ void main() {
         ],
       );
 
-      final report =
-          await service
-              .watchCashflowReport(
-                CashflowReportQuery(
-                  month: MonthKey(year: 2026, month: 1),
-                  asOfDate: DateTime(2026, 1, 15),
-                ),
-              )
-              .first;
+      final report = await service
+          .watchCashflowReport(
+            CashflowReportQuery(
+              month: MonthKey(year: 2026, month: 1),
+              asOfDate: DateTime(2026, 1, 15),
+            ),
+          )
+          .first;
 
       expect(report.comparison.current.income.minorUnits, 2000);
       expect(report.comparison.current.expense.minorUnits, 700);
@@ -251,12 +300,11 @@ void main() {
         ],
       );
 
-      final report =
-          await service
-              .watchCashflowReport(
-                CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
-              )
-              .first;
+      final report = await service
+          .watchCashflowReport(
+            CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
+          )
+          .first;
 
       final group = report.categories.single;
       expect(group.id, 'food');
@@ -307,12 +355,11 @@ void main() {
         ],
       );
 
-      final report =
-          await service
-              .watchCashflowReport(
-                CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
-              )
-              .first;
+      final report = await service
+          .watchCashflowReport(
+            CashflowReportQuery(month: MonthKey(year: 2026, month: 1)),
+          )
+          .first;
 
       final group = report.categories.single;
       expect(group.id, 'food');
@@ -357,16 +404,15 @@ void main() {
     );
     final service = _service(aggregate);
 
-    final report =
-        await service
-            .watchBalanceReport(
-              BalanceReportQuery(
-                month: january,
-                asOfExclusive: DateTime(2026, 1, 16),
-                trendMonths: 2,
-              ),
-            )
-            .first;
+    final report = await service
+        .watchBalanceReport(
+          BalanceReportQuery(
+            month: january,
+            asOfExclusive: DateTime(2026, 1, 16),
+            trendMonths: 2,
+          ),
+        )
+        .first;
 
     expect(report.comparison.previous.netAssets.minorUnits, 8000);
     expect(report.comparison.current.netAssets.minorUnits, 9000);

@@ -4,110 +4,6 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../shared/analytics/time_series_transform.dart';
 
-class StatisticsPresentation {
-  const StatisticsPresentation({
-    required this.cashflowComparison,
-    required this.dailySummaries,
-    required this.incomeCategories,
-    required this.expenseCategories,
-    required this.balanceComparison,
-    required this.netAssetTrend,
-    required this.balanceAccounts,
-    required this.cashflowFrom,
-    required this.cashflowUntil,
-    required this.balanceUntil,
-    required this.incomeChangeText,
-    required this.expenseChangeText,
-    required this.netAssetChangeText,
-    this.incomeTags = const [],
-    this.expenseTags = const [],
-    this.rangeBalanceTrend = const [],
-  });
-
-  final CashflowComparison cashflowComparison;
-  final List<DailyCashflowSummary> dailySummaries;
-  final List<StatisticsBreakdownItem> incomeCategories;
-  final List<StatisticsBreakdownItem> expenseCategories;
-  final BalanceSheetComparison balanceComparison;
-  final List<NetAssetTrendPoint> netAssetTrend;
-  final List<StatisticsBreakdownItem> balanceAccounts;
-  final DateTime cashflowFrom;
-  final DateTime cashflowUntil;
-  final DateTime balanceUntil;
-  final String incomeChangeText;
-  final String expenseChangeText;
-  final String netAssetChangeText;
-
-  /// 标签构成统计项。每个标签桶的口径是"命中该标签的交易净额"，
-  /// 多标签交易跨桶重复计入，桶间合计可大于收支总额。
-  final List<StatisticsBreakdownItem> incomeTags;
-  final List<StatisticsBreakdownItem> expenseTags;
-  final List<BalanceTrendPoint> rangeBalanceTrend;
-}
-
-StatisticsPresentation buildRangeStatisticsPresentation({
-  required StatisticsRangeReport report,
-}) {
-  final firstBalance =
-      report.balanceTrend.isEmpty
-          ? const Money(minorUnits: 0)
-          : report.balanceTrend.first.netAssets;
-  final lastBalance =
-      report.balanceTrend.isEmpty
-          ? const Money(minorUnits: 0)
-          : report.balanceTrend.last.netAssets;
-  return StatisticsPresentation(
-    cashflowComparison: CashflowComparison(
-      current: report.cashflow,
-      previousSamePeriod: const CashflowSummary(
-        income: Money(minorUnits: 0),
-        expense: Money(minorUnits: 0),
-      ),
-      previousFullPeriod: const CashflowSummary(
-        income: Money(minorUnits: 0),
-        expense: Money(minorUnits: 0),
-      ),
-    ),
-    dailySummaries: _fillDailyCashflowDates(
-      report.dailySummaries,
-      from: report.from,
-      until: report.until,
-    ),
-    incomeCategories: _toCategoryBreakdownItems(
-      report.categories,
-      AccountType.income,
-    ),
-    expenseCategories: _toCategoryBreakdownItems(
-      report.categories,
-      AccountType.expense,
-    ),
-    incomeTags: _toTagBreakdownItems(report.tags, AccountType.income),
-    expenseTags: _toTagBreakdownItems(report.tags, AccountType.expense),
-    balanceComparison: BalanceSheetComparison(
-      current: BalanceSheetSnapshot(
-        assets: lastBalance,
-        liabilities: const Money(minorUnits: 0),
-      ),
-      previous: BalanceSheetSnapshot(
-        assets: firstBalance,
-        liabilities: const Money(minorUnits: 0),
-      ),
-    ),
-    netAssetTrend: const [],
-    balanceAccounts: const [],
-    cashflowFrom: report.from,
-    cashflowUntil: report.until,
-    balanceUntil: report.until,
-    incomeChangeText: '',
-    expenseChangeText: '',
-    netAssetChangeText: _changeText(
-      '区间变化',
-      PeriodChange(current: lastBalance, previous: firstBalance),
-    ),
-    rangeBalanceTrend: report.balanceTrend,
-  );
-}
-
 class StatisticsBreakdownItem {
   const StatisticsBreakdownItem({
     required this.id,
@@ -117,6 +13,7 @@ class StatisticsBreakdownItem {
     required this.progress,
     this.children = const [],
     this.isUnsubdivided = false,
+    this.comparisonAmount,
   });
 
   /// 分类统计项对应活跃分类 ID（"未细分"项使用一级分类的真实 ID）；
@@ -130,10 +27,12 @@ class StatisticsBreakdownItem {
 
   /// 一级分类自身直接金额的"未细分"项；钻取只命中该分类自身，不展开二级。
   final bool isUnsubdivided;
+  final Money? comparisonAmount;
 
   StatisticsBreakdownItem copyWith({
     double? progress,
     List<StatisticsBreakdownItem>? children,
+    Money? comparisonAmount,
   }) {
     return StatisticsBreakdownItem(
       id: id,
@@ -143,6 +42,7 @@ class StatisticsBreakdownItem {
       progress: progress ?? this.progress,
       children: children ?? this.children,
       isUnsubdivided: isUnsubdivided,
+      comparisonAmount: comparisonAmount ?? this.comparisonAmount,
     );
   }
 }
@@ -245,10 +145,9 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
   final sorted = [...items]
     ..sort((left, right) => left.date.compareTo(right.date));
   DateTime effectiveDateAt(int index) {
-    final snapshotDate =
-        index == 0
-            ? sorted[index].date
-            : sorted[index].date.subtract(const Duration(days: 1));
+    final snapshotDate = index == 0
+        ? sorted[index].date
+        : sorted[index].date.subtract(const Duration(days: 1));
     return DateTime(snapshotDate.year, snapshotDate.month, snapshotDate.day);
   }
 
@@ -279,7 +178,7 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
   ];
 }
 
-List<DailyCashflowSummary> _fillDailyCashflowDates(
+List<DailyCashflowSummary> fillStatisticsDailyCashflowDates(
   List<DailyCashflowSummary> items, {
   required DateTime from,
   required DateTime until,
@@ -368,12 +267,11 @@ List<StatisticsDonutSlice> buildStatisticsDonutSlices(
     ],
     maxItems: statisticsSeriesSlotCount,
     compare: (left, right) => right.valueMinor.compareTo(left.valueMinor),
-    buildOther:
-        (tail) => StatisticsDonutSlice(
-          title: '其他',
-          valueMinor: tail.fold(0, (sum, slice) => sum + slice.valueMinor),
-          isOther: true,
-        ),
+    buildOther: (tail) => StatisticsDonutSlice(
+      title: '其他',
+      valueMinor: tail.fold(0, (sum, slice) => sum + slice.valueMinor),
+      isOther: true,
+    ),
   );
 }
 
@@ -457,61 +355,20 @@ List<StatisticsWeekdayBucket> buildStatisticsWeekdayExpenseBuckets(
   ];
 }
 
-StatisticsPresentation buildStatisticsPresentation({
-  required CashflowReport cashflow,
-  required BalanceReport balance,
-  required Map<String, Account> accountsById,
-  required DateTime cashflowFrom,
-  required DateTime cashflowUntil,
-  required DateTime balanceUntil,
-}) {
-  final balanceAccounts = [
-    for (final metric in balance.accounts)
-      StatisticsBreakdownItem(
-        id: metric.accountId,
-        title: accountsById[metric.accountId]?.name ?? '已归档账户',
-        accountType: metric.accountType,
-        amount: metric.amount,
-        progress: 0,
-      ),
-  ]..sort(_compareBreakdown);
-  final normalizedBalanceAccounts = _withProgress(balanceAccounts);
-  return StatisticsPresentation(
-    cashflowComparison: cashflow.comparison,
-    dailySummaries: _fillDailyCashflowDates(
-      cashflow.dailySummaries,
-      from: cashflowFrom,
-      until: cashflowUntil,
-    ),
-    incomeCategories: _toCategoryBreakdownItems(
-      cashflow.categories,
-      AccountType.income,
-    ),
-    expenseCategories: _toCategoryBreakdownItems(
-      cashflow.categories,
-      AccountType.expense,
-    ),
-    balanceComparison: balance.comparison,
-    netAssetTrend: balance.trend,
-    balanceAccounts: normalizedBalanceAccounts,
-    cashflowFrom: cashflowFrom,
-    cashflowUntil: cashflowUntil,
-    balanceUntil: balanceUntil,
-    incomeChangeText: _changeText('较上月同期', cashflow.comparison.incomeChange),
-    expenseChangeText: _changeText('较上月同期', cashflow.comparison.expenseChange),
-    netAssetChangeText: _changeText('较上月', balance.comparison.netAssetChange),
-  );
-}
-
 /// 「未打标签」统计项的展示 ID。它只是统计展示口径，不是持久化实体；
 /// 不会与 uuid 生成的标签 ID 冲突。
 const untaggedTagItemId = 'untagged';
 
 /// 标签构成读模型已是命名条目，这里只做展示映射与 progress 归一。
-List<StatisticsBreakdownItem> _toTagBreakdownItems(
+List<StatisticsBreakdownItem> statisticsTagBreakdownItems(
   List<TagMetricItem> tags,
-  AccountType type,
-) {
+  AccountType type, {
+  List<TagMetricItem>? comparisonTags,
+}) {
+  final comparisonAmountById = {
+    for (final tag in comparisonTags ?? const <TagMetricItem>[])
+      if (tag.accountType == type) tag.tagId ?? untaggedTagItemId: tag.amount,
+  };
   final result = [
     for (final tag in tags)
       if (tag.accountType == type)
@@ -521,6 +378,10 @@ List<StatisticsBreakdownItem> _toTagBreakdownItems(
           accountType: tag.accountType,
           amount: tag.amount,
           progress: 0,
+          comparisonAmount: comparisonTags == null
+              ? null
+              : comparisonAmountById[tag.tagId ?? untaggedTagItemId] ??
+                    const Money(minorUnits: 0),
         ),
   ];
   return _withProgress(result);
@@ -528,10 +389,16 @@ List<StatisticsBreakdownItem> _toTagBreakdownItems(
 
 /// 分类统计读模型已由应用查询层组装为两层结构，这里只做展示映射与
 /// progress 归一，不再解析 parentId 或账户快照拼树。
-List<StatisticsBreakdownItem> _toCategoryBreakdownItems(
+List<StatisticsBreakdownItem> statisticsCategoryBreakdownItems(
   List<CategoryMetricGroup> groups,
-  AccountType type,
-) {
+  AccountType type, {
+  List<CategoryMetricGroup>? comparisonGroups,
+}) {
+  final comparisonByParentId = {
+    for (final group in comparisonGroups ?? const <CategoryMetricGroup>[])
+      if (group.accountType == type)
+        group.id: {for (final item in group.items) item.id: item.amount},
+  };
   final result = [
     for (final group in groups)
       if (group.accountType == type)
@@ -541,6 +408,13 @@ List<StatisticsBreakdownItem> _toCategoryBreakdownItems(
           accountType: group.accountType,
           amount: group.total,
           progress: 0,
+          comparisonAmount: comparisonGroups == null
+              ? null
+              : comparisonByParentId[group.id]?.values.fold<Money>(
+                      const Money(minorUnits: 0),
+                      (sum, amount) => sum + amount,
+                    ) ??
+                    const Money(minorUnits: 0),
           children: List.unmodifiable(
             _withProgress([
               for (final item in group.items)
@@ -551,6 +425,10 @@ List<StatisticsBreakdownItem> _toCategoryBreakdownItems(
                   amount: item.amount,
                   progress: 0,
                   isUnsubdivided: item.isUnsubdivided,
+                  comparisonAmount: comparisonGroups == null
+                      ? null
+                      : comparisonByParentId[group.id]?[item.id] ??
+                            const Money(minorUnits: 0),
                 ),
             ]),
           ),
@@ -571,12 +449,6 @@ List<StatisticsBreakdownItem> _withProgress(
         progress: maxAmount == 0 ? 0 : item.amount.minorUnits.abs() / maxAmount,
       ),
   ];
-}
-
-String _changeText(String prefix, PeriodChange change) {
-  final delta = change.delta;
-  final sign = delta.minorUnits > 0 ? '+' : '';
-  return '$prefix $sign${delta.format()}';
 }
 
 int _compareBreakdown(

@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/statistics/presentation/statistics_period_presentation.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 
 void main() {
   test('fills missing cashflow dates for a statistics range', () {
-    final presentation = buildRangeStatisticsPresentation(
-      report: StatisticsRangeReport(
+    final presentation = buildStatisticsCashflowTrend(
+      StatisticsRangeReport(
         from: DateTime(2026, 1, 1),
         until: DateTime(2026, 1, 4),
         cashflow: const CashflowSummary(
@@ -36,56 +37,98 @@ void main() {
     expect(presentation.dailySummaries.last.net.minorUnits, 0);
   });
 
-  test('fills missing cashflow dates for monthly statistics', () {
-    final presentation = buildStatisticsPresentation(
-      cashflow: CashflowReport(
-        comparison: const CashflowComparison(
-          current: CashflowSummary(
-            income: Money(minorUnits: 2000),
-            expense: Money(minorUnits: 700),
-          ),
-          previousSamePeriod: CashflowSummary(
-            income: Money(minorUnits: 0),
-            expense: Money(minorUnits: 0),
-          ),
-          previousFullPeriod: CashflowSummary(
-            income: Money(minorUnits: 0),
-            expense: Money(minorUnits: 0),
-          ),
+  test('maps a comparison period onto summary, dates and category rows', () {
+    final report = StatisticsRangeReport(
+      from: DateTime(2026, 1, 1),
+      until: DateTime(2026, 1, 4),
+      cashflow: const CashflowSummary(
+        income: Money(minorUnits: 2000),
+        expense: Money(minorUnits: 900),
+      ),
+      dailySummaries: [
+        DailyCashflowSummary(
+          date: DateTime(2026, 1, 2),
+          income: const Money(minorUnits: 2000),
+          expense: const Money(minorUnits: 900),
+        ),
+      ],
+      categories: [
+        CategoryMetricGroup(
+          id: 'food',
+          name: '餐饮',
+          iconKey: null,
+          accountType: AccountType.expense,
+          total: const Money(minorUnits: 900),
+          items: const [
+            CategoryMetricItem(
+              id: 'food',
+              name: '餐饮',
+              iconKey: null,
+              isUnsubdivided: true,
+              amount: Money(minorUnits: 900),
+            ),
+          ],
+        ),
+      ],
+      tags: const [],
+      balanceTrend: const [],
+      comparison: StatisticsRangeComparisonReport(
+        from: DateTime(2025, 12, 1),
+        until: DateTime(2025, 12, 4),
+        cashflow: const CashflowSummary(
+          income: Money(minorUnits: 1000),
+          expense: Money(minorUnits: 500),
         ),
         dailySummaries: [
           DailyCashflowSummary(
-            date: DateTime(2026, 1, 2),
-            income: const Money(minorUnits: 2000),
-            expense: const Money(minorUnits: 700),
+            date: DateTime(2025, 12, 2),
+            income: const Money(minorUnits: 1000),
+            expense: const Money(minorUnits: 500),
           ),
         ],
-        categories: const [],
-      ),
-      balance: const BalanceReport(
-        comparison: BalanceSheetComparison(
-          current: BalanceSheetSnapshot(
-            assets: Money(minorUnits: 0),
-            liabilities: Money(minorUnits: 0),
+        categories: [
+          CategoryMetricGroup(
+            id: 'food',
+            name: '餐饮',
+            iconKey: null,
+            accountType: AccountType.expense,
+            total: const Money(minorUnits: 500),
+            items: const [
+              CategoryMetricItem(
+                id: 'food',
+                name: '餐饮',
+                iconKey: null,
+                isUnsubdivided: true,
+                amount: Money(minorUnits: 500),
+              ),
+            ],
           ),
-          previous: BalanceSheetSnapshot(
-            assets: Money(minorUnits: 0),
-            liabilities: Money(minorUnits: 0),
-          ),
-        ),
-        trend: [],
-        accounts: [],
+        ],
+        tags: const [],
       ),
-      accountsById: const {},
-      cashflowFrom: DateTime(2026, 1, 1),
-      cashflowUntil: DateTime(2026, 1, 4),
-      balanceUntil: DateTime(2026, 1, 4),
+    );
+    final cashflow = buildStatisticsCashflowTrend(report);
+    final overview = buildStatisticsOverview(
+      report,
+      dailySummaries: cashflow.dailySummaries,
+    );
+    final comparison = buildStatisticsComparison(report, label: '环比');
+    final categories = buildStatisticsCategoryAnalysis(
+      report,
+      comparisonLabel: '环比',
     );
 
-    expect(presentation.dailySummaries.map((item) => item.date), [
-      DateTime(2026, 1, 1),
-      DateTime(2026, 1, 2),
-      DateTime(2026, 1, 3),
+    expect(comparison?.label, '环比');
+    expect(comparison?.until, DateTime(2025, 12, 4));
+    expect(overview.cashflowComparison.expenseChange.delta.minorUnits, 400);
+    expect(
+      categories.expenseCategories.single.comparisonAmount?.minorUnits,
+      500,
+    );
+    expect(comparison?.dailySummaries.map((item) => item.date), [
+      DateTime(2025, 12, 1),
+      DateTime(2025, 12, 2),
+      DateTime(2025, 12, 3),
     ]);
   });
 

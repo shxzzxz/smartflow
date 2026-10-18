@@ -2,20 +2,30 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../core/time/month_key.dart';
 import '../../../shared/analytics/time_series_transform.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import '../presentation/statistics_period_presentation.dart';
 import '../presentation/statistics_presentation.dart';
 
 part 'statistics_view_model.g.dart';
 
-enum StatisticsSection { cashflow, balance }
+/// 统计页可切换的页面级视图。新增视图时需同步提供对应 View 与页面壳分支。
+enum StatisticsViewType {
+  period('期间分析'),
+  state('当前状态');
+
+  const StatisticsViewType(this.label);
+
+  final String label;
+}
 
 enum StatisticsPeriodGranularity { year, month, date }
 
 enum StatisticsPeriodMode { single, range }
+
+enum StatisticsComparisonMode { previousPeriod, previousYear, none }
 
 enum CashflowChartForm { bar, line }
 
@@ -23,26 +33,29 @@ enum StatisticsCategoryKind { expense, income }
 
 enum StatisticsDrilldownScope { cashflow, balance }
 
+enum StatisticsComparisonMetric { expense, income }
+
 @riverpod
 class StatisticsViewModel extends _$StatisticsViewModel {
   @override
   StatisticsControlState build() {
     final now = ref.watch(currentDateTimeProvider);
     return StatisticsControlState(
-      visibleMonth: DateTime(now.year, now.month),
-      section: StatisticsSection.cashflow,
+      viewType: StatisticsViewType.period,
       granularity: StatisticsPeriodGranularity.month,
       mode: StatisticsPeriodMode.single,
       periodFrom: DateTime(now.year, now.month),
       periodUntil: DateTime(now.year, now.month + 1),
+      comparisonMode: StatisticsComparisonMode.previousPeriod,
       chartForm: CashflowChartForm.bar,
+      comparisonMetric: StatisticsComparisonMetric.expense,
       categoryKind: StatisticsCategoryKind.expense,
       categoryLevel: StatisticsCategoryLevel.primary,
     );
   }
 
-  void selectSection(StatisticsSection section) {
-    state = state.copyWith(section: section);
+  void selectView(StatisticsViewType view) {
+    state = state.copyWith(viewType: view);
   }
 
   void applyPeriodSelection({
@@ -56,12 +69,17 @@ class StatisticsViewModel extends _$StatisticsViewModel {
       mode: mode,
       periodFrom: from,
       periodUntil: untilExclusive,
-      visibleMonth: DateTime(from.year, from.month),
     );
   }
 
   void selectChartForm(CashflowChartForm form) =>
       state = state.copyWith(chartForm: form);
+
+  void selectComparisonMode(StatisticsComparisonMode mode) =>
+      state = state.copyWith(comparisonMode: mode);
+
+  void selectComparisonMetric(StatisticsComparisonMetric metric) =>
+      state = state.copyWith(comparisonMetric: metric);
 
   void selectCategoryKind(StatisticsCategoryKind kind) =>
       state = state.copyWith(categoryKind: kind);
@@ -75,19 +93,21 @@ StatisticsPageState statisticsPage(Ref ref) {
   final control = ref.watch(statisticsViewModelProvider);
   final now = ref.watch(currentDateTimeProvider);
   final range = control.range(now);
+  final asOfDate = DateTime(now.year, now.month, now.day);
   return StatisticsPageState(
-    visibleMonth: control.visibleMonth,
-    section: control.section,
     control: control,
-    periodLabel: control.periodLabel,
+    periodLabel: formatStatisticsRangeLabel(range.from, range.until),
+    asOfDate: asOfDate,
     lastSelectableDate: now,
-    content: ref.watch(
-      statisticsRangeContentProvider(
-        range.from,
-        range.until,
-        range.balancePointIntervalDays,
-      ),
-    ),
+    content: control.viewType == StatisticsViewType.period
+        ? ref.watch(
+            statisticsRangeContentProvider(
+              range.from,
+              range.until,
+              range.balancePointIntervalDays,
+            ),
+          )
+        : const StatisticsContentState.loading(),
   );
 }
 
@@ -97,6 +117,8 @@ Stream<StatisticsRangeReport> statisticsRangeReport(
   DateTime from,
   DateTime until,
   int balancePointIntervalDays,
+  DateTime? comparisonFrom,
+  DateTime? comparisonUntil,
 ) {
   return ref
       .watch(financialMetricsServiceProvider)
@@ -105,6 +127,8 @@ Stream<StatisticsRangeReport> statisticsRangeReport(
           from: from,
           until: until,
           balancePointIntervalDays: balancePointIntervalDays,
+          comparisonFrom: comparisonFrom,
+          comparisonUntil: comparisonUntil,
         ),
       );
 }
@@ -116,8 +140,17 @@ StatisticsContentState statisticsRangeContent(
   DateTime until,
   int balancePointIntervalDays,
 ) {
+  final control = ref.watch(statisticsViewModelProvider);
+  final now = ref.watch(currentDateTimeProvider);
+  final comparison = control.comparisonRange(now);
   final report = ref.watch(
-    statisticsRangeReportProvider(from, until, balancePointIntervalDays),
+    statisticsRangeReportProvider(
+      from,
+      until,
+      balancePointIntervalDays,
+      comparison?.from,
+      comparison?.until,
+    ),
   );
   if (report case AsyncError()) {
     return const StatisticsContentState.error(message: '加载失败，请稍后重试。');
@@ -126,78 +159,26 @@ StatisticsContentState statisticsRangeContent(
   if (reportValue == null) {
     return const StatisticsContentState.loading();
   }
+  final cashflow = buildStatisticsCashflowTrend(reportValue);
   return StatisticsContentState.loaded(
-    presentation: buildRangeStatisticsPresentation(report: reportValue),
-  );
-}
-
-@riverpod
-Stream<CashflowReport> statisticsCashflowReport(
-  Ref ref,
-  DateTime visibleMonth,
-) {
-  final now = ref.watch(currentDateTimeProvider);
-  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfDate = now.year == month.year && now.month == month.month
-      ? now
-      : null;
-  return ref
-      .watch(financialMetricsServiceProvider)
-      .watchCashflowReport(
-        CashflowReportQuery(month: month, asOfDate: asOfDate),
-      );
-}
-
-@riverpod
-Stream<BalanceReport> statisticsBalanceReport(Ref ref, DateTime visibleMonth) {
-  final now = ref.watch(currentDateTimeProvider);
-  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final asOfExclusive = now.year == month.year && now.month == month.month
-      ? DateTime(now.year, now.month, now.day + 1)
-      : month.nextMonthStart;
-  return ref
-      .watch(financialMetricsServiceProvider)
-      .watchBalanceReport(
-        BalanceReportQuery(
-          month: month,
-          asOfExclusive: asOfExclusive,
-          trendMonths: 6,
-        ),
-      );
-}
-
-@riverpod
-StatisticsContentState statisticsContent(Ref ref, DateTime visibleMonth) {
-  final now = ref.watch(currentDateTimeProvider);
-  final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  final isCurrentMonth = now.year == month.year && now.month == month.month;
-  final reportUntil = isCurrentMonth
-      ? DateTime(now.year, now.month, now.day + 1)
-      : month.nextMonthStart;
-  final cashflow = ref.watch(statisticsCashflowReportProvider(visibleMonth));
-  final balance = ref.watch(statisticsBalanceReportProvider(visibleMonth));
-  final accounts = ref.watch(accountsByIdProvider);
-
-  for (final value in [cashflow, balance, accounts]) {
-    if (value case AsyncError()) {
-      return const StatisticsContentState.error(message: '加载失败，请稍后重试。');
-    }
-  }
-  final cashflowValue = cashflow.value;
-  final balanceValue = balance.value;
-  final accountValues = accounts.value;
-  if (cashflowValue == null || balanceValue == null || accountValues == null) {
-    return const StatisticsContentState.loading();
-  }
-  return StatisticsContentState.loaded(
-    presentation: buildStatisticsPresentation(
-      cashflow: cashflowValue,
-      balance: balanceValue,
-      accountsById: accountValues,
-      cashflowFrom: month.start,
-      cashflowUntil: reportUntil,
-      balanceUntil: reportUntil,
+    overview: buildStatisticsOverview(
+      reportValue,
+      dailySummaries: cashflow.dailySummaries,
     ),
+    comparison: buildStatisticsComparison(
+      reportValue,
+      label: comparison?.label,
+    ),
+    cashflow: cashflow,
+    categories: buildStatisticsCategoryAnalysis(
+      reportValue,
+      comparisonLabel: comparison?.label,
+    ),
+    tags: buildStatisticsTagAnalysis(
+      reportValue,
+      comparisonLabel: comparison?.label,
+    ),
+    balance: buildStatisticsBalanceTrend(reportValue),
   );
 }
 
@@ -323,26 +304,28 @@ StatisticsTransactionsContentState statisticsTransactionsContent(
 
 class StatisticsControlState {
   const StatisticsControlState({
-    required this.visibleMonth,
-    required this.section,
+    required this.viewType,
     required this.granularity,
     required this.mode,
     required this.periodFrom,
     required this.periodUntil,
+    required this.comparisonMode,
     required this.chartForm,
+    required this.comparisonMetric,
     required this.categoryKind,
     required this.categoryLevel,
   });
 
-  final DateTime visibleMonth;
-  final StatisticsSection section;
+  final StatisticsViewType viewType;
   final StatisticsPeriodGranularity granularity;
   final StatisticsPeriodMode mode;
 
   /// 统计区间 [periodFrom, periodUntil)，periodUntil 为开区间端点。
   final DateTime periodFrom;
   final DateTime periodUntil;
+  final StatisticsComparisonMode comparisonMode;
   final CashflowChartForm chartForm;
+  final StatisticsComparisonMetric comparisonMetric;
   final StatisticsCategoryKind categoryKind;
   final StatisticsCategoryLevel categoryLevel;
 
@@ -353,17 +336,84 @@ class StatisticsControlState {
 
   StatisticsTimeGrouping get trendGrouping => _resolution.granularity;
 
-  String get periodLabel {
-    final last = periodUntil.subtract(const Duration(days: 1));
-    return '${periodFrom.year}.${periodFrom.month}.${periodFrom.day} - '
-        '${last.year}.${last.month}.${last.day}';
-  }
-
   StatisticsDateRange range(DateTime now) {
     return StatisticsDateRange(
       from: periodFrom,
       until: _validUntil(periodFrom, _capAtTomorrow(periodUntil, now)),
       balancePointIntervalDays: _resolution.snapshotSampleIntervalDays,
+    );
+  }
+
+  StatisticsComparisonRange? comparisonRange(DateTime now) {
+    return comparisonRangeFor(comparisonMode, now);
+  }
+
+  StatisticsComparisonRange? comparisonRangeFor(
+    StatisticsComparisonMode comparisonSelection,
+    DateTime now,
+  ) {
+    if (comparisonSelection == StatisticsComparisonMode.none) return null;
+    final currentFrom = periodFrom;
+    final currentUntil = _validUntil(
+      periodFrom,
+      _capAtTomorrow(periodUntil, now),
+    );
+
+    if (comparisonSelection == StatisticsComparisonMode.previousYear) {
+      return StatisticsComparisonRange(
+        from: _shiftYear(currentFrom),
+        until: _shiftYear(currentUntil),
+        label: '同比',
+      );
+    }
+
+    if (mode == StatisticsPeriodMode.range ||
+        granularity == StatisticsPeriodGranularity.date) {
+      final duration = currentUntil.difference(currentFrom);
+      return StatisticsComparisonRange(
+        from: currentFrom.subtract(duration),
+        until: currentFrom,
+        label: '环比',
+      );
+    }
+
+    if (granularity == StatisticsPeriodGranularity.month) {
+      final previousStart = DateTime(currentFrom.year, currentFrom.month - 1);
+      if (currentUntil.isBefore(periodUntil)) {
+        final previousEnd = DateTime(currentFrom.year, currentFrom.month);
+        final candidate = previousStart.add(
+          currentUntil.difference(currentFrom),
+        );
+        return StatisticsComparisonRange(
+          from: previousStart,
+          until: candidate.isAfter(previousEnd) ? previousEnd : candidate,
+          label: '环比',
+        );
+      }
+      return StatisticsComparisonRange(
+        from: previousStart,
+        until: currentFrom,
+        label: '环比',
+      );
+    }
+
+    if (granularity == StatisticsPeriodGranularity.year) {
+      return StatisticsComparisonRange(
+        from: _shiftYear(currentFrom),
+        until: _shiftYear(currentUntil),
+        label: '同比',
+      );
+    }
+    return null;
+  }
+
+  static DateTime _shiftYear(DateTime value) {
+    final targetYear = value.year - 1;
+    final lastDay = DateTime(targetYear, value.month + 1, 0).day;
+    return DateTime(
+      targetYear,
+      value.month,
+      value.day > lastDay ? lastDay : value.day,
     );
   }
 
@@ -377,24 +427,26 @@ class StatisticsControlState {
   }
 
   StatisticsControlState copyWith({
-    DateTime? visibleMonth,
-    StatisticsSection? section,
+    StatisticsViewType? viewType,
     StatisticsPeriodGranularity? granularity,
     StatisticsPeriodMode? mode,
     DateTime? periodFrom,
     DateTime? periodUntil,
+    StatisticsComparisonMode? comparisonMode,
     CashflowChartForm? chartForm,
+    StatisticsComparisonMetric? comparisonMetric,
     StatisticsCategoryKind? categoryKind,
     StatisticsCategoryLevel? categoryLevel,
   }) {
     return StatisticsControlState(
-      visibleMonth: visibleMonth ?? this.visibleMonth,
-      section: section ?? this.section,
+      viewType: viewType ?? this.viewType,
       granularity: granularity ?? this.granularity,
       mode: mode ?? this.mode,
       periodFrom: periodFrom ?? this.periodFrom,
       periodUntil: periodUntil ?? this.periodUntil,
+      comparisonMode: comparisonMode ?? this.comparisonMode,
       chartForm: chartForm ?? this.chartForm,
+      comparisonMetric: comparisonMetric ?? this.comparisonMetric,
       categoryKind: categoryKind ?? this.categoryKind,
       categoryLevel: categoryLevel ?? this.categoryLevel,
     );
@@ -403,19 +455,17 @@ class StatisticsControlState {
 
 class StatisticsPageState {
   const StatisticsPageState({
-    required this.visibleMonth,
-    required this.section,
     required this.content,
     required this.control,
     required this.periodLabel,
+    required this.asOfDate,
     required this.lastSelectableDate,
   });
 
-  final DateTime visibleMonth;
-  final StatisticsSection section;
   final StatisticsContentState content;
   final StatisticsControlState control;
   final String periodLabel;
+  final DateTime asOfDate;
   final DateTime lastSelectableDate;
 }
 
@@ -431,6 +481,18 @@ class StatisticsDateRange {
   final int balancePointIntervalDays;
 }
 
+class StatisticsComparisonRange {
+  const StatisticsComparisonRange({
+    required this.from,
+    required this.until,
+    required this.label,
+  });
+
+  final DateTime from;
+  final DateTime until;
+  final String label;
+}
+
 sealed class StatisticsContentState {
   const StatisticsContentState();
 
@@ -440,7 +502,12 @@ sealed class StatisticsContentState {
       StatisticsContentError;
 
   const factory StatisticsContentState.loaded({
-    required StatisticsPresentation presentation,
+    required StatisticsOverviewPresentation overview,
+    required StatisticsComparisonPresentation? comparison,
+    required StatisticsCashflowTrendPresentation cashflow,
+    required StatisticsCategoryAnalysisPresentation categories,
+    required StatisticsTagAnalysisPresentation tags,
+    required StatisticsBalanceTrendPresentation balance,
   }) = StatisticsContentLoaded;
 }
 
@@ -455,9 +522,21 @@ final class StatisticsContentError extends StatisticsContentState {
 }
 
 final class StatisticsContentLoaded extends StatisticsContentState {
-  const StatisticsContentLoaded({required this.presentation});
+  const StatisticsContentLoaded({
+    required this.overview,
+    required this.comparison,
+    required this.cashflow,
+    required this.categories,
+    required this.tags,
+    required this.balance,
+  });
 
-  final StatisticsPresentation presentation;
+  final StatisticsOverviewPresentation overview;
+  final StatisticsComparisonPresentation? comparison;
+  final StatisticsCashflowTrendPresentation cashflow;
+  final StatisticsCategoryAnalysisPresentation categories;
+  final StatisticsTagAnalysisPresentation tags;
+  final StatisticsBalanceTrendPresentation balance;
 }
 
 sealed class StatisticsTransactionsContentState {

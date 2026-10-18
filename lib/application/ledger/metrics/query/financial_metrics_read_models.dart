@@ -104,6 +104,7 @@ class StatisticsRangeReport {
     required this.categories,
     required this.tags,
     required this.balanceTrend,
+    this.comparison,
   });
 
   final DateTime from;
@@ -117,6 +118,27 @@ class StatisticsRangeReport {
   /// 未打标签的净额以 `tagId == null` 的项呈现。
   final List<TagMetricItem> tags;
   final List<BalanceTrendPoint> balanceTrend;
+  final StatisticsRangeComparisonReport? comparison;
+}
+
+/// 期间分析的对比期投影。它只包含流量、构成和标签口径，
+/// 不包含资产负债走势；状态余额应根据观察时点单独查询。
+class StatisticsRangeComparisonReport {
+  const StatisticsRangeComparisonReport({
+    required this.from,
+    required this.until,
+    required this.cashflow,
+    required this.dailySummaries,
+    required this.categories,
+    required this.tags,
+  });
+
+  final DateTime from;
+  final DateTime until;
+  final CashflowSummary cashflow;
+  final List<DailyCashflowSummary> dailySummaries;
+  final List<CategoryMetricGroup> categories;
+  final List<TagMetricItem> tags;
 }
 
 /// 标签构成统计项。`tagId` 为 null 表示「未打标签」，

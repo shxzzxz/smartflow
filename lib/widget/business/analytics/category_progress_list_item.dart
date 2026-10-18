@@ -13,6 +13,8 @@ class CategoryProgressListItem extends StatelessWidget {
     required this.trailing,
     required this.onTap,
     this.leading,
+    this.titleTrailing,
+    this.footer,
     super.key,
   });
 
@@ -22,6 +24,8 @@ class CategoryProgressListItem extends StatelessWidget {
   final Widget trailing;
   final VoidCallback onTap;
   final Widget? leading;
+  final Widget? titleTrailing;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -51,11 +55,21 @@ class CategoryProgressListItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: context.appTextStyles.listTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: context.appTextStyles.listTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (titleTrailing != null) ...[
+                        const SizedBox(width: AppSpacing.space8),
+                        Flexible(child: titleTrailing!),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.space6),
                   SizedBox(
@@ -80,6 +94,10 @@ class CategoryProgressListItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (footer != null) ...[
+                    const SizedBox(height: AppSpacing.space6),
+                    footer!,
+                  ],
                 ],
               ),
             ),
