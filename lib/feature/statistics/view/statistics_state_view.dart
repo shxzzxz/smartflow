@@ -58,18 +58,22 @@ class _StateStructure extends ConsumerWidget {
       StatisticsStateContentLoaded(:final presentation) => Column(
         children: [
           _StateBreakdownCard(
+            key: const ValueKey('statistics-state-assets'),
             title: '资产构成',
             subtitle: '按账户余额',
             items: presentation.assetAccounts,
+            total: presentation.totalAssets,
             semantic: MoneySemantic.asset,
             centerLabel: '总资产',
             emptyMessage: '暂无资产账户',
           ),
           const SizedBox(height: AppSpacing.space16),
           _StateBreakdownCard(
+            key: const ValueKey('statistics-state-liabilities'),
             title: '负债构成',
             subtitle: '按账户余额',
             items: presentation.liabilityAccounts,
+            total: presentation.totalLiabilities,
             semantic: MoneySemantic.liability,
             centerLabel: '总负债',
             emptyMessage: '暂无负债账户',
@@ -92,24 +96,23 @@ class _StateBreakdownCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.items,
+    required this.total,
     required this.semantic,
     required this.centerLabel,
     required this.emptyMessage,
+    super.key,
   });
 
   final String title;
   final String subtitle;
   final List<StatisticsBreakdownItem> items;
+  final Money total;
   final MoneySemantic semantic;
   final String centerLabel;
   final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
-    final totalMinor = items.fold<int>(
-      0,
-      (sum, item) => sum + item.amount.minorUnits.abs(),
-    );
     return AnalysisSectionCard(
       title: title,
       subtitle: subtitle,
@@ -132,7 +135,7 @@ class _StateBreakdownCard extends StatelessWidget {
                 StatisticsDonutChart(
                   items: items,
                   centerLabel: centerLabel,
-                  centerValue: Money(minorUnits: totalMinor).format(),
+                  centerValue: total.format(),
                 ),
                 for (var index = 0; index < items.length; index++)
                   CategoryProgressListItem(

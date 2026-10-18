@@ -281,17 +281,11 @@ class _KpiMetric extends StatelessWidget {
 
 String _summaryComparisonCaption(PeriodChange change, String? comparisonLabel) {
   if (comparisonLabel == null) return '';
-  final prefix = _comparisonChangePrefix(comparisonLabel);
+  final prefix = statisticsComparisonChangePrefix(comparisonLabel);
   if (change.isFlat) return '$prefix持平';
   final delta = formatSignedCompactAmount(change.delta.minorUnits);
   final ratio = change.ratio;
   return ratio == null
       ? '$prefix $delta'
       : '$prefix $delta · ${formatSignedOptionalPercent(ratio)}';
-}
-
-String _comparisonChangePrefix(String comparisonLabel) {
-  return comparisonLabel == '环比' || comparisonLabel == '同比'
-      ? comparisonLabel
-      : '较$comparisonLabel';
 }

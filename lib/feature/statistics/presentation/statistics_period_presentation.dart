@@ -89,6 +89,12 @@ String formatStatisticsRangeLabel(DateTime from, DateTime untilExclusive) {
   return '$start - $end';
 }
 
+String statisticsComparisonChangePrefix(String comparisonLabel) {
+  return comparisonLabel == '环比' || comparisonLabel == '同比'
+      ? comparisonLabel
+      : '较$comparisonLabel';
+}
+
 StatisticsCashflowTrendPresentation buildStatisticsCashflowTrend(
   StatisticsRangeReport report,
 ) {

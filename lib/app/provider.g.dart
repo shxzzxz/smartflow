@@ -3066,6 +3066,107 @@ final class InstallmentQueryServiceProvider
 String _$installmentQueryServiceHash() =>
     r'd7f177151dc820c5904727f231a95f7690ae4472';
 
+@ProviderFor(installmentStatisticsChangeSource)
+final installmentStatisticsChangeSourceProvider =
+    InstallmentStatisticsChangeSourceProvider._();
+
+final class InstallmentStatisticsChangeSourceProvider
+    extends
+        $FunctionalProvider<
+          InstallmentStatisticsChangeSource,
+          InstallmentStatisticsChangeSource,
+          InstallmentStatisticsChangeSource
+        >
+    with $Provider<InstallmentStatisticsChangeSource> {
+  InstallmentStatisticsChangeSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentStatisticsChangeSourceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$installmentStatisticsChangeSourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentStatisticsChangeSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentStatisticsChangeSource create(Ref ref) {
+    return installmentStatisticsChangeSource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentStatisticsChangeSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstallmentStatisticsChangeSource>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$installmentStatisticsChangeSourceHash() =>
+    r'99fbb4716bfab0cd639155ce2541b23f36b32205';
+
+@ProviderFor(installmentStatisticsQuery)
+final installmentStatisticsQueryProvider =
+    InstallmentStatisticsQueryProvider._();
+
+final class InstallmentStatisticsQueryProvider
+    extends
+        $FunctionalProvider<
+          InstallmentStatisticsQuery,
+          InstallmentStatisticsQuery,
+          InstallmentStatisticsQuery
+        >
+    with $Provider<InstallmentStatisticsQuery> {
+  InstallmentStatisticsQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentStatisticsQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentStatisticsQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentStatisticsQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentStatisticsQuery create(Ref ref) {
+    return installmentStatisticsQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentStatisticsQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstallmentStatisticsQuery>(value),
+    );
+  }
+}
+
+String _$installmentStatisticsQueryHash() =>
+    r'a4bade31a805505719889eadf0a06c3aa18200d7';
+
 @ProviderFor(contractMetricsQuery)
 final contractMetricsQueryProvider = ContractMetricsQueryProvider._();
 

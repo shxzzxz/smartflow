@@ -105,13 +105,23 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
     final dailySummariesFuture = _loadDailyCashflowSummaries(window);
     final categoriesFuture = _loadCategoryGroups(window);
     final tagsFuture = _loadTagMetrics(window);
+    final cashflow = await cashflowFuture;
+    final dailySummaries = await dailySummariesFuture;
+    final categories = await categoriesFuture;
+    final tags = await tagsFuture;
+    if (cashflow.isEmpty &&
+        dailySummaries.isEmpty &&
+        categories.isEmpty &&
+        tags.isEmpty) {
+      return null;
+    }
     return StatisticsRangeComparisonReport(
       from: from,
       until: until,
-      cashflow: _toCashflowSummary(await cashflowFuture),
-      dailySummaries: await dailySummariesFuture,
-      categories: await categoriesFuture,
-      tags: await tagsFuture,
+      cashflow: _toCashflowSummary(cashflow),
+      dailySummaries: dailySummaries,
+      categories: categories,
+      tags: tags,
     );
   }
 

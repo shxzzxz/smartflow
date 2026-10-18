@@ -6,11 +6,15 @@ import 'statistics_presentation.dart';
 class StatisticsStatePresentation {
   const StatisticsStatePresentation({
     required this.asOf,
+    required this.totalAssets,
+    required this.totalLiabilities,
     required this.assetAccounts,
     required this.liabilityAccounts,
   });
 
   final DateTime asOf;
+  final Money totalAssets;
+  final Money totalLiabilities;
   final List<StatisticsBreakdownItem> assetAccounts;
   final List<StatisticsBreakdownItem> liabilityAccounts;
 }
@@ -18,22 +22,6 @@ class StatisticsStatePresentation {
 enum StatisticsInstallmentCompositionMetric { principal, total }
 
 enum StatisticsInstallmentCashflowHorizon { sixMonths, oneYear, all }
-
-class StatisticsInstallmentSnapshot {
-  const StatisticsInstallmentSnapshot({
-    required this.contractId,
-    required this.contractName,
-    required this.accountName,
-    required this.schedules,
-    required this.metrics,
-  });
-
-  final String contractId;
-  final String contractName;
-  final String accountName;
-  final List<InstallmentScheduleReadModel> schedules;
-  final ContractMetrics metrics;
-}
 
 class StatisticsInstallmentsPresentation {
   const StatisticsInstallmentsPresentation({
@@ -81,39 +69,17 @@ class StatisticsInstallmentCashflowMonth {
     required this.principal,
     required this.interest,
     required this.fee,
+    required this.total,
   });
 
   final DateTime month;
   final Money principal;
   final Money interest;
   final Money fee;
+  final Money total;
 
   Money get interestAndFee =>
       Money(minorUnits: interest.minorUnits + fee.minorUnits);
-  Money get total => Money(
-    minorUnits: principal.minorUnits + interest.minorUnits + fee.minorUnits,
-  );
-}
-
-class _InstallmentCashflowAccumulator {
-  var principalMinor = 0;
-  var interestMinor = 0;
-  var feeMinor = 0;
-
-  void add(InstallmentScheduleReadModel schedule) {
-    principalMinor += schedule.expectedPrincipal.minorUnits;
-    interestMinor += schedule.expectedInterest.minorUnits;
-    feeMinor += schedule.expectedFee.minorUnits;
-  }
-
-  StatisticsInstallmentCashflowMonth toPresentation(DateTime month) {
-    return StatisticsInstallmentCashflowMonth(
-      month: month,
-      principal: Money(minorUnits: principalMinor),
-      interest: Money(minorUnits: interestMinor),
-      fee: Money(minorUnits: feeMinor),
-    );
-  }
 }
 
 List<StatisticsInstallmentCompositionItem>
@@ -147,6 +113,8 @@ StatisticsStatePresentation buildStatisticsStatePresentation({
   final normalizedAsOf = DateTime(asOf.year, asOf.month, asOf.day);
   return StatisticsStatePresentation(
     asOf: normalizedAsOf,
+    totalAssets: balance.comparison.current.assets,
+    totalLiabilities: balance.comparison.current.liabilities,
     assetAccounts: _accountBreakdown(
       balance.accounts,
       accountsById,
@@ -161,120 +129,39 @@ StatisticsStatePresentation buildStatisticsStatePresentation({
 }
 
 StatisticsInstallmentsPresentation buildStatisticsInstallmentsPresentation({
-  required DateTime asOf,
-  required List<StatisticsInstallmentSnapshot> contracts,
+  required InstallmentStatisticsReadModel statistics,
+  required Map<String, Account> accountsById,
 }) {
-  final normalizedAsOf = DateTime(asOf.year, asOf.month, asOf.day);
-  final compositionItems = <StatisticsInstallmentCompositionItem>[];
-  final monthlyCashflow = <DateTime, _InstallmentCashflowAccumulator>{};
-  var overdueTotalMinor = 0;
-
-  for (final contract in contracts) {
-    final outstandingSchedules =
-        contract.schedules
-            .where(
-              (schedule) =>
-                  schedule.status == InstallmentScheduleStatus.pending ||
-                  schedule.status == InstallmentScheduleStatus.partiallyPaid,
-            )
-            .toList()
-          ..sort(
-            (left, right) => left.expectedRepaymentDate.compareTo(
-              right.expectedRepaymentDate,
-            ),
-          );
-    if (outstandingSchedules.isEmpty) continue;
-
-    var remainingPrincipalMinor = 0;
-    var remainingInterestMinor = 0;
-    var remainingFeeMinor = 0;
-    for (final schedule in outstandingSchedules) {
-      remainingPrincipalMinor += schedule.expectedPrincipal.minorUnits;
-      remainingInterestMinor += schedule.expectedInterest.minorUnits;
-      remainingFeeMinor += schedule.expectedFee.minorUnits;
-      final repaymentDate = schedule.expectedRepaymentDate;
-      if (repaymentDate.isBefore(normalizedAsOf)) {
-        overdueTotalMinor +=
-            schedule.expectedPrincipal.minorUnits +
-            schedule.expectedInterest.minorUnits +
-            schedule.expectedFee.minorUnits;
-        continue;
-      }
-      final month = DateTime(repaymentDate.year, repaymentDate.month);
-      (monthlyCashflow[month] ??= _InstallmentCashflowAccumulator()).add(
-        schedule,
-      );
-    }
-
-    compositionItems.add(
+  final sortedCompositionItems = sortStatisticsInstallmentCompositionItems([
+    for (final contract in statistics.contracts)
       StatisticsInstallmentCompositionItem(
         contractId: contract.contractId,
         contractName: contract.contractName,
-        accountName: contract.accountName,
-        remainingPrincipal: Money(minorUnits: remainingPrincipalMinor),
-        remainingInterest: Money(minorUnits: remainingInterestMinor),
-        remainingTotal: Money(
-          minorUnits:
-              remainingPrincipalMinor +
-              remainingInterestMinor +
-              remainingFeeMinor,
-        ),
-        xirr: contract.metrics.isAvailable ? contract.metrics.xirr : null,
+        accountName: accountsById[contract.liabilityAccountId]?.name ?? '未知账户',
+        remainingPrincipal: contract.remainingPrincipal,
+        remainingInterest: contract.remainingInterest,
+        remainingTotal: contract.remainingTotal,
+        xirr: contract.xirr,
       ),
-    );
-  }
-
-  final sortedCompositionItems = sortStatisticsInstallmentCompositionItems(
-    compositionItems,
-    StatisticsInstallmentCompositionMetric.principal,
-  );
+  ], StatisticsInstallmentCompositionMetric.principal);
   return StatisticsInstallmentsPresentation(
-    asOf: normalizedAsOf,
+    asOf: statistics.asOf,
     compositionItems: sortedCompositionItems,
-    remainingPrincipal: Money(
-      minorUnits: sortedCompositionItems.fold(
-        0,
-        (sum, item) => sum + item.remainingPrincipal.minorUnits,
-      ),
-    ),
-    remainingInterest: Money(
-      minorUnits: sortedCompositionItems.fold(
-        0,
-        (sum, item) => sum + item.remainingInterest.minorUnits,
-      ),
-    ),
-    remainingTotal: Money(
-      minorUnits: sortedCompositionItems.fold(
-        0,
-        (sum, item) => sum + item.remainingTotal.minorUnits,
-      ),
-    ),
-    cashflowMonths: _continuousCashflowMonths(normalizedAsOf, monthlyCashflow),
-    overdueTotal: Money(minorUnits: overdueTotalMinor),
+    remainingPrincipal: statistics.remainingPrincipal,
+    remainingInterest: statistics.remainingInterest,
+    remainingTotal: statistics.remainingTotal,
+    cashflowMonths: List.unmodifiable([
+      for (final month in statistics.monthlyCashflow)
+        StatisticsInstallmentCashflowMonth(
+          month: month.month,
+          principal: month.principal,
+          interest: month.interest,
+          fee: month.fee,
+          total: month.total,
+        ),
+    ]),
+    overdueTotal: statistics.overdueTotal,
   );
-}
-
-List<StatisticsInstallmentCashflowMonth> _continuousCashflowMonths(
-  DateTime asOf,
-  Map<DateTime, _InstallmentCashflowAccumulator> monthlyCashflow,
-) {
-  if (monthlyCashflow.isEmpty) return const [];
-  final start = DateTime(asOf.year, asOf.month);
-  final lastMonth = monthlyCashflow.keys.reduce(
-    (left, right) => left.isAfter(right) ? left : right,
-  );
-  final months = <StatisticsInstallmentCashflowMonth>[];
-  for (
-    var month = start;
-    !month.isAfter(lastMonth);
-    month = DateTime(month.year, month.month + 1)
-  ) {
-    months.add(
-      (monthlyCashflow[month] ?? _InstallmentCashflowAccumulator())
-          .toPresentation(month),
-    );
-  }
-  return List.unmodifiable(months);
 }
 
 List<StatisticsBreakdownItem> _accountBreakdown(

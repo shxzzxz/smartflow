@@ -30,6 +30,7 @@ import '../infrastructure/credit/repository/drift_installment_product_repository
 import '../domain/credit/port/installment_product_repository.dart';
 import '../application/credit/product/installment_product_app_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
+import '../infrastructure/credit/installment_statistics_change_source.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
@@ -55,6 +56,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/task/pull_task_scheduler.dart';
 import '../application/credit/installment/port/installment_plan_change_port.dart';
+import '../application/credit/installment/query/port/installment_statistics_change_source.dart';
 import '../application/credit/task/installment_repricing_task.dart';
 import '../infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 import '../domain/ledger/port/account_repository.dart';
@@ -605,6 +607,21 @@ InstallmentQueryService installmentQueryService(Ref ref) {
     repricings: DriftInstallmentRepricingRepository(
       ref.watch(appDatabaseProvider),
     ),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InstallmentStatisticsChangeSource installmentStatisticsChangeSource(Ref ref) {
+  return DriftInstallmentStatisticsChangeSource(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+InstallmentStatisticsQuery installmentStatisticsQuery(Ref ref) {
+  return InstallmentStatisticsQueryImpl(
+    installments: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    changes: ref.watch(installmentStatisticsChangeSourceProvider),
   );
 }
 

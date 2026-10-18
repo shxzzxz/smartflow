@@ -180,11 +180,11 @@ final class StatisticsInstallmentsProvider
         $FunctionalProvider<
           AsyncValue<StatisticsInstallmentsPresentation>,
           StatisticsInstallmentsPresentation,
-          FutureOr<StatisticsInstallmentsPresentation>
+          Stream<StatisticsInstallmentsPresentation>
         >
     with
         $FutureModifier<StatisticsInstallmentsPresentation>,
-        $FutureProvider<StatisticsInstallmentsPresentation> {
+        $StreamProvider<StatisticsInstallmentsPresentation> {
   StatisticsInstallmentsProvider._({
     required StatisticsInstallmentsFamily super.from,
     required DateTime super.argument,
@@ -208,12 +208,12 @@ final class StatisticsInstallmentsProvider
 
   @$internal
   @override
-  $FutureProviderElement<StatisticsInstallmentsPresentation> $createElement(
+  $StreamProviderElement<StatisticsInstallmentsPresentation> $createElement(
     $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  ) => $StreamProviderElement(pointer);
 
   @override
-  FutureOr<StatisticsInstallmentsPresentation> create(Ref ref) {
+  Stream<StatisticsInstallmentsPresentation> create(Ref ref) {
     final argument = this.argument as DateTime;
     return statisticsInstallments(ref, argument);
   }
@@ -231,12 +231,12 @@ final class StatisticsInstallmentsProvider
 }
 
 String _$statisticsInstallmentsHash() =>
-    r'5df9e54c5b58c639aa20d5f4d2e174b532332e6d';
+    r'758fe2e14ea23da89bb7b84163ce8babc2416826';
 
 final class StatisticsInstallmentsFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          FutureOr<StatisticsInstallmentsPresentation>,
+          Stream<StatisticsInstallmentsPresentation>,
           DateTime
         > {
   StatisticsInstallmentsFamily._()

@@ -10,6 +10,7 @@ void main() {
       'cash': _account('cash', '现金', AccountType.asset),
       'receivable': _account('receivable', '应收', AccountType.asset),
       'loan': _account('loan', '贷款', AccountType.liability),
+      'overpaid-card': _account('overpaid-card', '信用卡', AccountType.liability),
     };
     final presentation = buildStatisticsStatePresentation(
       asOf: DateTime(2026, 10, 18),
@@ -17,7 +18,7 @@ void main() {
         comparison: const BalanceSheetComparison(
           current: BalanceSheetSnapshot(
             assets: Money(minorUnits: 10000),
-            liabilities: Money(minorUnits: 2000),
+            liabilities: Money(minorUnits: 1500),
           ),
           previous: BalanceSheetSnapshot(
             assets: Money(minorUnits: 9000),
@@ -41,87 +42,98 @@ void main() {
             accountType: AccountType.liability,
             amountMinor: 2000,
           ),
+          AccountMetric(
+            accountId: 'overpaid-card',
+            accountType: AccountType.liability,
+            amountMinor: -500,
+          ),
         ],
       ),
       accountsById: accountsById,
     );
     expect(presentation.assetAccounts.map((item) => item.title), ['现金', '应收']);
-    expect(presentation.liabilityAccounts.single.title, '贷款');
+    expect(presentation.liabilityAccounts.map((item) => item.title), [
+      '贷款',
+      '信用卡',
+    ]);
+    expect(presentation.totalAssets, const Money(minorUnits: 10000));
+    expect(presentation.totalLiabilities, const Money(minorUnits: 1500));
   });
 
-  test(
-    'builds installment composition and cashflow from outstanding periods',
-    () {
-      final presentation = buildStatisticsInstallmentsPresentation(
+  test('maps application installment statistics into presentation', () {
+    final presentation = buildStatisticsInstallmentsPresentation(
+      statistics: InstallmentStatisticsReadModel(
         asOf: DateTime(2026, 10, 18),
-        contracts: [
-          _snapshot(
+        contracts: const [
+          InstallmentContractStatisticsReadModel(
             contractId: 'high-rate',
             contractName: '消费贷',
+            liabilityAccountId: 'loan',
+            remainingPrincipal: Money(minorUnits: 10000),
+            remainingInterest: Money(minorUnits: 1000),
+            remainingTotal: Money(minorUnits: 11100),
             xirr: .18,
-            schedules: [
-              _schedule(
-                contractId: 'high-rate',
-                periodNo: 1,
-                date: DateTime(2026, 10, 17),
-                principalMinor: 1000,
-                interestMinor: 100,
-              ),
-              _schedule(
-                contractId: 'high-rate',
-                periodNo: 2,
-                date: DateTime(2026, 11, 15),
-                principalMinor: 9000,
-                interestMinor: 900,
-                feeMinor: 100,
-              ),
-              _schedule(
-                contractId: 'high-rate',
-                periodNo: 3,
-                date: DateTime(2026, 12, 15),
-                principalMinor: 8000,
-                interestMinor: 8000,
-                status: InstallmentScheduleStatus.paid,
-              ),
-            ],
           ),
-          _snapshot(
+          InstallmentContractStatisticsReadModel(
             contractId: 'large-balance',
             contractName: '房贷',
+            liabilityAccountId: 'loan',
+            remainingPrincipal: Money(minorUnits: 50000),
+            remainingInterest: Money(minorUnits: 2500),
+            remainingTotal: Money(minorUnits: 52500),
             xirr: .05,
-            schedules: [
-              _schedule(
-                contractId: 'large-balance',
-                periodNo: 1,
-                date: DateTime(2026, 12, 1),
-                principalMinor: 50000,
-                interestMinor: 2500,
-              ),
-            ],
           ),
         ],
-      );
+        remainingPrincipal: const Money(minorUnits: 60000),
+        remainingInterest: const Money(minorUnits: 3500),
+        remainingTotal: const Money(minorUnits: 63600),
+        overdueTotal: const Money(minorUnits: 1100),
+        monthlyCashflow: [
+          InstallmentMonthlyStatisticsReadModel(
+            month: DateTime(2026, 10),
+            principal: Money(minorUnits: 0),
+            interest: Money(minorUnits: 0),
+            fee: Money(minorUnits: 0),
+            total: Money(minorUnits: 0),
+          ),
+          InstallmentMonthlyStatisticsReadModel(
+            month: DateTime(2026, 11),
+            principal: Money(minorUnits: 9000),
+            interest: Money(minorUnits: 900),
+            fee: Money(minorUnits: 100),
+            total: Money(minorUnits: 10000),
+          ),
+          InstallmentMonthlyStatisticsReadModel(
+            month: DateTime(2026, 12),
+            principal: Money(minorUnits: 50000),
+            interest: Money(minorUnits: 2500),
+            fee: Money(minorUnits: 0),
+            total: Money(minorUnits: 52500),
+          ),
+        ],
+      ),
+      accountsById: {'loan': _account('loan', '贷款', AccountType.liability)},
+    );
 
-      expect(presentation.compositionItems.map((item) => item.contractId), [
-        'large-balance',
-        'high-rate',
-      ]);
-      expect(presentation.remainingPrincipal.minorUnits, 60000);
-      expect(presentation.remainingInterest.minorUnits, 3500);
-      expect(presentation.remainingTotal.minorUnits, 63600);
-      expect(presentation.overdueTotal.minorUnits, 1100);
-      expect(presentation.cashflowMonths, hasLength(3));
-      expect(presentation.cashflowMonths.first.month, DateTime(2026, 10));
-      expect(presentation.cashflowMonths[1].total.minorUnits, 10000);
-      expect(presentation.cashflowMonths[2].interestAndFee.minorUnits, 2500);
+    expect(presentation.compositionItems.map((item) => item.contractId), [
+      'large-balance',
+      'high-rate',
+    ]);
+    expect(presentation.remainingPrincipal.minorUnits, 60000);
+    expect(presentation.remainingInterest.minorUnits, 3500);
+    expect(presentation.remainingTotal.minorUnits, 63600);
+    expect(presentation.overdueTotal.minorUnits, 1100);
+    expect(presentation.cashflowMonths, hasLength(3));
+    expect(presentation.cashflowMonths.first.month, DateTime(2026, 10));
+    expect(presentation.cashflowMonths[1].total.minorUnits, 10000);
+    expect(presentation.cashflowMonths[2].interestAndFee.minorUnits, 2500);
 
-      final byTotal = sortStatisticsInstallmentCompositionItems(
-        presentation.compositionItems,
-        StatisticsInstallmentCompositionMetric.total,
-      );
-      expect(byTotal.first.contractId, 'large-balance');
-    },
-  );
+    final byTotal = sortStatisticsInstallmentCompositionItems(
+      presentation.compositionItems,
+      StatisticsInstallmentCompositionMetric.total,
+    );
+    expect(byTotal.first.contractId, 'large-balance');
+  });
 }
 
 Account _account(String id, String name, AccountType type) {
@@ -130,51 +142,5 @@ Account _account(String id, String name, AccountType type) {
     name: name,
     type: type,
     balance: const Money(minorUnits: 0),
-  );
-}
-
-StatisticsInstallmentSnapshot _snapshot({
-  required String contractId,
-  required String contractName,
-  required double xirr,
-  required List<InstallmentScheduleReadModel> schedules,
-}) {
-  return StatisticsInstallmentSnapshot(
-    contractId: contractId,
-    contractName: contractName,
-    accountName: '贷款账户',
-    schedules: schedules,
-    metrics: ContractMetrics(
-      monthlyIrr: 0,
-      nominalApr: 0,
-      xirr: xirr,
-      totalRepayment: const Money(minorUnits: 0),
-      totalInterest: const Money(minorUnits: 0),
-      totalFee: const Money(minorUnits: 0),
-      converged: true,
-      unavailableReason: null,
-    ),
-  );
-}
-
-InstallmentScheduleReadModel _schedule({
-  required String contractId,
-  required int periodNo,
-  required DateTime date,
-  required int principalMinor,
-  required int interestMinor,
-  int feeMinor = 0,
-  InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
-}) {
-  return InstallmentScheduleReadModel(
-    id: '$contractId-$periodNo',
-    contractId: contractId,
-    periodNo: periodNo,
-    expectedRepaymentDate: date,
-    expectedPrincipal: Money(minorUnits: principalMinor),
-    expectedInterest: Money(minorUnits: interestMinor),
-    expectedFee: Money(minorUnits: feeMinor),
-    status: status,
-    createdAt: DateTime(2026),
   );
 }

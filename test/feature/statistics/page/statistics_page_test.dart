@@ -271,6 +271,69 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('shows the signed liability total from current-state balance', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(
+      tester,
+      statePresentation: StatisticsStatePresentation(
+        asOf: DateTime(2026, 1, 15),
+        totalAssets: const Money(minorUnits: 10000),
+        totalLiabilities: const Money(minorUnits: 1500),
+        assetAccounts: const [
+          StatisticsBreakdownItem(
+            id: 'cash',
+            title: '现金',
+            accountType: AccountType.asset,
+            amount: Money(minorUnits: 10000),
+            progress: 1,
+          ),
+        ],
+        liabilityAccounts: const [
+          StatisticsBreakdownItem(
+            id: 'card',
+            title: '信用卡',
+            accountType: AccountType.liability,
+            amount: Money(minorUnits: 2000),
+            progress: 1,
+          ),
+          StatisticsBreakdownItem(
+            id: 'overpaid-card',
+            title: '超额还款卡',
+            accountType: AccountType.liability,
+            amount: Money(minorUnits: -500),
+            progress: .25,
+          ),
+        ],
+      ),
+    );
+
+    await tester.tap(find.text('当前状态'));
+    await tester.pumpAndSettle();
+    final liabilityCard = find.byKey(
+      const ValueKey('statistics-state-liabilities'),
+    );
+    await tester.scrollUntilVisible(
+      liabilityCard,
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+    final donut = tester.widget<StatisticsDonutChart>(
+      find.descendant(
+        of: liabilityCard,
+        matching: find.byType(StatisticsDonutChart),
+      ),
+    );
+    expect(donut.centerValue, '15.00');
+    expect(find.text('超额还款卡'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('expands installment composition contracts', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
@@ -656,6 +719,7 @@ Finder _verticalScrollable() => find.byWidgetPredicate(
 Future<void> _pumpStatisticsPage(
   WidgetTester tester, {
   StatisticsContentLoaded? content,
+  StatisticsStatePresentation? statePresentation,
   TextScaler? textScaler,
 }) async {
   final month = DateTime(2026, 1);
@@ -691,12 +755,12 @@ Future<void> _pumpStatisticsPage(
         }),
         statisticsStateContentProvider(DateTime(2026, 1, 15)).overrideWith(
           (ref) => StatisticsStateContentState.loaded(
-            presentation: _statePresentation(),
+            presentation: statePresentation ?? _statePresentation(),
           ),
         ),
         statisticsInstallmentsProvider(
           DateTime(2026, 1, 15),
-        ).overrideWith((ref) async => _installmentsPresentation()),
+        ).overrideWith((ref) => Stream.value(_installmentsPresentation())),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -849,6 +913,8 @@ StatisticsContentLoaded _loadedContent({
 StatisticsStatePresentation _statePresentation() {
   return StatisticsStatePresentation(
     asOf: DateTime(2026, 1, 15),
+    totalAssets: const Money(minorUnits: 10000),
+    totalLiabilities: const Money(minorUnits: 2000),
     assetAccounts: const [
       StatisticsBreakdownItem(
         id: 'cash',
@@ -920,30 +986,35 @@ StatisticsInstallmentsPresentation _installmentsPresentation() {
         principal: const Money(minorUnits: 500000),
         interest: const Money(minorUnits: 60000),
         fee: const Money(minorUnits: 0),
+        total: const Money(minorUnits: 560000),
       ),
       StatisticsInstallmentCashflowMonth(
         month: DateTime(2026, 2),
         principal: const Money(minorUnits: 520000),
         interest: const Money(minorUnits: 58000),
         fee: const Money(minorUnits: 2000),
+        total: const Money(minorUnits: 580000),
       ),
       StatisticsInstallmentCashflowMonth(
         month: DateTime(2026, 3),
         principal: const Money(minorUnits: 540000),
         interest: const Money(minorUnits: 56000),
         fee: const Money(minorUnits: 0),
+        total: const Money(minorUnits: 596000),
       ),
       StatisticsInstallmentCashflowMonth(
         month: DateTime(2026, 4),
         principal: const Money(minorUnits: 560000),
         interest: const Money(minorUnits: 54000),
         fee: const Money(minorUnits: 0),
+        total: const Money(minorUnits: 614000),
       ),
       StatisticsInstallmentCashflowMonth(
         month: DateTime(2026, 5),
         principal: const Money(minorUnits: 580000),
         interest: const Money(minorUnits: 52000),
         fee: const Money(minorUnits: 0),
+        total: const Money(minorUnits: 632000),
       ),
     ],
     overdueTotal: const Money(minorUnits: 30000),

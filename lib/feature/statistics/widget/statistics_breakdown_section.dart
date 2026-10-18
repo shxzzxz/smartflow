@@ -345,7 +345,7 @@ class _CategoryComparisonText extends StatelessWidget {
   Widget build(BuildContext context) {
     final change = PeriodChange(current: item.amount, previous: baseline);
     final amount = formatCompactMoney(change.delta.abs());
-    final prefix = _comparisonChangePrefix(comparisonLabel);
+    final prefix = statisticsComparisonChangePrefix(comparisonLabel);
     final compact = change.isFlat
         ? '$prefix持平'
         : baseline.minorUnits == 0 && item.amount.minorUnits > 0
@@ -364,12 +364,6 @@ class _CategoryComparisonText extends StatelessWidget {
       ),
     );
   }
-}
-
-String _comparisonChangePrefix(String comparisonLabel) {
-  return comparisonLabel == '环比' || comparisonLabel == '同比'
-      ? comparisonLabel
-      : '较$comparisonLabel';
 }
 
 class _CategoryRowValue extends StatelessWidget {

@@ -77,6 +77,7 @@ void main() {
                 principal: const Money(minorUnits: 10000),
                 interest: const Money(minorUnits: 1200),
                 fee: const Money(minorUnits: 0),
+                total: const Money(minorUnits: 11200),
               ),
             ],
           ),

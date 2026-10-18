@@ -19,6 +19,28 @@ class CreditDebtBuckets {
   final Money unattributedDebt;
 }
 
+/// 单条账单明细尚需偿还的本息费；总额已扣除优惠并整体下限为 0。
+class CreditRemainingAmounts {
+  const CreditRemainingAmounts({
+    required this.principalMinor,
+    required this.interestMinor,
+    required this.feeMinor,
+    required this.totalMinor,
+  });
+
+  static const zero = CreditRemainingAmounts(
+    principalMinor: 0,
+    interestMinor: 0,
+    feeMinor: 0,
+    totalMinor: 0,
+  );
+
+  final int principalMinor;
+  final int interestMinor;
+  final int feeMinor;
+  final int totalMinor;
+}
+
 class CreditDebtBucketService {
   const CreditDebtBucketService();
 
@@ -116,11 +138,15 @@ class CreditDebtBucketService {
     BillItem item, {
     required int allocatedPrincipalMinor,
   }) {
-    if (!_isOutstandingItem(item)) return 0;
-    return remainingPrincipal(
-      expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
-      allocatedPrincipalMinor: allocatedPrincipalMinor,
-    );
+    return remainingAmountsForBillItem(
+      item,
+      allocated: RepaymentAmountBreakdown(
+        principal: Money(minorUnits: allocatedPrincipalMinor),
+        interest: Money.zero(),
+        fee: Money.zero(),
+        discount: Money.zero(),
+      ),
+    ).principalMinor;
   }
 
   /// 明细待还总额：本息费各自剩余之和再扣减优惠，整体下限为 0。
@@ -128,16 +154,33 @@ class CreditDebtBucketService {
     BillItem item, {
     required RepaymentAmountBreakdown allocated,
   }) {
-    if (!_isOutstandingItem(item)) return 0;
-    final remaining =
-        item.expectedPrincipal.minorUnits -
-        allocated.principal.minorUnits +
-        item.expectedInterest.minorUnits -
-        allocated.interest.minorUnits +
-        item.expectedFee.minorUnits -
-        allocated.fee.minorUnits -
-        allocated.discount.minorUnits;
-    return remaining < 0 ? 0 : remaining;
+    return remainingAmountsForBillItem(item, allocated: allocated).totalMinor;
+  }
+
+  CreditRemainingAmounts remainingAmountsForBillItem(
+    BillItem item, {
+    required RepaymentAmountBreakdown allocated,
+  }) {
+    if (!_isOutstandingItem(item)) return CreditRemainingAmounts.zero;
+    final principal = _remainingNonNegative(
+      expectedMinor: item.expectedPrincipal.minorUnits,
+      allocatedMinor: allocated.principal.minorUnits,
+    );
+    final interest = _remainingNonNegative(
+      expectedMinor: item.expectedInterest.minorUnits,
+      allocatedMinor: allocated.interest.minorUnits,
+    );
+    final fee = _remainingNonNegative(
+      expectedMinor: item.expectedFee.minorUnits,
+      allocatedMinor: allocated.fee.minorUnits,
+    );
+    final total = principal + interest + fee - allocated.discount.minorUnits;
+    return CreditRemainingAmounts(
+      principalMinor: principal,
+      interestMinor: interest,
+      feeMinor: fee,
+      totalMinor: total < 0 ? 0 : total,
+    );
   }
 
   bool _isOutstandingItem(BillItem item) {
@@ -145,11 +188,11 @@ class CreditDebtBucketService {
         item.status == BillItemStatus.partiallyPaid;
   }
 
-  int remainingPrincipal({
-    required int expectedPrincipalMinor,
-    required int allocatedPrincipalMinor,
+  int _remainingNonNegative({
+    required int expectedMinor,
+    required int allocatedMinor,
   }) {
-    final remaining = expectedPrincipalMinor - allocatedPrincipalMinor;
+    final remaining = expectedMinor - allocatedMinor;
     return remaining < 0 ? 0 : remaining;
   }
 

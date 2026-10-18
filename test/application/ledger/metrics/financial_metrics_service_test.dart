@@ -151,6 +151,41 @@ void main() {
     expect(report.comparison?.categories.single.id, 'food');
   });
 
+  test('omits a comparison period that has no cashflow facts', () async {
+    final aggregate = _FakeLedgerMetricsSource(
+      accountTypeResults: const [
+        {AccountType.income: 3000, AccountType.expense: 1200},
+        {AccountType.asset: 10000, AccountType.liability: 2000},
+        {},
+      ],
+      byDayResults: [
+        {
+          DateTime(2026, 1, 2): const {
+            AccountType.income: 3000,
+            AccountType.expense: 1200,
+          },
+        },
+        {},
+        {},
+      ],
+    );
+    final service = _service(aggregate);
+
+    final report = await service
+        .watchStatisticsRangeReport(
+          StatisticsRangeReportQuery(
+            from: DateTime(2026, 1, 1),
+            until: DateTime(2026, 1, 4),
+            comparisonFrom: DateTime(2025, 12, 25),
+            comparisonUntil: DateTime(2025, 12, 28),
+          ),
+        )
+        .first;
+
+    expect(report.cashflow.income.minorUnits, 3000);
+    expect(report.comparison, isNull);
+  });
+
   test('composes tag metrics with names and the untagged bucket', () async {
     final aggregate = _FakeLedgerMetricsSource(
       accountTypeResults: const [
