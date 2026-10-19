@@ -62,13 +62,13 @@ class AppStatusBadge extends StatelessWidget {
 
 Color appStatusToneColor(BuildContext context, AppStatusTone tone) {
   final colors = Theme.of(context).colorScheme;
-  final extension = Theme.of(context).extension<AppThemeExtension>()!;
+  final extension = Theme.of(context).extension<AppThemeExtension>();
   return switch (tone) {
     AppStatusTone.neutral => colors.onSurfaceVariant,
     AppStatusTone.primary => colors.primary,
-    AppStatusTone.info => extension.info,
-    AppStatusTone.success => extension.success,
-    AppStatusTone.warning => extension.warning,
-    AppStatusTone.danger => extension.danger,
+    AppStatusTone.info => extension?.info ?? colors.tertiary,
+    AppStatusTone.success => extension?.success ?? colors.tertiary,
+    AppStatusTone.warning => extension?.warning ?? colors.secondary,
+    AppStatusTone.danger => extension?.danger ?? colors.error,
   };
 }
