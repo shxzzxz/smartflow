@@ -47,6 +47,7 @@ import '../widget/app_datetime_picker.dart';
 import '../widget/app_dropdown.dart';
 import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
+import '../widget/app_inline_action_button.dart';
 import '../widget/app_month_picker.dart';
 import '../widget/app_page_header.dart';
 import '../widget/app_plain_form_field.dart';
@@ -91,6 +92,7 @@ enum _ShowcaseExampleKind {
   formFields,
   plainRows,
   buttons,
+  inlineActionButton,
   segmentedControl,
   popupMenu,
   selectMenu,
@@ -188,6 +190,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '按钮',
     componentNames: 'FilledButton / OutlinedButton / TextButton',
     keywords: ['按钮', '主要', '次要', '禁用'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.inlineActionButton,
+    category: '基础控件',
+    title: '行内操作按钮',
+    componentNames: 'AppInlineActionButton',
+    keywords: ['按钮', '行内', '图标', '详情', '紧凑'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.segmentedControl,
@@ -915,6 +924,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.formFields => _formFieldsPreview(),
       _ShowcaseExampleKind.plainRows => _plainRowsPreview(),
       _ShowcaseExampleKind.buttons => _buttonsPreview(),
+      _ShowcaseExampleKind.inlineActionButton => _inlineActionButtonPreview(),
       _ShowcaseExampleKind.segmentedControl => _segmentedControlPreview(),
       _ShowcaseExampleKind.popupMenu => _popupMenuPreview(),
       _ShowcaseExampleKind.selectMenu => _selectMenuPreview(),
@@ -1113,6 +1123,31 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           child: const Text('文本按钮'),
         ),
         const FilledButton(onPressed: null, child: Text('禁用按钮')),
+      ],
+    );
+  }
+
+  Widget _inlineActionButtonPreview() {
+    return Wrap(
+      spacing: AppSpacing.space8,
+      runSpacing: AppSpacing.space8,
+      children: [
+        SizedBox(
+          width: 132,
+          child: AppInlineActionButton(
+            icon: RemixIcons.refresh_line,
+            label: '刷新',
+            onPressed: () => _showMessage('行内操作已触发'),
+          ),
+        ),
+        SizedBox(
+          width: 132,
+          child: AppInlineActionButton(
+            icon: RemixIcons.more_2_line,
+            label: '更多操作',
+            onPressed: () => _showMessage('更多操作已触发'),
+          ),
+        ),
       ],
     );
   }

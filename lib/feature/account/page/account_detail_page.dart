@@ -11,6 +11,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
+import '../../../design_system/widget/app_inline_action_button.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -458,7 +459,7 @@ class _AccountActionBar extends StatelessWidget {
     return _ActionRow(
       children: [
         for (final action in actions)
-          _ActionButton(
+          AppInlineActionButton(
             icon: switch (action.iconKey) {
               'logout-box-r-line' => RemixIcons.logout_box_r_line,
               'refund-income' => RemixIcons.refund_2_line,
@@ -470,7 +471,7 @@ class _AccountActionBar extends StatelessWidget {
               _ => RemixIcons.wallet_line,
             },
             label: action.label,
-            onTap: () => context.push(action.route),
+            onPressed: () => context.push(action.route),
           ),
       ],
     );
@@ -499,51 +500,6 @@ class _ActionRow extends StatelessWidget {
       ),
     ),
   );
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space6,
-          vertical: AppSpacing.space6,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: colors.primary, size: AppSpacing.space20),
-            const SizedBox(width: AppSpacing.space6),
-            Flexible(
-              child: Text(
-                label,
-                style: textStyles.actionLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _OverviewSection extends StatelessWidget {

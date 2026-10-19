@@ -5,6 +5,7 @@ import 'package:smartflow/design_system/showcase/design_system_showcase_page.dar
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_segmented_control.dart';
@@ -61,11 +62,10 @@ void main() {
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         themeMode: themeMode,
-        builder:
-            (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-              child: child!,
-            ),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          child: child!,
+        ),
         home: BusinessIconScope(
           catalog: iconCatalog,
           child: const DesignSystemShowcasePage(),
@@ -499,6 +499,24 @@ void main() {
     expect(find.byType(AppSlidingSegmentedControl<int>), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '主要按钮'), findsOneWidget);
   });
+
+  testWidgets(
+    'shows the inline action button as a separate component example',
+    (tester) async {
+      await pumpShowcase(tester);
+
+      await tester.enterText(find.byType(SearchBar), 'AppInlineActionButton');
+      await tester.pumpAndSettle();
+
+      expect(find.text('行内操作按钮'), findsOneWidget);
+      expect(find.byType(AppInlineActionButton), findsNWidgets(2));
+
+      await tester.tap(find.text('刷新'));
+      await tester.pump();
+
+      expect(find.text('行内操作已触发'), findsOneWidget);
+    },
+  );
 
   testWidgets('uses generic content in the card component example', (
     tester,

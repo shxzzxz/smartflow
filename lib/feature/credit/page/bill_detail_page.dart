@@ -7,12 +7,12 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
-import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
+import '../../../design_system/widget/app_inline_action_button.dart';
 import '../../../design_system/widget/app_status_badge.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -357,26 +357,26 @@ class _BillActionBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: _ActionButton(
+              child: AppInlineActionButton(
                 icon: RemixIcons.bank_card_line,
                 label: '还款',
-                onTap: onRepay,
+                onPressed: onRepay,
               ),
             ),
             const SizedBox(width: AppSpacing.space6),
             Expanded(
-              child: _ActionButton(
+              child: AppInlineActionButton(
                 icon: RemixIcons.calendar_schedule_line,
                 label: '账单分期',
-                onTap: onInstallment,
+                onPressed: onInstallment,
               ),
             ),
             const SizedBox(width: AppSpacing.space6),
             Expanded(
-              child: _ActionButton(
+              child: AppInlineActionButton(
                 icon: RemixIcons.refresh_line,
                 label: '刷新',
-                onTap: onSync,
+                onPressed: onSync,
               ),
             ),
           ],
@@ -441,51 +441,6 @@ class _BillRepaymentRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.space10),
             Text(repayment.cashPaid.format(), style: styles.amountList),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space6,
-          vertical: AppSpacing.space6,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: colors.primary, size: AppSpacing.space20),
-            const SizedBox(width: AppSpacing.space6),
-            Flexible(
-              child: Text(
-                label,
-                style: textStyles.formLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
           ],
         ),
       ),
