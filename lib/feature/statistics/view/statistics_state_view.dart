@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
@@ -22,6 +21,7 @@ import '../presentation/statistics_state_presentation.dart';
 import '../view_model/statistics_state_view_model.dart';
 import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_charts.dart';
+import '../widget/statistics_composition_list.dart';
 
 class StatisticsStateView extends ConsumerWidget {
   const StatisticsStateView({super.key});
@@ -138,28 +138,36 @@ class _StateBreakdownCard extends StatelessWidget {
                   centerLabel: centerLabel,
                   centerValue: total.format(),
                 ),
-                for (var index = 0; index < items.length; index++)
-                  CategoryProgressListItem(
-                    title: items[index].title,
-                    progress: items[index].progress,
-                    color: statisticsCategoryRowColor(
-                      context,
-                      index: index,
-                      itemCount: items.length,
-                    ),
-                    trailing: AnalyticsAmountColumn(
-                      key: ValueKey(
-                        'statistics-state-amount-${semantic.name}-'
-                        '${items[index].id}',
-                      ),
-                      money: items[index].amount,
-                      semantic: semantic,
-                      maxWidth: AppChartGeometry.categoryAmountColumnWidth,
-                    ),
-                    trailingGap: AppSpacing.space4,
-                    trailingWidth: AppChartGeometry.categoryAmountColumnWidth,
-                    onTap: () => context.push('/account/${items[index].id}'),
+                StatisticsCompositionList<StatisticsBreakdownItem>(
+                  key: ValueKey(
+                    'statistics-state-composition-list-${semantic.name}',
                   ),
+                  items: items,
+                  itemUnit: '项',
+                  itemBuilder: (context, item, index) =>
+                      CategoryProgressListItem(
+                        title: item.title,
+                        progress: item.progress,
+                        color: statisticsCategoryRowColor(
+                          context,
+                          index: index,
+                          itemCount: items.length,
+                        ),
+                        trailing: AnalyticsAmountColumn(
+                          key: ValueKey(
+                            'statistics-state-amount-${semantic.name}-'
+                            '${item.id}',
+                          ),
+                          money: item.amount,
+                          semantic: semantic,
+                          maxWidth: AppChartGeometry.categoryAmountColumnWidth,
+                        ),
+                        trailingGap: AppSpacing.space4,
+                        trailingWidth:
+                            AppChartGeometry.categoryAmountColumnWidth,
+                        onTap: () => context.push('/account/${item.id}'),
+                      ),
+                ),
               ],
             ),
     );
@@ -183,7 +191,6 @@ class _StateInstallmentsSectionState
       StatisticsInstallmentCompositionMetric.principal;
   StatisticsInstallmentCashflowHorizon _cashflowHorizon =
       StatisticsInstallmentCashflowHorizon.sixMonths;
-  bool _compositionExpanded = false;
 
   @override
   void didUpdateWidget(covariant _StateInstallmentsSection oldWidget) {
@@ -226,10 +233,8 @@ class _StateInstallmentsSectionState
                   ),
                 ],
                 selected: _compositionMetric,
-                onChanged: (metric) => setState(() {
-                  _compositionMetric = metric;
-                  _compositionExpanded = false;
-                }),
+                onChanged: (metric) =>
+                    setState(() => _compositionMetric = metric),
               ),
           child: _InstallmentCardBody(
             loading: value.isLoading,
@@ -240,9 +245,6 @@ class _StateInstallmentsSectionState
             builder: (presentation) => _InstallmentCompositionContent(
               presentation: presentation,
               metric: _compositionMetric,
-              expanded: _compositionExpanded,
-              onToggleExpanded: () =>
-                  setState(() => _compositionExpanded = !_compositionExpanded),
             ),
           ),
         ),
@@ -343,14 +345,10 @@ class _InstallmentCompositionContent extends StatelessWidget {
   const _InstallmentCompositionContent({
     required this.presentation,
     required this.metric,
-    required this.expanded,
-    required this.onToggleExpanded,
   });
 
   final StatisticsInstallmentsPresentation presentation;
   final StatisticsInstallmentCompositionMetric metric;
-  final bool expanded;
-  final VoidCallback onToggleExpanded;
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +359,6 @@ class _InstallmentCompositionContent extends StatelessWidget {
     if (items.isEmpty) {
       return Text('暂无进行中的分期合同', style: context.appTextStyles.listSupporting);
     }
-    final visibleItems = expanded ? items : items.take(3).toList();
     final selectedTotal =
         metric == StatisticsInstallmentCompositionMetric.principal
         ? presentation.remainingPrincipal
@@ -401,16 +398,18 @@ class _InstallmentCompositionContent extends StatelessWidget {
           centerValue: selectedTotal.format(),
         ),
         const SizedBox(height: AppSpacing.space16),
-        for (var index = 0; index < visibleItems.length; index++)
-          CategoryProgressListItem(
-            title:
-                '${visibleItems[index].accountName} · '
-                '${visibleItems[index].contractName}',
+        StatisticsCompositionList<StatisticsInstallmentCompositionItem>(
+          key: const ValueKey('statistics-installment-composition-list'),
+          items: items,
+          itemUnit: '笔',
+          resetToken: metric,
+          itemBuilder: (context, item, index) => CategoryProgressListItem(
+            title: '${item.accountName} · ${item.contractName}',
             progress: maxSelectedValue == 0
                 ? 0
                 : (metric == StatisticsInstallmentCompositionMetric.principal
-                          ? visibleItems[index].remainingPrincipal.minorUnits
-                          : visibleItems[index].remainingTotal.minorUnits) /
+                          ? item.remainingPrincipal.minorUnits
+                          : item.remainingTotal.minorUnits) /
                       maxSelectedValue,
             color: statisticsCategoryRowColor(
               context,
@@ -418,38 +417,19 @@ class _InstallmentCompositionContent extends StatelessWidget {
               itemCount: items.length,
             ),
             trailing: AnalyticsAmountColumn(
-              key: ValueKey(
-                'statistics-installment-value-'
-                '${visibleItems[index].contractId}',
-              ),
+              key: ValueKey('statistics-installment-value-${item.contractId}'),
               money: metric == StatisticsInstallmentCompositionMetric.principal
-                  ? visibleItems[index].remainingPrincipal
-                  : visibleItems[index].remainingTotal,
+                  ? item.remainingPrincipal
+                  : item.remainingTotal,
               semantic: MoneySemantic.liability,
               maxWidth: AppChartGeometry.categoryAmountColumnWidth,
             ),
             trailingGap: AppSpacing.space4,
             trailingWidth: AppChartGeometry.categoryAmountColumnWidth,
-            footer: _InstallmentCompositionValues(item: visibleItems[index]),
-            onTap: () =>
-                context.push('/installments/${visibleItems[index].contractId}'),
+            footer: _InstallmentCompositionValues(item: item),
+            onTap: () => context.push('/installments/${item.contractId}'),
           ),
-        if (items.length > 3) ...[
-          const SizedBox(height: AppSpacing.space4),
-          Align(
-            alignment: Alignment.center,
-            child: TextButton.icon(
-              onPressed: onToggleExpanded,
-              icon: Icon(
-                expanded
-                    ? RemixIcons.arrow_up_s_line
-                    : RemixIcons.arrow_down_s_line,
-                size: AppSpacing.space16,
-              ),
-              label: Text(expanded ? '收起' : '查看全部 ${items.length} 笔'),
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }

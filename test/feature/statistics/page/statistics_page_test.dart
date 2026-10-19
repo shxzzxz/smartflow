@@ -20,6 +20,7 @@ import 'package:smartflow/feature/statistics/view/statistics_state_view.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_state_view_model.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 import 'package:smartflow/feature/statistics/widget/statistics_charts.dart';
+import 'package:smartflow/feature/statistics/widget/statistics_composition_list.dart';
 import 'package:smartflow/widget/business/analytics/analytics_amount_column.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
@@ -328,6 +329,82 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('folds long category and tag composition lists', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester, content: _longBreakdownContent());
+    await tester.scrollUntilVisible(
+      find.text('分类构成'),
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+
+    final categoryList = find.byKey(
+      const ValueKey('statistics-category-composition-list'),
+    );
+    expect(
+      find.descendant(
+        of: categoryList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(statisticsCompositionCollapsedItemCount),
+    );
+    final categoryExpand = find.descendant(
+      of: categoryList,
+      matching: find.text('查看全部 6 项'),
+    );
+    await tester.ensureVisible(categoryExpand);
+    await tester.pumpAndSettle();
+    await tester.tap(categoryExpand);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: categoryList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(6),
+    );
+    expect(
+      find.descendant(of: categoryList, matching: find.text('收起')),
+      findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('标签构成'),
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+    final tagList = find.byKey(
+      const ValueKey('statistics-tag-composition-list'),
+    );
+    expect(
+      find.descendant(
+        of: tagList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(statisticsCompositionCollapsedItemCount),
+    );
+    final tagExpand = find.descendant(
+      of: tagList,
+      matching: find.text('查看全部 6 项'),
+    );
+    await tester.ensureVisible(tagExpand);
+    await tester.pumpAndSettle();
+    await tester.tap(tagExpand);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: tagList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(6),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('switches between period analysis and current state', (
     tester,
   ) async {
@@ -383,7 +460,7 @@ void main() {
         of: compositionCard,
         matching: find.byType(CategoryProgressListItem),
       ),
-      findsNWidgets(3),
+      findsNWidgets(4),
     );
     expect(
       find.descendant(of: compositionCard, matching: find.byType(Divider)),
@@ -655,13 +732,88 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('folds long asset and liability composition lists', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(
+      tester,
+      statePresentation: _longStatePresentation(),
+    );
+    await tester.tap(find.text('当前状态'));
+    await tester.pumpAndSettle();
+
+    final assetCard = find.byKey(const ValueKey('statistics-state-assets'));
+    await tester.scrollUntilVisible(
+      assetCard,
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+    final assetList = find.byKey(
+      const ValueKey('statistics-state-composition-list-asset'),
+    );
+    expect(
+      find.descendant(
+        of: assetList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(statisticsCompositionCollapsedItemCount),
+    );
+    final assetExpand = find.descendant(
+      of: assetList,
+      matching: find.text('查看全部 6 项'),
+    );
+    await tester.ensureVisible(assetExpand);
+    await tester.pumpAndSettle();
+    await tester.tap(assetExpand);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: assetList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(6),
+    );
+
+    final liabilityCard = find.byKey(
+      const ValueKey('statistics-state-liabilities'),
+    );
+    await tester.scrollUntilVisible(
+      liabilityCard,
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+    final liabilityList = find.byKey(
+      const ValueKey('statistics-state-composition-list-liability'),
+    );
+    expect(
+      find.descendant(
+        of: liabilityList,
+        matching: find.byType(CategoryProgressListItem),
+      ),
+      findsNWidgets(statisticsCompositionCollapsedItemCount),
+    );
+    expect(
+      find.descendant(of: liabilityList, matching: find.text('查看全部 6 项')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('expands installment composition contracts', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await _pumpStatisticsPage(tester);
+    await _pumpStatisticsPage(
+      tester,
+      installmentsPresentation: _installmentsPresentation(withOverflow: true),
+    );
     await tester.tap(find.text('当前状态'));
     await tester.pumpAndSettle();
     final compositionCard = find.byKey(
@@ -669,16 +821,21 @@ void main() {
     );
     final expandButton = find.descendant(
       of: compositionCard,
-      matching: find.text('查看全部 4 笔'),
+      matching: find.text('查看全部 6 笔'),
     );
     await tester.ensureVisible(expandButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('信用卡 · 分期卡'), findsNothing);
+    expect(find.text('储蓄卡 · 备用分期'), findsNothing);
     await tester.tap(expandButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('信用卡 · 分期卡'), findsOneWidget);
+    expect(find.text('储蓄卡 · 备用分期'), findsOneWidget);
+    await tester.tap(
+      find.descendant(of: compositionCard, matching: find.text('收起')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('储蓄卡 · 备用分期'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -1051,6 +1208,7 @@ Future<void> _pumpStatisticsPage(
   WidgetTester tester, {
   StatisticsContentLoaded? content,
   StatisticsStatePresentation? statePresentation,
+  StatisticsInstallmentsPresentation? installmentsPresentation,
   TextScaler? textScaler,
 }) async {
   final month = DateTime(2026, 1);
@@ -1089,9 +1247,11 @@ Future<void> _pumpStatisticsPage(
             presentation: statePresentation ?? _statePresentation(),
           ),
         ),
-        statisticsInstallmentsProvider(
-          DateTime(2026, 1, 15),
-        ).overrideWith((ref) => Stream.value(_installmentsPresentation())),
+        statisticsInstallmentsProvider(DateTime(2026, 1, 15)).overrideWith(
+          (ref) => Stream.value(
+            installmentsPresentation ?? _installmentsPresentation(),
+          ),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -1241,6 +1401,52 @@ StatisticsContentLoaded _loadedContent({
   );
 }
 
+StatisticsContentLoaded _longBreakdownContent() {
+  final base = _loadedContent();
+  final expenseCategories = [
+    for (var index = 0; index < 6; index++)
+      StatisticsBreakdownItem(
+        id: 'expense-$index',
+        title: '分类 ${index + 1}',
+        accountType: AccountType.expense,
+        amount: Money(minorUnits: 600 - index * 50),
+        progress: 1 - index * .1,
+        comparisonAmount: Money(minorUnits: 300 - index * 20),
+      ),
+  ];
+  final expenseTags = [
+    for (var index = 0; index < 6; index++)
+      StatisticsBreakdownItem(
+        id: 'tag-$index',
+        title: '标签 ${index + 1}',
+        accountType: AccountType.expense,
+        amount: Money(minorUnits: 600 - index * 50),
+        progress: 1 - index * .1,
+        comparisonAmount: Money(minorUnits: 300 - index * 20),
+      ),
+  ];
+  return StatisticsContentLoaded(
+    overview: base.overview,
+    comparison: base.comparison,
+    cashflow: base.cashflow,
+    categories: StatisticsCategoryAnalysisPresentation(
+      from: DateTime(2026, 1),
+      until: DateTime(2026, 1, 16),
+      comparisonLabel: '环比',
+      incomeCategories: base.categories.incomeCategories,
+      expenseCategories: expenseCategories,
+    ),
+    tags: StatisticsTagAnalysisPresentation(
+      from: DateTime(2026, 1),
+      until: DateTime(2026, 1, 16),
+      comparisonLabel: '环比',
+      incomeTags: base.tags.incomeTags,
+      expenseTags: expenseTags,
+    ),
+    balance: base.balance,
+  );
+}
+
 StatisticsStatePresentation _statePresentation() {
   return StatisticsStatePresentation(
     asOf: DateTime(2026, 1, 15),
@@ -1267,50 +1473,128 @@ StatisticsStatePresentation _statePresentation() {
   );
 }
 
-StatisticsInstallmentsPresentation _installmentsPresentation() {
-  return StatisticsInstallmentsPresentation(
+StatisticsStatePresentation _longStatePresentation() {
+  final assetAccounts = [
+    for (var index = 0; index < 6; index++)
+      StatisticsBreakdownItem(
+        id: 'asset-$index',
+        title: '资产账户 ${index + 1}',
+        accountType: AccountType.asset,
+        amount: Money(minorUnits: 6000 - index * 500),
+        progress: 1 - index * .1,
+      ),
+  ];
+  final liabilityAccounts = [
+    for (var index = 0; index < 6; index++)
+      StatisticsBreakdownItem(
+        id: 'liability-$index',
+        title: '负债账户 ${index + 1}',
+        accountType: AccountType.liability,
+        amount: Money(minorUnits: 3000 - index * 250),
+        progress: 1 - index * .1,
+      ),
+  ];
+  return StatisticsStatePresentation(
     asOf: DateTime(2026, 1, 15),
-    compositionItems: [
+    totalAssets: Money(
+      minorUnits: assetAccounts.fold(
+        0,
+        (sum, item) => sum + item.amount.minorUnits,
+      ),
+    ),
+    totalLiabilities: Money(
+      minorUnits: liabilityAccounts.fold(
+        0,
+        (sum, item) => sum + item.amount.minorUnits,
+      ),
+    ),
+    assetAccounts: assetAccounts,
+    liabilityAccounts: liabilityAccounts,
+  );
+}
+
+StatisticsInstallmentsPresentation _installmentsPresentation({
+  bool withOverflow = false,
+}) {
+  final compositionItems = [
+    StatisticsInstallmentCompositionItem(
+      contractId: 'vehicle',
+      contractName: '车辆分期',
+      accountName: '贷款账户',
+      remainingPrincipal: const Money(minorUnits: 1800000),
+      remainingInterest: const Money(minorUnits: 90000),
+      remainingTotal: const Money(minorUnits: 1890000),
+      xirr: .18,
+    ),
+    StatisticsInstallmentCompositionItem(
+      contractId: 'consumer',
+      contractName: '消费贷',
+      accountName: '借呗',
+      remainingPrincipal: const Money(minorUnits: 1200000),
+      remainingInterest: const Money(minorUnits: 220000),
+      remainingTotal: const Money(minorUnits: 1420000),
+      xirr: .12,
+    ),
+    StatisticsInstallmentCompositionItem(
+      contractId: 'bill',
+      contractName: '账单分期',
+      accountName: '信用卡',
+      remainingPrincipal: const Money(minorUnits: 800000),
+      remainingInterest: const Money(minorUnits: 120000),
+      remainingTotal: const Money(minorUnits: 920000),
+      xirr: .08,
+    ),
+    StatisticsInstallmentCompositionItem(
+      contractId: 'installment-card',
+      contractName: '分期卡',
+      accountName: '信用卡',
+      remainingPrincipal: const Money(minorUnits: 600000),
+      remainingInterest: const Money(minorUnits: 360000),
+      remainingTotal: const Money(minorUnits: 960000),
+      xirr: .04,
+    ),
+    if (withOverflow) ...[
       StatisticsInstallmentCompositionItem(
-        contractId: 'vehicle',
-        contractName: '车辆分期',
-        accountName: '贷款账户',
-        remainingPrincipal: const Money(minorUnits: 1800000),
-        remainingInterest: const Money(minorUnits: 90000),
-        remainingTotal: const Money(minorUnits: 1890000),
-        xirr: .18,
+        contractId: 'backup-a',
+        contractName: '临时分期',
+        accountName: '储蓄卡',
+        remainingPrincipal: const Money(minorUnits: 500000),
+        remainingInterest: const Money(minorUnits: 100000),
+        remainingTotal: const Money(minorUnits: 600000),
+        xirr: .03,
       ),
       StatisticsInstallmentCompositionItem(
-        contractId: 'consumer',
-        contractName: '消费贷',
-        accountName: '借呗',
-        remainingPrincipal: const Money(minorUnits: 1200000),
-        remainingInterest: const Money(minorUnits: 220000),
-        remainingTotal: const Money(minorUnits: 1420000),
-        xirr: .12,
-      ),
-      StatisticsInstallmentCompositionItem(
-        contractId: 'bill',
-        contractName: '账单分期',
-        accountName: '信用卡',
-        remainingPrincipal: const Money(minorUnits: 800000),
-        remainingInterest: const Money(minorUnits: 120000),
-        remainingTotal: const Money(minorUnits: 920000),
-        xirr: .08,
-      ),
-      StatisticsInstallmentCompositionItem(
-        contractId: 'installment-card',
-        contractName: '分期卡',
-        accountName: '信用卡',
-        remainingPrincipal: const Money(minorUnits: 600000),
-        remainingInterest: const Money(minorUnits: 360000),
-        remainingTotal: const Money(minorUnits: 960000),
-        xirr: .04,
+        contractId: 'backup-b',
+        contractName: '备用分期',
+        accountName: '储蓄卡',
+        remainingPrincipal: const Money(minorUnits: 400000),
+        remainingInterest: const Money(minorUnits: 80000),
+        remainingTotal: const Money(minorUnits: 480000),
+        xirr: .02,
       ),
     ],
-    remainingPrincipal: const Money(minorUnits: 4400000),
-    remainingInterest: const Money(minorUnits: 790000),
-    remainingTotal: const Money(minorUnits: 5190000),
+  ];
+  return StatisticsInstallmentsPresentation(
+    asOf: DateTime(2026, 1, 15),
+    compositionItems: compositionItems,
+    remainingPrincipal: Money(
+      minorUnits: compositionItems.fold(
+        0,
+        (sum, item) => sum + item.remainingPrincipal.minorUnits,
+      ),
+    ),
+    remainingInterest: Money(
+      minorUnits: compositionItems.fold(
+        0,
+        (sum, item) => sum + item.remainingInterest.minorUnits,
+      ),
+    ),
+    remainingTotal: Money(
+      minorUnits: compositionItems.fold(
+        0,
+        (sum, item) => sum + item.remainingTotal.minorUnits,
+      ),
+    ),
     cashflowMonths: [
       StatisticsInstallmentCashflowMonth(
         month: DateTime(2026, 1),

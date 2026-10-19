@@ -21,6 +21,7 @@ import '../../../widget/business/finance/money_text.dart';
 import '../presentation/statistics_period_presentation.dart';
 import '../presentation/statistics_presentation.dart';
 import '../view_model/statistics_view_model.dart';
+import 'statistics_composition_list.dart';
 import 'statistics_charts.dart';
 
 class StatisticsBreakdownSection extends ConsumerWidget {
@@ -177,6 +178,7 @@ class _BreakdownAnalysisCard extends StatelessWidget {
                     semantic: semantic,
                     from: from,
                     until: until,
+                    categoryKind: categoryKind,
                     comparisonLabel: comparisonLabel,
                   )
                 else
@@ -186,6 +188,7 @@ class _BreakdownAnalysisCard extends StatelessWidget {
                     level: categoryLevel!,
                     from: from,
                     until: until,
+                    categoryKind: categoryKind,
                     comparisonLabel: comparisonLabel,
                   ),
               ],
@@ -208,6 +211,7 @@ class _TagList extends StatelessWidget {
     required this.semantic,
     required this.from,
     required this.until,
+    required this.categoryKind,
     required this.comparisonLabel,
   });
 
@@ -215,31 +219,33 @@ class _TagList extends StatelessWidget {
   final MoneySemantic semantic;
   final DateTime from;
   final DateTime until;
+  final StatisticsCategoryKind categoryKind;
   final String? comparisonLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          _CategoryRow(
-            item: items[i],
-            color: statisticsCategoryRowColor(
-              context,
-              index: i,
-              itemCount: items.length,
-            ),
-            comparisonLabel: comparisonLabel,
-            trailing: AnalyticsAmountColumn(
-              key: ValueKey('statistics-breakdown-value-${items[i].id}'),
-              money: items[i].amount,
-              semantic: semantic,
-              maxWidth: AppChartGeometry.categoryAmountColumnWidth,
-              secondaryText: statisticsCategoryPercentageText(items[i], items),
-            ),
-            onTap: () => _openTagTransactions(context, items[i], from, until),
-          ),
-      ],
+    return StatisticsCompositionList<StatisticsBreakdownItem>(
+      key: const ValueKey('statistics-tag-composition-list'),
+      items: items,
+      itemUnit: '项',
+      resetToken: categoryKind,
+      itemBuilder: (context, item, index) => _CategoryRow(
+        item: item,
+        color: statisticsCategoryRowColor(
+          context,
+          index: index,
+          itemCount: items.length,
+        ),
+        comparisonLabel: comparisonLabel,
+        trailing: AnalyticsAmountColumn(
+          key: ValueKey('statistics-breakdown-value-${item.id}'),
+          money: item.amount,
+          semantic: semantic,
+          maxWidth: AppChartGeometry.categoryAmountColumnWidth,
+          secondaryText: statisticsCategoryPercentageText(item, items),
+        ),
+        onTap: () => _openTagTransactions(context, item, from, until),
+      ),
     );
   }
 }
@@ -251,6 +257,7 @@ class _CategoryList extends StatelessWidget {
     required this.level,
     required this.from,
     required this.until,
+    required this.categoryKind,
     required this.comparisonLabel,
   });
 
@@ -259,45 +266,46 @@ class _CategoryList extends StatelessWidget {
   final StatisticsCategoryLevel level;
   final DateTime from;
   final DateTime until;
+  final StatisticsCategoryKind categoryKind;
   final String? comparisonLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          _CategoryRow(
-            item: items[i],
-            color: statisticsCategoryRowColor(
-              context,
-              index: i,
-              itemCount: items.length,
-            ),
-            comparisonLabel: comparisonLabel,
-            trailing: AnalyticsAmountColumn(
-              key: ValueKey('statistics-breakdown-value-${items[i].id}'),
-              money: items[i].amount,
-              semantic: semantic,
-              maxWidth: AppChartGeometry.categoryAmountColumnWidth,
-              secondaryText: statisticsCategoryPercentageText(items[i], items),
-            ),
-            onTap:
-                level == StatisticsCategoryLevel.primary &&
-                    items[i].children.isNotEmpty
-                ? () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => _CategoryDetailPage(
-                        item: items[i],
-                        semantic: semantic,
-                        from: from,
-                        until: until,
-                        comparisonLabel: comparisonLabel,
-                      ),
-                    ),
-                  )
-                : () => _openTransactions(context, items[i], from, until),
-          ),
-      ],
+    return StatisticsCompositionList<StatisticsBreakdownItem>(
+      key: const ValueKey('statistics-category-composition-list'),
+      items: items,
+      itemUnit: '项',
+      resetToken: (categoryKind, level),
+      itemBuilder: (context, item, index) => _CategoryRow(
+        item: item,
+        color: statisticsCategoryRowColor(
+          context,
+          index: index,
+          itemCount: items.length,
+        ),
+        comparisonLabel: comparisonLabel,
+        trailing: AnalyticsAmountColumn(
+          key: ValueKey('statistics-breakdown-value-${item.id}'),
+          money: item.amount,
+          semantic: semantic,
+          maxWidth: AppChartGeometry.categoryAmountColumnWidth,
+          secondaryText: statisticsCategoryPercentageText(item, items),
+        ),
+        onTap:
+            level == StatisticsCategoryLevel.primary && item.children.isNotEmpty
+            ? () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => _CategoryDetailPage(
+                    item: item,
+                    semantic: semantic,
+                    from: from,
+                    until: until,
+                    comparisonLabel: comparisonLabel,
+                  ),
+                ),
+              )
+            : () => _openTransactions(context, item, from, until),
+      ),
     );
   }
 }
@@ -447,32 +455,34 @@ class _CategoryDetailPage extends StatelessWidget {
                           centerLabel: '合计',
                           centerValue: Money(minorUnits: totalMinor).format(),
                         ),
-                        for (var i = 0; i < children.length; i++)
-                          _CategoryRow(
-                            item: children[i],
+                        StatisticsCompositionList<StatisticsBreakdownItem>(
+                          key: const ValueKey(
+                            'statistics-secondary-category-composition-list',
+                          ),
+                          items: children,
+                          itemUnit: '项',
+                          itemBuilder: (context, child, index) => _CategoryRow(
+                            item: child,
                             color: statisticsCategoryRowColor(
                               context,
-                              index: i,
+                              index: index,
                               itemCount: children.length,
                             ),
                             comparisonLabel: comparisonLabel,
                             trailing: AnalyticsAmountColumn(
-                              money: children[i].amount,
+                              money: child.amount,
                               semantic: semantic,
                               maxWidth:
                                   AppChartGeometry.categoryAmountColumnWidth,
                               secondaryText: statisticsCategoryPercentageText(
-                                children[i],
+                                child,
                                 children,
                               ),
                             ),
-                            onTap: () => _openTransactions(
-                              context,
-                              children[i],
-                              from,
-                              until,
-                            ),
+                            onTap: () =>
+                                _openTransactions(context, child, from, until),
                           ),
+                        ),
                       ],
                     ),
                   ),
