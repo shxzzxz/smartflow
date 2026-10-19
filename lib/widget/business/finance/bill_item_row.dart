@@ -6,6 +6,7 @@ import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 
 import 'money_text.dart';
 
@@ -23,7 +24,7 @@ class BillItemRowPresentation {
   final String id;
   final IconData leadingIcon;
   final String title;
-  final List<String> supportingTexts;
+  final List<AppSupportingText> supportingTexts;
   final Money amount;
   final AppStatusBadgePresentation status;
   final bool showChevron;
@@ -68,7 +69,7 @@ class BillItemRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSpacing.space2),
-                    _SupportingItems(items: presentation.supportingTexts),
+                    AppSupportingItems(items: presentation.supportingTexts),
                   ],
                 ),
               ),
@@ -104,33 +105,6 @@ class BillItemRow extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SupportingItems extends StatelessWidget {
-  const _SupportingItems({required this.items});
-
-  final List<String> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: AppSpacing.space8,
-      runSpacing: AppSpacing.space2,
-      children: [
-        for (final item in items)
-          Text(
-            item,
-            style: styles.listSupporting.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-      ],
     );
   }
 }

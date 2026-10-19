@@ -1,20 +1,11 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 
 import '../../credit/presentation/bill_status_presentation.dart';
-
-class AccountCreditSummarySupportingItem {
-  const AccountCreditSummarySupportingItem({
-    required this.text,
-    this.tone = AppStatusTone.neutral,
-  });
-
-  final String text;
-  final AppStatusTone tone;
-}
 
 class AccountCreditSummaryPresentation {
   const AccountCreditSummaryPresentation({
@@ -30,7 +21,7 @@ class AccountCreditSummaryPresentation {
   final String title;
   final Money amount;
   final String? amountLabel;
-  final List<AccountCreditSummarySupportingItem> supportingItems;
+  final List<AppSupportingText> supportingItems;
   final AppStatusBadgePresentation status;
 }
 
@@ -47,13 +38,11 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
       // Kept for legacy read models; persisted bill summaries no longer
       // populate a bill-level repayment date.
       if (bill.windowRepaymentDate != null)
-        AccountCreditSummarySupportingItem(
-          text: _billRepaymentLabel(bill.windowRepaymentDate!),
-        ),
-      AccountCreditSummarySupportingItem(text: '${bill.itemCount} 条明细'),
+        AppSupportingText(_billRepaymentLabel(bill.windowRepaymentDate!)),
+      AppSupportingText('${bill.itemCount} 条明细'),
       if (bill.overdueItemCount > 0)
-        AccountCreditSummarySupportingItem(
-          text: '${bill.overdueItemCount} 条逾期',
+        AppSupportingText(
+          '${bill.overdueItemCount} 条逾期',
           tone: AppStatusTone.danger,
         ),
     ],
@@ -75,10 +64,7 @@ BillSummaryRowPresentation billAccountSummaryRowPresentation(
     title: summary.title,
     amount: summary.amount,
     amountLabel: summary.amountLabel,
-    supportingTexts: [
-      for (final item in summary.supportingItems)
-        BillSummarySupportingText(text: item.text, tone: item.tone),
-    ],
+    supportingTexts: summary.supportingItems,
     status: summary.status,
   );
 }
@@ -92,15 +78,12 @@ AccountCreditSummaryPresentation installmentAccountCreditSummary(
     title: contract.name,
     amount: contract.principal,
     supportingItems: [
-      AccountCreditSummarySupportingItem(
-        text: _installmentSourceLabel(
-          contract.sourceType,
-          accountKind: accountKind,
-        ),
+      AppSupportingText(
+        _installmentSourceLabel(contract.sourceType, accountKind: accountKind),
       ),
-      AccountCreditSummarySupportingItem(text: '${contract.totalPeriods} 期'),
-      AccountCreditSummarySupportingItem(
-        text: contract.stageTerms.stages.length > 1
+      AppSupportingText('${contract.totalPeriods} 期'),
+      AppSupportingText(
+        contract.stageTerms.stages.length > 1
             ? '${contract.stageTerms.stages.length} 个阶段'
             : _repaymentMethodLabel(
                 contract.stageTerms.repayments.single.method,

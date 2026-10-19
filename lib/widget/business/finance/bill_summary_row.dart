@@ -5,20 +5,12 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 
 import 'money_text.dart';
-
-class BillSummarySupportingText {
-  const BillSummarySupportingText({
-    required this.text,
-    this.tone = AppStatusTone.neutral,
-  });
-
-  final String text;
-  final AppStatusTone tone;
-}
 
 class BillSummaryRowPresentation {
   const BillSummaryRowPresentation({
@@ -35,7 +27,7 @@ class BillSummaryRowPresentation {
   final String title;
   final Money amount;
   final String? amountLabel;
-  final List<BillSummarySupportingText> supportingTexts;
+  final List<AppSupportingText> supportingTexts;
   final AppStatusBadgePresentation status;
   final bool showChevron;
 }
@@ -77,7 +69,7 @@ class BillSummaryRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSpacing.space4),
-                    _SupportingItems(items: presentation.supportingTexts),
+                    AppSupportingItems(items: presentation.supportingTexts),
                   ],
                 ),
               ),
@@ -162,51 +154,9 @@ class BillSummaryList extends StatelessWidget {
               presentation: items[i],
               onTap: () => onTap(items[i]),
             ),
-            if (i < items.length - 1) const _SummaryDivider(),
+            if (i < items.length - 1) const AppListDivider(),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _SupportingItems extends StatelessWidget {
-  const _SupportingItems({required this.items});
-
-  final List<BillSummarySupportingText> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return Wrap(
-      spacing: AppSpacing.space8,
-      runSpacing: AppSpacing.space2,
-      children: [
-        for (final item in items)
-          Text(
-            item.text,
-            style: styles.listSupporting.copyWith(
-              color: appStatusToneColor(context, item.tone),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-      ],
-    );
-  }
-}
-
-class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      height: AppListTokens.dividerThickness,
-      color: colors.outlineVariant.withValues(
-        alpha: AppListTokens.dividerOpacity,
       ),
     );
   }

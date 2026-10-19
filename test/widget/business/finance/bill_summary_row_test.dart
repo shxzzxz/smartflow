@@ -4,6 +4,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 
 void main() {
@@ -13,7 +14,7 @@ void main() {
       id: 'bill-1',
       title: '信用卡',
       amount: Money(minorUnits: 320000),
-      supportingTexts: [BillSummarySupportingText(text: '2 条明细')],
+      supportingTexts: [AppSupportingText('2 条明细')],
       status: AppStatusBadgePresentation(
         label: '已出账',
         tone: AppStatusTone.warning,

@@ -3,6 +3,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/widget/app_status_badge.dart';
+import '../../../design_system/widget/app_supporting_items.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 
 String billItemLabel(BillItemReadModel item) {
@@ -63,12 +64,14 @@ BillItemRowPresentation billItemRowPresentation(BillItemReadModel item) {
         : RemixIcons.calendar_schedule_line,
     title: billItemLabel(item),
     supportingTexts: [
-      '还款 ${formatDateLabel(item.repaymentDate)}',
+      AppSupportingText('还款 ${formatDateLabel(item.repaymentDate)}'),
       if (item.itemType == BillItemType.consumption &&
           item.startInclusive != null &&
           item.endInclusive != null)
-        '统计 ${formatDateLabel(item.startInclusive!)} - '
-            '${formatDateLabel(item.endInclusive!)}',
+        AppSupportingText(
+          '统计 ${formatDateLabel(item.startInclusive!)} - '
+          '${formatDateLabel(item.endInclusive!)}',
+        ),
     ],
     amount: item.remainingTotal,
     status: billItemStatusPresentation(

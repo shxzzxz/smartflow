@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 
@@ -45,7 +47,7 @@ class AccountCreditSummaryList extends StatelessWidget {
               presentation: items[i],
               onTap: () => onTap(items[i]),
             ),
-            if (i < items.length - 1) const _SummaryDivider(),
+            if (i < items.length - 1) const AppListDivider(),
           ],
         ],
       ),
@@ -88,7 +90,7 @@ class _AccountCreditSummaryRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSpacing.space4),
-                    _SupportingItems(items: presentation.supportingItems),
+                    AppSupportingItems(items: presentation.supportingItems),
                   ],
                 ),
               ),
@@ -125,48 +127,6 @@ class _AccountCreditSummaryRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SupportingItems extends StatelessWidget {
-  const _SupportingItems({required this.items});
-
-  final List<AccountCreditSummarySupportingItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return Wrap(
-      spacing: AppSpacing.space8,
-      runSpacing: AppSpacing.space2,
-      children: [
-        for (final item in items)
-          Text(
-            item.text,
-            style: styles.listSupporting.copyWith(
-              color: appStatusToneColor(context, item.tone),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-      ],
-    );
-  }
-}
-
-class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      height: AppListTokens.dividerThickness,
-      color: colors.outlineVariant.withValues(
-        alpha: AppListTokens.dividerOpacity,
       ),
     );
   }

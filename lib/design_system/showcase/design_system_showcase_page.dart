@@ -49,6 +49,7 @@ import '../widget/app_form_section.dart';
 import '../widget/app_inline_action_button.dart';
 import '../widget/app_month_picker.dart';
 import '../widget/app_page_header.dart';
+import '../widget/app_list_divider.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
@@ -58,6 +59,7 @@ import '../widget/app_settings_row.dart';
 import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_status_badge.dart';
 import '../widget/app_status_banner.dart';
+import '../widget/app_supporting_items.dart';
 import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
 import '../widget/app_swipe_action.dart';
@@ -99,6 +101,7 @@ enum _ShowcaseExampleKind {
   dropdown,
   settingsRows,
   surface,
+  listDivider,
   textFormRow,
   selectFormRow,
   choiceFormRows,
@@ -126,6 +129,7 @@ enum _ShowcaseExampleKind {
   snackBar,
   moneyText,
   adaptiveMoneyText,
+  supportingItems,
   billRows,
   businessIcons,
   accountEndpoint,
@@ -240,6 +244,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '卡片',
     componentNames: 'AppSurface',
     keywords: ['卡片', '容器', '表面'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.listDivider,
+    category: '布局与容器',
+    title: '列表分隔线',
+    componentNames: 'AppListDivider',
+    keywords: ['列表', '分隔线', '内缩'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.textFormRow,
@@ -432,6 +443,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '自适应金额文本',
     componentNames: 'AdaptiveMoneyText / ComparedMoneyText / SummaryMoneyText',
     keywords: ['金额', '自适应', '紧凑', '对比'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.supportingItems,
+    category: '数据展示',
+    title: '辅助信息',
+    componentNames: 'AppSupportingItems / AppSupportingText',
+    keywords: ['辅助', '说明', '状态', '标签', '列表'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.billRows,
@@ -939,6 +957,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.dropdown => _dropdownPreview(),
       _ShowcaseExampleKind.settingsRows => _settingsRowsPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
+      _ShowcaseExampleKind.listDivider => _listDividerPreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
       _ShowcaseExampleKind.selectFormRow => _selectFormRowPreview(),
       _ShowcaseExampleKind.choiceFormRows => _choiceFormRowsPreview(),
@@ -967,6 +986,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.snackBar => _snackBarPreview(),
       _ShowcaseExampleKind.moneyText => _moneyTextPreview(),
       _ShowcaseExampleKind.adaptiveMoneyText => _adaptiveMoneyTextPreview(),
+      _ShowcaseExampleKind.supportingItems => _supportingItemsPreview(),
       _ShowcaseExampleKind.billRows => _billRowsPreview(),
       _ShowcaseExampleKind.businessIcons => _businessIconsPreview(),
       _ShowcaseExampleKind.accountEndpoint => _accountEndpointPreview(),
@@ -1321,6 +1341,13 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         subtitle: Text('这是卡片的描述文案'),
         trailing: Icon(Icons.chevron_right_rounded),
       ),
+    );
+  }
+
+  Widget _listDividerPreview() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [Text('列表内容一'), AppListDivider(), Text('列表内容二')],
     );
   }
 
@@ -2193,7 +2220,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       id: 'bill',
       title: '2026年07月',
       amount: Money(minorUnits: 320000),
-      supportingTexts: [BillSummarySupportingText(text: '2 条明细')],
+      supportingTexts: [AppSupportingText('2 条明细')],
       status: AppStatusBadgePresentation(
         label: '已出账',
         tone: AppStatusTone.warning,
@@ -2203,7 +2230,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       id: 'item',
       leadingIcon: RemixIcons.shopping_bag_3_line,
       title: '消费',
-      supportingTexts: ['还款 2026-07-25'],
+      supportingTexts: [AppSupportingText('还款 2026-07-25')],
       amount: Money(minorUnits: 120000),
       status: AppStatusBadgePresentation(
         label: '待还',
@@ -2227,6 +2254,16 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _supportingItemsPreview() {
+    return const AppSupportingItems(
+      items: [
+        AppSupportingText('到期 07-25'),
+        AppSupportingText('2 个阶段'),
+        AppSupportingText('2 条逾期', tone: AppStatusTone.danger),
+      ],
     );
   }
 

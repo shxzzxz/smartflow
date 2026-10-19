@@ -43,7 +43,8 @@ class CashflowSummaryCard extends StatelessWidget {
               child: Row(
                 children: [
                   for (var i = 0; i < metrics.length; i++) ...[
-                    if (i > 0) _SummaryDivider(color: colors.outlineVariant),
+                    if (i > 0)
+                      _VerticalSummaryDivider(color: colors.outlineVariant),
                     Expanded(
                       child: Material(
                         type: MaterialType.transparency,
@@ -73,8 +74,8 @@ class CashflowSummaryCard extends StatelessWidget {
   }
 }
 
-class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider({required this.color});
+class _VerticalSummaryDivider extends StatelessWidget {
+  const _VerticalSummaryDivider({required this.color});
 
   final Color color;
 

@@ -28,7 +28,7 @@ void main() {
     expect(rows, hasLength(1));
     final row = rows.single as CalendarBillDueRowPresentation;
     expect(row.presentation.title, '信用卡');
-    expect(row.presentation.supportingTexts, ['分期明细']);
+    expect(row.presentation.supportingTexts.map((item) => item.text), ['分期明细']);
     expect(row.presentation.amount, const Money(minorUnits: 9300));
     expect(row.presentation.status.label, '待还');
   });

@@ -1,6 +1,7 @@
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
+import '../../../design_system/widget/app_supporting_items.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 import '../../../widget/business/finance/bill_summary_row.dart';
 
@@ -45,10 +46,10 @@ List<CalendarBillRowPresentation> buildCalendarDayBillRows({
             leadingIcon: RemixIcons.bill_line,
             title: accountLookup.find(item.accountId)?.name ?? '未知账户',
             supportingTexts: [
-              switch (item.itemType) {
+              AppSupportingText(switch (item.itemType) {
                 BillItemType.consumption => '消费明细',
                 BillItemType.installment => '分期明细',
-              },
+              }),
             ],
             amount: item.pendingTotal,
             status: billItemStatusPresentation(
@@ -71,9 +72,7 @@ List<CalendarBillRowPresentation> buildCalendarMonthBillRows({
         summary: BillSummaryRowPresentation(
           id: bill.billId,
           title: accountLookup.find(bill.accountId)?.name ?? '未知账户',
-          supportingTexts: [
-            BillSummarySupportingText(text: '${bill.itemCount} 条明细'),
-          ],
+          supportingTexts: [AppSupportingText('${bill.itemCount} 条明细')],
           amount: bill.status == BillStatus.settled
               ? bill.expectedPrincipal +
                     bill.expectedInterest +

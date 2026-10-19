@@ -6,12 +6,14 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
+import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/design_system/widget/app_submit_button.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
@@ -661,5 +663,22 @@ void main() {
     expect(find.text('待处理'), findsOneWidget);
     expect(find.text('已逾期'), findsOneWidget);
     expect(find.text('紧凑状态'), findsOneWidget);
+  });
+
+  testWidgets('shows reusable supporting text and list dividers', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppSupportingItems');
+    await tester.pumpAndSettle();
+    expect(find.text('辅助信息'), findsOneWidget);
+    expect(find.byType(AppSupportingItems), findsOneWidget);
+    expect(find.text('2 条逾期'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), 'AppListDivider');
+    await tester.pumpAndSettle();
+    expect(find.text('列表分隔线'), findsOneWidget);
+    expect(find.byType(AppListDivider), findsOneWidget);
   });
 }

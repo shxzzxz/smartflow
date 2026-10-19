@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
+import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
 
 void main() {
@@ -12,7 +13,7 @@ void main() {
       id: 'item-1',
       leadingIcon: Icons.receipt_long,
       title: '消费',
-      supportingTexts: ['还款 2026-07-20'],
+      supportingTexts: [AppSupportingText('还款 2026-07-20')],
       amount: Money(minorUnits: 7550),
       status: AppStatusBadgePresentation(
         label: '部分已还',
