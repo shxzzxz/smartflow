@@ -914,36 +914,65 @@ Future<String?> _requestGroupName(
   required String title,
   String initialValue = '',
 }) async {
-  final controller = TextEditingController(text: initialValue);
-  final result = await showDialog<String>(
+  return showDialog<String>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
+    builder: (_) =>
+        _AccountGroupNameDialog(title: title, initialValue: initialValue),
+  );
+}
+
+class _AccountGroupNameDialog extends StatefulWidget {
+  const _AccountGroupNameDialog({
+    required this.title,
+    required this.initialValue,
+  });
+
+  final String title;
+  final String initialValue;
+
+  @override
+  State<_AccountGroupNameDialog> createState() =>
+      _AccountGroupNameDialogState();
+}
+
+class _AccountGroupNameDialogState extends State<_AccountGroupNameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
       content: TextField(
-        controller: controller,
+        controller: _controller,
         autofocus: true,
-        style: dialogContext.appTextStyles.inputText,
+        style: context.appTextStyles.inputText,
         decoration: InputDecoration(
           hintText: '请输入分组名称',
-          hintStyle: dialogContext.appTextStyles.inputText.copyWith(
-            color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+          hintStyle: context.appTextStyles.inputText.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('取消'),
         ),
         TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          onPressed: () => Navigator.of(context).pop(_controller.text),
           child: const Text('确定'),
         ),
       ],
-    ),
-  );
-  controller.dispose();
-  return result;
+    );
+  }
 }
 
 void _showGroupOutcome(

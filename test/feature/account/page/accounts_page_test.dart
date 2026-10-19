@@ -45,14 +45,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final fundRow =
-        find
-            .ancestor(of: find.text('招行储蓄卡'), matching: find.byType(InkWell))
-            .first;
-    final creditRow =
-        find
-            .ancestor(of: find.text('招行信用卡'), matching: find.byType(InkWell))
-            .first;
+    final fundRow = find
+        .ancestor(of: find.text('招行储蓄卡'), matching: find.byType(InkWell))
+        .first;
+    final creditRow = find
+        .ancestor(of: find.text('招行信用卡'), matching: find.byType(InkWell))
+        .first;
     final supportingText = find.text('出账日 1   还款日 15');
     final creditAmount = find.descendant(
       of: creditRow,
@@ -100,10 +98,9 @@ void main() {
     await tester.pumpWidget(_buildAccountsPageApp(accounts: [_fundAccount()]));
     await tester.pumpAndSettle();
 
-    final groupSurface =
-        find
-            .ancestor(of: find.text('资金'), matching: find.byType(AppSurface))
-            .first;
+    final groupSurface = find
+        .ancestor(of: find.text('资金'), matching: find.byType(AppSurface))
+        .first;
 
     expect(
       find.descendant(of: groupSurface, matching: find.text('招行储蓄卡')),
@@ -332,6 +329,33 @@ void main() {
       'fund-1',
     ]);
   });
+
+  testWidgets('creates an account group without using a disposed controller', (
+    tester,
+  ) async {
+    final groupService = _FakeAccountGroupAppService();
+    await tester.pumpWidget(_buildAccountsPageApp(groupService: groupService));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('管理分组'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('新建分组'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '旅行');
+    await tester.tap(find.text('确定'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+
+    expect(groupService.createdGroupNames, ['旅行']);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _InMemoryAssetSectionCollapseStore implements AssetSectionCollapseStore {
@@ -461,6 +485,13 @@ Widget _buildAccountsPageApp({
 class _FakeAccountGroupAppService implements AccountGroupAppService {
   List<String>? reorderedGroupIds;
   final movedCommands = <MoveAccountToGroupCommand>[];
+  final createdGroupNames = <String>[];
+
+  @override
+  Future<AccountGroup> createGroup(CreateAccountGroupCommand command) async {
+    createdGroupNames.add(command.name);
+    return AccountGroup(id: 'created-group', name: command.name);
+  }
 
   @override
   Future<void> reorderGroups(ReorderAccountGroupsCommand command) async {
