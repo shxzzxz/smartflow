@@ -6,19 +6,19 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_supporting_items.dart';
-import 'package:smartflow/feature/account/presentation/account_credit_summary_presentation.dart';
 import 'package:smartflow/feature/account/widget/account_credit_summary_list.dart';
+import 'package:smartflow/widget/business/finance/finance_summary_row.dart';
 
 void main() {
   testWidgets('renders supporting items, semantic status, and no chevron', (
     tester,
   ) async {
     var tapped = false;
-    const presentation = AccountCreditSummaryPresentation(
+    const presentation = FinanceSummaryRowPresentation(
       id: 'summary',
       title: '2026年07月',
       amount: Money(minorUnits: 320000),
-      supportingItems: [
+      supportingTexts: [
         AppSupportingText('到期 07-25'),
         AppSupportingText('12 条明细'),
       ],

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
-import '../../../widget/business/finance/bill_summary_row.dart';
+import '../../../widget/business/finance/finance_summary_row.dart';
 import '../presentation/calendar_bills_presentation.dart';
 import '../view_model/calendar_bills_view_model.dart';
 
@@ -96,7 +96,7 @@ class _CalendarBillRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (row) {
       CalendarBillDueRowPresentation due => _CalendarBillDueRow(row: due),
-      CalendarBillSummaryRowPresentation(:final summary) => BillSummaryRow(
+      CalendarBillSummaryRowPresentation(:final summary) => FinanceSummaryRow(
         presentation: summary,
         onTap: () => context.push('/bills/${summary.id}'),
       ),

@@ -1,40 +1,21 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
-import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
+import 'package:smartflow/widget/business/finance/finance_summary_row.dart';
 
 import '../../credit/presentation/bill_status_presentation.dart';
 
-class AccountCreditSummaryPresentation {
-  const AccountCreditSummaryPresentation({
-    required this.id,
-    required this.title,
-    required this.amount,
-    required this.supportingItems,
-    required this.status,
-    this.amountLabel,
-  });
-
-  final String id;
-  final String title;
-  final Money amount;
-  final String? amountLabel;
-  final List<AppSupportingText> supportingItems;
-  final AppStatusBadgePresentation status;
-}
-
-AccountCreditSummaryPresentation billAccountCreditSummary(
+FinanceSummaryRowPresentation billAccountCreditSummary(
   BillSummaryReadModel bill,
 ) {
   final status = _billStatus(bill);
-  return AccountCreditSummaryPresentation(
+  return FinanceSummaryRowPresentation(
     id: bill.id,
     title: _billTitle(bill.period),
     amount: bill.pendingAmount,
     amountLabel: null,
-    supportingItems: [
+    supportingTexts: [
       // Kept for legacy read models; persisted bill summaries no longer
       // populate a bill-level repayment date.
       if (bill.windowRepaymentDate != null)
@@ -55,29 +36,15 @@ String _billRepaymentLabel(DateTime repaymentDate) {
       '${repaymentDate.day.toString().padLeft(2, '0')}';
 }
 
-BillSummaryRowPresentation billAccountSummaryRowPresentation(
-  BillSummaryReadModel bill,
-) {
-  final summary = billAccountCreditSummary(bill);
-  return BillSummaryRowPresentation(
-    id: summary.id,
-    title: summary.title,
-    amount: summary.amount,
-    amountLabel: summary.amountLabel,
-    supportingTexts: summary.supportingItems,
-    status: summary.status,
-  );
-}
-
-AccountCreditSummaryPresentation installmentAccountCreditSummary(
+FinanceSummaryRowPresentation installmentAccountCreditSummary(
   InstallmentContractReadModel contract, {
   required AccountProfileKind accountKind,
 }) {
-  return AccountCreditSummaryPresentation(
+  return FinanceSummaryRowPresentation(
     id: contract.id,
     title: contract.name,
     amount: contract.principal,
-    supportingItems: [
+    supportingTexts: [
       AppSupportingText(
         _installmentSourceLabel(contract.sourceType, accountKind: accountKind),
       ),

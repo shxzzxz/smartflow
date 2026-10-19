@@ -3,7 +3,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/widget/app_supporting_items.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
-import '../../../widget/business/finance/bill_summary_row.dart';
+import '../../../widget/business/finance/finance_summary_row.dart';
 
 import '../../credit/presentation/bill_item_presentation.dart';
 import '../../credit/presentation/bill_status_presentation.dart';
@@ -28,7 +28,7 @@ final class CalendarBillSummaryRowPresentation
     extends CalendarBillRowPresentation {
   const CalendarBillSummaryRowPresentation({required this.summary});
 
-  final BillSummaryRowPresentation summary;
+  final FinanceSummaryRowPresentation summary;
 }
 
 List<CalendarBillRowPresentation> buildCalendarDayBillRows({
@@ -69,7 +69,7 @@ List<CalendarBillRowPresentation> buildCalendarMonthBillRows({
   return [
     for (final bill in bills)
       CalendarBillSummaryRowPresentation(
-        summary: BillSummaryRowPresentation(
+        summary: FinanceSummaryRowPresentation(
           id: bill.billId,
           title: accountLookup.find(bill.accountId)?.name ?? '未知账户',
           supportingTexts: [AppSupportingText('${bill.itemCount} 条明细')],

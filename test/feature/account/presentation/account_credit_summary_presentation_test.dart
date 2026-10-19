@@ -15,15 +15,15 @@ void main() {
       expect(billed.title, '2026年07月');
       expect(billed.status.label, '已出账');
       expect(billed.status.tone, AppStatusTone.warning);
-      expect(billed.supportingItems.map((item) => item.text), [
+      expect(billed.supportingTexts.map((item) => item.text), [
         '还款 07-25',
         '12 条明细',
       ]);
 
       expect(overdue.status.label, '已逾期');
       expect(overdue.status.tone, AppStatusTone.danger);
-      expect(overdue.supportingItems.last.text, '2 条逾期');
-      expect(overdue.supportingItems.last.tone, AppStatusTone.danger);
+      expect(overdue.supportingTexts.last.text, '2 条逾期');
+      expect(overdue.supportingTexts.last.tone, AppStatusTone.danger);
     });
 
     test('uses primary for open bills and success for settled bills', () {
@@ -61,7 +61,7 @@ void main() {
 
       expect(presentation.title, '20260510');
       expect(presentation.amount.minorUnits, 1200000);
-      expect(presentation.supportingItems.map((item) => item.text), [
+      expect(presentation.supportingTexts.map((item) => item.text), [
         '现金分期',
         '12 期',
         '等额本息',
@@ -76,7 +76,7 @@ void main() {
         accountKind: AccountProfileKind.loan,
       );
 
-      expect(presentation.supportingItems.first.text, '贷款分期');
+      expect(presentation.supportingTexts.first.text, '贷款分期');
       expect(presentation.status.label, '已结清');
       expect(presentation.status.tone, AppStatusTone.success);
     });

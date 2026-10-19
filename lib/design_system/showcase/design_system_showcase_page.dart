@@ -15,7 +15,7 @@ import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
-import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
+import 'package:smartflow/widget/business/finance/finance_summary_row.dart';
 import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
@@ -455,7 +455,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.billRows,
     category: '财务表达',
     title: '账单行与状态',
-    componentNames: 'BillSummaryRow / BillItemRow',
+    componentNames: 'FinanceSummaryRow / BillItemRow',
     keywords: ['账单', '明细', '金额', '状态', '徽章'],
   ),
   _ShowcaseExample(
@@ -2216,7 +2216,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   }
 
   Widget _billRowsPreview() {
-    const summary = BillSummaryRowPresentation(
+    const summary = FinanceSummaryRowPresentation(
       id: 'bill',
       title: '2026年07月',
       amount: Money(minorUnits: 320000),
@@ -2242,7 +2242,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         border: true,
         child: Column(
           children: [
-            BillSummaryRow(
+            FinanceSummaryRow(
               presentation: summary,
               onTap: () => _showMessage('打开账单详情'),
             ),

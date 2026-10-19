@@ -5,15 +5,13 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
-import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_supporting_items.dart';
-import 'package:smartflow/design_system/widget/app_surface.dart';
 
 import 'money_text.dart';
 
-class BillSummaryRowPresentation {
-  const BillSummaryRowPresentation({
+class FinanceSummaryRowPresentation {
+  const FinanceSummaryRowPresentation({
     required this.id,
     required this.title,
     required this.amount,
@@ -32,14 +30,14 @@ class BillSummaryRowPresentation {
   final bool showChevron;
 }
 
-class BillSummaryRow extends StatelessWidget {
-  const BillSummaryRow({
+class FinanceSummaryRow extends StatelessWidget {
+  const FinanceSummaryRow({
     required this.presentation,
     required this.onTap,
     super.key,
   });
 
-  final BillSummaryRowPresentation presentation;
+  final FinanceSummaryRowPresentation presentation;
   final VoidCallback onTap;
 
   @override
@@ -113,50 +111,6 @@ class BillSummaryRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class BillSummaryList extends StatelessWidget {
-  const BillSummaryList({
-    required this.items,
-    required this.emptyMessage,
-    required this.onTap,
-    super.key,
-  });
-
-  final List<BillSummaryRowPresentation> items;
-  final String emptyMessage;
-  final ValueChanged<BillSummaryRowPresentation> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return AppSurface(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          child: Text(
-            emptyMessage,
-            style: context.appTextStyles.formLabel.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return AppSurface(
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            BillSummaryRow(
-              presentation: items[i],
-              onTap: () => onTap(items[i]),
-            ),
-            if (i < items.length - 1) const AppListDivider(),
-          ],
-        ],
       ),
     );
   }
