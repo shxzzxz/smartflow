@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
-import '../token/list.dart';
+import '../token/component.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
@@ -44,7 +44,9 @@ class AppStatusBanner extends StatelessWidget {
           vertical: AppSpacing.space8,
         ),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
+          color: color.withValues(
+            alpha: AppComponentTokens.statusBackgroundOpacity,
+          ),
           borderRadius: BorderRadius.circular(AppRadius.radiusMd),
         ),
         child: Row(

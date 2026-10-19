@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -336,7 +337,9 @@ class _AccountTypePill extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.onPrimary.withValues(alpha: 0.12),
+        color: colors.onPrimary.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.radiusMd),
         border: Border.all(color: colors.onPrimary.withValues(alpha: 0.42)),
       ),

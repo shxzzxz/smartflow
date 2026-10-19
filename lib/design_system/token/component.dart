@@ -16,6 +16,8 @@ abstract final class AppComponentTokens {
   static const double disabledContainerOpacity = 0.08;
   static const double disabledSelectionOpacity = 0.12;
   static const double selectedContainerOpacity = 0.1;
+  static const double statusBackgroundOpacity = 0.12;
+  static const double statusBorderOpacity = 0.36;
   static const double mutedOutlineOpacity = 0.55;
   static const double subduedOutlineOpacity = 0.65;
   static const double subtleOverlayOpacity = 0.06;

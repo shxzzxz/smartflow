@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import '../../../core/logging/app_log_reader.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
+import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../presentation/log_viewer_presentation.dart';
@@ -171,7 +172,9 @@ class LogLevelBadge extends StatelessWidget {
         vertical: AppSpacing.space2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       ),
       child: Text(

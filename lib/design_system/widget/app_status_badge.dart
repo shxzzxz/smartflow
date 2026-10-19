@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
-import '../token/list.dart';
+import '../token/component.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
@@ -39,7 +39,9 @@ class AppStatusBadge extends StatelessWidget {
         vertical: AppSpacing.space2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
+        color: color.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(
           compact ? AppRadius.radiusMd : AppRadius.radiusFull,
         ),

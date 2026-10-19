@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 
@@ -83,12 +84,13 @@ class BusinessIconBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final effectiveBubbleColor =
-        selected
-            ? selectedBubbleColor ??
-                bubbleColor ??
-                colors.primary.withValues(alpha: 0.12)
-            : bubbleColor ?? Colors.transparent;
+    final effectiveBubbleColor = selected
+        ? selectedBubbleColor ??
+              bubbleColor ??
+              colors.primary.withValues(
+                alpha: AppComponentTokens.selectedContainerOpacity,
+              )
+        : bubbleColor ?? Colors.transparent;
 
     Widget icon = Center(child: child);
     icon = IconTheme.merge(
@@ -106,31 +108,29 @@ class BusinessIconBubble extends StatelessWidget {
       child: icon,
     );
 
-    final content =
-        label == null
-            ? bubble
-            : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                bubble,
-                SizedBox(height: labelSpacing),
-                Text(
-                  label!,
-                  textAlign: TextAlign.center,
-                  maxLines: labelMaxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.appTextStyles.iconGridLabel,
-                ),
-              ],
-            );
+    final content = label == null
+        ? bubble
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              bubble,
+              SizedBox(height: labelSpacing),
+              Text(
+                label!,
+                textAlign: TextAlign.center,
+                maxLines: labelMaxLines,
+                overflow: TextOverflow.ellipsis,
+                style: context.appTextStyles.iconGridLabel,
+              ),
+            ],
+          );
 
-    final tapContent =
-        tapAreaWidth == null
-            ? content
-            : SizedBox(
-              width: tapAreaWidth,
-              child: Align(alignment: tapAreaAlignment, child: content),
-            );
+    final tapContent = tapAreaWidth == null
+        ? content
+        : SizedBox(
+            width: tapAreaWidth,
+            child: Align(alignment: tapAreaAlignment, child: content),
+          );
 
     if (onTap == null) {
       return tapContent;

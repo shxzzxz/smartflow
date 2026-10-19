@@ -2310,10 +2310,14 @@ class _FeedbackBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
+        color: color.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.radiusLg),
         border: Border.all(
-          color: color.withValues(alpha: AppListTokens.statusBorderOpacity),
+          color: color.withValues(
+            alpha: AppComponentTokens.statusBorderOpacity,
+          ),
         ),
       ),
       child: Row(
@@ -2354,7 +2358,9 @@ class _StatusBadge extends StatelessWidget {
         vertical: AppSpacing.space4,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
+        color: color.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.radiusFull),
       ),
       child: Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -58,8 +59,9 @@ class TransactionProgressBadges extends StatelessWidget {
     // A full list can still fail by pixel width even when its item count fits
     // the slot limit. Generate every suffix aggregation so a shorter
     // aggregate can compete with the full list at the same slot count.
-    final maxRealCount =
-        badges.length <= _maxSlotCount ? badges.length : _maxSlotCount - 1;
+    final maxRealCount = badges.length <= _maxSlotCount
+        ? badges.length
+        : _maxSlotCount - 1;
     final minRealCount = badges.length == 1 ? 1 : 0;
 
     for (var realCount = maxRealCount; realCount >= minRealCount; realCount--) {
@@ -121,7 +123,9 @@ class _BadgeChip extends StatelessWidget {
         vertical: AppSpacing.space2,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(
+          alpha: AppComponentTokens.statusBackgroundOpacity,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       ),
       child: Text(
