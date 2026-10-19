@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
+import '../finance/finance_dot_label.dart';
 import '../finance/finance_labels.dart';
 
 class TransactionPurposeBadge extends StatelessWidget {
@@ -12,7 +13,6 @@ class TransactionPurposeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final color = switch (purpose) {
       BusinessPurpose.dailyExpense => financeColors.expense,
@@ -22,12 +22,9 @@ class TransactionPurposeBadge extends StatelessWidget {
       _ => financeColors.info,
     };
 
-    return Chip(
-      label: Text(transactionPurposeLabel(purpose)),
-      avatar: Icon(Icons.circle, size: 10, color: color),
-      visualDensity: VisualDensity.compact,
-      backgroundColor: colors.surfaceContainerHighest,
-      side: BorderSide(color: colors.outlineVariant),
+    return FinanceDotLabel(
+      label: transactionPurposeLabel(purpose),
+      dotColor: color,
     );
   }
 }
