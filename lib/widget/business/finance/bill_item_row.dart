@@ -5,8 +5,8 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 
-import 'bill_status_badge.dart';
 import 'money_text.dart';
 
 class BillItemRowPresentation {
@@ -25,7 +25,7 @@ class BillItemRowPresentation {
   final String title;
   final List<String> supportingTexts;
   final Money amount;
-  final BillStatusBadgePresentation status;
+  final AppStatusBadgePresentation status;
   final bool showChevron;
 }
 
@@ -86,7 +86,10 @@ class BillItemRow extends StatelessWidget {
                       semantic: MoneySemantic.liability,
                     ),
                     const SizedBox(height: AppSpacing.space4),
-                    BillStatusBadge(status: presentation.status),
+                    AppStatusBadge(
+                      presentation: presentation.status,
+                      size: AppStatusBadgeSize.compact,
+                    ),
                   ],
                 ),
               ),

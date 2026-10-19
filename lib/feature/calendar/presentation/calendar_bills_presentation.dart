@@ -2,7 +2,6 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
-import '../../../widget/business/finance/bill_status_badge.dart';
 import '../../../widget/business/finance/bill_summary_row.dart';
 
 import '../../credit/presentation/bill_item_presentation.dart';
@@ -75,32 +74,14 @@ List<CalendarBillRowPresentation> buildCalendarMonthBillRows({
           supportingTexts: [
             BillSummarySupportingText(text: '${bill.itemCount} 条明细'),
           ],
-          amount:
-              bill.status == BillStatus.settled
-                  ? bill.expectedPrincipal +
-                      bill.expectedInterest +
-                      bill.expectedFee
-                  : bill.pendingTotal,
-          status: _billStatusPresentation(bill.status),
+          amount: bill.status == BillStatus.settled
+              ? bill.expectedPrincipal +
+                    bill.expectedInterest +
+                    bill.expectedFee
+              : bill.pendingTotal,
+          status: billStatusBadgePresentation(bill.status),
           showChevron: true,
         ),
       ),
   ];
-}
-
-BillStatusBadgePresentation _billStatusPresentation(BillStatus status) {
-  return switch (status) {
-    BillStatus.open => BillStatusBadgePresentation(
-      label: billStatusLabel(BillStatus.open),
-      tone: BillStatusTone.primary,
-    ),
-    BillStatus.billed => BillStatusBadgePresentation(
-      label: billStatusLabel(BillStatus.billed),
-      tone: BillStatusTone.warning,
-    ),
-    BillStatus.settled => BillStatusBadgePresentation(
-      label: billStatusLabel(BillStatus.settled),
-      tone: BillStatusTone.success,
-    ),
-  };
 }

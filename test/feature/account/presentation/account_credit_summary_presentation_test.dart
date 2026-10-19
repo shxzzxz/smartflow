@@ -2,6 +2,7 @@ import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/feature/account/presentation/account_credit_summary_presentation.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
@@ -13,29 +14,26 @@ void main() {
 
       expect(billed.title, '2026年07月');
       expect(billed.status.label, '已出账');
-      expect(billed.status.tone, AccountCreditSummaryTone.warning);
+      expect(billed.status.tone, AppStatusTone.warning);
       expect(billed.supportingItems.map((item) => item.text), [
         '还款 07-25',
         '12 条明细',
       ]);
 
       expect(overdue.status.label, '已逾期');
-      expect(overdue.status.tone, AccountCreditSummaryTone.danger);
+      expect(overdue.status.tone, AppStatusTone.danger);
       expect(overdue.supportingItems.last.text, '2 条逾期');
-      expect(
-        overdue.supportingItems.last.tone,
-        AccountCreditSummaryTone.danger,
-      );
+      expect(overdue.supportingItems.last.tone, AppStatusTone.danger);
     });
 
     test('uses primary for open bills and success for settled bills', () {
       expect(
         billAccountCreditSummary(_bill(status: BillStatus.open)).status.tone,
-        AccountCreditSummaryTone.primary,
+        AppStatusTone.primary,
       );
       expect(
         billAccountCreditSummary(_bill(status: BillStatus.settled)).status.tone,
-        AccountCreditSummaryTone.success,
+        AppStatusTone.success,
       );
     });
 
@@ -69,7 +67,7 @@ void main() {
         '等额本息',
       ]);
       expect(presentation.status.label, '进行中');
-      expect(presentation.status.tone, AccountCreditSummaryTone.primary);
+      expect(presentation.status.tone, AppStatusTone.primary);
     });
 
     test('uses loan label and success for a settled loan contract', () {
@@ -80,7 +78,7 @@ void main() {
 
       expect(presentation.supportingItems.first.text, '贷款分期');
       expect(presentation.status.label, '已结清');
-      expect(presentation.status.tone, AccountCreditSummaryTone.success);
+      expect(presentation.status.tone, AppStatusTone.success);
     });
   });
 }

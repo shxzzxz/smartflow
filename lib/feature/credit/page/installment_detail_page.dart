@@ -18,6 +18,7 @@ import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/contract_status_presentation.dart';
 import '../presentation/contract_status_validation_presentation.dart';
 import '../presentation/installment_schedule_presentation.dart';
 import '../presentation/installment_stage_presentation.dart';
@@ -276,19 +277,11 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentRate = installmentRateOn(contract, DateTime.now());
-    final (statusLabel, statusColor) = switch (contract.status) {
-      InstallmentContractStatus.active => (
-        '进行中',
-        Theme.of(context).colorScheme.primary,
-      ),
-      InstallmentContractStatus.settled => (
-        '已结清',
-        Theme.of(context).colorScheme.tertiary,
-      ),
-    };
     return AppDetailSummaryCard(
       title: contract.name,
-      headerTrailing: AppStatusBadge(label: statusLabel, color: statusColor),
+      headerTrailing: AppStatusBadge(
+        presentation: contractStatusBadgePresentation(contract.status),
+      ),
       mainItems: [
         AppDetailSummaryCardItem(
           label: '待还本金',

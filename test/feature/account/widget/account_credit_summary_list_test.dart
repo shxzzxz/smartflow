@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/feature/account/presentation/account_credit_summary_presentation.dart';
 import 'package:smartflow/feature/account/widget/account_credit_summary_list.dart';
 
@@ -20,9 +21,9 @@ void main() {
         AccountCreditSummarySupportingItem(text: '到期 07-25'),
         AccountCreditSummarySupportingItem(text: '12 条明细'),
       ],
-      status: AccountCreditSummaryStatus(
+      status: AppStatusBadgePresentation(
         label: '已出账',
-        tone: AccountCreditSummaryTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
 

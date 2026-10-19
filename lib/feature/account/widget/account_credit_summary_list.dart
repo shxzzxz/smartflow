@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
-import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/list.dart';
-import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 
@@ -104,20 +103,22 @@ class _AccountCreditSummaryRow extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child:
-                          presentation.amountLabel == null
-                              ? MoneyText(
-                                money: presentation.amount,
-                                style: styles.amountList,
-                                semantic: MoneySemantic.liability,
-                              )
-                              : Text(
-                                presentation.amountLabel!,
-                                style: styles.amountList,
-                              ),
+                      child: presentation.amountLabel == null
+                          ? MoneyText(
+                              money: presentation.amount,
+                              style: styles.amountList,
+                              semantic: MoneySemantic.liability,
+                            )
+                          : Text(
+                              presentation.amountLabel!,
+                              style: styles.amountList,
+                            ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
-                    _StatusBadge(status: presentation.status),
+                    AppStatusBadge(
+                      presentation: presentation.status,
+                      size: AppStatusBadgeSize.compact,
+                    ),
                   ],
                 ),
               ),
@@ -145,39 +146,12 @@ class _SupportingItems extends StatelessWidget {
           Text(
             item.text,
             style: styles.listSupporting.copyWith(
-              color: _toneColor(context, item.tone),
+              color: appStatusToneColor(context, item.tone),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
       ],
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final AccountCreditSummaryStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _toneColor(context, status.tone);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space6,
-        vertical: AppSpacing.space2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: AppListTokens.statusBackgroundOpacity),
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      ),
-      child: Text(
-        status.label,
-        style: context.appTextStyles.badgeLabel.copyWith(color: color),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
     );
   }
 }
@@ -196,16 +170,4 @@ class _SummaryDivider extends StatelessWidget {
       ),
     );
   }
-}
-
-Color _toneColor(BuildContext context, AccountCreditSummaryTone tone) {
-  final colors = Theme.of(context).colorScheme;
-  final extension = Theme.of(context).extension<AppThemeExtension>()!;
-  return switch (tone) {
-    AccountCreditSummaryTone.neutral => colors.onSurfaceVariant,
-    AccountCreditSummaryTone.primary => colors.primary,
-    AccountCreditSummaryTone.warning => extension.warning,
-    AccountCreditSummaryTone.success => extension.success,
-    AccountCreditSummaryTone.danger => extension.danger,
-  };
 }

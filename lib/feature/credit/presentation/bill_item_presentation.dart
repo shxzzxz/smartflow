@@ -2,8 +2,8 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
+import '../../../design_system/widget/app_status_badge.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
-import '../../../widget/business/finance/bill_status_badge.dart';
 
 String billItemLabel(BillItemReadModel item) {
   if (item.itemType == BillItemType.consumption) return '消费';
@@ -21,36 +21,36 @@ String? billItemDestination(BillItemReadModel item) {
   return contractId == null ? null : '/installments/$contractId';
 }
 
-BillStatusBadgePresentation billItemStatusPresentation({
+AppStatusBadgePresentation billItemStatusPresentation({
   required BillItemStatus status,
   required bool isOverdue,
 }) {
   if (isOverdue) {
-    return const BillStatusBadgePresentation(
+    return const AppStatusBadgePresentation(
       label: '已逾期',
-      tone: BillStatusTone.danger,
+      tone: AppStatusTone.danger,
     );
   }
   return switch (status) {
-    BillItemStatus.pending => const BillStatusBadgePresentation(
+    BillItemStatus.pending => const AppStatusBadgePresentation(
       label: '待还',
-      tone: BillStatusTone.warning,
+      tone: AppStatusTone.warning,
     ),
-    BillItemStatus.partiallyPaid => const BillStatusBadgePresentation(
+    BillItemStatus.partiallyPaid => const AppStatusBadgePresentation(
       label: '部分已还',
-      tone: BillStatusTone.warning,
+      tone: AppStatusTone.warning,
     ),
-    BillItemStatus.paid => const BillStatusBadgePresentation(
+    BillItemStatus.paid => const AppStatusBadgePresentation(
       label: '已核销',
-      tone: BillStatusTone.success,
+      tone: AppStatusTone.success,
     ),
-    BillItemStatus.overpaid => const BillStatusBadgePresentation(
+    BillItemStatus.overpaid => const AppStatusBadgePresentation(
       label: '溢缴',
-      tone: BillStatusTone.primary,
+      tone: AppStatusTone.primary,
     ),
-    BillItemStatus.skipped => const BillStatusBadgePresentation(
+    BillItemStatus.skipped => const AppStatusBadgePresentation(
       label: '已跳过',
-      tone: BillStatusTone.neutral,
+      tone: AppStatusTone.neutral,
     ),
   };
 }

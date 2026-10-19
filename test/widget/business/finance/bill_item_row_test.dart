@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
-import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
 
 void main() {
   testWidgets('renders the status badge below the item amount', (tester) async {
@@ -14,9 +14,9 @@ void main() {
       title: '消费',
       supportingTexts: ['还款 2026-07-20'],
       amount: Money(minorUnits: 7550),
-      status: BillStatusBadgePresentation(
+      status: AppStatusBadgePresentation(
         label: '部分已还',
-        tone: BillStatusTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
 

@@ -5,19 +5,19 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/token/list.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 
-import 'bill_status_badge.dart';
 import 'money_text.dart';
 
 class BillSummarySupportingText {
   const BillSummarySupportingText({
     required this.text,
-    this.tone = BillStatusTone.neutral,
+    this.tone = AppStatusTone.neutral,
   });
 
   final String text;
-  final BillStatusTone tone;
+  final AppStatusTone tone;
 }
 
 class BillSummaryRowPresentation {
@@ -36,7 +36,7 @@ class BillSummaryRowPresentation {
   final Money amount;
   final String? amountLabel;
   final List<BillSummarySupportingText> supportingTexts;
-  final BillStatusBadgePresentation status;
+  final AppStatusBadgePresentation status;
   final bool showChevron;
 }
 
@@ -92,20 +92,22 @@ class BillSummaryRow extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
-                      child:
-                          presentation.amountLabel == null
-                              ? MoneyText(
-                                money: presentation.amount,
-                                style: styles.amountList,
-                                semantic: MoneySemantic.liability,
-                              )
-                              : Text(
-                                presentation.amountLabel!,
-                                style: styles.amountList,
-                              ),
+                      child: presentation.amountLabel == null
+                          ? MoneyText(
+                              money: presentation.amount,
+                              style: styles.amountList,
+                              semantic: MoneySemantic.liability,
+                            )
+                          : Text(
+                              presentation.amountLabel!,
+                              style: styles.amountList,
+                            ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
-                    BillStatusBadge(status: presentation.status),
+                    AppStatusBadge(
+                      presentation: presentation.status,
+                      size: AppStatusBadgeSize.compact,
+                    ),
                   ],
                 ),
               ),
@@ -184,7 +186,7 @@ class _SupportingItems extends StatelessWidget {
           Text(
             item.text,
             style: styles.listSupporting.copyWith(
-              color: billStatusToneColor(context, item.tone),
+              color: appStatusToneColor(context, item.tone),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

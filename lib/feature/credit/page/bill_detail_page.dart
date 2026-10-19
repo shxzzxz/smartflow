@@ -6,7 +6,6 @@ import 'package:remixicon/remixicon.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -294,8 +293,7 @@ class _SummarySurface extends StatelessWidget {
     return AppDetailSummaryCard(
       title: _periodLabel(summary.period),
       headerTrailing: AppStatusBadge(
-        label: billStatusLabel(summary.status),
-        color: _billStatusColor(context, summary.status),
+        presentation: billStatusBadgePresentation(summary.status),
       ),
       mainItems: [
         AppDetailSummaryCardItem(
@@ -446,16 +444,6 @@ class _BillRepaymentRow extends StatelessWidget {
       ),
     );
   }
-}
-
-Color _billStatusColor(BuildContext context, BillStatus status) {
-  final colors = Theme.of(context).colorScheme;
-  final appColors = Theme.of(context).extension<AppThemeExtension>()!;
-  return switch (status) {
-    BillStatus.open => colors.primary,
-    BillStatus.billed => colors.error,
-    BillStatus.settled => appColors.success,
-  };
 }
 
 String _periodLabel(BillPeriod period) {

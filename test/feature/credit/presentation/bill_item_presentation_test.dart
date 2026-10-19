@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/feature/credit/presentation/bill_item_presentation.dart';
-import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
 
 void main() {
   test('installment bill item opens contract detail', () {
@@ -67,9 +67,9 @@ void main() {
         status: BillItemStatus.pending,
         isOverdue: false,
       ),
-      const BillStatusBadgePresentation(
+      const AppStatusBadgePresentation(
         label: '待还',
-        tone: BillStatusTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
     expect(
@@ -77,16 +77,16 @@ void main() {
         status: BillItemStatus.partiallyPaid,
         isOverdue: false,
       ),
-      const BillStatusBadgePresentation(
+      const AppStatusBadgePresentation(
         label: '部分已还',
-        tone: BillStatusTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
     expect(
       billItemStatusPresentation(status: BillItemStatus.paid, isOverdue: false),
-      const BillStatusBadgePresentation(
+      const AppStatusBadgePresentation(
         label: '已核销',
-        tone: BillStatusTone.success,
+        tone: AppStatusTone.success,
       ),
     );
     expect(
@@ -94,9 +94,9 @@ void main() {
         status: BillItemStatus.skipped,
         isOverdue: false,
       ),
-      const BillStatusBadgePresentation(
+      const AppStatusBadgePresentation(
         label: '已跳过',
-        tone: BillStatusTone.neutral,
+        tone: AppStatusTone.neutral,
       ),
     );
   });
@@ -104,9 +104,9 @@ void main() {
   test('overdue takes precedence over the persisted item status', () {
     expect(
       billItemStatusPresentation(status: BillItemStatus.paid, isOverdue: true),
-      const BillStatusBadgePresentation(
+      const AppStatusBadgePresentation(
         label: '已逾期',
-        tone: BillStatusTone.danger,
+        tone: AppStatusTone.danger,
       ),
     );
   });

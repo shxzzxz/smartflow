@@ -15,7 +15,6 @@ import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
-import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
 import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -57,6 +56,7 @@ import '../widget/app_segmented_control.dart';
 import '../widget/app_select.dart';
 import '../widget/app_settings_row.dart';
 import '../widget/app_sliding_segmented_control.dart';
+import '../widget/app_status_badge.dart';
 import '../widget/app_status_banner.dart';
 import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
@@ -121,6 +121,7 @@ enum _ShowcaseExampleKind {
   monthPicker,
   treeSelect,
   swipeAction,
+  statusBadge,
   statusFeedback,
   snackBar,
   moneyText,
@@ -398,6 +399,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     keywords: ['滑动', '快捷操作'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.statusBadge,
+    category: '反馈与状态',
+    title: '状态标签',
+    componentNames: 'AppStatusBadge',
+    keywords: ['状态', '标签', '详情', '列表', '紧凑'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.statusFeedback,
     category: '反馈与状态',
     title: '状态提示',
@@ -429,7 +437,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.billRows,
     category: '财务表达',
     title: '账单行与状态',
-    componentNames: 'BillSummaryRow / BillItemRow / BillStatusBadge',
+    componentNames: 'BillSummaryRow / BillItemRow',
     keywords: ['账单', '明细', '金额', '状态', '徽章'],
   ),
   _ShowcaseExample(
@@ -954,6 +962,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.monthPicker => _monthPickerPreview(),
       _ShowcaseExampleKind.treeSelect => _treeSelectPreview(),
       _ShowcaseExampleKind.swipeAction => _swipeActionPreview(),
+      _ShowcaseExampleKind.statusBadge => _statusBadgePreview(),
       _ShowcaseExampleKind.statusFeedback => _statusFeedbackPreview(),
       _ShowcaseExampleKind.snackBar => _snackBarPreview(),
       _ShowcaseExampleKind.moneyText => _moneyTextPreview(),
@@ -2040,6 +2049,40 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     );
   }
 
+  Widget _statusBadgePreview() {
+    return Wrap(
+      spacing: AppSpacing.space8,
+      runSpacing: AppSpacing.space8,
+      children: const [
+        AppStatusBadge(
+          presentation: AppStatusBadgePresentation(
+            label: '已完成',
+            tone: AppStatusTone.success,
+          ),
+        ),
+        AppStatusBadge(
+          presentation: AppStatusBadgePresentation(
+            label: '待处理',
+            tone: AppStatusTone.warning,
+          ),
+        ),
+        AppStatusBadge(
+          presentation: AppStatusBadgePresentation(
+            label: '已逾期',
+            tone: AppStatusTone.danger,
+          ),
+        ),
+        AppStatusBadge(
+          presentation: AppStatusBadgePresentation(
+            label: '紧凑状态',
+            tone: AppStatusTone.neutral,
+          ),
+          size: AppStatusBadgeSize.compact,
+        ),
+      ],
+    );
+  }
+
   Widget _snackBarPreview() {
     return Wrap(
       spacing: AppSpacing.space8,
@@ -2151,9 +2194,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       title: '2026年07月',
       amount: Money(minorUnits: 320000),
       supportingTexts: [BillSummarySupportingText(text: '2 条明细')],
-      status: BillStatusBadgePresentation(
+      status: AppStatusBadgePresentation(
         label: '已出账',
-        tone: BillStatusTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
     const item = BillItemRowPresentation(
@@ -2162,9 +2205,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       title: '消费',
       supportingTexts: ['还款 2026-07-25'],
       amount: Money(minorUnits: 120000),
-      status: BillStatusBadgePresentation(
+      status: AppStatusBadgePresentation(
         label: '待还',
-        tone: BillStatusTone.warning,
+        tone: AppStatusTone.warning,
       ),
     );
     return _PreviewBackdrop(

@@ -10,6 +10,7 @@ import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/design_system/widget/app_submit_button.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
@@ -646,5 +647,19 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '显示成功提示'));
     await tester.pump();
     expect(find.text('操作成功'), findsOneWidget);
+  });
+
+  testWidgets('shows detail and compact status badges', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppStatusBadge');
+    await tester.pumpAndSettle();
+
+    expect(find.text('状态标签'), findsOneWidget);
+    expect(find.byType(AppStatusBadge), findsNWidgets(4));
+    expect(find.text('已完成'), findsOneWidget);
+    expect(find.text('待处理'), findsOneWidget);
+    expect(find.text('已逾期'), findsOneWidget);
+    expect(find.text('紧凑状态'), findsOneWidget);
   });
 }

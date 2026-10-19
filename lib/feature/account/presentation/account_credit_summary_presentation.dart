@@ -1,28 +1,19 @@
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
-import 'package:smartflow/widget/business/finance/bill_status_badge.dart';
 import 'package:smartflow/widget/business/finance/bill_summary_row.dart';
 
 import '../../credit/presentation/bill_status_presentation.dart';
 
-enum AccountCreditSummaryTone { neutral, primary, warning, success, danger }
-
 class AccountCreditSummarySupportingItem {
   const AccountCreditSummarySupportingItem({
     required this.text,
-    this.tone = AccountCreditSummaryTone.neutral,
+    this.tone = AppStatusTone.neutral,
   });
 
   final String text;
-  final AccountCreditSummaryTone tone;
-}
-
-class AccountCreditSummaryStatus {
-  const AccountCreditSummaryStatus({required this.label, required this.tone});
-
-  final String label;
-  final AccountCreditSummaryTone tone;
+  final AppStatusTone tone;
 }
 
 class AccountCreditSummaryPresentation {
@@ -40,7 +31,7 @@ class AccountCreditSummaryPresentation {
   final Money amount;
   final String? amountLabel;
   final List<AccountCreditSummarySupportingItem> supportingItems;
-  final AccountCreditSummaryStatus status;
+  final AppStatusBadgePresentation status;
 }
 
 AccountCreditSummaryPresentation billAccountCreditSummary(
@@ -63,7 +54,7 @@ AccountCreditSummaryPresentation billAccountCreditSummary(
       if (bill.overdueItemCount > 0)
         AccountCreditSummarySupportingItem(
           text: '${bill.overdueItemCount} 条逾期',
-          tone: AccountCreditSummaryTone.danger,
+          tone: AppStatusTone.danger,
         ),
     ],
     status: status,
@@ -86,15 +77,9 @@ BillSummaryRowPresentation billAccountSummaryRowPresentation(
     amountLabel: summary.amountLabel,
     supportingTexts: [
       for (final item in summary.supportingItems)
-        BillSummarySupportingText(
-          text: item.text,
-          tone: _billSummaryTone(item.tone),
-        ),
+        BillSummarySupportingText(text: item.text, tone: item.tone),
     ],
-    status: BillStatusBadgePresentation(
-      label: summary.status.label,
-      tone: _billSummaryTone(summary.status.tone),
-    ),
+    status: summary.status,
   );
 }
 
@@ -123,39 +108,26 @@ AccountCreditSummaryPresentation installmentAccountCreditSummary(
       ),
     ],
     status: switch (contract.status) {
-      InstallmentContractStatus.active => const AccountCreditSummaryStatus(
+      InstallmentContractStatus.active => const AppStatusBadgePresentation(
         label: '进行中',
-        tone: AccountCreditSummaryTone.primary,
+        tone: AppStatusTone.primary,
       ),
-      InstallmentContractStatus.settled => const AccountCreditSummaryStatus(
+      InstallmentContractStatus.settled => const AppStatusBadgePresentation(
         label: '已结清',
-        tone: AccountCreditSummaryTone.success,
+        tone: AppStatusTone.success,
       ),
     },
   );
 }
 
-AccountCreditSummaryStatus _billStatus(BillSummaryReadModel bill) {
+AppStatusBadgePresentation _billStatus(BillSummaryReadModel bill) {
   if (bill.overdueItemCount > 0) {
-    return const AccountCreditSummaryStatus(
+    return const AppStatusBadgePresentation(
       label: '已逾期',
-      tone: AccountCreditSummaryTone.danger,
+      tone: AppStatusTone.danger,
     );
   }
-  return switch (bill.status) {
-    BillStatus.open => AccountCreditSummaryStatus(
-      label: billStatusLabel(BillStatus.open),
-      tone: AccountCreditSummaryTone.primary,
-    ),
-    BillStatus.billed => AccountCreditSummaryStatus(
-      label: billStatusLabel(BillStatus.billed),
-      tone: AccountCreditSummaryTone.warning,
-    ),
-    BillStatus.settled => AccountCreditSummaryStatus(
-      label: billStatusLabel(BillStatus.settled),
-      tone: AccountCreditSummaryTone.success,
-    ),
-  };
+  return billStatusBadgePresentation(bill.status);
 }
 
 String _billTitle(BillPeriod period) {
@@ -186,15 +158,5 @@ String _repaymentMethodLabel(InstallmentRepaymentMethod method) {
     InstallmentRepaymentMethod.interestFirst => '先息后本',
     InstallmentRepaymentMethod.flatFee => '一次性手续费',
     InstallmentRepaymentMethod.custom => '自定义',
-  };
-}
-
-BillStatusTone _billSummaryTone(AccountCreditSummaryTone tone) {
-  return switch (tone) {
-    AccountCreditSummaryTone.neutral => BillStatusTone.neutral,
-    AccountCreditSummaryTone.primary => BillStatusTone.primary,
-    AccountCreditSummaryTone.warning => BillStatusTone.warning,
-    AccountCreditSummaryTone.success => BillStatusTone.success,
-    AccountCreditSummaryTone.danger => BillStatusTone.danger,
   };
 }

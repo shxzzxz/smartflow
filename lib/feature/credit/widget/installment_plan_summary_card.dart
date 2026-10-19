@@ -5,6 +5,7 @@ import '../../../core/money/money.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../design_system/widget/app_status_badge.dart';
 import '../presentation/loan_calculator_presentation.dart';
+import '../presentation/contract_status_presentation.dart';
 
 class InstallmentPlanSummaryCard extends StatelessWidget {
   const InstallmentPlanSummaryCard({
@@ -27,18 +28,15 @@ class InstallmentPlanSummaryCard extends StatelessWidget {
     title: title,
     headerTrailing: contractStatus != null
         ? AppStatusBadge(
-            label: contractStatus == InstallmentContractStatus.active
-                ? '进行中'
-                : '已结清',
-            color: contractStatus == InstallmentContractStatus.active
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.tertiary,
+            presentation: contractStatusBadgePresentation(contractStatus!),
           )
         : periodCount == null
         ? null
         : AppStatusBadge(
-            label: '$periodCount 期',
-            color: Theme.of(context).colorScheme.primary,
+            presentation: AppStatusBadgePresentation(
+              label: '$periodCount 期',
+              tone: AppStatusTone.primary,
+            ),
           ),
     mainItems: [
       AppDetailSummaryCardItem(
