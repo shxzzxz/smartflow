@@ -81,6 +81,12 @@ void main() {
       expect(chart.data.lineBarsData[3].spots.first.y, 0);
       expect(chart.data.lineBarsData[3].spots[1].y, 50);
       expect(chart.data.lineBarsData[1].spots.last.y, 400);
+      final currentRemaining = chart.data.lineBarsData[0].spots;
+      final currentSpent = chart.data.lineBarsData[2].spots;
+      expect(currentRemaining[30].y, 700);
+      expect(currentRemaining[31].y, currentRemaining[30].y);
+      expect(currentSpent[30].y, 300);
+      expect(currentSpent[31].y, currentSpent[30].y);
 
       await tester.tap(
         find.byKey(const ValueKey('budget-trend-legend-remaining')),

@@ -36,7 +36,7 @@ class _BudgetTrendChartState extends State<BudgetTrendChart> {
   var _showPreviousMonth = false;
   var _showPreviousYear = false;
 
-  bool get _hasComparisonMetrics =>
+  bool get _hasVisibleMetrics =>
       _visibleMetrics.contains(_BudgetTrendMetric.remaining) ||
       _visibleMetrics.contains(_BudgetTrendMetric.spent);
 
@@ -59,61 +59,58 @@ class _BudgetTrendChartState extends State<BudgetTrendChart> {
       targetDays: axisDayCount,
       initialRemaining: widget.progress.budget,
     );
-    final series = <AppChartSeries>[
-      if (_visibleMetrics.contains(_BudgetTrendMetric.remaining)) ...[
+    List<AppChartSeries> seriesFor(
+      _BudgetTrendMetric metric, {
+      required String label,
+      required Color color,
+      required Money originValue,
+      required Money Function(_BudgetDayPoint point) value,
+    }) {
+      if (!_visibleMetrics.contains(metric)) return const [];
+      return [
         _budgetSeries(
-          label: '余',
-          color: financeColors.chart1,
+          label: label,
+          color: color,
           points: currentPoints,
-          originValue: widget.progress.budget,
-          value: (point) => point.remaining,
+          originValue: originValue,
+          value: value,
         ),
         if (_showPreviousMonth)
           _budgetSeries(
-            label: '环比余',
-            color: financeColors.chart1,
+            label: '环比$label',
+            color: color,
             points: previousMonthPoints,
-            originValue: widget.progress.budget,
-            value: (point) => point.remaining,
+            originValue: originValue,
+            value: value,
             dashArray: AppChartGeometry.dashedLinePattern,
           ),
         if (_showPreviousYear)
           _budgetSeries(
-            label: '同比余',
-            color: financeColors.chart1,
+            label: '同比$label',
+            color: color,
             points: previousYearPoints,
-            originValue: widget.progress.budget,
-            value: (point) => point.remaining,
+            originValue: originValue,
+            value: value,
             dashArray: AppChartGeometry.dottedLinePattern,
           ),
-      ],
-      if (_visibleMetrics.contains(_BudgetTrendMetric.spent)) ...[
-        _budgetSeries(
-          label: '支',
-          color: financeColors.chart2,
-          points: currentPoints,
-          originValue: Money.zero(),
-          value: (point) => point.spent,
-        ),
-        if (_showPreviousMonth)
-          _budgetSeries(
-            label: '环比支',
-            color: financeColors.chart2,
-            points: previousMonthPoints,
-            originValue: Money.zero(),
-            value: (point) => point.spent,
-            dashArray: AppChartGeometry.dashedLinePattern,
-          ),
-        if (_showPreviousYear)
-          _budgetSeries(
-            label: '同比支',
-            color: financeColors.chart2,
-            points: previousYearPoints,
-            originValue: Money.zero(),
-            value: (point) => point.spent,
-            dashArray: AppChartGeometry.dottedLinePattern,
-          ),
-      ],
+      ];
+    }
+
+    final series = [
+      ...seriesFor(
+        _BudgetTrendMetric.remaining,
+        label: '余',
+        color: financeColors.chart1,
+        originValue: widget.progress.budget,
+        value: (point) => point.remaining,
+      ),
+      ...seriesFor(
+        _BudgetTrendMetric.spent,
+        label: '支',
+        color: financeColors.chart2,
+        originValue: Money.zero(),
+        value: (point) => point.spent,
+      ),
     ];
     final chartSignature = [
       axisDayCount,
@@ -175,7 +172,7 @@ class _BudgetTrendChartState extends State<BudgetTrendChart> {
 
   int _axisDayCount() {
     var dayCount = _daysInMonth(widget.month);
-    if (_hasComparisonMetrics) {
+    if (_hasVisibleMetrics) {
       if (_showPreviousMonth) {
         dayCount = math.max(dayCount, _daysInMonth(widget.month.previous));
       }
