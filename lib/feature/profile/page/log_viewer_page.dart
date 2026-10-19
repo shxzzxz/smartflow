@@ -7,6 +7,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_status_banner.dart';
@@ -47,18 +48,15 @@ class LogViewerPage extends ConsumerWidget {
                       AppHeaderIconButton(
                         icon: RemixIcons.refresh_line,
                         tooltip: '刷新',
-                        onPressed:
-                            () =>
-                                ref
-                                    .read(logViewerViewModelProvider.notifier)
-                                    .refresh(),
+                        onPressed: () => ref
+                            .read(logViewerViewModelProvider.notifier)
+                            .refresh(),
                       ),
                       AppHeaderIconButton(
                         icon: RemixIcons.settings_3_line,
                         tooltip: '清理设置',
-                        onPressed:
-                            () =>
-                                showLogRetentionSettingsSheet(context: context),
+                        onPressed: () =>
+                            showLogRetentionSettingsSheet(context: context),
                       ),
                       AppHeaderIconButton(
                         icon: RemixIcons.delete_bin_6_line,
@@ -69,8 +67,9 @@ class LogViewerPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.space16),
                   _SearchField(
-                    onChanged:
-                        ref.read(logViewerViewModelProvider.notifier).setQuery,
+                    onChanged: ref
+                        .read(logViewerViewModelProvider.notifier)
+                        .setQuery,
                   ),
                   const SizedBox(height: AppSpacing.space12),
                   Align(
@@ -85,17 +84,18 @@ class LogViewerPage extends ConsumerWidget {
                       ],
                       selected: state.levelFilter,
                       size: AppSegmentedControlSize.small,
-                      onChanged:
-                          ref
-                              .read(logViewerViewModelProvider.notifier)
-                              .setLevelFilter,
+                      onChanged: ref
+                          .read(logViewerViewModelProvider.notifier)
+                          .setLevelFilter,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space12),
                 ],
               ),
             ),
-            Expanded(child: _LogEntryList(entries: entries, state: state)),
+            Expanded(
+              child: _LogEntryList(entries: entries, state: state),
+            ),
           ],
         ),
       ),
@@ -124,8 +124,9 @@ class LogViewerPage extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final outcome =
-        await ref.read(logViewerViewModelProvider.notifier).clearLogs();
+    final outcome = await ref
+        .read(logViewerViewModelProvider.notifier)
+        .clearLogs();
     if (!context.mounted) return;
     final message = switch (outcome) {
       UiActionSuccess() => '日志已清空',
@@ -214,15 +215,14 @@ class _LogEntryList extends StatelessWidget {
             AppSpacing.space24,
           ),
           itemCount: filtered.length,
-          separatorBuilder:
-              (context, index) => Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                  alpha: AppComponentTokens.mutedOutlineOpacity,
-                ),
-              ),
-          itemBuilder:
-              (context, index) => _LogEntryTile(entry: filtered[index]),
+          separatorBuilder: (context, index) => Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(
+              alpha: AppComponentTokens.mutedOutlineOpacity,
+            ),
+          ),
+          itemBuilder: (context, index) =>
+              _LogEntryTile(entry: filtered[index]),
         );
       case AsyncError():
         return const Padding(
@@ -306,20 +306,10 @@ class _EmptyPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            RemixIcons.file_list_3_line,
-            size: 40,
-            color: colors.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          Text(message, style: context.appTextStyles.pageSubtitle),
-        ],
+      child: AppEmptyState(
+        icon: const Icon(RemixIcons.file_list_3_line),
+        title: message,
       ),
     );
   }

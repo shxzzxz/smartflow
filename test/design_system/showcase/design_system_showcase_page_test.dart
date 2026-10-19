@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/showcase/design_system_showcase_page.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
+import 'package:smartflow/design_system/widget/app_empty_state.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
 import 'package:smartflow/design_system/widget/app_list_divider.dart';
@@ -295,6 +296,19 @@ void main() {
     expect(find.text('空状态'), findsOneWidget);
     expect(find.byType(EmptyTransactionCard), findsOneWidget);
     expect(find.byType(TransactionRow), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows stacked and inline base empty states', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppEmptyState');
+    await tester.pump();
+
+    expect(find.text('空状态面板'), findsOneWidget);
+    expect(find.byType(AppEmptyState), findsNWidgets(2));
+    expect(find.text('没有找到相关内容'), findsOneWidget);
+    expect(find.text('还没有账户，点击右上角"+"新建'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

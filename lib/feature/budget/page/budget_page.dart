@@ -9,6 +9,7 @@ import '../../../core/time/month_key.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -55,10 +56,9 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(budgetPageProvider(initialMonth));
     final viewModelProvider = budgetViewModelProvider(initialMonth);
-    final loaded =
-        state.content is BudgetContentLoaded
-            ? state.content as BudgetContentLoaded
-            : null;
+    final loaded = state.content is BudgetContentLoaded
+        ? state.content as BudgetContentLoaded
+        : null;
     final hasBudgets =
         loaded != null &&
         (loaded.report.totalBudget != null ||
@@ -74,14 +74,13 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
                 AppHeaderIconButton(
                   icon: RemixIcons.add_line,
                   tooltip: '新增预算',
-                  onPressed:
-                      () => _addCategoryBudget(
-                        context,
-                        ref,
-                        report: loaded?.report,
-                        categories: loaded?.categories ?? const [],
-                        provider: viewModelProvider,
-                      ),
+                  onPressed: () => _addCategoryBudget(
+                    context,
+                    ref,
+                    report: loaded?.report,
+                    categories: loaded?.categories ?? const [],
+                    provider: viewModelProvider,
+                  ),
                 ),
                 AppPopupMenuButton(
                   tooltip: '更多',
@@ -90,34 +89,32 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
                     AppPopupMenuAction(
                       label: '设置总预算',
                       icon: RemixIcons.edit_line,
-                      onPressed:
-                          loaded == null
-                              ? null
-                              : () => _editBudget(
-                                context,
-                                ref,
-                                provider: viewModelProvider,
-                                existing: loaded.report.totalBudget,
-                                title: '设置总预算',
-                              ),
+                      onPressed: loaded == null
+                          ? null
+                          : () => _editBudget(
+                              context,
+                              ref,
+                              provider: viewModelProvider,
+                              existing: loaded.report.totalBudget,
+                              title: '设置总预算',
+                            ),
                     ),
                     AppPopupMenuAction(
                       label: '清空本月预算',
                       icon: RemixIcons.delete_bin_line,
-                      onPressed:
-                          hasBudgets
-                              ? () => _clearMonthBudgets(
-                                context,
-                                ref,
-                                provider: viewModelProvider,
-                              )
-                              : null,
+                      onPressed: hasBudgets
+                          ? () => _clearMonthBudgets(
+                              context,
+                              ref,
+                              provider: viewModelProvider,
+                            )
+                          : null,
                     ),
                     AppPopupMenuToggle(
                       label: '复制上月预算',
                       value: state.copyEnabled,
-                      onChanged:
-                          (value) => _setCopyEnabled(context, ref, value),
+                      onChanged: (value) =>
+                          _setCopyEnabled(context, ref, value),
                     ),
                   ],
                 ),
@@ -145,10 +142,9 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
   }
 
   Future<void> _copyPreviousMonthBudgetsOnOpen() async {
-    final outcome =
-        await ref
-            .read(budgetViewModelProvider(initialMonth).notifier)
-            .copyPreviousMonthBudgetsOnOpen();
+    final outcome = await ref
+        .read(budgetViewModelProvider(initialMonth).notifier)
+        .copyPreviousMonthBudgetsOnOpen();
     if (!mounted || outcome is UiActionSuccess) return;
     if (outcome case UiActionFailure(:final error)) {
       _showMessage(context, error.message);
@@ -162,21 +158,20 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('清空本月预算？'),
-            content: const Text('将删除本月总预算和全部分类预算，不会影响交易和分类。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('清空'),
-              ),
-            ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('清空本月预算？'),
+        content: const Text('将删除本月总预算和全部分类预算，不会影响交易和分类。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !context.mounted) return;
     final outcome = await ref.read(provider.notifier).clearMonthBudgets();
@@ -331,8 +326,8 @@ class _BudgetContentState extends ConsumerState<_BudgetContent> {
     final control = ref.watch(widget.viewModelProvider);
     final groups =
         control.categoryGroups.isEmpty && report.categoryGroups.isNotEmpty
-            ? report.categoryGroups
-            : control.categoryGroups;
+        ? report.categoryGroups
+        : control.categoryGroups;
     return ReorderableListView.builder(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space16,
@@ -348,7 +343,13 @@ class _BudgetContentState extends ConsumerState<_BudgetContent> {
             const SizedBox(height: AppSpacing.space16),
             _TrendSection(month: report.month, progress: total),
           ] else
-            const _EmptyTotalBudget(),
+            const AppSurface(
+              child: AppEmptyState(
+                layout: AppEmptyStateLayout.inline,
+                icon: Icon(RemixIcons.funds_line),
+                title: '还没有设置本月总预算',
+              ),
+            ),
           const SizedBox(height: AppSpacing.space12),
           if (groups.isEmpty)
             const _BudgetMessage(
@@ -374,9 +375,8 @@ class _BudgetContentState extends ConsumerState<_BudgetContent> {
             expanded: !_collapsedGroupIds.contains(group.id),
             reorderEnabled: !control.savingOrder,
             onToggleExpanded: () => _toggleGroup(group.id),
-            onReorderChild:
-                (oldIndex, newIndex) =>
-                    _reorderChildren(index, oldIndex, newIndex),
+            onReorderChild: (oldIndex, newIndex) =>
+                _reorderChildren(index, oldIndex, newIndex),
           ),
         );
       },
@@ -442,13 +442,12 @@ class _BudgetDetailContent extends ConsumerWidget {
             AppHeaderIconButton(
               icon: RemixIcons.edit_line,
               tooltip: '编辑分类预算',
-              onPressed:
-                  () => _editBudget(
-                    context,
-                    ref,
-                    provider: viewModelProvider,
-                    existing: progress,
-                  ),
+              onPressed: () => _editBudget(
+                context,
+                ref,
+                provider: viewModelProvider,
+                existing: progress,
+              ),
             ),
           ],
         ),
@@ -506,10 +505,9 @@ class _BudgetSummary extends StatelessWidget {
             label: progress.isOverspent ? '超支' : '剩余',
             amount: progress.remaining.abs(),
             caption: '',
-            tone:
-                progress.isOverspent
-                    ? FinanceTone.expense
-                    : FinanceTone.neutral,
+            tone: progress.isOverspent
+                ? FinanceTone.expense
+                : FinanceTone.neutral,
           ),
         ],
       ),
@@ -529,12 +527,8 @@ class _TrendSection extends StatelessWidget {
       title: '预算趋势',
       chart: BudgetTrendChart(month: month, progress: progress),
       expandedReservedHeight: AppChartGeometry.interactiveLegendReservedHeight,
-      expandedChartBuilder:
-          (height) => BudgetTrendChart(
-            month: month,
-            progress: progress,
-            height: height,
-          ),
+      expandedChartBuilder: (height) =>
+          BudgetTrendChart(month: month, progress: progress, height: height),
     );
   }
 }
@@ -721,8 +715,9 @@ class _BudgetRow extends StatelessWidget {
                 ? '超支 ${progress.remaining.abs().format()}'
                 : '余${progress.remaining.format()}',
             style: context.appTextStyles.listSupporting.copyWith(
-              color:
-                  progress.isOverspent ? colors.error : colors.onSurfaceVariant,
+              color: progress.isOverspent
+                  ? colors.error
+                  : colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -747,29 +742,6 @@ class _BudgetRowLeading extends StatelessWidget {
           child: BusinessIcon(iconKey: iconKey, size: AppSpacing.space24),
         ),
       ],
-    );
-  }
-}
-
-class _EmptyTotalBudget extends StatelessWidget {
-  const _EmptyTotalBudget();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space20),
-        child: Row(
-          children: [
-            Icon(
-              RemixIcons.funds_line,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            const Expanded(child: Text('还没有设置本月总预算')),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -856,10 +828,9 @@ class _BudgetAmountSheetState extends State<_BudgetAmountSheet> {
               if (widget.existing != null) ...[
                 const SizedBox(height: AppSpacing.space8),
                 TextButton(
-                  onPressed:
-                      () => Navigator.of(
-                        context,
-                      ).pop(const _BudgetEditorResult.delete()),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(const _BudgetEditorResult.delete()),
                   child: const Text('删除预算'),
                 ),
               ],
@@ -898,31 +869,29 @@ Future<void> _editBudget(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (_) => _BudgetAmountSheet(
-          title: title ?? existing?.name ?? '设置总预算',
-          existing: existing,
-        ),
+    builder: (_) => _BudgetAmountSheet(
+      title: title ?? existing?.name ?? '设置总预算',
+      existing: existing,
+    ),
   );
   if (result == null || !context.mounted) return;
   if (result.delete) {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('删除预算？'),
-            content: const Text('仅删除预算设置，不会影响交易和分类。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('删除'),
-              ),
-            ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除预算？'),
+        content: const Text('仅删除预算设置，不会影响交易和分类。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
           ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true || !context.mounted) return;
     final outcome = await ref

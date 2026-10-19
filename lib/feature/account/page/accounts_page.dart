@@ -8,6 +8,7 @@ import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -145,7 +146,13 @@ class _AccountsContent extends ConsumerWidget {
                 ),
                 if (sections.isEmpty) ...[
                   const SizedBox(height: AppSpacing.space24),
-                  const _EmptyAccountsHint(),
+                  const AppSurface(
+                    child: AppEmptyState(
+                      layout: AppEmptyStateLayout.inline,
+                      icon: Icon(RemixIcons.wallet_3_line),
+                      title: '还没有账户，点击右上角"+"新建',
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -950,29 +957,6 @@ void _showGroupOutcome(
     UiActionFailure(:final error) => error.message,
   };
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-}
-
-class _EmptyAccountsHint extends StatelessWidget {
-  const _EmptyAccountsHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space20),
-        child: Row(
-          children: [
-            Icon(
-              RemixIcons.wallet_3_line,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AppSpacing.space10),
-            const Expanded(child: Text('还没有账户，点击右上角"+"新建')),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _AccountsErrorView extends StatelessWidget {

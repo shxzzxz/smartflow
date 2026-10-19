@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../application/ledger/ledger_query_api.dart';
@@ -387,31 +388,22 @@ class _EmptyCategories extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final label = type == AccountType.income ? '暂无收入分类' : '暂无支出分类';
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(RemixIcons.apps_2_line, color: colors.onSurfaceVariant),
-            const SizedBox(height: AppSpacing.space12),
-            Text(label, style: context.appTextStyles.inputText),
-            const SizedBox(height: AppSpacing.space12),
-            FilledButton.icon(
-              onPressed: () {
-                final uri = Uri(
-                  path: '/category/new',
-                  queryParameters: {'type': type.name},
-                );
-                context.push(uri.toString());
-              },
-              icon: const Icon(RemixIcons.add_line),
-              label: const Text('新建分类'),
-            ),
-          ],
+      child: AppEmptyState(
+        icon: const Icon(RemixIcons.apps_2_line),
+        title: label,
+        action: FilledButton.icon(
+          onPressed: () {
+            final uri = Uri(
+              path: '/category/new',
+              queryParameters: {'type': type.name},
+            );
+            context.push(uri.toString());
+          },
+          icon: const Icon(RemixIcons.add_line),
+          label: const Text('新建分类'),
         ),
       ),
     );

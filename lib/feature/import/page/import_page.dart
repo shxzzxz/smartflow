@@ -11,6 +11,7 @@ import '../../../design_system/token/list.dart';
 import '../../../design_system/token/progress_indicator.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
@@ -1177,24 +1178,10 @@ class _EmptyImportHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Column(
-          children: [
-            Icon(
-              RemixIcons.history_line,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: AppSpacing.space10),
-            Text('暂无导入记录', style: context.appTextStyles.groupTitle),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '完成一次导入后，任务记录会显示在这里。',
-              textAlign: TextAlign.center,
-              style: context.appTextStyles.pageSubtitle,
-            ),
-          ],
-        ),
+      child: AppEmptyState(
+        icon: const Icon(RemixIcons.history_line),
+        title: '暂无导入记录',
+        message: '完成一次导入后，任务记录会显示在这里。',
       ),
     );
   }

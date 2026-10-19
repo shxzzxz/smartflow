@@ -44,6 +44,7 @@ import '../widget/app_cascade_multi_select.dart';
 import '../widget/app_date_picker_panel.dart';
 import '../widget/app_datetime_picker.dart';
 import '../widget/app_dropdown.dart';
+import '../widget/app_empty_state.dart';
 import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
 import '../widget/app_inline_action_button.dart';
@@ -101,6 +102,7 @@ enum _ShowcaseExampleKind {
   dropdown,
   settingsRows,
   surface,
+  emptyState,
   listDivider,
   textFormRow,
   selectFormRow,
@@ -251,6 +253,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '列表分隔线',
     componentNames: 'AppListDivider',
     keywords: ['列表', '分隔线', '内缩'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.emptyState,
+    category: '布局与容器',
+    title: '空状态面板',
+    componentNames: 'AppEmptyState',
+    keywords: ['空状态', '无数据', '搜索', '操作', '布局'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.textFormRow,
@@ -957,6 +966,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.dropdown => _dropdownPreview(),
       _ShowcaseExampleKind.settingsRows => _settingsRowsPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
+      _ShowcaseExampleKind.emptyState => _emptyStatePreview(),
       _ShowcaseExampleKind.listDivider => _listDividerPreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
       _ShowcaseExampleKind.selectFormRow => _selectFormRowPreview(),
@@ -1341,6 +1351,35 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         subtitle: Text('这是卡片的描述文案'),
         trailing: Icon(Icons.chevron_right_rounded),
       ),
+    );
+  }
+
+  Widget _emptyStatePreview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSurface(
+          border: true,
+          child: AppEmptyState(
+            icon: const Icon(RemixIcons.search_eye_line),
+            title: '没有找到相关内容',
+            message: '可以换一个关键词试试。',
+            action: FilledButton.icon(
+              onPressed: () {},
+              icon: const Icon(RemixIcons.refresh_line),
+              label: const Text('重新搜索'),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        const AppSurface(
+          child: AppEmptyState(
+            layout: AppEmptyStateLayout.inline,
+            icon: Icon(RemixIcons.wallet_3_line),
+            title: '还没有账户，点击右上角"+"新建',
+          ),
+        ),
+      ],
     );
   }
 
@@ -2804,18 +2843,11 @@ class _EmptySearchResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return AppSurface(
       border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Column(
-          children: [
-            Icon(Icons.search_off_rounded, color: colors.onSurfaceVariant),
-            const SizedBox(height: AppSpacing.space8),
-            Text('未找到匹配组件', style: context.appTextStyles.listSupporting),
-          ],
-        ),
+      child: const AppEmptyState(
+        icon: Icon(Icons.search_off_rounded),
+        title: '未找到匹配组件',
       ),
     );
   }

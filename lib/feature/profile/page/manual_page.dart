@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
@@ -23,13 +24,12 @@ class _ManualPageState extends State<ManualPage> {
   List<MapEntry<String, List<ManualArticle>>> get _groups {
     final groups = <String, List<ManualArticle>>{};
     for (final category in manualCategories.skip(1)) {
-      final inCategory =
-          manualArticles
-              .where(
-                (article) =>
-                    article.category == category && article.matches(_query),
-              )
-              .toList();
+      final inCategory = manualArticles
+          .where(
+            (article) =>
+                article.category == category && article.matches(_query),
+          )
+          .toList();
       if (inCategory.isNotEmpty) {
         groups[category] = inCategory;
       }
@@ -131,10 +131,8 @@ class _ManualSection extends StatelessWidget {
               for (var index = 0; index < articles.length; index++) ...[
                 ManualArticleRow(
                   article: articles[index],
-                  onTap:
-                      () => context.push(
-                        '/profile/manual/${articles[index].slug}',
-                      ),
+                  onTap: () =>
+                      context.push('/profile/manual/${articles[index].slug}'),
                 ),
                 if (index < articles.length - 1)
                   const Divider(height: 1, indent: 16, endIndent: 16),
@@ -152,25 +150,12 @@ class _ManualEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
     return AppSurface(
       border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
-        child: Column(
-          children: [
-            Icon(
-              RemixIcons.search_eye_line,
-              color: colors.onSurfaceVariant,
-              size: 32,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text('没有找到相关内容', style: styles.listTitle),
-            const SizedBox(height: AppSpacing.space4),
-            Text('可以换一个关键词试试。', style: styles.listSupporting),
-          ],
-        ),
+      child: AppEmptyState(
+        icon: const Icon(RemixIcons.search_eye_line, size: 32),
+        title: '没有找到相关内容',
+        message: '可以换一个关键词试试。',
       ),
     );
   }
