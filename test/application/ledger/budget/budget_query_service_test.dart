@@ -130,6 +130,86 @@ void main() {
       'lunch-budget',
     ]);
   });
+
+  test('环比和同比趋势使用当前月预算作为剩余基线', () async {
+    final month = MonthKey(year: 2026, month: 8);
+    final service = BudgetQueryServiceImpl(
+      _FixedBudgetQuerySource(
+        BudgetQuerySnapshot(
+          budgets: const [
+            BudgetSettingRow(id: 'total', amountMinor: 100000, sortOrder: 0),
+            BudgetSettingRow(
+              id: 'food-budget',
+              categoryId: 'food',
+              amountMinor: 50000,
+              sortOrder: 0,
+            ),
+            BudgetSettingRow(
+              id: 'lunch-budget',
+              categoryId: 'lunch',
+              amountMinor: 20000,
+              sortOrder: 1,
+            ),
+          ],
+          categories: const [
+            BudgetCategoryRow(id: 'food', name: '餐饮', sortOrder: 0),
+            BudgetCategoryRow(
+              id: 'lunch',
+              name: '午餐',
+              parentId: 'food',
+              sortOrder: 0,
+            ),
+          ],
+          dailyUsage: const [],
+          previousMonthDailyUsage: [
+            BudgetDailyUsageRow(
+              date: DateTime(2026, 7, 1),
+              categoryId: 'food',
+              amountMinor: 10000,
+            ),
+            BudgetDailyUsageRow(
+              date: DateTime(2026, 7, 2),
+              categoryId: 'lunch',
+              amountMinor: 20000,
+            ),
+            BudgetDailyUsageRow(
+              date: DateTime(2026, 7, 3),
+              categoryId: 'travel',
+              amountMinor: 30000,
+            ),
+          ],
+          previousYearDailyUsage: [
+            BudgetDailyUsageRow(
+              date: DateTime(2025, 8, 5),
+              categoryId: 'food',
+              amountMinor: 15000,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final report = await service.watchMonthlyReport(month).first;
+    final total = report.totalBudget!;
+    final food = report.categoryGroups.single.rootBudget!;
+    final lunch = report.categoryGroups.single.childBudgets.single;
+
+    expect(total.previousMonthTrend.map((point) => point.spent.minorUnits), [
+      10000,
+      30000,
+      60000,
+    ]);
+    expect(
+      total.previousMonthTrend.map((point) => point.remaining.minorUnits),
+      [90000, 70000, 40000],
+    );
+    expect(total.previousYearTrend.single.spent.minorUnits, 15000);
+    expect(total.previousYearTrend.single.remaining.minorUnits, 85000);
+    expect(food.previousMonthTrend.last.spent.minorUnits, 30000);
+    expect(food.previousMonthTrend.last.remaining.minorUnits, 20000);
+    expect(lunch.previousMonthTrend.single.spent.minorUnits, 20000);
+    expect(lunch.previousMonthTrend.single.remaining.minorUnits, 0);
+  });
 }
 
 class _FixedBudgetQuerySource implements BudgetQuerySource {

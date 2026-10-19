@@ -44,6 +44,8 @@ class BudgetQueryServiceImpl implements BudgetQueryService {
               setting: totalSetting,
               name: '总预算',
               dailyUsage: snapshot.dailyUsage,
+              previousMonthDailyUsage: snapshot.previousMonthDailyUsage,
+              previousYearDailyUsage: snapshot.previousYearDailyUsage,
             );
 
     final settingsByRoot = <String, List<BudgetSettingRow>>{};
@@ -85,6 +87,9 @@ class BudgetQueryServiceImpl implements BudgetQueryService {
                     iconKey: root.iconKey,
                     categoryIds: rootScope,
                     dailyUsage: snapshot.dailyUsage,
+                    previousMonthDailyUsage:
+                        snapshot.previousMonthDailyUsage,
+                    previousYearDailyUsage: snapshot.previousYearDailyUsage,
                   ),
           childBudgets: [
             for (final setting in childSettings)
@@ -95,6 +100,8 @@ class BudgetQueryServiceImpl implements BudgetQueryService {
                   iconKey: child.iconKey,
                   categoryIds: {child.id},
                   dailyUsage: snapshot.dailyUsage,
+                  previousMonthDailyUsage: snapshot.previousMonthDailyUsage,
+                  previousYearDailyUsage: snapshot.previousYearDailyUsage,
                 ),
           ],
         ),
@@ -117,7 +124,42 @@ class BudgetQueryServiceImpl implements BudgetQueryService {
     required BudgetSettingRow setting,
     required String name,
     required List<BudgetDailyUsageRow> dailyUsage,
+    required List<BudgetDailyUsageRow> previousMonthDailyUsage,
+    required List<BudgetDailyUsageRow> previousYearDailyUsage,
     String? iconKey,
+    Set<String>? categoryIds,
+  }) {
+    final budgetMinor = setting.amountMinor;
+    final trend = _buildTrend(
+      dailyUsage: dailyUsage,
+      categoryIds: categoryIds,
+      budgetMinor: budgetMinor,
+    );
+    return BudgetProgress(
+      id: setting.id,
+      categoryId: setting.categoryId,
+      name: name,
+      iconKey: iconKey,
+      budget: Money(minorUnits: budgetMinor),
+      spent: trend.isEmpty ? Money.zero() : trend.last.spent,
+      sortOrder: setting.sortOrder,
+      trend: trend,
+      previousMonthTrend: _buildTrend(
+        dailyUsage: previousMonthDailyUsage,
+        categoryIds: categoryIds,
+        budgetMinor: budgetMinor,
+      ),
+      previousYearTrend: _buildTrend(
+        dailyUsage: previousYearDailyUsage,
+        categoryIds: categoryIds,
+        budgetMinor: budgetMinor,
+      ),
+    );
+  }
+
+  List<BudgetTrendPoint> _buildTrend({
+    required List<BudgetDailyUsageRow> dailyUsage,
+    required int budgetMinor,
     Set<String>? categoryIds,
   }) {
     final usageByDate = <DateTime, int>{};
@@ -141,20 +183,11 @@ class BudgetQueryServiceImpl implements BudgetQueryService {
         BudgetTrendPoint(
           date: date,
           spent: Money(minorUnits: cumulative),
-          remaining: Money(minorUnits: setting.amountMinor - cumulative),
+          remaining: Money(minorUnits: budgetMinor - cumulative),
         ),
       );
     }
-    return BudgetProgress(
-      id: setting.id,
-      categoryId: setting.categoryId,
-      name: name,
-      iconKey: iconKey,
-      budget: Money(minorUnits: setting.amountMinor),
-      spent: Money(minorUnits: cumulative),
-      sortOrder: setting.sortOrder,
-      trend: trend,
-    );
+    return trend;
   }
 }
 

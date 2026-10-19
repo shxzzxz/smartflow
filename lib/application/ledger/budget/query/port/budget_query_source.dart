@@ -47,11 +47,15 @@ class BudgetQuerySnapshot {
     required this.budgets,
     required this.categories,
     required this.dailyUsage,
+    this.previousMonthDailyUsage = const [],
+    this.previousYearDailyUsage = const [],
   });
 
   final List<BudgetSettingRow> budgets;
   final List<BudgetCategoryRow> categories;
   final List<BudgetDailyUsageRow> dailyUsage;
+  final List<BudgetDailyUsageRow> previousMonthDailyUsage;
+  final List<BudgetDailyUsageRow> previousYearDailyUsage;
 }
 
 abstract interface class BudgetQuerySource {

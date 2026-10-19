@@ -21,9 +21,13 @@ class BudgetProgress {
     required this.spent,
     required this.sortOrder,
     required List<BudgetTrendPoint> trend,
+    List<BudgetTrendPoint> previousMonthTrend = const [],
+    List<BudgetTrendPoint> previousYearTrend = const [],
     this.categoryId,
     this.iconKey,
-  }) : trend = List.unmodifiable(trend);
+  }) : trend = List.unmodifiable(trend),
+       previousMonthTrend = List.unmodifiable(previousMonthTrend),
+       previousYearTrend = List.unmodifiable(previousYearTrend);
 
   final String id;
   final String? categoryId;
@@ -33,6 +37,8 @@ class BudgetProgress {
   final Money spent;
   final int sortOrder;
   final List<BudgetTrendPoint> trend;
+  final List<BudgetTrendPoint> previousMonthTrend;
+  final List<BudgetTrendPoint> previousYearTrend;
 
   Money get remaining => budget - spent;
 

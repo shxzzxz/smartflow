@@ -45,6 +45,16 @@ class MonthKey implements Comparable<MonthKey> {
     return MonthKey.fromDate(nextMonthStart);
   }
 
+  MonthKey get previous {
+    return month == 1
+        ? MonthKey(year: year - 1, month: 12)
+        : MonthKey(year: year, month: month - 1);
+  }
+
+  MonthKey get previousYear {
+    return MonthKey(year: year - 1, month: month);
+  }
+
   @override
   int compareTo(MonthKey other) {
     final yearCompare = year.compareTo(other.year);

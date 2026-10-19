@@ -28,13 +28,19 @@ class DriftBudgetQuerySource implements BudgetQuerySource {
   }
 
   Future<BudgetQuerySnapshot> _loadMonth(MonthKey month) async {
+    final previousMonth = month.previous;
+    final previousYear = month.previousYear;
     final budgetsFuture = _loadBudgets(month);
     final categoriesFuture = _loadCategories();
     final usageFuture = _loadDailyUsage(month);
+    final previousMonthUsageFuture = _loadDailyUsage(previousMonth);
+    final previousYearUsageFuture = _loadDailyUsage(previousYear);
     return BudgetQuerySnapshot(
       budgets: await budgetsFuture,
       categories: await categoriesFuture,
       dailyUsage: await usageFuture,
+      previousMonthDailyUsage: await previousMonthUsageFuture,
+      previousYearDailyUsage: await previousYearUsageFuture,
     );
   }
 

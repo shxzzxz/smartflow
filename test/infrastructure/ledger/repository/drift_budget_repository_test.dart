@@ -85,6 +85,18 @@ void main() {
       await _insertExpense(database, id: 'included', amount: 10000);
       await _insertExpense(
         database,
+        id: 'previous-month',
+        amount: 7000,
+        occurredAt: DateTime(2026, 7, 5),
+      );
+      await _insertExpense(
+        database,
+        id: 'previous-year',
+        amount: 9000,
+        occurredAt: DateTime(2025, 8, 5),
+      );
+      await _insertExpense(
+        database,
         id: 'stats-excluded',
         amount: 3000,
         excludedFromStats: true,
@@ -112,6 +124,18 @@ void main() {
             .fold<int>(0, (sum, item) => sum + item.amountMinor),
         13000,
       );
+      expect(
+        snapshot.previousMonthDailyUsage
+            .where((item) => item.categoryId == 'lunch')
+            .fold<int>(0, (sum, item) => sum + item.amountMinor),
+        7000,
+      );
+      expect(
+        snapshot.previousYearDailyUsage
+            .where((item) => item.categoryId == 'lunch')
+            .fold<int>(0, (sum, item) => sum + item.amountMinor),
+        9000,
+      );
     },
   );
 }
@@ -120,18 +144,19 @@ Future<void> _insertExpense(
   AppDatabase database, {
   required String id,
   required int amount,
+  DateTime? occurredAt,
   bool excludedFromStats = false,
   bool excludedFromBudget = false,
 }) async {
-  final occurredAt = DateTime(2026, 8, 5);
+  final effectiveOccurredAt = occurredAt ?? DateTime(2026, 8, 5);
   await database
       .into(database.transactions)
       .insert(
         TransactionsCompanion.insert(
           id: id,
           businessPurpose: BusinessPurpose.dailyExpense,
-          occurredAt: occurredAt,
-          postedAt: occurredAt,
+          occurredAt: effectiveOccurredAt,
+          postedAt: effectiveOccurredAt,
           primaryAmountMinor: amount,
           isExcludedFromStats: Value(excludedFromStats),
           isExcludedFromBudget: Value(excludedFromBudget),

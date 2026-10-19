@@ -8,6 +8,8 @@ abstract final class AppChartGeometry {
   static const double barWidthRatio = .48;
   static const double groupedBarGap = 2;
   static const double lineWidth = 2;
+  static const List<int> dashedLinePattern = [6, 4];
+  static const List<int> dottedLinePattern = [2, 3];
   static const double lineDotRadius = 4;
   static const double lineDotStrokeWidth = 2;
   static const double gridLineWidth = 1;

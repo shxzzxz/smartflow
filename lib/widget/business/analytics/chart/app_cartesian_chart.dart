@@ -152,7 +152,7 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
           runSpacing: AppSpacing.space8,
           children: [
             for (final series in widget.data.series)
-              _AppChartLegendItem(
+              AppChartLegendItem(
                 key: ValueKey('chart-legend-${series.label}'),
                 label: series.label,
                 color: series.color,
@@ -546,19 +546,21 @@ BorderRadius _barRadius(double value) => value < 0
     ? const BorderRadius.vertical(bottom: Radius.circular(AppRadius.radiusSm))
     : const BorderRadius.vertical(top: Radius.circular(AppRadius.radiusSm));
 
-class _AppChartLegendItem extends StatelessWidget {
-  const _AppChartLegendItem({
+class AppChartLegendItem extends StatelessWidget {
+  const AppChartLegendItem({
     required this.label,
     required this.color,
     required this.selected,
     required this.onTap,
     super.key,
+    this.marker,
   });
 
   final String label;
   final Color color;
   final bool selected;
   final VoidCallback onTap;
+  final Widget? marker;
 
   @override
   Widget build(BuildContext context) {
@@ -579,17 +581,22 @@ class _AppChartLegendItem extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: AppSpacing.space12,
-                  height: AppSpacing.space4,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? color
-                        : color.withValues(
-                            alpha: AppChartGeometry.hiddenLegendMarkerOpacity,
+                Opacity(
+                  opacity: selected
+                      ? 1
+                      : AppChartGeometry.hiddenLegendMarkerOpacity,
+                  child:
+                      marker ??
+                      Container(
+                        width: AppSpacing.space12,
+                        height: AppSpacing.space4,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.radiusSm,
                           ),
-                    borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-                  ),
+                        ),
+                      ),
                 ),
                 const SizedBox(width: AppSpacing.space6),
                 Text(

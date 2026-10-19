@@ -20,6 +20,14 @@ void main() {
       expect(key.start, DateTime(2026, 12));
       expect(key.nextMonthStart, DateTime(2027));
       expect(key.next, MonthKey(year: 2027, month: 1));
+      expect(key.previous, MonthKey(year: 2026, month: 11));
+      expect(key.previousYear, MonthKey(year: 2025, month: 12));
+    });
+
+    test('moves January to the previous December', () {
+      final key = MonthKey(year: 2026, month: 1);
+
+      expect(key.previous, MonthKey(year: 2025, month: 12));
     });
 
     test('rejects invalid month keys', () {

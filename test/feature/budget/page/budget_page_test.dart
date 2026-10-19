@@ -98,8 +98,22 @@ void main() {
     expect(find.text('2026年8月预算'), findsOneWidget);
     expect(find.text('预算趋势'), findsOneWidget);
     expect(find.byTooltip('横屏查看预算趋势'), findsNothing);
-    expect(find.text('余'), findsOneWidget);
-    expect(find.text('支'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('budget-trend-legend-remaining')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('budget-trend-legend-spent')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('budget-trend-legend-previous-month')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('budget-trend-legend-previous-year')),
+      findsOneWidget,
+    );
     expect(find.text('餐饮'), findsNWidgets(2));
     expect(find.text('午餐'), findsOneWidget);
     expect(find.text('晚餐'), findsOneWidget);
@@ -127,6 +141,7 @@ void main() {
     );
     expect(tester.takeException(), isNull);
 
+    await tester.ensureVisible(find.byTooltip('收起分组'));
     await tester.tap(find.byTooltip('收起分组'));
     await tester.pumpAndSettle();
     expect(find.text('餐饮'), findsOneWidget);
