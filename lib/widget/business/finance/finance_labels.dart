@@ -1,24 +1,5 @@
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 
-String accountTypeLabel(AccountType type) {
-  return switch (type) {
-    AccountType.asset => '资产',
-    AccountType.liability => '负债',
-    AccountType.equity => '权益',
-    AccountType.income => '收入',
-    AccountType.expense => '支出',
-  };
-}
-
-String accountSubtypeLabel(AccountSubtype subtype) {
-  return switch (subtype) {
-    AccountSubtype.fund => '资金账户',
-    AccountSubtype.receivable => '应收账户',
-    AccountSubtype.payable => '应付账户',
-    AccountSubtype.loan => '贷款账户',
-  };
-}
-
 String entryDirectionLabel(EntryDirection direction) {
   return switch (direction) {
     EntryDirection.debit => '借',

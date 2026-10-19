@@ -5,7 +5,6 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
-import 'package:smartflow/widget/business/account/account_type_tag.dart';
 import 'package:smartflow/widget/business/analytics/analysis_chart_card.dart';
 import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
@@ -30,7 +29,6 @@ import 'package:smartflow/widget/business/transaction/transaction_amount_input.d
 import 'package:smartflow/widget/business/transaction/transaction_day_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
-import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
 import '../../widget/business/category/tree_select.dart';
@@ -137,8 +135,6 @@ enum _ShowcaseExampleKind {
   billRows,
   businessIcons,
   accountEndpoint,
-  accountTypeTags,
-  transactionPurposeBadges,
   cashflowSummary,
   transactionRows,
   transactionProgressBadges,
@@ -483,20 +479,6 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '账户端点',
     componentNames: 'AccountEndpointView',
     keywords: ['账户', '图标', '流向'],
-  ),
-  _ShowcaseExample(
-    kind: _ShowcaseExampleKind.accountTypeTags,
-    category: '财务表达',
-    title: '账户类型标签',
-    componentNames: 'AccountTypeTag',
-    keywords: ['账户', '资产', '负债', '权益', '标签'],
-  ),
-  _ShowcaseExample(
-    kind: _ShowcaseExampleKind.transactionPurposeBadges,
-    category: '财务表达',
-    title: '交易用途标签',
-    componentNames: 'TransactionPurposeBadge',
-    keywords: ['交易', '收入', '支出', '转账', '标签'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.cashflowSummary,
@@ -1010,9 +992,6 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.billRows => _billRowsPreview(),
       _ShowcaseExampleKind.businessIcons => _businessIconsPreview(),
       _ShowcaseExampleKind.accountEndpoint => _accountEndpointPreview(),
-      _ShowcaseExampleKind.accountTypeTags => _accountTypeTagsPreview(),
-      _ShowcaseExampleKind.transactionPurposeBadges =>
-        _transactionPurposeBadgesPreview(),
       _ShowcaseExampleKind.cashflowSummary => _cashflowSummaryPreview(),
       _ShowcaseExampleKind.transactionRows => _transactionRowsPreview(),
       _ShowcaseExampleKind.transactionProgressBadges =>
@@ -2412,30 +2391,6 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _accountTypeTagsPreview() {
-    return const Wrap(
-      spacing: AppSpacing.space8,
-      runSpacing: AppSpacing.space8,
-      children: [
-        AccountTypeTag(type: AccountType.asset),
-        AccountTypeTag(type: AccountType.liability),
-        AccountTypeTag(type: AccountType.equity),
-      ],
-    );
-  }
-
-  Widget _transactionPurposeBadgesPreview() {
-    return const Wrap(
-      spacing: AppSpacing.space8,
-      runSpacing: AppSpacing.space8,
-      children: [
-        TransactionPurposeBadge(purpose: BusinessPurpose.dailyIncome),
-        TransactionPurposeBadge(purpose: BusinessPurpose.dailyExpense),
-        TransactionPurposeBadge(purpose: BusinessPurpose.transfer),
       ],
     );
   }

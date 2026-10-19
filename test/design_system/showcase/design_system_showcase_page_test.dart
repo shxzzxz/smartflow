@@ -20,7 +20,6 @@ import 'package:smartflow/design_system/widget/app_supporting_items.dart';
 import 'package:smartflow/design_system/widget/app_submit_button.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
-import 'package:smartflow/widget/business/account/account_type_tag.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
@@ -30,7 +29,6 @@ import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import 'package:smartflow/widget/business/icon/icon_choice_grid.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
-import 'package:smartflow/widget/business/transaction/transaction_purpose_badge.dart';
 import 'package:smartflow/widget/business/transaction/empty_transaction_card.dart';
 import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 
@@ -246,38 +244,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppDatePickerDialog), findsOneWidget);
-  });
-
-  testWidgets('keeps financial components in separate examples', (
-    tester,
-  ) async {
-    await pumpShowcase(tester);
-
-    await tester.enterText(find.byType(SearchBar), 'MoneyText');
-    await tester.pump();
-
-    expect(find.text('金额文本'), findsOneWidget);
-    expect(find.text('收入状态'), findsOneWidget);
-    expect(find.text('支出状态'), findsOneWidget);
-    expect(find.text('中性状态'), findsOneWidget);
-    expect(find.byType(MoneyText), findsWidgets);
-    expect(find.byType(AccountTypeTag), findsNothing);
-    expect(find.byType(TransactionPurposeBadge), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'AccountTypeTag');
-    await tester.pump();
-
-    expect(find.text('账户类型标签'), findsOneWidget);
-    expect(find.byType(AccountTypeTag), findsWidgets);
-    expect(find.byType(MoneyText), findsNothing);
-
-    await tester.enterText(find.byType(SearchBar), 'TransactionPurposeBadge');
-    await tester.pump();
-
-    expect(find.text('交易用途标签'), findsOneWidget);
-    expect(find.byType(TransactionPurposeBadge), findsWidgets);
-    expect(find.byType(MoneyText), findsNothing);
-    expect(find.byType(AccountTypeTag), findsNothing);
   });
 
   testWidgets('keeps transaction rows and empty states separate', (
