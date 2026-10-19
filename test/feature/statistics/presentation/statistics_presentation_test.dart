@@ -217,6 +217,23 @@ void main() {
     expect(buckets.single.label, '1/8');
   });
 
+  test('includes short years on weekly buckets across a year boundary', () {
+    final buckets = buildStatisticsCashflowBuckets([
+      DailyCashflowSummary(
+        date: DateTime(2025, 12, 31),
+        income: const Money(minorUnits: 100),
+        expense: const Money(minorUnits: 0),
+      ),
+      DailyCashflowSummary(
+        date: DateTime(2026, 1, 7),
+        income: const Money(minorUnits: 200),
+        expense: const Money(minorUnits: 0),
+      ),
+    ], grouping: StatisticsTimeGrouping.week);
+
+    expect(buckets.map((item) => item.label), ['25/12/31', '26/1/7']);
+  });
+
   test('labels monthly buckets across a year boundary', () {
     final buckets = buildStatisticsCashflowBuckets([
       DailyCashflowSummary(
@@ -231,7 +248,13 @@ void main() {
       ),
     ], grouping: StatisticsTimeGrouping.month);
 
-    expect(buckets.map((item) => item.label), ['12月', '1月']);
+    expect(buckets.map((item) => item.label), ['25/12', '26/1']);
+    expect(
+      buckets.map(
+        (item) => StatisticsTimeGrouping.month.tooltipLabelFor(item.date),
+      ),
+      ['2025年12月', '2026年1月'],
+    );
   });
 
   test('maps exclusive balance snapshots to their natural month end', () {

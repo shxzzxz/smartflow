@@ -2,16 +2,6 @@ enum TimeSeriesGranularity { day, week, month, year }
 
 enum TimeSeriesAggregation { flowSum, periodEnd }
 
-enum TimeSeriesDensity {
-  line(8.5),
-  bar(10);
-
-  const TimeSeriesDensity(this.minimumSlotWidth);
-
-  /// 相邻时间桶在绘图区内至少需要的逻辑像素宽度。
-  final double minimumSlotWidth;
-}
-
 class MinorTimeSeriesPoint<K> {
   MinorTimeSeriesPoint({required this.date, required Map<K, int> values})
     : values = Map.unmodifiable(values);
@@ -121,13 +111,20 @@ List<T> topNWithOther<T>(
 TimeSeriesGranularity resolveTimeSeriesGranularity({
   required DateTime from,
   required DateTime until,
-  required double plotWidth,
-  TimeSeriesDensity density = TimeSeriesDensity.line,
+  required double availableWidth,
+  required double minimumSlotWidth,
 }) {
   if (!until.isAfter(from)) {
     throw ArgumentError('until must be after from');
   }
-  if (!plotWidth.isFinite || plotWidth <= 0) {
+  if (!minimumSlotWidth.isFinite || minimumSlotWidth <= 0) {
+    throw ArgumentError.value(
+      minimumSlotWidth,
+      'minimumSlotWidth',
+      'must be positive and finite',
+    );
+  }
+  if (!availableWidth.isFinite || availableWidth <= 0) {
     return TimeSeriesGranularity.year;
   }
   for (final granularity in TimeSeriesGranularity.values) {
@@ -136,8 +133,7 @@ TimeSeriesGranularity resolveTimeSeriesGranularity({
       until: until,
       granularity: granularity,
     );
-    if (bucketCount > 0 &&
-        bucketCount * density.minimumSlotWidth <= plotWidth) {
+    if (bucketCount > 0 && bucketCount * minimumSlotWidth <= availableWidth) {
       return granularity;
     }
   }

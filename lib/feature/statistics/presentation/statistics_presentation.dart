@@ -58,11 +58,21 @@ extension StatisticsTimeGroupingPresentation on StatisticsTimeGrouping {
     return timeSeriesBucketStart(date, granularity: this, anchor: anchor);
   }
 
-  String labelFor(DateTime start) => switch (this) {
-    StatisticsTimeGrouping.day => '${start.month}/${start.day}',
-    StatisticsTimeGrouping.week => '${start.month}/${start.day}',
-    StatisticsTimeGrouping.month => '${start.month}月',
+  String labelFor(DateTime start, {bool includeYear = false}) => switch (this) {
+    StatisticsTimeGrouping.day || StatisticsTimeGrouping.week =>
+      includeYear
+          ? '${_shortYear(start)}/${start.month}/${start.day}'
+          : '${start.month}/${start.day}',
+    StatisticsTimeGrouping.month =>
+      includeYear ? '${_shortYear(start)}/${start.month}' : '${start.month}月',
     StatisticsTimeGrouping.year => '${start.year}',
+  };
+
+  String tooltipLabelFor(DateTime start) => switch (this) {
+    StatisticsTimeGrouping.day ||
+    StatisticsTimeGrouping.week => '${start.year}/${start.month}/${start.day}',
+    StatisticsTimeGrouping.month => '${start.year}年${start.month}月',
+    StatisticsTimeGrouping.year => '${start.year}年',
   };
 
   String get description => switch (this) {
@@ -110,6 +120,7 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
   if (items.isEmpty) {
     return const [];
   }
+  final includeYear = _crossesYear(items.map((item) => item.date));
   final buckets = aggregateMinorTimeSeries(
     [
       for (final item in items)
@@ -128,7 +139,7 @@ List<StatisticsCashflowBucket> buildStatisticsCashflowBuckets(
     for (final bucket in buckets)
       StatisticsCashflowBucket(
         date: bucket.start,
-        label: grouping.labelFor(bucket.start),
+        label: grouping.labelFor(bucket.start, includeYear: includeYear),
         incomeMinor: bucket.values[_StatisticsSeries.income]!,
         expenseMinor: bucket.values[_StatisticsSeries.expense]!,
       ),
@@ -144,6 +155,7 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
   }
   final sorted = [...items]
     ..sort((left, right) => left.date.compareTo(right.date));
+  final includeYear = sorted.first.date.year != sorted.last.date.year;
   DateTime effectiveDateAt(int index) {
     final snapshotDate = index == 0
         ? sorted[index].date
@@ -169,13 +181,29 @@ List<StatisticsBalanceTrendBucket> buildStatisticsBalanceTrendBuckets(
     for (final bucket in buckets)
       StatisticsBalanceTrendBucket(
         date: bucket.start,
-        label: grouping.labelFor(bucket.start),
+        label: grouping.labelFor(bucket.start, includeYear: includeYear),
         assets: Money(minorUnits: bucket.values[_StatisticsSeries.assets]!),
         liabilities: Money(
           minorUnits: bucket.values[_StatisticsSeries.liabilities]!,
         ),
       ),
   ];
+}
+
+String _shortYear(DateTime date) =>
+    (date.year % 100).toString().padLeft(2, '0');
+
+bool _crossesYear(Iterable<DateTime> dates) {
+  final iterator = dates.iterator;
+  if (!iterator.moveNext()) return false;
+  var firstYear = iterator.current.year;
+  var lastYear = firstYear;
+  while (iterator.moveNext()) {
+    final year = iterator.current.year;
+    if (year < firstYear) firstYear = year;
+    if (year > lastYear) lastYear = year;
+  }
+  return firstYear != lastYear;
 }
 
 List<DailyCashflowSummary> fillStatisticsDailyCashflowDates(

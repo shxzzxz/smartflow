@@ -35,10 +35,10 @@ class StatisticsCashflowChart extends StatelessWidget {
         final grouping = resolveTimeSeriesGranularity(
           from: from,
           until: until,
-          plotWidth: constraints.maxWidth,
-          density: form == CashflowChartForm.bar
-              ? TimeSeriesDensity.bar
-              : TimeSeriesDensity.line,
+          availableWidth: constraints.maxWidth,
+          minimumSlotWidth: form == CashflowChartForm.bar
+              ? AppChartGeometry.trendBarMinSlotWidth
+              : AppChartGeometry.trendLineMinSlotWidth,
         );
         final buckets = buildStatisticsCashflowBuckets(
           dailySummaries,
@@ -75,6 +75,7 @@ class StatisticsCashflowChart extends StatelessWidget {
                 AppChartAxisPoint(
                   x: index.toDouble(),
                   label: buckets[index].label,
+                  tooltipLabel: grouping.tooltipLabelFor(buckets[index].date),
                 ),
             ],
             series: series,
@@ -96,28 +97,12 @@ class StatisticsCashflowChart extends StatelessWidget {
   }
 }
 
-List<StatisticsCashflowBucket> buildStatisticsCumulativeCashflowBuckets(
-  List<DailyCashflowSummary> items, {
-  required StatisticsTimeGrouping grouping,
-}) {
-  final buckets = buildStatisticsCashflowBuckets(items, grouping: grouping);
-  var incomeMinor = 0;
-  var expenseMinor = 0;
-  return [
-    for (final bucket in buckets)
-      StatisticsCashflowBucket(
-        date: bucket.date,
-        label: bucket.label,
-        incomeMinor: incomeMinor += bucket.incomeMinor,
-        expenseMinor: expenseMinor += bucket.expenseMinor,
-      ),
-  ];
-}
-
 class StatisticsComparisonTrendChart extends StatelessWidget {
   const StatisticsComparisonTrendChart({
     required this.from,
     required this.until,
+    required this.comparisonFrom,
+    required this.comparisonUntil,
     required this.currentDailySummaries,
     required this.comparisonDailySummaries,
     required this.metric,
@@ -128,6 +113,8 @@ class StatisticsComparisonTrendChart extends StatelessWidget {
 
   final DateTime from;
   final DateTime until;
+  final DateTime comparisonFrom;
+  final DateTime comparisonUntil;
   final List<DailyCashflowSummary> currentDailySummaries;
   final List<DailyCashflowSummary> comparisonDailySummaries;
   final StatisticsComparisonMetric metric;
@@ -141,22 +128,23 @@ class StatisticsComparisonTrendChart extends StatelessWidget {
         final grouping = resolveTimeSeriesGranularity(
           from: from,
           until: until,
-          plotWidth: constraints.maxWidth,
+          availableWidth: constraints.maxWidth,
+          minimumSlotWidth: AppChartGeometry.trendLineMinSlotWidth,
         );
-        final current = buildStatisticsCumulativeCashflowBuckets(
-          currentDailySummaries,
+        final trend = buildStatisticsComparisonCashflowTrend(
+          currentItems: currentDailySummaries,
+          currentFrom: from,
+          currentUntil: until,
+          comparisonItems: comparisonDailySummaries,
+          comparisonFrom: comparisonFrom,
+          comparisonUntil: comparisonUntil,
           grouping: grouping,
         );
-        final comparison = buildStatisticsCumulativeCashflowBuckets(
-          comparisonDailySummaries,
-          grouping: grouping,
-        );
+        final current = trend.current;
+        final comparison = trend.comparison;
         if (current.isEmpty) {
           return const AppChartEmptyState(message: '区间内暂无可对比数据');
         }
-        final visibleComparisonLength = comparison.length < current.length
-            ? comparison.length
-            : current.length;
         final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
         final color = metric == StatisticsComparisonMetric.expense
             ? financeColors.expense
@@ -185,7 +173,7 @@ class StatisticsComparisonTrendChart extends StatelessWidget {
           color: color.withValues(alpha: .45),
           dashArray: const [6, 4],
           points: [
-            for (var index = 0; index < visibleComparisonLength; index++)
+            for (var index = 0; index < comparison.length; index++)
               AppChartPoint(
                 x: index.toDouble(),
                 value: valueOf(comparison[index]) / 100,
@@ -203,6 +191,7 @@ class StatisticsComparisonTrendChart extends StatelessWidget {
                 AppChartAxisPoint(
                   x: index.toDouble(),
                   label: current[index].label,
+                  tooltipLabel: grouping.tooltipLabelFor(current[index].date),
                 ),
             ],
             series: [currentSeries, comparisonSeries],
@@ -219,6 +208,137 @@ class StatisticsComparisonTrendChart extends StatelessWidget {
       },
     );
   }
+}
+
+class StatisticsComparisonCashflowTrend {
+  const StatisticsComparisonCashflowTrend({
+    required this.current,
+    required this.comparison,
+  });
+
+  final List<StatisticsCashflowBucket> current;
+  final List<StatisticsCashflowBucket> comparison;
+}
+
+/// Maps both periods onto the same elapsed-day horizon before sampling the
+/// comparison cumulative values at the current period's bucket boundaries.
+StatisticsComparisonCashflowTrend buildStatisticsComparisonCashflowTrend({
+  required List<DailyCashflowSummary> currentItems,
+  required DateTime currentFrom,
+  required DateTime currentUntil,
+  required List<DailyCashflowSummary> comparisonItems,
+  required DateTime comparisonFrom,
+  required DateTime comparisonUntil,
+  required StatisticsTimeGrouping grouping,
+}) {
+  final currentDaily = fillStatisticsDailyCashflowDates(
+    currentItems,
+    from: currentFrom,
+    until: currentUntil,
+  );
+  final currentBuckets = buildStatisticsCashflowBuckets(
+    currentDaily,
+    grouping: grouping,
+  );
+  if (currentBuckets.isEmpty) {
+    return const StatisticsComparisonCashflowTrend(current: [], comparison: []);
+  }
+
+  final currentDayCount = _calendarDayCount(currentFrom, currentUntil);
+  final comparisonDayCount = _calendarDayCount(comparisonFrom, comparisonUntil);
+  if (currentDayCount <= 0 || comparisonDayCount <= 0) {
+    return const StatisticsComparisonCashflowTrend(current: [], comparison: []);
+  }
+
+  final targetDayCount = currentDayCount > comparisonDayCount
+      ? currentDayCount
+      : comparisonDayCount;
+  final currentCumulative = _cashflowCumulativePrefix(
+    currentDaily,
+    from: currentFrom,
+    dayCount: targetDayCount,
+  );
+  final comparisonDaily = comparisonItems.isEmpty
+      ? const <DailyCashflowSummary>[]
+      : fillStatisticsDailyCashflowDates(
+          comparisonItems,
+          from: comparisonFrom,
+          until: comparisonUntil,
+        );
+  final comparisonCumulative = _cashflowCumulativePrefix(
+    comparisonDaily,
+    from: comparisonFrom,
+    dayCount: targetDayCount,
+  );
+
+  final currentResult = <StatisticsCashflowBucket>[];
+  final comparisonResult = <StatisticsCashflowBucket>[];
+  for (var index = 0; index < currentBuckets.length; index++) {
+    final bucket = currentBuckets[index];
+    final endDay = index + 1 < currentBuckets.length
+        ? _calendarDayOffset(currentFrom, currentBuckets[index + 1].date)
+        : targetDayCount;
+    final sampleIndex = endDay.clamp(1, targetDayCount).toInt() - 1;
+    currentResult.add(
+      StatisticsCashflowBucket(
+        date: bucket.date,
+        label: bucket.label,
+        incomeMinor: currentCumulative.income[sampleIndex],
+        expenseMinor: currentCumulative.expense[sampleIndex],
+      ),
+    );
+    if (comparisonDaily.isNotEmpty) {
+      comparisonResult.add(
+        StatisticsCashflowBucket(
+          date: bucket.date,
+          label: bucket.label,
+          incomeMinor: comparisonCumulative.income[sampleIndex],
+          expenseMinor: comparisonCumulative.expense[sampleIndex],
+        ),
+      );
+    }
+  }
+  return StatisticsComparisonCashflowTrend(
+    current: currentResult,
+    comparison: comparisonResult,
+  );
+}
+
+({List<int> income, List<int> expense}) _cashflowCumulativePrefix(
+  List<DailyCashflowSummary> items, {
+  required DateTime from,
+  required int dayCount,
+}) {
+  final byDay = <int, DailyCashflowSummary>{};
+  for (final item in items) {
+    final offset = _calendarDayOffset(from, item.date);
+    if (offset >= 0 && offset < dayCount) byDay[offset] = item;
+  }
+
+  final income = List<int>.filled(dayCount, 0);
+  final expense = List<int>.filled(dayCount, 0);
+  var incomeTotal = 0;
+  var expenseTotal = 0;
+  for (var index = 0; index < dayCount; index++) {
+    final item = byDay[index];
+    incomeTotal += item?.income.minorUnits ?? 0;
+    expenseTotal += item?.expense.minorUnits ?? 0;
+    income[index] = incomeTotal;
+    expense[index] = expenseTotal;
+  }
+  return (income: income, expense: expense);
+}
+
+int _calendarDayCount(DateTime from, DateTime until) {
+  final start = DateTime.utc(from.year, from.month, from.day);
+  final end = DateTime.utc(until.year, until.month, until.day);
+  return end.difference(start).inDays;
+}
+
+int _calendarDayOffset(DateTime from, DateTime date) {
+  final start = DateTime.utc(from.year, from.month, from.day);
+  final target = DateTime.utc(date.year, date.month, date.day);
+  return target.difference(start).inDays;
 }
 
 AppChartSeries _cashflowSeries({
@@ -327,7 +447,8 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
             : resolveTimeSeriesGranularity(
                 from: bounds.from,
                 until: bounds.until,
-                plotWidth: constraints.maxWidth,
+                availableWidth: constraints.maxWidth,
+                minimumSlotWidth: AppChartGeometry.trendLineMinSlotWidth,
               );
         final buckets = buildStatisticsBalanceTrendBuckets(
           points,
@@ -344,6 +465,7 @@ class StatisticsBalanceTrendChart extends StatelessWidget {
                 AppChartAxisPoint(
                   x: index.toDouble(),
                   label: buckets[index].label,
+                  tooltipLabel: grouping.tooltipLabelFor(buckets[index].date),
                 ),
             ],
             series: [

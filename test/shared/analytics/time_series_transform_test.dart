@@ -76,7 +76,8 @@ void main() {
       return resolveTimeSeriesGranularity(
         from: from,
         until: until,
-        plotWidth: width,
+        availableWidth: width,
+        minimumSlotWidth: 8.5,
       );
     }
 
@@ -103,6 +104,30 @@ void main() {
     expect(
       resolve(DateTime(2016, 1, 1), DateTime(2026, 1, 1), 300),
       TimeSeriesGranularity.year,
+    );
+  });
+
+  test('uses the supplied slot width for the selected chart form', () {
+    final from = DateTime(2026, 1, 1);
+    final until = DateTime(2027, 1, 1);
+
+    expect(
+      resolveTimeSeriesGranularity(
+        from: from,
+        until: until,
+        availableWidth: 500,
+        minimumSlotWidth: 8.5,
+      ),
+      TimeSeriesGranularity.week,
+    );
+    expect(
+      resolveTimeSeriesGranularity(
+        from: from,
+        until: until,
+        availableWidth: 500,
+        minimumSlotWidth: 10,
+      ),
+      TimeSeriesGranularity.month,
     );
   });
 

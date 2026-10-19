@@ -17,11 +17,13 @@ class AppChartAxisPoint {
     required this.x,
     required this.label,
     this.showOnAxis = true,
+    this.tooltipLabel,
   });
 
   final double x;
   final String label;
   final bool showOnAxis;
+  final String? tooltipLabel;
 }
 
 class AppChartPoint {
@@ -273,7 +275,7 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
                   return _barTooltipItem(
                     context,
                     data: data,
-                    axisLabel: data.axisPoints[group.x].label,
+                    axisLabel: _axisLabelForX(data, group.x.toDouble()),
                     pointIndex: group.x,
                   );
                 },
@@ -383,7 +385,9 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
 
   String _axisLabelForX(AppCartesianChartData data, double x) {
     for (final axisPoint in data.axisPoints) {
-      if ((axisPoint.x - x).abs() < .0001) return axisPoint.label;
+      if ((axisPoint.x - x).abs() < .0001) {
+        return axisPoint.tooltipLabel ?? axisPoint.label;
+      }
     }
     return '';
   }
@@ -475,6 +479,10 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
             return SideTitleWidget(
               meta: meta,
               space: AppSpacing.space8,
+              fitInside: SideTitleFitInsideData.fromTitleMeta(
+                meta,
+                distanceFromEdge: AppSpacing.space2,
+              ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
@@ -545,10 +553,11 @@ bool _sameLabels(Iterable<String> oldLabels, Set<String> newLabels) {
   return oldSet.length == newLabels.length && oldSet.containsAll(newLabels);
 }
 
-bool _showLineDots(double plotWidth, int pointCount) {
+bool _showLineDots(double availableWidth, int pointCount) {
   if (pointCount <= 1) return pointCount == 1;
-  if (!plotWidth.isFinite) return pointCount <= 12;
-  return plotWidth / (pointCount - 1) >= AppChartGeometry.lineDotMinSpacing;
+  if (!availableWidth.isFinite) return pointCount <= 12;
+  return availableWidth / (pointCount - 1) >=
+      AppChartGeometry.lineDotMinSpacing;
 }
 
 double _barWidth(double maxWidth, int slotCount) =>

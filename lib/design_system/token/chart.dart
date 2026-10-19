@@ -13,6 +13,8 @@ abstract final class AppChartGeometry {
   static const double lineDotRadius = 4;
   static const double lineDotStrokeWidth = 2;
   static const double lineDotMinSpacing = 14;
+  static const double trendLineMinSlotWidth = 8.5;
+  static const double trendBarMinSlotWidth = 10;
   static const double gridLineWidth = 1;
   static const double gridLineOpacity = .45;
   static const double zeroLineOpacity = .9;

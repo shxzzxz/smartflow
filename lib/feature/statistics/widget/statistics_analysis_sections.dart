@@ -41,6 +41,8 @@ class StatisticsComparisonSection extends ConsumerWidget {
         key: const ValueKey('statistics-comparison-chart'),
         from: cashflow.from,
         until: cashflow.until,
+        comparisonFrom: comparison.from,
+        comparisonUntil: comparison.until,
         currentDailySummaries: cashflow.dailySummaries,
         comparisonDailySummaries: comparison.dailySummaries,
         metric: control.comparisonMetric,
@@ -49,6 +51,8 @@ class StatisticsComparisonSection extends ConsumerWidget {
       expandedChartBuilder: (height) => StatisticsComparisonTrendChart(
         from: cashflow.from,
         until: cashflow.until,
+        comparisonFrom: comparison.from,
+        comparisonUntil: comparison.until,
         currentDailySummaries: cashflow.dailySummaries,
         comparisonDailySummaries: comparison.dailySummaries,
         metric: control.comparisonMetric,
