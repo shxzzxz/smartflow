@@ -12,6 +12,7 @@ abstract final class AppChartGeometry {
   static const List<int> dottedLinePattern = [2, 3];
   static const double lineDotRadius = 4;
   static const double lineDotStrokeWidth = 2;
+  static const double lineDotMinSpacing = 14;
   static const double gridLineWidth = 1;
   static const double gridLineOpacity = .45;
   static const double zeroLineOpacity = .9;
@@ -42,6 +43,16 @@ abstract final class AppChartGeometry {
   static const int cashflowAxisLabelLimit = 5;
   static const int trendAxisLabelLimit = 4;
   static const int weekdayAxisLabelLimit = 7;
+  static const double adaptiveAxisLabelMinSpacing = 56;
+  static const int adaptiveAxisLabelLimitMax = 10;
+
+  static int adaptiveAxisLabelLimit(double width) {
+    if (!width.isFinite || width <= 0) return cashflowAxisLabelLimit;
+    return (width / adaptiveAxisLabelMinSpacing)
+        .floor()
+        .clamp(2, adaptiveAxisLabelLimitMax)
+        .toInt();
+  }
 }
 
 abstract final class AppChartMotion {

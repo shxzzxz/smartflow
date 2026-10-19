@@ -172,55 +172,64 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
   }
 
   Widget _buildLineChart(BuildContext context, AppCartesianChartData data) {
-    final colors = Theme.of(context).colorScheme;
-    final scale = _scale(data);
-    return LineChart(
-      duration: AppChartMotion.switchDuration,
-      LineChartData(
-        minX: data.axisPoints.first.x,
-        maxX: math.max(data.axisPoints.first.x + 1, data.axisPoints.last.x),
-        minY: scale.min,
-        maxY: scale.max,
-        borderData: FlBorderData(show: false),
-        gridData: _gridData(context, scale),
-        titlesData: _titlesData(context, scale, data: data),
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            fitInsideHorizontally: true,
-            fitInsideVertically: true,
-            getTooltipColor: (_) => colors.inverseSurface,
-            getTooltipItems: (spots) => _lineTooltipItems(context, spots, data),
-          ),
-        ),
-        lineBarsData: [
-          for (final series in data.series)
-            LineChartBarData(
-              spots: [
-                for (final point in series.points) FlSpot(point.x, point.value),
-              ],
-              color: series.color,
-              barWidth: AppChartGeometry.lineWidth,
-              dashArray: series.dashArray,
-              isCurved: series.points.length > 2,
-              preventCurveOverShooting: true,
-              dotData: FlDotData(
-                show: series.points.length <= 12,
-                getDotPainter: (_, _, _, _) => FlDotCirclePainter(
-                  radius: AppChartGeometry.lineDotRadius,
-                  color: series.color,
-                  strokeWidth: AppChartGeometry.lineDotStrokeWidth,
-                  strokeColor: colors.surfaceContainerLowest,
-                ),
-              ),
-              belowBarData: BarAreaData(
-                show: series.fillArea,
-                color: series.color.withValues(
-                  alpha: AppChartGeometry.areaFillOpacity,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final colors = Theme.of(context).colorScheme;
+        final scale = _scale(data);
+        return LineChart(
+          duration: AppChartMotion.switchDuration,
+          LineChartData(
+            minX: data.axisPoints.first.x,
+            maxX: math.max(data.axisPoints.first.x + 1, data.axisPoints.last.x),
+            minY: scale.min,
+            maxY: scale.max,
+            borderData: FlBorderData(show: false),
+            gridData: _gridData(context, scale),
+            titlesData: _titlesData(context, scale, data: data),
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => colors.inverseSurface,
+                getTooltipItems: (spots) =>
+                    _lineTooltipItems(context, spots, data),
               ),
             ),
-        ],
-      ),
+            lineBarsData: [
+              for (final series in data.series)
+                LineChartBarData(
+                  spots: [
+                    for (final point in series.points)
+                      FlSpot(point.x, point.value),
+                  ],
+                  color: series.color,
+                  barWidth: AppChartGeometry.lineWidth,
+                  dashArray: series.dashArray,
+                  isCurved: series.points.length > 2,
+                  preventCurveOverShooting: true,
+                  dotData: FlDotData(
+                    show: _showLineDots(
+                      constraints.maxWidth,
+                      series.points.length,
+                    ),
+                    getDotPainter: (_, _, _, _) => FlDotCirclePainter(
+                      radius: AppChartGeometry.lineDotRadius,
+                      color: series.color,
+                      strokeWidth: AppChartGeometry.lineDotStrokeWidth,
+                      strokeColor: colors.surfaceContainerLowest,
+                    ),
+                  ),
+                  belowBarData: BarAreaData(
+                    show: series.fillArea,
+                    color: series.color.withValues(
+                      alpha: AppChartGeometry.areaFillOpacity,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -534,6 +543,12 @@ class _AppCartesianChartState extends State<AppCartesianChart> {
 bool _sameLabels(Iterable<String> oldLabels, Set<String> newLabels) {
   final oldSet = oldLabels.toSet();
   return oldSet.length == newLabels.length && oldSet.containsAll(newLabels);
+}
+
+bool _showLineDots(double plotWidth, int pointCount) {
+  if (pointCount <= 1) return pointCount == 1;
+  if (!plotWidth.isFinite) return pointCount <= 12;
+  return plotWidth / (pointCount - 1) >= AppChartGeometry.lineDotMinSpacing;
 }
 
 double _barWidth(double maxWidth, int slotCount) =>

@@ -71,26 +71,65 @@ void main() {
     expect(values, [50, 20, 15]);
   });
 
-  test('selects one shared resolution for a visible date span', () {
+  test('selects a granularity from both the date span and plot width', () {
+    TimeSeriesGranularity resolve(DateTime from, DateTime until, double width) {
+      return resolveTimeSeriesGranularity(
+        from: from,
+        until: until,
+        plotWidth: width,
+      );
+    }
+
     expect(
-      TimeSeriesResolution.forSpanDays(30).granularity,
+      resolve(DateTime(2026, 1, 1), DateTime(2026, 1, 31), 300),
       TimeSeriesGranularity.day,
     );
     expect(
-      TimeSeriesResolution.forSpanDays(120).granularity,
+      resolve(DateTime(2026, 1, 1), DateTime(2026, 5, 1), 300),
       TimeSeriesGranularity.week,
     );
     expect(
-      TimeSeriesResolution.forSpanDays(365).granularity,
+      resolve(DateTime(2026, 1, 1), DateTime(2027, 1, 1), 300),
       TimeSeriesGranularity.month,
     );
     expect(
-      TimeSeriesResolution.forSpanDays(900).granularity,
-      TimeSeriesGranularity.year,
+      resolve(DateTime(2026, 1, 1), DateTime(2027, 1, 1), 800),
+      TimeSeriesGranularity.week,
     );
     expect(
-      TimeSeriesResolution.forSpanDays(900).snapshotSampleIntervalDays,
-      30,
+      resolve(DateTime(2026, 1, 1), DateTime(2029, 1, 1), 800),
+      TimeSeriesGranularity.month,
+    );
+    expect(
+      resolve(DateTime(2016, 1, 1), DateTime(2026, 1, 1), 300),
+      TimeSeriesGranularity.year,
+    );
+  });
+
+  test('counts calendar buckets for a half-open range', () {
+    expect(
+      timeSeriesBucketCount(
+        from: DateTime(2026, 1, 1),
+        until: DateTime(2026, 2, 1),
+        granularity: TimeSeriesGranularity.day,
+      ),
+      31,
+    );
+    expect(
+      timeSeriesBucketCount(
+        from: DateTime(2026, 1, 1),
+        until: DateTime(2026, 2, 1),
+        granularity: TimeSeriesGranularity.month,
+      ),
+      1,
+    );
+    expect(
+      timeSeriesBucketCount(
+        from: DateTime(2025, 12, 31),
+        until: DateTime(2026, 1, 2),
+        granularity: TimeSeriesGranularity.year,
+      ),
+      2,
     );
   });
 }

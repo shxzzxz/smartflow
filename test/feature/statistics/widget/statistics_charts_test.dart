@@ -5,6 +5,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_presentation.dart';
 import 'package:smartflow/feature/statistics/presentation/statistics_state_presentation.dart';
+import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 import 'package:smartflow/feature/statistics/widget/statistics_charts.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_chart_scale.dart';
@@ -61,6 +62,51 @@ void main() {
 
     expect(buckets.map((bucket) => bucket.incomeMinor), [1000, 1500]);
     expect(buckets.map((bucket) => bucket.expenseMinor), [200, 500]);
+  });
+
+  testWidgets('uses finer cashflow buckets when the chart gets wider', (
+    tester,
+  ) async {
+    final from = DateTime(2026, 1, 1);
+    final until = DateTime(2027, 1, 1);
+    final summaries = [
+      for (var index = 0; index < 365; index++)
+        DailyCashflowSummary(
+          date: DateTime(2026, 1, 1).add(Duration(days: index)),
+          income: Money(minorUnits: index == 0 ? 100 : 0),
+          expense: const Money(minorUnits: 0),
+        ),
+    ];
+
+    Future<int> axisPointCount(double width) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: width,
+                child: StatisticsCashflowChart(
+                  from: from,
+                  until: until,
+                  dailySummaries: summaries,
+                  form: CashflowChartForm.line,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return tester
+          .widget<AppCartesianChart>(find.byType(AppCartesianChart))
+          .data
+          .axisPoints
+          .length;
+    }
+
+    expect(await axisPointCount(320), 12);
+    expect(await axisPointCount(800), 53);
   });
 
   testWidgets('renders principal and interest as separate installment bars', (

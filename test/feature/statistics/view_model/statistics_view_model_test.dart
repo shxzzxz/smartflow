@@ -77,37 +77,17 @@ void main() {
     expect(custom.until, DateTime(2026, 2, 9));
   });
 
-  test('chooses readable trend grouping for each period span', () {
-    final month = _control(from: DateTime(2026, 1), until: DateTime(2026, 2));
-    final year = _control(from: DateTime(2026, 1), until: DateTime(2027, 1));
-    final mediumCustom = _control(
-      from: DateTime(2026, 1, 1),
-      until: DateTime(2026, 3, 2),
-    );
-    final longCustom = _control(
-      from: DateTime(2026, 1, 1),
-      until: DateTime(2026, 8, 1),
-    );
-    final multiYearCustom = _control(
-      from: DateTime(2024, 1, 1),
-      until: DateTime(2026, 8, 1),
-    );
+  test('keeps daily balance snapshots for adaptive chart resolution', () {
+    final controls = [
+      _control(from: DateTime(2026, 1), until: DateTime(2026, 2)),
+      _control(from: DateTime(2026, 1), until: DateTime(2027, 1)),
+      _control(from: DateTime(2026, 1, 1), until: DateTime(2026, 8, 1)),
+      _control(from: DateTime(2024, 1, 1), until: DateTime(2026, 8, 1)),
+    ];
 
-    expect(month.trendGrouping, StatisticsTimeGrouping.day);
-    expect(year.trendGrouping, StatisticsTimeGrouping.month);
-    expect(mediumCustom.trendGrouping, StatisticsTimeGrouping.week);
-    expect(longCustom.trendGrouping, StatisticsTimeGrouping.month);
-    expect(multiYearCustom.trendGrouping, StatisticsTimeGrouping.year);
-    expect(year.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
-    expect(
-      mediumCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays,
-      7,
-    );
-    expect(longCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
-    expect(
-      multiYearCustom.range(DateTime(2026, 7, 18)).balancePointIntervalDays,
-      30,
-    );
+    for (final control in controls) {
+      expect(control.range(DateTime(2026, 7, 18)).balancePointIntervalDays, 1);
+    }
   });
 
   test(

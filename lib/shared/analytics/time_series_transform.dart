@@ -2,6 +2,16 @@ enum TimeSeriesGranularity { day, week, month, year }
 
 enum TimeSeriesAggregation { flowSum, periodEnd }
 
+enum TimeSeriesDensity {
+  line(8.5),
+  bar(10);
+
+  const TimeSeriesDensity(this.minimumSlotWidth);
+
+  /// 相邻时间桶在绘图区内至少需要的逻辑像素宽度。
+  final double minimumSlotWidth;
+}
+
 class MinorTimeSeriesPoint<K> {
   MinorTimeSeriesPoint({required this.date, required Map<K, int> values})
     : values = Map.unmodifiable(values);
@@ -104,34 +114,62 @@ List<T> topNWithOther<T>(
   ];
 }
 
-class TimeSeriesResolution {
-  const TimeSeriesResolution({
-    required this.granularity,
-    required this.snapshotSampleIntervalDays,
-  });
-
-  factory TimeSeriesResolution.forSpanDays(int spanDays) {
-    if (spanDays <= 0) {
-      throw ArgumentError.value(spanDays, 'spanDays', 'must be positive');
-    }
-    return TimeSeriesResolution(
-      granularity: switch (spanDays) {
-        <= 45 => TimeSeriesGranularity.day,
-        <= 180 => TimeSeriesGranularity.week,
-        <= 730 => TimeSeriesGranularity.month,
-        _ => TimeSeriesGranularity.year,
-      },
-      snapshotSampleIntervalDays: switch (spanDays) {
-        <= 45 => 1,
-        <= 180 => 7,
-        <= 730 => 1,
-        _ => 30,
-      },
-    );
+/// 选择当前绘图区能够清楚承载的最细时间粒度。
+///
+/// 粒度的判断同时依赖观察区间和实际可视宽度，而不是只看天数。这样同一份
+/// 日级数据在竖屏和横屏放大视图中可以获得不同的时间点密度。
+TimeSeriesGranularity resolveTimeSeriesGranularity({
+  required DateTime from,
+  required DateTime until,
+  required double plotWidth,
+  TimeSeriesDensity density = TimeSeriesDensity.line,
+}) {
+  if (!until.isAfter(from)) {
+    throw ArgumentError('until must be after from');
   }
+  if (!plotWidth.isFinite || plotWidth <= 0) {
+    return TimeSeriesGranularity.year;
+  }
+  for (final granularity in TimeSeriesGranularity.values) {
+    final bucketCount = timeSeriesBucketCount(
+      from: from,
+      until: until,
+      granularity: granularity,
+    );
+    if (bucketCount > 0 &&
+        bucketCount * density.minimumSlotWidth <= plotWidth) {
+      return granularity;
+    }
+  }
+  return TimeSeriesGranularity.year;
+}
 
-  final TimeSeriesGranularity granularity;
-  final int snapshotSampleIntervalDays;
+int timeSeriesBucketCount({
+  required DateTime from,
+  required DateTime until,
+  required TimeSeriesGranularity granularity,
+}) {
+  final start = DateTime.utc(from.year, from.month, from.day);
+  final end = DateTime.utc(until.year, until.month, until.day);
+  if (!end.isAfter(start)) return 0;
+
+  final spanDays = end.difference(start).inDays;
+  return switch (granularity) {
+    TimeSeriesGranularity.day => spanDays,
+    TimeSeriesGranularity.week => (spanDays + 6) ~/ 7,
+    TimeSeriesGranularity.month => _monthBucketCount(start, end),
+    TimeSeriesGranularity.year => _yearBucketCount(start, end),
+  };
+}
+
+int _monthBucketCount(DateTime start, DateTime end) {
+  final last = end.subtract(const Duration(days: 1));
+  return (last.year - start.year) * 12 + last.month - start.month + 1;
+}
+
+int _yearBucketCount(DateTime start, DateTime end) {
+  final last = end.subtract(const Duration(days: 1));
+  return last.year - start.year + 1;
 }
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);

@@ -4,6 +4,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/chart.dart';
+import '../../../shared/analytics/time_series_transform.dart';
 import '../../../widget/business/analytics/chart/app_chart_empty_state.dart';
 import '../../../widget/business/analytics/chart/app_donut_chart.dart';
 import '../../../widget/business/analytics/chart/app_cartesian_chart.dart';
@@ -13,64 +14,84 @@ import '../view_model/statistics_view_model.dart';
 
 class StatisticsCashflowChart extends StatelessWidget {
   const StatisticsCashflowChart({
+    required this.from,
+    required this.until,
     required this.dailySummaries,
-    required this.grouping,
     required this.form,
     this.height = AppChartGeometry.primaryPlotHeight,
     super.key,
   });
 
+  final DateTime from;
+  final DateTime until;
   final List<DailyCashflowSummary> dailySummaries;
-  final StatisticsTimeGrouping grouping;
   final CashflowChartForm form;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    final buckets = buildStatisticsCashflowBuckets(
-      dailySummaries,
-      grouping: grouping,
-    );
-    if (buckets.isEmpty ||
-        buckets.every(
-          (bucket) => bucket.incomeMinor == 0 && bucket.expenseMinor == 0,
-        )) {
-      return const AppChartEmptyState(message: '区间内暂无收支数据');
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final grouping = resolveTimeSeriesGranularity(
+          from: from,
+          until: until,
+          plotWidth: constraints.maxWidth,
+          density: form == CashflowChartForm.bar
+              ? TimeSeriesDensity.bar
+              : TimeSeriesDensity.line,
+        );
+        final buckets = buildStatisticsCashflowBuckets(
+          dailySummaries,
+          grouping: grouping,
+        );
+        if (buckets.isEmpty ||
+            buckets.every(
+              (bucket) => bucket.incomeMinor == 0 && bucket.expenseMinor == 0,
+            )) {
+          return const AppChartEmptyState(message: '区间内暂无收支数据');
+        }
 
-    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final series = [
-      _cashflowSeries(
-        label: '收入',
-        color: financeColors.income,
-        buckets: buckets,
-        fillArea: form == CashflowChartForm.line,
-        valueMinor: (bucket) => bucket.incomeMinor,
-      ),
-      _cashflowSeries(
-        label: '支出',
-        color: financeColors.expense,
-        buckets: buckets,
-        fillArea: form == CashflowChartForm.line,
-        valueMinor: (bucket) => bucket.expenseMinor,
-      ),
-    ];
-    return AppCartesianChart(
-      data: AppCartesianChartData(
-        axisPoints: [
-          for (var index = 0; index < buckets.length; index++)
-            AppChartAxisPoint(x: index.toDouble(), label: buckets[index].label),
-        ],
-        series: series,
-      ),
-      form: form == CashflowChartForm.bar
-          ? AppCartesianChartForm.bar
-          : AppCartesianChartForm.line,
-      includeZero: true,
-      height: height,
-      showLegend: true,
-      showSeriesLabelInTooltip: true,
-      emptyMessage: '区间内暂无收支数据',
+        final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+        final series = [
+          _cashflowSeries(
+            label: '收入',
+            color: financeColors.income,
+            buckets: buckets,
+            fillArea: form == CashflowChartForm.line,
+            valueMinor: (bucket) => bucket.incomeMinor,
+          ),
+          _cashflowSeries(
+            label: '支出',
+            color: financeColors.expense,
+            buckets: buckets,
+            fillArea: form == CashflowChartForm.line,
+            valueMinor: (bucket) => bucket.expenseMinor,
+          ),
+        ];
+        return AppCartesianChart(
+          data: AppCartesianChartData(
+            axisPoints: [
+              for (var index = 0; index < buckets.length; index++)
+                AppChartAxisPoint(
+                  x: index.toDouble(),
+                  label: buckets[index].label,
+                ),
+            ],
+            series: series,
+          ),
+          form: form == CashflowChartForm.bar
+              ? AppCartesianChartForm.bar
+              : AppCartesianChartForm.line,
+          includeZero: true,
+          height: height,
+          maxAxisLabels: AppChartGeometry.adaptiveAxisLabelLimit(
+            constraints.maxWidth,
+          ),
+          showLegend: true,
+          showSeriesLabelInTooltip: true,
+          emptyMessage: '区间内暂无收支数据',
+        );
+      },
     );
   }
 }
@@ -95,88 +116,107 @@ List<StatisticsCashflowBucket> buildStatisticsCumulativeCashflowBuckets(
 
 class StatisticsComparisonTrendChart extends StatelessWidget {
   const StatisticsComparisonTrendChart({
+    required this.from,
+    required this.until,
     required this.currentDailySummaries,
     required this.comparisonDailySummaries,
-    required this.grouping,
     required this.metric,
     required this.comparisonLabel,
     this.height = AppChartGeometry.primaryPlotHeight,
     super.key,
   });
 
+  final DateTime from;
+  final DateTime until;
   final List<DailyCashflowSummary> currentDailySummaries;
   final List<DailyCashflowSummary> comparisonDailySummaries;
-  final StatisticsTimeGrouping grouping;
   final StatisticsComparisonMetric metric;
   final String comparisonLabel;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    final current = buildStatisticsCumulativeCashflowBuckets(
-      currentDailySummaries,
-      grouping: grouping,
-    );
-    final comparison = buildStatisticsCumulativeCashflowBuckets(
-      comparisonDailySummaries,
-      grouping: grouping,
-    );
-    if (current.isEmpty) {
-      return const AppChartEmptyState(message: '区间内暂无可对比数据');
-    }
-    final visibleComparisonLength = comparison.length < current.length
-        ? comparison.length
-        : current.length;
-    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final color = metric == StatisticsComparisonMetric.expense
-        ? financeColors.expense
-        : financeColors.income;
-    int valueOf(StatisticsCashflowBucket bucket) =>
-        metric == StatisticsComparisonMetric.expense
-        ? bucket.expenseMinor
-        : bucket.incomeMinor;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final grouping = resolveTimeSeriesGranularity(
+          from: from,
+          until: until,
+          plotWidth: constraints.maxWidth,
+        );
+        final current = buildStatisticsCumulativeCashflowBuckets(
+          currentDailySummaries,
+          grouping: grouping,
+        );
+        final comparison = buildStatisticsCumulativeCashflowBuckets(
+          comparisonDailySummaries,
+          grouping: grouping,
+        );
+        if (current.isEmpty) {
+          return const AppChartEmptyState(message: '区间内暂无可对比数据');
+        }
+        final visibleComparisonLength = comparison.length < current.length
+            ? comparison.length
+            : current.length;
+        final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+        final color = metric == StatisticsComparisonMetric.expense
+            ? financeColors.expense
+            : financeColors.income;
+        int valueOf(StatisticsCashflowBucket bucket) =>
+            metric == StatisticsComparisonMetric.expense
+            ? bucket.expenseMinor
+            : bucket.incomeMinor;
 
-    final currentSeries = AppChartSeries(
-      label: '本期',
-      color: color,
-      points: [
-        for (var index = 0; index < current.length; index++)
-          AppChartPoint(
-            x: index.toDouble(),
-            value: valueOf(current[index]) / 100,
-            formattedValue: Money(minorUnits: valueOf(current[index])).format(),
-          ),
-      ],
-    );
-    final comparisonSeries = AppChartSeries(
-      label: comparisonLabel,
-      color: color.withValues(alpha: .45),
-      dashArray: const [6, 4],
-      points: [
-        for (var index = 0; index < visibleComparisonLength; index++)
-          AppChartPoint(
-            x: index.toDouble(),
-            value: valueOf(comparison[index]) / 100,
-            formattedValue: Money(
-              minorUnits: valueOf(comparison[index]),
-            ).format(),
-          ),
-      ],
-    );
+        final currentSeries = AppChartSeries(
+          label: '本期',
+          color: color,
+          points: [
+            for (var index = 0; index < current.length; index++)
+              AppChartPoint(
+                x: index.toDouble(),
+                value: valueOf(current[index]) / 100,
+                formattedValue: Money(
+                  minorUnits: valueOf(current[index]),
+                ).format(),
+              ),
+          ],
+        );
+        final comparisonSeries = AppChartSeries(
+          label: comparisonLabel,
+          color: color.withValues(alpha: .45),
+          dashArray: const [6, 4],
+          points: [
+            for (var index = 0; index < visibleComparisonLength; index++)
+              AppChartPoint(
+                x: index.toDouble(),
+                value: valueOf(comparison[index]) / 100,
+                formattedValue: Money(
+                  minorUnits: valueOf(comparison[index]),
+                ).format(),
+              ),
+          ],
+        );
 
-    return AppCartesianChart(
-      data: AppCartesianChartData(
-        axisPoints: [
-          for (var index = 0; index < current.length; index++)
-            AppChartAxisPoint(x: index.toDouble(), label: current[index].label),
-        ],
-        series: [currentSeries, comparisonSeries],
-      ),
-      form: AppCartesianChartForm.line,
-      height: height,
-      includeZero: true,
-      showLegend: true,
-      emptyMessage: '区间内暂无可对比数据',
+        return AppCartesianChart(
+          data: AppCartesianChartData(
+            axisPoints: [
+              for (var index = 0; index < current.length; index++)
+                AppChartAxisPoint(
+                  x: index.toDouble(),
+                  label: current[index].label,
+                ),
+            ],
+            series: [currentSeries, comparisonSeries],
+          ),
+          form: AppCartesianChartForm.line,
+          height: height,
+          includeZero: true,
+          maxAxisLabels: AppChartGeometry.adaptiveAxisLabelLimit(
+            constraints.maxWidth,
+          ),
+          showLegend: true,
+          emptyMessage: '区间内暂无可对比数据',
+        );
+      },
     );
   }
 }
@@ -270,60 +310,91 @@ class StatisticsInstallmentCashflowChart extends StatelessWidget {
 class StatisticsBalanceTrendChart extends StatelessWidget {
   const StatisticsBalanceTrendChart({
     required this.points,
-    required this.grouping,
     this.height = AppChartGeometry.secondaryPlotHeight,
     super.key,
   });
 
   final List<BalanceTrendPoint> points;
-  final StatisticsTimeGrouping grouping;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    final buckets = buildStatisticsBalanceTrendBuckets(
-      points,
-      grouping: grouping,
-    );
-    if (buckets.isEmpty) {
-      return const AppChartEmptyState(message: '区间内暂无资产数据');
-    }
-    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    return AppCartesianChart(
-      data: AppCartesianChartData(
-        axisPoints: [
-          for (var index = 0; index < buckets.length; index++)
-            AppChartAxisPoint(x: index.toDouble(), label: buckets[index].label),
-        ],
-        series: [
-          _balanceSeries(
-            label: '资产',
-            color: financeColors.asset,
-            buckets: buckets,
-            value: (bucket) => bucket.assets,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bounds = _balanceTrendBounds(points);
+        final grouping = bounds == null
+            ? StatisticsTimeGrouping.day
+            : resolveTimeSeriesGranularity(
+                from: bounds.from,
+                until: bounds.until,
+                plotWidth: constraints.maxWidth,
+              );
+        final buckets = buildStatisticsBalanceTrendBuckets(
+          points,
+          grouping: grouping,
+        );
+        if (buckets.isEmpty) {
+          return const AppChartEmptyState(message: '区间内暂无资产数据');
+        }
+        final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+        return AppCartesianChart(
+          data: AppCartesianChartData(
+            axisPoints: [
+              for (var index = 0; index < buckets.length; index++)
+                AppChartAxisPoint(
+                  x: index.toDouble(),
+                  label: buckets[index].label,
+                ),
+            ],
+            series: [
+              _balanceSeries(
+                label: '资产',
+                color: financeColors.asset,
+                buckets: buckets,
+                value: (bucket) => bucket.assets,
+              ),
+              _balanceSeries(
+                label: '负债',
+                color: financeColors.liability,
+                buckets: buckets,
+                value: (bucket) => bucket.liabilities,
+              ),
+              _balanceSeries(
+                label: '净资产',
+                color: financeColors.equity,
+                buckets: buckets,
+                value: (bucket) => bucket.netAssets,
+                fillArea: true,
+              ),
+            ],
           ),
-          _balanceSeries(
-            label: '负债',
-            color: financeColors.liability,
-            buckets: buckets,
-            value: (bucket) => bucket.liabilities,
+          form: AppCartesianChartForm.line,
+          height: height,
+          maxAxisLabels: AppChartGeometry.adaptiveAxisLabelLimit(
+            constraints.maxWidth,
           ),
-          _balanceSeries(
-            label: '净资产',
-            color: financeColors.equity,
-            buckets: buckets,
-            value: (bucket) => bucket.netAssets,
-            fillArea: true,
-          ),
-        ],
-      ),
-      form: AppCartesianChartForm.line,
-      height: height,
-      maxAxisLabels: AppChartGeometry.trendAxisLabelLimit,
-      showLegend: true,
-      emptyMessage: '区间内暂无资产数据',
+          showLegend: true,
+          emptyMessage: '区间内暂无资产数据',
+        );
+      },
     );
   }
+}
+
+({DateTime from, DateTime until})? _balanceTrendBounds(
+  List<BalanceTrendPoint> points,
+) {
+  if (points.isEmpty) return null;
+  var from = points.first.date;
+  var until = points.first.date;
+  for (final point in points.skip(1)) {
+    if (point.date.isBefore(from)) from = point.date;
+    if (point.date.isAfter(until)) until = point.date;
+  }
+  if (!until.isAfter(from)) {
+    until = from.add(const Duration(days: 1));
+  }
+  return (from: from, until: until);
 }
 
 AppChartSeries _balanceSeries({

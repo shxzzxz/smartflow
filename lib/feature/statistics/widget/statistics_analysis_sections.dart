@@ -39,16 +39,18 @@ class StatisticsComparisonSection extends ConsumerWidget {
       ),
       chart: StatisticsComparisonTrendChart(
         key: const ValueKey('statistics-comparison-chart'),
+        from: cashflow.from,
+        until: cashflow.until,
         currentDailySummaries: cashflow.dailySummaries,
         comparisonDailySummaries: comparison.dailySummaries,
-        grouping: control.trendGrouping,
         metric: control.comparisonMetric,
         comparisonLabel: comparison.label,
       ),
       expandedChartBuilder: (height) => StatisticsComparisonTrendChart(
+        from: cashflow.from,
+        until: cashflow.until,
         currentDailySummaries: cashflow.dailySummaries,
         comparisonDailySummaries: comparison.dailySummaries,
-        grouping: control.trendGrouping,
         metric: control.comparisonMetric,
         comparisonLabel: comparison.label,
         height: height,
@@ -85,13 +87,15 @@ class StatisticsCashflowSection extends ConsumerWidget {
       ),
       chart: StatisticsCashflowChart(
         key: const ValueKey('statistics-cashflow-chart'),
+        from: cashflow.from,
+        until: cashflow.until,
         dailySummaries: cashflow.dailySummaries,
-        grouping: control.trendGrouping,
         form: control.chartForm,
       ),
       expandedChartBuilder: (height) => StatisticsCashflowChart(
+        from: cashflow.from,
+        until: cashflow.until,
         dailySummaries: cashflow.dailySummaries,
-        grouping: control.trendGrouping,
         form: control.chartForm,
         height: height,
       ),
@@ -100,14 +104,9 @@ class StatisticsCashflowSection extends ConsumerWidget {
 }
 
 class StatisticsBalanceSection extends StatelessWidget {
-  const StatisticsBalanceSection({
-    required this.balance,
-    required this.control,
-    super.key,
-  });
+  const StatisticsBalanceSection({required this.balance, super.key});
 
   final StatisticsBalanceTrendPresentation balance;
-  final StatisticsControlState control;
 
   @override
   Widget build(BuildContext context) {
@@ -115,15 +114,9 @@ class StatisticsBalanceSection extends StatelessWidget {
       title: '资产走势',
       showExpandIcon: true,
       expandedReservedHeight: AppChartGeometry.interactiveLegendReservedHeight,
-      chart: StatisticsBalanceTrendChart(
-        points: balance.points,
-        grouping: control.trendGrouping,
-      ),
-      expandedChartBuilder: (height) => StatisticsBalanceTrendChart(
-        points: balance.points,
-        grouping: control.trendGrouping,
-        height: height,
-      ),
+      chart: StatisticsBalanceTrendChart(points: balance.points),
+      expandedChartBuilder: (height) =>
+          StatisticsBalanceTrendChart(points: balance.points, height: height),
     );
   }
 }

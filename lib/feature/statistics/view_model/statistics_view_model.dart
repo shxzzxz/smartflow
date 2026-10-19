@@ -2,7 +2,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
-import '../../../shared/analytics/time_series_transform.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -329,18 +328,12 @@ class StatisticsControlState {
   final StatisticsCategoryKind categoryKind;
   final StatisticsCategoryLevel categoryLevel;
 
-  int get _spanDays => periodUntil.difference(periodFrom).inDays;
-
-  TimeSeriesResolution get _resolution =>
-      TimeSeriesResolution.forSpanDays(_spanDays);
-
-  StatisticsTimeGrouping get trendGrouping => _resolution.granularity;
-
   StatisticsDateRange range(DateTime now) {
     return StatisticsDateRange(
       from: periodFrom,
       until: _validUntil(periodFrom, _capAtTomorrow(periodUntil, now)),
-      balancePointIntervalDays: _resolution.snapshotSampleIntervalDays,
+      // 保留日级快照，由展示层根据实际绘图区宽度决定聚合粒度。
+      balancePointIntervalDays: 1,
     );
   }
 

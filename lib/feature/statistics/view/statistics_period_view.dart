@@ -164,7 +164,7 @@ class _PeriodContentView extends StatelessWidget {
         const SizedBox(height: AppSpacing.space16),
         StatisticsCashflowSection(cashflow: content.cashflow, control: control),
         const SizedBox(height: AppSpacing.space16),
-        StatisticsBalanceSection(balance: content.balance, control: control),
+        StatisticsBalanceSection(balance: content.balance),
         const SizedBox(height: AppSpacing.space16),
         StatisticsBreakdownSection(
           categories: content.categories,
