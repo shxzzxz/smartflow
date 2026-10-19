@@ -13,6 +13,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
@@ -21,6 +22,7 @@ import '../presentation/import_presentation.dart';
 import '../view_model/import_view_model.dart';
 import '../widget/import_analysis_card.dart';
 import '../widget/import_mapping_item.dart';
+import '../widget/import_source_icon.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -927,13 +929,16 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
                     ),
                     const SizedBox(height: AppSpacing.space6),
                     if (state.error case final error?) ...[
-                      _FeedbackBanner(
-                        icon: RemixIcons.error_warning_line,
+                      AppStatusBanner(
                         message: error.message,
-                        tone: _FeedbackTone.error,
-                        onClose: ref
-                            .read(importViewModelProvider.notifier)
-                            .clearError,
+                        tone: AppStatusBannerTone.danger,
+                        action: IconButton(
+                          onPressed: ref
+                              .read(importViewModelProvider.notifier)
+                              .clearError,
+                          icon: const Icon(RemixIcons.close_line),
+                          tooltip: '关闭提示',
+                        ),
                       ),
                     ] else if (state.historyLoading && state.batches.isEmpty)
                       const Padding(
@@ -1106,7 +1111,7 @@ class _ImportSourceRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _ImportSourceIcon(source: source),
+            ImportSourceIcon(source: source),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
@@ -1125,49 +1130,6 @@ class _ImportSourceRow extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ImportSourceIcon extends StatelessWidget {
-  const _ImportSourceIcon({
-    required this.source,
-    this.size = AppSpacing.space40,
-  });
-
-  final ImportEntrySource source;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final palette = switch (source) {
-      ImportEntrySource.yimu => (
-        background: colors.primaryContainer,
-        foreground: colors.onPrimaryContainer,
-      ),
-      ImportEntrySource.unionPay => (
-        background: colors.secondaryContainer,
-        foreground: colors.onSecondaryContainer,
-      ),
-      ImportEntrySource.generic => (
-        background: colors.tertiaryContainer,
-        foreground: colors.onTertiaryContainer,
-      ),
-    };
-    final icon = switch (source) {
-      ImportEntrySource.yimu => Icons.energy_savings_leaf_rounded,
-      ImportEntrySource.unionPay => RemixIcons.bank_card_line,
-      ImportEntrySource.generic => RemixIcons.file_excel_2_line,
-    };
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: palette.background,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: palette.foreground),
     );
   }
 }
@@ -1202,7 +1164,7 @@ class _UnavailableImportSource extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.space20),
             child: Column(
               children: [
-                _ImportSourceIcon(source: source, size: AppSpacing.space48),
+                ImportSourceIcon(source: source, size: AppSpacing.space48),
                 const SizedBox(height: AppSpacing.space12),
                 Text(source.label, style: context.appTextStyles.groupTitle),
                 const SizedBox(height: AppSpacing.space6),
@@ -1260,11 +1222,14 @@ class _ImportReviewTab extends StatelessWidget {
           ),
           children: [
             if (state.error case final error?) ...[
-              _FeedbackBanner(
-                icon: RemixIcons.error_warning_line,
+              AppStatusBanner(
                 message: error.message,
-                tone: _FeedbackTone.error,
-                onClose: onClearError,
+                tone: AppStatusBannerTone.danger,
+                action: IconButton(
+                  onPressed: onClearError,
+                  icon: const Icon(RemixIcons.close_line),
+                  tooltip: '关闭提示',
+                ),
               ),
               const SizedBox(height: AppSpacing.space16),
             ],
@@ -1386,7 +1351,7 @@ class _ImportFilesSection extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _ImportSourceIcon(source: source),
+                    ImportSourceIcon(source: source),
                     const SizedBox(width: AppSpacing.space12),
                     Expanded(
                       child: Column(
@@ -1665,16 +1630,15 @@ class _CommitResultBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final batch = result.batch;
-    return _FeedbackBanner(
-      icon: batch == null
-          ? RemixIcons.information_line
-          : RemixIcons.checkbox_circle_line,
+    return AppStatusBanner(
       message: batch == null
           ? '没有创建新批次；${result.skippedGroupCount} 个交易组被跳过。'
           : '已导入 ${batch.importedGroupCount} 个交易组，创建 '
                 '${batch.createdTransactionCount} 条交易，跳过 '
                 '${batch.skippedGroupCount} 个交易组。',
-      tone: batch == null ? _FeedbackTone.info : _FeedbackTone.success,
+      tone: batch == null
+          ? AppStatusBannerTone.info
+          : AppStatusBannerTone.success,
     );
   }
 }
@@ -2116,11 +2080,14 @@ class _ImportHistoryTab extends StatelessWidget {
         ),
         children: [
           if (state.error case final error?) ...[
-            _FeedbackBanner(
-              icon: RemixIcons.error_warning_line,
+            AppStatusBanner(
               message: error.message,
-              tone: _FeedbackTone.error,
-              onClose: onClearError,
+              tone: AppStatusBannerTone.danger,
+              action: IconButton(
+                onPressed: onClearError,
+                icon: const Icon(RemixIcons.close_line),
+                tooltip: '关闭提示',
+              ),
             ),
             const SizedBox(height: AppSpacing.space16),
           ],
@@ -2186,10 +2153,10 @@ class _ImportBatchCard extends StatelessWidget {
         ? '部分导入'
         : '导入成功';
     final statusTone = reverted
-        ? _FeedbackTone.info
+        ? _ImportStatusTone.info
         : partial
-        ? _FeedbackTone.warning
-        : _FeedbackTone.success;
+        ? _ImportStatusTone.warning
+        : _ImportStatusTone.success;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
@@ -2199,7 +2166,7 @@ class _ImportBatchCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _ImportSourceIcon(source: ImportEntrySource.yimu),
+                const ImportSourceIcon(source: ImportEntrySource.yimu),
                 const SizedBox(width: AppSpacing.space12),
                 Expanded(
                   child: Column(
@@ -2276,65 +2243,13 @@ class _ImportBatchCard extends StatelessWidget {
   }
 }
 
-enum _FeedbackTone { success, warning, error, info }
-
-class _FeedbackBanner extends StatelessWidget {
-  const _FeedbackBanner({
-    required this.icon,
-    required this.message,
-    required this.tone,
-    this.onClose,
-  });
-
-  final IconData icon;
-  final String message;
-  final _FeedbackTone tone;
-  final VoidCallback? onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _toneColor(context, tone);
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space12),
-      decoration: BoxDecoration(
-        color: color.withValues(
-          alpha: AppComponentTokens.statusBackgroundOpacity,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-        border: Border.all(
-          color: color.withValues(
-            alpha: AppComponentTokens.statusBorderOpacity,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: AppSpacing.space10),
-          Expanded(
-            child: Text(
-              message,
-              style: context.appTextStyles.detailValue.copyWith(color: color),
-            ),
-          ),
-          if (onClose != null)
-            IconButton(
-              onPressed: onClose,
-              icon: const Icon(RemixIcons.close_line),
-              color: color,
-              tooltip: '关闭提示',
-            ),
-        ],
-      ),
-    );
-  }
-}
+enum _ImportStatusTone { success, warning, error, info }
 
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.label, required this.tone});
 
   final String label;
-  final _FeedbackTone tone;
+  final _ImportStatusTone tone;
 
   @override
   Widget build(BuildContext context) {
@@ -2362,12 +2277,12 @@ AppThemeExtension _themeExtension(BuildContext context) {
   return Theme.of(context).extension<AppThemeExtension>()!;
 }
 
-Color _toneColor(BuildContext context, _FeedbackTone tone) {
+Color _toneColor(BuildContext context, _ImportStatusTone tone) {
   final extension = _themeExtension(context);
   return switch (tone) {
-    _FeedbackTone.success => extension.success,
-    _FeedbackTone.warning => extension.warning,
-    _FeedbackTone.error => Theme.of(context).colorScheme.error,
-    _FeedbackTone.info => extension.info,
+    _ImportStatusTone.success => extension.success,
+    _ImportStatusTone.warning => extension.warning,
+    _ImportStatusTone.error => Theme.of(context).colorScheme.error,
+    _ImportStatusTone.info => extension.info,
   };
 }
