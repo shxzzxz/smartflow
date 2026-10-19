@@ -63,6 +63,7 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
         loaded != null &&
         (loaded.report.totalBudget != null ||
             loaded.report.categoryGroups.isNotEmpty);
+    final totalBudget = loaded?.report.totalBudget;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -97,6 +98,17 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
                               provider: viewModelProvider,
                               existing: loaded.report.totalBudget,
                               title: '设置总预算',
+                            ),
+                    ),
+                    AppPopupMenuAction(
+                      label: '查看总预算交易',
+                      icon: RemixIcons.file_list_3_line,
+                      onPressed: totalBudget == null || loaded == null
+                          ? null
+                          : () => _openBudgetDetail(
+                              context,
+                              totalBudget.id,
+                              loaded.report.month,
                             ),
                     ),
                     AppPopupMenuAction(
@@ -248,6 +260,15 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
   }
 }
 
+void _openBudgetDetail(BuildContext context, String budgetId, MonthKey month) {
+  context.push(
+    Uri(
+      path: '/budget/$budgetId',
+      queryParameters: {'month': month.toString()},
+    ).toString(),
+  );
+}
+
 class BudgetDetailPage extends ConsumerWidget {
   const BudgetDetailPage({
     required this.budgetId,
@@ -279,7 +300,7 @@ class BudgetDetailPage extends ConsumerWidget {
             ),
           BudgetDetailPageNotFound() => const _BudgetMessage(
             icon: RemixIcons.inbox_line,
-            message: '分类预算不存在',
+            message: '预算不存在',
           ),
           BudgetDetailPageError(:final message) => _BudgetMessage(
             icon: RemixIcons.error_warning_line,
@@ -429,10 +450,11 @@ class _BudgetDetailContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isTotalBudget = progress.categoryId == null;
     final transactionGroups = budgetTransactionGroups(
       transactions: transactions,
       accountLookup: accountLookup,
-      categoryId: progress.categoryId!,
+      categoryId: progress.categoryId,
     );
     return Column(
       children: [
@@ -441,12 +463,13 @@ class _BudgetDetailContent extends ConsumerWidget {
           actions: [
             AppHeaderIconButton(
               icon: RemixIcons.edit_line,
-              tooltip: '编辑分类预算',
+              tooltip: isTotalBudget ? '编辑总预算' : '编辑分类预算',
               onPressed: () => _editBudget(
                 context,
                 ref,
                 provider: viewModelProvider,
                 existing: progress,
+                popOnDelete: true,
               ),
             ),
           ],
@@ -464,11 +487,15 @@ class _BudgetDetailContent extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space16),
               _TrendSection(month: month, progress: progress),
               const SizedBox(height: AppSpacing.space20),
-              Text('分类交易', style: context.appTextStyles.sectionTitleStrong),
+              Text(
+                isTotalBudget ? '预算交易' : '分类交易',
+                style: context.appTextStyles.sectionTitleStrong,
+              ),
               const SizedBox(height: AppSpacing.space12),
             ],
             groups: transactionGroups,
-            emptyMessage: '本月暂无计入预算的分类交易',
+            emptyMessage:
+                isTotalBudget ? '本月暂无计入预算的交易' : '本月暂无计入预算的分类交易',
             emptyState: null,
             showDailyTotals: false,
           ),
@@ -574,7 +601,7 @@ class _CategoryBudgetGroupCard extends StatelessWidget {
                   name: root.name,
                   iconKey: root.iconKey,
                   progress: root,
-                  onTap: () => _openDetail(context, root.id),
+                  onTap: () => _openBudgetDetail(context, root.id, month),
                 ),
               ReorderableListView.builder(
                 shrinkWrap: true,
@@ -599,7 +626,8 @@ class _CategoryBudgetGroupCard extends StatelessWidget {
                           name: child.name,
                           iconKey: child.iconKey,
                           progress: child,
-                          onTap: () => _openDetail(context, child.id),
+                          onTap: () =>
+                              _openBudgetDetail(context, child.id, month),
                         ),
                       ),
                     ],
@@ -610,15 +638,6 @@ class _CategoryBudgetGroupCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _openDetail(BuildContext context, String id) {
-    context.push(
-      Uri(
-        path: '/budget/$id',
-        queryParameters: {'month': month.toString()},
-      ).toString(),
     );
   }
 }
@@ -864,6 +883,7 @@ Future<void> _editBudget(
   BudgetProgress? existing,
   String? categoryId,
   String? title,
+  bool popOnDelete = false,
 }) async {
   final result = await showModalBottomSheet<_BudgetEditorResult>(
     context: context,
@@ -899,9 +919,7 @@ Future<void> _editBudget(
         .deleteBudget(existing!.id);
     if (!context.mounted) return;
     _showOutcome(context, outcome, '预算已删除');
-    if (outcome is UiActionSuccess &&
-        existing.categoryId != null &&
-        context.canPop()) {
+    if (outcome is UiActionSuccess && popOnDelete && context.canPop()) {
       context.pop();
     }
     return;

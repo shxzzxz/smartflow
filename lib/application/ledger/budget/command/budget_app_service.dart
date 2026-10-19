@@ -53,8 +53,7 @@ class BudgetAppServiceImpl implements BudgetAppService {
         final category = await _accounts.findById(categoryId);
         if (category == null ||
             category.type != AccountType.expense ||
-            category.isArchived ||
-            !category.isManageableCategory) {
+            category.isArchived) {
           throw BusinessException(LedgerErrorCode.categoryUnavailable);
         }
       }

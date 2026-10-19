@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -10,6 +11,8 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/budget/page/budget_page.dart';
+import 'package:smartflow/feature/budget/view_model/budget_view_model.dart';
+import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
@@ -72,6 +75,26 @@ void main() {
         ),
       ],
     );
+    final router = GoRouter(
+      initialLocation: '/budget',
+      routes: [
+        GoRoute(
+          path: '/budget',
+          builder: (context, state) => const BudgetPage(initialMonth: null),
+          routes: [
+            GoRoute(
+              path: ':id',
+              builder:
+                  (context, state) => Scaffold(
+                    body: Text(
+                      'budget-detail:${state.pathParameters['id']}',
+                    ),
+                  ),
+            ),
+          ],
+        ),
+      ],
+    );
 
     await tester.pumpWidget(
       ProviderScope(
@@ -86,9 +109,9 @@ void main() {
             AccountType.expense,
           ).overrideWith((ref) => Stream.value(const [])),
         ],
-        child: MaterialApp(
+        child: MaterialApp.router(
           theme: AppTheme.light(),
-          home: const BudgetPage(initialMonth: null),
+          routerConfig: router,
         ),
       ),
     );
@@ -180,9 +203,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
     expect(find.text('设置总预算'), findsOneWidget);
+    expect(find.text('查看总预算交易'), findsOneWidget);
     expect(find.text('清空本月预算'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('设置总预算')).dy,
+      lessThan(tester.getTopLeft(find.text('查看总预算交易')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('查看总预算交易')).dy,
       lessThan(tester.getTopLeft(find.text('清空本月预算')).dy),
     );
     expect(
@@ -207,6 +235,67 @@ void main() {
 
     expect(budgetService.clearCommands, hasLength(1));
     expect(budgetService.clearCommands.single.month, report.month);
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('查看总预算交易'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('budget-detail:total'), findsOneWidget);
+  });
+
+  testWidgets('total budget detail shows the budget transactions section', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final month = DateTime(2026, 8);
+    final total = _progress(
+      id: 'total-budget',
+      name: '总预算',
+      budget: 200000,
+      spent: 60000,
+    );
+    final report = MonthlyBudgetReport(
+      month: MonthKey.fromDate(month),
+      totalBudget: total,
+      categoryGroups: const [],
+    );
+    final food = Account(
+      id: 'food',
+      name: '餐饮',
+      type: AccountType.expense,
+      balance: Money.zero(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthlyBudgetReportProvider(
+            month,
+          ).overrideWith((ref) => Stream.value(report)),
+          budgetTotalTransactionsProvider(
+            month,
+          ).overrideWith((ref) => Stream.value(const [])),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup({food.id: food})),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: BudgetDetailPage(budgetId: total.id, month: month),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('总预算'), findsOneWidget);
+    expect(find.byTooltip('编辑总预算'), findsOneWidget);
+    expect(find.text('预算交易'), findsOneWidget);
+    expect(find.text('本月暂无计入预算的交易'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

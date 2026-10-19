@@ -94,4 +94,9 @@ class MonthlyBudgetReport {
     }
     return null;
   }
+
+  BudgetProgress? findBudget(String budgetId) {
+    if (totalBudget?.id == budgetId) return totalBudget;
+    return findCategoryBudget(budgetId);
+  }
 }

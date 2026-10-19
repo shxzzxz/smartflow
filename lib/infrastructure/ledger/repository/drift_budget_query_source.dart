@@ -68,7 +68,6 @@ class DriftBudgetQuerySource implements BudgetQuerySource {
         _db.select(_db.accounts)
           ..where((row) => row.accountType.equalsValue(AccountType.expense))
           ..where((row) => row.archivedAt.isNull())
-          ..where((row) => row.systemKey.isNull())
           ..orderBy([
             (row) => OrderingTerm.asc(row.sortOrder),
             (row) => OrderingTerm.asc(row.id),

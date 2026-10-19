@@ -12,6 +12,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/budget_transaction_presentation.dart';
 
 part 'budget_view_model.g.dart';
 
@@ -225,11 +226,32 @@ Stream<List<TransactionReadModel>> budgetCategoryTransactions(
 ) {
   final accountLookup = ref.watch(accountLookupProvider).value;
   if (accountLookup == null) return const Stream.empty();
-  final categoryIds =
-      resolveCategoryAccountIds([
-          CategorySelection.withDescendants(categoryId),
-        ], accountLookup.byId).toList()
-        ..sort();
+  final categoryIds = budgetScopeAccountIds(
+    accountLookup,
+    categoryId: categoryId,
+  );
+  return _watchBudgetTransactions(ref, month, categoryIds);
+}
+
+@riverpod
+Stream<List<TransactionReadModel>> budgetTotalTransactions(
+  Ref ref,
+  DateTime month,
+) {
+  final accountLookup = ref.watch(accountLookupProvider).value;
+  if (accountLookup == null) return const Stream.empty();
+  return _watchBudgetTransactions(
+    ref,
+    month,
+    budgetScopeAccountIds(accountLookup),
+  );
+}
+
+Stream<List<TransactionReadModel>> _watchBudgetTransactions(
+  Ref ref,
+  DateTime month,
+  Set<String> categoryIds,
+) {
   final visibleMonth = MonthKey.fromDate(month);
   return ref
       .watch(transactionQueryServiceProvider)
@@ -255,43 +277,36 @@ BudgetDetailPageState budgetDetailPage(
 ) {
   final report = ref.watch(monthlyBudgetReportProvider(month));
   if (report case AsyncError()) {
-    return const BudgetDetailPageState.error(message: '分类预算加载失败，请稍后重试');
+    return const BudgetDetailPageState.error(message: '预算加载失败，请稍后重试');
   }
   final reportValue = report.value;
   if (reportValue == null) return const BudgetDetailPageState.loading();
-  final progress = reportValue.findCategoryBudget(budgetId);
+  final progress = reportValue.findBudget(budgetId);
   if (progress == null) return const BudgetDetailPageState.notFound();
-  if (progress.categoryId case final categoryId?) {
-    final accountLookup = ref.watch(accountLookupProvider);
-    if (accountLookup case AsyncError()) {
-      return const BudgetDetailPageState.error(message: '分类交易加载失败，请稍后重试');
-    }
-    final lookup = accountLookup.value;
-    if (lookup == null) {
-      return const BudgetDetailPageState.loading();
-    }
-    final transactions = ref.watch(
-      budgetCategoryTransactionsProvider(categoryId, month),
-    );
-    if (transactions case AsyncError()) {
-      return const BudgetDetailPageState.error(message: '分类交易加载失败，请稍后重试');
-    }
-    final transactionValues = transactions.value;
-    if (transactionValues == null) {
-      return const BudgetDetailPageState.loading();
-    }
-    return BudgetDetailPageState.loaded(
-      month: reportValue.month,
-      progress: progress,
-      transactions: transactionValues,
-      accountLookup: lookup,
-    );
+  final accountLookup = ref.watch(accountLookupProvider);
+  if (accountLookup case AsyncError()) {
+    return const BudgetDetailPageState.error(message: '预算交易加载失败，请稍后重试');
+  }
+  final lookup = accountLookup.value;
+  if (lookup == null) {
+    return const BudgetDetailPageState.loading();
+  }
+  final categoryId = progress.categoryId;
+  final transactions = categoryId == null
+      ? ref.watch(budgetTotalTransactionsProvider(month))
+      : ref.watch(budgetCategoryTransactionsProvider(categoryId, month));
+  if (transactions case AsyncError()) {
+    return const BudgetDetailPageState.error(message: '预算交易加载失败，请稍后重试');
+  }
+  final transactionValues = transactions.value;
+  if (transactionValues == null) {
+    return const BudgetDetailPageState.loading();
   }
   return BudgetDetailPageState.loaded(
     month: reportValue.month,
     progress: progress,
-    transactions: const [],
-    accountLookup: const AccountLookup({}),
+    transactions: transactionValues,
+    accountLookup: lookup,
   );
 }
 

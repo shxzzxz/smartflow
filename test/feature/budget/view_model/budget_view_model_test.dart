@@ -349,6 +349,93 @@ void main() {
       );
     },
   );
+
+  test(
+    'total budget transactions include all active expense categories in budget scope',
+    () async {
+      final month = DateTime(2026, 8);
+      final food = Account(
+        id: 'food',
+        name: '餐饮',
+        type: AccountType.expense,
+        balance: Money.zero(),
+      );
+      final interest = Account(
+        id: 'interest',
+        name: '利息',
+        type: AccountType.expense,
+        balance: Money.zero(),
+        parentId: food.id,
+        systemKey: SystemKey.interestExpense,
+      );
+      final archivedExpense = Account(
+        id: 'archived-expense',
+        name: '旧分类',
+        type: AccountType.expense,
+        balance: Money.zero(),
+        archivedAt: DateTime(2026, 7),
+      );
+      final cash = Account(
+        id: 'cash',
+        name: '现金',
+        type: AccountType.asset,
+        balance: Money.zero(),
+      );
+      final total = BudgetProgress(
+        id: 'total-budget',
+        name: '总预算',
+        budget: const Money(minorUnits: 200000),
+        spent: const Money(minorUnits: 20000),
+        sortOrder: 0,
+        trend: const [],
+      );
+      final report = MonthlyBudgetReport(
+        month: MonthKey.fromDate(month),
+        totalBudget: total,
+        categoryGroups: const [],
+      );
+      final service = _RecordingTransactionQueryService();
+      final container = ProviderContainer(
+        overrides: [
+          transactionQueryServiceProvider.overrideWithValue(service),
+          monthlyBudgetReportProvider(
+            month,
+          ).overrideWith((ref) => Stream.value(report)),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(
+              AccountLookup({
+                food.id: food,
+                interest.id: interest,
+                archivedExpense.id: archivedExpense,
+                cash.id: cash,
+              }),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final subscription = container.listen(
+        budgetDetailPageProvider(total.id, month),
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+
+      await container.read(monthlyBudgetReportProvider(month).future);
+      await container.read(accountLookupProvider.future);
+      await container.pump();
+      await _flush();
+
+      expect(service.queries, isNotEmpty);
+      final query = service.queries.last;
+      expect(query.match, isA<TransactionImpactMatch>());
+      expect(query.match.categoryAccountIds, {food.id, interest.id});
+      expect(query.scope, TransactionScopeFilter.budget);
+      expect(
+        container.read(budgetDetailPageProvider(total.id, month)),
+        isA<BudgetDetailPageLoaded>(),
+      );
+    },
+  );
 }
 
 class _RecordingBudgetAppService implements BudgetAppService {

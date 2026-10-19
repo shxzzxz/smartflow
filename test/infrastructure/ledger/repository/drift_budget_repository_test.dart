@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/ledger/budget/query/budget_query_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/ledger/entity/budget.dart';
@@ -138,6 +139,84 @@ void main() {
       );
     },
   );
+
+  test(
+    'parent category budget includes system-category interest from debt repayment',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final interest =
+          await (database.select(database.accounts)..where(
+                (row) => row.systemKey.equalsValue(SystemKey.interestExpense),
+              ))
+              .getSingle();
+      final otherId = interest.parentId!;
+      await database.batch((batch) {
+        batch.insertAll(database.accounts, [
+          AccountsCompanion.insert(
+            id: 'test-cash',
+            name: '现金',
+            accountType: AccountType.asset,
+          ),
+          AccountsCompanion.insert(
+            id: 'test-loan',
+            name: '借款',
+            accountType: AccountType.liability,
+          ),
+        ]);
+        batch.insertAll(database.budgets, [
+          BudgetsCompanion.insert(
+            id: 'total-budget',
+            monthKey: 202608,
+            amountMinor: 200000,
+          ),
+          BudgetsCompanion.insert(
+            id: 'other-budget',
+            monthKey: 202608,
+            accountId: Value(otherId),
+            amountMinor: 100000,
+            sortOrder: const Value(1),
+          ),
+          BudgetsCompanion.insert(
+            id: 'interest-budget',
+            monthKey: 202608,
+            accountId: Value(interest.id),
+            amountMinor: 20000,
+            sortOrder: const Value(2),
+          ),
+        ]);
+      });
+      await _insertDebtRepayment(
+        database,
+        id: 'repayment',
+        principal: 10000,
+        interest: 1234,
+        interestAccountId: interest.id,
+      );
+
+      final source = DriftBudgetQuerySource(database);
+      final snapshot = await source
+          .watchMonth(MonthKey(year: 2026, month: 8))
+          .first;
+      expect(snapshot.categories.map((item) => item.id), contains(interest.id));
+      expect(
+        snapshot.dailyUsage
+            .singleWhere((item) => item.categoryId == interest.id)
+            .amountMinor,
+        1234,
+      );
+
+      final report = await BudgetQueryServiceImpl(
+        source,
+      ).watchMonthlyReport(MonthKey(year: 2026, month: 8)).first;
+      expect(report.totalBudget?.spent.minorUnits, 1234);
+      final group = report.categoryGroups.single;
+      expect(group.name, '其他');
+      expect(group.rootBudget?.spent.minorUnits, 1234);
+      expect(group.childBudgets.single.name, '利息');
+      expect(group.childBudgets.single.spent.minorUnits, 1234);
+    },
+  );
 }
 
 Future<void> _insertExpense(
@@ -178,6 +257,53 @@ Future<void> _insertExpense(
         accountId: 'cash',
         direction: EntryDirection.credit,
         amountMinor: amount,
+      ),
+    ]);
+  });
+}
+
+Future<void> _insertDebtRepayment(
+  AppDatabase database, {
+  required String id,
+  required int principal,
+  required int interest,
+  required String interestAccountId,
+}) async {
+  final occurredAt = DateTime(2026, 8, 5);
+  await database
+      .into(database.transactions)
+      .insert(
+        TransactionsCompanion.insert(
+          id: id,
+          businessPurpose: BusinessPurpose.debtRepayment,
+          occurredAt: occurredAt,
+          postedAt: occurredAt,
+          primaryAmountMinor: principal + interest,
+          sourceKind: SourceKind.manual,
+        ),
+      );
+  await database.batch((batch) {
+    batch.insertAll(database.entries, [
+      EntriesCompanion.insert(
+        id: '$id-principal',
+        transactionId: id,
+        accountId: 'test-loan',
+        direction: EntryDirection.debit,
+        amountMinor: principal,
+      ),
+      EntriesCompanion.insert(
+        id: '$id-interest',
+        transactionId: id,
+        accountId: interestAccountId,
+        direction: EntryDirection.debit,
+        amountMinor: interest,
+      ),
+      EntriesCompanion.insert(
+        id: '$id-cash',
+        transactionId: id,
+        accountId: 'test-cash',
+        direction: EntryDirection.credit,
+        amountMinor: principal + interest,
       ),
     ]);
   });

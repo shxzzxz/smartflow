@@ -86,6 +86,35 @@ void main() {
     expect((await budgets.findByMonth(month)), hasLength(1));
   });
 
+  test('系统支出分类可以作为预算分类', () async {
+    final budgets = _MemoryBudgetRepository();
+    final service = BudgetAppServiceImpl(
+      budgets: budgets,
+      accounts: _MemoryAccountRepository([
+        _expenseCategory('other', '其他'),
+        _expenseCategory(
+          'interest',
+          '利息',
+          parentId: 'other',
+          systemKey: SystemKey.interestExpense,
+        ),
+      ]),
+      transactionRunner: const _DirectTransactionRunner(),
+      idGenerator: _SequenceIdGenerator(),
+    );
+
+    final budget = await service.setBudget(
+      SetBudgetCommand(
+        month: month,
+        categoryId: 'interest',
+        amount: const Money(minorUnits: 30000),
+      ),
+    );
+
+    expect(budget.categoryId, 'interest');
+    expect((await budgets.findByMonth(month)).single.categoryId, 'interest');
+  });
+
   test('分类预算顺序按提交的完整 id 列表持久化', () async {
     final budgets = _MemoryBudgetRepository();
     final service = BudgetAppServiceImpl(
@@ -211,13 +240,19 @@ void main() {
   });
 }
 
-Account _expenseCategory(String id, String name, {String? parentId}) {
+Account _expenseCategory(
+  String id,
+  String name, {
+  String? parentId,
+  SystemKey? systemKey,
+}) {
   return Account(
     id: id,
     name: name,
     type: AccountType.expense,
     balance: Money.zero(),
     parentId: parentId,
+    systemKey: systemKey,
   );
 }
 
