@@ -5,7 +5,9 @@ import 'package:remixicon/remixicon.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
+import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_section_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
 import '../model/manual_article.dart';
@@ -110,36 +112,20 @@ class _ManualSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppListSection(
+      header: AppSectionHeader(
+        title: category,
+        trailing: Text(
+          '${articles.length} 篇',
+          style: context.appTextStyles.listSupporting,
+        ),
+      ),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-          child: Row(
-            children: [
-              Text(category, style: styles.groupTitle),
-              const SizedBox(width: AppSpacing.space8),
-              Text('${articles.length} 篇', style: styles.listSupporting),
-            ],
+        for (final article in articles)
+          ManualArticleRow(
+            article: article,
+            onTap: () => context.push('/profile/manual/${article.slug}'),
           ),
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var index = 0; index < articles.length; index++) ...[
-                ManualArticleRow(
-                  article: articles[index],
-                  onTap: () =>
-                      context.push('/profile/manual/${articles[index].slug}'),
-                ),
-                if (index < articles.length - 1)
-                  const Divider(height: 1, indent: 16, endIndent: 16),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }

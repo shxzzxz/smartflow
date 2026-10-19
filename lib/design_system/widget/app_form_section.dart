@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
 import '../token/spacing.dart';
+import 'app_section_header.dart';
 import 'app_surface.dart';
 
 class AppFormSection extends StatelessWidget {
@@ -33,32 +34,11 @@ class AppFormSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (title != null) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: context.appTextStyles.groupTitle),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: AppSpacing.space8),
-                  trailing!,
-                ],
-              ],
-            ),
+          AppSectionHeader(
+            title: title,
+            subtitle: description,
+            trailing: trailing,
           ),
-          if (description != null) ...[
-            const SizedBox(height: AppSpacing.space4),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-              ),
-              child: Text(
-                description,
-                style: context.appTextStyles.formSupporting,
-              ),
-            ),
-          ],
           const SizedBox(height: AppSpacing.space8),
         ] else if (description != null) ...[
           Padding(

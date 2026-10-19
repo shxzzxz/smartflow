@@ -7,9 +7,9 @@ import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
-import '../../../design_system/token/list.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
@@ -230,20 +230,7 @@ class _ProfileActionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppSurface(
-      child: Column(
-        children: [
-          for (var index = 0; index < actions.length; index++) ...[
-            actions[index],
-            if (index < actions.length - 1)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-                child: Divider(height: AppListTokens.dividerThickness),
-              ),
-          ],
-        ],
-      ),
-    );
+    return AppListSection(children: actions);
   }
 }
 

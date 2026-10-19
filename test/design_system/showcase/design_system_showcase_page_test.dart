@@ -8,8 +8,10 @@ import 'package:smartflow/design_system/widget/app_empty_state.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
 import 'package:smartflow/design_system/widget/app_list_divider.dart';
+import 'package:smartflow/design_system/widget/app_list_section.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
+import 'package:smartflow/design_system/widget/app_section_header.dart';
 import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
@@ -631,6 +633,19 @@ void main() {
     expect(find.text('表单分组'), findsOneWidget);
     expect(find.byType(AppFormSection), findsOneWidget);
     expect(find.text('页面头部'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows section headers with divided list rows', (tester) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppListSection');
+    await tester.pump();
+
+    expect(find.text('分组列表'), findsOneWidget);
+    expect(find.byType(AppListSection), findsOneWidget);
+    expect(find.byType(AppSectionHeader), findsOneWidget);
+    expect(find.byType(AppListDivider), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

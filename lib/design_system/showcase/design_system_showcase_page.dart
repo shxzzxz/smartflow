@@ -48,6 +48,7 @@ import '../widget/app_empty_state.dart';
 import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
 import '../widget/app_inline_action_button.dart';
+import '../widget/app_list_section.dart';
 import '../widget/app_month_picker.dart';
 import '../widget/app_page_header.dart';
 import '../widget/app_list_divider.dart';
@@ -56,6 +57,7 @@ import '../widget/app_plain_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
 import '../widget/app_segmented_control.dart';
 import '../widget/app_select.dart';
+import '../widget/app_section_header.dart';
 import '../widget/app_settings_row.dart';
 import '../widget/app_sliding_segmented_control.dart';
 import '../widget/app_status_badge.dart';
@@ -145,6 +147,7 @@ enum _ShowcaseExampleKind {
   emptyTransaction,
   pageHeader,
   formSection,
+  listSection,
 }
 
 const _showcaseExamples = <_ShowcaseExample>[
@@ -550,6 +553,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '表单分组',
     componentNames: 'AppFormSection',
     keywords: ['布局', '表单', '分组', '说明'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.listSection,
+    category: '布局与容器',
+    title: '分组列表',
+    componentNames: 'AppSectionHeader / AppListSection',
+    keywords: ['布局', '列表', '分组', '分割线', '标题'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.loanBasicInfo,
@@ -1012,6 +1022,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.emptyTransaction => _emptyTransactionPreview(),
       _ShowcaseExampleKind.pageHeader => _pageHeaderPreview(),
       _ShowcaseExampleKind.formSection => _formSectionPreview(),
+      _ShowcaseExampleKind.listSection => _listSectionPreview(),
     };
   }
 
@@ -2633,6 +2644,20 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       children: const [
         AppPlainValueRow(label: '字段名称', value: '字段内容'),
         AppPlainValueRow(label: '另一字段', value: '另一内容'),
+      ],
+    );
+  }
+
+  Widget _listSectionPreview() {
+    return AppListSection(
+      header: const AppSectionHeader(
+        title: '界面设置',
+        subtitle: '控制应用的基础显示行为',
+        trailing: Text('2 项'),
+      ),
+      children: const [
+        ListTile(title: Text('记账悬浮按钮'), trailing: Text('开启')),
+        ListTile(title: Text('导航栏文字'), trailing: Text('关闭')),
       ],
     );
   }

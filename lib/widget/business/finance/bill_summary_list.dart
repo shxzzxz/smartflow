@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:smartflow/design_system/widget/app_empty_state.dart';
-import 'package:smartflow/design_system/widget/app_list_divider.dart';
+import 'package:smartflow/design_system/widget/app_list_section.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 
 import 'finance_summary_row.dart';
@@ -29,18 +29,11 @@ class BillSummaryList extends StatelessWidget {
       );
     }
 
-    return AppSurface(
-      child: Column(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            FinanceSummaryRow(
-              presentation: items[i],
-              onTap: () => onTap(items[i]),
-            ),
-            if (i < items.length - 1) const AppListDivider(),
-          ],
-        ],
-      ),
+    return AppListSection(
+      children: [
+        for (final item in items)
+          FinanceSummaryRow(presentation: item, onTap: () => onTap(item)),
+      ],
     );
   }
 }
