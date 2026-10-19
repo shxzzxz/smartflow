@@ -15,6 +15,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/log_viewer_presentation.dart';
 import '../view_model/log_viewer_view_model.dart';
 import '../widget/log_entry_detail_sheet.dart';
+import '../widget/log_level_badge.dart';
 import '../widget/log_retention_settings_sheet.dart';
 
 class LogViewerPage extends ConsumerWidget {
