@@ -9,6 +9,7 @@ import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_analysis_sections.dart';
 import '../widget/statistics_breakdown_section.dart';
 import '../widget/statistics_comparison_sheet.dart';
+import '../widget/statistics_overview_section.dart';
 import '../widget/statistics_period_context_bar.dart';
 import '../widget/statistics_period_sheet.dart';
 

@@ -20,9 +20,9 @@ import 'package:smartflow/feature/statistics/view/statistics_state_view.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_state_view_model.dart';
 import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
 import 'package:smartflow/feature/statistics/widget/statistics_charts.dart';
+import 'package:smartflow/widget/business/analytics/analytics_amount_column.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
 import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
-import 'package:smartflow/widget/business/finance/money_text.dart';
 
 void main() {
   testWidgets('shows a clear statistics hierarchy on a compact phone', (
@@ -64,6 +64,11 @@ void main() {
       ),
       findsNothing,
     );
+    await tester.scrollUntilVisible(
+      find.text('收支统计'),
+      200,
+      scrollable: _verticalScrollable().last,
+    );
     expect(find.text('收支统计'), findsOneWidget);
     expect(find.text('按日汇总，点击柱形查看金额'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -91,6 +96,235 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('未设置'), findsOneWidget);
     expect(find.text('环比'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows overview changes and ratios in two lines', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester);
+
+    final card = find.byKey(const ValueKey('statistics-overview-card'));
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.byType(Divider)),
+      findsNothing,
+    );
+    final expenseLabel = find.descendant(of: card, matching: find.text('支出'));
+    final incomeLabel = find.descendant(of: card, matching: find.text('收入'));
+    final netLabel = find.descendant(of: card, matching: find.text('结余'));
+    expect(
+      tester.getRect(expenseLabel).left,
+      lessThan(tester.getRect(incomeLabel).left),
+    );
+    expect(
+      tester.getRect(incomeLabel).left,
+      lessThan(tester.getRect(netLabel).left),
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('对比期 · 环比')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('日均支出')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('最高单日支出')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('日均收入')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const ValueKey('statistics-overview-income-change-amount'),
+            ),
+          )
+          .data,
+      '+10',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const ValueKey('statistics-overview-income-change-ratio'),
+            ),
+          )
+          .data,
+      '+100%',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const ValueKey('statistics-overview-expense-change-amount'),
+            ),
+          )
+          .data,
+      '+3',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(
+              const ValueKey('statistics-overview-expense-change-ratio'),
+            ),
+          )
+          .data,
+      '+75%',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('statistics-overview-net-change-amount')),
+          )
+          .data,
+      '+7',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('statistics-overview-net-change-ratio')),
+          )
+          .data,
+      '+117%',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('keeps the merged overview usable at large text sizes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsPage(tester, textScaler: const TextScaler.linear(2));
+
+    expect(
+      find.byKey(const ValueKey('statistics-overview-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('statistics-overview-income-change-amount')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uses fixed breakdown columns and adaptive amount formatting', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final base = _loadedContent();
+    final content = StatisticsContentLoaded(
+      overview: base.overview,
+      comparison: base.comparison,
+      cashflow: base.cashflow,
+      categories: StatisticsCategoryAnalysisPresentation(
+        from: DateTime(2026, 1),
+        until: DateTime(2026, 1, 16),
+        comparisonLabel: '环比',
+        incomeCategories: base.categories.incomeCategories,
+        expenseCategories: [
+          StatisticsBreakdownItem(
+            id: 'large',
+            title: '大额支出',
+            accountType: AccountType.expense,
+            amount: const Money(minorUnits: 12345678900),
+            progress: .8,
+            comparisonAmount: const Money(minorUnits: 10000000000),
+          ),
+          StatisticsBreakdownItem(
+            id: 'small',
+            title: '一个很长很长的分类名称用于观察省略',
+            accountType: AccountType.expense,
+            amount: const Money(minorUnits: 700),
+            progress: .2,
+            comparisonAmount: const Money(minorUnits: 400),
+          ),
+          StatisticsBreakdownItem(
+            id: 'plain',
+            title: '新增分类',
+            accountType: AccountType.expense,
+            amount: const Money(minorUnits: 20000000),
+            progress: .1,
+            comparisonAmount: const Money(minorUnits: 0),
+          ),
+          StatisticsBreakdownItem(
+            id: 'huge',
+            title: '超大额分类',
+            accountType: AccountType.expense,
+            amount: const Money(minorUnits: 123456789000000),
+            progress: .1,
+            comparisonAmount: const Money(minorUnits: 0),
+          ),
+        ],
+      ),
+      tags: base.tags,
+      balance: base.balance,
+    );
+
+    await _pumpStatisticsPage(tester, content: content);
+    await tester.scrollUntilVisible(
+      find.text('分类构成'),
+      200,
+      scrollable: _verticalScrollable().last,
+    );
+
+    final largeValue = find.byKey(
+      const ValueKey('statistics-breakdown-value-large'),
+    );
+    final smallValue = find.byKey(
+      const ValueKey('statistics-breakdown-value-small'),
+    );
+    final largeComparison = find.byKey(
+      const ValueKey('statistics-breakdown-comparison-large'),
+    );
+    final smallComparison = find.byKey(
+      const ValueKey('statistics-breakdown-comparison-small'),
+    );
+    expect(
+      find.descendant(of: largeValue, matching: find.text('1.23亿')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: smallValue, matching: find.text('7')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getRect(largeValue).right,
+      moreOrLessEquals(tester.getRect(smallValue).right, epsilon: .01),
+    );
+    expect(
+      tester.getRect(largeComparison).left,
+      moreOrLessEquals(tester.getRect(smallComparison).left, epsilon: .01),
+    );
+    final plainComparison = find.byKey(
+      const ValueKey('statistics-breakdown-comparison-plain'),
+    );
+    expect(
+      find.descendant(of: plainComparison, matching: find.text('200000')),
+      findsOneWidget,
+    );
+    final hugeComparison = find.byKey(
+      const ValueKey('statistics-breakdown-comparison-huge'),
+    );
+    expect(
+      find.descendant(of: hugeComparison, matching: find.text('1.23万亿')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -173,12 +407,29 @@ void main() {
     );
     expect(
       tester
-          .widget<MoneyText>(
+          .widget<AnalyticsAmountColumn>(
             find.byKey(const ValueKey('statistics-installment-value-vehicle')),
           )
           .money
           .minorUnits,
       1800000,
+    );
+    final vehicleAmount = tester.getRect(
+      find.byKey(const ValueKey('statistics-installment-value-vehicle')),
+    );
+    final consumerAmount = tester.getRect(
+      find.byKey(const ValueKey('statistics-installment-value-consumer')),
+    );
+    final billAmount = tester.getRect(
+      find.byKey(const ValueKey('statistics-installment-value-bill')),
+    );
+    expect(
+      vehicleAmount.right,
+      moreOrLessEquals(consumerAmount.right, epsilon: .01),
+    );
+    expect(
+      consumerAmount.right,
+      moreOrLessEquals(billAmount.right, epsilon: .01),
     );
     final metricControl = find.byKey(
       const ValueKey('statistics-installment-composition-metric'),
@@ -211,7 +462,7 @@ void main() {
     );
     expect(
       tester
-          .widget<MoneyText>(
+          .widget<AnalyticsAmountColumn>(
             find.byKey(const ValueKey('statistics-installment-value-vehicle')),
           )
           .money
@@ -267,9 +518,79 @@ void main() {
     await tester.tap(find.text('期间分析'));
     await tester.pumpAndSettle();
     expect(find.byType(StatisticsPeriodView), findsOneWidget);
-    expect(find.text('收支统计'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('statistics-overview-card')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'uses fixed amount columns for current-state asset and liability rows',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final state = StatisticsStatePresentation(
+        asOf: DateTime(2026, 1, 15),
+        totalAssets: const Money(minorUnits: 12345778900),
+        totalLiabilities: const Money(minorUnits: 2000),
+        assetAccounts: const [
+          StatisticsBreakdownItem(
+            id: 'cash',
+            title: '现金',
+            accountType: AccountType.asset,
+            amount: Money(minorUnits: 100000),
+            progress: .2,
+          ),
+          StatisticsBreakdownItem(
+            id: 'fund',
+            title: '基金',
+            accountType: AccountType.asset,
+            amount: Money(minorUnits: 12345678900),
+            progress: 1,
+          ),
+        ],
+        liabilityAccounts: const [
+          StatisticsBreakdownItem(
+            id: 'card',
+            title: '信用卡',
+            accountType: AccountType.liability,
+            amount: Money(minorUnits: 2000),
+            progress: 1,
+          ),
+        ],
+      );
+
+      await _pumpStatisticsPage(tester, statePresentation: state);
+      await tester.tap(find.text('当前状态'));
+      await tester.pumpAndSettle();
+
+      final cashAmount = find.byKey(
+        const ValueKey('statistics-state-amount-asset-cash'),
+      );
+      final fundAmount = find.byKey(
+        const ValueKey('statistics-state-amount-asset-fund'),
+      );
+      final cardAmount = find.byKey(
+        const ValueKey('statistics-state-amount-liability-card'),
+      );
+      expect(
+        find.descendant(of: fundAmount, matching: find.text('1.23亿')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getRect(cashAmount).right,
+        moreOrLessEquals(tester.getRect(fundAmount).right, epsilon: .01),
+      );
+      expect(
+        tester.getRect(fundAmount).right,
+        moreOrLessEquals(tester.getRect(cardAmount).right, epsilon: .01),
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('shows the signed liability total from current-state balance', (
     tester,
@@ -450,12 +771,21 @@ void main() {
     expect(find.text('占比'), findsNothing);
     expect(find.text('100.0%'), findsNWidgets(2));
     final categoryTitle = tester.getRect(find.text('餐饮'));
-    final categoryComparison = tester.getRect(find.text('环比增加 3'));
+    final categoryComparison = find.byKey(
+      const ValueKey('statistics-breakdown-comparison-food'),
+    );
+    final comparisonPrefix = tester.getRect(
+      find.descendant(of: categoryComparison, matching: find.text('环比增加')),
+    );
+    final comparisonAmount = tester.getRect(
+      find.descendant(of: categoryComparison, matching: find.text('3')),
+    );
     expect(
-      (categoryTitle.center.dy - categoryComparison.center.dy).abs(),
+      (categoryTitle.center.dy - comparisonPrefix.center.dy).abs(),
       lessThan(1),
     );
-    expect(categoryComparison.left, greaterThan(categoryTitle.right));
+    expect(comparisonPrefix.left, greaterThan(categoryTitle.right));
+    expect(comparisonAmount.left, greaterThan(comparisonPrefix.right));
     expect(tester.takeException(), isNull);
   });
 
@@ -689,12 +1019,13 @@ void main() {
       scrollable: _verticalScrollable().last,
     );
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const ValueKey('statistics-category-kind')),
-        matching: find.text('收入'),
-      ),
+    final categoryKindIncome = find.descendant(
+      of: find.byKey(const ValueKey('statistics-category-kind')),
+      matching: find.text('收入'),
     );
+    await tester.ensureVisible(categoryKindIncome);
+    await tester.pumpAndSettle();
+    await tester.tap(categoryKindIncome);
     await tester.pump();
     expect(find.text('总收入'), findsOneWidget);
     expect(find.text('工资'), findsOneWidget);

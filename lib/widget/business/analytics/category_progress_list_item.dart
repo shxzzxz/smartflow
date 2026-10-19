@@ -14,6 +14,10 @@ class CategoryProgressListItem extends StatelessWidget {
     required this.onTap,
     this.leading,
     this.titleTrailing,
+    this.titleWidth,
+    this.titleTrailingGap = AppSpacing.space8,
+    this.trailingGap = AppSpacing.space8,
+    this.trailingWidth,
     this.footer,
     super.key,
   });
@@ -25,6 +29,10 @@ class CategoryProgressListItem extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? leading;
   final Widget? titleTrailing;
+  final double? titleWidth;
+  final double titleTrailingGap;
+  final double trailingGap;
+  final double? trailingWidth;
   final Widget? footer;
 
   @override
@@ -57,17 +65,37 @@ class CategoryProgressListItem extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: context.appTextStyles.listTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      if (titleWidth case final width?
+                          when titleTrailing != null)
+                        SizedBox(
+                          width: width,
+                          child: Text(
+                            title,
+                            style: context.appTextStyles.listTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: context.appTextStyles.listTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
                       if (titleTrailing != null) ...[
-                        const SizedBox(width: AppSpacing.space8),
-                        Flexible(child: titleTrailing!),
+                        SizedBox(width: titleTrailingGap),
+                        if (titleWidth != null)
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: titleTrailing!,
+                            ),
+                          )
+                        else
+                          Flexible(child: titleTrailing!),
                       ],
                     ],
                   ),
@@ -101,8 +129,14 @@ class CategoryProgressListItem extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.space8),
-            trailing,
+            SizedBox(width: trailingGap),
+            if (trailingWidth case final width?)
+              SizedBox(
+                width: width,
+                child: Align(alignment: Alignment.centerRight, child: trailing),
+              )
+            else
+              trailing,
             const SizedBox(width: AppSpacing.space4),
             Icon(
               RemixIcons.arrow_right_s_line,

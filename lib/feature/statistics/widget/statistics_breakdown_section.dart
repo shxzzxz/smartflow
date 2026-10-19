@@ -4,16 +4,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
-import '../../../feature/shared/presentation/transaction_list_presentation.dart';
 import '../../../widget/business/analytics/analysis_chart_card.dart';
 import '../../../widget/business/analytics/analysis_section_card.dart';
+import '../../../widget/business/analytics/analytics_amount_column.dart';
 import '../../../widget/business/analytics/category_progress_list_item.dart';
 import '../../../widget/business/analytics/chart/app_chart_empty_state.dart';
+import '../../../widget/business/finance/adaptive_money_text.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../presentation/statistics_period_presentation.dart';
 import '../presentation/statistics_presentation.dart';
@@ -227,10 +230,12 @@ class _TagList extends StatelessWidget {
               itemCount: items.length,
             ),
             comparisonLabel: comparisonLabel,
-            trailing: _CategoryRowValue(
-              item: items[i],
-              items: items,
+            trailing: AnalyticsAmountColumn(
+              key: ValueKey('statistics-breakdown-value-${items[i].id}'),
+              money: items[i].amount,
               semantic: semantic,
+              maxWidth: AppChartGeometry.categoryAmountColumnWidth,
+              secondaryText: statisticsCategoryPercentageText(items[i], items),
             ),
             onTap: () => _openTagTransactions(context, items[i], from, until),
           ),
@@ -269,10 +274,12 @@ class _CategoryList extends StatelessWidget {
               itemCount: items.length,
             ),
             comparisonLabel: comparisonLabel,
-            trailing: _CategoryRowValue(
-              item: items[i],
-              items: items,
+            trailing: AnalyticsAmountColumn(
+              key: ValueKey('statistics-breakdown-value-${items[i].id}'),
+              money: items[i].amount,
               semantic: semantic,
+              maxWidth: AppChartGeometry.categoryAmountColumnWidth,
+              secondaryText: statisticsCategoryPercentageText(items[i], items),
             ),
             onTap:
                 level == StatisticsCategoryLevel.primary &&
@@ -318,13 +325,18 @@ class _CategoryRow extends StatelessWidget {
       titleTrailing: comparisonLabel == null || baseline == null
           ? null
           : _CategoryComparisonText(
+              key: ValueKey('statistics-breakdown-comparison-${item.id}'),
               item: item,
               baseline: baseline,
               comparisonLabel: comparisonLabel!,
             ),
+      titleWidth: AppChartGeometry.categoryNameColumnWidth,
+      titleTrailingGap: AppSpacing.space4,
       progress: item.progress,
       color: color,
       trailing: trailing,
+      trailingGap: AppSpacing.space4,
+      trailingWidth: AppChartGeometry.categoryAmountColumnWidth,
       onTap: onTap,
     );
   }
@@ -335,6 +347,7 @@ class _CategoryComparisonText extends StatelessWidget {
     required this.item,
     required this.baseline,
     required this.comparisonLabel,
+    super.key,
   });
 
   final StatisticsBreakdownItem item;
@@ -344,55 +357,46 @@ class _CategoryComparisonText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final change = PeriodChange(current: item.amount, previous: baseline);
-    final amount = formatCompactMoney(change.delta.abs());
+    final style = context.appTextStyles.listSupporting;
     final prefix = statisticsComparisonChangePrefix(comparisonLabel);
-    final compact = change.isFlat
-        ? '$prefix持平'
-        : baseline.minorUnits == 0 && item.amount.minorUnits > 0
-        ? '新增 ${item.amount.format()}'
+    if (change.isFlat) {
+      final text = '$prefix持平';
+      return Tooltip(
+        message: text,
+        child: Text(text, style: style, maxLines: 1),
+      );
+    }
+
+    final isNew = baseline.minorUnits == 0 && item.amount.minorUnits > 0;
+    final label = isNew
+        ? '新增'
         : change.delta.minorUnits > 0
-        ? '$prefix增加 $amount'
-        : '$prefix减少 $amount';
+        ? '$prefix增加'
+        : '$prefix减少';
+    final amount = isNew ? item.amount : change.delta.abs();
+    final preciseText = formatMoney(amount, style: MoneyFormatStyle.plain);
+    final compactText = formatMoney(amount, style: MoneyFormatStyle.compact);
     return Tooltip(
-      message: compact,
-      child: Text(
-        compact,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.end,
-        style: context.appTextStyles.listSupporting,
+      message: '$label $preciseText',
+      child: Row(
+        children: [
+          Text(label, style: style, maxLines: 1),
+          const SizedBox(width: AppSpacing.space4),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => AdaptiveMoneyText(
+                preciseText: preciseText,
+                compactText: compactText,
+                style: style,
+                fallbackStyle: style,
+                maxWidth: constraints.maxWidth,
+                textAlign: TextAlign.start,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _CategoryRowValue extends StatelessWidget {
-  const _CategoryRowValue({
-    required this.item,
-    required this.items,
-    required this.semantic,
-  });
-
-  final StatisticsBreakdownItem item;
-  final List<StatisticsBreakdownItem> items;
-  final MoneySemantic semantic;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        MoneyText(
-          money: item.amount,
-          semantic: semantic,
-          style: context.appTextStyles.amountList,
-        ),
-        const SizedBox(height: AppSpacing.space2),
-        Text(
-          statisticsCategoryPercentageText(item, items),
-          style: context.appTextStyles.listSupporting,
-        ),
-      ],
     );
   }
 }
@@ -452,10 +456,15 @@ class _CategoryDetailPage extends StatelessWidget {
                               itemCount: children.length,
                             ),
                             comparisonLabel: comparisonLabel,
-                            trailing: _CategoryRowValue(
-                              item: children[i],
-                              items: children,
+                            trailing: AnalyticsAmountColumn(
+                              money: children[i].amount,
                               semantic: semantic,
+                              maxWidth:
+                                  AppChartGeometry.categoryAmountColumnWidth,
+                              secondaryText: statisticsCategoryPercentageText(
+                                children[i],
+                                children,
+                              ),
                             ),
                             onTap: () => _openTransactions(
                               context,

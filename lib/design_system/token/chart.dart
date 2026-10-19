@@ -23,6 +23,8 @@ abstract final class AppChartGeometry {
   static const double pieSelectedSectionBump = 4;
   static const double categoryMarkerRadius = 6;
   static const double categoryProgressHeight = 4;
+  static const double categoryNameColumnWidth = 72;
+  static const double categoryAmountColumnWidth = 64;
   static const double leftAxisReservedWidth = 60;
   static const double leftAxisMinReservedWidth = 20;
   static const double leftAxisLabelGap = 6;

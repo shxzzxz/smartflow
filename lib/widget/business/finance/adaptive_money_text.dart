@@ -14,6 +14,7 @@ class AdaptiveMoneyText extends StatelessWidget {
     super.key,
     this.fallbackStyle,
     this.textAlign = TextAlign.end,
+    this.overflow = TextOverflow.clip,
   });
 
   final String preciseText;
@@ -22,6 +23,7 @@ class AdaptiveMoneyText extends StatelessWidget {
   final TextStyle? fallbackStyle;
   final double maxWidth;
   final TextAlign textAlign;
+  final TextOverflow overflow;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +45,7 @@ class AdaptiveMoneyText extends StatelessWidget {
       style: selected.style,
       maxLines: 1,
       textAlign: textAlign,
-      overflow: TextOverflow.clip,
+      overflow: overflow,
     );
   }
 

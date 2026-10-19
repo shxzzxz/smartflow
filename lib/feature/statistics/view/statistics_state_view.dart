@@ -13,6 +13,7 @@ import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../widget/business/analytics/analysis_section_card.dart';
 import '../../../widget/business/analytics/analysis_chart_card.dart';
+import '../../../widget/business/analytics/analytics_amount_column.dart';
 import '../../../widget/business/analytics/category_progress_list_item.dart';
 import '../../../widget/business/analytics/chart/app_chart_expand_button.dart';
 import '../../../widget/business/finance/money_text.dart';
@@ -146,11 +147,17 @@ class _StateBreakdownCard extends StatelessWidget {
                       index: index,
                       itemCount: items.length,
                     ),
-                    trailing: MoneyText(
+                    trailing: AnalyticsAmountColumn(
+                      key: ValueKey(
+                        'statistics-state-amount-${semantic.name}-'
+                        '${items[index].id}',
+                      ),
                       money: items[index].amount,
                       semantic: semantic,
-                      style: context.appTextStyles.amountList,
+                      maxWidth: AppChartGeometry.categoryAmountColumnWidth,
                     ),
+                    trailingGap: AppSpacing.space4,
+                    trailingWidth: AppChartGeometry.categoryAmountColumnWidth,
                     onTap: () => context.push('/account/${items[index].id}'),
                   ),
               ],
@@ -410,27 +417,19 @@ class _InstallmentCompositionContent extends StatelessWidget {
               index: index,
               itemCount: items.length,
             ),
-            trailing: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppSpacing.space48 + AppSpacing.space48,
+            trailing: AnalyticsAmountColumn(
+              key: ValueKey(
+                'statistics-installment-value-'
+                '${visibleItems[index].contractId}',
               ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: MoneyText(
-                  key: ValueKey(
-                    'statistics-installment-value-'
-                    '${visibleItems[index].contractId}',
-                  ),
-                  money:
-                      metric == StatisticsInstallmentCompositionMetric.principal
-                      ? visibleItems[index].remainingPrincipal
-                      : visibleItems[index].remainingTotal,
-                  semantic: MoneySemantic.liability,
-                  style: context.appTextStyles.amountList,
-                ),
-              ),
+              money: metric == StatisticsInstallmentCompositionMetric.principal
+                  ? visibleItems[index].remainingPrincipal
+                  : visibleItems[index].remainingTotal,
+              semantic: MoneySemantic.liability,
+              maxWidth: AppChartGeometry.categoryAmountColumnWidth,
             ),
+            trailingGap: AppSpacing.space4,
+            trailingWidth: AppChartGeometry.categoryAmountColumnWidth,
             footer: _InstallmentCompositionValues(item: visibleItems[index]),
             onTap: () =>
                 context.push('/installments/${visibleItems[index].contractId}'),
