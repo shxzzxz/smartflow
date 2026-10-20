@@ -179,6 +179,15 @@ class _AppBottomNavigationBar extends StatelessWidget {
     final borderRadius = BorderRadius.circular(
       AppComponentTokens.frostedNavigationBarRadius,
     );
+    final backdropFilter = ImageFilter.compose(
+      outer: ColorFilter.saturation(
+        AppComponentTokens.frostedNavigationBarSaturation,
+      ),
+      inner: ImageFilter.blur(
+        sigmaX: AppComponentTokens.frostedNavigationBarBlurSigma,
+        sigmaY: AppComponentTokens.frostedNavigationBarBlurSigma,
+      ),
+    );
     return SafeArea(
       top: false,
       child: Padding(
@@ -205,10 +214,7 @@ class _AppBottomNavigationBar extends StatelessWidget {
           child: ClipRRect(
             borderRadius: borderRadius,
             child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: AppComponentTokens.frostedNavigationBarBlurSigma,
-                sigmaY: AppComponentTokens.frostedNavigationBarBlurSigma,
-              ),
+              filter: backdropFilter,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colors.surfaceContainerLowest.withValues(

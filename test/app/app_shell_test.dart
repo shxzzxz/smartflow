@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,7 +183,21 @@ void main() {
       find.byKey(const ValueKey('classic-bottom-navigation')),
       findsNothing,
     );
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    final backdropFilter = tester
+        .widget<BackdropFilter>(find.byType(BackdropFilter))
+        .filter;
+    expect(
+      backdropFilter,
+      ImageFilter.compose(
+        outer: ColorFilter.saturation(
+          AppComponentTokens.frostedNavigationBarSaturation,
+        ),
+        inner: ImageFilter.blur(
+          sigmaX: AppComponentTokens.frostedNavigationBarBlurSigma,
+          sigmaY: AppComponentTokens.frostedNavigationBarBlurSigma,
+        ),
+      ),
+    );
     expect(find.text('首页'), findsOneWidget);
     expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
     final frostedClip = tester.widget<ClipRRect>(

@@ -5,9 +5,10 @@ abstract final class AppComponentTokens {
   static const double frostedNavigationBarClearance =
       navigationBarHeight + frostedNavigationBarMargin;
   static const double frostedNavigationBarRadius = 28;
-  static const double frostedNavigationBarBlurSigma = 20;
-  static const double frostedNavigationBarBackgroundOpacity = 0.60;
-  static const double frostedNavigationBarShadowOpacity = 0.12;
+  static const double frostedNavigationBarBlurSigma = 8;
+  static const double frostedNavigationBarSaturation = 1.42;
+  static const double frostedNavigationBarBackgroundOpacity = 0.28;
+  static const double frostedNavigationBarShadowOpacity = 0.10;
 
   /// 底部栏图标字形，导航栏与占用同一槽位的批量操作栏共用。
   static const double bottomBarIconSize = 22;
