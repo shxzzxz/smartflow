@@ -1,6 +1,13 @@
 abstract final class AppComponentTokens {
   static const double controlMinHeight = 48;
   static const double navigationBarHeight = 64;
+  static const double frostedNavigationBarMargin = 8;
+  static const double frostedNavigationBarClearance =
+      navigationBarHeight + frostedNavigationBarMargin;
+  static const double frostedNavigationBarRadius = 28;
+  static const double frostedNavigationBarBlurSigma = 20;
+  static const double frostedNavigationBarBackgroundOpacity = 0.60;
+  static const double frostedNavigationBarShadowOpacity = 0.12;
 
   /// 底部栏图标字形，导航栏与占用同一槽位的批量操作栏共用。
   static const double bottomBarIconSize = 22;

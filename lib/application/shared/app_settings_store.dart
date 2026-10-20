@@ -21,6 +21,24 @@ enum PullToCreateSensitivity {
   }
 }
 
+/// 底部导航栏的呈现样式。
+enum BottomNavigationStyle {
+  classic(storageValue: 'classic'),
+  frostedGlass(storageValue: 'frosted_glass');
+
+  const BottomNavigationStyle({required this.storageValue});
+
+  final String storageValue;
+
+  static BottomNavigationStyle? fromStorageValue(String? value) {
+    return switch (value) {
+      'classic' => BottomNavigationStyle.classic,
+      'frosted_glass' => BottomNavigationStyle.frostedGlass,
+      _ => null,
+    };
+  }
+}
+
 /// 日历热力维度。净收入按收入减支出取值，可正可负。
 enum CalendarHeatMetric {
   expense(storageValue: 'expense'),
@@ -65,6 +83,7 @@ class AppSettings {
   const AppSettings({
     this.showAddTransactionFab = true,
     this.showBottomNavLabels = true,
+    this.bottomNavigationStyle = BottomNavigationStyle.classic,
     this.pullToCreateSensitivity = PullToCreateSensitivity.standard,
     this.copyPreviousMonthBudgetsOnOpen = false,
     this.calendarHeatmapEnabled = false,
@@ -76,6 +95,7 @@ class AppSettings {
 
   final bool showAddTransactionFab;
   final bool showBottomNavLabels;
+  final BottomNavigationStyle bottomNavigationStyle;
   final PullToCreateSensitivity pullToCreateSensitivity;
   final bool copyPreviousMonthBudgetsOnOpen;
   final bool calendarHeatmapEnabled;
@@ -88,6 +108,7 @@ class AppSettings {
   AppSettings copyWith({
     bool? showAddTransactionFab,
     bool? showBottomNavLabels,
+    BottomNavigationStyle? bottomNavigationStyle,
     PullToCreateSensitivity? pullToCreateSensitivity,
     bool? copyPreviousMonthBudgetsOnOpen,
     bool? calendarHeatmapEnabled,
@@ -100,6 +121,8 @@ class AppSettings {
       showAddTransactionFab:
           showAddTransactionFab ?? this.showAddTransactionFab,
       showBottomNavLabels: showBottomNavLabels ?? this.showBottomNavLabels,
+      bottomNavigationStyle:
+          bottomNavigationStyle ?? this.bottomNavigationStyle,
       pullToCreateSensitivity:
           pullToCreateSensitivity ?? this.pullToCreateSensitivity,
       copyPreviousMonthBudgetsOnOpen:

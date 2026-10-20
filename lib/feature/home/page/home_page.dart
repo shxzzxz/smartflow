@@ -10,6 +10,7 @@ import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/motion.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
@@ -55,6 +56,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         visibleTransactionIds.isNotEmpty &&
         selectedVisibleCount == visibleCount;
     final hasMore = content is HomeContentLoaded && content.hasMore;
+    final navigationLayout = AppBottomNavigationLayoutScope.of(context);
 
     return PopScope(
       canPop: !_batchMode,
@@ -137,6 +139,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           groups: groups,
                           reserveFabSpace:
                               settings.showAddTransactionFab && !_batchMode,
+                          contentInset: navigationLayout.contentInset,
                           hasMore: hasMore,
                           isLoadingMore: isLoadingMore,
                           loadMoreErrorMessage: loadMoreErrorMessage,
@@ -180,13 +183,18 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
         floatingActionButton: !_batchMode && settings.showAddTransactionFab
-            ? FloatingActionButton(
-                onPressed: _openNewTransaction,
-                tooltip: '新建记账',
-                shape: const CircleBorder(),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                child: const Icon(RemixIcons.add_line),
+            ? Padding(
+                padding: EdgeInsets.only(
+                  bottom: navigationLayout.floatingActionInset,
+                ),
+                child: FloatingActionButton(
+                  onPressed: _openNewTransaction,
+                  tooltip: '新建记账',
+                  shape: const CircleBorder(),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  child: const Icon(RemixIcons.add_line),
+                ),
               )
             : null,
         bottomNavigationBar: _batchMode
@@ -576,6 +584,7 @@ class _HomeContent extends StatelessWidget {
     required this.summary,
     required this.groups,
     required this.reserveFabSpace,
+    required this.contentInset,
     required this.hasMore,
     required this.isLoadingMore,
     required this.loadMoreErrorMessage,
@@ -596,6 +605,7 @@ class _HomeContent extends StatelessWidget {
   final CashflowSummaryPresentation summary;
   final List<TransactionDayGroup> groups;
   final bool reserveFabSpace;
+  final double contentInset;
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
@@ -636,7 +646,8 @@ class _HomeContent extends StatelessWidget {
         0,
       ),
       // 批量操作栏由 Scaffold 的底部槽位占位，不需要额外让位。
-      bottomPadding: AppSpacing.space24 + (reserveFabSpace ? 56 : 0),
+      bottomPadding:
+          AppSpacing.space24 + (reserveFabSpace ? 56 : 0) + contentInset,
       leading: [
         CashflowSummaryCard(
           summary: summary,

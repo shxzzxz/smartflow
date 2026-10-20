@@ -7,6 +7,8 @@ import 'package:smartflow/app/app_shell.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/token/component.dart';
+import 'package:smartflow/design_system/widget/app_bottom_navigation_layout_scope.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 
 class _FakeAppSettingsStore implements AppSettingsStore {
@@ -76,6 +78,10 @@ void main() {
 
     expect(find.text('导入页'), findsOneWidget);
     expect(find.text('首页'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('classic-bottom-navigation')),
+      findsNothing,
+    );
 
     router.go('/import/process/yimu');
     await tester.pumpAndSettle();
@@ -91,6 +97,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('普通页面'), findsOneWidget);
     expect(find.text('首页'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('classic-bottom-navigation')),
+      findsOneWidget,
+    );
+    final classicScaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    final classicLayout = tester
+        .widget<AppBottomNavigationLayoutScope>(
+          find.byType(AppBottomNavigationLayoutScope),
+        )
+        .layout;
+    expect(classicScaffold.extendBody, isTrue);
+    expect(classicLayout.contentInset, AppComponentTokens.navigationBarHeight);
+    expect(
+      classicLayout.floatingActionInset,
+      AppComponentTokens.navigationBarHeight,
+    );
   });
 
   testWidgets('hides navigation labels when disabled in settings', (
@@ -135,5 +157,55 @@ void main() {
 
     expect(find.text('普通页面'), findsOneWidget);
     expect(find.text('首页'), findsNothing);
+  });
+
+  testWidgets('renders a floating frosted glass navigation bar', (
+    tester,
+  ) async {
+    final router = _buildRouter('/home');
+    addTearDown(router.dispose);
+
+    await _pumpShell(
+      tester,
+      router: router,
+      settings: const AppSettings(
+        bottomNavigationStyle: BottomNavigationStyle.frostedGlass,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('frosted-glass-bottom-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('classic-bottom-navigation')),
+      findsNothing,
+    );
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.text('首页'), findsOneWidget);
+    expect(tester.widget<Scaffold>(find.byType(Scaffold)).extendBody, isTrue);
+    final frostedClip = tester.widget<ClipRRect>(
+      find.descendant(
+        of: find.byKey(const ValueKey('frosted-glass-bottom-navigation')),
+        matching: find.byType(ClipRRect),
+      ),
+    );
+    expect(
+      frostedClip.borderRadius,
+      BorderRadius.circular(AppComponentTokens.frostedNavigationBarRadius),
+    );
+    final frostedLayout = tester
+        .widget<AppBottomNavigationLayoutScope>(
+          find.byType(AppBottomNavigationLayoutScope),
+        )
+        .layout;
+    expect(
+      frostedLayout.contentInset,
+      AppComponentTokens.frostedNavigationBarClearance,
+    );
+    expect(
+      frostedLayout.floatingActionInset,
+      AppComponentTokens.frostedNavigationBarClearance,
+    );
   });
 }

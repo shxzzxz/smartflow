@@ -63,7 +63,8 @@ void main() {
     expect(find.text('在底部导航图标下方显示文字标签'), findsNothing);
     expect(find.text('下拉灵敏度'), findsOneWidget);
     expect(find.text('下拉新增交易灵敏度'), findsNothing);
-    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsOneWidget);
+    expect(find.text('经典样式'), findsOneWidget);
+    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(2));
     expect(
       tester.getCenter(find.text('下拉灵敏度')).dx,
       lessThan(tester.getCenter(find.text('标准')).dx),
@@ -79,6 +80,16 @@ void main() {
       PullToCreateSensitivity.sensitive,
     );
 
+    await tester.tap(find.text('导航栏样式'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('毛玻璃样式'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await store.read()).bottomNavigationStyle,
+      BottomNavigationStyle.frostedGlass,
+    );
+
     final beforeToggle = await store.read();
     await tester.tap(find.text('记账悬浮按钮'));
     await tester.pumpAndSettle();
@@ -91,6 +102,10 @@ void main() {
       !beforeToggle.showAddTransactionFab,
     );
     expect(afterToggle.showBottomNavLabels, !beforeToggle.showBottomNavLabels);
+    expect(
+      afterToggle.bottomNavigationStyle,
+      BottomNavigationStyle.frostedGlass,
+    );
     expect(
       afterToggle.pullToCreateSensitivity,
       PullToCreateSensitivity.sensitive,

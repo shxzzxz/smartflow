@@ -9,6 +9,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -59,6 +60,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final versionInfo = _versionInfo;
+    final contentInset = AppBottomNavigationLayoutScope.of(
+      context,
+    ).contentInset;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -68,11 +72,11 @@ class _ProfilePageState extends State<ProfilePage> {
             const AppPageHeader(title: '我的'),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   AppSpacing.space16,
                   AppSpacing.space8,
                   AppSpacing.space16,
-                  AppSpacing.space24,
+                  AppSpacing.space24 + contentInset,
                 ),
                 children: [
                   AppSurface(

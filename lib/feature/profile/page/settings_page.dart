@@ -9,6 +9,7 @@ import '../../../design_system/widget/app_section_header.dart';
 import '../../../design_system/widget/app_settings_row.dart';
 import '../../../design_system/widget/app_select.dart';
 import '../../../widget/business/icon/business_icon_scope.dart';
+import '../../shared/presentation/bottom_navigation_style_options.dart';
 import '../../shared/presentation/pull_to_create_sensitivity_options.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -52,6 +53,12 @@ class SettingsPage extends ConsumerWidget {
                         value: settings.pullToCreateSensitivity,
                         options: pullToCreateSensitivityOptions,
                         onChanged: notifier.setPullToCreateSensitivity,
+                      ),
+                      AppSettingsSelectRow<BottomNavigationStyle>(
+                        label: '导航栏样式',
+                        value: settings.bottomNavigationStyle,
+                        options: bottomNavigationStyleOptions,
+                        onChanged: notifier.setBottomNavigationStyle,
                       ),
                       AppSettingsSwitchRow(
                         label: '导航栏文字',

@@ -8,6 +8,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
 
   static const _showAddTransactionFabKey = 'settings.show_add_transaction_fab';
   static const _showBottomNavLabelsKey = 'settings.show_bottom_nav_labels';
+  static const _bottomNavigationStyleKey = 'settings.bottom_navigation_style';
   static const _pullToCreateSensitivityKey =
       'settings.pull_to_create_sensitivity';
   static const _copyPreviousMonthBudgetsKey =
@@ -27,6 +28,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
               (table) => table.key.isIn(const [
                 _showAddTransactionFabKey,
                 _showBottomNavLabelsKey,
+                _bottomNavigationStyleKey,
                 _pullToCreateSensitivityKey,
                 _copyPreviousMonthBudgetsKey,
                 _calendarHeatmapEnabledKey,
@@ -50,6 +52,11 @@ class DriftAppSettingsStore implements AppSettingsStore {
       showBottomNavLabels:
           _parseBool(values[_showBottomNavLabelsKey]) ??
           defaults.showBottomNavLabels,
+      bottomNavigationStyle:
+          BottomNavigationStyle.fromStorageValue(
+            values[_bottomNavigationStyleKey],
+          ) ??
+          defaults.bottomNavigationStyle,
       pullToCreateSensitivity:
           PullToCreateSensitivity.fromStorageValue(
             values[_pullToCreateSensitivityKey],
@@ -80,6 +87,10 @@ class DriftAppSettingsStore implements AppSettingsStore {
         _entry(_categoryIconStyleKey, settings.categoryIconStyle),
         _entry(_showAddTransactionFabKey, settings.showAddTransactionFab),
         _entry(_showBottomNavLabelsKey, settings.showBottomNavLabels),
+        _entry(
+          _bottomNavigationStyleKey,
+          settings.bottomNavigationStyle.storageValue,
+        ),
         _entry(
           _pullToCreateSensitivityKey,
           settings.pullToCreateSensitivity.storageValue,

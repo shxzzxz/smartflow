@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_analysis_sections.dart';
 import '../widget/statistics_breakdown_section.dart';
@@ -141,12 +142,15 @@ class _PeriodContentView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final contentInset = AppBottomNavigationLayoutScope.of(
+      context,
+    ).contentInset;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.space16,
         AppSpacing.space8,
         AppSpacing.space16,
-        AppSpacing.space24,
+        AppSpacing.space24 + contentInset,
       ),
       children: [
         StatisticsOverviewSection(

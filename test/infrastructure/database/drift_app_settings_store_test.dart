@@ -63,6 +63,31 @@ void main() {
       );
     });
 
+    test(
+      'defaults to classic navigation and round-trips frosted glass',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final store = DriftAppSettingsStore(database);
+
+        expect(
+          (await store.read()).bottomNavigationStyle,
+          BottomNavigationStyle.classic,
+        );
+
+        await store.save(
+          const AppSettings(
+            bottomNavigationStyle: BottomNavigationStyle.frostedGlass,
+          ),
+        );
+
+        expect(
+          (await store.read()).bottomNavigationStyle,
+          BottomNavigationStyle.frostedGlass,
+        );
+      },
+    );
+
     test('save then read round-trips copy previous month budgets', () async {
       final database = createTestDatabase();
       addTearDown(database.close);

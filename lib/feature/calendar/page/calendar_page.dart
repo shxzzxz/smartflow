@@ -9,6 +9,7 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_month_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
@@ -37,12 +38,12 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       calendarContentProvider(
         visibleMonth: state.visibleMonth,
         selectedDate: state.selectedDate,
-        heatMetric:
-            settings.calendarHeatmapEnabled
-                ? settings.calendarHeatMetric
-                : null,
+        heatMetric: settings.calendarHeatmapEnabled
+            ? settings.calendarHeatMetric
+            : null,
       ),
     );
+    final navigationLayout = AppBottomNavigationLayoutScope.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -58,11 +59,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               onNextMonth: () => _shiftMonth(1),
               onTodayPressed: _goToday,
               onViewMonthlyBills: () => _openMonthlyBills(state.visibleMonth),
-              onToggleLunar:
-                  () =>
-                      ref
-                          .read(calendarViewModelProvider.notifier)
-                          .toggleLunar(),
+              onToggleLunar: () =>
+                  ref.read(calendarViewModelProvider.notifier).toggleLunar(),
             ),
             Expanded(
               child: switch (content) {
@@ -71,19 +69,18 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     month: month,
                     day: day,
                     showLunar: state.showLunar,
+                    contentInset: navigationLayout.contentInset,
                     onDateSelected: _selectDate,
                     onMonthSwipe: _shiftMonth,
-                    onDueBillItemsPressed:
-                        () => _openDueBillItems(state.selectedDate),
-                    onLoadMore:
-                        () =>
-                            ref
-                                .read(
-                                  calendarTransactionFeedViewModelProvider(
-                                    state.selectedDate,
-                                  ).notifier,
-                                )
-                                .loadMore(),
+                    onDueBillItemsPressed: () =>
+                        _openDueBillItems(state.selectedDate),
+                    onLoadMore: () => ref
+                        .read(
+                          calendarTransactionFeedViewModelProvider(
+                            state.selectedDate,
+                          ).notifier,
+                        )
+                        .loadMore(),
                   ),
                 CalendarContentError(:final message) => Center(
                   child: Text(message),
@@ -96,17 +93,21 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
           ],
         ),
       ),
-      floatingActionButton:
-          settings.showAddTransactionFab
-              ? FloatingActionButton(
+      floatingActionButton: settings.showAddTransactionFab
+          ? Padding(
+              padding: EdgeInsets.only(
+                bottom: navigationLayout.floatingActionInset,
+              ),
+              child: FloatingActionButton(
                 onPressed: () => context.push('/transaction/new'),
                 tooltip: '新建记账',
                 shape: const CircleBorder(),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 child: const Icon(RemixIcons.add_line),
-              )
-              : null,
+              ),
+            )
+          : null,
     );
   }
 
@@ -234,6 +235,7 @@ class _CalendarContent extends StatelessWidget {
     required this.month,
     required this.day,
     required this.showLunar,
+    required this.contentInset,
     required this.onDateSelected,
     required this.onMonthSwipe,
     required this.onDueBillItemsPressed,
@@ -243,6 +245,7 @@ class _CalendarContent extends StatelessWidget {
   final CalendarMonthPresentation month;
   final CalendarDaySectionPresentation day;
   final bool showLunar;
+  final double contentInset;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<int> onMonthSwipe;
   final VoidCallback onDueBillItemsPressed;
@@ -252,7 +255,7 @@ class _CalendarContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return TransactionFeedScrollView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-      bottomPadding: AppSpacing.space24,
+      bottomPadding: AppSpacing.space24 + contentInset,
       leading: [
         AppSurface(
           child: Padding(
@@ -458,12 +461,11 @@ class _CalendarGrid extends StatelessWidget {
           crossAxisCount: DateTime.daysPerWeek,
           mainAxisExtent: 56,
         ),
-        itemBuilder:
-            (context, index) => _CalendarDayCell(
-              day: days[index],
-              showLunar: showLunar,
-              onTap: () => onDateSelected(days[index].date),
-            ),
+        itemBuilder: (context, index) => _CalendarDayCell(
+          day: days[index],
+          showLunar: showLunar,
+          onTap: () => onDateSelected(days[index].date),
+        ),
       ),
     );
   }
@@ -495,25 +497,22 @@ class _CalendarDayCell extends StatelessWidget {
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final foregroundOpacity = day.isInVisibleMonth ? 1.0 : 0.38;
     final heat = day.heat;
-    final heatColor =
-        heat == null
-            ? null
-            : financeToneColor(
-              colors,
-              financeColors,
-              heat.tone,
-            ).withValues(alpha: AppHeatScale.alphaForIntensity(heat.intensity));
+    final heatColor = heat == null
+        ? null
+        : financeToneColor(
+            colors,
+            financeColors,
+            heat.tone,
+          ).withValues(alpha: AppHeatScale.alphaForIntensity(heat.intensity));
     final selectedColor = colors.primaryContainer.withValues(alpha: 0.42);
     // 热力底色占着格子背景时，选中态让出填充改用描边，热力强度才不会被选中盖掉。
-    final border =
-        day.isSelected && heatColor != null
-            ? Border.all(color: colors.primary, width: 2)
-            : Border.all(
-              color:
-                  day.isToday && !day.isSelected
-                      ? colors.primary.withValues(alpha: 0.35)
-                      : Colors.transparent,
-            );
+    final border = day.isSelected && heatColor != null
+        ? Border.all(color: colors.primary, width: 2)
+        : Border.all(
+            color: day.isToday && !day.isSelected
+                ? colors.primary.withValues(alpha: 0.35)
+                : Colors.transparent,
+          );
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.space2),
@@ -547,26 +546,24 @@ class _CalendarDayCell extends StatelessWidget {
                         Text(
                           '${day.date.day}',
                           style: textStyles.calendarDayNumber.copyWith(
-                            color:
-                                day.isSelected
-                                    ? colors.primary
-                                    : colors.onSurface,
+                            color: day.isSelected
+                                ? colors.primary
+                                : colors.onSurface,
                           ),
                           maxLines: 1,
                         ),
                         const SizedBox(height: AppSpacing.space2),
                         SizedBox(
                           height: 20,
-                          child:
-                              day.hasCashflow
-                                  ? _CashflowLines(
-                                    day: day,
-                                    incomeColor: financeColors.income,
-                                    expenseColor: financeColors.expense,
-                                  )
-                                  : _LunarLabel(
-                                    label: showLunar ? day.lunarLabel : '',
-                                  ),
+                          child: day.hasCashflow
+                              ? _CashflowLines(
+                                  day: day,
+                                  incomeColor: financeColors.income,
+                                  expenseColor: financeColors.expense,
+                                )
+                              : _LunarLabel(
+                                  label: showLunar ? day.lunarLabel : '',
+                                ),
                         ),
                       ],
                     ),

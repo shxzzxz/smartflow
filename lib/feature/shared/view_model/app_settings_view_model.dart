@@ -25,6 +25,10 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return _save((settings) => settings.copyWith(showBottomNavLabels: value));
   }
 
+  Future<void> setBottomNavigationStyle(BottomNavigationStyle value) {
+    return _save((settings) => settings.copyWith(bottomNavigationStyle: value));
+  }
+
   Future<void> setPullToCreateSensitivity(PullToCreateSensitivity value) {
     return _save(
       (settings) => settings.copyWith(pullToCreateSensitivity: value),
