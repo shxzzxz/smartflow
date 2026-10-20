@@ -33,6 +33,7 @@ import '../feature/credit/page/loan_calculator_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
 import '../feature/credit/page/unattributed_repayment_form_page.dart';
 import '../feature/placeholder/page/placeholder_page.dart';
+import '../feature/statistics/page/statistics_category_page.dart';
 import '../feature/statistics/page/statistics_page.dart';
 import '../feature/statistics/page/statistics_transactions_page.dart';
 import '../feature/statistics/view_model/statistics_view_model.dart';
@@ -143,6 +144,33 @@ final appRouter = GoRouter(
           occurredUntil: until,
           scope: scope,
           accountType: accountType,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/statistics/category',
+      builder: (context, state) {
+        final query = state.uri.queryParameters;
+        final categoryId = query['categoryId'];
+        final from = DateTime.tryParse(query['from'] ?? '');
+        final until = DateTime.tryParse(query['until'] ?? '');
+        final categoryType = switch (query['categoryKind']) {
+          'income' => AccountType.income,
+          'expense' => AccountType.expense,
+          _ => null,
+        };
+        if (categoryId == null ||
+            from == null ||
+            until == null ||
+            !until.isAfter(from) ||
+            categoryType == null) {
+          return const PlaceholderPage(title: '分类构成参数无效');
+        }
+        return StatisticsCategoryPage(
+          categoryId: categoryId,
+          categoryType: categoryType,
+          from: from,
+          until: until,
         );
       },
     ),

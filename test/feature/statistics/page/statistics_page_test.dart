@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/app/app_shell.dart';
+import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/app/router.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
@@ -946,6 +951,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('category drilldown pages hide the bottom navigation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsRouter(tester);
+    await _openSalaryCategoryDetail(tester);
+
+    expect(find.text('二级分类构成'), findsOneWidget);
+    expect(find.byType(AppShell), findsNothing);
+
+    await _openSalaryTransactions(tester);
+
+    expect(find.text('基本工资'), findsWidgets);
+    expect(find.byType(AppShell), findsNothing);
+  });
+
+  testWidgets('predictive and regular back restore the category detail', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpStatisticsRouter(tester);
+    await _openSalaryCategoryDetail(tester);
+    await _openSalaryTransactions(tester);
+
+    await _sendPredictiveBackGesture(tester);
+
+    expect(find.text('二级分类构成'), findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey('statistics-secondary-category-composition-list'),
+      ),
+      findsOneWidget,
+    );
+
+    await _openSalaryTransactions(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('二级分类构成'), findsOneWidget);
+  });
+
   testWidgets('keeps the category header stable with larger text', (
     tester,
   ) async {
@@ -1089,7 +1143,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await _pumpStatisticsPage(tester);
+    await _pumpStatisticsRouter(tester);
 
     expect(find.text('2026.1.1 - 1.15'), findsOneWidget);
     expect(find.text('收支统计'), findsOneWidget);
@@ -1187,12 +1241,16 @@ void main() {
     expect(find.text('总收入'), findsOneWidget);
     expect(find.text('工资'), findsOneWidget);
 
+    final categoryList = find.byKey(
+      const ValueKey('statistics-category-composition-list'),
+    );
+    final salary = find.descendant(of: categoryList, matching: find.text('工资'));
     await tester.scrollUntilVisible(
-      find.text('工资'),
+      salary,
       100,
       scrollable: _verticalScrollable().last,
     );
-    await tester.tap(find.text('工资'));
+    await tester.tap(salary);
     await tester.pumpAndSettle();
     expect(find.byType(PieChart), findsOneWidget);
   });
@@ -1215,6 +1273,7 @@ Future<void> _pumpStatisticsPage(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        appSettingsStoreProvider.overrideWithValue(_TestAppSettingsStore()),
         currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
         statisticsRangeContentProvider(
           month,
@@ -1266,6 +1325,133 @@ Future<void> _pumpStatisticsPage(
     ),
   );
   await tester.pump();
+}
+
+Future<void> _pumpStatisticsRouter(WidgetTester tester) async {
+  final content = _loadedContent();
+  appRouter.go('/statistics');
+  addTearDown(() => appRouter.go('/'));
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        appSettingsStoreProvider.overrideWithValue(_TestAppSettingsStore()),
+        currentDateTimeProvider.overrideWithValue(DateTime(2026, 1, 15)),
+        statisticsRangeContentProvider(
+          DateTime(2026, 1),
+          DateTime(2026, 1, 16),
+          1,
+        ).overrideWith((ref) => content),
+        statisticsRangeContentProvider(
+          DateTime(2025, 12, 10),
+          DateTime(2025, 12, 13),
+          1,
+        ).overrideWith((ref) => content),
+        statisticsStateContentProvider(DateTime(2026, 1, 15)).overrideWith(
+          (ref) => StatisticsStateContentState.loaded(
+            presentation: _statePresentation(),
+          ),
+        ),
+        statisticsInstallmentsProvider(
+          DateTime(2026, 1, 15),
+        ).overrideWith((ref) => Stream.value(_installmentsPresentation())),
+        statisticsTransactionsContentProvider(
+          category: CategorySelection.withDescendants('base-salary'),
+          settlementAccountId: null,
+          tagId: null,
+          untaggedOnly: false,
+          occurredFrom: DateTime(2026, 1),
+          occurredUntil: DateTime(2026, 1, 16),
+          scope: StatisticsDrilldownScope.cashflow,
+          accountType: null,
+        ).overrideWith(
+          (ref) => const StatisticsTransactionsContentState.loaded(groups: []),
+        ),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        routerConfig: appRouter,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openSalaryCategoryDetail(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.text('分类构成'),
+    200,
+    scrollable: _verticalScrollable().last,
+  );
+  final incomeSegment = find.descendant(
+    of: find.byKey(const ValueKey('statistics-category-kind')),
+    matching: find.text('收入'),
+  );
+  await tester.ensureVisible(incomeSegment);
+  await tester.tap(incomeSegment);
+  await tester.pumpAndSettle();
+
+  final categoryList = find.byKey(
+    const ValueKey('statistics-category-composition-list'),
+  );
+  final salary = find.descendant(of: categoryList, matching: find.text('工资'));
+  await tester.scrollUntilVisible(
+    salary,
+    100,
+    scrollable: _verticalScrollable().last,
+  );
+  await tester.tap(salary);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openSalaryTransactions(WidgetTester tester) async {
+  final secondaryList = find.byKey(
+    const ValueKey('statistics-secondary-category-composition-list'),
+  );
+  final baseSalary = find.descendant(
+    of: secondaryList,
+    matching: find.text('基本工资'),
+  );
+  await tester.ensureVisible(baseSalary);
+  await tester.tap(baseSalary);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _sendPredictiveBackGesture(WidgetTester tester) async {
+  for (final call in const [
+    MethodCall('startBackGesture', <String, dynamic>{
+      'touchOffset': <double>[5, 300],
+      'progress': 0.0,
+      'swipeEdge': 0,
+    }),
+    MethodCall('updateBackGestureProgress', <String, dynamic>{
+      'x': 100.0,
+      'y': 300.0,
+      'progress': 0.35,
+      'swipeEdge': 0,
+    }),
+    MethodCall('commitBackGesture'),
+  ]) {
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'flutter/backgesture',
+      const StandardMethodCodec().encodeMethodCall(call),
+      (_) {},
+    );
+    await tester.pump();
+  }
+  await tester.pumpAndSettle();
+}
+
+class _TestAppSettingsStore implements AppSettingsStore {
+  AppSettings settings = const AppSettings();
+
+  @override
+  Future<AppSettings> read() async => settings;
+
+  @override
+  Future<void> save(AppSettings settings) async {
+    this.settings = settings;
+  }
 }
 
 StatisticsContentLoaded _loadedContent({

@@ -32,6 +32,15 @@ void main() {
     ]);
   });
 
+  test('statistics category drilldown is outside the app shell', () {
+    final routes = appRouter.configuration.routes.whereType<GoRoute>();
+
+    expect(
+      routes.map((route) => route.path),
+      containsAll(['/statistics/category', '/statistics/transactions']),
+    );
+  });
+
   testWidgets('opens the design-system showcase route in debug builds', (
     tester,
   ) async {
