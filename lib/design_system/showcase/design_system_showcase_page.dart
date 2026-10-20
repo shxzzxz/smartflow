@@ -236,7 +236,8 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.settingsRows,
     category: '基础控件',
     title: '设置行',
-    componentNames: 'AppSettingsSwitchRow / AppSettingsSelectRow',
+    componentNames:
+        'AppSettingsRow / AppSettingsSwitchRow / AppSettingsSelectRow',
     keywords: ['设置', '开关', '选择', '整行', '说明'],
   ),
   _ShowcaseExample(

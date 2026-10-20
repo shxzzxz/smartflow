@@ -25,12 +25,12 @@ class AppSettingsSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _AppSettingsRow(
+    return AppSettingsRow(
       label: label,
       description: description,
       enabled: enabled,
       onTap: () => onChanged(!value),
-      trailing: AppSwitch(value: value, onChanged: enabled ? onChanged : null),
+      child: AppSwitch(value: value, onChanged: enabled ? onChanged : null),
     );
   }
 }
@@ -61,42 +61,43 @@ class AppSettingsSelectRow<T> extends StatelessWidget {
       onChanged: onChanged,
       tooltip: tooltip ?? '选择$label',
       alignment: AppSelectMenuAlignment.end,
-      triggerBuilder:
-          (context, selected) => _AppSettingsRow(
-            label: label,
-            description: description,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  selected.label,
-                  style: context.appTextStyles.listSupporting,
-                ),
-                const SizedBox(width: AppSpacing.space4),
-                Icon(
-                  RemixIcons.arrow_right_s_line,
-                  size: AppSpacing.space20,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ],
+      triggerBuilder: (context, selected) => AppSettingsRow(
+        label: label,
+        description: description,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(selected.label, style: context.appTextStyles.listSupporting),
+            const SizedBox(width: AppSpacing.space4),
+            Icon(
+              RemixIcons.arrow_right_s_line,
+              size: AppSpacing.space20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _AppSettingsRow extends StatelessWidget {
-  const _AppSettingsRow({
+/// 设置项的公共行布局。
+///
+/// 统一标题、说明、最小高度、水平留白与整行点击区域，[child] 只负责
+/// 开关、选择值等尾部内容和对应交互。
+class AppSettingsRow extends StatelessWidget {
+  const AppSettingsRow({
     required this.label,
-    required this.trailing,
+    required this.child,
     this.description,
     this.onTap,
     this.enabled = true,
+    super.key,
   });
 
   final String label;
   final String? description;
-  final Widget trailing;
+  final Widget child;
   final VoidCallback? onTap;
   final bool enabled;
 
@@ -110,9 +111,9 @@ class _AppSettingsRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.space16,
-          AppSpacing.space10,
+          0,
           AppSpacing.space12,
-          AppSpacing.space10,
+          0,
         ),
         child: Row(
           children: [
@@ -135,15 +136,14 @@ class _AppSettingsRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
-            trailing,
+            child,
           ],
         ),
       ),
     );
-    final interactive =
-        onTap == null
-            ? content
-            : InkWell(onTap: enabled ? onTap : null, child: content);
+    final interactive = onTap == null
+        ? content
+        : InkWell(onTap: enabled ? onTap : null, child: content);
     if (enabled) return interactive;
     return IgnorePointer(
       child: Opacity(

@@ -7,6 +7,36 @@ import 'package:smartflow/design_system/widget/app_select.dart';
 import 'package:smartflow/design_system/widget/app_settings_row.dart';
 
 void main() {
+  testWidgets('base settings row renders shared content and handles row taps', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: AppSettingsRow(
+            label: '显示余额',
+            description: '在账户列表中显示余额',
+            onTap: () => taps++,
+            child: const Text('开启'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('显示余额'), findsOneWidget);
+    expect(find.text('在账户列表中显示余额'), findsOneWidget);
+    expect(find.text('开启'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(AppSettingsRow)).height,
+      AppComponentTokens.controlMinHeight,
+    );
+
+    await tester.tap(find.text('显示余额'));
+    expect(taps, 1);
+  });
+
   testWidgets('settings switch row toggles when its row is tapped', (
     tester,
   ) async {
@@ -85,6 +115,53 @@ void main() {
       tester.getSize(find.byType(AppSettingsSelectRow<int>)).height,
       greaterThanOrEqualTo(AppComponentTokens.controlMinHeight),
     );
+  });
+
+  testWidgets('switch and select rows share the same base height', (
+    tester,
+  ) async {
+    Future<void> pumpRows({String? description}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  AppSettingsSwitchRow(
+                    label: '导航栏文字',
+                    description: description,
+                    value: true,
+                    onChanged: (_) {},
+                  ),
+                  AppSettingsSelectRow<int>(
+                    label: '下拉灵敏度',
+                    description: description,
+                    value: 0,
+                    options: const [AppSelectOption(value: 0, label: '标准')],
+                    onChanged: (_) {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    for (final description in <String?>[null, '在底部导航图标下方显示文字标签']) {
+      await pumpRows(description: description);
+      final switchHeight = tester
+          .getSize(find.byType(AppSettingsSwitchRow))
+          .height;
+      final selectHeight = tester
+          .getSize(find.byType(AppSettingsSelectRow<int>))
+          .height;
+
+      expect(switchHeight, AppComponentTokens.controlMinHeight);
+      expect(selectHeight, switchHeight);
+    }
   });
 
   testWidgets('settings select menu aligns to the row end and flips upward', (
