@@ -35,6 +35,7 @@ Future<StatisticsPeriodSelection?> showStatisticsPeriodSheet({
 }) {
   return showModalBottomSheet<StatisticsPeriodSelection>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     builder:

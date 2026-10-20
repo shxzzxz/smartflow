@@ -12,6 +12,10 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/component.dart';
 import 'package:smartflow/design_system/widget/app_bottom_navigation_layout_scope.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
+import 'package:smartflow/feature/home/widget/home_transaction_filter_sheet.dart';
+import 'package:smartflow/feature/statistics/view_model/statistics_view_model.dart';
+import 'package:smartflow/feature/statistics/widget/statistics_comparison_sheet.dart';
+import 'package:smartflow/feature/statistics/widget/statistics_period_sheet.dart';
 
 class _FakeAppSettingsStore implements AppSettingsStore {
   _FakeAppSettingsStore(this.settings);
@@ -53,6 +57,31 @@ GoRouter _buildRouter(String initialLocation) {
   );
 }
 
+GoRouter _buildSheetRouter(String initialLocation) {
+  return GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      ShellRoute(
+        builder: (context, state, child) => AppShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const _HomeFilterEntryPage(),
+          ),
+          GoRoute(
+            path: '/statistics',
+            builder: (context, state) => const _StatisticsSheetEntryPage(),
+          ),
+          GoRoute(
+            path: '/account',
+            builder: (context, state) => const Text('资产页'),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 Future<void> _pumpShell(
   WidgetTester tester, {
   required GoRouter router,
@@ -69,6 +98,107 @@ Future<void> _pumpShell(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+class _HomeFilterEntryPage extends StatelessWidget {
+  const _HomeFilterEntryPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: TextButton(
+          key: const ValueKey('open-home-filter'),
+          onPressed: () {
+            showHomeTransactionFilterSheet(
+              context: context,
+              initialFilter: const HomeTransactionFilter.all(),
+              expenseTree: const [],
+              incomeTree: const [],
+              accounts: const [],
+            );
+          },
+          child: const Text('打开筛选'),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatisticsSheetEntryPage extends StatelessWidget {
+  const _StatisticsSheetEntryPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              key: const ValueKey('open-statistics-period'),
+              onPressed: () async {
+                await showStatisticsPeriodSheet(
+                  context: context,
+                  granularity: StatisticsPeriodGranularity.month,
+                  mode: StatisticsPeriodMode.single,
+                  from: DateTime(2026, 10),
+                  untilExclusive: DateTime(2026, 11),
+                  lastSelectableDate: DateTime(2026, 10, 20),
+                );
+              },
+              child: const Text('选择统计周期'),
+            ),
+            TextButton(
+              key: const ValueKey('open-statistics-comparison'),
+              onPressed: () async {
+                await showStatisticsComparisonSheet(
+                  context: context,
+                  selected: StatisticsComparisonMode.none,
+                  automatic: null,
+                  previousYear: null,
+                );
+              },
+              child: const Text('设置对比时间'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _expectSheetBlocksNavigation({
+  required WidgetTester tester,
+  required BottomNavigationStyle style,
+  required String initialLocation,
+  required Key openButtonKey,
+}) async {
+  final router = _buildSheetRouter(initialLocation);
+  addTearDown(router.dispose);
+
+  await _pumpShell(
+    tester,
+    router: router,
+    settings: AppSettings(bottomNavigationStyle: style),
+  );
+
+  await tester.tap(find.byKey(openButtonKey));
+  await tester.pumpAndSettle();
+  expect(find.byType(BottomSheet), findsOneWidget);
+
+  final navigationKey = switch (style) {
+    BottomNavigationStyle.classic => const ValueKey(
+      'classic-bottom-navigation',
+    ),
+    BottomNavigationStyle.frostedGlass => const ValueKey(
+      'frosted-glass-bottom-navigation',
+    ),
+  };
+  await tester.tapAt(tester.getCenter(find.byKey(navigationKey)));
+  await tester.pumpAndSettle();
+
+  expect(find.text('资产页'), findsNothing);
 }
 
 void main() {
@@ -224,4 +354,36 @@ void main() {
       AppComponentTokens.frostedNavigationBarClearance,
     );
   });
+
+  final sheetEntries = [
+    (
+      name: 'home filter',
+      initialLocation: '/home',
+      openButtonKey: const ValueKey('open-home-filter'),
+    ),
+    (
+      name: 'statistics period',
+      initialLocation: '/statistics',
+      openButtonKey: const ValueKey('open-statistics-period'),
+    ),
+    (
+      name: 'statistics comparison',
+      initialLocation: '/statistics',
+      openButtonKey: const ValueKey('open-statistics-comparison'),
+    ),
+  ];
+  for (final style in BottomNavigationStyle.values) {
+    for (final entry in sheetEntries) {
+      testWidgets('${entry.name} sheet blocks ${style.name} navigation', (
+        tester,
+      ) async {
+        await _expectSheetBlocksNavigation(
+          tester: tester,
+          style: style,
+          initialLocation: entry.initialLocation,
+          openButtonKey: entry.openButtonKey,
+        );
+      });
+    }
+  }
 }

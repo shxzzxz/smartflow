@@ -15,6 +15,7 @@ Future<StatisticsComparisonMode?> showStatisticsComparisonSheet({
 }) {
   return showModalBottomSheet<StatisticsComparisonMode>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) => SafeArea(

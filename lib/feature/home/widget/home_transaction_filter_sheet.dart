@@ -21,6 +21,7 @@ Future<HomeTransactionFilter?> showHomeTransactionFilterSheet({
 }) {
   return showModalBottomSheet<HomeTransactionFilter>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (context) => _HomeTransactionFilterSheet(
