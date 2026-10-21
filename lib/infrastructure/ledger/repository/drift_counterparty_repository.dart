@@ -58,6 +58,22 @@ class DriftCounterpartyRepository implements CounterpartyRepository {
   }
 
   @override
+  Future<void> reassignTransactionReferences({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) {
+    if (sourceIds.isEmpty) return Future.value();
+    return (_db.update(
+      _db.transactions,
+    )..where((table) => table.counterpartyId.isIn(sourceIds))).write(
+      TransactionsCompanion(
+        counterpartyId: Value(targetId),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  @override
   Future<void> clearTransactionReferences(String counterpartyId) {
     return (_db.update(
       _db.transactions,

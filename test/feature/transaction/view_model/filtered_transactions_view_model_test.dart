@@ -7,6 +7,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/view_model/filtered_transactions_view_model.dart';
 
@@ -67,6 +68,68 @@ void main() {
     expect(query.match.categoryAccountIds, isNull);
     expect(query.tagIds, {'travel'});
     expect(query.topLevelOnly, isTrue);
+  });
+
+  test('counterparty feed applies the selected counterparty filter', () async {
+    final service = _RecordingTransactionQueryService();
+    final container = ProviderContainer(
+      overrides: [
+        transactionQueryServiceProvider.overrideWithValue(service),
+        accountLookupProvider.overrideWithValue(
+          AsyncData(AccountLookup(_accounts)),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final provider = filteredTransactionsProvider(
+      FilteredTransactionTarget.counterparty,
+      'ziroom',
+      filteredTransactionPageSize,
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+
+    final query = service.queries.single;
+    expect(query.counterpartyId, 'ziroom');
+    expect(query.tagIds, isNull);
+    expect(query.topLevelOnly, isTrue);
+  });
+
+  test('counterparty feed labels the current vocabulary name', () async {
+    final service = _RecordingTransactionQueryService();
+    final container = ProviderContainer(
+      overrides: [
+        transactionQueryServiceProvider.overrideWithValue(service),
+        accountLookupProvider.overrideWithValue(
+          AsyncData(AccountLookup(_accounts)),
+        ),
+        counterpartyListProvider.overrideWithValue(
+          const AsyncData([
+            CounterpartyView(id: 'ziroom', name: '自如', usageCount: 2),
+          ]),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final provider = filteredTransactionsViewModelProvider(
+      FilteredTransactionTarget.counterparty,
+      'ziroom',
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.delayed(Duration.zero);
+      await container.pump();
+    }
+
+    final state = container.read(provider);
+    expect(state, isA<FilteredTransactionsLoaded>());
+    final loaded = state as FilteredTransactionsLoaded;
+    expect(loaded.title, '自如');
+    expect(loaded.subtitle, '对手方交易');
   });
 
   test(

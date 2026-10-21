@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -231,6 +232,7 @@ void main() {
     final service = TagApplicationService(
       repository: repository,
       idGenerator: _NoopIdGenerator(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
     HomeTransactionFilter? result;
 
@@ -264,6 +266,7 @@ void main() {
     final service = TagApplicationService(
       repository: repository,
       idGenerator: _NoopIdGenerator(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
 
     await tester.pumpWidget(
@@ -349,4 +352,11 @@ class _DelayedTagRepository extends FakeTransactionTagRepository {
 class _NoopIdGenerator implements IdGenerator {
   @override
   String newId() => 'unused';
+}
+
+class _DirectTransactionRunner implements TransactionRunner {
+  const _DirectTransactionRunner();
+
+  @override
+  Future<T> run<T>(Future<T> Function() body) => body();
 }

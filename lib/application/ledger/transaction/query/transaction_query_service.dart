@@ -100,9 +100,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     final categoryAccountIds = match.categoryAccountIds;
     final settlementAccountIds = match.settlementAccountIds;
     final tagIds = pageQuery.tagIds;
+    final counterpartyId = pageQuery.counterpartyId;
     if ((categoryAccountIds != null && categoryAccountIds.isEmpty) ||
         (settlementAccountIds != null && settlementAccountIds.isEmpty) ||
-        (tagIds != null && tagIds.isEmpty)) {
+        (tagIds != null && tagIds.isEmpty) ||
+        counterpartyId == '') {
       return const [];
     }
     final page = await _txRead.watchPage(pageQuery).first;
@@ -124,6 +126,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
       before: query.before,
       scope: query.scope,
       tagIds: query.tagIds,
+      counterpartyId: query.counterpartyId,
       untaggedOnly: query.untaggedOnly,
     );
   }

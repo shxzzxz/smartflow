@@ -442,6 +442,13 @@ final appRouter = GoRouter(
       builder: (context, state) => const CounterpartiesPage(),
     ),
     GoRoute(
+      path: '/counterparties/:id/transactions',
+      builder: (context, state) => FilteredTransactionsPage(
+        target: FilteredTransactionTarget.counterparty,
+        targetId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
       path: '/tags/:id/transactions',
       builder: (context, state) => FilteredTransactionsPage(
         target: FilteredTransactionTarget.tag,

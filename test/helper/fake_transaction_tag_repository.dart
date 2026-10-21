@@ -9,11 +9,11 @@ class FakeTransactionTagRepository implements TransactionTagRepository {
 
   @override
   Future<List<TagView>> listTags() async {
-    final tags =
-        _tagsById.values.toList()..sort((a, b) {
-          final byOrder = a.sortOrder.compareTo(b.sortOrder);
-          return byOrder != 0 ? byOrder : a.name.compareTo(b.name);
-        });
+    final tags = _tagsById.values.toList()
+      ..sort((a, b) {
+        final byOrder = a.sortOrder.compareTo(b.sortOrder);
+        return byOrder != 0 ? byOrder : a.name.compareTo(b.name);
+      });
     return tags;
   }
 
@@ -49,17 +49,27 @@ class FakeTransactionTagRepository implements TransactionTagRepository {
     required String sourceId,
     required String targetId,
   }) async {
-    final sourceTransactions =
-        _tagIdsByTransaction.entries
-            .where((entry) => entry.value.contains(sourceId))
-            .map((entry) => entry.key)
-            .toList();
+    final sourceTransactions = _tagIdsByTransaction.entries
+        .where((entry) => entry.value.contains(sourceId))
+        .map((entry) => entry.key)
+        .toList();
     for (final transactionId in sourceTransactions) {
       _tagIdsByTransaction[transactionId]!
         ..remove(sourceId)
         ..add(targetId);
     }
     _tagsById.remove(sourceId);
+  }
+
+  @override
+  Future<void> migrateTag({
+    required String sourceId,
+    required String targetId,
+  }) async {
+    for (final tagIds in _tagIdsByTransaction.values) {
+      if (!tagIds.remove(sourceId)) continue;
+      tagIds.add(targetId);
+    }
   }
 
   @override

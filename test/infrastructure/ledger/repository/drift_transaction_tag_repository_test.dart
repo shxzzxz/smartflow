@@ -90,6 +90,32 @@ void main() {
     expect(await repository.transactionTagIds('tx-2'), {'tag-b'});
   });
 
+  test('migrating retags transactions and keeps the source tag', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await _insertTransaction(database, 'tx-1');
+    await _insertTransaction(database, 'tx-2');
+    await _insertTags(database, {'tag-a': '旅行', 'tag-b': '出差'});
+    final repository = DriftTransactionTagRepository(database);
+    await repository.replaceTransactionTags(
+      transactionId: 'tx-1',
+      tagIds: const {'tag-a', 'tag-b'},
+    );
+    await repository.replaceTransactionTags(
+      transactionId: 'tx-2',
+      tagIds: const {'tag-a'},
+    );
+
+    await repository.migrateTag(sourceId: 'tag-a', targetId: 'tag-b');
+
+    expect((await repository.listTags()).map((tag) => tag.name).toSet(), {
+      '旅行',
+      '出差',
+    });
+    expect(await repository.transactionTagIds('tx-1'), {'tag-b'});
+    expect(await repository.transactionTagIds('tx-2'), {'tag-b'});
+  });
+
   test('deleting a tag removes its associations', () async {
     final database = createTestDatabase();
     addTearDown(database.close);

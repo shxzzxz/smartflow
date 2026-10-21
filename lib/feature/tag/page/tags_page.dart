@@ -10,14 +10,16 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/shared/name_dialog.dart';
+import '../../../widget/business/shared/transaction_reference_target_sheet.dart';
 import '../../../widget/business/tag/tag_search_field.dart';
 import '../../shared/provider/tag_providers.dart';
 
 final _logger = Logger('feature.tag');
 
-/// 标签词表管理：新建、重命名、合并、排序与删除。
+/// 标签词表管理：新建、重命名、合并、迁移、排序与删除。
 /// 删除标签会解除全部交易引用，确认时展示使用数量。
 class TagsPage extends ConsumerStatefulWidget {
   const TagsPage({super.key});
@@ -30,8 +32,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
   late final TextEditingController _searchController = TextEditingController();
   final Set<String> _selectedTagIds = {};
   var _searchQuery = '';
-  var _batchDeleteMode = false;
-  var _batchDeleting = false;
+  var _batchMode = false;
+  var _batchProcessing = false;
 
   @override
   void dispose() {
@@ -50,16 +52,44 @@ class _TagsPageState extends ConsumerState<TagsPage> {
         child: Column(
           children: [
             AppPageHeader(
-              title: _batchDeleteMode ? '批量删除标签' : '标签管理',
-              actions: _batchDeleteMode
+              title: _batchMode ? '批量操作标签' : '标签管理',
+              actions: _batchMode
                   ? [
                       AppHeaderIconButton(
-                        onPressed: _batchDeleting ? null : _leaveBatchMode,
+                        onPressed: _batchProcessing ? null : _leaveBatchMode,
                         icon: RemixIcons.close_line,
-                        tooltip: '取消批量删除',
+                        tooltip: '取消批量操作',
+                      ),
+                      AppPopupMenuButton(
+                        tooltip: '更多批量操作',
+                        icon: RemixIcons.more_2_line,
+                        items: [
+                          AppPopupMenuAction(
+                            label: '合并到…',
+                            icon: RemixIcons.git_merge_line,
+                            onPressed:
+                                _selectedTagIds.isEmpty || _batchProcessing
+                                ? null
+                                : () => _retargetSelectedTags(
+                                    context,
+                                    TransactionReferenceOperation.merge,
+                                  ),
+                          ),
+                          AppPopupMenuAction(
+                            label: '迁移到…',
+                            icon: RemixIcons.arrow_left_right_line,
+                            onPressed:
+                                _selectedTagIds.isEmpty || _batchProcessing
+                                ? null
+                                : () => _retargetSelectedTags(
+                                    context,
+                                    TransactionReferenceOperation.migrate,
+                                  ),
+                          ),
+                        ],
                       ),
                       AppHeaderIconButton(
-                        onPressed: _selectedTagIds.isEmpty || _batchDeleting
+                        onPressed: _selectedTagIds.isEmpty || _batchProcessing
                             ? null
                             : () => _deleteSelectedTags(context),
                         icon: RemixIcons.delete_bin_line,
@@ -69,8 +99,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
                   : [
                       AppHeaderIconButton(
                         onPressed: _enterBatchMode,
-                        icon: RemixIcons.delete_bin_line,
-                        tooltip: '批量删除标签',
+                        icon: RemixIcons.list_check_3,
+                        tooltip: '批量操作标签',
                       ),
                       AppHeaderIconButton(
                         onPressed: () => _createTag(context, ref),
@@ -100,30 +130,27 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     ColorScheme colors,
   ) {
     final filteredTags = _filterTags(tags);
-    final list = _batchDeleteMode
-        ? _buildBatchTagList(context, filteredTags)
-        : _buildTagList(context, ref, tags);
 
     if (tags.isEmpty) {
       return _buildEmptyState(context);
     }
 
-    if (_batchDeleteMode) {
-      return Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space20,
-              AppSpacing.space8,
-              AppSpacing.space20,
-              AppSpacing.space8,
-            ),
-            child: TagSearchField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              enabled: !_batchDeleting,
-            ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space20,
+            AppSpacing.space8,
+            AppSpacing.space20,
+            AppSpacing.space8,
           ),
+          child: TagSearchField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            enabled: !_batchProcessing,
+          ),
+        ),
+        if (_batchMode)
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.space20,
@@ -135,7 +162,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               children: [
                 Expanded(child: Text('已选 ${_selectedTagIds.length} 个标签')),
                 TextButton(
-                  onPressed: filteredTags.isEmpty || _batchDeleting
+                  onPressed: filteredTags.isEmpty || _batchProcessing
                       ? null
                       : () => _toggleAll(filteredTags),
                   child: Text(_allSelected(filteredTags) ? '取消全选结果' : '全选结果'),
@@ -143,12 +170,20 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               ],
             ),
           ),
-          Expanded(child: list),
-        ],
-      );
-    }
-
-    return list;
+        Expanded(
+          child: _batchMode
+              ? _buildBatchTagList(context, filteredTags)
+              : filteredTags.isEmpty
+              ? Center(
+                  child: Text(
+                    '没有匹配的标签',
+                    style: context.appTextStyles.inputText,
+                  ),
+                )
+              : _buildTagList(context, ref, filteredTags, tags),
+        ),
+      ],
+    );
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -156,7 +191,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
       child: AppEmptyState(
         icon: const Icon(RemixIcons.price_tag_3_line),
         title: '暂无标签',
-        action: _batchDeleteMode
+        action: _batchMode
             ? null
             : FilledButton.icon(
                 onPressed: () => _createTag(context, ref),
@@ -171,6 +206,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     BuildContext context,
     WidgetRef ref,
     List<TagView> tags,
+    List<TagView> allTags,
   ) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -190,8 +226,11 @@ class _TagsPageState extends ConsumerState<TagsPage> {
                     final uri = Uri(path: '/tags/${tags[i].id}/transactions');
                     context.push(uri.toString());
                   },
-                  canMoveUp: i > 0,
-                  canMoveDown: i < tags.length - 1,
+                  canMoveUp:
+                      allTags.indexWhere((tag) => tag.id == tags[i].id) > 0,
+                  canMoveDown:
+                      allTags.indexWhere((tag) => tag.id == tags[i].id) <
+                      allTags.length - 1,
                   onMoveUp: () => ref
                       .read(tagApplicationServiceProvider)
                       .moveTag(id: tags[i].id, delta: -1),
@@ -199,7 +238,20 @@ class _TagsPageState extends ConsumerState<TagsPage> {
                       .read(tagApplicationServiceProvider)
                       .moveTag(id: tags[i].id, delta: 1),
                   onRename: () => _renameTag(context, ref, tags[i]),
-                  onMerge: () => _mergeTag(context, ref, tags[i], tags),
+                  onMerge: () => _retargetTag(
+                    context,
+                    ref,
+                    tags[i],
+                    allTags,
+                    TransactionReferenceOperation.merge,
+                  ),
+                  onMigrate: () => _retargetTag(
+                    context,
+                    ref,
+                    tags[i],
+                    allTags,
+                    TransactionReferenceOperation.migrate,
+                  ),
                   onDelete: () => _deleteTag(context, ref, tags[i]),
                 ),
                 if (i < tags.length - 1)
@@ -239,7 +291,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
               for (var i = 0; i < tags.length; i++) ...[
                 CheckboxListTile(
                   value: _selectedTagIds.contains(tags[i].id),
-                  onChanged: _batchDeleting
+                  onChanged: _batchProcessing
                       ? null
                       : (_) => _toggleTag(tags[i].id),
                   controlAffinity: ListTileControlAffinity.leading,
@@ -285,8 +337,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
 
   void _enterBatchMode() {
     setState(() {
-      _batchDeleteMode = true;
-      _batchDeleting = false;
+      _batchMode = true;
+      _batchProcessing = false;
       _selectedTagIds.clear();
       _searchQuery = '';
       _searchController.clear();
@@ -295,8 +347,8 @@ class _TagsPageState extends ConsumerState<TagsPage> {
 
   void _leaveBatchMode() {
     setState(() {
-      _batchDeleteMode = false;
-      _batchDeleting = false;
+      _batchMode = false;
+      _batchProcessing = false;
       _selectedTagIds.clear();
       _searchQuery = '';
       _searchController.clear();
@@ -320,7 +372,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
   }
 
   Future<void> _deleteSelectedTags(BuildContext context) async {
-    if (_selectedTagIds.isEmpty || _batchDeleting) return;
+    if (_selectedTagIds.isEmpty || _batchProcessing) return;
 
     final service = ref.read(tagApplicationServiceProvider);
     late final List<TagView> tags;
@@ -355,18 +407,102 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     );
     if (confirmed != true || !context.mounted) return;
 
-    setState(() => _batchDeleting = true);
+    setState(() => _batchProcessing = true);
     try {
-      for (final tag in selected) {
-        await service.deleteTag(tag.id);
-      }
+      await service.deleteTags({for (final tag in selected) tag.id});
       if (!context.mounted) return;
       _leaveBatchMode();
     } catch (error, stackTrace) {
       _logger.severe('Tag batch delete failed.', error, stackTrace);
       if (!context.mounted) return;
-      setState(() => _batchDeleting = false);
+      setState(() => _batchProcessing = false);
       _showMessage(context, '批量删除失败，请稍后重试');
+    }
+  }
+
+  Future<void> _retargetSelectedTags(
+    BuildContext context,
+    TransactionReferenceOperation operation,
+  ) async {
+    if (_selectedTagIds.isEmpty || _batchProcessing) return;
+
+    final service = ref.read(tagApplicationServiceProvider);
+    late final List<TagView> tags;
+    try {
+      tags = await service.listTags();
+    } catch (error, stackTrace) {
+      _logger.severe('Tag list load failed.', error, stackTrace);
+      if (context.mounted) _showMessage(context, '标签加载失败，请稍后重试');
+      return;
+    }
+    final selected = [
+      for (final tag in tags)
+        if (_selectedTagIds.contains(tag.id)) tag,
+    ];
+    final targets = [
+      for (final tag in tags)
+        if (!_selectedTagIds.contains(tag.id))
+          TransactionReferenceTarget(
+            id: tag.id,
+            name: tag.name,
+            usageCount: tag.usageCount,
+          ),
+    ];
+    if (selected.isEmpty || !context.mounted) return;
+    if (targets.isEmpty) {
+      _showMessage(context, '没有其他标签可${operation.label}');
+      return;
+    }
+
+    final target = await showTransactionReferenceTargetSheet(
+      context,
+      sourceDescription: '选中的 ${selected.length} 个标签',
+      entityLabel: '标签',
+      operation: operation,
+      candidates: targets,
+    );
+    if (target == null || !context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('批量${operation.label}标签'),
+        content: Text(
+          operation == TransactionReferenceOperation.merge
+              ? '将把选中的 ${selected.length} 个标签所关联的交易改指向'
+                    '「${target.name}」，并删除这些源标签。'
+              : '将把选中的 ${selected.length} 个标签所关联的交易改指向'
+                    '「${target.name}」，并保留这些源标签。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(operation.label),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    setState(() => _batchProcessing = true);
+    try {
+      final sourceIds = {for (final tag in selected) tag.id};
+      if (operation == TransactionReferenceOperation.merge) {
+        await service.mergeTags(sourceIds: sourceIds, targetId: target.id);
+      } else {
+        await service.migrateTags(sourceIds: sourceIds, targetId: target.id);
+      }
+      if (!context.mounted) return;
+      _leaveBatchMode();
+    } catch (error, stackTrace) {
+      _logger.severe('Tag batch retarget failed.', error, stackTrace);
+      if (!context.mounted) return;
+      setState(() => _batchProcessing = false);
+      _showMessage(context, '批量${operation.label}失败，请稍后重试');
     }
   }
 
@@ -398,62 +534,44 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     }
   }
 
-  Future<void> _mergeTag(
+  Future<void> _retargetTag(
     BuildContext context,
     WidgetRef ref,
     TagView tag,
     List<TagView> all,
+    TransactionReferenceOperation operation,
   ) async {
-    final others = all.where((item) => item.id != tag.id).toList();
+    final others = [
+      for (final item in all)
+        if (item.id != tag.id)
+          TransactionReferenceTarget(
+            id: item.id,
+            name: item.name,
+            usageCount: item.usageCount,
+          ),
+    ];
     if (others.isEmpty) {
-      _showMessage(context, '没有其他标签可合并');
+      _showMessage(context, '没有其他标签可${operation.label}');
       return;
     }
-    final target = await showModalBottomSheet<TagView>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space16,
-                0,
-                AppSpacing.space16,
-                AppSpacing.space8,
-              ),
-              child: Text(
-                '把「${tag.name}」合并到',
-                style: context.appTextStyles.subsectionTitle,
-              ),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final other in others)
-                    ListTile(
-                      title: Text(other.name),
-                      subtitle: Text('${other.usageCount} 笔交易'),
-                      onTap: () => Navigator.of(context).pop(other),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    final target = await showTransactionReferenceTargetSheet(
+      context,
+      sourceDescription: '「${tag.name}」',
+      entityLabel: '标签',
+      operation: operation,
+      candidates: others,
     );
     if (target == null || !context.mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('合并标签'),
+        title: Text('${operation.label}标签'),
         content: Text(
-          '将把「${tag.name}」的 ${tag.usageCount} 笔交易改指向'
-          '「${target.name}」，并删除「${tag.name}」。',
+          operation == TransactionReferenceOperation.merge
+              ? '将把「${tag.name}」的 ${tag.usageCount} 笔交易改指向'
+                    '「${target.name}」，并删除「${tag.name}」。'
+              : '将把「${tag.name}」的 ${tag.usageCount} 笔交易改指向'
+                    '「${target.name}」，并保留「${tag.name}」。',
         ),
         actions: [
           TextButton(
@@ -462,15 +580,25 @@ class _TagsPageState extends ConsumerState<TagsPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('合并'),
+            child: Text(operation.label),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
-    await ref
-        .read(tagApplicationServiceProvider)
-        .mergeTags(sourceId: tag.id, targetId: target.id);
+    final service = ref.read(tagApplicationServiceProvider);
+    try {
+      if (operation == TransactionReferenceOperation.merge) {
+        await service.mergeTags(sourceIds: {tag.id}, targetId: target.id);
+      } else {
+        await service.migrateTags(sourceIds: {tag.id}, targetId: target.id);
+      }
+    } catch (error, stackTrace) {
+      _logger.severe('Tag ${operation.name} failed.', error, stackTrace);
+      if (context.mounted) {
+        _showMessage(context, '${operation.label}失败，请稍后重试');
+      }
+    }
   }
 
   Future<void> _deleteTag(
@@ -521,6 +649,7 @@ class _TagRow extends StatelessWidget {
     required this.onMoveDown,
     required this.onRename,
     required this.onMerge,
+    required this.onMigrate,
     required this.onDelete,
   });
 
@@ -532,6 +661,7 @@ class _TagRow extends StatelessWidget {
   final VoidCallback onMoveDown;
   final VoidCallback onRename;
   final VoidCallback onMerge;
+  final VoidCallback onMigrate;
   final VoidCallback onDelete;
 
   @override
@@ -599,6 +729,8 @@ class _TagRow extends StatelessWidget {
                     onRename();
                   case 'merge':
                     onMerge();
+                  case 'migrate':
+                    onMigrate();
                   case 'delete':
                     onDelete();
                 }
@@ -606,6 +738,7 @@ class _TagRow extends StatelessWidget {
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'rename', child: Text('重命名')),
                 PopupMenuItem(value: 'merge', child: Text('合并到…')),
+                PopupMenuItem(value: 'migrate', child: Text('迁移到…')),
                 PopupMenuItem(value: 'delete', child: Text('删除')),
               ],
             ),

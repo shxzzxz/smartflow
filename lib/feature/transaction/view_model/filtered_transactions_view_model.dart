@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/presentation/account_lookup.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -12,7 +13,7 @@ part 'filtered_transactions_view_model.g.dart';
 
 const filteredTransactionPageSize = 20;
 
-enum FilteredTransactionTarget { category, tag }
+enum FilteredTransactionTarget { category, tag, counterparty }
 
 @riverpod
 class FilteredTransactionPaging extends _$FilteredTransactionPaging {
@@ -36,6 +37,7 @@ Stream<List<TransactionReadModel>> filteredTransactions(
       lookup,
     ),
     FilteredTransactionTarget.tag => null,
+    FilteredTransactionTarget.counterparty => null,
   };
 
   yield* ref
@@ -44,6 +46,9 @@ Stream<List<TransactionReadModel>> filteredTransactions(
         TransactionListQuery(
           match: TransactionFactMatch(categoryAccountIds: categoryIds),
           tagIds: target == FilteredTransactionTarget.tag ? {targetId} : null,
+          counterpartyId: target == FilteredTransactionTarget.counterparty
+              ? targetId
+              : null,
           topLevelOnly: true,
           limit: limit,
         ),
@@ -71,6 +76,9 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     final tags = target == FilteredTransactionTarget.tag
         ? ref.watch(tagListProvider)
         : null;
+    final counterparties = target == FilteredTransactionTarget.counterparty
+        ? ref.watch(counterpartyListProvider)
+        : null;
 
     if (accountLookup case AsyncError()) {
       return const FilteredTransactionsState.error(message: '加载失败，请稍后重试');
@@ -78,18 +86,31 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     if (tags case AsyncError()) {
       return const FilteredTransactionsState.error(message: '加载失败，请稍后重试');
     }
+    if (counterparties case AsyncError()) {
+      return const FilteredTransactionsState.error(message: '加载失败，请稍后重试');
+    }
 
     final lookup = accountLookup.value;
-    if (lookup == null || (tags != null && tags.value == null)) {
+    if (lookup == null ||
+        (tags != null && tags.value == null) ||
+        (counterparties != null && counterparties.value == null)) {
       return const FilteredTransactionsState.loading();
     }
 
-    final metadata = _metadata(target, targetId, lookup, tags?.value);
+    final metadata = _metadata(
+      target,
+      targetId,
+      lookup,
+      tags?.value,
+      counterparties?.value,
+    );
     if (metadata == null) {
       return FilteredTransactionsState.error(
-        message: target == FilteredTransactionTarget.category
-            ? '分类不存在或已停用'
-            : '标签不存在',
+        message: switch (target) {
+          FilteredTransactionTarget.category => '分类不存在或已停用',
+          FilteredTransactionTarget.tag => '标签不存在',
+          FilteredTransactionTarget.counterparty => '对手方不存在',
+        },
       );
     }
 
@@ -279,6 +300,7 @@ _FilteredTransactionMetadata? _metadata(
   String targetId,
   AccountLookup accountLookup,
   List<TagView>? tags,
+  List<CounterpartyView>? counterparties,
 ) {
   switch (target) {
     case FilteredTransactionTarget.category:
@@ -307,6 +329,21 @@ _FilteredTransactionMetadata? _metadata(
         title: selectedTag.name,
         subtitle: '标签交易',
         emptyMessage: '该标签暂无交易',
+        amountSource: const TransactionGroupAmountSource(),
+      );
+    case FilteredTransactionTarget.counterparty:
+      CounterpartyView? selectedCounterparty;
+      for (final counterparty in counterparties ?? const <CounterpartyView>[]) {
+        if (counterparty.id == targetId) {
+          selectedCounterparty = counterparty;
+          break;
+        }
+      }
+      if (selectedCounterparty == null) return null;
+      return _FilteredTransactionMetadata(
+        title: selectedCounterparty.name,
+        subtitle: '对手方交易',
+        emptyMessage: '该对手方暂无交易',
         amountSource: const TransactionGroupAmountSource(),
       );
   }

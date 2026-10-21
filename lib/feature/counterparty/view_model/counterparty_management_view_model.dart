@@ -37,6 +37,34 @@ class CounterpartyManagementViewModel
     return _run(() => _service.deleteCounterparty(id));
   }
 
+  Future<CounterpartyCommandOutcome> merge({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) {
+    return _run(
+      () => _service.mergeCounterparties(
+        sourceIds: sourceIds,
+        targetId: targetId,
+      ),
+    );
+  }
+
+  Future<CounterpartyCommandOutcome> migrate({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) {
+    return _run(
+      () => _service.migrateCounterparties(
+        sourceIds: sourceIds,
+        targetId: targetId,
+      ),
+    );
+  }
+
+  Future<CounterpartyCommandOutcome> deleteMany(Set<String> ids) {
+    return _run(() => _service.deleteCounterparties(ids));
+  }
+
   Future<CounterpartyCommandOutcome> _run(
     Future<void> Function() action, {
     bool duplicateOnStateError = false,

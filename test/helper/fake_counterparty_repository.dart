@@ -8,6 +8,7 @@ class FakeCounterpartyRepository implements CounterpartyRepository {
   final Map<String, CounterpartyView> _counterparties;
 
   final Set<String> clearedCounterpartyIds = {};
+  final List<({Set<String> sourceIds, String targetId})> reassignments = [];
 
   @override
   Future<Map<String, CounterpartyView>> findByIds(Set<String> ids) async {
@@ -39,6 +40,14 @@ class FakeCounterpartyRepository implements CounterpartyRepository {
       name: name,
       usageCount: existing.usageCount,
     );
+  }
+
+  @override
+  Future<void> reassignTransactionReferences({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) async {
+    reassignments.add((sourceIds: {...sourceIds}, targetId: targetId));
   }
 
   @override

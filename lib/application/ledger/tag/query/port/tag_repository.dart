@@ -18,6 +18,9 @@ abstract interface class TransactionTagRepository {
   /// 把 source 标签的全部交易引用改指向 target，然后删除 source。
   Future<void> mergeTags({required String sourceId, required String targetId});
 
+  /// 把 source 标签的全部交易引用改指向 target，但保留 source 标签。
+  Future<void> migrateTag({required String sourceId, required String targetId});
+
   /// 删除标签及其全部交易引用。
   Future<void> deleteTag(String id);
 

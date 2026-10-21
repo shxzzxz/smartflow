@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_submit_button.dart';
@@ -17,6 +18,7 @@ void main() {
     final service = TagApplicationService(
       repository: repository,
       idGenerator: _SequentialIds(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
     TagMultiSelectResult? result;
 
@@ -51,6 +53,7 @@ void main() {
     final service = TagApplicationService(
       repository: repository,
       idGenerator: _SequentialIds(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
     TagMultiSelectResult? result;
 
@@ -85,6 +88,7 @@ void main() {
     final service = TagApplicationService(
       repository: repository,
       idGenerator: _SequentialIds(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
 
     tester.view.physicalSize = const Size(400, 800);
@@ -142,20 +146,19 @@ class _TestHost extends StatelessWidget {
         theme: AppTheme.light(),
         home: Scaffold(
           body: Builder(
-            builder:
-                (context) => TextButton(
-                  onPressed: () async {
-                    onResult(
-                      await showTagMultiSelectSheet(
-                        context: context,
-                        tags: tags,
-                        selectedIds: const {},
-                        allowCreate: allowCreate,
-                      ),
-                    );
-                  },
-                  child: const Text('打开'),
-                ),
+            builder: (context) => TextButton(
+              onPressed: () async {
+                onResult(
+                  await showTagMultiSelectSheet(
+                    context: context,
+                    tags: tags,
+                    selectedIds: const {},
+                    allowCreate: allowCreate,
+                  ),
+                );
+              },
+              child: const Text('打开'),
+            ),
           ),
         ),
       ),
@@ -168,4 +171,11 @@ class _SequentialIds implements IdGenerator {
 
   @override
   String newId() => 'id-${++_next}';
+}
+
+class _DirectTransactionRunner implements TransactionRunner {
+  const _DirectTransactionRunner();
+
+  @override
+  Future<T> run<T>(Future<T> Function() body) => body();
 }

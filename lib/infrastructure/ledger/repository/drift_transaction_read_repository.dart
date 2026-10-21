@@ -97,6 +97,10 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
       },
     );
     _andTagMatch(select, query);
+    final counterpartyId = query.counterpartyId;
+    if (counterpartyId != null) {
+      select.where((table) => table.counterpartyId.equals(counterpartyId));
+    }
     select.orderBy([
       (table) => OrderingTerm.desc(table.occurredAt),
       (table) => OrderingTerm.desc(table.id),

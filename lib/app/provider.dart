@@ -253,6 +253,7 @@ TagApplicationService tagApplicationService(Ref ref) {
   return TagApplicationService(
     repository: ref.watch(transactionTagRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 

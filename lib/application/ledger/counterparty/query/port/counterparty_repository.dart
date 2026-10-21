@@ -16,6 +16,12 @@ abstract interface class CounterpartyRepository {
 
   Future<void> renameCounterparty({required String id, required String name});
 
+  /// 将 [sourceIds] 的交易引用整体改指向 [targetId]。
+  Future<void> reassignTransactionReferences({
+    required Set<String> sourceIds,
+    required String targetId,
+  });
+
   /// 清空所有交易上的对手方引用，供 application 用例在删除前调用。
   Future<void> clearTransactionReferences(String counterpartyId);
 

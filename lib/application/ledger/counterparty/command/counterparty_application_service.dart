@@ -52,11 +52,54 @@ class CounterpartyApplicationService {
     await _repository.renameCounterparty(id: id, name: trimmed);
   }
 
+  /// 将源对手方的交易引用改指向目标对手方，但保留源对手方。
+  Future<void> migrateCounterparties({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) async {
+    final orderedSourceIds = await _validateReferenceOperation(
+      sourceIds: sourceIds,
+      targetId: targetId,
+    );
+    await _transactionRunner.run(
+      () => _repository.reassignTransactionReferences(
+        sourceIds: orderedSourceIds.toSet(),
+        targetId: targetId,
+      ),
+    );
+  }
+
+  /// 将源对手方的交易引用改指向目标对手方，然后删除源对手方。
+  Future<void> mergeCounterparties({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) async {
+    final orderedSourceIds = await _validateReferenceOperation(
+      sourceIds: sourceIds,
+      targetId: targetId,
+    );
+    await _transactionRunner.run(() async {
+      await _repository.reassignTransactionReferences(
+        sourceIds: orderedSourceIds.toSet(),
+        targetId: targetId,
+      );
+      for (final sourceId in orderedSourceIds) {
+        await _repository.deleteCounterparty(sourceId);
+      }
+    });
+  }
+
   /// 删除词表记录并解除全部交易引用；两步写入由同一用例事务包裹。
-  Future<void> deleteCounterparty(String id) {
-    return _transactionRunner.run(() async {
-      await _repository.clearTransactionReferences(id);
-      await _repository.deleteCounterparty(id);
+  Future<void> deleteCounterparty(String id) => deleteCounterparties({id});
+
+  /// 批量删除词表记录并解除全部交易引用。
+  Future<void> deleteCounterparties(Set<String> ids) async {
+    if (ids.isEmpty) return;
+    await _transactionRunner.run(() async {
+      for (final id in ids) {
+        await _repository.clearTransactionReferences(id);
+        await _repository.deleteCounterparty(id);
+      }
     });
   }
 
@@ -70,5 +113,30 @@ class CounterpartyApplicationService {
       );
     }
     return trimmed;
+  }
+
+  Future<List<String>> _validateReferenceOperation({
+    required Set<String> sourceIds,
+    required String targetId,
+  }) async {
+    if (sourceIds.isEmpty) {
+      throw ArgumentError.value(sourceIds, 'sourceIds', 'Cannot be empty.');
+    }
+    if (sourceIds.contains(targetId)) {
+      throw ArgumentError.value(
+        targetId,
+        'targetId',
+        'Target must be outside the source selection.',
+      );
+    }
+    final counterparties = await _repository.listCounterparties();
+    final knownIds = counterparties.map((item) => item.id).toSet();
+    if (!knownIds.contains(targetId) || !sourceIds.every(knownIds.contains)) {
+      throw ArgumentError('Source and target counterparties must exist.');
+    }
+    return [
+      for (final counterparty in counterparties)
+        if (sourceIds.contains(counterparty.id)) counterparty.id,
+    ];
   }
 }

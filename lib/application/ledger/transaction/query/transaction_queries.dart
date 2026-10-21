@@ -104,6 +104,7 @@ class TransactionListQuery {
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
     this.tagIds,
+    this.counterpartyId,
     this.untaggedOnly = false,
   }) : assert(limit != null || offset == 0),
        assert(before == null || offset == 0),
@@ -117,6 +118,9 @@ class TransactionListQuery {
 
   /// 只匹配未携带任何标签的交易；与 [tagIds] 互斥。
   final bool untaggedOnly;
+
+  /// 对手方维度：`null` 表示不筛选；非空值匹配交易自身的对手方引用。
+  final String? counterpartyId;
 
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
@@ -144,11 +148,15 @@ class TransactionPageQuery {
     this.before,
     this.scope = TransactionScopeFilter.assetLiability,
     this.tagIds,
+    this.counterpartyId,
     this.untaggedOnly = false,
   }) : assert(!untaggedOnly || tagIds == null);
 
   final TransactionMatch match;
   final Set<String>? tagIds;
+
+  /// 对手方维度：`null` 表示不筛选；非空值匹配交易自身的对手方引用。
+  final String? counterpartyId;
   final bool untaggedOnly;
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;

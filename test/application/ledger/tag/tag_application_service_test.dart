@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/tag/command/tag_application_service.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 
 import '../../../helper/fake_transaction_tag_repository.dart';
@@ -13,6 +14,7 @@ void main() {
     service = TagApplicationService(
       repository: repository,
       idGenerator: _SequentialIds(),
+      transactionRunner: const _DirectTransactionRunner(),
     );
   });
 
@@ -59,7 +61,7 @@ void main() {
     final id = await service.createTag('旅行');
 
     await expectLater(
-      service.mergeTags(sourceId: id, targetId: id),
+      service.mergeTags(sourceIds: {id}, targetId: id),
       throwsArgumentError,
     );
   });
@@ -76,11 +78,45 @@ void main() {
       tagIds: {travelId},
     );
 
-    await service.mergeTags(sourceId: travelId, targetId: workId);
+    await service.mergeTags(sourceIds: {travelId}, targetId: workId);
 
     expect(await service.listTags(), hasLength(1));
     expect(await service.transactionTagIds('tx-1'), {workId});
     expect(await service.transactionTagIds('tx-2'), {workId});
+  });
+
+  test('migrateTags retags transactions and keeps source tags', () async {
+    final travelId = await service.createTag('旅行');
+    final workId = await service.createTag('出差');
+    await repository.replaceTransactionTags(
+      transactionId: 'tx-1',
+      tagIds: {travelId, workId},
+    );
+    await repository.replaceTransactionTags(
+      transactionId: 'tx-2',
+      tagIds: {travelId},
+    );
+
+    await service.migrateTags(sourceIds: {travelId}, targetId: workId);
+
+    expect((await service.listTags()).map((tag) => tag.id), {travelId, workId});
+    expect(await service.transactionTagIds('tx-1'), {workId});
+    expect(await service.transactionTagIds('tx-2'), {workId});
+  });
+
+  test('deleteTags removes all selected tags and their references', () async {
+    final travelId = await service.createTag('旅行');
+    final workId = await service.createTag('出差');
+    final homeId = await service.createTag('家庭');
+    await repository.replaceTransactionTags(
+      transactionId: 'tx-1',
+      tagIds: {travelId, workId},
+    );
+
+    await service.deleteTags({travelId, workId});
+
+    expect((await service.listTags()).map((tag) => tag.id), {homeId});
+    expect(await service.transactionTagIds('tx-1'), isEmpty);
   });
 }
 
@@ -89,4 +125,11 @@ class _SequentialIds implements IdGenerator {
 
   @override
   String newId() => 'id-${++_next}';
+}
+
+class _DirectTransactionRunner implements TransactionRunner {
+  const _DirectTransactionRunner();
+
+  @override
+  Future<T> run<T>(Future<T> Function() body) => body();
 }

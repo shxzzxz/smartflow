@@ -160,6 +160,40 @@ void main() {
     ]);
   });
 
+  test(
+    'counterparty filter returns only top-level transactions with that reference',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAll(database.transactions, [
+          _transactionCompanionAt(
+            'top-ziroom',
+            DateTime(2026, 4, 3),
+            counterpartyId: 'cp-ziroom',
+          ),
+          _transactionCompanionAt(
+            'child-ziroom',
+            DateTime(2026, 4, 2),
+            parentTransactionId: 'top-other',
+            counterpartyId: 'cp-ziroom',
+          ),
+          _transactionCompanionAt(
+            'top-other',
+            DateTime(2026, 4, 1),
+            counterpartyId: 'cp-other',
+          ),
+        ]);
+      });
+
+      final page = await DriftTransactionReadRepository(database)
+          .watchPage(const TransactionPageQuery(counterpartyId: 'cp-ziroom'))
+          .first;
+
+      expect(page.map((transaction) => transaction.id), ['top-ziroom']);
+    },
+  );
+
   test('finds the latest top-level transaction for a category', () async {
     final database = createTestDatabase();
     addTearDown(database.close);
@@ -321,6 +355,7 @@ TransactionsCompanion _transactionCompanionAt(
   DateTime occurredAt, {
   BusinessPurpose businessPurpose = BusinessPurpose.dailyExpense,
   String? parentTransactionId,
+  String? counterpartyId,
 }) => TransactionsCompanion.insert(
   id: id,
   businessPurpose: businessPurpose,
@@ -329,6 +364,7 @@ TransactionsCompanion _transactionCompanionAt(
   primaryAmountMinor: 100,
   sourceKind: SourceKind.manual,
   parentTransactionId: Value(parentTransactionId),
+  counterpartyId: Value(counterpartyId),
 );
 
 EntriesCompanion _entryCompanion(

@@ -37,13 +37,14 @@ class DriftTransactionTagRepository implements TransactionTagRepository {
   @override
   Future<void> mergeTags({required String sourceId, required String targetId}) {
     return _db.transaction(() async {
-      final sourceRows =
-          await (_db.select(_db.transactionTags)
-            ..where((table) => table.tagId.equals(sourceId))).get();
+      final sourceRows = await (_db.select(
+        _db.transactionTags,
+      )..where((table) => table.tagId.equals(sourceId))).get();
       if (sourceRows.isNotEmpty) {
         final targetTransactions =
-            (await (_db.select(_db.transactionTags)
-                  ..where((table) => table.tagId.equals(targetId))).get())
+            (await (_db.select(
+                  _db.transactionTags,
+                )..where((table) => table.tagId.equals(targetId))).get())
                 .map((row) => row.transactionId)
                 .toSet();
         await _db.batch((batch) {
@@ -58,18 +59,55 @@ class DriftTransactionTagRepository implements TransactionTagRepository {
             );
           }
         });
-        await (_db.delete(_db.transactionTags)
-          ..where((table) => table.tagId.equals(sourceId))).go();
+        await (_db.delete(
+          _db.transactionTags,
+        )..where((table) => table.tagId.equals(sourceId))).go();
       }
       await _deleteTagRow(sourceId);
     });
   }
 
   @override
+  Future<void> migrateTag({
+    required String sourceId,
+    required String targetId,
+  }) {
+    return _db.transaction(() async {
+      final sourceRows = await (_db.select(
+        _db.transactionTags,
+      )..where((table) => table.tagId.equals(sourceId))).get();
+      if (sourceRows.isNotEmpty) {
+        final targetTransactions =
+            (await (_db.select(
+                  _db.transactionTags,
+                )..where((table) => table.tagId.equals(targetId))).get())
+                .map((row) => row.transactionId)
+                .toSet();
+        await _db.batch((batch) {
+          for (final row in sourceRows) {
+            if (targetTransactions.contains(row.transactionId)) continue;
+            batch.insert(
+              _db.transactionTags,
+              TransactionTagsCompanion.insert(
+                transactionId: row.transactionId,
+                tagId: targetId,
+              ),
+            );
+          }
+        });
+        await (_db.delete(
+          _db.transactionTags,
+        )..where((table) => table.tagId.equals(sourceId))).go();
+      }
+    });
+  }
+
+  @override
   Future<void> deleteTag(String id) {
     return _db.transaction(() async {
-      await (_db.delete(_db.transactionTags)
-        ..where((table) => table.tagId.equals(id))).go();
+      await (_db.delete(
+        _db.transactionTags,
+      )..where((table) => table.tagId.equals(id))).go();
       await _deleteTagRow(id);
     });
   }
@@ -104,9 +142,9 @@ class DriftTransactionTagRepository implements TransactionTagRepository {
   Future<Set<String>> transactionTagIds(String transactionId) async {
     final rootId = await _rootTransactionId(transactionId);
     if (rootId == null) return const {};
-    final rows =
-        await (_db.select(_db.transactionTags)
-          ..where((table) => table.transactionId.equals(rootId))).get();
+    final rows = await (_db.select(
+      _db.transactionTags,
+    )..where((table) => table.transactionId.equals(rootId))).get();
     return rows.map((row) => row.tagId).toSet();
   }
 
@@ -130,8 +168,9 @@ class DriftTransactionTagRepository implements TransactionTagRepository {
     required Set<String> tagIds,
   }) {
     return _db.transaction(() async {
-      await (_db.delete(_db.transactionTags)
-        ..where((table) => table.transactionId.equals(transactionId))).go();
+      await (_db.delete(
+        _db.transactionTags,
+      )..where((table) => table.transactionId.equals(transactionId))).go();
       if (tagIds.isEmpty) return;
       final validIds =
           await (_db.selectOnly(_db.tags)
@@ -165,18 +204,12 @@ class DriftTransactionTagRepository implements TransactionTagRepository {
   JoinedSelectStatement<$TagsTable, TagRow> _tagSelect(
     Expression<int> usageCount,
   ) {
-    final select =
-        _db.selectOnly(_db.tags)
-          ..addColumns([
-            _db.tags.id,
-            _db.tags.name,
-            _db.tags.sortOrder,
-            usageCount,
-          ])
-          ..orderBy([
-            OrderingTerm.asc(_db.tags.sortOrder),
-            OrderingTerm.asc(_db.tags.name),
-          ]);
+    final select = _db.selectOnly(_db.tags)
+      ..addColumns([_db.tags.id, _db.tags.name, _db.tags.sortOrder, usageCount])
+      ..orderBy([
+        OrderingTerm.asc(_db.tags.sortOrder),
+        OrderingTerm.asc(_db.tags.name),
+      ]);
     return select;
   }
 
