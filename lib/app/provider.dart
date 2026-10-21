@@ -261,6 +261,7 @@ CounterpartyApplicationService counterpartyApplicationService(Ref ref) {
   return CounterpartyApplicationService(
     repository: ref.watch(counterpartyRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 

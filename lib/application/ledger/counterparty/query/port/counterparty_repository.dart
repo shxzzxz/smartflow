@@ -13,4 +13,12 @@ abstract interface class CounterpartyRepository {
   Future<Map<String, CounterpartyView>> findByIds(Set<String> ids);
 
   Future<void> insertCounterparty({required String id, required String name});
+
+  Future<void> renameCounterparty({required String id, required String name});
+
+  /// 清空所有交易上的对手方引用，供 application 用例在删除前调用。
+  Future<void> clearTransactionReferences(String counterpartyId);
+
+  /// 物理删除词表记录；调用方必须先处理交易引用。
+  Future<void> deleteCounterparty(String id);
 }

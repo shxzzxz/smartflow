@@ -17,6 +17,7 @@ import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/tag/page/tags_page.dart';
 import '../feature/category/page/category_form_page.dart';
+import '../feature/counterparty/page/counterparties_page.dart';
 import '../feature/calendar/page/calendar_page.dart';
 import '../feature/calendar/page/calendar_bills_page.dart';
 import '../feature/budget/page/budget_page.dart';
@@ -436,6 +437,10 @@ final appRouter = GoRouter(
       builder: (context, state) => const CategoriesPage(),
     ),
     GoRoute(path: '/tags', builder: (context, state) => const TagsPage()),
+    GoRoute(
+      path: '/counterparties',
+      builder: (context, state) => const CounterpartiesPage(),
+    ),
     GoRoute(
       path: '/tags/:id/transactions',
       builder: (context, state) => FilteredTransactionsPage(

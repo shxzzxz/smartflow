@@ -11,7 +11,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/tag/tag_name_dialog.dart';
+import '../../../widget/business/shared/name_dialog.dart';
 import '../../../widget/business/tag/tag_search_field.dart';
 import '../../shared/provider/tag_providers.dart';
 
@@ -371,7 +371,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
   }
 
   Future<void> _createTag(BuildContext context, WidgetRef ref) async {
-    final name = await promptTagName(context, title: '新建标签');
+    final name = await promptName(context, title: '新建标签', hintText: '标签名称');
     if (name == null || name.trim().isEmpty) return;
     await ref.read(tagApplicationServiceProvider).createTag(name);
   }
@@ -381,9 +381,10 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     WidgetRef ref,
     TagView tag,
   ) async {
-    final name = await promptTagName(
+    final name = await promptName(
       context,
       title: '重命名标签',
+      hintText: '标签名称',
       initialText: tag.name,
     );
     if (name == null || name.trim().isEmpty || name.trim() == tag.name) return;

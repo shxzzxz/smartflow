@@ -1,9 +1,14 @@
 /// 对手方词表读模型。
 class CounterpartyView {
-  const CounterpartyView({required this.id, required this.name});
+  const CounterpartyView({
+    required this.id,
+    required this.name,
+    this.usageCount = 0,
+  });
 
   final String id;
   final String name;
+  final int usageCount;
 
   @override
   bool operator ==(Object other) =>

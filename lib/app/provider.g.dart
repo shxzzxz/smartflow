@@ -1274,7 +1274,7 @@ final class CounterpartyApplicationServiceProvider
 }
 
 String _$counterpartyApplicationServiceHash() =>
-    r'3133ef0d2189d5e3246c0d9e9bb4b3cb2ead7b45';
+    r'050d378bf42c861309c29b7c379c0fc4067fe8e4';
 
 @ProviderFor(entryReadRepository)
 final entryReadRepositoryProvider = EntryReadRepositoryProvider._();
@@ -1896,7 +1896,7 @@ final class TransactionLedgerWriterProvider
 }
 
 String _$transactionLedgerWriterHash() =>
-    r'e930b7173b4564ca628943b2eb1c711100b3b7bb';
+    r'42d2fb511c97cf356237c8afa3d056e4c8f58308';
 
 @ProviderFor(ledgerPostingService)
 final ledgerPostingServiceProvider = LedgerPostingServiceProvider._();

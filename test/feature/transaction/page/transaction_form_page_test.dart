@@ -8,6 +8,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -823,6 +824,7 @@ Future<void> _pumpTransactionForm(
           CounterpartyApplicationService(
             repository: FakeCounterpartyRepository(counterparties),
             idGenerator: SequentialIdGenerator(prefix: 'cp'),
+            transactionRunner: const _DirectTransactionRunner(),
           ),
         ),
       ],
@@ -841,6 +843,13 @@ Future<void> _pumpTransactionForm(
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('open-transaction-form')));
   await tester.pumpAndSettle();
+}
+
+class _DirectTransactionRunner implements TransactionRunner {
+  const _DirectTransactionRunner();
+
+  @override
+  Future<T> run<T>(Future<T> Function() body) => body();
 }
 
 Account _account(String id) {

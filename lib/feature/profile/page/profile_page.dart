@@ -1,19 +1,14 @@
 import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
 import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
-import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/component.dart';
-import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
-import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/icon/business_icon_bubble.dart';
+import '../presentation/profile_menu.dart';
+import '../widget/profile_group_card.dart';
 
 final _logger = Logger('feature.profile');
 
@@ -79,99 +74,13 @@ class _ProfilePageState extends State<ProfilePage> {
                   AppSpacing.space24 + contentInset,
                 ),
                 children: [
-                  AppSurface(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _ProfileShortcut(
-                          icon: RemixIcons.apps_2_line,
-                          label: '分类管理',
-                          onTap: () => context.push('/category'),
-                        ),
-                        _ProfileShortcut(
-                          icon: RemixIcons.price_tag_3_line,
-                          label: '标签管理',
-                          onTap: () => context.push('/tags'),
-                        ),
-                        _ProfileShortcut(
-                          icon: RemixIcons.calculator_line,
-                          label: '贷款计算器',
-                          onTap: () => context.push('/profile/loan-calculator'),
-                        ),
-                        _ProfileShortcut(
-                          icon: RemixIcons.settings_3_line,
-                          label: '设置',
-                          onTap: () => context.push('/profile/settings'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _ProfileActionSection(
-                    actions: [
-                      _ProfileActionRow(
-                        icon: RemixIcons.file_list_3_line,
-                        label: '分期产品',
-                        onTap: () => context.push('/installment-products'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.percent_line,
-                        label: '参考利率',
-                        onTap: () => context.push('/profile/reference-rates'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _ProfileActionSection(
-                    actions: [
-                      _ProfileActionRow(
-                        icon: RemixIcons.file_excel_2_line,
-                        label: '数据导入',
-                        onTap: () => context.push('/profile/import'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.delete_bin_6_line,
-                        label: '数据清理',
-                        onTap: () => context.push('/profile/data-cleanup'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.shield_check_line,
-                        label: '数据备份',
-                        onTap: () => context.push('/profile/backup'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _ProfileActionSection(
-                    actions: [
-                      _ProfileActionRow(
-                        icon: RemixIcons.book_open_line,
-                        label: '使用手册',
-                        onTap: () => context.push('/profile/manual'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.download_cloud_2_line,
-                        label: '软件版本',
-                        value: versionInfo?.versionName ?? '读取中',
-                        onTap: () => context.push('/profile/software-version'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _ProfileActionSection(
-                    actions: [
-                      _ProfileActionRow(
-                        icon: Icons.widgets_outlined,
-                        label: '组件示例',
-                        onTap: () => context.push('/dev/design-system'),
-                      ),
-                      _ProfileActionRow(
-                        icon: RemixIcons.file_list_3_line,
-                        label: '日志',
-                        onTap: () => context.push('/dev/logs'),
-                      ),
-                    ],
-                  ),
+                  for (final group in _profileGroups(
+                    context,
+                    versionName: versionInfo?.versionName,
+                  )) ...[
+                    ProfileGroupCard(group: group),
+                    const SizedBox(height: AppSpacing.space16),
+                  ],
                 ],
               ),
             ),
@@ -180,124 +89,113 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-}
 
-class _ProfileShortcut extends StatelessWidget {
-  const _ProfileShortcut({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Expanded(
-      child: LayoutBuilder(
-        builder: (context, constraints) => Semantics(
-          button: true,
-          child: BusinessIconTile(
-            extent: constraints.maxWidth,
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-                vertical: AppSpacing.space12,
-              ),
-              child: BusinessIconBubble(
-                size: AppSpacing.space40,
-                label: label,
-                labelSpacing: AppSpacing.space8,
-                bubbleColor: colors.primary.withValues(
-                  alpha: AppComponentTokens.selectedContainerOpacity,
-                ),
-                iconColor: colors.primary,
-                child: Icon(icon, size: AppSpacing.space24),
-              ),
-            ),
+  List<ProfileMenuGroup> _profileGroups(
+    BuildContext context, {
+    required String? versionName,
+  }) {
+    return [
+      ProfileMenuGroup(
+        title: '常用功能',
+        layout: ProfileGroupLayout.grid,
+        entries: [
+          ProfileMenuEntry(
+            title: '分类管理',
+            iconKey: 'category',
+            onTap: () => context.push('/category'),
           ),
-        ),
+          ProfileMenuEntry(
+            title: '标签管理',
+            iconKey: 'tag',
+            onTap: () => context.push('/tags'),
+          ),
+          ProfileMenuEntry(
+            title: '对手方管理',
+            iconKey: 'counterparty',
+            onTap: () => context.push('/counterparties'),
+          ),
+          ProfileMenuEntry(
+            title: '贷款计算器',
+            iconKey: 'calculator',
+            onTap: () => context.push('/profile/loan-calculator'),
+          ),
+          ProfileMenuEntry(
+            title: '设置',
+            iconKey: 'settings',
+            onTap: () => context.push('/profile/settings'),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _ProfileActionSection extends StatelessWidget {
-  const _ProfileActionSection({required this.actions});
-
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppListSection(children: actions);
-  }
-}
-
-class _ProfileActionRow extends StatelessWidget {
-  const _ProfileActionRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String? value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space10,
-        ),
-        child: Row(
-          children: [
-            BusinessIconBubble(
-              size: AppSpacing.space32,
-              bubbleColor: colors.primary.withValues(
-                alpha: AppComponentTokens.selectedContainerOpacity,
-              ),
-              iconColor: colors.primary,
-              child: Icon(icon, size: AppSpacing.space24),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Text(label, style: context.appTextStyles.listTitle),
-            ),
-            if (value != null) ...[
-              const SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  value!,
-                  textAlign: TextAlign.end,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.appTextStyles.listSupporting,
-                ),
-              ),
-            ],
-            const SizedBox(width: AppSpacing.space4),
-            Icon(
-              RemixIcons.arrow_right_s_line,
-              size: AppSpacing.space20,
-              color: colors.onSurfaceVariant,
-            ),
-          ],
-        ),
+      ProfileMenuGroup(
+        title: '信贷工具',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '分期产品',
+            iconKey: 'installment_product',
+            onTap: () => context.push('/installment-products'),
+          ),
+          ProfileMenuEntry(
+            title: '参考利率',
+            iconKey: 'reference_rate',
+            onTap: () => context.push('/profile/reference-rates'),
+          ),
+        ],
       ),
-    );
+      ProfileMenuGroup(
+        title: '数据管理',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '数据导入',
+            iconKey: 'import',
+            onTap: () => context.push('/profile/import'),
+          ),
+          ProfileMenuEntry(
+            title: '数据清理',
+            iconKey: 'cleanup',
+            onTap: () => context.push('/profile/data-cleanup'),
+          ),
+          ProfileMenuEntry(
+            title: '数据备份',
+            iconKey: 'backup',
+            onTap: () => context.push('/profile/backup'),
+          ),
+        ],
+      ),
+      ProfileMenuGroup(
+        title: '帮助与关于',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '使用手册',
+            iconKey: 'manual',
+            onTap: () => context.push('/profile/manual'),
+          ),
+          ProfileMenuEntry(
+            title: '软件版本',
+            value: versionName ?? '读取中',
+            iconKey: 'version',
+            onTap: () => context.push('/profile/software-version'),
+          ),
+        ],
+      ),
+      ProfileMenuGroup(
+        title: '开发工具',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '组件示例',
+            iconKey: 'components',
+            onTap: () => context.push('/dev/design-system'),
+          ),
+          ProfileMenuEntry(
+            title: '日志',
+            iconKey: 'logs',
+            onTap: () => context.push('/dev/logs'),
+          ),
+        ],
+      ),
+    ];
   }
 }

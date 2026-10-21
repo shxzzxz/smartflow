@@ -7,6 +7,8 @@ class FakeCounterpartyRepository implements CounterpartyRepository {
 
   final Map<String, CounterpartyView> _counterparties;
 
+  final Set<String> clearedCounterpartyIds = {};
+
   @override
   Future<Map<String, CounterpartyView>> findByIds(Set<String> ids) async {
     final result = <String, CounterpartyView>{};
@@ -23,6 +25,30 @@ class FakeCounterpartyRepository implements CounterpartyRepository {
     required String name,
   }) async {
     _counterparties[id] = CounterpartyView(id: id, name: name);
+  }
+
+  @override
+  Future<void> renameCounterparty({
+    required String id,
+    required String name,
+  }) async {
+    final existing = _counterparties[id];
+    if (existing == null) return;
+    _counterparties[id] = CounterpartyView(
+      id: id,
+      name: name,
+      usageCount: existing.usageCount,
+    );
+  }
+
+  @override
+  Future<void> clearTransactionReferences(String counterpartyId) async {
+    clearedCounterpartyIds.add(counterpartyId);
+  }
+
+  @override
+  Future<void> deleteCounterparty(String id) async {
+    _counterparties.remove(id);
   }
 
   @override

@@ -1,4 +1,5 @@
 import '../../../../core/id/id_generator.dart';
+import '../../../shared/transaction_runner.dart';
 import '../query/counterparty_read_models.dart';
 import '../query/port/counterparty_repository.dart';
 
@@ -10,11 +11,14 @@ class CounterpartyApplicationService {
   const CounterpartyApplicationService({
     required CounterpartyRepository repository,
     required IdGenerator idGenerator,
+    required TransactionRunner transactionRunner,
   }) : _repository = repository,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _transactionRunner = transactionRunner;
 
   final CounterpartyRepository _repository;
   final IdGenerator _idGenerator;
+  final TransactionRunner _transactionRunner;
 
   Stream<List<CounterpartyView>> watchCounterparties() =>
       _repository.watchCounterparties();
@@ -32,6 +36,28 @@ class CounterpartyApplicationService {
     final id = _idGenerator.newId();
     await _repository.insertCounterparty(id: id, name: trimmed);
     return id;
+  }
+
+  Future<void> renameCounterparty({
+    required String id,
+    required String name,
+  }) async {
+    final trimmed = _normalizeName(name);
+    final counterparties = await _repository.listCounterparties();
+    for (final counterparty in counterparties) {
+      if (counterparty.id != id && counterparty.name == trimmed) {
+        throw StateError('A counterparty named "$trimmed" already exists.');
+      }
+    }
+    await _repository.renameCounterparty(id: id, name: trimmed);
+  }
+
+  /// 删除词表记录并解除全部交易引用；两步写入由同一用例事务包裹。
+  Future<void> deleteCounterparty(String id) {
+    return _transactionRunner.run(() async {
+      await _repository.clearTransactionReferences(id);
+      await _repository.deleteCounterparty(id);
+    });
   }
 
   String _normalizeName(String name) {

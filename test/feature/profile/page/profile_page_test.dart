@@ -32,13 +32,14 @@ void main() {
   testWidgets('shows shortcuts and grouped actions with working destinations', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(360, 900);
+    tester.view.physicalSize = const Size(360, 1500);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     const destinations = {
       '分类管理': '/category',
       '标签管理': '/tags',
+      '对手方管理': '/counterparties',
       '贷款计算器': '/profile/loan-calculator',
       '设置': '/profile/settings',
       '分期产品': '/installment-products',
@@ -71,14 +72,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final title in ['常用功能', '账务管理', '数据管理', '偏好设置', '帮助与关于', '开发工具']) {
-      expect(find.text(title), findsNothing);
+    for (final title in ['常用功能', '信贷工具', '数据管理', '帮助与关于', '开发工具']) {
+      expect(find.text(title), findsOneWidget);
     }
 
     final sections = find.byType(AppSurface);
     expect(sections, findsNWidgets(5));
     const groups = [
-      ['分类管理', '标签管理', '贷款计算器', '设置'],
+      ['分类管理', '标签管理', '对手方管理', '贷款计算器', '设置'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],
       ['使用手册', '软件版本'],
@@ -93,16 +94,6 @@ void main() {
       }
     }
     expect(find.text('账户管理'), findsNothing);
-    final shortcutPositions = [
-      for (final label in groups.first) tester.getCenter(find.text(label)),
-    ];
-    for (var index = 1; index < shortcutPositions.length; index++) {
-      expect(shortcutPositions[index].dy, shortcutPositions.first.dy);
-      expect(
-        shortcutPositions[index].dx,
-        greaterThan(shortcutPositions[index - 1].dx),
-      );
-    }
     expect(find.text('0.5.1-dev.2'), findsOneWidget);
     expect(
       tester.getCenter(find.text('0.5.1-dev.2')).dx,
