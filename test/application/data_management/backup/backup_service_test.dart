@@ -4,6 +4,7 @@ import 'package:test/test.dart';
 
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
+import 'package:smartflow/application/data_management/backup/counterparty_backup_migration.dart';
 import 'package:smartflow/infrastructure/data_management/backup/file_backup_package_store.dart';
 
 void main() {
@@ -104,6 +105,31 @@ void main() {
     );
   });
 
+  test('migrates legacy counterparty names in old backups', () {
+    final tables = <String, Iterable<BackupJson>>{
+      'counterparties': const [],
+      'transactions': [
+        {'id': 'tx-1', 'counterpartyName': ' 自如 '},
+        {'id': 'tx-2', 'counterpartyName': '自如'},
+        {'id': 'tx-3', 'counterpartyName': '   '},
+      ],
+    };
+
+    migrateCounterpartyBackup(tables);
+
+    final counterparties = tables['counterparties']!.toList();
+    final transactions = tables['transactions']!.toList();
+    expect(counterparties, hasLength(1));
+    expect(counterparties.single['name'], '自如');
+    expect(transactions[0]['counterpartyId'], counterparties.single['id']);
+    expect(transactions[1]['counterpartyId'], counterparties.single['id']);
+    expect(transactions[2]['counterpartyId'], isNull);
+    expect(
+      transactions.every((row) => !row.containsKey('counterpartyName')),
+      isTrue,
+    );
+  });
+
   test('rejects dangling references and unbalanced account balances', () {
     final snapshot = _emptySnapshot(
       transactions: [
@@ -113,7 +139,7 @@ void main() {
           'occurredAt': '2026-01-01T00:00:00.000Z',
           'postedAt': '2026-01-01T00:00:00.000Z',
           'primaryAmountMinor': 100,
-          'counterpartyName': null,
+          'counterpartyId': null,
           'note': null,
           'parentTransactionId': null,
           'isExcludedFromStats': false,

@@ -87,7 +87,7 @@ class TransactionGroupRewriteService {
     );
     candidateParent.updateBasicInfo(
       occurredAt: instruction.occurredAt,
-      counterpartyName: instruction.counterpartyName,
+      counterpartyId: instruction.counterpartyId,
       note: instruction.note,
     );
     candidateParent.updateReportingFlags(
@@ -211,7 +211,7 @@ class TransactionGroupRewriteService {
     );
     rewritten.updateBasicInfo(
       occurredAt: instruction.occurredAt,
-      counterpartyName: instruction.counterpartyName,
+      counterpartyId: instruction.counterpartyId,
       note: instruction.note,
     );
     return _singleChildRewrite(
@@ -273,7 +273,7 @@ class TransactionGroupRewriteService {
         receivableAccountId: receivableAccountId,
         settlementAllocations: settlements,
         occurredAt: currentReceipt.occurredAt,
-        counterpartyName: currentReceipt.counterpartyName,
+        counterpartyId: currentReceipt.counterpartyId,
         note: currentReceipt.note,
       ),
       advance: group.parentTransaction,
@@ -284,7 +284,7 @@ class TransactionGroupRewriteService {
     );
     rewritten.updateBasicInfo(
       occurredAt: instruction.occurredAt,
-      counterpartyName: instruction.counterpartyName,
+      counterpartyId: instruction.counterpartyId,
       note: instruction.note,
     );
     return _singleChildRewrite(
@@ -364,7 +364,7 @@ class TransactionGroupRewriteService {
         settlementAllocations: settlements,
         gapExpenseAllocations: gapExpenseAllocations,
         occurredAt: currentClose.occurredAt,
-        counterpartyName: currentClose.counterpartyName,
+        counterpartyId: currentClose.counterpartyId,
         note: currentClose.note,
       ),
       advance: group.parentTransaction,
@@ -377,7 +377,7 @@ class TransactionGroupRewriteService {
     );
     rewritten.updateBasicInfo(
       occurredAt: instruction.occurredAt,
-      counterpartyName: instruction.counterpartyName,
+      counterpartyId: instruction.counterpartyId,
       note: instruction.note,
     );
     return _singleChildRewrite(

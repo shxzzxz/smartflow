@@ -10,6 +10,7 @@ import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
+import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/action_guard.dart';
@@ -69,6 +70,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         ? null
         : ref.watch(accountsByIdProvider);
     final tagsAsync = ref.watch(tagListProvider);
+    final counterpartiesAsync = ref.watch(counterpartyListProvider);
     final editTagIdsAsync = editTransactionId == null
         ? null
         : ref.watch(transactionTagIdsProvider(editTransactionId));
@@ -85,6 +87,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
         tags: tagsAsync.value,
+        counterparties: counterpartiesAsync.value,
       );
       _initializedState = next;
       return AsyncValue.data(next);
@@ -108,6 +111,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
           incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
           tags: tagsAsync.value ?? const <TagView>[],
+          counterparties:
+              counterpartiesAsync.value ?? const <CounterpartyView>[],
         ),
       );
     }
@@ -121,6 +126,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       expenseTreeAsync,
       incomeTreeAsync,
       tagsAsync,
+      counterpartiesAsync,
       ?editDetailAsync,
       ?accountsByIdAsync,
       ?editTagIdsAsync,
@@ -165,6 +171,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         expenseTree: expenseTree,
         incomeTree: incomeTree,
         tags: tagsAsync.value ?? const <TagView>[],
+        counterparties: counterpartiesAsync.value ?? const <CounterpartyView>[],
         initialTagIds: editTagIdsAsync!.requireValue,
       ),
     );
@@ -353,6 +360,25 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(selectedTagIds: value));
   }
 
+  void setCounterpartyId(String? value) {
+    _update((current) => current.copyWith(counterpartyId: value));
+  }
+
+  void setCounterparty(CounterpartyView? value) {
+    _update((current) {
+      final counterparties = [...current.counterparties];
+      if (value != null && !counterparties.any((item) => item.id == value.id)) {
+        counterparties
+          ..add(value)
+          ..sort((left, right) => left.name.compareTo(right.name));
+      }
+      return current.copyWith(
+        counterpartyId: value?.id,
+        counterparties: counterparties,
+      );
+    });
+  }
+
   void setExcludeBudget(bool value) {
     _update((current) => current.copyWith(excludeBudget: value));
   }
@@ -460,6 +486,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               categoryAllocations: allocations.categories,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
+              counterpartyId: formState.counterpartyId,
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
@@ -474,6 +501,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               categoryAllocations: allocations.categories,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
+              counterpartyId: formState.counterpartyId,
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
@@ -489,6 +517,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             categoryAllocations: allocations.categories,
             settlementAllocations: allocations.settlements,
             occurredAt: formState.occurredAt,
+            counterpartyId: formState.counterpartyId,
             note: note,
             isExcludedFromStats: formState.excludeStats,
             tagIds: formState.selectedTagIds,
@@ -513,6 +542,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             toAccountId: toAccountId,
             feeAmount: feeAmount,
             occurredAt: formState.occurredAt,
+            counterpartyId: formState.counterpartyId,
             note: note,
             tagIds: formState.selectedTagIds,
           ),
@@ -536,6 +566,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
             occurredAt: formState.occurredAt,
+            counterpartyId: formState.counterpartyId,
             note: note,
             tagIds: formState.selectedTagIds,
           ),
@@ -559,6 +590,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
                 receivableAccountId: receivableAccountId,
                 paidFromAccountId: paidFromAccountId,
                 occurredAt: formState.occurredAt,
+                counterpartyId: formState.counterpartyId,
                 note: note,
                 tagIds: formState.selectedTagIds,
               ),
@@ -575,6 +607,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   ) async {
     final editService = ref.read(transactionEditAppServiceProvider);
     final note = _stringPatch(trimToNull(noteText));
+    final counterpartyId = _counterpartyPatch(formState.counterpartyId);
 
     switch (formState.mode) {
       case TransactionFormMode.expense:
@@ -591,6 +624,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               categoryAllocations: allocations.categories,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
+              counterpartyId: counterpartyId,
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
@@ -606,6 +640,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               categoryAllocations: allocations.categories,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
+              counterpartyId: counterpartyId,
               note: note,
               isExcludedFromStats: formState.excludeStats,
               isExcludedFromBudget: formState.excludeBudget,
@@ -622,6 +657,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             categoryAllocations: allocations.categories,
             settlementAllocations: allocations.settlements,
             occurredAt: formState.occurredAt,
+            counterpartyId: counterpartyId,
             note: note,
             isExcludedFromStats: formState.excludeStats,
             tagIds: formState.selectedTagIds,
@@ -647,6 +683,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             toAccountId: toAccountId,
             feeAmount: feeAmount,
             occurredAt: formState.occurredAt,
+            counterpartyId: counterpartyId,
             note: note,
             tagIds: formState.selectedTagIds,
           ),
@@ -670,6 +707,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
             occurredAt: formState.occurredAt,
+            counterpartyId: counterpartyId,
             note: note,
             tagIds: formState.selectedTagIds,
           ),
@@ -693,6 +731,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             receivableAccountId: receivableAccountId,
             paidFromAccountId: paidFromAccountId,
             occurredAt: formState.occurredAt,
+            counterpartyId: counterpartyId,
             note: note,
             tagIds: formState.selectedTagIds,
           ),
@@ -718,6 +757,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
     required List<TagView>? tags,
+    required List<CounterpartyView>? counterparties,
   }) {
     return current.copyWith(
       settlementAccounts: settlementAccounts,
@@ -728,6 +768,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
+      counterparties: counterparties,
     );
   }
 
@@ -770,6 +811,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   Patch<String?> _stringPatch(String? value) {
     return value == null ? const Patch<String?>.clear() : Patch.set(value);
+  }
+
+  Patch<String?> _counterpartyPatch(String? value) {
+    return value == null
+        ? const Patch<String?>.clear()
+        : Patch<String?>.set(value);
   }
 
   ({
@@ -870,7 +917,9 @@ class TransactionFormState {
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
+    required List<CounterpartyView> counterparties,
     this.selectedTagIds = const {},
+    this.counterpartyId,
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -892,6 +941,7 @@ class TransactionFormState {
        expenseTree = List.unmodifiable(expenseTree),
        incomeTree = List.unmodifiable(incomeTree),
        tags = List.unmodifiable(tags),
+       counterparties = List.unmodifiable(counterparties),
        categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -908,6 +958,7 @@ class TransactionFormState {
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
+    required List<CounterpartyView> counterparties,
   }) {
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
@@ -937,6 +988,7 @@ class TransactionFormState {
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
+      counterparties: counterparties,
     );
   }
 
@@ -950,6 +1002,7 @@ class TransactionFormState {
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
+    required List<CounterpartyView> counterparties,
     required Set<String> initialTagIds,
   }) {
     final categoryAllocations = snapshot.categoryAllocations ?? const [];
@@ -966,6 +1019,7 @@ class TransactionFormState {
           : TransactionEntryMode.normal,
       occurredAt: snapshot.occurredAt,
       selectedTagIds: initialTagIds,
+      counterpartyId: snapshot.counterpartyId,
       expenseCategoryId: usesAllocatedEntry ? null : snapshot.expenseCategoryId,
       expenseRootId: usesAllocatedEntry ? null : snapshot.expenseRootId,
       incomeCategoryId: usesAllocatedEntry ? null : snapshot.incomeCategoryId,
@@ -990,6 +1044,7 @@ class TransactionFormState {
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
+      counterparties: counterparties,
     );
   }
 
@@ -1012,6 +1067,7 @@ class TransactionFormState {
   final bool excludeBudget;
   final bool submitting;
   final Set<String> selectedTagIds;
+  final String? counterpartyId;
   final List<Account> settlementAccounts;
   final List<Account> fundAccounts;
   final List<Account> liabilityAccounts;
@@ -1020,6 +1076,7 @@ class TransactionFormState {
   final List<CategoryNode> expenseTree;
   final List<CategoryNode> incomeTree;
   final List<TagView> tags;
+  final List<CounterpartyView> counterparties;
 
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
@@ -1048,7 +1105,9 @@ class TransactionFormState {
     List<CategoryNode>? expenseTree,
     List<CategoryNode>? incomeTree,
     List<TagView>? tags,
+    List<CounterpartyView>? counterparties,
     Set<String>? selectedTagIds,
+    Object? counterpartyId = _sentinel,
   }) {
     return TransactionFormState(
       initialValues: initialValues ?? this.initialValues,
@@ -1098,7 +1157,11 @@ class TransactionFormState {
       expenseTree: expenseTree ?? this.expenseTree,
       incomeTree: incomeTree ?? this.incomeTree,
       tags: tags ?? this.tags,
+      counterparties: counterparties ?? this.counterparties,
       selectedTagIds: selectedTagIds ?? this.selectedTagIds,
+      counterpartyId: counterpartyId == _sentinel
+          ? this.counterpartyId
+          : counterpartyId as String?,
     );
   }
 }

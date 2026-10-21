@@ -11,12 +11,15 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
+import '../../../helper/fake_counterparty_repository.dart';
+import '../../../helper/sequential_id_generator.dart';
 
 void main() {
   testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
@@ -479,6 +482,57 @@ void main() {
     }
   });
 
+  testWidgets('selects a counterparty to the left of tags', (tester) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      counterparties: const [CounterpartyView(id: 'cp-ziroom', name: '自如')],
+    );
+
+    expect(find.text('对手方'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('对手方')).dx,
+      lessThan(tester.getTopLeft(find.text('标签')).dx),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-counterparty-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('选择对手方'), findsOneWidget);
+    await tester.tap(find.text('自如'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(Chip, '自如'), findsOneWidget);
+    expect(find.text('对手方'), findsNothing);
+  });
+
+  testWidgets('creates and submits a new counterparty', (tester) async {
+    final fakeService = _FakeTransactionPostingAppService();
+    await _pumpTransactionForm(tester, fakeService);
+
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-counterparty-action')),
+    );
+    await tester.pumpAndSettle();
+    final searchField = find.descendant(
+      of: find.byKey(const ValueKey('counterparty-search-field')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(searchField, '贝壳');
+    await tester.pump();
+    await tester.tap(find.text('创建对手方“贝壳”'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(Chip, '贝壳'), findsOneWidget);
+    await tester.tap(find.text('food'));
+    await tester.tap(find.text('1'));
+    await tester.tap(find.text('完成'));
+    await tester.pumpAndSettle();
+
+    expect(fakeService.commands.single.counterpartyId, isNotNull);
+  });
+
   testWidgets('renders selected tags as badges that can be edited', (
     tester,
   ) async {
@@ -534,6 +588,9 @@ void main() {
           AccountType.income,
         ).overrideWithValue(const AsyncLoading<List<CategoryNode>>()),
         tagListProvider.overrideWithValue(const AsyncLoading<List<TagView>>()),
+        counterpartyListProvider.overrideWithValue(
+          const AsyncLoading<List<CounterpartyView>>(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -684,6 +741,9 @@ List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
     ).overrideWithValue(const AsyncData(<CategoryNode>[])),
     accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
     tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
+    counterpartyListProvider.overrideWithValue(
+      const AsyncData(<CounterpartyView>[]),
+    ),
     transactionTagIdsProvider(
       'tx-1',
     ).overrideWithValue(const AsyncData(<String>{})),
@@ -702,6 +762,7 @@ Future<void> _pumpTransactionForm(
   ThemeMode themeMode = ThemeMode.light,
   TextScaler textScaler = TextScaler.noScaling,
   List<TagView> tags = const [],
+  List<CounterpartyView> counterparties = const [],
   List<Account>? settlementAccounts,
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
@@ -755,6 +816,15 @@ Future<void> _pumpTransactionForm(
           (ref) => Stream.value(incomeTree ?? const <CategoryNode>[]),
         ),
         tagListProvider.overrideWith((ref) => Stream.value(tags)),
+        counterpartyListProvider.overrideWith(
+          (ref) => Stream.value(counterparties),
+        ),
+        counterpartyApplicationServiceProvider.overrideWithValue(
+          CounterpartyApplicationService(
+            repository: FakeCounterpartyRepository(counterparties),
+            idGenerator: SequentialIdGenerator(prefix: 'cp'),
+          ),
+        ),
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),

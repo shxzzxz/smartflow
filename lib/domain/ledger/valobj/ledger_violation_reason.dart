@@ -128,6 +128,10 @@ enum LedgerViolationReason {
     LedgerErrorCode.categoryInvalidParent,
     'Parent category type must match child category type.',
   ),
+  counterpartyNotFound(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Counterparty does not exist.',
+  ),
   lineAmountSignInvalid(
     LedgerErrorCode.transactionInvalidCommand,
     'Transaction line amount has an invalid sign.',

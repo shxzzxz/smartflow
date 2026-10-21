@@ -11,7 +11,7 @@ class CreateExpenseCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -25,7 +25,7 @@ class CreateExpenseCommand {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -42,7 +42,7 @@ class CreateIncomeCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -56,7 +56,7 @@ class CreateIncomeCommand {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -72,7 +72,7 @@ class CreateTransferCommand {
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
@@ -84,7 +84,7 @@ class CreateTransferCommand {
   final DateTime occurredAt;
   final DateTime? postedAt;
   final Money? feeAmount;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
   final Set<String> tagIds;
@@ -98,7 +98,7 @@ class CreateRefundCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
@@ -109,7 +109,7 @@ class CreateRefundCommand {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -121,7 +121,7 @@ class CreateReimbursementAdvanceCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -136,7 +136,7 @@ class CreateReimbursementAdvanceCommand {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -152,7 +152,7 @@ class CreateReimbursementReceiptCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -162,7 +162,7 @@ class CreateReimbursementReceiptCommand {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -175,7 +175,7 @@ class CloseReimbursementCommand {
     required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
@@ -187,7 +187,7 @@ class CloseReimbursementCommand {
   final List<AccountAmountAllocation> gapExpenseAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -201,7 +201,7 @@ class CreateRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
@@ -216,7 +216,7 @@ class CreateRepaymentCommand {
   final String paidFromAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
@@ -232,7 +232,7 @@ class CreateBorrowingCommand {
     required this.receiveAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
@@ -244,7 +244,7 @@ class CreateBorrowingCommand {
   final String receiveAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
@@ -258,7 +258,7 @@ class CreateLendingCommand {
     required this.paidFromAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds = const {},
   });
@@ -267,7 +267,7 @@ class CreateLendingCommand {
   final String paidFromAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final Set<String> tagIds;
 }
@@ -280,7 +280,7 @@ class CreateReceivableCollectionCommand {
     required this.occurredAt,
     this.interest = const Money(minorUnits: 0),
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds = const {},
   });
@@ -290,7 +290,7 @@ class CreateReceivableCollectionCommand {
   final String receiveAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final Set<String> tagIds;
 }
@@ -303,7 +303,7 @@ class CreateBadDebtCommand {
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds = const {},
   });
@@ -313,7 +313,7 @@ class CreateBadDebtCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final Set<String> tagIds;
 }
@@ -325,7 +325,7 @@ class CreateDebtReliefCommand {
     required this.occurredAt,
     required this.isExcludedFromStats,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds = const {},
   });
@@ -334,7 +334,7 @@ class CreateDebtReliefCommand {
   final DateTime occurredAt;
   final bool isExcludedFromStats;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final Set<String> tagIds;
 }
@@ -345,7 +345,7 @@ class CreateOpeningBalanceCommand {
     required this.amount,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
   });
@@ -354,7 +354,7 @@ class CreateOpeningBalanceCommand {
   final Money amount;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
 }
@@ -364,14 +364,14 @@ class AdjustBalanceCommand {
     required this.accountId,
     required this.targetBalance,
     required this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String accountId;
   final Money targetBalance;
   final DateTime occurredAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -382,7 +382,7 @@ class EditExpenseCommand {
     this.categoryAllocations,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
@@ -394,7 +394,7 @@ class EditExpenseCommand {
   final List<AccountAmountAllocation>? categoryAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
@@ -410,7 +410,7 @@ class EditIncomeCommand {
     this.categoryAllocations,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats,
     this.tagIds,
@@ -421,7 +421,7 @@ class EditIncomeCommand {
   final List<AccountAmountAllocation>? categoryAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
 
@@ -437,7 +437,7 @@ class EditTransferCommand {
     this.toAccountId,
     this.occurredAt,
     this.feeAmount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -450,7 +450,7 @@ class EditTransferCommand {
 
   /// `null` 表示不修改；`Money.zero()` 表示移除手续费。
   final Money? feeAmount;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 
   /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
@@ -465,7 +465,7 @@ class EditReimbursementAdvanceCommand {
     this.categoryAllocations,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
@@ -478,7 +478,7 @@ class EditReimbursementAdvanceCommand {
   final List<AccountAmountAllocation>? categoryAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
@@ -508,7 +508,7 @@ class EditRefundCommand {
     this.categoryAllocations,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
@@ -517,7 +517,7 @@ class EditRefundCommand {
   final List<AccountAmountAllocation>? categoryAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -528,7 +528,7 @@ class EditReimbursementReceiptCommand {
     this.receivableAccountId,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
@@ -537,7 +537,7 @@ class EditReimbursementReceiptCommand {
   final String? receivableAccountId;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -549,7 +549,7 @@ class EditReimbursementCloseCommand {
     this.settlementAllocations,
     this.gapExpenseAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
@@ -559,7 +559,7 @@ class EditReimbursementCloseCommand {
   final List<AccountAmountAllocation>? settlementAllocations;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -570,7 +570,7 @@ class EditBorrowingCommand {
     this.liabilityAccountId,
     this.receiveAccountId,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -580,7 +580,7 @@ class EditBorrowingCommand {
   final String? liabilityAccountId;
   final String? receiveAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 
   /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
@@ -597,7 +597,7 @@ class EditRepaymentCommand {
     this.interest,
     this.fee,
     this.discount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -610,7 +610,7 @@ class EditRepaymentCommand {
   final String? liabilityAccountId;
   final String? paidFromAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 
   /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
@@ -630,7 +630,7 @@ class EditLendingCommand {
     this.receivableAccountId,
     this.paidFromAccountId,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -639,7 +639,7 @@ class EditLendingCommand {
   final String? receivableAccountId;
   final String? paidFromAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final Set<String>? tagIds;
 }
@@ -652,7 +652,7 @@ class EditReceivableCollectionCommand {
     this.receivableAccountId,
     this.receiveAccountId,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -662,7 +662,7 @@ class EditReceivableCollectionCommand {
   final String? receivableAccountId;
   final String? receiveAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final Set<String>? tagIds;
 }
@@ -675,7 +675,7 @@ class EditBadDebtCommand {
     this.amount,
     this.receivableAccountId,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -685,7 +685,7 @@ class EditBadDebtCommand {
   final Money? amount;
   final String? receivableAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final Set<String>? tagIds;
 }
@@ -697,7 +697,7 @@ class EditDebtReliefCommand {
     this.amount,
     this.liabilityAccountId,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.tagIds,
   });
@@ -706,7 +706,7 @@ class EditDebtReliefCommand {
   final Money? amount;
   final String? liabilityAccountId;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final Set<String>? tagIds;
 }
@@ -747,14 +747,14 @@ class UpdateTransactionBasicInfoCommand {
     required this.transactionId,
     this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String transactionId;
   final DateTime? occurredAt;
   final DateTime? postedAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 

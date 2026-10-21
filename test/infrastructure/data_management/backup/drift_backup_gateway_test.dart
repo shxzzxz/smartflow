@@ -106,6 +106,7 @@ void main() {
         'accounts',
         'transactions',
         'entries',
+        'counterparties',
         'bills',
         'repayments',
         'import_batches',
@@ -142,6 +143,39 @@ void main() {
       expect(snapshot.preferences, {'settings.example': 'true'});
     },
   );
+
+  test('round-trips counterparties and transaction references', () async {
+    await database
+        .into(database.counterparties)
+        .insert(CounterpartiesCompanion.insert(id: 'cp-ziroom', name: '自如'));
+    await database
+        .into(database.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            id: 'tx-1',
+            businessPurpose: BusinessPurpose.transfer,
+            occurredAt: DateTime(2026, 1, 1),
+            postedAt: DateTime(2026, 1, 1),
+            primaryAmountMinor: 100,
+            counterpartyId: const Value('cp-ziroom'),
+            sourceKind: SourceKind.manual,
+          ),
+        );
+
+    final snapshot = await gateway.readSnapshot();
+    await database.delete(database.transactions).go();
+    await database.delete(database.counterparties).go();
+    await gateway.replaceSnapshot(snapshot);
+
+    final transaction = await database
+        .select(database.transactions)
+        .getSingle();
+    expect(transaction.counterpartyId, 'cp-ziroom');
+    expect(
+      (await database.select(database.counterparties).getSingle()).name,
+      '自如',
+    );
+  });
 
   test('exports a real migrated database snapshot', () async {
     final directory = await Directory.systemTemp.createTemp(

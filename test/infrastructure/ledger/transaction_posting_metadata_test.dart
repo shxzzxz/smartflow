@@ -9,6 +9,7 @@ import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_counterparty_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
 
@@ -23,6 +24,9 @@ void main() {
     await _insertAccount(database, 'cash', AccountType.asset);
     await _insertAccount(database, 'food', AccountType.expense);
     await _insertAccount(database, 'loan', AccountType.liability);
+    await database
+        .into(database.counterparties)
+        .insert(CounterpartiesCompanion.insert(id: 'cp-ziroom', name: '自如'));
 
     final ids = SequentialIdGenerator(prefix: 'posting');
     final accounts = DriftAccountRepository(database);
@@ -33,6 +37,7 @@ void main() {
       transactionGroupRepository: postings,
       accountRepository: accounts,
       transactionTagRepository: FakeTransactionTagRepository(),
+      counterpartyRepository: DriftCounterpartyRepository(database),
     );
     final service = TransactionPostingAppServiceImpl(
       accountRepository: accounts,
@@ -55,6 +60,7 @@ void main() {
         ),
         occurredAt: DateTime(2026, 4, 1, 9),
         postedAt: DateTime(2026, 4, 2, 18),
+        counterpartyId: 'cp-ziroom',
         sourceKind: SourceKind.import,
       ),
     );
@@ -72,6 +78,7 @@ void main() {
     final openingTransaction = await postings.findById(opening.transactionId);
     expect(expenseTransaction!.sourceKind, SourceKind.import);
     expect(expenseTransaction.postedAt, DateTime(2026, 4, 2, 18));
+    expect(expenseTransaction.counterpartyId, 'cp-ziroom');
     expect(openingTransaction!.sourceKind, SourceKind.import);
     expect(openingTransaction.postedAt, DateTime(2026, 3, 2));
   });

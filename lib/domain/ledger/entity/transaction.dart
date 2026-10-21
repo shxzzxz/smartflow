@@ -19,7 +19,7 @@ class Transaction {
     required this.isExcludedFromBudget,
     required this.sourceKind,
     this.ownership,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.parentTransactionId,
     this.lines = const [],
@@ -31,7 +31,7 @@ class Transaction {
   DateTime occurredAt;
   DateTime postedAt;
   final Money primaryAmount;
-  String? counterpartyName;
+  String? counterpartyId;
   String? note;
   final String? parentTransactionId;
   bool isExcludedFromStats;
@@ -99,13 +99,13 @@ class Transaction {
   void updateBasicInfo({
     DateTime? occurredAt,
     DateTime? postedAt,
-    Patch<String?>? counterpartyName,
+    Patch<String?>? counterpartyId,
     Patch<String?>? note,
   }) {
     if (occurredAt != null) this.occurredAt = occurredAt;
     if (postedAt != null) this.postedAt = postedAt;
-    if (counterpartyName != null) {
-      this.counterpartyName = switch (counterpartyName) {
+    if (counterpartyId != null) {
+      this.counterpartyId = switch (counterpartyId) {
         PatchSet<String?>(:final value) => _blankToNull(value),
         PatchClear<String?>() => null,
       };
@@ -225,7 +225,7 @@ class Transaction {
     DateTime? occurredAt,
     DateTime? postedAt,
     Money? primaryAmount,
-    String? counterpartyName,
+    String? counterpartyId,
     Patch<String>? notePatch,
     String? parentTransactionId,
     bool? isExcludedFromStats,
@@ -242,7 +242,7 @@ class Transaction {
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
       primaryAmount: primaryAmount ?? this.primaryAmount,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: switch (notePatch) {
         null => note,
         PatchSet<String>(:final value) => _blankToNull(value),

@@ -95,7 +95,7 @@ class InstallmentContractAppServiceImpl
                 liabilityAccountId: command.liabilityAccountId,
                 occurredAt: command.borrowingDate,
                 receiveAccountId: disbursementAccountId,
-                counterpartyName: command.counterpartyName,
+                counterpartyId: command.counterpartyId,
                 note: command.note,
               ),
             );

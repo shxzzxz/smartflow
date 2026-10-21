@@ -1129,6 +1129,54 @@ final class TransactionTagRepositoryProvider
 String _$transactionTagRepositoryHash() =>
     r'd859766b1b20819f280e9ef1465a526a4fcec67a';
 
+@ProviderFor(counterpartyRepository)
+final counterpartyRepositoryProvider = CounterpartyRepositoryProvider._();
+
+final class CounterpartyRepositoryProvider
+    extends
+        $FunctionalProvider<
+          CounterpartyRepository,
+          CounterpartyRepository,
+          CounterpartyRepository
+        >
+    with $Provider<CounterpartyRepository> {
+  CounterpartyRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'counterpartyRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$counterpartyRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<CounterpartyRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CounterpartyRepository create(Ref ref) {
+    return counterpartyRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CounterpartyRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CounterpartyRepository>(value),
+    );
+  }
+}
+
+String _$counterpartyRepositoryHash() =>
+    r'451d7ac6541e6267fa2326179f20a93b656de269';
+
 @ProviderFor(tagApplicationService)
 final tagApplicationServiceProvider = TagApplicationServiceProvider._();
 
@@ -1176,6 +1224,57 @@ final class TagApplicationServiceProvider
 
 String _$tagApplicationServiceHash() =>
     r'1e741e908740fa346b47175a1d433147c52f1e50';
+
+@ProviderFor(counterpartyApplicationService)
+final counterpartyApplicationServiceProvider =
+    CounterpartyApplicationServiceProvider._();
+
+final class CounterpartyApplicationServiceProvider
+    extends
+        $FunctionalProvider<
+          CounterpartyApplicationService,
+          CounterpartyApplicationService,
+          CounterpartyApplicationService
+        >
+    with $Provider<CounterpartyApplicationService> {
+  CounterpartyApplicationServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'counterpartyApplicationServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$counterpartyApplicationServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CounterpartyApplicationService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CounterpartyApplicationService create(Ref ref) {
+    return counterpartyApplicationService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CounterpartyApplicationService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CounterpartyApplicationService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$counterpartyApplicationServiceHash() =>
+    r'3133ef0d2189d5e3246c0d9e9bb4b3cb2ead7b45';
 
 @ProviderFor(entryReadRepository)
 final entryReadRepositoryProvider = EntryReadRepositoryProvider._();
@@ -2191,7 +2290,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'89ea3263216911c370f71e4470b7ee022f547bf4';
+    r'63baf97bb16ba02a1cc8ad1dd0c13870e5d0462b';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

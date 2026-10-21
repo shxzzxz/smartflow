@@ -28,6 +28,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
+import '../../helper/fake_counterparty_repository.dart';
 import '../../helper/fake_transaction_tag_repository.dart';
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
@@ -944,6 +945,7 @@ class _Fixture {
     transactionGroupRepository: postingRepository,
     accountRepository: accountRepository,
     transactionTagRepository: FakeTransactionTagRepository(),
+    counterpartyRepository: FakeCounterpartyRepository(),
   );
   late final TransactionEditAppService editAppService =
       TransactionEditAppServiceImpl(
@@ -972,6 +974,7 @@ class _Fixture {
         entryRead: DriftEntryReadRepository(database),
         lineRead: DriftTransactionLineReadRepository(database),
         accountQuery: accountQueryService,
+        counterpartyRepository: FakeCounterpartyRepository(),
         metricsSource: DriftLedgerMetricsSource(database),
       );
   late final CreditAccountAppService creditAccountAppService;

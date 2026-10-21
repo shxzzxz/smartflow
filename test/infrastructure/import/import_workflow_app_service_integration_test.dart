@@ -48,6 +48,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_rea
 
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
+import '../../helper/fake_counterparty_repository.dart';
 import '../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
@@ -1459,6 +1460,7 @@ class _Fixture {
       transactionGroupRepository: postings,
       accountRepository: accounts,
       transactionTagRepository: FakeTransactionTagRepository(),
+      counterpartyRepository: FakeCounterpartyRepository(),
     );
     final posting = TransactionPostingAppServiceImpl(
       accountRepository: accounts,
@@ -1482,6 +1484,7 @@ class _Fixture {
       entryRead: DriftEntryReadRepository(database),
       lineRead: DriftTransactionLineReadRepository(database),
       accountQuery: accountQuery,
+      counterpartyRepository: FakeCounterpartyRepository(),
       metricsSource: DriftLedgerMetricsSource(database),
     );
     final ledgerPosting = LedgerPostingService(

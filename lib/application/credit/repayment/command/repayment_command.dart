@@ -7,13 +7,13 @@ class RepaymentTransactionInfo {
   const RepaymentTransactionInfo({
     required this.paidFromAccountId,
     required this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String paidFromAccountId;
   final DateTime occurredAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 

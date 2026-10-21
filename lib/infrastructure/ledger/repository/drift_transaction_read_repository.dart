@@ -381,6 +381,7 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
         _db.entries,
         _db.transactionLines,
         _db.accounts,
+        _db.counterparties,
       ]),
     )) {
       yield null;

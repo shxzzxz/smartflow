@@ -138,7 +138,7 @@ class CreditLedgerPostRepaymentCommand {
     required this.paidFromAccountId,
     required this.occurredAt,
     required this.amount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
     this.tagIds = const {},
@@ -148,7 +148,7 @@ class CreditLedgerPostRepaymentCommand {
   final String paidFromAccountId;
   final DateTime occurredAt;
   final RepaymentAmountBreakdown amount;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final Set<String> tagIds;
   final CreditLedgerOwnership? ownership;
@@ -160,7 +160,7 @@ class CreditLedgerPostBorrowingCommand {
     required this.receiveAccountId,
     required this.amount,
     required this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
   });
@@ -169,7 +169,7 @@ class CreditLedgerPostBorrowingCommand {
   final String receiveAccountId;
   final Money amount;
   final DateTime occurredAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final CreditLedgerOwnership? ownership;
 }

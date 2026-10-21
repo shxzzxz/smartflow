@@ -63,6 +63,7 @@ class TransactionReadModel {
     required this.occurredAt,
     DateTime? postedAt,
     required this.primaryAmount,
+    this.counterpartyId,
     this.counterpartyName,
     this.note,
     this.sourceKind = SourceKind.manual,
@@ -85,6 +86,7 @@ class TransactionReadModel {
   factory TransactionReadModel.fromTransaction({
     required Transaction transaction,
     DateTime? createdAt,
+    String? counterpartyName,
     List<TransactionLine>? lines,
     Map<String, TransactionAccountImpact> impactsByAccountId = const {},
     List<TransactionReadModel> children = const [],
@@ -98,7 +100,8 @@ class TransactionReadModel {
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       primaryAmount: transaction.primaryAmount,
-      counterpartyName: transaction.counterpartyName,
+      counterpartyId: transaction.counterpartyId,
+      counterpartyName: counterpartyName,
       note: transaction.note,
       sourceKind: transaction.sourceKind,
       ownership: transaction.ownership,
@@ -119,6 +122,7 @@ class TransactionReadModel {
   final DateTime occurredAt;
   final DateTime postedAt;
   final Money primaryAmount;
+  final String? counterpartyId;
   final String? counterpartyName;
   final String? note;
   final SourceKind sourceKind;
@@ -146,6 +150,7 @@ class TransactionReadModel {
       occurredAt: occurredAt,
       postedAt: postedAt,
       primaryAmount: primaryAmount,
+      counterpartyId: counterpartyId,
       counterpartyName: counterpartyName,
       note: note,
       sourceKind: sourceKind,

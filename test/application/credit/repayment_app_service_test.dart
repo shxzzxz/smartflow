@@ -486,7 +486,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
             transactionInfo: credit.RepaymentTransactionInfo(
               paidFromAccountId: 'cash-1',
               occurredAt: DateTime(2026, 6, 20),
-              counterpartyName: 'Bank',
+              counterpartyId: 'Bank',
               note: 'partial',
             ),
           ),
@@ -2018,7 +2018,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         liabilityAccountId: command.liabilityAccountId,
         paidFromAccountId: command.paidFromAccountId,
         occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
+        counterpartyId: command.counterpartyId,
         note: command.note,
         ownership: command.ownership == null
             ? null

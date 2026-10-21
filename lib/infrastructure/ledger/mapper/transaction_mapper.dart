@@ -10,7 +10,7 @@ Transaction mapTransaction(TransactionRow row) {
     occurredAt: row.occurredAt,
     postedAt: row.postedAt,
     primaryAmount: Money(minorUnits: row.primaryAmountMinor),
-    counterpartyName: row.counterpartyName,
+    counterpartyId: row.counterpartyId,
     note: row.note,
     parentTransactionId: row.parentTransactionId,
     isExcludedFromStats: row.isExcludedFromStats,

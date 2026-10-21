@@ -75,7 +75,7 @@ class RefundPostingService {
       settlementAllocations: instruction.settlementAllocations,
       occurredAt: instruction.occurredAt,
       postedAt: instruction.postedAt,
-      counterpartyName: instruction.counterpartyName,
+      counterpartyId: instruction.counterpartyId,
       note: instruction.note,
     );
 

@@ -38,6 +38,8 @@ import '../infrastructure/ledger/repository/drift_system_account_resolver.dart';
 import '../infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
+import '../infrastructure/ledger/repository/drift_counterparty_repository.dart';
+import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
 import '../infrastructure/database/drift_asset_section_collapse_store.dart';
@@ -242,9 +244,22 @@ TransactionTagRepository transactionTagRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+CounterpartyRepository counterpartyRepository(Ref ref) {
+  return DriftCounterpartyRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 TagApplicationService tagApplicationService(Ref ref) {
   return TagApplicationService(
     repository: ref.watch(transactionTagRepositoryProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CounterpartyApplicationService counterpartyApplicationService(Ref ref) {
+  return CounterpartyApplicationService(
+    repository: ref.watch(counterpartyRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }
@@ -365,6 +380,7 @@ TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
     transactionGroupRepository: ref.watch(ledgerRepositoryProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
     transactionTagRepository: ref.watch(transactionTagRepositoryProvider),
+    counterpartyRepository: ref.watch(counterpartyRepositoryProvider),
   );
 }
 
@@ -453,6 +469,7 @@ TransactionQueryService transactionQueryService(Ref ref) {
     entryRead: ref.watch(entryReadRepositoryProvider),
     lineRead: ref.watch(transactionLineReadRepositoryProvider),
     accountQuery: ref.watch(accountQueryServiceProvider),
+    counterpartyRepository: ref.watch(counterpartyRepositoryProvider),
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
   );
 }

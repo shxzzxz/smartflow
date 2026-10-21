@@ -516,8 +516,66 @@ WHERE NOT EXISTS (
           "WHERE status = 'pending'",
         );
       }
+      if (from < 47) {
+        await _migrateCounterparties(database, migrator);
+      }
     }),
   );
+}
+
+Future<void> _migrateCounterparties(
+  AppDatabase database,
+  Migrator migrator,
+) async {
+  final tableExists = await database
+      .customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'counterparties'",
+      )
+      .get();
+  if (tableExists.isEmpty) {
+    await migrator.createTable(database.counterparties);
+  }
+
+  final hasLegacyName = await _hasColumn(
+    database,
+    'transactions',
+    'counterparty_name',
+  );
+  final hasId = await _hasColumn(database, 'transactions', 'counterparty_id');
+  if (!hasId) {
+    await database.customStatement(
+      'ALTER TABLE transactions ADD COLUMN counterparty_id TEXT NULL',
+    );
+  }
+  if (hasLegacyName) {
+    await database.customStatement('''
+INSERT OR IGNORE INTO counterparties (id, name, created_at, updated_at)
+SELECT
+  'counterparty:' || lower(hex(randomblob(16))),
+  legacy.name,
+  strftime('%s', CURRENT_TIMESTAMP),
+  strftime('%s', CURRENT_TIMESTAMP)
+FROM (
+  SELECT DISTINCT TRIM(counterparty_name) AS name
+  FROM transactions
+  WHERE counterparty_name IS NOT NULL
+    AND TRIM(counterparty_name) <> ''
+) AS legacy
+''');
+    await database.customStatement('''
+UPDATE transactions
+SET counterparty_id = (
+  SELECT counterparties.id
+  FROM counterparties
+  WHERE counterparties.name = TRIM(transactions.counterparty_name)
+)
+WHERE counterparty_name IS NOT NULL
+  AND TRIM(counterparty_name) <> ''
+''');
+    await migrator.alterTable(TableMigration(database.transactions));
+  }
+  await _createCounterpartyIndexes(database);
+  await _createTransactionRowIndexes(database);
 }
 
 Future<void> _normalizeReceivablePayableBudgetFlags(
@@ -1000,7 +1058,19 @@ Future<void> _createCurrentSchema(
   await _createRepaymentIndexes(database);
   await _createImportIndexes(database);
   await _createTagIndexes(database);
+  await _createCounterpartyIndexes(database);
   await ensureBuiltinData(database);
+}
+
+Future<void> _createCounterpartyIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE UNIQUE INDEX IF NOT EXISTS counterparties_name_unique '
+    'ON counterparties (name)',
+  );
+  await database.customStatement(
+    'CREATE INDEX IF NOT EXISTS transactions_counterparty_idx '
+    'ON transactions (counterparty_id) WHERE counterparty_id IS NOT NULL',
+  );
 }
 
 Future<void> _createTagIndexes(AppDatabase database) async {

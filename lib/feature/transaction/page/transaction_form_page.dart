@@ -22,6 +22,8 @@ import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
+import 'package:smartflow/widget/business/counterparty/counterparty_badge.dart';
+import 'package:smartflow/widget/business/counterparty/counterparty_single_select_sheet.dart';
 import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
@@ -344,13 +346,15 @@ class _TransactionFormContentState
                 ),
                 child: Column(
                   children: [
-                    _TransactionTagActionRow(
+                    _TransactionMetadataActionRow(
                       allocated:
                           formState.entryMode == TransactionEntryMode.allocated,
                       showEntryMode:
                           formState.mode == TransactionFormMode.expense ||
                           formState.mode == TransactionFormMode.income,
+                      counterpartyName: _selectedCounterpartyName(formState),
                       tagNames: _selectedTagNames(formState),
+                      onSelectCounterparty: _selectCounterparty,
                       onSelectTags: _selectTags,
                       onToggleMode: () => _toggleEntryMode(formState),
                     ),
@@ -442,6 +446,26 @@ class _TransactionFormContentState
       for (final id in formState.selectedTagIds)
         if (nameById.containsKey(id)) nameById[id]!,
     ];
+  }
+
+  String? _selectedCounterpartyName(TransactionFormState formState) {
+    final selectedId = formState.counterpartyId;
+    if (selectedId == null) return null;
+    for (final counterparty in formState.counterparties) {
+      if (counterparty.id == selectedId) return counterparty.name;
+    }
+    return null;
+  }
+
+  Future<void> _selectCounterparty() async {
+    final formState = ref.read(_formProvider).requireValue!;
+    final result = await showCounterpartySingleSelectSheet(
+      context: context,
+      counterparties: formState.counterparties,
+      selectedId: formState.counterpartyId,
+    );
+    if (!mounted || result == null) return;
+    ref.read(_formProvider.notifier).setCounterparty(result.counterparty);
   }
 
   Future<void> _selectTags() async {
@@ -1047,23 +1071,43 @@ class _CategoryAllocationPickerSheetState
   }
 }
 
-class _TransactionTagActionRow extends StatelessWidget {
-  const _TransactionTagActionRow({
+class _TransactionMetadataActionRow extends StatelessWidget {
+  const _TransactionMetadataActionRow({
     required this.allocated,
     required this.showEntryMode,
+    required this.counterpartyName,
     required this.tagNames,
+    required this.onSelectCounterparty,
     required this.onSelectTags,
     required this.onToggleMode,
   });
 
   final bool allocated;
   final bool showEntryMode;
+  final String? counterpartyName;
   final List<String> tagNames;
+  final VoidCallback onSelectCounterparty;
   final VoidCallback onSelectTags;
   final VoidCallback onToggleMode;
 
   @override
   Widget build(BuildContext context) {
+    final counterparty = counterpartyName == null
+        ? _QuickActionChip(
+            key: const ValueKey('transaction-counterparty-action'),
+            label: '对手方',
+            selected: false,
+            onTap: onSelectCounterparty,
+          )
+        : InkWell(
+            key: const ValueKey('transaction-counterparty-action'),
+            onTap: onSelectCounterparty,
+            borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+              child: CounterpartyBadge(name: counterpartyName!),
+            ),
+          );
     final tags = tagNames.isEmpty
         ? _QuickActionChip(label: '标签', selected: false, onTap: onSelectTags)
         : InkWell(
@@ -1079,10 +1123,13 @@ class _TransactionTagActionRow extends StatelessWidget {
             ),
           );
     return Row(
-      key: const ValueKey('transaction-entry-mode-row'),
+      key: const ValueKey('transaction-metadata-action-row'),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Flexible(flex: 2, child: counterparty),
+        const SizedBox(width: AppSpacing.space8),
         Expanded(
+          flex: 3,
           child: Align(alignment: Alignment.centerLeft, child: tags),
         ),
         const SizedBox(width: AppSpacing.space8),

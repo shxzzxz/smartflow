@@ -1928,12 +1928,12 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _counterpartyNameMeta = const VerificationMeta(
-    'counterpartyName',
+  static const VerificationMeta _counterpartyIdMeta = const VerificationMeta(
+    'counterpartyId',
   );
   @override
-  late final GeneratedColumn<String> counterpartyName = GeneratedColumn<String>(
-    'counterparty_name',
+  late final GeneratedColumn<String> counterpartyId = GeneratedColumn<String>(
+    'counterparty_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -2060,7 +2060,7 @@ class $TransactionsTable extends Transactions
     occurredAt,
     postedAt,
     primaryAmountMinor,
-    counterpartyName,
+    counterpartyId,
     note,
     parentTransactionId,
     isExcludedFromStats,
@@ -2116,12 +2116,12 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_primaryAmountMinorMeta);
     }
-    if (data.containsKey('counterparty_name')) {
+    if (data.containsKey('counterparty_id')) {
       context.handle(
-        _counterpartyNameMeta,
-        counterpartyName.isAcceptableOrUnknown(
-          data['counterparty_name']!,
-          _counterpartyNameMeta,
+        _counterpartyIdMeta,
+        counterpartyId.isAcceptableOrUnknown(
+          data['counterparty_id']!,
+          _counterpartyIdMeta,
         ),
       );
     }
@@ -2219,9 +2219,9 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}primary_amount_minor'],
       )!,
-      counterpartyName: attachedDatabase.typeMapping.read(
+      counterpartyId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}counterparty_name'],
+        data['${effectivePrefix}counterparty_id'],
       ),
       note: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -2287,7 +2287,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final DateTime occurredAt;
   final DateTime postedAt;
   final int primaryAmountMinor;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final String? parentTransactionId;
   final bool isExcludedFromStats;
@@ -2304,7 +2304,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.occurredAt,
     required this.postedAt,
     required this.primaryAmountMinor,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.parentTransactionId,
     required this.isExcludedFromStats,
@@ -2328,8 +2328,8 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     map['occurred_at'] = Variable<DateTime>(occurredAt);
     map['posted_at'] = Variable<DateTime>(postedAt);
     map['primary_amount_minor'] = Variable<int>(primaryAmountMinor);
-    if (!nullToAbsent || counterpartyName != null) {
-      map['counterparty_name'] = Variable<String>(counterpartyName);
+    if (!nullToAbsent || counterpartyId != null) {
+      map['counterparty_id'] = Variable<String>(counterpartyId);
     }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
@@ -2365,9 +2365,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       occurredAt: Value(occurredAt),
       postedAt: Value(postedAt),
       primaryAmountMinor: Value(primaryAmountMinor),
-      counterpartyName: counterpartyName == null && nullToAbsent
+      counterpartyId: counterpartyId == null && nullToAbsent
           ? const Value.absent()
-          : Value(counterpartyName),
+          : Value(counterpartyId),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       parentTransactionId: parentTransactionId == null && nullToAbsent
           ? const Value.absent()
@@ -2402,7 +2402,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
       postedAt: serializer.fromJson<DateTime>(json['postedAt']),
       primaryAmountMinor: serializer.fromJson<int>(json['primaryAmountMinor']),
-      counterpartyName: serializer.fromJson<String?>(json['counterpartyName']),
+      counterpartyId: serializer.fromJson<String?>(json['counterpartyId']),
       note: serializer.fromJson<String?>(json['note']),
       parentTransactionId: serializer.fromJson<String?>(
         json['parentTransactionId'],
@@ -2434,7 +2434,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'occurredAt': serializer.toJson<DateTime>(occurredAt),
       'postedAt': serializer.toJson<DateTime>(postedAt),
       'primaryAmountMinor': serializer.toJson<int>(primaryAmountMinor),
-      'counterpartyName': serializer.toJson<String?>(counterpartyName),
+      'counterpartyId': serializer.toJson<String?>(counterpartyId),
       'note': serializer.toJson<String?>(note),
       'parentTransactionId': serializer.toJson<String?>(parentTransactionId),
       'isExcludedFromStats': serializer.toJson<bool>(isExcludedFromStats),
@@ -2456,7 +2456,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     DateTime? occurredAt,
     DateTime? postedAt,
     int? primaryAmountMinor,
-    Value<String?> counterpartyName = const Value.absent(),
+    Value<String?> counterpartyId = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<String?> parentTransactionId = const Value.absent(),
     bool? isExcludedFromStats,
@@ -2473,9 +2473,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     occurredAt: occurredAt ?? this.occurredAt,
     postedAt: postedAt ?? this.postedAt,
     primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
-    counterpartyName: counterpartyName.present
-        ? counterpartyName.value
-        : this.counterpartyName,
+    counterpartyId: counterpartyId.present
+        ? counterpartyId.value
+        : this.counterpartyId,
     note: note.present ? note.value : this.note,
     parentTransactionId: parentTransactionId.present
         ? parentTransactionId.value
@@ -2502,9 +2502,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       primaryAmountMinor: data.primaryAmountMinor.present
           ? data.primaryAmountMinor.value
           : this.primaryAmountMinor,
-      counterpartyName: data.counterpartyName.present
-          ? data.counterpartyName.value
-          : this.counterpartyName,
+      counterpartyId: data.counterpartyId.present
+          ? data.counterpartyId.value
+          : this.counterpartyId,
       note: data.note.present ? data.note.value : this.note,
       parentTransactionId: data.parentTransactionId.present
           ? data.parentTransactionId.value
@@ -2534,7 +2534,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
-          ..write('counterpartyName: $counterpartyName, ')
+          ..write('counterpartyId: $counterpartyId, ')
           ..write('note: $note, ')
           ..write('parentTransactionId: $parentTransactionId, ')
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
@@ -2556,7 +2556,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     occurredAt,
     postedAt,
     primaryAmountMinor,
-    counterpartyName,
+    counterpartyId,
     note,
     parentTransactionId,
     isExcludedFromStats,
@@ -2577,7 +2577,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.occurredAt == this.occurredAt &&
           other.postedAt == this.postedAt &&
           other.primaryAmountMinor == this.primaryAmountMinor &&
-          other.counterpartyName == this.counterpartyName &&
+          other.counterpartyId == this.counterpartyId &&
           other.note == this.note &&
           other.parentTransactionId == this.parentTransactionId &&
           other.isExcludedFromStats == this.isExcludedFromStats &&
@@ -2596,7 +2596,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<DateTime> occurredAt;
   final Value<DateTime> postedAt;
   final Value<int> primaryAmountMinor;
-  final Value<String?> counterpartyName;
+  final Value<String?> counterpartyId;
   final Value<String?> note;
   final Value<String?> parentTransactionId;
   final Value<bool> isExcludedFromStats;
@@ -2614,7 +2614,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.occurredAt = const Value.absent(),
     this.postedAt = const Value.absent(),
     this.primaryAmountMinor = const Value.absent(),
-    this.counterpartyName = const Value.absent(),
+    this.counterpartyId = const Value.absent(),
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
     this.isExcludedFromStats = const Value.absent(),
@@ -2633,7 +2633,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     required DateTime occurredAt,
     required DateTime postedAt,
     required int primaryAmountMinor,
-    this.counterpartyName = const Value.absent(),
+    this.counterpartyId = const Value.absent(),
     this.note = const Value.absent(),
     this.parentTransactionId = const Value.absent(),
     this.isExcludedFromStats = const Value.absent(),
@@ -2657,7 +2657,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<DateTime>? occurredAt,
     Expression<DateTime>? postedAt,
     Expression<int>? primaryAmountMinor,
-    Expression<String>? counterpartyName,
+    Expression<String>? counterpartyId,
     Expression<String>? note,
     Expression<String>? parentTransactionId,
     Expression<bool>? isExcludedFromStats,
@@ -2677,7 +2677,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (postedAt != null) 'posted_at': postedAt,
       if (primaryAmountMinor != null)
         'primary_amount_minor': primaryAmountMinor,
-      if (counterpartyName != null) 'counterparty_name': counterpartyName,
+      if (counterpartyId != null) 'counterparty_id': counterpartyId,
       if (note != null) 'note': note,
       if (parentTransactionId != null)
         'parent_transaction_id': parentTransactionId,
@@ -2701,7 +2701,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<DateTime>? occurredAt,
     Value<DateTime>? postedAt,
     Value<int>? primaryAmountMinor,
-    Value<String?>? counterpartyName,
+    Value<String?>? counterpartyId,
     Value<String?>? note,
     Value<String?>? parentTransactionId,
     Value<bool>? isExcludedFromStats,
@@ -2720,7 +2720,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
       primaryAmountMinor: primaryAmountMinor ?? this.primaryAmountMinor,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
@@ -2757,8 +2757,8 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (primaryAmountMinor.present) {
       map['primary_amount_minor'] = Variable<int>(primaryAmountMinor.value);
     }
-    if (counterpartyName.present) {
-      map['counterparty_name'] = Variable<String>(counterpartyName.value);
+    if (counterpartyId.present) {
+      map['counterparty_id'] = Variable<String>(counterpartyId.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -2810,7 +2810,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('occurredAt: $occurredAt, ')
           ..write('postedAt: $postedAt, ')
           ..write('primaryAmountMinor: $primaryAmountMinor, ')
-          ..write('counterpartyName: $counterpartyName, ')
+          ..write('counterpartyId: $counterpartyId, ')
           ..write('note: $note, ')
           ..write('parentTransactionId: $parentTransactionId, ')
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
@@ -4398,6 +4398,310 @@ class TransactionTagsCompanion extends UpdateCompanion<TransactionTagRow> {
     return (StringBuffer('TransactionTagsCompanion(')
           ..write('transactionId: $transactionId, ')
           ..write('tagId: $tagId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CounterpartiesTable extends Counterparties
+    with TableInfo<$CounterpartiesTable, CounterpartyRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CounterpartiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'counterparties';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CounterpartyRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CounterpartyRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CounterpartyRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CounterpartiesTable createAlias(String alias) {
+    return $CounterpartiesTable(attachedDatabase, alias);
+  }
+}
+
+class CounterpartyRow extends DataClass implements Insertable<CounterpartyRow> {
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const CounterpartyRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CounterpartiesCompanion toCompanion(bool nullToAbsent) {
+    return CounterpartiesCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CounterpartyRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CounterpartyRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CounterpartyRow copyWith({
+    String? id,
+    String? name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => CounterpartyRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CounterpartyRow copyWithCompanion(CounterpartiesCompanion data) {
+    return CounterpartyRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CounterpartyRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CounterpartyRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CounterpartiesCompanion extends UpdateCompanion<CounterpartyRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CounterpartiesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CounterpartiesCompanion.insert({
+    required String id,
+    required String name,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
+  static Insertable<CounterpartyRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CounterpartiesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CounterpartiesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CounterpartiesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -16720,6 +17024,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionTagsTable transactionTags = $TransactionTagsTable(
     this,
   );
+  late final $CounterpartiesTable counterparties = $CounterpartiesTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $CreditLiabilityAccountsTable creditLiabilityAccounts =
       $CreditLiabilityAccountsTable(this);
@@ -16773,6 +17078,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     entries,
     tags,
     transactionTags,
+    counterparties,
     budgets,
     creditLiabilityAccounts,
     bills,
@@ -17708,7 +18014,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required DateTime occurredAt,
       required DateTime postedAt,
       required int primaryAmountMinor,
-      Value<String?> counterpartyName,
+      Value<String?> counterpartyId,
       Value<String?> note,
       Value<String?> parentTransactionId,
       Value<bool> isExcludedFromStats,
@@ -17728,7 +18034,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<DateTime> occurredAt,
       Value<DateTime> postedAt,
       Value<int> primaryAmountMinor,
-      Value<String?> counterpartyName,
+      Value<String?> counterpartyId,
       Value<String?> note,
       Value<String?> parentTransactionId,
       Value<bool> isExcludedFromStats,
@@ -17777,8 +18083,8 @@ class $$TransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get counterpartyName => $composableBuilder(
-    column: $table.counterpartyName,
+  ColumnFilters<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17868,8 +18174,8 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get counterpartyName => $composableBuilder(
-    column: $table.counterpartyName,
+  ColumnOrderings<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -17955,8 +18261,8 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get counterpartyName => $composableBuilder(
-    column: $table.counterpartyName,
+  GeneratedColumn<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
     builder: (column) => column,
   );
 
@@ -18036,7 +18342,7 @@ class $$TransactionsTableTableManager
                 Value<DateTime> occurredAt = const Value.absent(),
                 Value<DateTime> postedAt = const Value.absent(),
                 Value<int> primaryAmountMinor = const Value.absent(),
-                Value<String?> counterpartyName = const Value.absent(),
+                Value<String?> counterpartyId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> parentTransactionId = const Value.absent(),
                 Value<bool> isExcludedFromStats = const Value.absent(),
@@ -18054,7 +18360,7 @@ class $$TransactionsTableTableManager
                 occurredAt: occurredAt,
                 postedAt: postedAt,
                 primaryAmountMinor: primaryAmountMinor,
-                counterpartyName: counterpartyName,
+                counterpartyId: counterpartyId,
                 note: note,
                 parentTransactionId: parentTransactionId,
                 isExcludedFromStats: isExcludedFromStats,
@@ -18074,7 +18380,7 @@ class $$TransactionsTableTableManager
                 required DateTime occurredAt,
                 required DateTime postedAt,
                 required int primaryAmountMinor,
-                Value<String?> counterpartyName = const Value.absent(),
+                Value<String?> counterpartyId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> parentTransactionId = const Value.absent(),
                 Value<bool> isExcludedFromStats = const Value.absent(),
@@ -18092,7 +18398,7 @@ class $$TransactionsTableTableManager
                 occurredAt: occurredAt,
                 postedAt: postedAt,
                 primaryAmountMinor: primaryAmountMinor,
-                counterpartyName: counterpartyName,
+                counterpartyId: counterpartyId,
                 note: note,
                 parentTransactionId: parentTransactionId,
                 isExcludedFromStats: isExcludedFromStats,
@@ -18980,6 +19286,193 @@ typedef $$TransactionTagsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $TransactionTagsTable, TransactionTagRow>,
       ),
       TransactionTagRow,
+      PrefetchHooks Function()
+    >;
+typedef $$CounterpartiesTableCreateCompanionBuilder =
+    CounterpartiesCompanion Function({
+      required String id,
+      required String name,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CounterpartiesTableUpdateCompanionBuilder =
+    CounterpartiesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CounterpartiesTableFilterComposer
+    extends Composer<_$AppDatabase, $CounterpartiesTable> {
+  $$CounterpartiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CounterpartiesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CounterpartiesTable> {
+  $$CounterpartiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CounterpartiesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CounterpartiesTable> {
+  $$CounterpartiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CounterpartiesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CounterpartiesTable,
+          CounterpartyRow,
+          $$CounterpartiesTableFilterComposer,
+          $$CounterpartiesTableOrderingComposer,
+          $$CounterpartiesTableAnnotationComposer,
+          $$CounterpartiesTableCreateCompanionBuilder,
+          $$CounterpartiesTableUpdateCompanionBuilder,
+          (
+            CounterpartyRow,
+            BaseReferences<
+              _$AppDatabase,
+              $CounterpartiesTable,
+              CounterpartyRow
+            >,
+          ),
+          CounterpartyRow,
+          PrefetchHooks Function()
+        > {
+  $$CounterpartiesTableTableManager(
+    _$AppDatabase db,
+    $CounterpartiesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CounterpartiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CounterpartiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CounterpartiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CounterpartiesCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CounterpartiesCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CounterpartiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CounterpartiesTable,
+      CounterpartyRow,
+      $$CounterpartiesTableFilterComposer,
+      $$CounterpartiesTableOrderingComposer,
+      $$CounterpartiesTableAnnotationComposer,
+      $$CounterpartiesTableCreateCompanionBuilder,
+      $$CounterpartiesTableUpdateCompanionBuilder,
+      (
+        CounterpartyRow,
+        BaseReferences<_$AppDatabase, $CounterpartiesTable, CounterpartyRow>,
+      ),
+      CounterpartyRow,
       PrefetchHooks Function()
     >;
 typedef $$BudgetsTableCreateCompanionBuilder =
@@ -25039,6 +25532,8 @@ class $AppDatabaseManager {
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
   $$TransactionTagsTableTableManager get transactionTags =>
       $$TransactionTagsTableTableManager(_db, _db.transactionTags);
+  $$CounterpartiesTableTableManager get counterparties =>
+      $$CounterpartiesTableTableManager(_db, _db.counterparties);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$CreditLiabilityAccountsTableTableManager get creditLiabilityAccounts =>

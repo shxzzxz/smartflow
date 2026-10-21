@@ -62,6 +62,8 @@ class DriftBackupGateway
         'tags': (await database.select(database.tags).get()).map(_json),
         'transaction_tags':
             (await database.select(database.transactionTags).get()).map(_json),
+        'counterparties': (await database.select(database.counterparties).get())
+            .map(_json),
         'budgets': (await database.select(database.budgets).get()).map(_json),
         'credit_liability_accounts':
             (await database.select(database.creditLiabilityAccounts).get()).map(
@@ -167,6 +169,7 @@ class DriftBackupGateway
         'entries',
         'transaction_lines',
         'transactions',
+        'counterparties',
         'budgets',
         'tags',
         'accounts',
@@ -228,6 +231,12 @@ class DriftBackupGateway
           snapshot
               .rows('tags')
               .map((row) => TagRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.counterparties,
+          snapshot
+              .rows('counterparties')
+              .map((row) => CounterpartyRow.fromJson(row).toCompanion(true)),
         );
         batch.insertAll(
           database.transactions,
@@ -408,6 +417,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is TransactionTagRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is CounterpartyRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is BudgetRow) {

@@ -7,6 +7,7 @@ import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 
 import 'backup_models.dart';
+import 'counterparty_backup_migration.dart';
 import 'installment_backup_migration.dart';
 
 abstract interface class BackupSnapshotGateway {
@@ -181,6 +182,7 @@ class BackupService {
       schemaVersion: manifest.schemaVersion,
       formatVersion: manifest.formatVersion,
     );
+    migrateCounterpartyBackup(tables);
     for (final table in BackupTables.all) {
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
@@ -257,6 +259,7 @@ class BackupService {
     final groups = _index(snapshot.rows('account_groups'));
     final transactions = _index(snapshot.rows('transactions'));
     final tags = _index(snapshot.rows('tags'));
+    final counterparties = _index(snapshot.rows('counterparties'));
     final contracts = _index(snapshot.rows('installment_contracts'));
     final products = _index(snapshot.rows('installment_products'));
     final stages = _index(snapshot.rows('installment_stage_configs'));
@@ -292,6 +295,12 @@ class BackupService {
         'parentTransactionId',
         transactions,
         'transactions.parentTransactionId',
+      );
+      _optionalReference(
+        row,
+        'counterpartyId',
+        counterparties,
+        'transactions.counterpartyId',
       );
       if (row['ownerId'] != null && row['ownerType'] == 'installment') {
         _requiredReference(row, 'ownerId', contracts, 'transactions.ownerId');
@@ -344,6 +353,13 @@ class BackupService {
         'transaction_tags.transactionId',
       );
       _requiredReference(row, 'tagId', tags, 'transaction_tags.tagId');
+    }
+    final counterpartyNames = <String>{};
+    for (final row in snapshot.rows('counterparties')) {
+      _requiredText(row, 'name', 'counterparties.name');
+      if (!counterpartyNames.add('${row['name']}')) {
+        throw const BackupValidationException('对手方名称重复。');
+      }
     }
     for (final row in snapshot.rows('budgets')) {
       _optionalText(row, 'accountId', 'budgets.accountId');

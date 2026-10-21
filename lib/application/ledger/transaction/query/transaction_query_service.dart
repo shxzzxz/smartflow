@@ -9,6 +9,8 @@ import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../account/query/account_query_service.dart';
+import '../../counterparty/query/counterparty_read_models.dart';
+import '../../counterparty/query/port/counterparty_repository.dart';
 import '../../metrics/query/port/ledger_metrics_source.dart';
 import 'port/entry_read_repository.dart';
 import 'port/transaction_line_read_repository.dart';
@@ -59,17 +61,20 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     required EntryReadRepository entryRead,
     required TransactionLineReadRepository lineRead,
     required AccountQueryService accountQuery,
+    required CounterpartyRepository counterpartyRepository,
     required LedgerMetricsSource metricsSource,
   }) : _txRead = transactionRead,
        _entryRead = entryRead,
        _lineRead = lineRead,
        _accountQuery = accountQuery,
+       _counterpartyRepository = counterpartyRepository,
        _metricsSource = metricsSource;
 
   final TransactionReadRepository _txRead;
   final EntryReadRepository _entryRead;
   final TransactionLineReadRepository _lineRead;
   final AccountQueryService _accountQuery;
+  final CounterpartyRepository _counterpartyRepository;
   final LedgerMetricsSource _metricsSource;
 
   @override
@@ -190,14 +195,20 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         for (final child in children) child.id: child,
     };
     final allIds = allById.keys.toSet();
+    final counterpartyIds = {
+      for (final transaction in allById.values)
+        if (transaction.counterpartyId case final String id) id,
+    };
     final results = await Future.wait([
       _entryRead.findByTransactionIds(allIds),
       _lineRead.findByTransactionIds(allIds),
       _txRead.findCreatedAtByIds(allIds),
+      _counterpartyRepository.findByIds(counterpartyIds),
     ]);
     final entriesByTransaction = results[0] as Map<String, List<Entry>>;
     final linesByTransaction = results[1] as Map<String, List<TransactionLine>>;
     final createdAtByTransaction = results[2] as Map<String, DateTime>;
+    final counterpartiesById = results[3] as Map<String, CounterpartyView>;
 
     TransactionReadModel build(
       Transaction transaction, {
@@ -231,7 +242,8 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         occurredAt: transaction.occurredAt,
         postedAt: transaction.postedAt,
         primaryAmount: transaction.primaryAmount,
-        counterpartyName: transaction.counterpartyName,
+        counterpartyId: transaction.counterpartyId,
+        counterpartyName: counterpartiesById[transaction.counterpartyId]?.name,
         note: transaction.note,
         sourceKind: transaction.sourceKind,
         ownership: transaction.ownership,

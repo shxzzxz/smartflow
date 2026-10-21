@@ -845,7 +845,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         liabilityAccountId: liabilityAccountId,
         paidFromAccountId: transactionInfo.paidFromAccountId,
         occurredAt: transactionInfo.occurredAt,
-        counterpartyName: transactionInfo.counterpartyName,
+        counterpartyId: transactionInfo.counterpartyId,
         note: transactionInfo.note ?? note,
         ownership: CreditLedgerOwnership(
           ownerType: creditRepaymentOwnerType,

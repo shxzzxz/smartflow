@@ -14,6 +14,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_posting_reposit
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
 
 import '../../../../helper/fake_transaction_tag_repository.dart';
+import '../../../../helper/fake_counterparty_repository.dart';
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/test_app_database.dart';
 
@@ -276,6 +277,7 @@ class _Fixture {
       transactionGroupRepository: transactions,
       accountRepository: accounts,
       transactionTagRepository: FakeTransactionTagRepository(),
+      counterpartyRepository: FakeCounterpartyRepository(),
     );
     final posting = TransactionPostingAppServiceImpl(
       accountRepository: accounts,

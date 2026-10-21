@@ -10,7 +10,7 @@ class CreateDisbursementContractCommand {
     required this.borrowingDate,
     this.disbursementAccountId,
     this.note,
-    this.counterpartyName,
+    this.counterpartyId,
     required this.stageTerms,
   });
 
@@ -25,7 +25,7 @@ class CreateDisbursementContractCommand {
   final DateTime borrowingDate;
 
   final String? note;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final InstallmentContractTerms stageTerms;
 }
 

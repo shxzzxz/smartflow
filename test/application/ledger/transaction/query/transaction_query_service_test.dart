@@ -3,6 +3,8 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
 
+import '../../../../helper/fake_counterparty_repository.dart';
+
 void main() {
   test(
     'unified model fills children and derives reimbursement summary',
@@ -142,6 +144,26 @@ void main() {
     expect(item.impactsByAccountId['cash']?.netChange.minorUnits, -1000);
     expect(item.impactsByAccountId['bank']?.netChange.minorUnits, 1000);
   });
+
+  test('projects counterparty identity and current vocabulary name', () async {
+    final tx = _transaction(
+      'expense',
+      BusinessPurpose.dailyExpense,
+      1000,
+      counterpartyId: 'cp-ziroom',
+    );
+    final service = _service(
+      transactions: {tx.id: tx},
+      counterparties: const [CounterpartyView(id: 'cp-ziroom', name: '自如')],
+    );
+
+    final item = (await service.findTransactions(
+      const TransactionListQuery(),
+    )).single;
+
+    expect(item.counterpartyId, 'cp-ziroom');
+    expect(item.counterpartyName, '自如');
+  });
 }
 
 TransactionQueryServiceImpl _service({
@@ -149,11 +171,13 @@ TransactionQueryServiceImpl _service({
   Map<String, List<TransactionLine>> lines = const {},
   Map<String, List<Entry>> entries = const {},
   List<Account> accounts = const [],
+  List<CounterpartyView> counterparties = const [],
 }) => TransactionQueryServiceImpl(
   transactionRead: _FakeTransactionReadRepository(transactions),
   lineRead: _FakeLineReadRepository(lines),
   entryRead: _FakeEntryReadRepository(entries),
   accountQuery: _FakeAccountQueryService(accounts),
+  counterpartyRepository: FakeCounterpartyRepository(counterparties),
   metricsSource: _UnusedMetricsSource(),
 );
 
@@ -162,12 +186,14 @@ Transaction _transaction(
   BusinessPurpose purpose,
   int amount, {
   String? parentId,
+  String? counterpartyId,
 }) => Transaction(
   id: id,
   parentTransactionId: parentId,
   businessPurpose: purpose,
   occurredAt: DateTime(2026, 7, 23),
   primaryAmount: Money(minorUnits: amount),
+  counterpartyId: counterpartyId,
   isExcludedFromStats: false,
   isExcludedFromBudget: false,
   sourceKind: SourceKind.manual,

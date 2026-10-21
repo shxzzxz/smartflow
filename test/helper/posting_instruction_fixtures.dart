@@ -10,7 +10,7 @@ ExpenseInstruction singleExpenseInstruction({
   required String expenseAccountId,
   required DateTime occurredAt,
   DateTime? postedAt,
-  String? counterpartyName,
+  String? counterpartyId,
   String? note,
   bool isExcludedFromStats = false,
   bool isExcludedFromBudget = false,
@@ -28,7 +28,7 @@ ExpenseInstruction singleExpenseInstruction({
   ),
   occurredAt: occurredAt,
   postedAt: postedAt,
-  counterpartyName: counterpartyName,
+  counterpartyId: counterpartyId,
   note: note,
   isExcludedFromStats: isExcludedFromStats,
   isExcludedFromBudget: isExcludedFromBudget,
@@ -43,7 +43,7 @@ ReimbursementAdvanceInstruction singleReimbursementAdvanceInstruction({
   required String expenseAccountId,
   required DateTime occurredAt,
   DateTime? postedAt,
-  String? counterpartyName,
+  String? counterpartyId,
   String? note,
   bool isExcludedFromStats = false,
   bool isExcludedFromBudget = false,
@@ -62,7 +62,7 @@ ReimbursementAdvanceInstruction singleReimbursementAdvanceInstruction({
   ),
   occurredAt: occurredAt,
   postedAt: postedAt,
-  counterpartyName: counterpartyName,
+  counterpartyId: counterpartyId,
   note: note,
   isExcludedFromStats: isExcludedFromStats,
   isExcludedFromBudget: isExcludedFromBudget,
@@ -76,7 +76,7 @@ RefundInstruction singleRefundInstruction({
   required String refundToAccountId,
   required DateTime occurredAt,
   DateTime? postedAt,
-  String? counterpartyName,
+  String? counterpartyId,
   String? note,
 }) => RefundInstruction(
   parentTransactionId: parentTransactionId,
@@ -88,7 +88,7 @@ RefundInstruction singleRefundInstruction({
   ),
   occurredAt: occurredAt,
   postedAt: postedAt,
-  counterpartyName: counterpartyName,
+  counterpartyId: counterpartyId,
   note: note,
 );
 
@@ -99,7 +99,7 @@ ReimbursementReceiptInstruction singleReimbursementReceiptInstruction({
   required String receiveAccountId,
   required DateTime occurredAt,
   DateTime? postedAt,
-  String? counterpartyName,
+  String? counterpartyId,
   String? note,
 }) => ReimbursementReceiptInstruction(
   advanceTransactionId: advanceTransactionId,
@@ -111,7 +111,7 @@ ReimbursementReceiptInstruction singleReimbursementReceiptInstruction({
   ),
   occurredAt: occurredAt,
   postedAt: postedAt,
-  counterpartyName: counterpartyName,
+  counterpartyId: counterpartyId,
   note: note,
 );
 
@@ -123,7 +123,7 @@ ReimbursementCloseInstruction singleReimbursementCloseInstruction({
   required DateTime occurredAt,
   List<AccountAmountAllocation> gapExpenseAllocations = const [],
   DateTime? postedAt,
-  String? counterpartyName,
+  String? counterpartyId,
   String? note,
 }) => ReimbursementCloseInstruction(
   advanceTransactionId: advanceTransactionId,
@@ -136,6 +136,6 @@ ReimbursementCloseInstruction singleReimbursementCloseInstruction({
   gapExpenseAllocations: gapExpenseAllocations,
   occurredAt: occurredAt,
   postedAt: postedAt,
-  counterpartyName: counterpartyName,
+  counterpartyId: counterpartyId,
   note: note,
 );

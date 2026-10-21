@@ -14,6 +14,7 @@ import 'package:smartflow/infrastructure/shared/uuid_id_generator.dart';
 
 import '../../../../helper/test_app_database.dart';
 import '../../../../helper/fake_transaction_tag_repository.dart';
+import '../../../../helper/fake_counterparty_repository.dart';
 
 void main() {
   late AppDatabase database;
@@ -35,6 +36,7 @@ void main() {
         transactionGroupRepository: postingRepository,
         accountRepository: accounts,
         transactionTagRepository: FakeTransactionTagRepository(),
+        counterpartyRepository: FakeCounterpartyRepository(),
       ),
       idGenerator: const UuidIdGenerator(),
     );

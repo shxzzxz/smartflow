@@ -20,7 +20,7 @@ class ExpenseInstruction extends PostingInstruction {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -34,7 +34,7 @@ class ExpenseInstruction extends PostingInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -56,7 +56,7 @@ class ExpenseInstruction extends PostingInstruction {
     List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
@@ -78,7 +78,7 @@ class ExpenseInstruction extends PostingInstruction {
       ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
@@ -95,7 +95,7 @@ class IncomeInstruction extends PostingInstruction {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -109,7 +109,7 @@ class IncomeInstruction extends PostingInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -131,7 +131,7 @@ class IncomeInstruction extends PostingInstruction {
     List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
@@ -153,7 +153,7 @@ class IncomeInstruction extends PostingInstruction {
       ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
@@ -171,7 +171,7 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -186,7 +186,7 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -210,7 +210,7 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
     List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
@@ -233,7 +233,7 @@ class ReimbursementAdvanceInstruction extends PostingInstruction {
       ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
@@ -251,7 +251,7 @@ class RefundInstruction {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
@@ -262,7 +262,7 @@ class RefundInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -275,7 +275,7 @@ class ReimbursementCloseInstruction {
     required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
@@ -287,7 +287,7 @@ class ReimbursementCloseInstruction {
   final List<AccountAmountAllocation> gapExpenseAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -299,7 +299,7 @@ class TransferInstruction extends PostingInstruction {
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
   });
@@ -310,7 +310,7 @@ class TransferInstruction extends PostingInstruction {
   final Money? feeAmount;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
 
@@ -327,7 +327,7 @@ class TransferInstruction extends PostingInstruction {
     Money? feeAmount,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     SourceKind? sourceKind,
   }) {
@@ -338,7 +338,7 @@ class TransferInstruction extends PostingInstruction {
       feeAmount: feeAmount ?? this.feeAmount,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       sourceKind: sourceKind ?? this.sourceKind,
     );
@@ -353,7 +353,7 @@ class ReimbursementReceiptInstruction {
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -363,7 +363,7 @@ class ReimbursementReceiptInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -377,7 +377,7 @@ class RepaymentInstruction extends PostingInstruction {
     this.interest,
     this.fee,
     this.discount,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
@@ -391,7 +391,7 @@ class RepaymentInstruction extends PostingInstruction {
   final String paidFromAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
@@ -411,7 +411,7 @@ class RepaymentInstruction extends PostingInstruction {
     String? paidFromAccountId,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     TransactionOwnership? ownership,
     SourceKind? sourceKind,
@@ -425,7 +425,7 @@ class RepaymentInstruction extends PostingInstruction {
       paidFromAccountId: paidFromAccountId ?? this.paidFromAccountId,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       ownership: ownership ?? this.ownership,
       sourceKind: sourceKind ?? this.sourceKind,
@@ -440,7 +440,7 @@ class BorrowingInstruction extends PostingInstruction {
     required this.receiveAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.ownership,
     this.sourceKind = SourceKind.manual,
@@ -451,7 +451,7 @@ class BorrowingInstruction extends PostingInstruction {
   final String receiveAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final TransactionOwnership? ownership;
   final SourceKind sourceKind;
@@ -468,7 +468,7 @@ class BorrowingInstruction extends PostingInstruction {
     String? receiveAccountId,
     DateTime? occurredAt,
     DateTime? postedAt,
-    String? counterpartyName,
+    String? counterpartyId,
     String? note,
     TransactionOwnership? ownership,
     SourceKind? sourceKind,
@@ -479,7 +479,7 @@ class BorrowingInstruction extends PostingInstruction {
       receiveAccountId: receiveAccountId ?? this.receiveAccountId,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      counterpartyName: counterpartyName ?? this.counterpartyName,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       ownership: ownership ?? this.ownership,
       sourceKind: sourceKind ?? this.sourceKind,
@@ -494,7 +494,7 @@ class LendingInstruction extends PostingInstruction {
     required this.paidFromAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
   });
@@ -504,7 +504,7 @@ class LendingInstruction extends PostingInstruction {
   final String paidFromAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
 
@@ -523,7 +523,7 @@ class ReceivableCollectionInstruction extends PostingInstruction {
     required this.occurredAt,
     this.interest = const Money(minorUnits: 0),
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
   });
@@ -534,7 +534,7 @@ class ReceivableCollectionInstruction extends PostingInstruction {
   final String receiveAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
 
@@ -551,7 +551,7 @@ class BadDebtInstruction extends PostingInstruction {
     required this.receivableAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
@@ -562,7 +562,7 @@ class BadDebtInstruction extends PostingInstruction {
   final String receivableAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -581,7 +581,7 @@ class DebtReliefInstruction extends PostingInstruction {
     required this.liabilityAccountId,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats = false,
     this.sourceKind = SourceKind.manual,
@@ -591,7 +591,7 @@ class DebtReliefInstruction extends PostingInstruction {
   final String liabilityAccountId;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
   final SourceKind sourceKind;
@@ -609,7 +609,7 @@ class OpeningBalanceInstruction {
     required this.amount,
     required this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.sourceKind = SourceKind.manual,
   });
@@ -618,7 +618,7 @@ class OpeningBalanceInstruction {
   final Money amount;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
   final SourceKind sourceKind;
 }
@@ -628,14 +628,14 @@ class BalanceAdjustmentInstruction {
     required this.accountId,
     required this.targetBalance,
     required this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String accountId;
   final Money targetBalance;
   final DateTime occurredAt;
-  final String? counterpartyName;
+  final String? counterpartyId;
   final String? note;
 }
 
@@ -644,7 +644,7 @@ class EditParentTransactionInstruction {
     required this.transactionId,
     required this.editPatch,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
@@ -653,7 +653,7 @@ class EditParentTransactionInstruction {
   final String transactionId;
   final PostingEditPatch editPatch;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
@@ -664,14 +664,14 @@ class EditRefundTransactionInstruction {
     required this.transactionId,
     required this.editPatch,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String transactionId;
   final RefundEditPatch editPatch;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -682,7 +682,7 @@ class EditReimbursementReceiptTransactionInstruction {
     this.receivableAccountId,
     this.settlementAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
@@ -691,7 +691,7 @@ class EditReimbursementReceiptTransactionInstruction {
   final String? receivableAccountId;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -703,7 +703,7 @@ class EditReimbursementCloseTransactionInstruction {
     this.settlementAllocations,
     this.gapExpenseAllocations,
     this.occurredAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
@@ -713,7 +713,7 @@ class EditReimbursementCloseTransactionInstruction {
   final List<AccountAmountAllocation>? settlementAllocations;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
   final DateTime? occurredAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -728,14 +728,14 @@ class UpdateTransactionBasicInfoInstruction {
     required this.transactionId,
     this.occurredAt,
     this.postedAt,
-    this.counterpartyName,
+    this.counterpartyId,
     this.note,
   });
 
   final String transactionId;
   final DateTime? occurredAt;
   final DateTime? postedAt;
-  final Patch<String?>? counterpartyName;
+  final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }
 
@@ -856,7 +856,7 @@ class ExpenseEditPatch extends PostingEditPatch {
         ),
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
-        counterpartyName: current.counterpartyName,
+        counterpartyId: current.counterpartyId,
         note: current.note,
         isExcludedFromStats: current.isExcludedFromStats,
         isExcludedFromBudget: current.isExcludedFromBudget,
@@ -927,7 +927,7 @@ class TransferEditPatch extends PostingEditPatch {
         feeAmount: feeAmount ?? current.feeAmount,
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
-        counterpartyName: current.counterpartyName,
+        counterpartyId: current.counterpartyId,
         note: current.note,
         sourceKind: current.sourceKind,
       );
@@ -986,7 +986,7 @@ class ReimbursementAdvanceEditPatch extends PostingEditPatch {
         ),
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
-        counterpartyName: current.counterpartyName,
+        counterpartyId: current.counterpartyId,
         note: current.note,
         isExcludedFromStats: current.isExcludedFromStats,
         isExcludedFromBudget: current.isExcludedFromBudget,
@@ -1061,7 +1061,7 @@ class RepaymentEditPatch extends PostingEditPatch {
         paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
-        counterpartyName: current.counterpartyName,
+        counterpartyId: current.counterpartyId,
         note: current.note,
         ownership: current.ownership,
         sourceKind: current.sourceKind,
@@ -1095,7 +1095,7 @@ class LendingEditPatch extends PostingEditPatch {
       paidFromAccountId: paidFromAccountId ?? current.paidFromAccountId,
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
-      counterpartyName: current.counterpartyName,
+      counterpartyId: current.counterpartyId,
       note: current.note,
       sourceKind: current.sourceKind,
     );
@@ -1127,7 +1127,7 @@ class ReceivableCollectionEditPatch extends PostingEditPatch {
       receiveAccountId: receiveAccountId ?? current.receiveAccountId,
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
-      counterpartyName: current.counterpartyName,
+      counterpartyId: current.counterpartyId,
       note: current.note,
       sourceKind: current.sourceKind,
     );
@@ -1150,7 +1150,7 @@ class BadDebtEditPatch extends PostingEditPatch {
       receivableAccountId: receivableAccountId ?? current.receivableAccountId,
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
-      counterpartyName: current.counterpartyName,
+      counterpartyId: current.counterpartyId,
       note: current.note,
       isExcludedFromStats: current.isExcludedFromStats,
       isExcludedFromBudget: current.isExcludedFromBudget,
@@ -1175,7 +1175,7 @@ class DebtReliefEditPatch extends PostingEditPatch {
       liabilityAccountId: liabilityAccountId ?? current.liabilityAccountId,
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
-      counterpartyName: current.counterpartyName,
+      counterpartyId: current.counterpartyId,
       note: current.note,
       isExcludedFromStats: current.isExcludedFromStats,
       sourceKind: current.sourceKind,
@@ -1211,7 +1211,7 @@ class RefundEditPatch {
       ),
       occurredAt: current.occurredAt,
       postedAt: current.postedAt,
-      counterpartyName: current.counterpartyName,
+      counterpartyId: current.counterpartyId,
       note: current.note,
     );
   }

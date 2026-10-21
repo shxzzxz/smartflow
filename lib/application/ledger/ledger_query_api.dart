@@ -20,6 +20,7 @@ export 'category/query/category_query_service.dart';
 export 'category/query/category_read_models.dart';
 export 'budget/query/budget_query_service.dart';
 export 'budget/query/budget_read_models.dart';
+export 'counterparty/query/counterparty_read_models.dart';
 export 'metrics/query/financial_metrics_queries.dart';
 export 'metrics/query/financial_metrics_read_models.dart';
 export 'metrics/query/financial_metrics_service.dart';

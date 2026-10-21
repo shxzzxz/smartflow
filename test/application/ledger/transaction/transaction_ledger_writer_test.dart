@@ -1,6 +1,7 @@
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
@@ -14,6 +15,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_update_resu
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:test/test.dart';
 import '../../../helper/fake_transaction_tag_repository.dart';
+import '../../../helper/fake_counterparty_repository.dart';
 
 void main() {
   test(
@@ -28,6 +30,7 @@ void main() {
         transactionGroupRepository: transactions,
         accountRepository: accounts,
         transactionTagRepository: FakeTransactionTagRepository(),
+        counterpartyRepository: FakeCounterpartyRepository(),
       );
       final before = _transaction('tx-1', amount: 1000);
       final after = _transaction('tx-1', amount: 1200);
@@ -67,6 +70,7 @@ void main() {
         transactionGroupRepository: transactions,
         accountRepository: accounts,
         transactionTagRepository: FakeTransactionTagRepository(),
+        counterpartyRepository: FakeCounterpartyRepository(),
       );
 
       await writer.planAndPersistDeletion(() async {
@@ -97,6 +101,7 @@ void main() {
         transactionGroupRepository: transactions,
         accountRepository: accounts,
         transactionTagRepository: FakeTransactionTagRepository(),
+        counterpartyRepository: FakeCounterpartyRepository(),
       );
       final transaction = _transaction('tx-1');
 
@@ -114,14 +119,46 @@ void main() {
       expect(runner.inTransaction, isFalse);
     },
   );
+
+  test('rejects a transaction with an unknown counterparty', () async {
+    final runner = _TrackingRunner();
+    final transactions = _FakeTransactionRepository(runner);
+    final writer = TransactionLedgerWriter(
+      transactionRunner: runner,
+      transactionRepository: transactions,
+      transactionGroupRepository: transactions,
+      accountRepository: _FakeAccountRepository(runner),
+      transactionTagRepository: FakeTransactionTagRepository(),
+      counterpartyRepository: FakeCounterpartyRepository(),
+    );
+    final transaction = _transaction('tx-1', counterpartyId: 'missing');
+
+    await expectLater(
+      writer.persistUpdate(
+        TransactionUpdateResult(
+          transactions: [transaction],
+          accounts: const [],
+          currentTransaction: transaction,
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+    expect(transactions.updatedIds, isEmpty);
+    expect(runner.inTransaction, isFalse);
+  });
 }
 
-Transaction _transaction(String id, {int amount = 1000}) {
+Transaction _transaction(
+  String id, {
+  int amount = 1000,
+  String? counterpartyId,
+}) {
   return Transaction(
     id: id,
     businessPurpose: BusinessPurpose.dailyExpense,
     occurredAt: DateTime(2026, 1, 1),
     primaryAmount: Money(minorUnits: amount),
+    counterpartyId: counterpartyId,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     sourceKind: SourceKind.manual,

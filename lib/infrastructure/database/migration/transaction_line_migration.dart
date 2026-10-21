@@ -193,6 +193,15 @@ Future<Map<String, Map<String, int>>> _loadLegacyAmounts(
 }
 
 Future<void> _dropReimbursementExpenseColumn(AppDatabase database) async {
+  final columns =
+      (await database
+              .customSelect('PRAGMA table_info(transactions)')
+              .get())
+          .map((row) => row.read<String>('name'))
+          .toSet();
+  final sourceCounterpartyColumn = columns.contains('counterparty_name')
+      ? 'counterparty_name'
+      : 'counterparty_id';
   await database.customStatement('''
 CREATE TABLE transactions_v29 (
   id TEXT NOT NULL PRIMARY KEY,
@@ -224,7 +233,7 @@ INSERT INTO transactions_v29 (
 )
 SELECT
   id, business_purpose, occurred_at, posted_at, primary_amount_minor,
-  counterparty_name, note, parent_transaction_id, is_excluded_from_stats,
+  $sourceCounterpartyColumn, note, parent_transaction_id, is_excluded_from_stats,
   is_excluded_from_budget, source_kind, owner_type, owner_id, owner_role,
   created_at, updated_at
 FROM transactions

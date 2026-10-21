@@ -1,4 +1,5 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/port/account_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_group_repository.dart';
 import 'package:smartflow/domain/ledger/port/transaction_repository.dart';
@@ -7,6 +8,7 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewri
 import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
 import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
+import 'package:smartflow/application/ledger/counterparty/query/port/counterparty_repository.dart';
 
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 
@@ -19,17 +21,20 @@ class TransactionLedgerWriter {
     required TransactionGroupRepository transactionGroupRepository,
     required AccountRepository accountRepository,
     required TransactionTagRepository transactionTagRepository,
+    required CounterpartyRepository counterpartyRepository,
   }) : _transactionRunner = transactionRunner,
        _transactionRepository = transactionRepository,
        _transactionGroupRepository = transactionGroupRepository,
        _accountRepository = accountRepository,
-       _transactionTagRepository = transactionTagRepository;
+       _transactionTagRepository = transactionTagRepository,
+       _counterpartyRepository = counterpartyRepository;
 
   final TransactionRunner _transactionRunner;
   final TransactionRepository _transactionRepository;
   final TransactionGroupRepository _transactionGroupRepository;
   final AccountRepository _accountRepository;
   final TransactionTagRepository _transactionTagRepository;
+  final CounterpartyRepository _counterpartyRepository;
 
   Future<PostedTransactionResult> updateTags(
     UpdateTransactionTagsCommand command,
@@ -86,6 +91,7 @@ class TransactionLedgerWriter {
     Set<String> tagIds = const {},
   }) async {
     return _transactionRunner.run(() async {
+      await _assertCounterpartiesExist([posting.transaction]);
       await _transactionRepository.save(posting.transaction);
       await _accountRepository.saveAll(posting.accounts);
       if (tagIds.isNotEmpty) {
@@ -111,6 +117,7 @@ class TransactionLedgerWriter {
   Future<PostedTransactionResult> _persistRewrite(
     TransactionGroupRewriteResult rewrite,
   ) async {
+    await _assertCounterpartiesExist(rewrite.currentGroup.transactions);
     await _transactionGroupRepository.applyRewrite(rewrite.plan);
     await _accountRepository.saveAll(rewrite.accounts);
     return PostedTransactionResult(
@@ -135,11 +142,28 @@ class TransactionLedgerWriter {
     TransactionUpdateResult update,
   ) async {
     return _transactionRunner.run(() async {
+      await _assertCounterpartiesExist(update.transactions);
       await _transactionRepository.updateAll(update.transactions);
       await _accountRepository.saveAll(update.accounts);
       return PostedTransactionResult(
         transactionId: update.currentTransaction.id,
       );
     });
+  }
+
+  Future<void> _assertCounterpartiesExist(
+    Iterable<Transaction> transactions,
+  ) async {
+    final ids = {
+      for (final transaction in transactions)
+        if (transaction.counterpartyId case final String id) id,
+    };
+    if (ids.isEmpty) return;
+    final counterparties = await _counterpartyRepository.findByIds(ids);
+    if (counterparties.length != ids.length) {
+      LedgerViolationReason.counterpartyNotFound.throwException(
+        message: '对手方不存在或已失效。',
+      );
+    }
   }
 }

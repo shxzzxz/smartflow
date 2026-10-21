@@ -13,6 +13,7 @@ class TransactionFormEditSnapshot {
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
+    this.counterpartyId,
     this.feeText = '',
     this.expenseCategoryId,
     this.expenseRootId,
@@ -33,6 +34,7 @@ class TransactionFormEditSnapshot {
   final DateTime occurredAt;
   final bool excludeStats;
   final bool excludeBudget;
+  final String? counterpartyId;
   final String feeText;
   final String? expenseCategoryId;
   final String? expenseRootId;
@@ -94,6 +96,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.expense,
         amountText: amountText,
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,
@@ -120,6 +123,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.expense,
         amountText: amountText,
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,
@@ -147,6 +151,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.income,
         amountText: amountText,
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,
@@ -166,6 +171,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         amountText: amountText,
         feeText: _lineAmountText(detail, TransactionRole.fee),
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,
@@ -185,6 +191,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.borrowing,
         amountText: amountText,
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,
@@ -205,6 +212,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.lending,
         amountText: amountText,
         noteText: noteText,
+        counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
         excludeStats: transaction.isExcludedFromStats,
         excludeBudget: transaction.isExcludedFromBudget,

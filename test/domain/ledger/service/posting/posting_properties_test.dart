@@ -49,7 +49,7 @@ void main() {
         expenseAccountId: 'food',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'merchant',
+        counterpartyId: 'merchant',
         note: 'expense',
         isExcludedFromStats: true,
         isExcludedFromBudget: true,
@@ -79,7 +79,7 @@ void main() {
         ],
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'employer',
+        counterpartyId: 'employer',
         note: 'income',
         isExcludedFromStats: true,
         sourceKind: SourceKind.import,
@@ -91,7 +91,7 @@ void main() {
         expenseAccountId: 'travel',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'hotel',
+        counterpartyId: 'hotel',
         note: 'advance',
         sourceKind: SourceKind.import,
       ),
@@ -102,7 +102,7 @@ void main() {
         feeAmount: const Money(minorUnits: 50),
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'bank',
+        counterpartyId: 'bank',
         note: 'transfer',
         sourceKind: SourceKind.import,
       ),
@@ -115,7 +115,7 @@ void main() {
         paidFromAccountId: 'cash',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'lender',
+        counterpartyId: 'lender',
         note: 'repayment',
         sourceKind: SourceKind.import,
       ),
@@ -125,7 +125,7 @@ void main() {
         receiveAccountId: 'bank',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'lender',
+        counterpartyId: 'lender',
         note: 'borrowing',
         sourceKind: SourceKind.import,
       ),
@@ -135,7 +135,7 @@ void main() {
         paidFromAccountId: 'cash',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'borrower',
+        counterpartyId: 'borrower',
         note: 'lending',
         sourceKind: SourceKind.import,
       ),
@@ -146,7 +146,7 @@ void main() {
         receiveAccountId: 'bank',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'borrower',
+        counterpartyId: 'borrower',
         note: 'collection',
         sourceKind: SourceKind.import,
       ),
@@ -155,7 +155,7 @@ void main() {
         receivableAccountId: 'receivable',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'borrower',
+        counterpartyId: 'borrower',
         note: 'bad debt',
         isExcludedFromStats: true,
         isExcludedFromBudget: true,
@@ -166,7 +166,7 @@ void main() {
         liabilityAccountId: 'liability',
         occurredAt: occurredAt,
         postedAt: postedAt,
-        counterpartyName: 'lender',
+        counterpartyId: 'lender',
         note: 'relief',
         isExcludedFromStats: true,
         sourceKind: SourceKind.import,
@@ -191,7 +191,7 @@ void main() {
       expect(recreated.primaryAmount, transaction.primaryAmount);
       expect(recreated.occurredAt, transaction.occurredAt);
       expect(recreated.postedAt, transaction.postedAt);
-      expect(recreated.counterpartyName, transaction.counterpartyName);
+      expect(recreated.counterpartyId, transaction.counterpartyId);
       expect(recreated.note, transaction.note);
       expect(recreated.isExcludedFromStats, transaction.isExcludedFromStats);
       expect(recreated.isExcludedFromBudget, transaction.isExcludedFromBudget);

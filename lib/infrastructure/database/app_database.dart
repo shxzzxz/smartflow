@@ -13,6 +13,7 @@ import 'table/ledger/accounts.dart';
 import 'table/ledger/account_groups.dart';
 import 'table/app_metadata.dart';
 import 'table/ledger/budgets.dart';
+import 'table/ledger/counterparties.dart';
 import 'table/ledger/entries.dart';
 import 'table/credit/credit_liability_accounts.dart';
 import 'table/credit/bill_items.dart';
@@ -49,6 +50,7 @@ part 'app_database.g.dart';
     Entries,
     Tags,
     TransactionTags,
+    Counterparties,
     Budgets,
     CreditLiabilityAccounts,
     Bills,
@@ -74,7 +76,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 46;
+  int get schemaVersion => 47;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

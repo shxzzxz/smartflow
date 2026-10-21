@@ -10,6 +10,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
@@ -62,6 +63,9 @@ void main() {
           AccountType.income,
         ).overrideWithValue(const AsyncData(<CategoryNode>[])),
         accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+        counterpartyListProvider.overrideWithValue(
+          const AsyncData(<CounterpartyView>[]),
+        ),
         tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
         transactionTagIdsProvider(
           'tx-1',
@@ -260,6 +264,26 @@ void main() {
       expect(command.note, 'lunch');
       expect(command.isExcludedFromStats, true);
       expect(command.isExcludedFromBudget, true);
+    });
+
+    test('creates a transaction with the selected counterparty id', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
+        counterparties: const [CounterpartyView(id: 'cp-ziroom', name: '自如')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
+        ..setFromAccountId('cash')
+        ..setCounterpartyId('cp-ziroom');
+
+      final outcome = await viewModel.submit(amountText: '12.34', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      expect(posting.expenseCommands.single.counterpartyId, 'cp-ziroom');
     });
 
     test('uses explicit category-led allocations in allocated mode', () async {
@@ -596,7 +620,8 @@ void main() {
       viewModel
         ..setMode(TransactionFormMode.transfer)
         ..setFromAccountId('cash')
-        ..setToAccountId('bank');
+        ..setToAccountId('bank')
+        ..setCounterpartyId('cp-ziroom');
 
       final outcome = await viewModel.submit(
         amountText: '50',
@@ -609,6 +634,7 @@ void main() {
       expect(command.fromAccountId, 'cash');
       expect(command.toAccountId, 'bank');
       expect(command.feeAmount, const Money(minorUnits: 300));
+      expect(command.counterpartyId, 'cp-ziroom');
     });
 
     test('loads and clears a transfer fee while editing', () async {
@@ -960,6 +986,45 @@ void main() {
       expect((command.note as PatchSet<String?>).value, 'note');
     });
 
+    test(
+      'loads and updates the counterparty through the edit command',
+      () async {
+        final editService = _FakeTransactionEditAppService();
+        final container = _container(
+          editService: editService,
+          editTransactionId: 'tx-1',
+          editDetail: _transactionDetail(counterpartyId: 'cp-ziroom'),
+          accountsById: {
+            'cash': _account('cash'),
+            'food': _account('food', type: AccountType.expense),
+          },
+          settlementAccounts: [_account('cash')],
+        );
+        final viewModel = container.read(
+          _provider(editTransactionId: 'tx-1').notifier,
+        );
+        expect(
+          container
+              .read(_provider(editTransactionId: 'tx-1'))
+              .requireValue!
+              .counterpartyId,
+          'cp-ziroom',
+        );
+
+        viewModel.setCounterpartyId(null);
+        final outcome = await viewModel.submit(
+          amountText: '12.34',
+          noteText: 'note',
+        );
+
+        expect(outcome, isA<SubmitSuccess>());
+        expect(
+          editService.expenseCommands.single.counterpartyId,
+          isA<PatchClear<String?>>(),
+        );
+      },
+    );
+
     test('deletes transaction through action outcome', () async {
       final editService = _FakeTransactionEditAppService();
       final container = _container(editService: editService);
@@ -990,6 +1055,7 @@ ProviderContainer _container({
   List<Account> liabilityAccounts = const [],
   List<Account> reimbursementAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
+  List<CounterpartyView> counterparties = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -1024,6 +1090,7 @@ ProviderContainer _container({
         AccountType.income,
       ).overrideWithValue(const AsyncData(<CategoryNode>[])),
       accountsByIdProvider.overrideWithValue(AsyncData(accountsById)),
+      counterpartyListProvider.overrideWithValue(AsyncData(counterparties)),
       tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
       if (editTransactionId != null) ...[
         transactionDetailProvider(
@@ -1054,7 +1121,7 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
   );
 }
 
-TransactionReadModel _transactionDetail() {
+TransactionReadModel _transactionDetail({String? counterpartyId}) {
   return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'tx-1',
@@ -1064,6 +1131,7 @@ TransactionReadModel _transactionDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
+      counterpartyId: counterpartyId,
       note: 'note',
     ),
     createdAt: DateTime(2026, 1, 2, 8, 30),

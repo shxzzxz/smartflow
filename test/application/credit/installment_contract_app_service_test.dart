@@ -983,7 +983,7 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         liabilityAccountId: command.liabilityAccountId,
         receiveAccountId: command.receiveAccountId,
         occurredAt: command.occurredAt,
-        counterpartyName: command.counterpartyName,
+        counterpartyId: command.counterpartyId,
         note: command.note,
       ),
     );

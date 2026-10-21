@@ -96,7 +96,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           isExcludedFromBudget: cmd.isExcludedFromBudget,
@@ -118,7 +118,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           editPatch: IncomeEditPatch(
@@ -139,7 +139,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           editPatch: TransferEditPatch(
             amount: cmd.amount,
@@ -162,7 +162,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           isExcludedFromBudget: cmd.isExcludedFromBudget,
@@ -203,7 +203,7 @@ class TransactionEditAppServiceImpl
         EditRefundTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           editPatch: RefundEditPatch(
             amount: cmd.amount,
@@ -227,7 +227,7 @@ class TransactionEditAppServiceImpl
           receivableAccountId: cmd.receivableAccountId,
           settlementAllocations: cmd.settlementAllocations,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
         ),
       ),
@@ -247,7 +247,7 @@ class TransactionEditAppServiceImpl
           settlementAllocations: cmd.settlementAllocations,
           gapExpenseAllocations: cmd.gapExpenseAllocations,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
         ),
       ),
@@ -263,7 +263,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           editPatch: BorrowingEditPatch(
             amount: cmd.amount,
@@ -285,7 +285,7 @@ class TransactionEditAppServiceImpl
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
           occurredAt: cmd.occurredAt,
-          counterpartyName: cmd.counterpartyName,
+          counterpartyId: cmd.counterpartyId,
           note: cmd.note,
           editPatch: RepaymentEditPatch(
             principal: cmd.principal,
@@ -306,7 +306,7 @@ class TransactionEditAppServiceImpl
       _rewrite(
         transactionId: cmd.transactionId,
         occurredAt: cmd.occurredAt,
-        counterpartyName: cmd.counterpartyName,
+        counterpartyId: cmd.counterpartyId,
         note: cmd.note,
         patch: LendingEditPatch(
           amount: cmd.amount,
@@ -322,7 +322,7 @@ class TransactionEditAppServiceImpl
   ) => _rewrite(
     transactionId: cmd.transactionId,
     occurredAt: cmd.occurredAt,
-    counterpartyName: cmd.counterpartyName,
+    counterpartyId: cmd.counterpartyId,
     note: cmd.note,
     patch: ReceivableCollectionEditPatch(
       principal: cmd.principal,
@@ -338,7 +338,7 @@ class TransactionEditAppServiceImpl
       _rewrite(
         transactionId: cmd.transactionId,
         occurredAt: cmd.occurredAt,
-        counterpartyName: cmd.counterpartyName,
+        counterpartyId: cmd.counterpartyId,
         note: cmd.note,
         patch: BadDebtEditPatch(
           amount: cmd.amount,
@@ -354,7 +354,7 @@ class TransactionEditAppServiceImpl
       _rewrite(
         transactionId: cmd.transactionId,
         occurredAt: cmd.occurredAt,
-        counterpartyName: cmd.counterpartyName,
+        counterpartyId: cmd.counterpartyId,
         note: cmd.note,
         patch: DebtReliefEditPatch(
           amount: cmd.amount,
@@ -368,7 +368,7 @@ class TransactionEditAppServiceImpl
     required String transactionId,
     required PostingEditPatch patch,
     DateTime? occurredAt,
-    Patch<String?>? counterpartyName,
+    Patch<String?>? counterpartyId,
     Patch<String?>? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
@@ -378,7 +378,7 @@ class TransactionEditAppServiceImpl
       EditParentTransactionInstruction(
         transactionId: transactionId,
         occurredAt: occurredAt,
-        counterpartyName: counterpartyName,
+        counterpartyId: counterpartyId,
         note: note,
         isExcludedFromStats: isExcludedFromStats,
         isExcludedFromBudget: isExcludedFromBudget,

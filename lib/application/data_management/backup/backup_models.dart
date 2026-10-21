@@ -13,6 +13,7 @@ class BackupTables {
     'entries',
     'tags',
     'transaction_tags',
+    'counterparties',
     'budgets',
     'credit_liability_accounts',
     'bills',
@@ -43,6 +44,7 @@ class BackupTables {
       'entries',
       'tags',
       'transaction_tags',
+      'counterparties',
       'budgets',
     }.contains(table)) {
       return 'ledger';
@@ -322,7 +324,8 @@ class BackupDiff {
       if (table == 'transactions' ||
           table == 'transaction_lines' ||
           table == 'entries' ||
-          table == 'transaction_tags') {
+          table == 'transaction_tags' ||
+          table == 'counterparties') {
         return '交易组';
       }
       if (table == 'budgets') return '预算';

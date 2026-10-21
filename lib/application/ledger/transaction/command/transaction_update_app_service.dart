@@ -58,7 +58,7 @@ class TransactionUpdateAppServiceImpl implements TransactionUpdateAppService {
           transactionId: command.transactionId,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
-          counterpartyName: command.counterpartyName,
+          counterpartyId: command.counterpartyId,
           note: command.note,
         ),
       ),

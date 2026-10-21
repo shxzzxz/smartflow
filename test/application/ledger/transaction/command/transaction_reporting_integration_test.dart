@@ -17,6 +17,7 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_tag
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/test_app_database.dart';
+import '../../../../helper/fake_counterparty_repository.dart';
 
 void main() {
   late AppDatabase db;
@@ -69,6 +70,7 @@ void main() {
       transactionGroupRepository: transactions,
       accountRepository: accounts,
       transactionTagRepository: tags,
+      counterpartyRepository: FakeCounterpartyRepository(),
     );
     final ids = SequentialIdGenerator(prefix: 'reporting');
     final systems = DriftSystemAccountResolver(db);

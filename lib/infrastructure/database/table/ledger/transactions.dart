@@ -13,8 +13,8 @@ class Transactions extends Table {
   DateTimeColumn get occurredAt => dateTime().named('occurred_at')();
   DateTimeColumn get postedAt => dateTime().named('posted_at')();
   IntColumn get primaryAmountMinor => integer().named('primary_amount_minor')();
-  TextColumn get counterpartyName =>
-      text().named('counterparty_name').nullable()();
+  TextColumn get counterpartyId =>
+      text().named('counterparty_id').nullable()();
   TextColumn get note => text().nullable()();
   TextColumn get parentTransactionId =>
       text().named('parent_transaction_id').nullable()();
