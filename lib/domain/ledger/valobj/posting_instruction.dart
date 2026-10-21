@@ -89,10 +89,10 @@ class ExpenseInstruction extends PostingInstruction {
 }
 
 class IncomeInstruction extends PostingInstruction {
-  const IncomeInstruction({
+  IncomeInstruction({
     required this.amount,
-    required this.receiveAccountId,
-    required this.incomeAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -101,11 +101,12 @@ class IncomeInstruction extends PostingInstruction {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.ownership,
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String receiveAccountId;
-  final String incomeAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -119,12 +120,15 @@ class IncomeInstruction extends PostingInstruction {
   BusinessPurpose get businessPurpose => BusinessPurpose.dailyIncome;
 
   @override
-  Set<String> get accountIds => {receiveAccountId, incomeAccountId};
+  Set<String> get accountIds => {
+    for (final allocation in categoryAllocations) allocation.accountId,
+    for (final allocation in settlementAllocations) allocation.accountId,
+  };
 
   IncomeInstruction copyWith({
     Money? amount,
-    String? receiveAccountId,
-    String? incomeAccountId,
+    List<AccountAmountAllocation>? categoryAllocations,
+    List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
     String? counterpartyName,
@@ -134,10 +138,19 @@ class IncomeInstruction extends PostingInstruction {
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
   }) {
+    final nextAmount = amount ?? this.amount;
     return IncomeInstruction(
-      amount: amount ?? this.amount,
-      receiveAccountId: receiveAccountId ?? this.receiveAccountId,
-      incomeAccountId: incomeAccountId ?? this.incomeAccountId,
+      amount: nextAmount,
+      categoryAllocations: patchAllocations(
+        current: this.categoryAllocations,
+        total: nextAmount,
+        explicit: categoryAllocations,
+      ),
+      settlementAllocations: patchAllocations(
+        current: this.settlementAllocations,
+        total: nextAmount,
+        explicit: settlementAllocations,
+      ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
       counterpartyName: counterpartyName ?? this.counterpartyName,
@@ -774,6 +787,7 @@ class CategoryReplacementEditPatch extends PostingEditPatch {
   PostingInstruction applyTo(PostingInstruction current) {
     final allocations = switch (current) {
       ExpenseInstruction instruction => instruction.categoryAllocations,
+      IncomeInstruction instruction => instruction.categoryAllocations,
       ReimbursementAdvanceInstruction instruction =>
         instruction.categoryAllocations,
       _ => null,
@@ -788,15 +802,14 @@ class CategoryReplacementEditPatch extends PostingEditPatch {
         ExpenseInstruction instruction => instruction.copyWith(
           categoryAllocations: replaced,
         ),
+        IncomeInstruction instruction => instruction.copyWith(
+          categoryAllocations: replaced,
+        ),
         ReimbursementAdvanceInstruction instruction => instruction.copyWith(
           categoryAllocations: replaced,
         ),
         _ => throw StateError('Unreachable category replacement source.'),
       };
-    }
-    if (current is IncomeInstruction &&
-        current.incomeAccountId == sourceCategoryId) {
-      return current.copyWith(incomeAccountId: targetCategoryId);
     }
     return LedgerViolationReason.unsupportedEditSource.throwException(
       message: 'This transaction does not reference the source category.',
@@ -860,13 +873,13 @@ class ExpenseEditPatch extends PostingEditPatch {
 class IncomeEditPatch extends PostingEditPatch {
   const IncomeEditPatch({
     this.amount,
-    this.receiveAccountId,
-    this.incomeAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
   });
 
   final Money? amount;
-  final String? receiveAccountId;
-  final String? incomeAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
 
   @override
   BusinessPurpose get targetPurpose => BusinessPurpose.dailyIncome;
@@ -876,8 +889,8 @@ class IncomeEditPatch extends PostingEditPatch {
     if (current is IncomeInstruction) {
       return current.copyWith(
         amount: amount,
-        receiveAccountId: receiveAccountId,
-        incomeAccountId: incomeAccountId,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
       );
     }
     return LedgerViolationReason.unsupportedEditSource.throwException(

@@ -191,8 +191,14 @@ class LedgerImportPort implements ImportLedgerPort {
     final result = await _posting.createIncome(
       CreateIncomeCommand(
         amount: amount,
-        receiveAccountId: receiveAccountId,
-        incomeAccountId: incomeCategoryId,
+        categoryAllocations: singleAllocation(
+          accountId: incomeCategoryId,
+          amount: amount,
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: receiveAccountId,
+          amount: amount,
+        ),
         occurredAt: occurredAt,
         postedAt: postedAt,
         note: note,

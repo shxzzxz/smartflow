@@ -36,10 +36,10 @@ class CreateExpenseCommand {
 }
 
 class CreateIncomeCommand {
-  const CreateIncomeCommand({
+  CreateIncomeCommand({
     required this.amount,
-    required this.receiveAccountId,
-    required this.incomeAccountId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyName,
@@ -48,11 +48,12 @@ class CreateIncomeCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
-  });
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String receiveAccountId;
-  final String incomeAccountId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyName;
@@ -406,8 +407,8 @@ class EditIncomeCommand {
   const EditIncomeCommand({
     required this.transactionId,
     this.amount,
-    this.receiveAccountId,
-    this.incomeAccountId,
+    this.categoryAllocations,
+    this.settlementAllocations,
     this.occurredAt,
     this.counterpartyName,
     this.note,
@@ -417,8 +418,8 @@ class EditIncomeCommand {
 
   final String transactionId;
   final Money? amount;
-  final String? receiveAccountId;
-  final String? incomeAccountId;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyName;
   final Patch<String?>? note;

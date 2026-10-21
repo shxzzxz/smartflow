@@ -107,19 +107,21 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   IncomeInstruction _resolveIncome(Transaction transaction) {
-    final incomeAccountId = transaction.accountOf(TransactionRole.category);
-    final receiveAccountId = transaction.accountOf(
+    final categories = transaction.accountAllocationsOf(
+      TransactionRole.category,
+    );
+    final settlements = transaction.accountAllocationsOf(
       TransactionRole.settlementIn,
     );
-    if (receiveAccountId == null || incomeAccountId == null) {
+    if (categories.isEmpty || settlements.isEmpty) {
       return LedgerViolationReason.incomeInstructionUnresolvable.throwException(
         message: 'Income accounts cannot be resolved.',
       );
     }
     return IncomeInstruction(
       amount: transaction.primaryAmount,
-      receiveAccountId: receiveAccountId,
-      incomeAccountId: incomeAccountId,
+      categoryAllocations: categories,
+      settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyName: transaction.counterpartyName,

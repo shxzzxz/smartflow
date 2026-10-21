@@ -135,6 +135,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         settlementAllocations: settlements,
       );
     case BusinessPurpose.dailyIncome:
+      final categories = _allocationsOf(detail, TransactionRole.category);
+      final settlements = _allocationsOf(detail, TransactionRole.settlementIn);
       final categoryId = _firstAccountId(
         detail,
         accountsById,
@@ -155,6 +157,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           accountsById,
           EntryDirection.debit,
         ),
+        categoryAllocations: categories,
+        settlementAllocations: settlements,
       );
     case BusinessPurpose.transfer:
       return TransactionFormEditSnapshot(

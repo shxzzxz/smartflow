@@ -65,6 +65,50 @@ void main() {
     expect(_shape(resolved.settlementAllocations), ['wechat:60', 'card:60']);
   });
 
+  test('income keeps category and settlement dimensions independent', () {
+    final transaction = engine.createIncome(
+      IncomeInstruction(
+        amount: _money(120),
+        categoryAllocations: [
+          _allocation('salary', 100),
+          _allocation('bonus', 20),
+        ],
+        settlementAllocations: [
+          _allocation('bank', 70),
+          _allocation('cash', 50),
+        ],
+        occurredAt: occurredAt,
+      ),
+    );
+
+    expect(
+      transaction.lines.map((line) => (line.role, line.accountId, line.amount)),
+      [
+        (TransactionRole.category, 'salary', _money(100)),
+        (TransactionRole.category, 'bonus', _money(20)),
+        (TransactionRole.settlementIn, 'bank', _money(70)),
+        (TransactionRole.settlementIn, 'cash', _money(50)),
+      ],
+    );
+    expect(
+      transaction.entries.map(
+        (entry) => (entry.accountId, entry.direction, entry.amount),
+      ),
+      containsAll([
+        ('salary', EntryDirection.credit, _money(100)),
+        ('bonus', EntryDirection.credit, _money(20)),
+        ('bank', EntryDirection.debit, _money(70)),
+        ('cash', EntryDirection.debit, _money(50)),
+      ]),
+    );
+
+    final resolved =
+        const DefaultPostingInstructionResolver().resolve(transaction)
+            as IncomeInstruction;
+    expect(_shape(resolved.categoryAllocations), ['salary:100', 'bonus:20']);
+    expect(_shape(resolved.settlementAllocations), ['bank:70', 'cash:50']);
+  });
+
   test('ordinary refund allocates categories and receiving accounts', () {
     final parent = engine.createExpense(
       ExpenseInstruction(
@@ -347,6 +391,30 @@ void main() {
             as ExpenseInstruction;
 
     expect(_shape(edited.categoryAllocations), ['target:80', 'other:20']);
+  });
+
+  test('targeted category replacement updates one income allocation', () {
+    final current = IncomeInstruction(
+      amount: _money(100),
+      categoryAllocations: [
+        _allocation('salary', 60),
+        _allocation('bonus', 20),
+        _allocation('other', 20),
+      ],
+      settlementAllocations: [_allocation('bank', 100)],
+      occurredAt: occurredAt,
+    );
+
+    final edited =
+        const CategoryReplacementEditPatch(
+              businessPurpose: BusinessPurpose.dailyIncome,
+              sourceCategoryId: 'salary',
+              targetCategoryId: 'bonus',
+            ).applyTo(current)
+            as IncomeInstruction;
+
+    expect(_shape(edited.categoryAllocations), ['bonus:80', 'other:20']);
+    expect(_shape(edited.settlementAllocations), ['bank:100']);
   });
 }
 

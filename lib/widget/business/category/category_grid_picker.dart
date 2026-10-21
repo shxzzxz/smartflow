@@ -131,10 +131,9 @@ class _CategoryRow extends StatelessWidget {
                   node.account.id == selectedCategoryId ||
                   node.account.id == selectedRootId,
               onTap: () => onRootSelected(node.account),
-              onLongPress:
-                  onRootLongPressed == null
-                      ? null
-                      : () => onRootLongPressed!(node.account),
+              onLongPress: onRootLongPressed == null
+                  ? null
+                  : () => onRootLongPressed!(node.account),
             ),
           ),
         if (showAddRoot && nodes.length < 5)
@@ -169,10 +168,9 @@ class _SubcategoryPanel extends StatelessWidget {
           category: child,
           selected: child.id == selectedCategoryId,
           onTap: () => onChildSelected(node.account, child),
-          onLongPress:
-              onChildLongPressed == null
-                  ? null
-                  : () => onChildLongPressed!(node.account, child),
+          onLongPress: onChildLongPressed == null
+              ? null
+              : () => onChildLongPressed!(node.account, child),
         ),
       _AddCategoryTile(onTap: () => onAddChild(node.account.id)),
     ];
@@ -226,10 +224,9 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileExtent =
-        MediaQuery.textScalerOf(
-          context,
-        ).scale(64).clamp(64.0, 128.0).toDouble();
+    final tileExtent = MediaQuery.textScalerOf(
+      context,
+    ).scale(64).clamp(64.0, 128.0).toDouble();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
       child: BusinessIconTile(
@@ -241,7 +238,13 @@ class _CategoryTile extends StatelessWidget {
           selected: selected,
           label: category.name,
           labelSpacing: AppSpacing.space4,
-          child: BusinessIcon(iconKey: category.iconKey, size: 28),
+          child: BusinessIcon(
+            iconKey: category.iconKey,
+            size: 28,
+            usage: category.type == AccountType.income
+                ? BusinessIconUsage.incomeCategory
+                : BusinessIconUsage.expenseCategory,
+          ),
         ),
       ),
     );
@@ -256,10 +259,9 @@ class _AddCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final tileExtent =
-        MediaQuery.textScalerOf(
-          context,
-        ).scale(64).clamp(64.0, 128.0).toDouble();
+    final tileExtent = MediaQuery.textScalerOf(
+      context,
+    ).scale(64).clamp(64.0, 128.0).toDouble();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),

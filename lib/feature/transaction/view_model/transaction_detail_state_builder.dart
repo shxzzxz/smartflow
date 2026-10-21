@@ -116,7 +116,8 @@ List<DetailAccountRow> _accountRows(
       final incoming = detail.linesOf(TransactionRole.settlementIn).toList();
       final usesBreakdown =
           incoming.length > 1 &&
-          (purpose == BusinessPurpose.refund ||
+          (purpose == BusinessPurpose.dailyIncome ||
+              purpose == BusinessPurpose.refund ||
               purpose == BusinessPurpose.reimbursementReceipt ||
               purpose == BusinessPurpose.reimbursementClose);
       if (usesBreakdown) return const [];

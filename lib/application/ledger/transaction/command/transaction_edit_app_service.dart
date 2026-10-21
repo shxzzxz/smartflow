@@ -123,8 +123,8 @@ class TransactionEditAppServiceImpl
           isExcludedFromStats: cmd.isExcludedFromStats,
           editPatch: IncomeEditPatch(
             amount: cmd.amount,
-            receiveAccountId: cmd.receiveAccountId,
-            incomeAccountId: cmd.incomeAccountId,
+            categoryAllocations: cmd.categoryAllocations,
+            settlementAllocations: cmd.settlementAllocations,
           ),
         ),
       ),

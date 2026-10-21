@@ -20,7 +20,7 @@ part 'transaction_form_view_model.g.dart';
 
 final _logger = Logger('feature.transaction.form');
 
-enum ExpenseEntryMode { normal, allocated }
+enum TransactionEntryMode { normal, allocated }
 
 @riverpod
 class TransactionFormViewModel extends _$TransactionFormViewModel {
@@ -175,7 +175,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       if (current.mode == value) return current;
       return current.copyWith(
         mode: value,
-        expenseEntryMode: ExpenseEntryMode.normal,
+        entryMode: TransactionEntryMode.normal,
         categoryAllocations: const [],
         settlementAllocations: const [],
         reimbursementAccountId: null,
@@ -285,16 +285,21 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(settlementAllocations: allocations));
   }
 
-  void useAllocatedExpenseEntry(Money amount) {
+  void useAllocatedEntry(Money amount) {
     _defaultAccountRequestRevision += 1;
     _update((current) {
-      final categoryId = current.expenseCategoryId;
-      final settlementId = _effectiveId(
-        current.fromAccountId,
-        current.settlementAccounts,
-      );
+      final categoryId = switch (current.mode) {
+        TransactionFormMode.expense => current.expenseCategoryId,
+        TransactionFormMode.income => current.incomeCategoryId,
+        _ => null,
+      };
+      final settlementId = _effectiveId(switch (current.mode) {
+        TransactionFormMode.expense => current.fromAccountId,
+        TransactionFormMode.income => current.toAccountId,
+        _ => null,
+      }, current.settlementAccounts);
       return current.copyWith(
-        expenseEntryMode: ExpenseEntryMode.allocated,
+        entryMode: TransactionEntryMode.allocated,
         categoryAllocations: categoryId == null
             ? const []
             : singleAllocation(accountId: categoryId, amount: amount),
@@ -304,20 +309,26 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         expenseCategoryId: null,
         expenseRootId: null,
         fromAccountId: null,
+        incomeCategoryId: null,
+        incomeRootId: null,
+        toAccountId: null,
       );
     });
   }
 
-  void useNormalExpenseEntry() {
+  void useNormalEntry() {
     _defaultAccountRequestRevision += 1;
     _update(
       (current) => current.copyWith(
-        expenseEntryMode: ExpenseEntryMode.normal,
+        entryMode: TransactionEntryMode.normal,
         categoryAllocations: const [],
         settlementAllocations: const [],
         expenseCategoryId: null,
         expenseRootId: null,
         fromAccountId: null,
+        incomeCategoryId: null,
+        incomeRootId: null,
+        toAccountId: null,
       ),
     );
   }
@@ -349,12 +360,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void clearForNext({DateTime? occurredAt}) {
     _update(
       (current) => current.copyWith(
-        categoryAllocations:
-            current.expenseEntryMode == ExpenseEntryMode.allocated
+        categoryAllocations: current.entryMode == TransactionEntryMode.allocated
             ? const []
             : current.categoryAllocations,
         settlementAllocations:
-            current.expenseEntryMode == ExpenseEntryMode.allocated
+            current.entryMode == TransactionEntryMode.allocated
             ? const []
             : current.settlementAllocations,
         reimbursementAccountId: null,
@@ -472,18 +482,12 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           );
         }
       case TransactionFormMode.income:
-        final incomeCategoryId = formState.incomeCategoryId;
-        if (incomeCategoryId == null) throw _invalidCommandException('请选择收入分类');
-        final receiveAccountId = _effectiveId(
-          formState.toAccountId,
-          formState.settlementAccounts,
-        );
-        if (receiveAccountId == null) throw _invalidCommandException('请选择收入账户');
+        final allocations = _incomeAllocations(formState, amount);
         await postingService.createIncome(
           CreateIncomeCommand(
             amount: amount,
-            receiveAccountId: receiveAccountId,
-            incomeAccountId: incomeCategoryId,
+            categoryAllocations: allocations.categories,
+            settlementAllocations: allocations.settlements,
             occurredAt: formState.occurredAt,
             note: note,
             isExcludedFromStats: formState.excludeStats,
@@ -610,19 +614,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           );
         }
       case TransactionFormMode.income:
-        final incomeCategoryId = formState.incomeCategoryId;
-        if (incomeCategoryId == null) throw _invalidCommandException('请选择收入分类');
-        final receiveAccountId = _effectiveId(
-          formState.toAccountId,
-          formState.settlementAccounts,
-        );
-        if (receiveAccountId == null) throw _invalidCommandException('请选择收入账户');
+        final allocations = _incomeAllocations(formState, amount);
         await editService.editIncome(
           EditIncomeCommand(
             transactionId: transactionId,
             amount: amount,
-            receiveAccountId: receiveAccountId,
-            incomeAccountId: incomeCategoryId,
+            categoryAllocations: allocations.categories,
+            settlementAllocations: allocations.settlements,
             occurredAt: formState.occurredAt,
             note: note,
             isExcludedFromStats: formState.excludeStats,
@@ -779,7 +777,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     List<AccountAmountAllocation> settlements,
   })
   _expenseAllocations(TransactionFormState formState, Money amount) {
-    if (formState.expenseEntryMode == ExpenseEntryMode.normal) {
+    if (formState.entryMode == TransactionEntryMode.normal) {
       final categoryId = formState.expenseCategoryId;
       if (categoryId == null) {
         throw _invalidCommandException('请选择支出分类');
@@ -813,13 +811,53 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     }
     return (categories: categories, settlements: settlements);
   }
+
+  ({
+    List<AccountAmountAllocation> categories,
+    List<AccountAmountAllocation> settlements,
+  })
+  _incomeAllocations(TransactionFormState formState, Money amount) {
+    if (formState.entryMode == TransactionEntryMode.normal) {
+      final categoryId = formState.incomeCategoryId;
+      if (categoryId == null) {
+        throw _invalidCommandException('请选择收入分类');
+      }
+      final settlementId = _effectiveId(
+        formState.toAccountId,
+        formState.settlementAccounts,
+      );
+      if (settlementId == null) {
+        throw _invalidCommandException('请选择收入账户');
+      }
+      return (
+        categories: singleAllocation(accountId: categoryId, amount: amount),
+        settlements: singleAllocation(accountId: settlementId, amount: amount),
+      );
+    }
+
+    final categories = formState.categoryAllocations;
+    final settlements = formState.settlementAllocations;
+    if (categories.isEmpty) {
+      throw _invalidCommandException('请至少添加一个收入分类');
+    }
+    if (settlements.isEmpty) {
+      throw _invalidCommandException('请至少添加一个收入账户');
+    }
+    if (sumAllocations(categories) != amount) {
+      throw _invalidCommandException('收入分配合计必须等于交易金额');
+    }
+    if (sumAllocations(settlements) != amount) {
+      throw _invalidCommandException('到账分配合计必须等于交易金额');
+    }
+    return (categories: categories, settlements: settlements);
+  }
 }
 
 class TransactionFormState {
   TransactionFormState({
     required this.initialValues,
     required this.mode,
-    required this.expenseEntryMode,
+    required this.entryMode,
     required this.occurredAt,
     required this.excludeStats,
     required this.excludeBudget,
@@ -874,7 +912,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
       mode: mode,
-      expenseEntryMode: ExpenseEntryMode.normal,
+      entryMode: TransactionEntryMode.normal,
       occurredAt: DateTime.now(),
       excludeStats: false,
       excludeBudget: false,
@@ -917,22 +955,23 @@ class TransactionFormState {
     final categoryAllocations = snapshot.categoryAllocations ?? const [];
     final settlementAllocations = snapshot.settlementAllocations ?? const [];
     final usesAllocatedEntry =
-        snapshot.mode == TransactionFormMode.expense &&
+        (snapshot.mode == TransactionFormMode.expense ||
+            snapshot.mode == TransactionFormMode.income) &&
         (categoryAllocations.length > 1 || settlementAllocations.length > 1);
     return TransactionFormState(
       initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
       mode: snapshot.mode,
-      expenseEntryMode: usesAllocatedEntry
-          ? ExpenseEntryMode.allocated
-          : ExpenseEntryMode.normal,
+      entryMode: usesAllocatedEntry
+          ? TransactionEntryMode.allocated
+          : TransactionEntryMode.normal,
       occurredAt: snapshot.occurredAt,
       selectedTagIds: initialTagIds,
       expenseCategoryId: usesAllocatedEntry ? null : snapshot.expenseCategoryId,
       expenseRootId: usesAllocatedEntry ? null : snapshot.expenseRootId,
-      incomeCategoryId: snapshot.incomeCategoryId,
-      incomeRootId: snapshot.incomeRootId,
+      incomeCategoryId: usesAllocatedEntry ? null : snapshot.incomeCategoryId,
+      incomeRootId: usesAllocatedEntry ? null : snapshot.incomeRootId,
       fromAccountId: usesAllocatedEntry ? null : snapshot.fromAccountId,
-      toAccountId: snapshot.toAccountId,
+      toAccountId: usesAllocatedEntry ? null : snapshot.toAccountId,
       reimbursementAccountId: snapshot.reimbursementAccountId,
       ordinaryReceivableAccountId: snapshot.ordinaryReceivableAccountId,
       liabilityAccountId: snapshot.liabilityAccountId,
@@ -956,7 +995,7 @@ class TransactionFormState {
 
   final TransactionFormInitialValues initialValues;
   final TransactionFormMode mode;
-  final ExpenseEntryMode expenseEntryMode;
+  final TransactionEntryMode entryMode;
   final DateTime occurredAt;
   final String? expenseCategoryId;
   final String? expenseRootId;
@@ -985,7 +1024,7 @@ class TransactionFormState {
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
-    ExpenseEntryMode? expenseEntryMode,
+    TransactionEntryMode? entryMode,
     DateTime? occurredAt,
     Object? expenseCategoryId = _sentinel,
     Object? expenseRootId = _sentinel,
@@ -1014,7 +1053,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: initialValues ?? this.initialValues,
       mode: mode ?? this.mode,
-      expenseEntryMode: expenseEntryMode ?? this.expenseEntryMode,
+      entryMode: entryMode ?? this.entryMode,
       occurredAt: occurredAt ?? this.occurredAt,
       expenseCategoryId: expenseCategoryId == _sentinel
           ? this.expenseCategoryId

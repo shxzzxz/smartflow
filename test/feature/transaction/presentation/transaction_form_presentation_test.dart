@@ -34,6 +34,70 @@ void main() {
       expect(snapshot.incomeCategoryId, 'salary');
       expect(snapshot.incomeRootId, 'income-root');
       expect(snapshot.toAccountId, 'bank');
+      expect(snapshot.categoryAllocations?.single.accountId, 'salary');
+      expect(snapshot.settlementAllocations?.single.accountId, 'bank');
+    });
+
+    test('maps daily income allocations for multi-category editing', () {
+      final detail = _detail(
+        purpose: BusinessPurpose.dailyIncome,
+        primaryAmount: const Money(minorUnits: 2468),
+        entries: const [],
+        lines: const [
+          TransactionLine(
+            id: 'salary',
+            transactionId: 'tx-1',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: 'salary',
+            amount: Money(minorUnits: 1800),
+          ),
+          TransactionLine(
+            id: 'bonus',
+            transactionId: 'tx-1',
+            lineNo: 2,
+            role: TransactionRole.category,
+            accountId: 'bonus',
+            amount: Money(minorUnits: 668),
+          ),
+          TransactionLine(
+            id: 'bank',
+            transactionId: 'tx-1',
+            lineNo: 3,
+            role: TransactionRole.settlementIn,
+            accountId: 'bank',
+            amount: Money(minorUnits: 2000),
+          ),
+          TransactionLine(
+            id: 'cash',
+            transactionId: 'tx-1',
+            lineNo: 4,
+            role: TransactionRole.settlementIn,
+            accountId: 'cash',
+            amount: Money(minorUnits: 468),
+          ),
+        ],
+      );
+
+      final snapshot = transactionFormEditSnapshot(
+        detail: detail,
+        expenseTree: const [],
+        incomeTree: const [],
+        accountsById: {'bank': _account('bank'), 'cash': _account('cash')},
+      );
+
+      expect(
+        snapshot.categoryAllocations?.map(
+          (item) => '${item.accountId}:${item.amount.minorUnits}',
+        ),
+        ['salary:1800', 'bonus:668'],
+      );
+      expect(
+        snapshot.settlementAllocations?.map(
+          (item) => '${item.accountId}:${item.amount.minorUnits}',
+        ),
+        ['bank:2000', 'cash:468'],
+      );
     });
 
     test('maps reimbursement advance detail to form state snapshot', () {
@@ -226,11 +290,26 @@ TransactionReadModel _detail({
         transactionId: 'tx-1',
         lineNo: index + 10,
         role: switch (purpose) {
-          BusinessPurpose.dailyIncome => entries[index].direction == EntryDirection.credit ? TransactionRole.category : TransactionRole.settlementIn,
-          BusinessPurpose.dailyExpense => entries[index].direction == EntryDirection.debit ? TransactionRole.category : TransactionRole.settlementOut,
-          BusinessPurpose.reimbursementAdvance => entries[index].direction == EntryDirection.debit ? TransactionRole.receivable : TransactionRole.settlementOut,
-          BusinessPurpose.transfer => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
-          _ => entries[index].direction == EntryDirection.debit ? TransactionRole.settlementIn : TransactionRole.settlementOut,
+          BusinessPurpose.dailyIncome =>
+            entries[index].direction == EntryDirection.credit
+                ? TransactionRole.category
+                : TransactionRole.settlementIn,
+          BusinessPurpose.dailyExpense =>
+            entries[index].direction == EntryDirection.debit
+                ? TransactionRole.category
+                : TransactionRole.settlementOut,
+          BusinessPurpose.reimbursementAdvance =>
+            entries[index].direction == EntryDirection.debit
+                ? TransactionRole.receivable
+                : TransactionRole.settlementOut,
+          BusinessPurpose.transfer =>
+            entries[index].direction == EntryDirection.debit
+                ? TransactionRole.settlementIn
+                : TransactionRole.settlementOut,
+          _ =>
+            entries[index].direction == EntryDirection.debit
+                ? TransactionRole.settlementIn
+                : TransactionRole.settlementOut,
         },
         accountId: entries[index].accountId,
         amount: entries[index].amount,

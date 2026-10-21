@@ -112,7 +112,11 @@ void main() {
         expect(outcome, isA<UiActionSuccess<void>>());
         final command = editService.incomeCommands.single;
         expect(command.transactionId, 'tx-1');
-        expect(command.receiveAccountId, 'bank');
+        expect(command.settlementAllocations?.single.accountId, 'bank');
+        expect(
+          command.settlementAllocations?.single.amount,
+          const Money(minorUnits: 10000),
+        );
       },
     );
 

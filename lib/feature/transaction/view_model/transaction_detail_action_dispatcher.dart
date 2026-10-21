@@ -201,7 +201,10 @@ final class _DefaultActionDispatcher
           return editService.editIncome(
             EditIncomeCommand(
               transactionId: transaction.id,
-              receiveAccountId: accountId,
+              settlementAllocations: singleAllocation(
+                accountId: accountId,
+                amount: transaction.primaryAmount,
+              ),
             ),
           );
         });

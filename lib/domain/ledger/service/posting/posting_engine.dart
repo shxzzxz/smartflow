@@ -170,7 +170,16 @@ class PostingEngine {
         message: 'Income amount must be positive.',
       );
     }
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.categoryAllocations,
+    );
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.settlementAllocations,
+    );
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -185,20 +194,22 @@ class PostingEngine {
         sourceKind: instruction.sourceKind,
         ownership: instruction.ownership,
         lines: [
-          _line(
-            transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.category,
-            accountId: instruction.incomeAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
-            role: TransactionRole.settlementIn,
-            accountId: instruction.receiveAccountId,
-            amount: instruction.amount,
-          ),
+          for (final allocation in instruction.categoryAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.category,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          for (final allocation in instruction.settlementAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementIn,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
         ],
       ),
     );

@@ -223,6 +223,25 @@ void main() {
     expect(paymentAccount.label, '付款账户');
     expect(paymentAccount.editPurpose, AccountSelectionPurpose.fund);
   });
+
+  test('leaves multi-account income to the allocation breakdown', () {
+    final state = _build(
+      purpose: BusinessPurpose.dailyIncome,
+      parentTransactionId: null,
+      additionalLines: const [
+        TransactionLine(
+          id: 'second-account-line',
+          transactionId: 'child',
+          lineNo: 2,
+          role: TransactionRole.settlementIn,
+          accountId: 'bank',
+          amount: Money(minorUnits: 500),
+        ),
+      ],
+    );
+
+    expect(state.accountRows, isEmpty);
+  });
 }
 
 TransactionDetailLoaded _build({
@@ -232,6 +251,7 @@ TransactionDetailLoaded _build({
   ReimbursementSummary? reimbursementSummary,
   List<TransactionReadModel> children = const [],
   TransactionLine? counterpart,
+  Iterable<TransactionLine> additionalLines = const [],
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -266,6 +286,7 @@ TransactionDetailLoaded _build({
         accountId: 'cash',
         amount: const Money(minorUnits: 1000),
       ),
+      ...additionalLines,
     ],
     children: children,
     refundSummary: refundedTotal == null

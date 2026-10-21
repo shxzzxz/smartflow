@@ -156,6 +156,80 @@ void main() {
       );
     });
 
+    test('loads multi-category and multi-account income in allocated mode', () {
+      final detail = TransactionReadModel.fromTransaction(
+        transaction: Transaction(
+          id: 'income-1',
+          businessPurpose: BusinessPurpose.dailyIncome,
+          occurredAt: DateTime(2026, 1, 2),
+          primaryAmount: const Money(minorUnits: 1000),
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+          sourceKind: SourceKind.manual,
+        ),
+        createdAt: DateTime(2026, 1, 2),
+        lines: const [
+          TransactionLine(
+            id: 'salary',
+            transactionId: 'income-1',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: 'salary',
+            amount: Money(minorUnits: 700),
+          ),
+          TransactionLine(
+            id: 'bonus',
+            transactionId: 'income-1',
+            lineNo: 2,
+            role: TransactionRole.category,
+            accountId: 'bonus',
+            amount: Money(minorUnits: 300),
+          ),
+          TransactionLine(
+            id: 'bank',
+            transactionId: 'income-1',
+            lineNo: 3,
+            role: TransactionRole.settlementIn,
+            accountId: 'bank',
+            amount: Money(minorUnits: 600),
+          ),
+          TransactionLine(
+            id: 'cash',
+            transactionId: 'income-1',
+            lineNo: 4,
+            role: TransactionRole.settlementIn,
+            accountId: 'cash',
+            amount: Money(minorUnits: 400),
+          ),
+        ],
+      );
+      final container = _container(
+        editTransactionId: 'income-1',
+        editDetail: detail,
+        accountsById: {
+          'salary': _account('salary', type: AccountType.income),
+          'bonus': _account('bonus', type: AccountType.income),
+          'bank': _account('bank'),
+          'cash': _account('cash'),
+        },
+      );
+
+      final state = container
+          .read(transactionFormViewModelProvider(editTransactionId: 'income-1'))
+          .requireValue!;
+
+      expect(state.mode, TransactionFormMode.income);
+      expect(state.entryMode, TransactionEntryMode.allocated);
+      expect(state.categoryAllocations.map((item) => item.accountId), [
+        'salary',
+        'bonus',
+      ]);
+      expect(state.settlementAllocations.map((item) => item.accountId), [
+        'bank',
+        'cash',
+      ]);
+    });
+
     test('creates daily expense command and returns success', () async {
       final posting = _FakeTransactionPostingAppService();
       final container = _container(
@@ -199,7 +273,7 @@ void main() {
       viewModel
         ..setExpenseCategory(rootId: 'food', categoryId: 'food')
         ..setFromAccountId('cash')
-        ..useAllocatedExpenseEntry(const Money(minorUnits: 1000))
+        ..useAllocatedEntry(const Money(minorUnits: 1000))
         ..setCategoryAllocations(const [
           AccountAmountAllocation(
             accountId: 'food',
@@ -247,7 +321,7 @@ void main() {
         final viewModel = container.read(_provider().notifier);
 
         viewModel
-          ..useAllocatedExpenseEntry(Money.zero())
+          ..useAllocatedEntry(Money.zero())
           ..setCategoryAllocations(const [
             AccountAmountAllocation(
               accountId: 'food',
@@ -275,11 +349,11 @@ void main() {
       viewModel
         ..setExpenseCategory(rootId: 'food', categoryId: 'food')
         ..setFromAccountId('cash')
-        ..useAllocatedExpenseEntry(const Money(minorUnits: 1000))
-        ..useNormalExpenseEntry();
+        ..useAllocatedEntry(const Money(minorUnits: 1000))
+        ..useNormalEntry();
 
       final state = container.read(_provider()).requireValue!;
-      expect(state.expenseEntryMode, ExpenseEntryMode.normal);
+      expect(state.entryMode, TransactionEntryMode.normal);
       expect(state.expenseCategoryId, isNull);
       expect(state.fromAccountId, isNull);
       expect(state.categoryAllocations, isEmpty);
@@ -425,9 +499,65 @@ void main() {
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.incomeCommands.single;
       expect(command.amount, const Money(minorUnits: 8800));
-      expect(command.receiveAccountId, 'bank');
-      expect(command.incomeAccountId, 'salary');
+      expect(command.categoryAllocations.single.accountId, 'salary');
+      expect(command.settlementAllocations.single.accountId, 'bank');
       expect(command.isExcludedFromStats, true);
+    });
+
+    test('creates income with multiple categories and accounts', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('bank'), _account('cash')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setMode(TransactionFormMode.income)
+        ..setIncomeCategory(rootId: 'salary', categoryId: 'salary')
+        ..setToAccountId('bank')
+        ..useAllocatedEntry(const Money(minorUnits: 1000))
+        ..setCategoryAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'salary',
+            amount: Money(minorUnits: 800),
+          ),
+          AccountAmountAllocation(
+            accountId: 'bonus',
+            amount: Money(minorUnits: 700),
+          ),
+        ])
+        ..setSettlementAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'bank',
+            amount: Money(minorUnits: 900),
+          ),
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 600),
+          ),
+        ]);
+
+      final outcome = await viewModel.submit(amountText: '15', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = posting.incomeCommands.single;
+      expect(command.categoryAllocations.map((item) => item.accountId), [
+        'salary',
+        'bonus',
+      ]);
+      expect(
+        command.categoryAllocations.map((item) => item.amount.minorUnits),
+        [800, 700],
+      );
+      expect(command.settlementAllocations.map((item) => item.accountId), [
+        'bank',
+        'cash',
+      ]);
+      expect(
+        command.settlementAllocations.map((item) => item.amount.minorUnits),
+        [900, 600],
+      );
     });
 
     test(

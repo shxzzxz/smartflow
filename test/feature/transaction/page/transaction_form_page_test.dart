@@ -150,6 +150,42 @@ void main() {
     );
   });
 
+  testWidgets('supports income category and account allocations', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      settlementAccounts: [_account('bank'), _account('cash')],
+      incomeTree: [
+        CategoryNode(account: _category('salary', type: AccountType.income)),
+        CategoryNode(account: _category('bonus', type: AccountType.income)),
+      ],
+    );
+
+    await tester.tap(find.text('收入'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('salary'));
+    await tester.tap(find.text('分项'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('income-entry-allocated')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('income-category-allocations')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('income-settlement-allocations')),
+      findsOneWidget,
+    );
+    expect(find.text('添加分类'), findsOneWidget);
+    expect(find.text('添加收款账户'), findsOneWidget);
+    expect(find.text('组合收款'), findsOneWidget);
+  });
+
   testWidgets('shows allocation totals in each card header', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
@@ -668,6 +704,7 @@ Future<void> _pumpTransactionForm(
   List<TagView> tags = const [],
   List<Account>? settlementAccounts,
   List<CategoryNode>? expenseTree,
+  List<CategoryNode>? incomeTree,
 }) async {
   final router = GoRouter(
     routes: [
@@ -714,9 +751,9 @@ Future<void> _pumpTransactionForm(
             expenseTree ?? [CategoryNode(account: _category('food'))],
           ),
         ),
-        categoryTreeProvider(
-          AccountType.income,
-        ).overrideWith((ref) => Stream.value(const <CategoryNode>[])),
+        categoryTreeProvider(AccountType.income).overrideWith(
+          (ref) => Stream.value(incomeTree ?? const <CategoryNode>[]),
+        ),
         tagListProvider.overrideWith((ref) => Stream.value(tags)),
       ],
       child: MaterialApp.router(
@@ -745,11 +782,11 @@ Account _account(String id) {
   );
 }
 
-Account _category(String id) {
+Account _category(String id, {AccountType type = AccountType.expense}) {
   return Account(
     id: id,
     name: id,
-    type: AccountType.expense,
+    type: type,
     balance: const Money(minorUnits: 0),
   );
 }

@@ -190,8 +190,8 @@ class TransactionPostingAppServiceImpl
       await _ledgerPostingService.postIncome(
         IncomeInstruction(
           amount: command.amount,
-          receiveAccountId: command.receiveAccountId,
-          incomeAccountId: command.incomeAccountId,
+          categoryAllocations: command.categoryAllocations,
+          settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           counterpartyName: command.counterpartyName,

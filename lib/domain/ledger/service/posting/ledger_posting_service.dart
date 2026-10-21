@@ -90,8 +90,12 @@ class LedgerPostingService {
           ),
         ),
         IncomeInstruction i => AccountRoleContext.income(
-          receiveAccountId: i.receiveAccountId,
-          incomeAccountId: i.incomeAccountId,
+          receiveAccountIds: i.settlementAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
+          incomeAccountIds: i.categoryAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
         ),
         ReimbursementAdvanceInstruction i =>
           AccountRoleContext.reimbursementAdvance(

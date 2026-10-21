@@ -646,9 +646,14 @@ String transactionAccountLabel(
   }
 
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance => nameOf(EntryDirection.credit) ?? '',
-    BusinessPurpose.dailyIncome => nameOf(EntryDirection.debit) ?? '',
+    BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
+      item.linesOf(TransactionRole.settlementOut).length > 1
+          ? '多账户'
+          : nameOf(EntryDirection.credit) ?? '',
+    BusinessPurpose.dailyIncome =>
+      item.linesOf(TransactionRole.settlementIn).length > 1
+          ? '多账户'
+          : nameOf(EntryDirection.debit) ?? '',
     _ => _flowAccountLabel(item, accountLookup),
   };
 }

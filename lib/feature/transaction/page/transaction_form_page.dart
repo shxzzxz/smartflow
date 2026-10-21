@@ -168,7 +168,6 @@ class _TransactionFormContentState
     final liabilityAccounts = formState.liabilityAccounts;
     final reimbursementAccounts = formState.reimbursementAccounts;
     final ordinaryReceivableAccounts = formState.ordinaryReceivableAccounts;
-    final incomeTree = formState.incomeTree;
     final editTransactionId = widget.editTransactionId;
 
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -201,65 +200,53 @@ class _TransactionFormContentState
                     AppSpacing.space12,
                   ),
                   children: [
-                    if (formState.mode == TransactionFormMode.expense)
-                      _ExpenseEntryArea(
+                    if (formState.mode == TransactionFormMode.expense ||
+                        formState.mode == TransactionFormMode.income)
+                      _CategoryEntryArea(
                         state: formState,
+                        categoryType:
+                            formState.mode == TransactionFormMode.expense
+                            ? AccountType.expense
+                            : AccountType.income,
+                        categoryTree:
+                            formState.mode == TransactionFormMode.expense
+                            ? formState.expenseTree
+                            : formState.incomeTree,
+                        categoryLabel:
+                            formState.mode == TransactionFormMode.expense
+                            ? '支出分类'
+                            : '收入分类',
+                        emptyLabel:
+                            formState.mode == TransactionFormMode.expense
+                            ? '尚未创建支出分类'
+                            : '尚未创建收入分类',
+                        settlementTitle:
+                            formState.mode == TransactionFormMode.expense
+                            ? '组合支付'
+                            : '组合收款',
+                        settlementAddLabel:
+                            formState.mode == TransactionFormMode.expense
+                            ? '添加账户'
+                            : '添加收款账户',
                         onSelectCategory: (rootId, categoryId) =>
-                            _selectExpenseCategory(
+                            _selectCategory(
                               rootId: rootId,
                               categoryId: categoryId,
                             ),
-                        onAddRootCategory: () =>
-                            _openCategoryForm(AccountType.expense),
+                        onAddRootCategory: () => _openCategoryForm(
+                          formState.mode == TransactionFormMode.expense
+                              ? AccountType.expense
+                              : AccountType.income,
+                        ),
                         onAddChildCategory: (rootId) => _openCategoryForm(
-                          AccountType.expense,
+                          formState.mode == TransactionFormMode.expense
+                              ? AccountType.expense
+                              : AccountType.income,
                           parentId: rootId,
                         ),
                         onCategoryAllocationsChanged: _setCategoryAllocations,
                         onSettlementAllocationsChanged:
                             _setSettlementAllocations,
-                      ),
-                    if (formState.mode == TransactionFormMode.income)
-                      AppControlledFormField<String>(
-                        value: formState.incomeCategoryId,
-                        validator: (value) =>
-                            formState.mode == TransactionFormMode.income &&
-                                value == null
-                            ? '请选择收入分类'
-                            : null,
-                        builder: (context, _, errorText, onChanged) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            CategoryGridPicker(
-                              nodes: incomeTree,
-                              selectedRootId: formState.incomeRootId,
-                              selectedCategoryId: formState.incomeCategoryId,
-                              emptyLabel: '尚未创建收入分类',
-                              onRootSelected: (account) {
-                                _selectIncomeCategory(
-                                  rootId: account.id,
-                                  categoryId: account.id,
-                                );
-                                onChanged(account.id);
-                              },
-                              onChildSelected: (root, child) {
-                                _selectIncomeCategory(
-                                  rootId: root.id,
-                                  categoryId: child.id,
-                                );
-                                onChanged(child.id);
-                              },
-                              onAddRoot: () =>
-                                  _openCategoryForm(AccountType.income),
-                              onAddChild: (rootId) => _openCategoryForm(
-                                AccountType.income,
-                                parentId: rootId,
-                              ),
-                            ),
-                            if (errorText != null)
-                              _FormFieldErrorText(errorText),
-                          ],
-                        ),
                       ),
                     if (formState.mode == TransactionFormMode.transfer)
                       _MainAccountPickerSection(
@@ -359,13 +346,13 @@ class _TransactionFormContentState
                   children: [
                     _TransactionTagActionRow(
                       allocated:
-                          formState.expenseEntryMode ==
-                          ExpenseEntryMode.allocated,
-                      showExpenseEntryMode:
-                          formState.mode == TransactionFormMode.expense,
+                          formState.entryMode == TransactionEntryMode.allocated,
+                      showEntryMode:
+                          formState.mode == TransactionFormMode.expense ||
+                          formState.mode == TransactionFormMode.income,
                       tagNames: _selectedTagNames(formState),
                       onSelectTags: _selectTags,
-                      onToggleMode: () => _toggleExpenseEntryMode(formState),
+                      onToggleMode: () => _toggleEntryMode(formState),
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     TransactionAmountInput(
@@ -386,10 +373,8 @@ class _TransactionFormContentState
                       fromAccountId: formState.fromAccountId,
                       toAccountId: formState.toAccountId,
                       reimbursementAccountId: formState.reimbursementAccountId,
-                      allocatedExpense:
-                          formState.mode == TransactionFormMode.expense &&
-                          formState.expenseEntryMode ==
-                              ExpenseEntryMode.allocated,
+                      allocatedEntry:
+                          formState.entryMode == TransactionEntryMode.allocated,
                       excludeStats: formState.excludeStats,
                       excludeBudget: formState.excludeBudget,
                       onPickDate: _pickDate,
@@ -518,10 +503,10 @@ class _TransactionFormContentState
     ref.read(_formProvider.notifier).setSettlementAllocations(allocations);
   }
 
-  void _toggleExpenseEntryMode(TransactionFormState formState) {
+  void _toggleEntryMode(TransactionFormState formState) {
     final notifier = ref.read(_formProvider.notifier);
-    if (formState.expenseEntryMode == ExpenseEntryMode.normal) {
-      notifier.useAllocatedExpenseEntry(
+    if (formState.entryMode == TransactionEntryMode.normal) {
+      notifier.useAllocatedEntry(
         Money.tryParse(_amountController.text) ?? Money.zero(),
       );
       return;
@@ -533,7 +518,7 @@ class _TransactionFormContentState
           ? ''
           : formatMoney(total, style: MoneyFormatStyle.plain),
     );
-    notifier.useNormalExpenseEntry();
+    notifier.useNormalEntry();
   }
 
   Future<void> _submit() async {
@@ -577,22 +562,21 @@ class _TransactionFormContentState
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _selectExpenseCategory({
-    required String? rootId,
-    required String? categoryId,
-  }) {
-    ref
-        .read(_formProvider.notifier)
-        .setExpenseCategory(rootId: rootId, categoryId: categoryId);
-  }
-
-  void _selectIncomeCategory({
-    required String? rootId,
-    required String? categoryId,
-  }) {
-    ref
-        .read(_formProvider.notifier)
-        .setIncomeCategory(rootId: rootId, categoryId: categoryId);
+  void _selectCategory({required String? rootId, required String? categoryId}) {
+    final notifier = ref.read(_formProvider.notifier);
+    final mode = ref.read(_formProvider).requireValue!.mode;
+    switch (mode) {
+      case TransactionFormMode.expense:
+        notifier.setExpenseCategory(rootId: rootId, categoryId: categoryId);
+        return;
+      case TransactionFormMode.income:
+        notifier.setIncomeCategory(rootId: rootId, categoryId: categoryId);
+        return;
+      case TransactionFormMode.transfer ||
+          TransactionFormMode.borrowing ||
+          TransactionFormMode.lending:
+        return;
+    }
   }
 
   Future<void> _confirmDelete() async {
@@ -783,9 +767,15 @@ class _ModeTabItem extends StatelessWidget {
   }
 }
 
-class _ExpenseEntryArea extends StatelessWidget {
-  const _ExpenseEntryArea({
+class _CategoryEntryArea extends StatelessWidget {
+  const _CategoryEntryArea({
     required this.state,
+    required this.categoryType,
+    required this.categoryTree,
+    required this.categoryLabel,
+    required this.emptyLabel,
+    required this.settlementTitle,
+    required this.settlementAddLabel,
     required this.onSelectCategory,
     required this.onAddRootCategory,
     required this.onAddChildCategory,
@@ -794,6 +784,12 @@ class _ExpenseEntryArea extends StatelessWidget {
   });
 
   final TransactionFormState state;
+  final AccountType categoryType;
+  final List<CategoryNode> categoryTree;
+  final String categoryLabel;
+  final String emptyLabel;
+  final String settlementTitle;
+  final String settlementAddLabel;
   final void Function(String? rootId, String? categoryId) onSelectCategory;
   final VoidCallback onAddRootCategory;
   final ValueChanged<String> onAddChildCategory;
@@ -804,23 +800,28 @@ class _ExpenseEntryArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (state.expenseEntryMode == ExpenseEntryMode.allocated) {
+    if (state.entryMode == TransactionEntryMode.allocated) {
       final total = sumAllocations(state.categoryAllocations);
       return Column(
-        key: const ValueKey('expense-entry-allocated'),
+        key: ValueKey('${categoryType.name}-entry-allocated'),
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TransactionInlineAllocationColumn(
-            key: const ValueKey('expense-category-allocations'),
+            key: ValueKey('${categoryType.name}-category-allocations'),
             title: '多分类',
             allocations: state.categoryAllocations,
-            options: _categoryOptions(state.expenseTree),
+            options: _categoryOptions(
+              categoryTree,
+              iconUsage: categoryType == AccountType.income
+                  ? BusinessIconUsage.incomeCategory
+                  : BusinessIconUsage.expenseCategory,
+            ),
             addLabel: '添加分类',
             statusInHeader: true,
             onSelectOption: (context, selectedId, options) =>
                 _showCategoryAllocationPickerSheet(
                   context: context,
-                  nodes: state.expenseTree,
+                  nodes: categoryTree,
                   options: options,
                   selectedId: selectedId,
                   onAddRootCategory: onAddRootCategory,
@@ -830,13 +831,13 @@ class _ExpenseEntryArea extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.space8),
           TransactionInlineAllocationColumn(
-            key: const ValueKey('expense-settlement-allocations'),
-            title: '组合支付',
+            key: ValueKey('${categoryType.name}-settlement-allocations'),
+            title: settlementTitle,
             allocations: state.settlementAllocations,
             options: transactionAllocationOptionsForAccounts(
               state.settlementAccounts,
             ),
-            addLabel: '添加账户',
+            addLabel: settlementAddLabel,
             expectedTotal: total,
             statusInHeader: true,
             onSelectOption: (context, selectedId, options) async {
@@ -864,17 +865,23 @@ class _ExpenseEntryArea extends StatelessWidget {
     }
 
     return AppControlledFormField<String>(
-      key: const ValueKey('expense-entry-normal'),
-      value: state.expenseCategoryId,
-      validator: (value) => value == null ? '请选择支出分类' : null,
+      key: ValueKey('${categoryType.name}-entry-normal'),
+      value: state.mode == TransactionFormMode.expense
+          ? state.expenseCategoryId
+          : state.incomeCategoryId,
+      validator: (value) => value == null ? '请选择$categoryLabel' : null,
       builder: (context, _, errorText, onChanged) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CategoryGridPicker(
-            nodes: state.expenseTree,
-            selectedRootId: state.expenseRootId,
-            selectedCategoryId: state.expenseCategoryId,
-            emptyLabel: '尚未创建支出分类',
+            nodes: categoryTree,
+            selectedRootId: state.mode == TransactionFormMode.expense
+                ? state.expenseRootId
+                : state.incomeRootId,
+            selectedCategoryId: state.mode == TransactionFormMode.expense
+                ? state.expenseCategoryId
+                : state.incomeCategoryId,
+            emptyLabel: emptyLabel,
             onRootSelected: (account) {
               onSelectCategory(account.id, account.id);
               onChanged(account.id);
@@ -1043,14 +1050,14 @@ class _CategoryAllocationPickerSheetState
 class _TransactionTagActionRow extends StatelessWidget {
   const _TransactionTagActionRow({
     required this.allocated,
-    required this.showExpenseEntryMode,
+    required this.showEntryMode,
     required this.tagNames,
     required this.onSelectTags,
     required this.onToggleMode,
   });
 
   final bool allocated;
-  final bool showExpenseEntryMode;
+  final bool showEntryMode;
   final List<String> tagNames;
   final VoidCallback onSelectTags;
   final VoidCallback onToggleMode;
@@ -1072,16 +1079,16 @@ class _TransactionTagActionRow extends StatelessWidget {
             ),
           );
     return Row(
-      key: const ValueKey('expense-entry-mode-row'),
+      key: const ValueKey('transaction-entry-mode-row'),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Align(alignment: Alignment.centerLeft, child: tags),
         ),
         const SizedBox(width: AppSpacing.space8),
-        if (showExpenseEntryMode)
+        if (showEntryMode)
           _QuickActionChip(
-            key: const ValueKey('toggle-expense-entry-mode'),
+            key: const ValueKey('toggle-transaction-entry-mode'),
             icon: RemixIcons.list_check_3,
             label: '分项',
             selected: allocated,
@@ -1291,7 +1298,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.fromAccountId,
     required this.toAccountId,
     required this.reimbursementAccountId,
-    required this.allocatedExpense,
+    required this.allocatedEntry,
     required this.excludeStats,
     required this.excludeBudget,
     required this.onPickDate,
@@ -1309,7 +1316,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final String? fromAccountId;
   final String? toAccountId;
   final String? reimbursementAccountId;
-  final bool allocatedExpense;
+  final bool allocatedEntry;
   final bool excludeStats;
   final bool excludeBudget;
   final VoidCallback onPickDate;
@@ -1322,8 +1329,9 @@ class _TransactionOptionsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showPrimaryAccount =
-        (mode == TransactionFormMode.expense && !allocatedExpense) ||
-        mode == TransactionFormMode.income;
+        (mode == TransactionFormMode.expense ||
+            mode == TransactionFormMode.income) &&
+        !allocatedEntry;
     final showExcludeStats =
         mode == TransactionFormMode.expense ||
         mode == TransactionFormMode.income;
@@ -1771,19 +1779,24 @@ String _formatDateTime(DateTime date) {
   return '${date.month}/${date.day} $time';
 }
 
-List<TransactionAllocationOption> _categoryOptions(List<CategoryNode> tree) {
+List<TransactionAllocationOption> _categoryOptions(
+  List<CategoryNode> tree, {
+  required BusinessIconUsage iconUsage,
+}) {
   return [
     for (final node in tree) ...[
       TransactionAllocationOption(
         accountId: node.account.id,
         label: node.account.name,
         iconKey: node.account.iconKey,
+        iconUsage: iconUsage,
       ),
       for (final child in node.children)
         TransactionAllocationOption(
           accountId: child.id,
           label: child.name,
           iconKey: child.iconKey,
+          iconUsage: iconUsage,
         ),
     ],
   ];

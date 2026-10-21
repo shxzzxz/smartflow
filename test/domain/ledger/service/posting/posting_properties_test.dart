@@ -5,6 +5,7 @@ import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
@@ -33,6 +34,7 @@ void main() {
     'food': AccountType.expense,
     'travel': AccountType.expense,
     'salary': AccountType.income,
+    'bonus': AccountType.income,
   };
 
   test('posting instructions round-trip through transaction lines', () {
@@ -55,8 +57,26 @@ void main() {
       ),
       IncomeInstruction(
         amount: const Money(minorUnits: 2300),
-        receiveAccountId: 'bank',
-        incomeAccountId: 'salary',
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'salary',
+            amount: Money(minorUnits: 1800),
+          ),
+          AccountAmountAllocation(
+            accountId: 'bonus',
+            amount: Money(minorUnits: 500),
+          ),
+        ],
+        settlementAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'bank',
+            amount: Money(minorUnits: 2000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 300),
+          ),
+        ],
         occurredAt: occurredAt,
         postedAt: postedAt,
         counterpartyName: 'employer',
@@ -221,8 +241,14 @@ void main() {
       engine.createIncome(
         IncomeInstruction(
           amount: const Money(minorUnits: 1000),
-          receiveAccountId: 'bank',
-          incomeAccountId: 'salary',
+          categoryAllocations: singleAllocation(
+            accountId: 'salary',
+            amount: const Money(minorUnits: 1000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'bank',
+            amount: const Money(minorUnits: 1000),
+          ),
           occurredAt: occurredAt,
         ),
       ),

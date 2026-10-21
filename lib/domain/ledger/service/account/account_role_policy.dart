@@ -42,18 +42,20 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.income({
-    required String receiveAccountId,
-    required String incomeAccountId,
+    required Iterable<String> receiveAccountIds,
+    required Iterable<String> incomeAccountIds,
   }) {
     return AccountRoleContext([
-      AccountRoleRequirement(
-        accountId: receiveAccountId,
-        requiredUsage: AccountUsage.settlement,
-      ),
-      AccountRoleRequirement(
-        accountId: incomeAccountId,
-        expectedTypes: {AccountType.income},
-      ),
+      for (final accountId in receiveAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.settlement,
+        ),
+      for (final accountId in incomeAccountIds)
+        AccountRoleRequirement(
+          accountId: accountId,
+          expectedTypes: {AccountType.income},
+        ),
     ]);
   }
 
