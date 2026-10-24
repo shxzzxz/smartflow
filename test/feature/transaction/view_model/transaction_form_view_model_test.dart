@@ -51,7 +51,7 @@ void main() {
           AccountSelectionPurpose.borrowingLiability,
         ).overrideWithValue(const AsyncData(<Account>[])),
         accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.reimbursementReceivable,
+          AccountSelectionPurpose.advanceReceivable,
         ).overrideWithValue(const AsyncData(<Account>[])),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.ordinaryReceivable,
@@ -477,32 +477,223 @@ void main() {
       expect(state.fromAccountId, 'bank');
     });
 
+    test('creates advance command when account is selected', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
+        advanceReceivableAccounts: [_account('company')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
+        ..setFromAccountId('cash')
+        ..setAdvanceAccountId('company');
+
+      final outcome = await viewModel.submit(amountText: '20', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = posting.advanceCommands.single;
+      expect(command.amount, const Money(minorUnits: 2000));
+      expect(command.settlementAllocations.single.accountId, 'cash');
+      expect(command.receivableAccountId, 'company');
+      expect(command.categoryAllocations.single.accountId, 'taxi');
+      expect(command.selfBorneAllocations, isEmpty);
+      expect(command.advanceAmount, const Money(minorUnits: 2000));
+    });
+
+    for (final scenario in [
+      (
+        TransactionExpenseScene.reimbursement,
+        AdvanceScenario.reimbursement,
+        AdvanceManagement.itemized,
+      ),
+      (
+        TransactionExpenseScene.reimbursementAccount,
+        AdvanceScenario.reimbursement,
+        AdvanceManagement.account,
+      ),
+      (
+        TransactionExpenseScene.onBehalf,
+        AdvanceScenario.onBehalf,
+        AdvanceManagement.itemized,
+      ),
+    ]) {
+      test(
+        'creates a full advance for ${scenario.$1.name} without amount input',
+        () async {
+          final posting = _FakeTransactionPostingAppService();
+          final container = _container(
+            postingService: posting,
+            settlementAccounts: [_account('cash')],
+            advanceReceivableAccounts: [_account('company')],
+          );
+          final viewModel = container.read(_provider().notifier);
+
+          viewModel
+            ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
+            ..setFromAccountId('cash')
+            ..setExpenseScene(scenario.$1)
+            ..setAdvanceAccountId('company');
+
+          final outcome = await viewModel.submit(
+            amountText: '20',
+            noteText: '',
+          );
+
+          expect(outcome, isA<SubmitSuccess>());
+          final command = posting.advanceCommands.single;
+          expect(command.advanceAmount, const Money(minorUnits: 2000));
+          expect(command.selfBorneAllocations, isEmpty);
+          expect(command.scenario, scenario.$2);
+          expect(command.management, scenario.$3);
+        },
+      );
+    }
+
+    test('computes AA self-borne shares across multiple categories', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
+        advanceReceivableAccounts: [_account('company')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..useAllocatedEntry(const Money(minorUnits: 30000))
+        ..setCategoryAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'food',
+            amount: Money(minorUnits: 12000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'travel',
+            amount: Money(minorUnits: 18000),
+          ),
+        ])
+        ..setSettlementAllocations(const [
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 30000),
+          ),
+        ])
+        ..setAdvanceAccountId('company')
+        ..setAdvanceScenario(AdvanceScenario.aa)
+        ..setAaPeopleCount(3);
+
+      final outcome = await viewModel.submit(amountText: '300', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = posting.advanceCommands.single;
+      expect(
+        command.categoryAllocations.map((item) => item.amount.minorUnits),
+        [12000, 18000],
+      );
+      expect(
+        command.selfBorneAllocations.map((item) => item.amount.minorUnits),
+        [4000, 6000],
+      );
+      expect(command.advanceAmount, const Money(minorUnits: 20000));
+      expect(command.scenario, AdvanceScenario.aa);
+    });
+
+    test('creates an account-managed AA advance', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash')],
+        advanceReceivableAccounts: [_account('company')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
+        ..setFromAccountId('cash')
+        ..setExpenseScene(TransactionExpenseScene.aaAccount)
+        ..setAdvanceAccountId('company')
+        ..setAaPeopleCount(3);
+
+      final outcome = await viewModel.submit(amountText: '30', noteText: '');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = posting.advanceCommands.single;
+      expect(command.management, AdvanceManagement.account);
+      expect(command.scenario, AdvanceScenario.aa);
+      expect(command.advanceAmount, const Money(minorUnits: 2000));
+      expect(
+        command.selfBorneAllocations.single.amount,
+        const Money(minorUnits: 1000),
+      );
+    });
+
     test(
-      'creates reimbursement advance command when account is selected',
+      'rounds AA per-person up and assigns category remainder to the last row',
       () async {
         final posting = _FakeTransactionPostingAppService();
         final container = _container(
           postingService: posting,
           settlementAccounts: [_account('cash')],
-          reimbursementAccounts: [_account('company')],
+          advanceReceivableAccounts: [_account('company')],
         );
         final viewModel = container.read(_provider().notifier);
 
         viewModel
-          ..setExpenseCategory(rootId: 'travel', categoryId: 'taxi')
-          ..setFromAccountId('cash')
-          ..setReimbursementAccountId('company');
+          ..useAllocatedEntry(const Money(minorUnits: 10000))
+          ..setCategoryAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 4000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'travel',
+              amount: Money(minorUnits: 6000),
+            ),
+          ])
+          ..setSettlementAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 10000),
+            ),
+          ])
+          ..setAdvanceAccountId('company')
+          ..setAdvanceScenario(AdvanceScenario.aa)
+          ..setAaPeopleCount(3);
 
-        final outcome = await viewModel.submit(amountText: '20', noteText: '');
+        final outcome = await viewModel.submit(amountText: '100', noteText: '');
 
         expect(outcome, isA<SubmitSuccess>());
-        final command = posting.reimbursementAdvanceCommands.single;
-        expect(command.amount, const Money(minorUnits: 2000));
-        expect(command.settlementAllocations.single.accountId, 'cash');
-        expect(command.receivableAccountId, 'company');
-        expect(command.categoryAllocations.single.accountId, 'taxi');
+        final command = posting.advanceCommands.single;
+        expect(command.advanceAmount, const Money(minorUnits: 6668));
+        expect(
+          command.selfBorneAllocations.map((item) => item.amount.minorUnits),
+          [1332, 2000],
+        );
+        expect(sumAllocations(command.selfBorneAllocations).minorUnits, 3332);
       },
     );
+
+    test('reconstructs AA headcount from the ceiling split while editing', () {
+      final container = _container(
+        editTransactionId: 'aa-1',
+        editDetail: _aaAdvanceDetail(),
+        accountsById: {
+          'food': _account('food', type: AccountType.expense),
+          'cash': _account('cash'),
+          'company': _account('company'),
+        },
+        settlementAccounts: [_account('cash')],
+        advanceReceivableAccounts: [_account('company')],
+      );
+
+      final state = container
+          .read(_provider(editTransactionId: 'aa-1'))
+          .requireValue!;
+
+      expect(state.expenseScene, TransactionExpenseScene.aa);
+      expect(state.aaPeopleCount, 9);
+    });
 
     test('creates income command', () async {
       final posting = _FakeTransactionPostingAppService();
@@ -750,7 +941,7 @@ void main() {
         final container = _container(
           postingService: posting,
           fundAccounts: [_account('cash')],
-          reimbursementAccounts: [_account('reimbursement')],
+          advanceReceivableAccounts: [_account('advance')],
           ordinaryReceivableAccounts: [_account('receivable')],
         );
         final viewModel = container.read(_provider().notifier);
@@ -923,7 +1114,7 @@ void main() {
       );
     });
 
-    test('submits reimbursement advance edit for edited advance', () async {
+    test('submits advance edit for edited advance', () async {
       final editService = _FakeTransactionEditAppService();
       final container = _container(
         editService: editService,
@@ -935,7 +1126,7 @@ void main() {
           'company': _account('company'),
         },
         settlementAccounts: [_account('cash')],
-        reimbursementAccounts: [_account('company')],
+        advanceReceivableAccounts: [_account('company')],
       );
       final viewModel = container.read(
         _provider(editTransactionId: 'tx-1').notifier,
@@ -944,12 +1135,12 @@ void main() {
       viewModel
         ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
         ..setFromAccountId('cash')
-        ..setReimbursementAccountId('company');
+        ..setAdvanceAccountId('company');
 
       final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = editService.reimbursementAdvanceCommands.single;
+      final command = editService.advanceCommands.single;
       expect(command.transactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
       expect(command.categoryAllocations!.single.accountId, 'hotel');
@@ -1053,7 +1244,7 @@ ProviderContainer _container({
   List<Account> settlementAccounts = const [],
   List<Account> fundAccounts = const [],
   List<Account> liabilityAccounts = const [],
-  List<Account> reimbursementAccounts = const [],
+  List<Account> advanceReceivableAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
   List<CounterpartyView> counterparties = const [],
 }) {
@@ -1078,8 +1269,8 @@ ProviderContainer _container({
         AccountSelectionPurpose.borrowingLiability,
       ).overrideWithValue(AsyncData(liabilityAccounts)),
       accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.reimbursementReceivable,
-      ).overrideWithValue(AsyncData(reimbursementAccounts)),
+        AccountSelectionPurpose.advanceReceivable,
+      ).overrideWithValue(AsyncData(advanceReceivableAccounts)),
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.ordinaryReceivable,
       ).overrideWithValue(AsyncData(ordinaryReceivableAccounts)),
@@ -1189,6 +1380,60 @@ TransactionReadModel _lendingTransactionDetail() {
   );
 }
 
+TransactionReadModel _aaAdvanceDetail() {
+  return TransactionReadModel.fromTransaction(
+    transaction: Transaction(
+      id: 'aa-1',
+      businessPurpose: BusinessPurpose.advance,
+      occurredAt: DateTime(2026, 1, 2, 8, 30),
+      primaryAmount: const Money(minorUnits: 1000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      ownership: advanceOwnership(
+        management: AdvanceManagement.itemized,
+        ownerId: 'aa-1',
+        scenario: AdvanceScenario.aa,
+      ),
+    ),
+    createdAt: DateTime(2026, 1, 2, 8, 30),
+    lines: const [
+      TransactionLine(
+        id: 'category',
+        transactionId: 'aa-1',
+        lineNo: 1,
+        role: TransactionRole.advanceExpenseCategory,
+        accountId: 'food',
+        amount: Money(minorUnits: 1000),
+      ),
+      TransactionLine(
+        id: 'self-borne',
+        transactionId: 'aa-1',
+        lineNo: 2,
+        role: TransactionRole.advanceSelfBorne,
+        accountId: 'food',
+        amount: Money(minorUnits: 104),
+      ),
+      TransactionLine(
+        id: 'receivable',
+        transactionId: 'aa-1',
+        lineNo: 3,
+        role: TransactionRole.receivable,
+        accountId: 'company',
+        amount: Money(minorUnits: 896),
+      ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'aa-1',
+        lineNo: 4,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 1000),
+      ),
+    ],
+  );
+}
+
 TransactionReadModel _transferTransactionDetail() {
   const amount = Money(minorUnits: 2000);
   const fee = Money(minorUnits: 300);
@@ -1267,7 +1512,7 @@ class _FakeTransactionPostingAppService
   final expenseCommands = <CreateExpenseCommand>[];
   final incomeCommands = <CreateIncomeCommand>[];
   final transferCommands = <CreateTransferCommand>[];
-  final reimbursementAdvanceCommands = <CreateReimbursementAdvanceCommand>[];
+  final advanceCommands = <CreateAdvanceCommand>[];
   final borrowingCommands = <CreateBorrowingCommand>[];
   final lendingCommands = <CreateLendingCommand>[];
 
@@ -1296,10 +1541,10 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementAdvance(
-    CreateReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> createAdvance(
+    CreateAdvanceCommand command,
   ) async {
-    reimbursementAdvanceCommands.add(command);
+    advanceCommands.add(command);
     return _postedResult();
   }
 
@@ -1346,8 +1591,8 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -1365,8 +1610,8 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementReceipt(
-    CreateReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> createAdvanceCollection(
+    CreateAdvanceCollectionCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -1382,7 +1627,7 @@ class _FakeTransactionPostingAppService
 class _FakeTransactionEditAppService
     implements TransactionEditAppService, ReceivableTransactionEditAppService {
   final expenseCommands = <EditExpenseCommand>[];
-  final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
+  final advanceCommands = <EditAdvanceCommand>[];
   final transferCommands = <EditTransferCommand>[];
   final lendingCommands = <EditLendingCommand>[];
   final deletedTransactionIds = <String>[];
@@ -1409,10 +1654,10 @@ class _FakeTransactionEditAppService
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editAdvance(
+    EditAdvanceCommand command,
   ) async {
-    reimbursementAdvanceCommands.add(command);
+    advanceCommands.add(command);
     return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
@@ -1443,15 +1688,15 @@ class _FakeTransactionEditAppService
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementClose(
-    EditReimbursementCloseCommand command,
+  Future<PostedTransactionResult> editAdvanceSettlement(
+    EditAdvanceSettlementCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementReceipt(
-    EditReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editAdvanceCollection(
+    EditAdvanceCollectionCommand command,
   ) {
     throw UnimplementedError();
   }

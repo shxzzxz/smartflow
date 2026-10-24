@@ -134,9 +134,8 @@ void main() {
           routes: [
             GoRoute(
               path: ':id/edit',
-              builder:
-                  (context, state) =>
-                      const AccountFormPage(accountId: 'account-1'),
+              builder: (context, state) =>
+                  const AccountFormPage(accountId: 'account-1'),
             ),
           ],
         ),

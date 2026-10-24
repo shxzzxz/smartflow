@@ -2235,8 +2235,8 @@ class _FakePostingService implements ledger.TransactionPostingAppService {
   }
 
   @override
-  Future<ledger.PostedTransactionResult> closeReimbursement(
-    ledger.CloseReimbursementCommand command,
+  Future<ledger.PostedTransactionResult> settleAdvance(
+    ledger.CreateAdvanceSettlementCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -2277,15 +2277,15 @@ class _FakePostingService implements ledger.TransactionPostingAppService {
   }
 
   @override
-  Future<ledger.PostedTransactionResult> createReimbursementAdvance(
-    ledger.CreateReimbursementAdvanceCommand command,
+  Future<ledger.PostedTransactionResult> createAdvance(
+    ledger.CreateAdvanceCommand command,
   ) {
     throw UnimplementedError();
   }
 
   @override
-  Future<ledger.PostedTransactionResult> createReimbursementReceipt(
-    ledger.CreateReimbursementReceiptCommand command,
+  Future<ledger.PostedTransactionResult> createAdvanceCollection(
+    ledger.CreateAdvanceCollectionCommand command,
   ) {
     throw UnimplementedError();
   }

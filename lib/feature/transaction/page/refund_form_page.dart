@@ -63,7 +63,7 @@ class RefundFormPage extends ConsumerWidget {
       return const Center(child: Text('原交易不存在'));
     }
     if (state.status == RefundFormStatus.notEditable) {
-      return const Center(child: Text('报销已结束，请先删除结束报销'));
+      return const Center(child: Text('垫付已结清，请先删除垫付结清'));
     }
     return _RefundFormContent(
       key: ValueKey('${state.transactionId}:${state.editing}'),

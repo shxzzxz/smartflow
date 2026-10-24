@@ -15,7 +15,7 @@ import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
-import 'package:smartflow/feature/transaction/page/reimbursement_form_page.dart';
+import 'package:smartflow/feature/transaction/page/advance_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -187,7 +187,7 @@ void main() {
 
     await tester.tap(find.byTooltip('更多'));
     await tester.pumpAndSettle();
-    expect(find.text('此操作将删除整个交易组及其账务记录（包括退款、报销等子交易），无法恢复。'), findsOneWidget);
+    expect(find.text('此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'), findsOneWidget);
     expect(find.textContaining('冲销记录'), findsNothing);
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
@@ -222,29 +222,27 @@ void main() {
     expect(find.text('收支账户已更新'), findsOneWidget);
   });
 
-  testWidgets('shows refund and reimbursement information together', (
-    tester,
-  ) async {
+  testWidgets('shows refund and advance information together', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           transactionDetailProvider(
-            'tx-reimbursement',
-          ).overrideWith((ref) => Stream.value(_combinedReimbursementDetail())),
+            'tx-advance',
+          ).overrideWith((ref) => Stream.value(_combinedAdvanceDetail())),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
-          home: const TransactionDetailPage(transactionId: 'tx-reimbursement'),
+          home: const TransactionDetailPage(transactionId: 'tx-advance'),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('退款金额'), findsOneWidget);
-    expect(find.text('报销详情'), findsOneWidget);
+    expect(find.text('垫付详情'), findsOneWidget);
     expect(find.text('已收 40.00 / 应收 100.00'), findsOneWidget);
   });
 
@@ -619,13 +617,13 @@ void main() {
     expect(find.text('标签已更新'), findsOneWidget);
   });
 
-  testWidgets('reimbursement date and close switch reset with the form', (
+  testWidgets('advance date and close switch reset with the form', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final router = GoRouter(
-      initialLocation: '/transaction/tx-reimbursement',
+      initialLocation: '/transaction/tx-advance',
       routes: [
         GoRoute(
           path: '/transaction/:id',
@@ -633,8 +631,8 @@ void main() {
               TransactionDetailPage(transactionId: state.pathParameters['id']!),
         ),
         GoRoute(
-          path: '/transaction/:id/reimbursement',
-          builder: (context, state) => ReimbursementFormPage(
+          path: '/transaction/:id/advance',
+          builder: (context, state) => AdvanceFormPage(
             advanceTransactionId: state.pathParameters['id']!,
           ),
         ),
@@ -645,8 +643,8 @@ void main() {
       ProviderScope(
         overrides: [
           transactionDetailProvider(
-            'tx-reimbursement',
-          ).overrideWith((ref) => Stream.value(_reimbursementDetail())),
+            'tx-advance',
+          ).overrideWith((ref) => Stream.value(_advanceDetail())),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -656,7 +654,7 @@ void main() {
                 _accounts['cash']!,
                 _accounts['bank']!,
               ],
-              AccountSelectionPurpose.reimbursementReceivable => [
+              AccountSelectionPurpose.advanceReceivable => [
                 _accounts['receivable']!,
               ],
               _ => const <Account>[],
@@ -671,7 +669,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('报销'));
+    await tester.tap(find.text('垫付'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
@@ -689,7 +687,7 @@ void main() {
       findsOneWidget,
     );
     final settlementCard = find.byKey(
-      const ValueKey('reimbursement-settlement-allocations'),
+      const ValueKey('advance-settlement-allocations'),
     );
     expect(settlementCard, findsOneWidget);
     expect(
@@ -701,7 +699,7 @@ void main() {
       findsNothing,
     );
 
-    final formPage = find.byType(ReimbursementFormPage);
+    final formPage = find.byType(AdvanceFormPage);
     final formSwitch = find.descendant(
       of: formPage,
       matching: find.byType(Switch),
@@ -967,20 +965,20 @@ TransactionReadModel _multiDetail({bool many = false}) {
   );
 }
 
-TransactionReadModel _reimbursementDetail() {
+TransactionReadModel _advanceDetail() {
   return TransactionReadModel.fromTransaction(
     transaction: Transaction(
-      id: 'tx-reimbursement',
-      businessPurpose: BusinessPurpose.reimbursementAdvance,
+      id: 'tx-advance',
+      businessPurpose: BusinessPurpose.advance,
       occurredAt: DateTime(2026, 1, 1, 8),
       primaryAmount: const Money(minorUnits: 10000),
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      lines: _reimbursementLines,
+      lines: _advanceLines,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
-    lines: _reimbursementLines,
+    lines: _advanceLines,
     refundSummary: const RefundSummary(
       refundedTotal: Money(minorUnits: 0),
       originalCategoryAllocations: [
@@ -991,7 +989,7 @@ TransactionReadModel _reimbursementDetail() {
       ],
       refundedCategoryAllocations: [],
     ),
-    reimbursementSummary: const ReimbursementSummary(
+    advanceSummary: const AdvanceSummary(
       advanceAmount: Money(minorUnits: 10000),
       refundedAmount: Money(minorUnits: 0),
       receivedAmount: Money(minorUnits: 0),
@@ -1002,8 +1000,8 @@ TransactionReadModel _reimbursementDetail() {
   );
 }
 
-TransactionReadModel _combinedReimbursementDetail() {
-  final detail = _reimbursementDetail();
+TransactionReadModel _combinedAdvanceDetail() {
+  final detail = _advanceDetail();
   return detail.copyWith(
     children: [
       TransactionReadModel(
@@ -1029,7 +1027,7 @@ TransactionReadModel _combinedReimbursementDetail() {
       TransactionReadModel(
         id: 'receipt',
         parentTransactionId: detail.id,
-        businessPurpose: BusinessPurpose.reimbursementReceipt,
+        businessPurpose: BusinessPurpose.advanceCollection,
         occurredAt: DateTime(2026, 1, 3, 8),
         primaryAmount: const Money(minorUnits: 4000),
         isExcludedFromStats: false,
@@ -1057,7 +1055,7 @@ TransactionReadModel _combinedReimbursementDetail() {
       ],
       refundedCategoryAllocations: [],
     ),
-    reimbursementSummary: const ReimbursementSummary(
+    advanceSummary: const AdvanceSummary(
       advanceAmount: Money(minorUnits: 10000),
       refundedAmount: Money(minorUnits: 2000),
       receivedAmount: Money(minorUnits: 4000),
@@ -1140,18 +1138,18 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-const _reimbursementLines = [
+const _advanceLines = [
   TransactionLine(
     id: 'advance-category',
-    transactionId: 'tx-reimbursement',
+    transactionId: 'tx-advance',
     lineNo: 1,
-    role: TransactionRole.reimbursementExpenseCategory,
+    role: TransactionRole.advanceExpenseCategory,
     accountId: 'food',
     amount: Money(minorUnits: 10000),
   ),
   TransactionLine(
     id: 'advance-out',
-    transactionId: 'tx-reimbursement',
+    transactionId: 'tx-advance',
     lineNo: 2,
     role: TransactionRole.settlementOut,
     accountId: 'cash',
@@ -1159,7 +1157,7 @@ const _reimbursementLines = [
   ),
   TransactionLine(
     id: 'advance-receivable',
-    transactionId: 'tx-reimbursement',
+    transactionId: 'tx-advance',
     lineNo: 3,
     role: TransactionRole.receivable,
     accountId: 'receivable',

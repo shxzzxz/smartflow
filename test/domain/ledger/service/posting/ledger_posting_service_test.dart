@@ -255,5 +255,6 @@ class _FakeSystemAccountResolver implements SystemAccountResolver {
   Future<String> resolveOpeningBalance() => throw UnimplementedError();
 
   @override
-  Future<String> resolveReimbursementGapIncome() => throw UnimplementedError();
+  Future<String> resolveAdvanceCompensationIncome() =>
+      throw UnimplementedError();
 }

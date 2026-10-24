@@ -265,8 +265,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       kind: switch (target.kind) {
         ImportLedgerTargetKind.asset => ImportMappingTargetKind.asset,
         ImportLedgerTargetKind.liability => ImportMappingTargetKind.liability,
-        ImportLedgerTargetKind.reimbursement =>
-          ImportMappingTargetKind.reimbursement,
+        ImportLedgerTargetKind.advance => ImportMappingTargetKind.advance,
         ImportLedgerTargetKind.incomeCategory =>
           ImportMappingTargetKind.incomeCategory,
         ImportLedgerTargetKind.expenseCategory =>
@@ -860,7 +859,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           ]
         : const [
             ImportTargetDescriptor.fundAccount,
-            ImportTargetDescriptor.reimbursementAccount,
+            ImportTargetDescriptor.advanceAccount,
             ImportTargetDescriptor.receivableAccount,
             ImportTargetDescriptor.payableAccount,
             ImportTargetDescriptor.creditAccount,
@@ -912,7 +911,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       return preferred;
     }
     const order = [
-      ImportTargetDescriptor.reimbursementAccount,
+      ImportTargetDescriptor.advanceAccount,
       ImportTargetDescriptor.receivableAccount,
       ImportTargetDescriptor.fundAccount,
       ImportTargetDescriptor.payableAccount,
@@ -1038,8 +1037,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       kind: switch (creation.kind) {
         ImportMappingTargetKind.asset => ImportLedgerTargetKind.asset,
         ImportMappingTargetKind.liability => ImportLedgerTargetKind.liability,
-        ImportMappingTargetKind.reimbursement =>
-          ImportLedgerTargetKind.reimbursement,
+        ImportMappingTargetKind.advance => ImportLedgerTargetKind.advance,
         ImportMappingTargetKind.incomeCategory =>
           ImportLedgerTargetKind.incomeCategory,
         ImportMappingTargetKind.expenseCategory =>
@@ -1292,10 +1290,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           _TargetUsage.fund,
           groupIndex: groupIndex,
         );
-      case ImportReimbursementAdvanceDraft draft:
+      case ImportAdvanceDraft draft:
         await context.account(
           draft.receivableAccount,
-          _TargetUsage.reimbursement,
+          _TargetUsage.advance,
           groupIndex: groupIndex,
         );
         await context.account(
@@ -1364,8 +1362,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           groupIndex: groupIndex,
         );
       case ImportRefundDraft() ||
-          ImportReimbursementReceiptDraft() ||
-          ImportReimbursementCloseDraft():
+          ImportAdvanceCollectionDraft() ||
+          ImportAdvanceSettlementDraft():
         throw ImportWorkflowException(
           ImportErrorCode.invalidDraftStructure,
           message: '子交易行为不能作为顶层交易。',
@@ -1388,10 +1386,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           groupIndex: groupIndex,
           allowExplicitNone: true,
         );
-      case ImportReimbursementReceiptDraft draft:
+      case ImportAdvanceCollectionDraft draft:
         await context.account(
           draft.receivableAccount,
-          _TargetUsage.reimbursement,
+          _TargetUsage.advance,
           groupIndex: groupIndex,
         );
         await context.account(
@@ -1399,10 +1397,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           _TargetUsage.settlement,
           groupIndex: groupIndex,
         );
-      case ImportReimbursementCloseDraft draft:
+      case ImportAdvanceSettlementDraft draft:
         await context.account(
           draft.receivableAccount,
-          _TargetUsage.reimbursement,
+          _TargetUsage.advance,
           groupIndex: groupIndex,
         );
         if (draft.actualReceivedAmount.minorUnits > 0) {
@@ -1415,7 +1413,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       case ImportExpenseDraft() ||
           ImportIncomeDraft() ||
           ImportTransferDraft() ||
-          ImportReimbursementAdvanceDraft() ||
+          ImportAdvanceDraft() ||
           ImportRepaymentDraft() ||
           ImportInterestExpenseDraft() ||
           ImportBorrowingDraft() ||
@@ -1432,7 +1430,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
 
   void _validateDraftValues(ImportTransactionDraft draft, int groupIndex) {
     final invalid = switch (draft) {
-      ImportReimbursementCloseDraft draft =>
+      ImportAdvanceSettlementDraft draft =>
         draft.actualReceivedAmount.minorUnits < 0,
       ImportRepaymentDraft draft =>
         draft.principal.minorUnits <= 0 ||
@@ -1463,7 +1461,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       context,
     );
     final gapExpenseCategoryId = switch (group.topLevel) {
-      ImportReimbursementAdvanceDraft draft => await context.category(
+      ImportAdvanceDraft draft => await context.category(
         draft.category,
         groupIndex: groupIndex,
       ),
@@ -1540,30 +1538,29 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         feeAmount: draft.feeAmount,
         note: draft.note,
       ),
-      ImportReimbursementAdvanceDraft draft =>
-        _ledger.createReimbursementAdvance(
-          amount: draft.amount,
-          receivableAccountId: await context.account(
-            draft.receivableAccount,
-            _TargetUsage.reimbursement,
-            groupIndex: groupIndex,
-          ),
-          paidFromAccountId: await context.account(
-            draft.paidFrom,
-            _TargetUsage.settlement,
-            groupIndex: groupIndex,
-            allowExplicitNone: true,
-          ),
-          expenseCategoryId: await context.category(
-            draft.category,
-            groupIndex: groupIndex,
-          ),
-          occurredAt: draft.occurredAt,
-          postedAt: draft.postedAt,
-          note: draft.note,
-          isExcludedFromStats: draft.isExcludedFromStats,
-          isExcludedFromBudget: draft.isExcludedFromBudget,
+      ImportAdvanceDraft draft => _ledger.createAdvance(
+        amount: draft.amount,
+        receivableAccountId: await context.account(
+          draft.receivableAccount,
+          _TargetUsage.advance,
+          groupIndex: groupIndex,
         ),
+        paidFromAccountId: await context.account(
+          draft.paidFrom,
+          _TargetUsage.settlement,
+          groupIndex: groupIndex,
+          allowExplicitNone: true,
+        ),
+        expenseCategoryId: await context.category(
+          draft.category,
+          groupIndex: groupIndex,
+        ),
+        occurredAt: draft.occurredAt,
+        postedAt: draft.postedAt,
+        note: draft.note,
+        isExcludedFromStats: draft.isExcludedFromStats,
+        isExcludedFromBudget: draft.isExcludedFromBudget,
+      ),
       ImportRepaymentDraft draft => _ledger.createRepayment(
         principal: draft.principal,
         liabilityAccountId: await context.account(
@@ -1685,36 +1682,35 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         postedAt: draft.postedAt,
         note: draft.note,
       ),
-      ImportReimbursementReceiptDraft draft =>
-        _ledger.createReimbursementReceipt(
-          topLevelTransactionId: topLevelId,
-          amount: draft.amount,
-          receivableAccountId: await context.account(
-            draft.receivableAccount,
-            _TargetUsage.reimbursement,
-            groupIndex: groupIndex,
-          ),
-          receiveAccountId: await context.account(
-            draft.receiveAccount,
-            _TargetUsage.settlement,
-            groupIndex: groupIndex,
-          ),
-          occurredAt: draft.occurredAt,
-          postedAt: draft.postedAt,
-          note: draft.note,
+      ImportAdvanceCollectionDraft draft => _ledger.createAdvanceCollection(
+        topLevelTransactionId: topLevelId,
+        amount: draft.amount,
+        receivableAccountId: await context.account(
+          draft.receivableAccount,
+          _TargetUsage.advance,
+          groupIndex: groupIndex,
         ),
-      ImportReimbursementCloseDraft draft => _ledger.closeReimbursement(
+        receiveAccountId: await context.account(
+          draft.receiveAccount,
+          _TargetUsage.settlement,
+          groupIndex: groupIndex,
+        ),
+        occurredAt: draft.occurredAt,
+        postedAt: draft.postedAt,
+        note: draft.note,
+      ),
+      ImportAdvanceSettlementDraft draft => _ledger.settleAdvance(
         topLevelTransactionId: topLevelId,
         actualReceivedAmount: draft.actualReceivedAmount,
         receivableAccountId: await context.account(
           draft.receivableAccount,
-          _TargetUsage.reimbursement,
+          _TargetUsage.advance,
           groupIndex: groupIndex,
         ),
         receiveAccountId: draft.actualReceivedAmount.minorUnits == 0
             ? await context.account(
                 draft.receivableAccount,
-                _TargetUsage.reimbursement,
+                _TargetUsage.advance,
                 groupIndex: groupIndex,
               )
             : await context.account(

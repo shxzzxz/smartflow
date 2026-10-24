@@ -12,6 +12,7 @@ export '../../domain/ledger/entity/transaction.dart';
 export '../../domain/ledger/entity/transaction_line.dart';
 export '../../domain/ledger/valobj/account_usage.dart';
 export '../../domain/ledger/valobj/account_amount_allocation.dart';
+export '../../domain/ledger/valobj/advance_ownership.dart';
 export '../../domain/ledger/valobj/ledger_enum.dart';
 export '../../domain/ledger/valobj/transaction_ownership.dart';
 export 'account/query/account_query_service.dart';

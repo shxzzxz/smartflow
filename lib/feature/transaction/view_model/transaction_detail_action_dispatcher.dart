@@ -32,7 +32,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required RepaymentAppService repaymentAppService,
 }) {
   final ownership = transaction.ownership;
-  if (ownership == null) {
+  if (ownership == null || ownership.isAdvance) {
     return _DefaultActionDispatcher(
       transaction: transaction,
       editService: editService,
@@ -208,10 +208,10 @@ final class _DefaultActionDispatcher
             ),
           );
         });
-      case BusinessPurpose.reimbursementAdvance:
+      case BusinessPurpose.advance:
         return detailVoidOutcomeFromAction(() {
-          return editService.editReimbursementAdvance(
-            EditReimbursementAdvanceCommand(
+          return editService.editAdvance(
+            EditAdvanceCommand(
               transactionId: transaction.id,
               settlementAllocations: singleAllocation(
                 accountId: accountId,
@@ -285,10 +285,10 @@ final class _DefaultActionDispatcher
             ),
           ),
         );
-      case BusinessPurpose.reimbursementReceipt:
+      case BusinessPurpose.advanceCollection:
         return detailVoidOutcomeFromAction(
-          () => editService.editReimbursementReceipt(
-            EditReimbursementReceiptCommand(
+          () => editService.editAdvanceCollection(
+            EditAdvanceCollectionCommand(
               transactionId: transaction.id,
               settlementAllocations: singleAllocation(
                 accountId: accountId,
@@ -297,10 +297,10 @@ final class _DefaultActionDispatcher
             ),
           ),
         );
-      case BusinessPurpose.reimbursementClose:
+      case BusinessPurpose.advanceSettlement:
         return detailVoidOutcomeFromAction(
-          () => editService.editReimbursementClose(
-            EditReimbursementCloseCommand(
+          () => editService.editAdvanceSettlement(
+            EditAdvanceSettlementCommand(
               transactionId: transaction.id,
               settlementAllocations: singleAllocation(
                 accountId: accountId,

@@ -21,7 +21,7 @@ Future<void> migrateTransactionLines(
   await createTransactionLineIndexes(database);
   await _backfillTransactionLines(database);
   await database.customStatement('DROP TABLE transaction_details');
-  await _dropReimbursementExpenseColumn(database);
+  await _dropAdvanceExpenseColumn(database);
 }
 
 Future<void> createTransactionLineIndexes(AppDatabase database) async {
@@ -62,20 +62,20 @@ ORDER BY transaction_row.id
     final transactionId = row.read<String>('id');
     final snapshot = V29TransactionSnapshot(
       transactionId: transactionId,
-      businessPurpose: BusinessPurpose.values.byName(
+      businessPurpose: _businessPurposeFromLegacy(
         row.read<String>('business_purpose'),
       ),
       primaryAmount: Money(minorUnits: row.read<int>('primary_amount_minor')),
-      reimbursementExpenseAccountId: row.readNullable<String>(
+      advanceExpenseAccountId: row.readNullable<String>(
         'reimbursement_expense_account_id',
       ),
       parentBusinessPurpose: switch (row.readNullable<String>(
         'parent_business_purpose',
       )) {
-        final value? => BusinessPurpose.values.byName(value),
+        final value? => _businessPurposeFromLegacy(value),
         null => null,
       },
-      parentReimbursementExpenseAccountId: row.readNullable<String>(
+      parentAdvanceExpenseAccountId: row.readNullable<String>(
         'parent_reimbursement_expense_account_id',
       ),
       entries: entriesByTransaction[transactionId] ?? const <Entry>[],
@@ -137,9 +137,25 @@ Future<Map<SystemKey, String>> _loadSystemAccountIds(
       .get();
   return {
     for (final row in rows)
-      SystemKey.values.byName(row.read<String>('system_key')): row.read<String>(
+      _systemKeyFromLegacy(row.read<String>('system_key')): row.read<String>(
         'id',
       ),
+  };
+}
+
+BusinessPurpose _businessPurposeFromLegacy(String value) {
+  return switch (value) {
+    'reimbursementAdvance' => BusinessPurpose.advance,
+    'reimbursementReceipt' => BusinessPurpose.advanceCollection,
+    'reimbursementClose' => BusinessPurpose.advanceSettlement,
+    _ => BusinessPurpose.values.byName(value),
+  };
+}
+
+SystemKey _systemKeyFromLegacy(String value) {
+  return switch (value) {
+    'reimbursementGapIncome' => SystemKey.advanceCompensationIncome,
+    _ => SystemKey.values.byName(value),
   };
 }
 
@@ -192,11 +208,9 @@ Future<Map<String, Map<String, int>>> _loadLegacyAmounts(
   return result;
 }
 
-Future<void> _dropReimbursementExpenseColumn(AppDatabase database) async {
+Future<void> _dropAdvanceExpenseColumn(AppDatabase database) async {
   final columns =
-      (await database
-              .customSelect('PRAGMA table_info(transactions)')
-              .get())
+      (await database.customSelect('PRAGMA table_info(transactions)').get())
           .map((row) => row.read<String>('name'))
           .toSet();
   final sourceCounterpartyColumn = columns.contains('counterparty_name')

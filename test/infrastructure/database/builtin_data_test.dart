@@ -141,4 +141,26 @@ void main() {
       initialAccountGroupIdForProfile(AccountProfileKind.payable),
     );
   });
+
+  test('v12 renames advance compensation classification', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.customStatement(
+      "UPDATE accounts SET name = '垫付补偿收入' "
+      "WHERE system_key = 'advanceCompensationIncome'",
+    );
+    await (database.update(database.appMetadata)
+          ..where((row) => row.key.equals(builtinDataVersionKey)))
+        .write(const AppMetadataCompanion(value: Value('12')));
+
+    await ensureBuiltinData(database);
+
+    final name = await database
+        .customSelect(
+          "SELECT name FROM accounts "
+          "WHERE system_key = 'advanceCompensationIncome'",
+        )
+        .getSingle();
+    expect(name.read<String>('name'), '垫付补偿');
+  });
 }

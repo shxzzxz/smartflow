@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
+import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -20,9 +21,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     return switch (transaction.businessPurpose) {
       BusinessPurpose.dailyExpense => _resolveExpense(transaction),
       BusinessPurpose.dailyIncome => _resolveIncome(transaction),
-      BusinessPurpose.reimbursementAdvance => _resolveReimbursementAdvance(
-        transaction,
-      ),
+      BusinessPurpose.advance => _resolveAdvance(transaction),
       BusinessPurpose.transfer => _resolveTransfer(transaction),
       BusinessPurpose.debtRepayment => _resolveRepayment(transaction),
       BusinessPurpose.borrowing => _resolveBorrowing(transaction),
@@ -54,14 +53,17 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     final refundOffsets = transaction.accountAllocationsOf(
       TransactionRole.refundOffset,
     );
-    final reimbursementCategories = transaction.accountAllocationsOf(
-      TransactionRole.reimbursementExpenseCategory,
+    final advanceCategories = transaction.accountAllocationsOf(
+      TransactionRole.advanceExpenseCategory,
     );
-    // Reimbursement refunds have two independent facts: category allocations
-    // and the parent receivable account stored in refundOffset. The latter
-    // must never be interpreted as a refunded category.
-    final categories = reimbursementCategories.isNotEmpty
-        ? reimbursementCategories
+    final selfBorneAllocations = transaction.accountAllocationsOf(
+      TransactionRole.advanceSelfBorne,
+    );
+    // Ordinary refunds use refundOffset for their category allocations;
+    // advance refunds use advanceExpenseCategory. Both are independent from
+    // settlementIn.
+    final categories = advanceCategories.isNotEmpty
+        ? advanceCategories
         : refundOffsets;
     if (settlements.isEmpty || categories.isEmpty) {
       return LedgerViolationReason.refundToAccountNotFound.throwException(
@@ -72,6 +74,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       parentTransactionId: transaction.parentTransactionId!,
       amount: transaction.primaryAmount,
       categoryAllocations: categories,
+      selfBorneAllocations: selfBorneAllocations,
       settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
@@ -133,32 +136,40 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
     );
   }
 
-  ReimbursementAdvanceInstruction _resolveReimbursementAdvance(
-    Transaction transaction,
-  ) {
+  AdvanceInstruction _resolveAdvance(Transaction transaction) {
     final categories = transaction.accountAllocationsOf(
-      TransactionRole.reimbursementExpenseCategory,
+      TransactionRole.advanceExpenseCategory,
+    );
+    final selfBorne = transaction.accountAllocationsOf(
+      TransactionRole.advanceSelfBorne,
     );
     final receivableAccountId = transaction.accountOf(
       TransactionRole.receivable,
     );
+    final advanceAmount = transaction.amountOf(TransactionRole.receivable);
     final settlements = transaction.accountAllocationsOf(
       TransactionRole.settlementOut,
     );
-    if (categories.isEmpty ||
-        receivableAccountId == null ||
+    if (receivableAccountId == null ||
+        advanceAmount == null ||
         settlements.isEmpty) {
-      return LedgerViolationReason.reimbursementInstructionUnresolvable
-          .throwException(
-            message: 'Reimbursement advance accounts cannot be resolved.',
-          );
+      return LedgerViolationReason.advanceInstructionUnresolvable
+          .throwException(message: 'Advance accounts cannot be resolved.');
     }
-    return ReimbursementAdvanceInstruction(
+    return AdvanceInstruction(
       amount: transaction.primaryAmount,
+      advanceAmount: advanceAmount,
       receivableAccountId: receivableAccountId,
       categoryAllocations: categories,
+      selfBorneAllocations: selfBorne,
       settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
+      management:
+          transaction.ownership?.advanceManagement ??
+          AdvanceManagement.itemized,
+      scenario:
+          transaction.ownership?.advanceScenario ??
+          AdvanceScenario.reimbursement,
       postedAt: transaction.postedAt,
       counterpartyId: transaction.counterpartyId,
       note: transaction.note,

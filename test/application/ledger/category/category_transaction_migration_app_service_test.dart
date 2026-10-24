@@ -23,7 +23,7 @@ void main() {
         ),
         CategoryTransactionTarget(
           transactionId: 'advance-1',
-          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          businessPurpose: BusinessPurpose.advance,
         ),
       ],
       editService: editService,
@@ -45,7 +45,7 @@ void main() {
     expect(editService.commands.map((command) => command.businessPurpose), [
       BusinessPurpose.dailyExpense,
       BusinessPurpose.dailyIncome,
-      BusinessPurpose.reimbursementAdvance,
+      BusinessPurpose.advance,
     ]);
     expect(editService.commands.first.sourceCategoryId, 'source');
     expect(editService.commands.first.targetCategoryId, 'target');

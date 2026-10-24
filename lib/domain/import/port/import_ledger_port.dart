@@ -4,7 +4,7 @@ import '../import_models.dart';
 enum ImportLedgerTargetKind {
   asset,
   liability,
-  reimbursement,
+  advance,
   incomeCategory,
   expenseCategory,
   ghost,
@@ -17,8 +17,7 @@ extension ImportLedgerTargetKindDescriptor on ImportLedgerTargetKind {
     // The legacy kind only says "liability"; it carries no credit/loan
     // profile fact. Keep such targets unsupported without a descriptor.
     ImportLedgerTargetKind.liability => ImportTargetDescriptor.unsupported,
-    ImportLedgerTargetKind.reimbursement =>
-      ImportTargetDescriptor.reimbursementAccount,
+    ImportLedgerTargetKind.advance => ImportTargetDescriptor.advanceAccount,
     ImportLedgerTargetKind.incomeCategory =>
       ImportTargetDescriptor.incomeCategory,
     ImportLedgerTargetKind.expenseCategory =>
@@ -131,7 +130,7 @@ abstract interface class ImportLedgerPort {
     String? note,
   });
 
-  Future<String> createReimbursementAdvance({
+  Future<String> createAdvance({
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -143,7 +142,7 @@ abstract interface class ImportLedgerPort {
     bool isExcludedFromBudget = false,
   });
 
-  Future<String> createReimbursementReceipt({
+  Future<String> createAdvanceCollection({
     required String topLevelTransactionId,
     required Money amount,
     required String receivableAccountId,
@@ -153,7 +152,7 @@ abstract interface class ImportLedgerPort {
     String? note,
   });
 
-  Future<String> closeReimbursement({
+  Future<String> settleAdvance({
     required String topLevelTransactionId,
     required Money actualReceivedAmount,
     required String receivableAccountId,

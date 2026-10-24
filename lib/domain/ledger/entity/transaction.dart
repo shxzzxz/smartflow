@@ -72,7 +72,7 @@ class Transaction {
   /// Returns the sum of all lines for [role], or null when the role is absent.
   ///
   /// A role may be represented by multiple allocations (for example, a
-  /// reimbursement can be received into several settlement accounts), so
+  /// advance can be received into several settlement accounts), so
   /// callers must not use only the first matching line as the role amount.
   Money? amountOf(TransactionRole role) {
     final matchingLines = linesOf(role);
@@ -93,7 +93,7 @@ class Transaction {
         sameEntries(entries, other.entries);
   }
 
-  /// 基础信息(occurredAt / postedAt / settlement / reimbursement account)更新路径。
+  /// 基础信息(occurredAt / postedAt / settlement / advance account)更新路径。
   void assertCanBeBasicsUpdated() {}
 
   void updateBasicInfo({
@@ -186,7 +186,7 @@ class Transaction {
             '${roleCarriesAccount(line.role) ? 'carry' : 'omit'} an account.',
       );
     }
-    // 结算腿允许为零:结束报销可以一分未收,还款可以只付利息。
+    // 结算腿允许为零:垫付结清可以一分未收,还款可以只付利息。
     final signValid = roleAmountIsSigned(line.role)
         ? line.amount.minorUnits != 0
         : line.amount.minorUnits >= 0;
@@ -232,6 +232,7 @@ class Transaction {
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
     TransactionOwnership? ownership,
+    bool clearOwnership = false,
     List<TransactionLine>? lines,
     List<Entry>? entries,
   }) {
@@ -252,7 +253,7 @@ class Transaction {
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
-      ownership: ownership ?? this.ownership,
+      ownership: clearOwnership ? null : ownership ?? this.ownership,
       lines:
           lines ??
           [
@@ -294,7 +295,7 @@ class Transaction {
 extension BusinessPurposeBehavior on BusinessPurpose {
   bool get isExpense =>
       this == BusinessPurpose.dailyExpense ||
-      this == BusinessPurpose.reimbursementAdvance ||
+      this == BusinessPurpose.advance ||
       this == BusinessPurpose.badDebt;
 
   bool get isIncome =>

@@ -80,7 +80,7 @@ class LedgerImportPort implements ImportLedgerPort {
             profileKey: AccountProfileKind.fund.key,
           ),
         )).id,
-      ImportTargetDescriptor.reimbursementAccount =>
+      ImportTargetDescriptor.advanceAccount =>
         (await _accountCommands.createAccount(
           CreateAccountCommand(
             name: creation.name,
@@ -262,7 +262,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }
 
   @override
-  Future<String> createReimbursementAdvance({
+  Future<String> createAdvance({
     required Money amount,
     required String receivableAccountId,
     required String paidFromAccountId,
@@ -273,14 +273,15 @@ class LedgerImportPort implements ImportLedgerPort {
     bool isExcludedFromStats = false,
     bool isExcludedFromBudget = false,
   }) async {
-    final result = await _posting.createReimbursementAdvance(
-      CreateReimbursementAdvanceCommand(
+    final result = await _posting.createAdvance(
+      CreateAdvanceCommand(
         amount: amount,
         receivableAccountId: receivableAccountId,
         categoryAllocations: singleAllocation(
           accountId: expenseCategoryId,
           amount: amount,
         ),
+        selfBorneAllocations: const [],
         settlementAllocations: singleAllocation(
           accountId: paidFromAccountId,
           amount: amount,
@@ -297,7 +298,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }
 
   @override
-  Future<String> createReimbursementReceipt({
+  Future<String> createAdvanceCollection({
     required String topLevelTransactionId,
     required Money amount,
     required String receivableAccountId,
@@ -306,8 +307,8 @@ class LedgerImportPort implements ImportLedgerPort {
     required DateTime postedAt,
     String? note,
   }) async {
-    final result = await _posting.createReimbursementReceipt(
-      CreateReimbursementReceiptCommand(
+    final result = await _posting.createAdvanceCollection(
+      CreateAdvanceCollectionCommand(
         amount: amount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -324,7 +325,7 @@ class LedgerImportPort implements ImportLedgerPort {
   }
 
   @override
-  Future<String> closeReimbursement({
+  Future<String> settleAdvance({
     required String topLevelTransactionId,
     required Money actualReceivedAmount,
     required String receivableAccountId,
@@ -339,8 +340,8 @@ class LedgerImportPort implements ImportLedgerPort {
       actualReceivedAmount: actualReceivedAmount,
       categoryId: gapExpenseCategoryId,
     );
-    final result = await _posting.closeReimbursement(
-      CloseReimbursementCommand(
+    final result = await _posting.settleAdvance(
+      CreateAdvanceSettlementCommand(
         actualReceivedAmount: actualReceivedAmount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -366,7 +367,7 @@ class LedgerImportPort implements ImportLedgerPort {
     final detail = await _transactions.findTransactionDetail(
       topLevelTransactionId,
     );
-    final outstanding = detail?.reimbursementSummary?.outstanding;
+    final outstanding = detail?.advanceSummary?.outstanding;
     if (outstanding == null) return const [];
     final shortfall = outstanding - actualReceivedAmount;
     if (shortfall.minorUnits <= 0) return const [];
@@ -532,7 +533,7 @@ class LedgerImportPort implements ImportLedgerPort {
     final kind = switch ((account.type, account.subtype, account.systemKey)) {
       (_, _, SystemKey.ghostAccount) => ImportLedgerTargetKind.ghost,
       (AccountType.asset, AccountSubtype.receivable, _) =>
-        ImportLedgerTargetKind.reimbursement,
+        ImportLedgerTargetKind.advance,
       (AccountType.asset, _, _) => ImportLedgerTargetKind.asset,
       (AccountType.liability, _, _) => ImportLedgerTargetKind.liability,
       (AccountType.income, _, _) => ImportLedgerTargetKind.incomeCategory,
@@ -595,7 +596,7 @@ class LedgerImportPort implements ImportLedgerPort {
       return switch (profile) {
         AccountProfileKind.fund => ImportTargetDescriptor.fundAccount,
         AccountProfileKind.reimbursement =>
-          ImportTargetDescriptor.reimbursementAccount,
+          ImportTargetDescriptor.advanceAccount,
         AccountProfileKind.receivable =>
           ImportTargetDescriptor.receivableAccount,
         AccountProfileKind.payable => ImportTargetDescriptor.payableAccount,

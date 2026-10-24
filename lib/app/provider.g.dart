@@ -1223,7 +1223,7 @@ final class TagApplicationServiceProvider
 }
 
 String _$tagApplicationServiceHash() =>
-    r'1e741e908740fa346b47175a1d433147c52f1e50';
+    r'8ff3f517a18f4634a7ceb09281409bb22bec9e08';
 
 @ProviderFor(counterpartyApplicationService)
 final counterpartyApplicationServiceProvider =

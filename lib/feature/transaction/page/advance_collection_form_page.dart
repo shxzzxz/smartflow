@@ -11,11 +11,11 @@ import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/reimbursement_form_view_model.dart';
+import '../view_model/advance_form_view_model.dart';
 import '../widget/transaction_allocation_fields.dart';
 
-class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
-  const ReimbursementReceiptFormPage({
+class AdvanceCollectionFormPage extends ConsumerStatefulWidget {
+  const AdvanceCollectionFormPage({
     required this.advanceTransactionId,
     super.key,
   });
@@ -23,12 +23,12 @@ class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
   final String advanceTransactionId;
 
   @override
-  ConsumerState<ReimbursementReceiptFormPage> createState() =>
-      _ReimbursementReceiptFormPageState();
+  ConsumerState<AdvanceCollectionFormPage> createState() =>
+      _AdvanceCollectionFormPageState();
 }
 
-class _ReimbursementReceiptFormPageState
-    extends ConsumerState<ReimbursementReceiptFormPage> {
+class _AdvanceCollectionFormPageState
+    extends ConsumerState<AdvanceCollectionFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -42,7 +42,7 @@ class _ReimbursementReceiptFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final provider = reimbursementReceiptFormViewModelProvider(
+    final provider = advanceCollectionFormViewModelProvider(
       widget.advanceTransactionId,
     );
     final asyncState = ref.watch(provider);
@@ -59,20 +59,20 @@ class _ReimbursementReceiptFormPageState
   }
 
   Widget _buildLoaded(
-    ReimbursementReceiptFormViewModelProvider provider,
-    ReimbursementReceiptFormState state,
+    AdvanceCollectionFormViewModelProvider provider,
+    AdvanceCollectionFormState state,
   ) {
-    if (state.status == ReimbursementFormStatus.notFound) {
-      return const Center(child: Text('报销垫付不存在'));
+    if (state.status == AdvanceFormStatus.notFound) {
+      return const Center(child: Text('垫付不存在'));
     }
-    if (state.status == ReimbursementFormStatus.notEditable) {
-      return const Center(child: Text('该报销记录不可继续到账'));
+    if (state.status == AdvanceFormStatus.notEditable) {
+      return const Center(child: Text('该垫付记录不可继续到账'));
     }
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          const AppPageHeader(title: '记一笔到账', subtitle: '将报销款记入资金账户'),
+          const AppPageHeader(title: '记一笔到账', subtitle: '将垫付到账记入资金账户'),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -118,7 +118,7 @@ class _ReimbursementReceiptFormPageState
                     final amount = Money.tryParse(value.text);
                     return TransactionInlineAllocationColumn(
                       key: const ValueKey(
-                        'reimbursement-receipt-settlement-allocations',
+                        'advance-receipt-settlement-allocations',
                       ),
                       title: '到账账户',
                       allocations: transactionAllocationFieldValues(
@@ -171,9 +171,7 @@ class _ReimbursementReceiptFormPageState
     onSelected(picked);
   }
 
-  Future<void> _submit(
-    ReimbursementReceiptFormViewModelProvider provider,
-  ) async {
+  Future<void> _submit(AdvanceCollectionFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
     final outcome = await ref
         .read(provider.notifier)

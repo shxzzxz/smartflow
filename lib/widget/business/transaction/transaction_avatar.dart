@@ -27,7 +27,7 @@ class TransactionAvatar extends StatelessWidget {
     final icon = switch (businessPurpose) {
       BusinessPurpose.dailyExpense ||
       BusinessPurpose.dailyIncome ||
-      BusinessPurpose.reimbursementAdvance =>
+      BusinessPurpose.advance =>
         hasMultipleCategories ? RemixIcons.layout_grid_line : null,
       BusinessPurpose.transfer => RemixIcons.arrow_left_right_line,
       BusinessPurpose.lending => RemixIcons.logout_box_r_line,
@@ -39,8 +39,8 @@ class TransactionAvatar extends StatelessWidget {
       BusinessPurpose.openingBalance => RemixIcons.wallet_line,
       BusinessPurpose.balanceAdjustment => RemixIcons.scales_3_line,
       BusinessPurpose.refund => RemixIcons.refund_line,
-      BusinessPurpose.reimbursementReceipt => RemixIcons.money_cny_circle_line,
-      BusinessPurpose.reimbursementClose => RemixIcons.check_double_line,
+      BusinessPurpose.advanceCollection => RemixIcons.money_cny_circle_line,
+      BusinessPurpose.advanceSettlement => RemixIcons.check_double_line,
     };
     if (icon == null) {
       return CategoryAvatar(iconKey: iconKey, size: size, iconSize: iconSize);

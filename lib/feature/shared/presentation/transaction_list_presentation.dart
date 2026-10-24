@@ -188,14 +188,15 @@ class TransactionBadgePresentation {
 enum TransactionAdjustmentKind {
   transferFee,
   refund,
-  reimbursementReceived,
+  advanceReceived,
   receivableCollectionPrincipal,
   receivableCollectionInterest,
   repaymentInterest,
   repaymentFee,
   repaymentDiscount,
-  reimbursementGapIncome,
-  reimbursementGapExpense,
+  advanceCompensationIncome,
+  advanceSelfBorne,
+  advanceBadDebt,
 }
 
 class TransactionAdjustment {
@@ -443,7 +444,7 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   final in_ =
       inEndpoints.firstOrNull ??
       endpointOf(_flowAccountId(item, direction: EntryDirection.debit));
-  final reimbursementReceivable = endpointOf(
+  final advanceReceivable = endpointOf(
     item.accountOf(TransactionRole.receivable),
   );
   final fallbackText = transactionAccountLabel(item, accountLookup);
@@ -455,9 +456,9 @@ TransactionAccountFlowPresentation resolveAccountFlow(
       outEndpoints: outEndpoints,
       fallbackLabel: fallbackLabel,
     ),
-    BusinessPurpose.reimbursementAdvance => TransactionAccountFlowPresentation(
+    BusinessPurpose.advance => TransactionAccountFlowPresentation(
       out: out,
-      in_: reimbursementReceivable,
+      in_: advanceReceivable,
       outEndpoints: outEndpoints,
       separator: '|',
       fallbackLabel: fallbackLabel,
@@ -527,7 +528,7 @@ TransactionBadgePresentation _adjustmentBadge(
       tone: FinanceTone.expense,
     ),
     TransactionAdjustmentKind.refund => (label: '退', tone: FinanceTone.income),
-    TransactionAdjustmentKind.reimbursementReceived => (
+    TransactionAdjustmentKind.advanceReceived => (
       label: '报',
       tone: FinanceTone.info,
     ),
@@ -551,12 +552,16 @@ TransactionBadgePresentation _adjustmentBadge(
       label: '优',
       tone: FinanceTone.income,
     ),
-    TransactionAdjustmentKind.reimbursementGapIncome => (
-      label: '差收',
+    TransactionAdjustmentKind.advanceCompensationIncome => (
+      label: '补偿',
       tone: FinanceTone.income,
     ),
-    TransactionAdjustmentKind.reimbursementGapExpense => (
+    TransactionAdjustmentKind.advanceSelfBorne => (
       label: '差支',
+      tone: FinanceTone.expense,
+    ),
+    TransactionAdjustmentKind.advanceBadDebt => (
+      label: '坏账',
       tone: FinanceTone.expense,
     ),
   };
@@ -609,7 +614,7 @@ String? resolveCategoryIconKey(
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
-    BusinessPurpose.reimbursementAdvance => category?.iconKey,
+    BusinessPurpose.advance => category?.iconKey,
     _ => null,
   };
 }
@@ -628,7 +633,7 @@ String transactionPrimaryLabel(
           ? '多类别'
           : _cleanText(category?.name) ??
                 transactionPurposeLabel(item.businessPurpose),
-    BusinessPurpose.reimbursementAdvance =>
+    BusinessPurpose.advance =>
       categoryLines.length > 1 ? '多类别' : _cleanText(category?.name) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
@@ -646,7 +651,7 @@ String transactionAccountLabel(
   }
 
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
+    BusinessPurpose.dailyExpense || BusinessPurpose.advance =>
       item.linesOf(TransactionRole.settlementOut).length > 1
           ? '多账户'
           : nameOf(EntryDirection.credit) ?? '',
@@ -682,16 +687,16 @@ FinanceTone amountTone(BusinessPurpose purpose) {
     BusinessPurpose.dailyIncome => FinanceTone.income,
     BusinessPurpose.dailyExpense => FinanceTone.expense,
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt => FinanceTone.income,
+    BusinessPurpose.advanceCollection => FinanceTone.income,
     BusinessPurpose.transfer ||
-    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.advance ||
     BusinessPurpose.debtRepayment ||
     BusinessPurpose.borrowing ||
     BusinessPurpose.lending ||
     BusinessPurpose.receivableCollection ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment ||
-    BusinessPurpose.reimbursementClose => FinanceTone.neutral,
+    BusinessPurpose.advanceSettlement => FinanceTone.neutral,
     BusinessPurpose.badDebt => FinanceTone.expense,
     BusinessPurpose.debtRelief => FinanceTone.income,
   };
@@ -705,7 +710,7 @@ String formatTransactionAmount(
   final prefix = switch (item.businessPurpose) {
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.advanceCollection ||
     BusinessPurpose.debtRelief => '+',
     BusinessPurpose.dailyExpense || BusinessPurpose.badDebt => '-',
     _ => '',
@@ -767,7 +772,7 @@ String formatAccountDelta(
 bool canQuickEditTransaction(TransactionReadModel item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.advance ||
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.transfer ||
     BusinessPurpose.borrowing => true,
@@ -779,8 +784,8 @@ bool canQuickEditTransaction(TransactionReadModel item) {
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment ||
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose => false,
+    BusinessPurpose.advanceCollection ||
+    BusinessPurpose.advanceSettlement => false,
   };
 }
 
@@ -814,23 +819,27 @@ List<TransactionAdjustment> transactionAdjustments(TransactionReadModel item) {
         TransactionAdjustmentKind.refund,
         item.refundSummary?.refundedTotal ?? Money.zero(),
       );
-    case BusinessPurpose.reimbursementAdvance:
+    case BusinessPurpose.advance:
       add(
         TransactionAdjustmentKind.refund,
         item.refundSummary?.refundedTotal ?? Money.zero(),
       );
       add(
-        TransactionAdjustmentKind.reimbursementReceived,
-        item.reimbursementSummary?.receivedAmount ?? Money.zero(),
+        TransactionAdjustmentKind.advanceReceived,
+        item.advanceSummary?.receivedAmount ?? Money.zero(),
       );
       for (final child in item.children) {
         add(
-          TransactionAdjustmentKind.reimbursementGapIncome,
-          child.amountOf(TransactionRole.reimbursementGapIncome),
+          TransactionAdjustmentKind.advanceCompensationIncome,
+          child.amountOf(TransactionRole.advanceCompensationIncome),
         );
         add(
-          TransactionAdjustmentKind.reimbursementGapExpense,
-          child.amountOf(TransactionRole.reimbursementGapExpense),
+          TransactionAdjustmentKind.advanceSelfBorne,
+          child.amountOf(TransactionRole.advanceSelfBorne),
+        );
+        add(
+          TransactionAdjustmentKind.advanceBadDebt,
+          child.amountOf(TransactionRole.advanceBadDebtExpense),
         );
       }
     case BusinessPurpose.debtRepayment:

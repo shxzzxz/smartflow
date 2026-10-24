@@ -466,6 +466,7 @@ class _AccountActionBar extends StatelessWidget {
             icon: switch (action.iconKey) {
               'logout-box-r-line' => RemixIcons.logout_box_r_line,
               'refund-income' => RemixIcons.refund_2_line,
+              'advance-collection' => RemixIcons.hand_coin_line,
               'money-cny-circle-line' => RemixIcons.money_cny_circle_line,
               'hand-coin-line' => RemixIcons.hand_coin_line,
               'loan' => RemixIcons.bank_line,
@@ -492,15 +493,30 @@ class _ActionRow extends StatelessWidget {
         horizontal: AppSpacing.space8,
         vertical: AppSpacing.space6,
       ),
-      child: Row(
-        children: [
-          for (var index = 0; index < children.length; index++) ...[
-            Expanded(child: children[index]),
-            if (index < children.length - 1)
-              const SizedBox(width: AppSpacing.space6),
-          ],
-        ],
-      ),
+      child: children.length <= 3
+          ? Row(
+              children: [
+                for (var index = 0; index < children.length; index++) ...[
+                  Expanded(child: children[index]),
+                  if (index < children.length - 1)
+                    const SizedBox(width: AppSpacing.space6),
+                ],
+              ],
+            )
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth =
+                    (constraints.maxWidth - AppSpacing.space6) / 2;
+                return Wrap(
+                  spacing: AppSpacing.space6,
+                  runSpacing: AppSpacing.space6,
+                  children: [
+                    for (final child in children)
+                      SizedBox(width: itemWidth, child: child),
+                  ],
+                );
+              },
+            ),
     ),
   );
 }

@@ -59,7 +59,7 @@ abstract interface class TransactionReadRepository {
 
   /// 按交易列表稳定排序返回最近一笔命中分类的交易。
   ///
-  /// 分类事实来自分类分项，包括报销垫付的支出分类分项。
+  /// 分类事实来自分类分项，包括垫付的支出分类分项。
   Future<Transaction?> findLatestByCategory(CategoryTransactionQuery query);
 
   /// 响应 transactions / entries / transaction_lines / accounts 表变化；

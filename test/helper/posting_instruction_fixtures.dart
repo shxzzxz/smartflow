@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
+import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
@@ -36,12 +37,15 @@ ExpenseInstruction singleExpenseInstruction({
   ownership: ownership,
 );
 
-ReimbursementAdvanceInstruction singleReimbursementAdvanceInstruction({
+AdvanceInstruction singleAdvanceInstruction({
   required Money amount,
+  Money? advanceAmount,
   required String receivableAccountId,
   required String paidFromAccountId,
   required String expenseAccountId,
   required DateTime occurredAt,
+  AdvanceManagement management = AdvanceManagement.itemized,
+  AdvanceScenario scenario = AdvanceScenario.reimbursement,
   DateTime? postedAt,
   String? counterpartyId,
   String? note,
@@ -49,26 +53,39 @@ ReimbursementAdvanceInstruction singleReimbursementAdvanceInstruction({
   bool isExcludedFromBudget = false,
   SourceKind sourceKind = SourceKind.manual,
   TransactionOwnership? ownership,
-}) => ReimbursementAdvanceInstruction(
-  amount: amount,
-  receivableAccountId: receivableAccountId,
-  categoryAllocations: singleAllocation(
-    accountId: expenseAccountId,
+}) {
+  final nextAdvanceAmount = advanceAmount ?? amount;
+  final selfBorneAmount = amount - nextAdvanceAmount;
+  return AdvanceInstruction(
     amount: amount,
-  ),
-  settlementAllocations: singleAllocation(
-    accountId: paidFromAccountId,
-    amount: amount,
-  ),
-  occurredAt: occurredAt,
-  postedAt: postedAt,
-  counterpartyId: counterpartyId,
-  note: note,
-  isExcludedFromStats: isExcludedFromStats,
-  isExcludedFromBudget: isExcludedFromBudget,
-  sourceKind: sourceKind,
-  ownership: ownership,
-);
+    advanceAmount: nextAdvanceAmount,
+    receivableAccountId: receivableAccountId,
+    categoryAllocations: singleAllocation(
+      accountId: expenseAccountId,
+      amount: amount,
+    ),
+    selfBorneAllocations: selfBorneAmount.minorUnits == 0
+        ? const []
+        : singleAllocation(
+            accountId: expenseAccountId,
+            amount: selfBorneAmount,
+          ),
+    settlementAllocations: singleAllocation(
+      accountId: paidFromAccountId,
+      amount: amount,
+    ),
+    occurredAt: occurredAt,
+    management: management,
+    scenario: scenario,
+    postedAt: postedAt,
+    counterpartyId: counterpartyId,
+    note: note,
+    isExcludedFromStats: isExcludedFromStats,
+    isExcludedFromBudget: isExcludedFromBudget,
+    sourceKind: sourceKind,
+    ownership: ownership,
+  );
+}
 
 RefundInstruction singleRefundInstruction({
   required String parentTransactionId,
@@ -92,7 +109,7 @@ RefundInstruction singleRefundInstruction({
   note: note,
 );
 
-ReimbursementReceiptInstruction singleReimbursementReceiptInstruction({
+AdvanceCollectionInstruction singleAdvanceCollectionInstruction({
   required String advanceTransactionId,
   required Money amount,
   required String receivableAccountId,
@@ -101,7 +118,7 @@ ReimbursementReceiptInstruction singleReimbursementReceiptInstruction({
   DateTime? postedAt,
   String? counterpartyId,
   String? note,
-}) => ReimbursementReceiptInstruction(
+}) => AdvanceCollectionInstruction(
   advanceTransactionId: advanceTransactionId,
   amount: amount,
   receivableAccountId: receivableAccountId,
@@ -115,17 +132,18 @@ ReimbursementReceiptInstruction singleReimbursementReceiptInstruction({
   note: note,
 );
 
-ReimbursementCloseInstruction singleReimbursementCloseInstruction({
+AdvanceSettlementInstruction singleAdvanceSettlementInstruction({
   required String advanceTransactionId,
   required Money actualReceivedAmount,
   required String receivableAccountId,
   required String receiveAccountId,
   required DateTime occurredAt,
   List<AccountAmountAllocation> gapExpenseAllocations = const [],
+  AdvanceShortfallKind shortfallKind = AdvanceShortfallKind.selfBorne,
   DateTime? postedAt,
   String? counterpartyId,
   String? note,
-}) => ReimbursementCloseInstruction(
+}) => AdvanceSettlementInstruction(
   advanceTransactionId: advanceTransactionId,
   actualReceivedAmount: actualReceivedAmount,
   receivableAccountId: receivableAccountId,
@@ -134,6 +152,7 @@ ReimbursementCloseInstruction singleReimbursementCloseInstruction({
     amount: actualReceivedAmount,
   ),
   gapExpenseAllocations: gapExpenseAllocations,
+  shortfallKind: shortfallKind,
   occurredAt: occurredAt,
   postedAt: postedAt,
   counterpartyId: counterpartyId,

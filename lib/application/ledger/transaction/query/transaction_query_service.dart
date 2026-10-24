@@ -261,7 +261,7 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
         ),
         children: children,
         refundSummary: group?.refundSummary,
-        reimbursementSummary: group?.reimbursementSummary,
+        advanceSummary: group?.advanceSummary,
       );
     }
 

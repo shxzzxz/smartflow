@@ -20,11 +20,11 @@ class DriftSystemAccountResolver implements ReceivableSystemAccountResolver {
   }
 
   @override
-  Future<String> resolveReimbursementGapIncome() {
+  Future<String> resolveAdvanceCompensationIncome() {
     return _resolve(
-      systemKey: SystemKey.reimbursementGapIncome,
+      systemKey: SystemKey.advanceCompensationIncome,
       accountType: AccountType.income,
-      defaultName: '报销差额收入',
+      defaultName: '垫付补偿',
     );
   }
 
@@ -93,10 +93,11 @@ class DriftSystemAccountResolver implements ReceivableSystemAccountResolver {
     return _cache.putIfAbsent(systemKey, () async {
       final existing =
           await (_database.select(_database.accounts)..where(
-            (account) =>
-                account.systemKey.equalsValue(systemKey) &
-                account.accountType.equalsValue(accountType),
-          )).getSingleOrNull();
+                (account) =>
+                    account.systemKey.equalsValue(systemKey) &
+                    account.accountType.equalsValue(accountType),
+              ))
+              .getSingleOrNull();
       if (existing != null) {
         return existing.id;
       }

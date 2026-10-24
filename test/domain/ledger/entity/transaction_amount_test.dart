@@ -10,7 +10,7 @@ void main() {
   test('amountOf sums every line for the role', () {
     final transaction = Transaction(
       id: 'receipt',
-      businessPurpose: BusinessPurpose.reimbursementReceipt,
+      businessPurpose: BusinessPurpose.advanceCollection,
       occurredAt: DateTime(2026, 7, 23),
       primaryAmount: const Money(minorUnits: 9999),
       isExcludedFromStats: false,
@@ -97,8 +97,9 @@ void main() {
     () {
       final parent = _transaction(
         id: 'parent',
-        purpose: BusinessPurpose.reimbursementAdvance,
+        purpose: BusinessPurpose.advance,
         primaryAmount: 10000,
+        receivableAmount: 10000,
       );
       final refund = _transaction(
         id: 'refund',
@@ -106,10 +107,11 @@ void main() {
         primaryAmount: 9999,
         parentId: parent.id,
         settlementAmounts: const [1200, 800],
+        receivableAmount: 2000,
       );
       final receipt = _transaction(
         id: 'receipt',
-        purpose: BusinessPurpose.reimbursementReceipt,
+        purpose: BusinessPurpose.advanceCollection,
         primaryAmount: 8888,
         parentId: parent.id,
         settlementAmounts: const [2500, 3500],
@@ -120,20 +122,18 @@ void main() {
       );
 
       expect(group.refundedTotal(), const Money(minorUnits: 2000));
-      expect(group.reimbursementReceivedTotal(), const Money(minorUnits: 6000));
+      expect(group.advanceRefundedTotal(), const Money(minorUnits: 2000));
+      expect(group.advanceCollectedTotal(), const Money(minorUnits: 6000));
       expect(group.refundSummary?.refundedTotal, const Money(minorUnits: 2000));
       expect(
-        group.reimbursementSummary?.refundedAmount,
+        group.advanceSummary?.refundedAmount,
         const Money(minorUnits: 2000),
       );
       expect(
-        group.reimbursementSummary?.receivedAmount,
+        group.advanceSummary?.receivedAmount,
         const Money(minorUnits: 6000),
       );
-      expect(
-        group.reimbursementSummary?.outstanding,
-        const Money(minorUnits: 2000),
-      );
+      expect(group.advanceSummary?.outstanding, const Money(minorUnits: 2000));
     },
   );
 }
@@ -158,6 +158,7 @@ Transaction _transaction({
   required int primaryAmount,
   String? parentId,
   List<int> settlementAmounts = const [],
+  int? receivableAmount,
 }) => Transaction(
   id: id,
   parentTransactionId: parentId,
@@ -174,6 +175,15 @@ Transaction _transaction({
         settlementAmounts[index],
         'account-$index',
         transactionId: id,
+      ),
+    if (receivableAmount != null)
+      TransactionLine(
+        id: '$id-receivable',
+        transactionId: id,
+        lineNo: settlementAmounts.length + 1,
+        role: TransactionRole.receivable,
+        accountId: 'receivable',
+        amount: Money(minorUnits: receivableAmount),
       ),
   ],
 );

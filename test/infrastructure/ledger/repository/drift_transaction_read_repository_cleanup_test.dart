@@ -110,7 +110,7 @@ void main() {
           id: 'food-bank-category-fact',
           transactionId: 'food-bank',
           lineNo: 1,
-          role: TransactionRole.reimbursementExpenseCategory,
+          role: TransactionRole.advanceExpenseCategory,
           accountId: const Value('cat-line-only'),
           amountMinor: 1000,
         ),

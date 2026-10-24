@@ -68,9 +68,7 @@ void main() {
     );
     final service = _service(
       tagRepository: tagRepository,
-      transactions: [
-        _transaction('tx-1', BusinessPurpose.reimbursementAdvance),
-      ],
+      transactions: [_transaction('tx-1', BusinessPurpose.advance)],
     );
 
     final result = await service.updateTags(

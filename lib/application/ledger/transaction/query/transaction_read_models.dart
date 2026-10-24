@@ -1,13 +1,13 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart'
-    show RefundSummary, ReimbursementSummary;
+    show RefundSummary, AdvanceSummary;
 import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 export 'package:smartflow/domain/ledger/entity/transaction_group.dart'
-    show RefundSummary, RefundCategorySummary, ReimbursementSummary;
+    show RefundSummary, RefundCategorySummary, AdvanceSummary;
 
 class CashflowSummary {
   const CashflowSummary({required this.income, required this.expense});
@@ -75,13 +75,13 @@ class TransactionReadModel {
     Map<String, TransactionAccountImpact> impactsByAccountId = const {},
     List<TransactionReadModel> children = const [],
     RefundSummary? refundSummary,
-    ReimbursementSummary? reimbursementSummary,
+    AdvanceSummary? advanceSummary,
   }) : postedAt = postedAt ?? occurredAt,
        lines = List.unmodifiable(lines),
        impactsByAccountId = Map.unmodifiable(impactsByAccountId),
        children = List.unmodifiable(children),
        refundSummary = refundSummary,
-       reimbursementSummary = reimbursementSummary;
+       advanceSummary = advanceSummary;
 
   factory TransactionReadModel.fromTransaction({
     required Transaction transaction,
@@ -91,7 +91,7 @@ class TransactionReadModel {
     Map<String, TransactionAccountImpact> impactsByAccountId = const {},
     List<TransactionReadModel> children = const [],
     RefundSummary? refundSummary,
-    ReimbursementSummary? reimbursementSummary,
+    AdvanceSummary? advanceSummary,
   }) {
     return TransactionReadModel(
       id: transaction.id,
@@ -112,7 +112,7 @@ class TransactionReadModel {
       impactsByAccountId: impactsByAccountId,
       children: children,
       refundSummary: refundSummary,
-      reimbursementSummary: reimbursementSummary,
+      advanceSummary: advanceSummary,
     );
   }
 
@@ -134,14 +134,14 @@ class TransactionReadModel {
   final Map<String, TransactionAccountImpact> impactsByAccountId;
   final List<TransactionReadModel> children;
   final RefundSummary? refundSummary;
-  final ReimbursementSummary? reimbursementSummary;
+  final AdvanceSummary? advanceSummary;
 
   TransactionReadModel copyWith({
     List<TransactionLine>? lines,
     Map<String, TransactionAccountImpact>? impactsByAccountId,
     List<TransactionReadModel>? children,
     RefundSummary? refundSummary,
-    ReimbursementSummary? reimbursementSummary,
+    AdvanceSummary? advanceSummary,
   }) {
     return TransactionReadModel(
       id: id,
@@ -162,7 +162,7 @@ class TransactionReadModel {
       impactsByAccountId: impactsByAccountId ?? this.impactsByAccountId,
       children: children ?? this.children,
       refundSummary: refundSummary ?? this.refundSummary,
-      reimbursementSummary: reimbursementSummary ?? this.reimbursementSummary,
+      advanceSummary: advanceSummary ?? this.advanceSummary,
     );
   }
 
@@ -178,7 +178,7 @@ class TransactionReadModel {
   Iterable<TransactionLine> get categoryLines => lines.where(
     (line) =>
         line.role == TransactionRole.category ||
-        line.role == TransactionRole.reimbursementExpenseCategory,
+        line.role == TransactionRole.advanceExpenseCategory,
   );
 
   Money amountOf(TransactionRole role) =>

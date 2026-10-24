@@ -519,8 +519,82 @@ WHERE NOT EXISTS (
       if (from < 47) {
         await _migrateCounterparties(database, migrator);
       }
+      if (from < 48) {
+        await _migrateAdvancesToGeneralizedModel(database);
+      }
     }),
   );
+}
+
+Future<void> _migrateAdvancesToGeneralizedModel(AppDatabase database) async {
+  await _migrateLegacyAdvanceRefundOffsets(database);
+  await database.customStatement('''
+UPDATE transactions
+SET owner_type = 'advance.itemized',
+    owner_id = COALESCE(parent_transaction_id, id),
+    owner_role = 'reimbursement'
+WHERE business_purpose = 'reimbursementAdvance'
+   OR parent_transaction_id IN (
+     SELECT id
+     FROM transactions
+     WHERE business_purpose = 'reimbursementAdvance'
+   )
+''');
+  await database.customStatement('''
+UPDATE transactions
+SET business_purpose = CASE business_purpose
+  WHEN 'reimbursementAdvance' THEN 'advance'
+  WHEN 'reimbursementReceipt' THEN 'advanceCollection'
+  WHEN 'reimbursementClose' THEN 'advanceSettlement'
+  ELSE business_purpose
+END
+WHERE business_purpose IN (
+  'reimbursementAdvance',
+  'reimbursementReceipt',
+  'reimbursementClose'
+)
+''');
+  await database.customStatement('''
+UPDATE transaction_lines
+SET role = CASE role
+  WHEN 'reimbursementExpenseCategory' THEN 'advanceExpenseCategory'
+  WHEN 'reimbursementGapIncome' THEN 'advanceCompensationIncome'
+  WHEN 'reimbursementGapExpense' THEN 'advanceSelfBorne'
+  ELSE role
+END
+WHERE role IN (
+  'reimbursementExpenseCategory',
+  'reimbursementGapIncome',
+  'reimbursementGapExpense'
+)
+''');
+  await database.customStatement('''
+UPDATE accounts
+SET system_key = 'advanceCompensationIncome',
+    name = '垫付补偿'
+WHERE system_key = 'reimbursementGapIncome'
+''');
+}
+
+Future<void> _migrateLegacyAdvanceRefundOffsets(AppDatabase database) async {
+  await database.customStatement('''
+UPDATE transaction_lines
+SET role = 'receivable'
+WHERE role = 'refundOffset'
+  AND EXISTS (
+    SELECT 1
+    FROM transactions AS refund
+    JOIN transactions AS advance
+      ON advance.id = refund.parent_transaction_id
+    JOIN transaction_lines AS parent_receivable
+      ON parent_receivable.transaction_id = advance.id
+     AND parent_receivable.role = 'receivable'
+    WHERE refund.id = transaction_lines.transaction_id
+      AND refund.business_purpose = 'refund'
+      AND advance.business_purpose = 'reimbursementAdvance'
+      AND parent_receivable.account_id = transaction_lines.account_id
+  )
+''');
 }
 
 Future<void> _migrateCounterparties(

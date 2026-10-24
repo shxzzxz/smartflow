@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/profile/page/profile_page.dart';
@@ -102,6 +103,16 @@ void main() {
     expect(
       tester.getCenter(find.text('0.5.1-dev.2')).dy,
       tester.getCenter(find.text('软件版本')).dy,
+    );
+    final versionRow = find.byKey(const ValueKey('profile-entry-row-软件版本'));
+    final versionValue = find.byKey(const ValueKey('profile-entry-value-软件版本'));
+    final versionArrow = find.descendant(
+      of: versionRow,
+      matching: find.byIcon(RemixIcons.arrow_right_s_line),
+    );
+    expect(
+      tester.getRect(versionArrow).left - tester.getRect(versionValue).right,
+      lessThan(8),
     );
     expect(tester.takeException(), isNull);
 

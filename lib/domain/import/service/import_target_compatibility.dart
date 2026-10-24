@@ -10,7 +10,7 @@ enum ImportTargetUsage {
   fund,
   liability,
   receivable,
-  reimbursement,
+  advance,
   incomeCategory,
   expenseCategory,
 }
@@ -49,9 +49,7 @@ class ImportTargetCompatibilityPolicy {
       ImportTargetUsage.receivable => {
         ImportTargetDescriptor.receivableAccount,
       },
-      ImportTargetUsage.reimbursement => {
-        ImportTargetDescriptor.reimbursementAccount,
-      },
+      ImportTargetUsage.advance => {ImportTargetDescriptor.advanceAccount},
       ImportTargetUsage.incomeCategory => {
         ImportTargetDescriptor.incomeCategory,
       },
@@ -81,7 +79,7 @@ class ImportTargetCompatibilityPolicy {
     return switch (entity.kind) {
       ImportEntityKind.account => {
         ImportTargetDescriptor.fundAccount,
-        ImportTargetDescriptor.reimbursementAccount,
+        ImportTargetDescriptor.advanceAccount,
         ImportTargetDescriptor.receivableAccount,
         ImportTargetDescriptor.payableAccount,
         ImportTargetDescriptor.creditAccount,
@@ -124,10 +122,10 @@ class ImportTargetCompatibilityPolicy {
           draft.refundTo.sourceEntityKey,
           ImportTargetUsage.settlement,
         );
-      case ImportReimbursementAdvanceDraft draft:
+      case ImportAdvanceDraft draft:
         yield* _account(
           draft.receivableAccount.sourceEntityKey,
-          ImportTargetUsage.reimbursement,
+          ImportTargetUsage.advance,
         );
         yield* _account(
           draft.paidFrom.sourceEntityKey,
@@ -137,19 +135,19 @@ class ImportTargetCompatibilityPolicy {
           draft.category.sourceEntityKey,
           ImportTargetUsage.expenseCategory,
         );
-      case ImportReimbursementReceiptDraft draft:
+      case ImportAdvanceCollectionDraft draft:
         yield* _account(
           draft.receivableAccount.sourceEntityKey,
-          ImportTargetUsage.reimbursement,
+          ImportTargetUsage.advance,
         );
         yield* _account(
           draft.receiveAccount.sourceEntityKey,
           ImportTargetUsage.settlement,
         );
-      case ImportReimbursementCloseDraft draft:
+      case ImportAdvanceSettlementDraft draft:
         yield* _account(
           draft.receivableAccount.sourceEntityKey,
-          ImportTargetUsage.reimbursement,
+          ImportTargetUsage.advance,
         );
         yield* _account(
           draft.receiveAccount.sourceEntityKey,

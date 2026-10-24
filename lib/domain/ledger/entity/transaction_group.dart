@@ -31,8 +31,26 @@ class TransactionGroup {
         Money.zero();
   }
 
-  Money reimbursementReceivedTotal({String? excludingTransactionId}) {
-    return _reimbursementSummary(
+  /// 退款只减少垫付应收中属于“垫付”的部分；自承担退款冲减支出。
+  ///
+  /// v47 的旧表示由数据迁移改写，这里只读取规范的 receivable 分项。
+  Money advanceRefundedTotal({String? excludingTransactionId}) {
+    return childTransactions
+        .where(
+          (child) =>
+              child.businessPurpose == BusinessPurpose.refund &&
+              child.id != excludingTransactionId,
+        )
+        .fold(
+          Money.zero(),
+          (total, child) =>
+              total +
+              (child.amountOf(TransactionRole.receivable) ?? Money.zero()),
+        );
+  }
+
+  Money advanceCollectedTotal({String? excludingTransactionId}) {
+    return _advanceSummary(
           excludingTransactionId: excludingTransactionId,
         )?.receivedAmount ??
         Money.zero();
@@ -41,19 +59,19 @@ class TransactionGroup {
   /// The only calculation source for refund facts in a transaction group.
   RefundSummary? get refundSummary => _refundSummary();
 
-  /// The only calculation source for reimbursement facts in a transaction group.
-  ReimbursementSummary? get reimbursementSummary => _reimbursementSummary();
+  /// The only calculation source for advance facts in a transaction group.
+  AdvanceSummary? get advanceSummary => _advanceSummary();
 
-  Money reimbursementOutstanding() {
-    return reimbursementSummary?.outstanding ?? Money.zero();
+  Money advanceOutstanding() {
+    return advanceSummary?.outstanding ?? Money.zero();
   }
 
   /// 排除某笔子交易后的待核销额。
   ///
-  /// 重建该子交易时用它推导待核销与报销差额,避免把子交易自己的派生分项读回来
+  /// 重建该子交易时用它推导待收回与结清差额,避免把子交易自己的派生分项读回来
   /// 当输入。
-  Money reimbursementOutstandingExcluding(String childTransactionId) {
-    return _reimbursementSummary(
+  Money advanceOutstandingExcluding(String childTransactionId) {
+    return _advanceSummary(
           excludingTransactionId: childTransactionId,
         )?.outstanding ??
         Money.zero();
@@ -64,10 +82,8 @@ class TransactionGroup {
   }
 
   List<AccountAmountAllocation> refundCategoryAllocations(Transaction refund) {
-    final role =
-        parentTransaction.businessPurpose ==
-            BusinessPurpose.reimbursementAdvance
-        ? TransactionRole.reimbursementExpenseCategory
+    final role = parentTransaction.businessPurpose == BusinessPurpose.advance
+        ? TransactionRole.advanceExpenseCategory
         : TransactionRole.refundOffset;
     return refund.accountAllocationsOf(role);
   }
@@ -96,8 +112,7 @@ class TransactionGroup {
   RefundSummary? _refundSummary({String? excludingTransactionId}) {
     final role = switch (parentTransaction.businessPurpose) {
       BusinessPurpose.dailyExpense => TransactionRole.category,
-      BusinessPurpose.reimbursementAdvance =>
-        TransactionRole.reimbursementExpenseCategory,
+      BusinessPurpose.advance => TransactionRole.advanceExpenseCategory,
       _ => null,
     };
     if (role == null) return null;
@@ -120,46 +135,57 @@ class TransactionGroup {
     );
   }
 
-  ReimbursementSummary? _reimbursementSummary({
-    String? excludingTransactionId,
-  }) {
-    if (parentTransaction.businessPurpose !=
-        BusinessPurpose.reimbursementAdvance) {
+  AdvanceSummary? _advanceSummary({String? excludingTransactionId}) {
+    if (parentTransaction.businessPurpose != BusinessPurpose.advance) {
       return null;
     }
     final refunded = _sumSettlementIn(
       purposes: const {BusinessPurpose.refund},
       excludingTransactionId: excludingTransactionId,
     );
+    final advanceRefunded = advanceRefundedTotal(
+      excludingTransactionId: excludingTransactionId,
+    );
     final received = _sumSettlementIn(
       purposes: const {
-        BusinessPurpose.reimbursementReceipt,
-        BusinessPurpose.reimbursementClose,
+        BusinessPurpose.advanceCollection,
+        BusinessPurpose.advanceSettlement,
       },
       excludingTransactionId: excludingTransactionId,
     );
     final gap = childTransactions
-        .where((child) => child.id != excludingTransactionId)
+        .where(
+          (child) =>
+              child.businessPurpose == BusinessPurpose.advanceSettlement &&
+              child.id != excludingTransactionId,
+        )
         .fold(Money.zero(), (total, child) {
           return total +
-              (child.amountOf(TransactionRole.reimbursementGapIncome) ??
+              (child.amountOf(TransactionRole.advanceCompensationIncome) ??
                   Money.zero()) -
-              (child.amountOf(TransactionRole.reimbursementGapExpense) ??
+              (child.amountOf(TransactionRole.advanceSelfBorne) ??
+                  Money.zero()) -
+              (child.amountOf(TransactionRole.advanceBadDebtExpense) ??
                   Money.zero());
         });
     final closed = childTransactions.any(
       (child) =>
           child.id != excludingTransactionId &&
-          child.businessPurpose == BusinessPurpose.reimbursementClose,
+          child.businessPurpose == BusinessPurpose.advanceSettlement,
     );
-    return ReimbursementSummary(
-      advanceAmount: parentTransaction.primaryAmount,
+    final advanceAmount =
+        parentTransaction.amountOf(TransactionRole.receivable) ??
+        parentTransaction.primaryAmount;
+    return AdvanceSummary(
+      advanceAmount: advanceAmount,
       refundedAmount: refunded,
+      advanceRefundedAmount: advanceRefunded,
+      refundableAmount: parentTransaction.primaryAmount - refunded,
       receivedAmount: received,
       gapAmount: gap,
-      outstanding: calculateReimbursementOutstanding(
-        advanceAmount: parentTransaction.primaryAmount,
-        refundedTotal: refunded,
+      outstanding: calculateAdvanceOutstanding(
+        advanceAmount: advanceAmount,
+        refundedAdvanceAmount: advanceRefunded,
         receivedTotal: received,
         isClosed: closed,
       ),
@@ -186,7 +212,7 @@ class TransactionGroup {
         );
   }
 
-  bool get reimbursementClosed => _reimbursementSummary()?.isClosed ?? false;
+  bool get advanceSettled => _advanceSummary()?.isClosed ?? false;
 
   void updateReportingFlags({
     bool? isExcludedFromStats,
@@ -261,10 +287,12 @@ class RefundCategorySummary {
   Money get remainingAmount => originalAmount - refundedAmount;
 }
 
-class ReimbursementSummary {
-  const ReimbursementSummary({
+class AdvanceSummary {
+  const AdvanceSummary({
     required this.advanceAmount,
     this.refundedAmount = const Money(minorUnits: 0),
+    this.advanceRefundedAmount = const Money(minorUnits: 0),
+    this.refundableAmount,
     required this.receivedAmount,
     this.gapAmount = const Money(minorUnits: 0),
     required this.outstanding,
@@ -273,19 +301,21 @@ class ReimbursementSummary {
 
   final Money advanceAmount;
   final Money refundedAmount;
+  final Money advanceRefundedAmount;
+  final Money? refundableAmount;
   final Money receivedAmount;
   final Money gapAmount;
   final Money outstanding;
   final bool isClosed;
 }
 
-/// 读写两侧共享的报销待核销规则。
-Money calculateReimbursementOutstanding({
+/// 读写两侧共享的逐笔垫付待收回规则。
+Money calculateAdvanceOutstanding({
   required Money advanceAmount,
-  required Money refundedTotal,
+  required Money refundedAdvanceAmount,
   required Money receivedTotal,
   required bool isClosed,
 }) {
   if (isClosed) return Money.zero();
-  return advanceAmount - refundedTotal - receivedTotal;
+  return advanceAmount - refundedAdvanceAmount - receivedTotal;
 }

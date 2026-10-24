@@ -65,11 +65,11 @@ void main() {
   }
 
   test(
-    'routes refund child to refund edit and locks it after reimbursement close',
+    'routes refund child to refund edit and locks it after advance close',
     () {
       final state = _build(
         purpose: BusinessPurpose.refund,
-        reimbursementSummary: const ReimbursementSummary(
+        advanceSummary: const AdvanceSummary(
           advanceAmount: Money(minorUnits: 10000),
           receivedAmount: Money(minorUnits: 10000),
           outstanding: Money(minorUnits: 0),
@@ -82,36 +82,33 @@ void main() {
         (button) => button.kind == DetailActionKind.edit,
       );
       expect(edit.enabled, isFalse);
-      expect(edit.deniedReason, '报销已结束，请先删除结束报销');
+      expect(edit.deniedReason, '垫付已结清，请先删除垫付结清');
       expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
     },
   );
 
-  test(
-    'routes open reimbursement receipt child to shared reimbursement edit',
-    () {
-      final state = _build(
-        purpose: BusinessPurpose.reimbursementReceipt,
-        reimbursementSummary: const ReimbursementSummary(
-          advanceAmount: Money(minorUnits: 10000),
-          receivedAmount: Money(minorUnits: 4000),
-          outstanding: Money(minorUnits: 6000),
-          isClosed: false,
-        ),
-      );
-
-      expect(state.behavior.editRoute, '/transaction/child/reimbursement/edit');
-      final edit = state.actionButtons.singleWhere(
-        (button) => button.kind == DetailActionKind.edit,
-      );
-      expect(edit.enabled, isTrue);
-    },
-  );
-
-  test('routes reimbursement action to the standalone reimbursement form', () {
+  test('routes open advance receipt child to shared advance edit', () {
     final state = _build(
-      purpose: BusinessPurpose.reimbursementAdvance,
-      reimbursementSummary: const ReimbursementSummary(
+      purpose: BusinessPurpose.advanceCollection,
+      advanceSummary: const AdvanceSummary(
+        advanceAmount: Money(minorUnits: 10000),
+        receivedAmount: Money(minorUnits: 4000),
+        outstanding: Money(minorUnits: 6000),
+        isClosed: false,
+      ),
+    );
+
+    expect(state.behavior.editRoute, '/transaction/child/advance/edit');
+    final edit = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.edit,
+    );
+    expect(edit.enabled, isTrue);
+  });
+
+  test('routes advance action to the standalone advance form', () {
+    final state = _build(
+      purpose: BusinessPurpose.advance,
+      advanceSummary: const AdvanceSummary(
         advanceAmount: Money(minorUnits: 10000),
         receivedAmount: Money(minorUnits: 0),
         outstanding: Money(minorUnits: 10000),
@@ -120,18 +117,142 @@ void main() {
     );
 
     final action = state.actionButtons.singleWhere(
-      (button) => button.kind == DetailActionKind.reimbursement,
+      (button) => button.kind == DetailActionKind.advance,
     );
-    expect(action.route, '/transaction/child/reimbursement');
+    expect(action.route, '/transaction/child/advance');
     expect(action.enabled, isTrue);
   });
 
-  test('shows refund and reimbursement information for the same advance', () {
+  for (final management in AdvanceManagement.values) {
+    test('routes ${management.name} advance transaction to edit', () {
+      final state = _build(
+        purpose: BusinessPurpose.advance,
+        parentTransactionId: null,
+        ownership: advanceOwnership(
+          management: management,
+          ownerId: management == AdvanceManagement.itemized
+              ? 'child'
+              : 'receivable',
+          scenario: AdvanceScenario.aa,
+        ),
+      );
+
+      expect(state.behavior.editRoute, '/transaction/child/edit');
+      final edit = state.actionButtons.singleWhere(
+        (button) => button.kind == DetailActionKind.edit,
+      );
+      expect(edit.enabled, isTrue);
+    });
+  }
+
+  for (final scenario in [AdvanceScenario.aa, AdvanceScenario.reimbursement]) {
+    test('account-managed ${scenario.name} advance exposes refund without '
+        'itemized receipt', () {
+      final state = _build(
+        purpose: BusinessPurpose.advance,
+        parentTransactionId: null,
+        advanceSummary: const AdvanceSummary(
+          advanceAmount: Money(minorUnits: 10000),
+          receivedAmount: Money(minorUnits: 0),
+          outstanding: Money(minorUnits: 10000),
+          isClosed: false,
+        ),
+        ownership: advanceOwnership(
+          management: AdvanceManagement.account,
+          ownerId: 'receivable',
+          scenario: scenario,
+        ),
+      );
+
+      expect(state.advance, isNull);
+      final refund = state.actionButtons.singleWhere(
+        (button) => button.kind == DetailActionKind.refund,
+      );
+      expect(refund.enabled, isTrue);
+      expect(refund.route, '/transaction/child/refund');
+      expect(
+        state.actionButtons.any(
+          (button) => button.kind == DetailActionKind.advance,
+        ),
+        isFalse,
+      );
+      expect(
+        state.actionButtons.any(
+          (button) => button.kind == DetailActionKind.edit,
+        ),
+        isTrue,
+      );
+    });
+  }
+
+  for (final scenario in [
+    (AdvanceScenario.aa, 'AA收回'),
+    (AdvanceScenario.onBehalf, '代付收回'),
+    (AdvanceScenario.reimbursement, '报销'),
+  ]) {
+    test('labels advance action for ${scenario.$1.name}', () {
+      final state = _build(
+        purpose: BusinessPurpose.advance,
+        advanceSummary: const AdvanceSummary(
+          advanceAmount: Money(minorUnits: 10000),
+          receivedAmount: Money(minorUnits: 0),
+          outstanding: Money(minorUnits: 10000),
+          isClosed: false,
+        ),
+        ownership: advanceOwnership(
+          management: AdvanceManagement.itemized,
+          ownerId: 'child',
+          scenario: scenario.$1,
+        ),
+      );
+
+      final action = state.actionButtons.singleWhere(
+        (button) => button.kind == DetailActionKind.advance,
+      );
+      expect(action.label, scenario.$2);
+    });
+  }
+
+  for (final scenario in [
+    (AdvanceScenario.aa, '应收账户'),
+    (AdvanceScenario.onBehalf, '应收账户'),
+    (AdvanceScenario.reimbursement, '报销账户'),
+  ]) {
+    test('labels advance receivable account for ${scenario.$1.name}', () {
+      final state = _build(
+        purpose: BusinessPurpose.advance,
+        parentTransactionId: null,
+        advanceSummary: const AdvanceSummary(
+          advanceAmount: Money(minorUnits: 10000),
+          receivedAmount: Money(minorUnits: 0),
+          outstanding: Money(minorUnits: 10000),
+          isClosed: false,
+        ),
+        counterpart: const TransactionLine(
+          id: 'receivable-line',
+          transactionId: 'child',
+          lineNo: 2,
+          role: TransactionRole.receivable,
+          accountId: 'receivable',
+          amount: Money(minorUnits: 10000),
+        ),
+        ownership: advanceOwnership(
+          management: AdvanceManagement.itemized,
+          ownerId: 'child',
+          scenario: scenario.$1,
+        ),
+      );
+
+      expect(state.accountRows.map((row) => row.label), ['收支账户', scenario.$2]);
+    });
+  }
+
+  test('shows refund and advance information for the same advance', () {
     final state = _build(
-      purpose: BusinessPurpose.reimbursementAdvance,
+      purpose: BusinessPurpose.advance,
       parentTransactionId: null,
       refundedTotal: const Money(minorUnits: 2000),
-      reimbursementSummary: const ReimbursementSummary(
+      advanceSummary: const AdvanceSummary(
         advanceAmount: Money(minorUnits: 10000),
         receivedAmount: Money(minorUnits: 4000),
         outstanding: Money(minorUnits: 4000),
@@ -145,7 +266,7 @@ void main() {
         ),
         _child(
           id: 'receipt',
-          purpose: BusinessPurpose.reimbursementReceipt,
+          purpose: BusinessPurpose.advanceCollection,
           amountMinor: 4000,
         ),
       ],
@@ -153,14 +274,37 @@ void main() {
 
     expect(state.refund?.refundedTotal, const Money(minorUnits: 2000));
     expect(state.refund?.items.map((item) => item.id), ['refund']);
-    expect(state.reimbursement?.summaryText, '已收 40.00 / 应收 100.00');
-    expect(state.reimbursement?.items.map((item) => item.id), ['receipt']);
+    expect(state.advance?.summaryText, '已收 40.00 / 应收 100.00');
+    expect(state.advance?.items.map((item) => item.id), ['receipt']);
   });
 
-  test('keeps reimbursement close editable while group is closed', () {
+  test('opens a zero-receipt advance settlement from the parent', () {
     final state = _build(
-      purpose: BusinessPurpose.reimbursementClose,
-      reimbursementSummary: const ReimbursementSummary(
+      purpose: BusinessPurpose.advance,
+      parentTransactionId: null,
+      advanceSummary: const AdvanceSummary(
+        advanceAmount: Money(minorUnits: 10000),
+        receivedAmount: Money(minorUnits: 0),
+        outstanding: Money(minorUnits: 0),
+        isClosed: true,
+      ),
+      children: [
+        _child(
+          id: 'zero-close',
+          purpose: BusinessPurpose.advanceSettlement,
+          amountMinor: 0,
+        ),
+      ],
+    );
+
+    expect(state.advance?.hasActivity, isTrue);
+    expect(state.advance?.items.map((item) => item.id), ['zero-close']);
+  });
+
+  test('keeps advance close editable while group is closed', () {
+    final state = _build(
+      purpose: BusinessPurpose.advanceSettlement,
+      advanceSummary: const AdvanceSummary(
         advanceAmount: Money(minorUnits: 10000),
         receivedAmount: Money(minorUnits: 10000),
         outstanding: Money(minorUnits: 0),
@@ -168,7 +312,7 @@ void main() {
       ),
     );
 
-    expect(state.behavior.editRoute, '/transaction/child/reimbursement/edit');
+    expect(state.behavior.editRoute, '/transaction/child/advance/edit');
     final edit = state.actionButtons.singleWhere(
       (button) => button.kind == DetailActionKind.edit,
     );
@@ -248,10 +392,11 @@ TransactionDetailLoaded _build({
   required BusinessPurpose purpose,
   String? parentTransactionId = 'parent',
   Money? refundedTotal,
-  ReimbursementSummary? reimbursementSummary,
+  AdvanceSummary? advanceSummary,
   List<TransactionReadModel> children = const [],
   TransactionLine? counterpart,
   Iterable<TransactionLine> additionalLines = const [],
+  TransactionOwnership? ownership,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -260,13 +405,14 @@ TransactionDetailLoaded _build({
       businessPurpose: purpose,
       occurredAt: DateTime(2026, 7, 23),
       primaryAmount:
-          reimbursementSummary?.advanceAmount ??
-          (purpose == BusinessPurpose.reimbursementAdvance
+          advanceSummary?.advanceAmount ??
+          (purpose == BusinessPurpose.advance
               ? const Money(minorUnits: 10000)
               : const Money(minorUnits: 1000)),
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
+      ownership: ownership,
     ),
     createdAt: DateTime(2026, 7, 23),
     lines: [
@@ -296,26 +442,26 @@ TransactionDetailLoaded _build({
             originalCategoryAllocations: const [],
             refundedCategoryAllocations: const [],
           ),
-    reimbursementSummary: reimbursementSummary,
+    advanceSummary: advanceSummary,
   );
-  final parentDetail = reimbursementSummary == null
+  final parentDetail = advanceSummary == null
       ? null
       : TransactionReadModel(
           id: 'parent',
-          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          businessPurpose: BusinessPurpose.advance,
           occurredAt: DateTime(2026, 7, 22),
-          primaryAmount: reimbursementSummary.advanceAmount,
+          primaryAmount: advanceSummary.advanceAmount,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
-          reimbursementSummary: reimbursementSummary,
+          advanceSummary: advanceSummary,
           children: [
-            if (reimbursementSummary.isClosed)
+            if (advanceSummary.isClosed)
               TransactionReadModel(
                 id: 'close',
                 parentTransactionId: 'parent',
-                businessPurpose: BusinessPurpose.reimbursementClose,
+                businessPurpose: BusinessPurpose.advanceSettlement,
                 occurredAt: DateTime(2026, 7, 22),
-                primaryAmount: reimbursementSummary.receivedAmount,
+                primaryAmount: advanceSummary.receivedAmount,
                 isExcludedFromStats: false,
                 isExcludedFromBudget: false,
               ),

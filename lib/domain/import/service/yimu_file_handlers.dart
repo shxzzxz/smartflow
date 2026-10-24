@@ -19,28 +19,24 @@ abstract interface class YimuFileHandler {
   });
 }
 
-enum YimuBillFilterReason {
-  reimbursementGap,
-  repaymentInterest,
-  repaymentDiscount,
-}
+enum YimuBillFilterReason { advanceGap, repaymentInterest, repaymentDiscount }
 
 extension YimuBillFilterReasonDescription on YimuBillFilterReason {
   String get reasonCode => switch (this) {
-    YimuBillFilterReason.reimbursementGap => 'reimbursement_gap_generated',
+    YimuBillFilterReason.advanceGap => 'advance_gap_generated',
     YimuBillFilterReason.repaymentInterest => 'repayment_interest_generated',
     YimuBillFilterReason.repaymentDiscount => 'repayment_discount_generated',
   };
 
   String get reason => switch (this) {
-    YimuBillFilterReason.reimbursementGap => '报销差额是原报销交易自动生成的结果行。',
+    YimuBillFilterReason.advanceGap => '报销差额是原报销交易自动生成的结果行。',
     YimuBillFilterReason.repaymentInterest => '还款利息应由转账或债务文件中的还款记录导入。',
     YimuBillFilterReason.repaymentDiscount => '还款优惠应由转账或债务文件中的还款记录导入。',
   };
 }
 
-class YimuReimbursementDetail {
-  const YimuReimbursementDetail({
+class YimuAdvanceDetail {
+  const YimuAdvanceDetail({
     required this.occurredAt,
     required this.amount,
     required this.accountName,
@@ -77,17 +73,17 @@ final class YimuBillRecord extends YimuSourceRecord {
     this.accountName,
     this.refundSource,
     this.refundAmount,
-    this.hasReimbursementFields = false,
-    this.reimbursementAccountName,
-    this.reimbursementAmountSource,
-    this.reimbursementAmount,
-    Iterable<YimuReimbursementDetail> reimbursementDetails = const [],
-    this.reimbursementDetailsSource,
+    this.hasAdvanceFields = false,
+    this.advanceAccountName,
+    this.advanceAmountSource,
+    this.advanceAmount,
+    Iterable<YimuAdvanceDetail> advanceDetails = const [],
+    this.advanceDetailsSource,
     this.note,
     this.other,
     this.filterReason,
     super.issues,
-  }) : reimbursementDetails = List.unmodifiable(reimbursementDetails);
+  }) : advanceDetails = List.unmodifiable(advanceDetails);
 
   final String? kind;
   final DateTime occurredAt;
@@ -97,12 +93,12 @@ final class YimuBillRecord extends YimuSourceRecord {
   final String? accountName;
   final String? refundSource;
   final Money? refundAmount;
-  final bool hasReimbursementFields;
-  final String? reimbursementAccountName;
-  final String? reimbursementAmountSource;
-  final Money? reimbursementAmount;
-  final List<YimuReimbursementDetail> reimbursementDetails;
-  final String? reimbursementDetailsSource;
+  final bool hasAdvanceFields;
+  final String? advanceAccountName;
+  final String? advanceAmountSource;
+  final Money? advanceAmount;
+  final List<YimuAdvanceDetail> advanceDetails;
+  final String? advanceDetailsSource;
   final String? note;
   final String? other;
   final YimuBillFilterReason? filterReason;
@@ -250,11 +246,11 @@ class YimuBillFileHandler implements YimuFileHandler {
               ) ??
               Money.zero())
         : Money.zero();
-    final hasReimbursementFields =
+    final hasAdvanceFields =
         kind == '支出' && _hasText(row, '报销账户', '报销金额', '报销明细');
     Money? refundAmount;
-    Money? reimbursementAmount;
-    var reimbursementDetails = const <YimuReimbursementDetail>[];
+    Money? advanceAmount;
+    var advanceDetails = const <YimuAdvanceDetail>[];
     if (shouldNormalizeTransaction && kind == '支出') {
       refundAmount = _money(
         row['退款'],
@@ -264,8 +260,8 @@ class YimuBillFileHandler implements YimuFileHandler {
         fieldName: '退款',
         required: false,
       );
-      if (hasReimbursementFields) {
-        reimbursementAmount = _money(
+      if (hasAdvanceFields) {
+        advanceAmount = _money(
           row['报销金额'],
           fileType: fileType,
           issues: issues,
@@ -273,7 +269,7 @@ class YimuBillFileHandler implements YimuFileHandler {
           fieldName: '报销金额',
           required: true,
         );
-        reimbursementDetails = _reimbursementDetails(
+        advanceDetails = _advanceDetails(
           _text(row, '报销明细'),
           rowNumber: rowNumber,
           issues: issues,
@@ -301,12 +297,12 @@ class YimuBillFileHandler implements YimuFileHandler {
       accountName: _text(row, '账户'),
       refundSource: _text(row, '退款'),
       refundAmount: refundAmount,
-      hasReimbursementFields: hasReimbursementFields,
-      reimbursementAccountName: _text(row, '报销账户'),
-      reimbursementAmountSource: _text(row, '报销金额'),
-      reimbursementAmount: reimbursementAmount,
-      reimbursementDetails: reimbursementDetails,
-      reimbursementDetailsSource: _text(row, '报销明细'),
+      hasAdvanceFields: hasAdvanceFields,
+      advanceAccountName: _text(row, '报销账户'),
+      advanceAmountSource: _text(row, '报销金额'),
+      advanceAmount: advanceAmount,
+      advanceDetails: advanceDetails,
+      advanceDetailsSource: _text(row, '报销明细'),
       note: note,
       other: _text(row, '其他'),
       filterReason: filterReason,
@@ -316,7 +312,7 @@ class YimuBillFileHandler implements YimuFileHandler {
 
   YimuBillFilterReason? _filterReason(String? note) {
     if (note?.startsWith('报销差额') == true) {
-      return YimuBillFilterReason.reimbursementGap;
+      return YimuBillFilterReason.advanceGap;
     }
     if (note?.contains('还款利息') == true) {
       return YimuBillFilterReason.repaymentInterest;
@@ -327,13 +323,13 @@ class YimuBillFileHandler implements YimuFileHandler {
     return null;
   }
 
-  List<YimuReimbursementDetail> _reimbursementDetails(
+  List<YimuAdvanceDetail> _advanceDetails(
     String? value, {
     required int rowNumber,
     required List<ImportIssue> issues,
   }) {
     if (value == null || value.trim().isEmpty) return const [];
-    final details = <YimuReimbursementDetail>[];
+    final details = <YimuAdvanceDetail>[];
     for (final line in value.split(RegExp(r'[\r\n]+'))) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) continue;
@@ -344,7 +340,7 @@ class YimuBillFileHandler implements YimuFileHandler {
         issues.add(
           _issue(
             fileType,
-            'reimbursement_detail_invalid',
+            'advance_detail_invalid',
             '无法解析报销明细：$trimmed',
             rowNumber,
           ),
@@ -367,7 +363,7 @@ class YimuBillFileHandler implements YimuFileHandler {
         required: true,
       );
       details.add(
-        YimuReimbursementDetail(
+        YimuAdvanceDetail(
           occurredAt: date,
           amount: amount,
           accountName: _textValue(match.group(2)),

@@ -146,14 +146,14 @@ List<DetailSheetItem> refundSheetItems(
       .toList(growable: false);
 }
 
-List<DetailSheetItem> reimbursementSheetItems(
+List<DetailSheetItem> advanceSheetItems(
   Iterable<TransactionReadModel> children,
 ) {
   return children
       .where(
         (child) =>
-            child.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-            child.businessPurpose == BusinessPurpose.reimbursementClose,
+            child.businessPurpose == BusinessPurpose.advanceCollection ||
+            child.businessPurpose == BusinessPurpose.advanceSettlement,
       )
       .map(_listItemToSheetItem)
       .toList(growable: false);
@@ -176,13 +176,13 @@ Money? transactionTransferFee(TransactionReadModel detail) {
 MoneySemantic semanticForTransactionPurpose(BusinessPurpose purpose) {
   return switch (purpose) {
     BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.advance ||
     BusinessPurpose.debtRepayment => MoneySemantic.expense,
     BusinessPurpose.badDebt => MoneySemantic.expense,
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose ||
+    BusinessPurpose.advanceCollection ||
+    BusinessPurpose.advanceSettlement ||
     BusinessPurpose.borrowing => MoneySemantic.income,
     BusinessPurpose.debtRelief => MoneySemantic.income,
     BusinessPurpose.transfer ||

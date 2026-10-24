@@ -240,14 +240,13 @@ Account _account(
     id: id,
     name: id,
     type: type,
-    subtype:
-        type == AccountType.asset
-            ? AccountSubtype.fund
-            : type == AccountType.liability
-            ? profileKey == 'credit.loan'
-                ? AccountSubtype.loan
-                : AccountSubtype.payable
-            : null,
+    subtype: type == AccountType.asset
+        ? AccountSubtype.fund
+        : type == AccountType.liability
+        ? profileKey == 'credit.loan'
+              ? AccountSubtype.loan
+              : AccountSubtype.payable
+        : null,
     profileKey:
         profileKey ??
         (type == AccountType.asset
@@ -353,7 +352,7 @@ class _FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Future<Map<String, int>> countReimbursementExpenseRefs(
+  Future<Map<String, int>> countAdvanceExpenseRefs(
     Set<String> accountIds,
   ) async => const {};
 

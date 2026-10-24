@@ -4,7 +4,7 @@ import 'package:smartflow/domain/ledger/port/system_account_resolver.dart';
 class FakeSystemAccountResolver implements ReceivableSystemAccountResolver {
   const FakeSystemAccountResolver({
     this.openingBalance = 'system-opening-balance',
-    this.reimbursementGapIncome = 'system-gap-income',
+    this.advanceCompensationIncome = 'system-gap-income',
     this.interestExpense = 'system-interest-expense',
     this.feeExpense = 'system-fee-expense',
     this.discountIncome = 'system-discount-income',
@@ -15,7 +15,7 @@ class FakeSystemAccountResolver implements ReceivableSystemAccountResolver {
   });
 
   final String openingBalance;
-  final String reimbursementGapIncome;
+  final String advanceCompensationIncome;
   final String interestExpense;
   final String feeExpense;
   final String discountIncome;
@@ -28,8 +28,8 @@ class FakeSystemAccountResolver implements ReceivableSystemAccountResolver {
   Future<String> resolveOpeningBalance() async => openingBalance;
 
   @override
-  Future<String> resolveReimbursementGapIncome() async =>
-      reimbursementGapIncome;
+  Future<String> resolveAdvanceCompensationIncome() async =>
+      advanceCompensationIncome;
 
   @override
   Future<String> resolveInterestExpense() async => interestExpense;

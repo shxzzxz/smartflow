@@ -97,16 +97,15 @@ class LedgerPostingService {
             (allocation) => allocation.accountId,
           ),
         ),
-        ReimbursementAdvanceInstruction i =>
-          AccountRoleContext.reimbursementAdvance(
-            receivableAccountId: i.receivableAccountId,
-            paidFromAccountIds: i.settlementAllocations.map(
-              (allocation) => allocation.accountId,
-            ),
-            expenseCategoryIds: i.categoryAllocations.map(
-              (allocation) => allocation.accountId,
-            ),
+        AdvanceInstruction i => AccountRoleContext.advance(
+          receivableAccountId: i.receivableAccountId,
+          paidFromAccountIds: i.settlementAllocations.map(
+            (allocation) => allocation.accountId,
           ),
+          expenseCategoryIds: i.categoryAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
+        ),
         TransferInstruction i => AccountRoleContext.transfer(
           fromAccountId: i.fromAccountId,
           toAccountId: i.toAccountId,

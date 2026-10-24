@@ -120,10 +120,10 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return orElse();
 
@@ -142,10 +142,10 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded():
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
+return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
 return notFound();}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -160,10 +160,10 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailReimbursement? reimbursement,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.reimbursement,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return null;
 
@@ -176,7 +176,7 @@ return notFound();case _:
 
 
 class TransactionDetailLoaded implements TransactionDetailUiState {
-  const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.reimbursement, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_actionButtons = actionButtons;
+  const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.advance, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_actionButtons = actionButtons;
   
 
  final  String transactionId;
@@ -201,7 +201,7 @@ class TransactionDetailLoaded implements TransactionDetailUiState {
 }
 
  final  DetailRefund? refund;
- final  DetailReimbursement? reimbursement;
+ final  DetailAdvance? advance;
 @JsonKey() final  bool canEditReportingFlags;
  final  bool showExcludeStats;
  final  bool showExcludeBudget;
@@ -227,16 +227,16 @@ $TransactionDetailLoadedCopyWith<TransactionDetailLoaded> get copyWith => _$Tran
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.reimbursement, reimbursement) || other.reimbursement == reimbursement)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.noteText, noteText) || other.noteText == noteText));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.advance, advance) || other.advance == advance)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.noteText, noteText) || other.noteText == noteText));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,transactionId,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,reimbursement,canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,noteText]);
+int get hashCode => Object.hashAll([runtimeType,transactionId,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,advance,canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,noteText]);
 
 @override
 String toString() {
-  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, reimbursement: $reimbursement, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, noteText: $noteText)';
+  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, advance: $advance, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, noteText: $noteText)';
 }
 
 
@@ -247,11 +247,11 @@ abstract mixin class $TransactionDetailLoadedCopyWith<$Res> implements $Transact
   factory $TransactionDetailLoadedCopyWith(TransactionDetailLoaded value, $Res Function(TransactionDetailLoaded) _then) = _$TransactionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- String transactionId, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailReimbursement? reimbursement, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
+ String transactionId, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailAdvance? advance, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
 });
 
 
-$DetailBehaviorConfigCopyWith<$Res> get behavior;$DetailRefundCopyWith<$Res>? get refund;$DetailReimbursementCopyWith<$Res>? get reimbursement;
+$DetailBehaviorConfigCopyWith<$Res> get behavior;$DetailRefundCopyWith<$Res>? get refund;$DetailAdvanceCopyWith<$Res>? get advance;
 
 }
 /// @nodoc
@@ -264,7 +264,7 @@ class _$TransactionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of TransactionDetailUiState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? reimbursement = freezed,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? noteText = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? advance = freezed,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? noteText = freezed,}) {
   return _then(TransactionDetailLoaded(
 transactionId: null == transactionId ? _self.transactionId : transactionId // ignore: cast_nullable_to_non_nullable
 as String,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
@@ -276,8 +276,8 @@ as String,postedAtText: null == postedAtText ? _self.postedAtText : postedAtText
 as String,createdAtText: null == createdAtText ? _self.createdAtText : createdAtText // ignore: cast_nullable_to_non_nullable
 as String,accountRows: null == accountRows ? _self._accountRows : accountRows // ignore: cast_nullable_to_non_nullable
 as List<DetailAccountRow>,refund: freezed == refund ? _self.refund : refund // ignore: cast_nullable_to_non_nullable
-as DetailRefund?,reimbursement: freezed == reimbursement ? _self.reimbursement : reimbursement // ignore: cast_nullable_to_non_nullable
-as DetailReimbursement?,canEditReportingFlags: null == canEditReportingFlags ? _self.canEditReportingFlags : canEditReportingFlags // ignore: cast_nullable_to_non_nullable
+as DetailRefund?,advance: freezed == advance ? _self.advance : advance // ignore: cast_nullable_to_non_nullable
+as DetailAdvance?,canEditReportingFlags: null == canEditReportingFlags ? _self.canEditReportingFlags : canEditReportingFlags // ignore: cast_nullable_to_non_nullable
 as bool,showExcludeStats: null == showExcludeStats ? _self.showExcludeStats : showExcludeStats // ignore: cast_nullable_to_non_nullable
 as bool,showExcludeBudget: null == showExcludeBudget ? _self.showExcludeBudget : showExcludeBudget // ignore: cast_nullable_to_non_nullable
 as bool,excludeStats: null == excludeStats ? _self.excludeStats : excludeStats // ignore: cast_nullable_to_non_nullable
@@ -314,13 +314,13 @@ $DetailRefundCopyWith<$Res>? get refund {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$DetailReimbursementCopyWith<$Res>? get reimbursement {
-    if (_self.reimbursement == null) {
+$DetailAdvanceCopyWith<$Res>? get advance {
+    if (_self.advance == null) {
     return null;
   }
 
-  return $DetailReimbursementCopyWith<$Res>(_self.reimbursement!, (value) {
-    return _then(_self.copyWith(reimbursement: value));
+  return $DetailAdvanceCopyWith<$Res>(_self.advance!, (value) {
+    return _then(_self.copyWith(advance: value));
   });
 }
 }
@@ -1543,20 +1543,20 @@ as Money?,
 }
 
 /// @nodoc
-mixin _$DetailReimbursement {
+mixin _$DetailAdvance {
 
  String get summaryText; bool get hasActivity; bool get isClosed; List<DetailSheetItem> get items; Money? get outstanding;
-/// Create a copy of DetailReimbursement
+/// Create a copy of DetailAdvance
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$DetailReimbursementCopyWith<DetailReimbursement> get copyWith => _$DetailReimbursementCopyWithImpl<DetailReimbursement>(this as DetailReimbursement, _$identity);
+$DetailAdvanceCopyWith<DetailAdvance> get copyWith => _$DetailAdvanceCopyWithImpl<DetailAdvance>(this as DetailAdvance, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailReimbursement&&(identical(other.summaryText, summaryText) || other.summaryText == summaryText)&&(identical(other.hasActivity, hasActivity) || other.hasActivity == hasActivity)&&(identical(other.isClosed, isClosed) || other.isClosed == isClosed)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.outstanding, outstanding) || other.outstanding == outstanding));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailAdvance&&(identical(other.summaryText, summaryText) || other.summaryText == summaryText)&&(identical(other.hasActivity, hasActivity) || other.hasActivity == hasActivity)&&(identical(other.isClosed, isClosed) || other.isClosed == isClosed)&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.outstanding, outstanding) || other.outstanding == outstanding));
 }
 
 
@@ -1565,15 +1565,15 @@ int get hashCode => Object.hash(runtimeType,summaryText,hasActivity,isClosed,con
 
 @override
 String toString() {
-  return 'DetailReimbursement(summaryText: $summaryText, hasActivity: $hasActivity, isClosed: $isClosed, items: $items, outstanding: $outstanding)';
+  return 'DetailAdvance(summaryText: $summaryText, hasActivity: $hasActivity, isClosed: $isClosed, items: $items, outstanding: $outstanding)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $DetailReimbursementCopyWith<$Res>  {
-  factory $DetailReimbursementCopyWith(DetailReimbursement value, $Res Function(DetailReimbursement) _then) = _$DetailReimbursementCopyWithImpl;
+abstract mixin class $DetailAdvanceCopyWith<$Res>  {
+  factory $DetailAdvanceCopyWith(DetailAdvance value, $Res Function(DetailAdvance) _then) = _$DetailAdvanceCopyWithImpl;
 @useResult
 $Res call({
  String summaryText, bool hasActivity, bool isClosed, List<DetailSheetItem> items, Money? outstanding
@@ -1584,17 +1584,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$DetailReimbursementCopyWithImpl<$Res>
-    implements $DetailReimbursementCopyWith<$Res> {
-  _$DetailReimbursementCopyWithImpl(this._self, this._then);
+class _$DetailAdvanceCopyWithImpl<$Res>
+    implements $DetailAdvanceCopyWith<$Res> {
+  _$DetailAdvanceCopyWithImpl(this._self, this._then);
 
-  final DetailReimbursement _self;
-  final $Res Function(DetailReimbursement) _then;
+  final DetailAdvance _self;
+  final $Res Function(DetailAdvance) _then;
 
-/// Create a copy of DetailReimbursement
+/// Create a copy of DetailAdvance
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? summaryText = null,Object? hasActivity = null,Object? isClosed = null,Object? items = null,Object? outstanding = freezed,}) {
-  return _then(DetailReimbursement(
+  return _then(DetailAdvance(
 summaryText: null == summaryText ? _self.summaryText : summaryText // ignore: cast_nullable_to_non_nullable
 as String,hasActivity: null == hasActivity ? _self.hasActivity : hasActivity // ignore: cast_nullable_to_non_nullable
 as bool,isClosed: null == isClosed ? _self.isClosed : isClosed // ignore: cast_nullable_to_non_nullable
@@ -1607,8 +1607,8 @@ as Money?,
 }
 
 
-/// Adds pattern-matching-related methods to [DetailReimbursement].
-extension DetailReimbursementPatterns on DetailReimbursement {
+/// Adds pattern-matching-related methods to [DetailAdvance].
+extension DetailAdvancePatterns on DetailAdvance {
 /// A variant of `map` that fallback to returning `orElse`.
 ///
 /// It is equivalent to doing:
@@ -1621,10 +1621,10 @@ extension DetailReimbursementPatterns on DetailReimbursement {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _DetailReimbursement value)?  $default,{required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _DetailAdvance value)?  $default,{required TResult orElse(),}){
 final _that = this;
 switch (_that) {
-case _DetailReimbursement() when $default != null:
+case _DetailAdvance() when $default != null:
 return $default(_that);case _:
   return orElse();
 
@@ -1643,10 +1643,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _DetailReimbursement value)  $default,){
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _DetailAdvance value)  $default,){
 final _that = this;
 switch (_that) {
-case _DetailReimbursement():
+case _DetailAdvance():
 return $default(_that);case _:
   throw StateError('Unexpected subclass');
 
@@ -1664,10 +1664,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _DetailReimbursement value)?  $default,){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _DetailAdvance value)?  $default,){
 final _that = this;
 switch (_that) {
-case _DetailReimbursement() when $default != null:
+case _DetailAdvance() when $default != null:
 return $default(_that);case _:
   return null;
 
@@ -1687,7 +1687,7 @@ return $default(_that);case _:
 
 @optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String summaryText,  bool hasActivity,  bool isClosed,  List<DetailSheetItem> items,  Money? outstanding)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
-case _DetailReimbursement() when $default != null:
+case _DetailAdvance() when $default != null:
 return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_that.outstanding);case _:
   return orElse();
 
@@ -1708,7 +1708,7 @@ return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_
 
 @optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String summaryText,  bool hasActivity,  bool isClosed,  List<DetailSheetItem> items,  Money? outstanding)  $default,) {final _that = this;
 switch (_that) {
-case _DetailReimbursement():
+case _DetailAdvance():
 return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_that.outstanding);case _:
   throw StateError('Unexpected subclass');
 
@@ -1728,7 +1728,7 @@ return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_
 
 @optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String summaryText,  bool hasActivity,  bool isClosed,  List<DetailSheetItem> items,  Money? outstanding)?  $default,) {final _that = this;
 switch (_that) {
-case _DetailReimbursement() when $default != null:
+case _DetailAdvance() when $default != null:
 return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_that.outstanding);case _:
   return null;
 
@@ -1740,8 +1740,8 @@ return $default(_that.summaryText,_that.hasActivity,_that.isClosed,_that.items,_
 /// @nodoc
 
 
-class _DetailReimbursement implements DetailReimbursement {
-  const _DetailReimbursement({required this.summaryText, required this.hasActivity, required this.isClosed, required  List<DetailSheetItem> items, this.outstanding}): _items = items;
+class _DetailAdvance implements DetailAdvance {
+  const _DetailAdvance({required this.summaryText, required this.hasActivity, required this.isClosed, required  List<DetailSheetItem> items, this.outstanding}): _items = items;
   
 
 @override final  String summaryText;
@@ -1756,17 +1756,17 @@ class _DetailReimbursement implements DetailReimbursement {
 
 @override final  Money? outstanding;
 
-/// Create a copy of DetailReimbursement
+/// Create a copy of DetailAdvance
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$DetailReimbursementCopyWith<_DetailReimbursement> get copyWith => __$DetailReimbursementCopyWithImpl<_DetailReimbursement>(this, _$identity);
+_$DetailAdvanceCopyWith<_DetailAdvance> get copyWith => __$DetailAdvanceCopyWithImpl<_DetailAdvance>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailReimbursement&&(identical(other.summaryText, summaryText) || other.summaryText == summaryText)&&(identical(other.hasActivity, hasActivity) || other.hasActivity == hasActivity)&&(identical(other.isClosed, isClosed) || other.isClosed == isClosed)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.outstanding, outstanding) || other.outstanding == outstanding));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailAdvance&&(identical(other.summaryText, summaryText) || other.summaryText == summaryText)&&(identical(other.hasActivity, hasActivity) || other.hasActivity == hasActivity)&&(identical(other.isClosed, isClosed) || other.isClosed == isClosed)&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.outstanding, outstanding) || other.outstanding == outstanding));
 }
 
 
@@ -1775,15 +1775,15 @@ int get hashCode => Object.hash(runtimeType,summaryText,hasActivity,isClosed,con
 
 @override
 String toString() {
-  return 'DetailReimbursement(summaryText: $summaryText, hasActivity: $hasActivity, isClosed: $isClosed, items: $items, outstanding: $outstanding)';
+  return 'DetailAdvance(summaryText: $summaryText, hasActivity: $hasActivity, isClosed: $isClosed, items: $items, outstanding: $outstanding)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$DetailReimbursementCopyWith<$Res> implements $DetailReimbursementCopyWith<$Res> {
-  factory _$DetailReimbursementCopyWith(_DetailReimbursement value, $Res Function(_DetailReimbursement) _then) = __$DetailReimbursementCopyWithImpl;
+abstract mixin class _$DetailAdvanceCopyWith<$Res> implements $DetailAdvanceCopyWith<$Res> {
+  factory _$DetailAdvanceCopyWith(_DetailAdvance value, $Res Function(_DetailAdvance) _then) = __$DetailAdvanceCopyWithImpl;
 @override @useResult
 $Res call({
  String summaryText, bool hasActivity, bool isClosed, List<DetailSheetItem> items, Money? outstanding
@@ -1794,17 +1794,17 @@ $Res call({
 
 }
 /// @nodoc
-class __$DetailReimbursementCopyWithImpl<$Res>
-    implements _$DetailReimbursementCopyWith<$Res> {
-  __$DetailReimbursementCopyWithImpl(this._self, this._then);
+class __$DetailAdvanceCopyWithImpl<$Res>
+    implements _$DetailAdvanceCopyWith<$Res> {
+  __$DetailAdvanceCopyWithImpl(this._self, this._then);
 
-  final _DetailReimbursement _self;
-  final $Res Function(_DetailReimbursement) _then;
+  final _DetailAdvance _self;
+  final $Res Function(_DetailAdvance) _then;
 
-/// Create a copy of DetailReimbursement
+/// Create a copy of DetailAdvance
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? summaryText = null,Object? hasActivity = null,Object? isClosed = null,Object? items = null,Object? outstanding = freezed,}) {
-  return _then(_DetailReimbursement(
+  return _then(_DetailAdvance(
 summaryText: null == summaryText ? _self.summaryText : summaryText // ignore: cast_nullable_to_non_nullable
 as String,hasActivity: null == hasActivity ? _self.hasActivity : hasActivity // ignore: cast_nullable_to_non_nullable
 as bool,isClosed: null == isClosed ? _self.isClosed : isClosed // ignore: cast_nullable_to_non_nullable

@@ -125,11 +125,11 @@ class _DetailBody extends ConsumerWidget {
             ),
             children: [
               _HeroCard(hero: state.hero),
-              if (state.refund != null || state.reimbursement != null) ...[
+              if (state.refund != null || state.advance != null) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _RefundReimbursementCard(
+                _RefundAdvanceCard(
                   refund: state.refund,
-                  reimbursement: state.reimbursement,
+                  advance: state.advance,
                 ),
               ],
               const SizedBox(height: AppSpacing.space12),
@@ -431,11 +431,11 @@ class _AllocationSummary extends StatelessWidget {
   }
 }
 
-class _RefundReimbursementCard extends StatelessWidget {
-  const _RefundReimbursementCard({this.refund, this.reimbursement});
+class _RefundAdvanceCard extends StatelessWidget {
+  const _RefundAdvanceCard({this.refund, this.advance});
 
   final DetailRefund? refund;
-  final DetailReimbursement? reimbursement;
+  final DetailAdvance? advance;
 
   @override
   Widget build(BuildContext context) {
@@ -464,18 +464,18 @@ class _RefundReimbursementCard extends StatelessWidget {
         ),
       );
     }
-    final reimbursement = this.reimbursement;
-    if (reimbursement != null) {
+    final advance = this.advance;
+    if (advance != null) {
       rows.add(
         AppPlainValueRow(
-          label: '报销详情',
-          value: reimbursement.summaryText,
-          enabled: reimbursement.hasActivity,
-          onTap: reimbursement.hasActivity
+          label: '垫付详情',
+          value: advance.summaryText,
+          enabled: advance.hasActivity,
+          onTap: advance.hasActivity
               ? () => _showChildrenSheet(
                   context,
-                  title: '报销记录',
-                  items: reimbursement.items,
+                  title: '垫付记录',
+                  items: advance.items,
                 )
               : null,
         ),
@@ -841,7 +841,7 @@ class _ActionButton extends StatelessWidget {
         if (route != null) {
           context.push(route);
         }
-      case DetailActionKind.reimbursement:
+      case DetailActionKind.advance:
         final route = state.route;
         if (route != null) {
           context.push(route);

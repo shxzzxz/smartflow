@@ -1,5 +1,6 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
@@ -113,13 +114,17 @@ class CreateRefundCommand {
   final String? note;
 }
 
-class CreateReimbursementAdvanceCommand {
-  CreateReimbursementAdvanceCommand({
+class CreateAdvanceCommand {
+  CreateAdvanceCommand({
     required this.amount,
+    Money? advanceAmount,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> selfBorneAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
+    this.management = AdvanceManagement.itemized,
+    this.scenario = AdvanceScenario.reimbursement,
     this.postedAt,
     this.counterpartyId,
     this.note,
@@ -127,15 +132,24 @@ class CreateReimbursementAdvanceCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
-  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+  }) : advanceAmount = advanceAmount ?? amount,
+       categoryAllocations = List.unmodifiable(categoryAllocations),
+       selfBorneAllocations = List.unmodifiable(selfBorneAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
+  /// 实际付款总额，包含自承担支出和垫付应收。
   final Money amount;
+
+  /// 形成应收的垫付金额；自承担部分为 [amount] 与它的差额。
+  final Money advanceAmount;
   final String receivableAccountId;
   final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> selfBorneAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
+  final AdvanceManagement management;
+  final AdvanceScenario scenario;
   final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
@@ -144,51 +158,104 @@ class CreateReimbursementAdvanceCommand {
   final Set<String> tagIds;
 }
 
-class CreateReimbursementReceiptCommand {
-  CreateReimbursementReceiptCommand({
+class CreateAdvanceCollectionCommand {
+  CreateAdvanceCollectionCommand({
     required this.amount,
-    required this.advanceTransactionId,
+    required String advanceTransactionId,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : settlementAllocations = List.unmodifiable(settlementAllocations);
+  }) : advanceTransactionId = advanceTransactionId,
+       management = AdvanceManagement.itemized,
+       scenario = AdvanceScenario.reimbursement,
+       isExcludedFromStats = false,
+       isExcludedFromBudget = false,
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  CreateAdvanceCollectionCommand.account({
+    required this.amount,
+    required this.receivableAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required this.occurredAt,
+    required this.scenario,
+    this.postedAt,
+    this.counterpartyId,
+    this.note,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+  }) : advanceTransactionId = null,
+       management = AdvanceManagement.account,
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String advanceTransactionId;
+  final String? advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyId;
   final String? note;
+  final AdvanceManagement management;
+  final AdvanceScenario scenario;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
 }
 
-class CloseReimbursementCommand {
-  CloseReimbursementCommand({
+class CreateAdvanceSettlementCommand {
+  CreateAdvanceSettlementCommand({
     required this.actualReceivedAmount,
-    required this.advanceTransactionId,
+    required String advanceTransactionId,
+    required this.receivableAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
+    this.shortfallKind = AdvanceShortfallKind.selfBorne,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyId,
+    this.note,
+  }) : advanceTransactionId = advanceTransactionId,
+       management = AdvanceManagement.itemized,
+       scenario = AdvanceScenario.reimbursement,
+       isExcludedFromStats = false,
+       isExcludedFromBudget = false,
+       settlementAllocations = List.unmodifiable(settlementAllocations),
+       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
+
+  CreateAdvanceSettlementCommand.account({
+    required this.actualReceivedAmount,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
+    required this.scenario,
+    this.shortfallKind = AdvanceShortfallKind.selfBorne,
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : settlementAllocations = List.unmodifiable(settlementAllocations),
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+  }) : advanceTransactionId = null,
+       management = AdvanceManagement.account,
+       settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
   final Money actualReceivedAmount;
-  final String advanceTransactionId;
+  final String? advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final List<AccountAmountAllocation> gapExpenseAllocations;
+  final AdvanceShortfallKind shortfallKind;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyId;
   final String? note;
+  final AdvanceManagement management;
+  final AdvanceScenario scenario;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
 }
 
 class CreateRepaymentCommand {
@@ -457,12 +524,15 @@ class EditTransferCommand {
   final Set<String>? tagIds;
 }
 
-class EditReimbursementAdvanceCommand {
-  const EditReimbursementAdvanceCommand({
+class EditAdvanceCommand {
+  const EditAdvanceCommand({
     required this.transactionId,
     this.amount,
+    this.advanceAmount,
     this.receivableAccountId,
+    this.scenario,
     this.categoryAllocations,
+    this.selfBorneAllocations,
     this.settlementAllocations,
     this.occurredAt,
     this.counterpartyId,
@@ -474,8 +544,11 @@ class EditReimbursementAdvanceCommand {
 
   final String transactionId;
   final Money? amount;
+  final Money? advanceAmount;
   final String? receivableAccountId;
+  final AdvanceScenario? scenario;
   final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? selfBorneAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyId;
@@ -521,8 +594,8 @@ class EditRefundCommand {
   final Patch<String?>? note;
 }
 
-class EditReimbursementReceiptCommand {
-  const EditReimbursementReceiptCommand({
+class EditAdvanceCollectionCommand {
+  const EditAdvanceCollectionCommand({
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
@@ -541,13 +614,14 @@ class EditReimbursementReceiptCommand {
   final Patch<String?>? note;
 }
 
-class EditReimbursementCloseCommand {
-  const EditReimbursementCloseCommand({
+class EditAdvanceSettlementCommand {
+  const EditAdvanceSettlementCommand({
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
     this.settlementAllocations,
     this.gapExpenseAllocations,
+    this.shortfallKind,
     this.occurredAt,
     this.counterpartyId,
     this.note,
@@ -558,6 +632,7 @@ class EditReimbursementCloseCommand {
   final String? receivableAccountId;
   final List<AccountAmountAllocation>? settlementAllocations;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
+  final AdvanceShortfallKind? shortfallKind;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyId;
   final Patch<String?>? note;

@@ -205,9 +205,9 @@ void main() {
           parentTransactionId: 'old-expense',
         ),
         _transactionCompanionAt(
-          'latest-reimbursement',
+          'latest-advance',
           DateTime(2026, 4, 4),
-          businessPurpose: BusinessPurpose.reimbursementAdvance,
+          businessPurpose: BusinessPurpose.advance,
         ),
         _transactionCompanionAt('newer-unrelated', DateTime(2026, 4, 3)),
         _transactionCompanionAt('old-expense', DateTime(2026, 4, 2)),
@@ -217,10 +217,10 @@ void main() {
         _entryCompanion('child-bank', 'newest-child', 'bank'),
         _entryCompanion(
           'latest-receivable',
-          'latest-reimbursement',
+          'latest-advance',
           'company-receivable',
         ),
-        _entryCompanion('latest-card', 'latest-reimbursement', 'credit-card'),
+        _entryCompanion('latest-card', 'latest-advance', 'credit-card'),
         _entryCompanion('unrelated-travel', 'newer-unrelated', 'travel'),
         _entryCompanion('unrelated-cash', 'newer-unrelated', 'cash'),
         _entryCompanion('old-food', 'old-expense', 'food'),
@@ -231,9 +231,9 @@ void main() {
         database.transactionLines,
         TransactionLinesCompanion.insert(
           id: 'latest-category-line',
-          transactionId: 'latest-reimbursement',
+          transactionId: 'latest-advance',
           lineNo: 1,
-          role: TransactionRole.reimbursementExpenseCategory,
+          role: TransactionRole.advanceExpenseCategory,
           accountId: const Value('food'),
           amountMinor: 100,
         ),
@@ -248,7 +248,7 @@ void main() {
           ),
         );
 
-    expect(transaction?.id, 'latest-reimbursement');
+    expect(transaction?.id, 'latest-advance');
   });
 
   test('finds the latest child transaction for a category', () async {

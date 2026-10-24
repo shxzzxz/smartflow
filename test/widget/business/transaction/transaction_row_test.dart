@@ -17,7 +17,7 @@ void main() {
   for (final purpose in [
     BusinessPurpose.dailyExpense,
     BusinessPurpose.dailyIncome,
-    BusinessPurpose.reimbursementAdvance,
+    BusinessPurpose.advance,
   ]) {
     testWidgets('renders multiple categories for ${purpose.name}', (
       tester,
@@ -613,8 +613,8 @@ TransactionReadModel _item({
         id: 'category',
         transactionId: 'tx-1',
         lineNo: 1,
-        role: purpose == BusinessPurpose.reimbursementAdvance
-            ? TransactionRole.reimbursementExpenseCategory
+        role: purpose == BusinessPurpose.advance
+            ? TransactionRole.advanceExpenseCategory
             : TransactionRole.category,
         accountId: 'food',
         amount: Money(minorUnits: multipleCategories ? 600 : 1234),
@@ -624,8 +624,8 @@ TransactionReadModel _item({
           id: 'second-category',
           transactionId: 'tx-1',
           lineNo: 3,
-          role: purpose == BusinessPurpose.reimbursementAdvance
-              ? TransactionRole.reimbursementExpenseCategory
+          role: purpose == BusinessPurpose.advance
+              ? TransactionRole.advanceExpenseCategory
               : TransactionRole.category,
           accountId: 'other-category',
           amount: const Money(minorUnits: 634),

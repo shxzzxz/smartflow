@@ -11,7 +11,7 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
-import 'package:smartflow/feature/transaction/view_model/reimbursement_form_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/advance_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
@@ -68,18 +68,18 @@ void main() {
   });
 
   test(
-    'prefills every original settlement account for reimbursement forms',
+    'prefills every original settlement account for advance forms',
     () async {
       final container = _container(combinedPayment: true);
 
       final receipt = await container.read(
-        reimbursementReceiptFormViewModelProvider('parent').future,
+        advanceCollectionFormViewModelProvider('parent').future,
       );
       final close = await container.read(
-        reimbursementCloseFormViewModelProvider('parent').future,
+        advanceSettlementFormViewModelProvider('parent').future,
       );
       final unified = await container.read(
-        reimbursementFormViewModelProvider('parent').future,
+        advanceFormViewModelProvider('parent').future,
       );
 
       expect(receipt.settlementAllocations, isNotNull);
@@ -104,30 +104,27 @@ void main() {
     },
   );
 
-  test(
-    'submits a visible single-category default for reimbursement close',
-    () async {
-      final posting = _FakeTransactionPostingAppService();
-      final container = _container(posting: posting);
-      final provider = reimbursementCloseFormViewModelProvider('parent');
-      await container.read(provider.future);
+  test('submits a visible single-category default for advance close', () async {
+    final posting = _FakeTransactionPostingAppService();
+    final container = _container(posting: posting);
+    final provider = advanceSettlementFormViewModelProvider('parent');
+    await container.read(provider.future);
 
-      final outcome = await container
-          .read(provider.notifier)
-          .submit(amountText: '50', noteText: '');
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '50', noteText: '');
 
-      expect(outcome, isA<SubmitSuccess>());
-      final gaps = posting.closeCommands.single.gapExpenseAllocations;
-      expect(gaps, hasLength(1));
-      expect(gaps.single.accountId, 'expense');
-      expect(gaps.single.amount, const Money(minorUnits: 1000));
-    },
-  );
+    expect(outcome, isA<SubmitSuccess>());
+    final gaps = posting.closeCommands.single.gapExpenseAllocations;
+    expect(gaps, hasLength(1));
+    expect(gaps.single.accountId, 'expense');
+    expect(gaps.single.amount, const Money(minorUnits: 1000));
+  });
 
   test('does not recreate a cleared single-category default', () async {
     final posting = _FakeTransactionPostingAppService();
     final container = _container(posting: posting);
-    final provider = reimbursementCloseFormViewModelProvider('parent');
+    final provider = advanceSettlementFormViewModelProvider('parent');
     await container.read(provider.future);
     container.read(provider.notifier).setGapExpenseAllocations(const []);
 
@@ -139,7 +136,7 @@ void main() {
     expect(posting.closeCommands, isEmpty);
   });
 
-  test('marks refund edit unavailable after reimbursement close', () async {
+  test('marks refund edit unavailable after advance close', () async {
     final container = _container(closed: true);
 
     final state = await container.read(
@@ -149,7 +146,7 @@ void main() {
     expect(state.status, RefundFormStatus.notEditable);
   });
 
-  test('refund edit remaining includes reimbursement receipts', () async {
+  test('refund edit remaining uses the full parent transaction', () async {
     final container = _container(includeReceipt: true);
 
     final state = await container.read(
@@ -157,8 +154,22 @@ void main() {
     );
 
     expect(state.status, RefundFormStatus.loaded);
-    expect(state.remaining, const Money(minorUnits: 7000));
+    expect(state.remaining, const Money(minorUnits: 9000));
   });
+
+  test(
+    'new refund remaining includes self-borne and advance portions',
+    () async {
+      final container = _container(includeReceipt: true);
+
+      final state = await container.read(
+        refundFormViewModelProvider('parent').future,
+      );
+
+      expect(state.status, RefundFormStatus.loaded);
+      expect(state.remaining, const Money(minorUnits: 6000));
+    },
+  );
 
   test('maps AppException to submit failure', () async {
     final editService = _FakeTransactionEditAppService(
@@ -252,11 +263,11 @@ ProviderContainer _container({
 
 class _FakeTransactionPostingAppService
     implements TransactionPostingAppService {
-  final closeCommands = <CloseReimbursementCommand>[];
+  final closeCommands = <CreateAdvanceSettlementCommand>[];
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) async {
     closeCommands.add(command);
     return const PostedTransactionResult(transactionId: 'close');
@@ -310,7 +321,7 @@ TransactionReadModel _parentDetail({
   return TransactionReadModel.fromTransaction(
     transaction: Transaction(
       id: 'parent',
-      businessPurpose: BusinessPurpose.reimbursementAdvance,
+      businessPurpose: BusinessPurpose.advance,
       occurredAt: DateTime(2026, 7, 1),
       primaryAmount: const Money(minorUnits: 10000),
       isExcludedFromStats: false,
@@ -330,7 +341,7 @@ TransactionReadModel _parentDetail({
       ],
       refundedCategoryAllocations: const [],
     ),
-    reimbursementSummary: ReimbursementSummary(
+    advanceSummary: AdvanceSummary(
       advanceAmount: const Money(minorUnits: 10000),
       refundedAmount: const Money(minorUnits: 4000),
       receivedAmount:
@@ -347,8 +358,8 @@ TransactionReadModel _parentDetail({
       _child('refund', BusinessPurpose.refund, 3000),
       _child('other-refund', BusinessPurpose.refund, 1000),
       if (includeReceipt)
-        _child('receipt', BusinessPurpose.reimbursementReceipt, 2000),
-      if (closed) _child('close', BusinessPurpose.reimbursementClose, 6000),
+        _child('receipt', BusinessPurpose.advanceCollection, 2000),
+      if (closed) _child('close', BusinessPurpose.advanceSettlement, 6000),
     ],
   );
 }
@@ -416,18 +427,17 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
       throw UnimplementedError();
 
   @override
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editAdvance(EditAdvanceCommand command) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PostedTransactionResult> editAdvanceSettlement(
+    EditAdvanceSettlementCommand command,
   ) => throw UnimplementedError();
 
   @override
-  Future<PostedTransactionResult> editReimbursementClose(
-    EditReimbursementCloseCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editReimbursementReceipt(
-    EditReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editAdvanceCollection(
+    EditAdvanceCollectionCommand command,
   ) => throw UnimplementedError();
 
   @override
@@ -449,7 +459,7 @@ const _advanceLines = [
     id: 'advance-category',
     transactionId: 'parent',
     lineNo: 1,
-    role: TransactionRole.reimbursementExpenseCategory,
+    role: TransactionRole.advanceExpenseCategory,
     accountId: 'expense',
     amount: Money(minorUnits: 10000),
   ),
@@ -476,7 +486,7 @@ const _combinedAdvanceLines = [
     id: 'advance-category',
     transactionId: 'parent',
     lineNo: 1,
-    role: TransactionRole.reimbursementExpenseCategory,
+    role: TransactionRole.advanceExpenseCategory,
     accountId: 'expense',
     amount: Money(minorUnits: 10000),
   ),

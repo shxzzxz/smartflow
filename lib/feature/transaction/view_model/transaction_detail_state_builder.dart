@@ -34,7 +34,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     noteText: detail.note,
     accountRows: _accountRows(detail, accountLookup, behavior),
     refund: _refundState(detail),
-    reimbursement: _reimbursementState(detail),
+    advance: _advanceState(detail),
     canEditReportingFlags: detail.parentTransactionId == null,
     showExcludeStats: true,
     showExcludeBudget: true,
@@ -106,8 +106,8 @@ List<DetailAccountRow> _accountRows(
       ];
     case BusinessPurpose.dailyIncome:
     case BusinessPurpose.refund:
-    case BusinessPurpose.reimbursementReceipt:
-    case BusinessPurpose.reimbursementClose:
+    case BusinessPurpose.advanceCollection:
+    case BusinessPurpose.advanceSettlement:
     case BusinessPurpose.borrowing:
     case BusinessPurpose.receivableCollection:
       final editPurpose = purpose == BusinessPurpose.borrowing
@@ -118,8 +118,8 @@ List<DetailAccountRow> _accountRows(
           incoming.length > 1 &&
           (purpose == BusinessPurpose.dailyIncome ||
               purpose == BusinessPurpose.refund ||
-              purpose == BusinessPurpose.reimbursementReceipt ||
-              purpose == BusinessPurpose.reimbursementClose);
+              purpose == BusinessPurpose.advanceCollection ||
+              purpose == BusinessPurpose.advanceSettlement);
       if (usesBreakdown) return const [];
       return [
         if (purpose == BusinessPurpose.borrowing)
@@ -160,9 +160,12 @@ List<DetailAccountRow> _accountRows(
         if (purpose == BusinessPurpose.debtRepayment)
           ...counterpartRows('负债账户', TransactionRole.liability),
       ];
-    case BusinessPurpose.reimbursementAdvance:
+    case BusinessPurpose.advance:
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       final receivables = detail.linesOf(TransactionRole.receivable).toList();
+      final receivableLabel = _advanceReceivableAccountLabel(
+        detail.ownership?.advanceScenario,
+      );
       return [
         if (outgoing.length > 1)
           ...const []
@@ -173,15 +176,15 @@ List<DetailAccountRow> _accountRows(
             info('收支账户', line, editPurpose: AccountSelectionPurpose.settlement),
         if (receivables.isEmpty)
           placeholder(
-            '报销账户',
-            editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+            receivableLabel,
+            editPurpose: AccountSelectionPurpose.advanceReceivable,
           )
         else
           for (final line in receivables)
             info(
-              '报销账户',
+              receivableLabel,
               line,
-              editPurpose: AccountSelectionPurpose.reimbursementReceivable,
+              editPurpose: AccountSelectionPurpose.advanceReceivable,
             ),
       ];
     case BusinessPurpose.openingBalance:
@@ -210,12 +213,12 @@ List<DetailAccountRow> _accountRows(
 DetailRefund? _refundState(TransactionReadModel detail) {
   final purpose = detail.businessPurpose;
   if (purpose != BusinessPurpose.dailyExpense &&
-      purpose != BusinessPurpose.reimbursementAdvance) {
+      purpose != BusinessPurpose.advance) {
     return null;
   }
   final refunded = detail.refundSummary?.refundedTotal ?? Money.zero();
   final hasRefund = refunded.minorUnits > 0;
-  if (purpose == BusinessPurpose.reimbursementAdvance && !hasRefund) {
+  if (purpose == BusinessPurpose.advance && !hasRefund) {
     return null;
   }
   return DetailRefund(
@@ -225,25 +228,27 @@ DetailRefund? _refundState(TransactionReadModel detail) {
   );
 }
 
-DetailReimbursement? _reimbursementState(TransactionReadModel detail) {
-  if (detail.businessPurpose != BusinessPurpose.reimbursementAdvance) {
+DetailAdvance? _advanceState(TransactionReadModel detail) {
+  if (detail.businessPurpose != BusinessPurpose.advance ||
+      _advanceManagement(detail) != AdvanceManagement.itemized) {
     return null;
   }
-  final summary = detail.reimbursementSummary;
-  final hasActivity = summary != null && summary.receivedAmount.minorUnits > 0;
+  final summary = detail.advanceSummary;
+  final items = advanceSheetItems(detail.children);
+  final hasActivity = items.isNotEmpty;
   final summaryText = summary == null
-      ? '未报销'
+      ? '未收回'
       : summary.isClosed
-      ? '已结束 · 实收 ${summary.receivedAmount.format()}'
+      ? '已结清 · 实收 ${summary.receivedAmount.format()}'
       : hasActivity
       ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
-      : '未报销';
-  return DetailReimbursement(
+      : '未收回';
+  return DetailAdvance(
     summaryText: summaryText,
     hasActivity: hasActivity,
     isClosed: summary?.isClosed ?? false,
     outstanding: summary?.outstanding,
-    items: reimbursementSheetItems(detail.children),
+    items: items,
   );
 }
 
@@ -253,7 +258,7 @@ List<DetailActionButton> _actionButtons(
   DetailBehaviorConfig behavior,
 ) {
   final transaction = detail;
-  final editLocked = _isEarlierReimbursementChildLocked(detail, parentDetail);
+  final editLocked = _isEarlierAdvanceChildLocked(detail, parentDetail);
   final result = <DetailActionButton>[];
   switch (transaction.businessPurpose) {
     case BusinessPurpose.dailyExpense:
@@ -266,9 +271,31 @@ List<DetailActionButton> _actionButtons(
           route: '/transaction/${transaction.id}/refund',
         ),
       );
-    case BusinessPurpose.reimbursementAdvance:
-      final closed = detail.reimbursementSummary?.isClosed ?? false;
-      if (!closed) {
+    case BusinessPurpose.advance:
+      final closed = detail.advanceSummary?.isClosed ?? false;
+      if (_advanceManagement(detail) == AdvanceManagement.itemized) {
+        if (!closed) {
+          result.add(
+            DetailActionButton(
+              kind: DetailActionKind.refund,
+              label: '退款',
+              primary: false,
+              enabled: true,
+              route: '/transaction/${transaction.id}/refund',
+            ),
+          );
+        }
+        result.add(
+          DetailActionButton(
+            kind: DetailActionKind.advance,
+            label: _advanceActionLabel(transaction.ownership?.advanceScenario),
+            primary: false,
+            enabled: !closed,
+            route: '/transaction/${transaction.id}/advance',
+            deniedReason: closed ? '垫付已结清' : null,
+          ),
+        );
+      } else {
         result.add(
           DetailActionButton(
             kind: DetailActionKind.refund,
@@ -279,16 +306,6 @@ List<DetailActionButton> _actionButtons(
           ),
         );
       }
-      result.add(
-        DetailActionButton(
-          kind: DetailActionKind.reimbursement,
-          label: '报销',
-          primary: false,
-          enabled: !closed,
-          route: '/transaction/${transaction.id}/reimbursement',
-          deniedReason: closed ? '报销已结束' : null,
-        ),
-      );
     default:
       break;
   }
@@ -300,10 +317,27 @@ List<DetailActionButton> _actionButtons(
       primary: true,
       enabled: behavior.editRoute != null && !editLocked,
       route: behavior.editRoute,
-      deniedReason: editLocked ? _reimbursementClosedEditReason : null,
+      deniedReason: editLocked ? _advanceSettledEditReason : null,
     ),
   );
   return result;
+}
+
+AdvanceManagement _advanceManagement(TransactionReadModel detail) {
+  return detail.ownership?.advanceManagement ?? AdvanceManagement.itemized;
+}
+
+String _advanceActionLabel(AdvanceScenario? scenario) {
+  return switch (scenario) {
+    AdvanceScenario.aa => 'AA收回',
+    AdvanceScenario.onBehalf => '代付收回',
+    AdvanceScenario.reimbursement => '报销',
+    null => '垫付',
+  };
+}
+
+String _advanceReceivableAccountLabel(AdvanceScenario? scenario) {
+  return scenario == AdvanceScenario.reimbursement ? '报销账户' : '应收账户';
 }
 
 DetailEditPermission _accountEditPermission(
@@ -316,7 +350,7 @@ DetailEditPermission _accountEditPermission(
     AccountSelectionPurpose.fund ||
     AccountSelectionPurpose.repaymentSource =>
       behavior.canEditSettlementAccount,
-    AccountSelectionPurpose.reimbursementReceivable =>
+    AccountSelectionPurpose.advanceReceivable =>
       const DetailEditPermission.allowed(),
     AccountSelectionPurpose.ordinaryReceivable ||
     AccountSelectionPurpose.receivable => const DetailEditPermission.denied(
@@ -332,18 +366,29 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
   final transaction = detail;
   const postedAtPermission = DetailEditPermission.allowed();
   if (transaction.businessPurpose == BusinessPurpose.refund ||
-      transaction.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-      transaction.businessPurpose == BusinessPurpose.reimbursementClose) {
+      transaction.businessPurpose == BusinessPurpose.advanceCollection ||
+      transaction.businessPurpose == BusinessPurpose.advanceSettlement) {
     return DetailBehaviorConfig(
       editRoute: switch (transaction.businessPurpose) {
         BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
-        BusinessPurpose.reimbursementReceipt ||
-        BusinessPurpose.reimbursementClose =>
-          '/transaction/${transaction.id}/reimbursement/edit',
+        BusinessPurpose.advanceCollection ||
+        BusinessPurpose.advanceSettlement =>
+          '/transaction/${transaction.id}/advance/edit',
         _ => null,
       },
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: const DetailEditPermission.allowed(),
+      canEditNote: const DetailEditPermission.allowed(),
+      canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditTags: _tagEditPermissionFor(transaction),
+    );
+  }
+
+  if (transaction.businessPurpose == BusinessPurpose.advance) {
+    return DetailBehaviorConfig(
+      editRoute: '/transaction/${transaction.id}/edit',
+      canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: const DetailEditPermission.allowed(),
       canEditTags: _tagEditPermissionFor(transaction),
@@ -357,7 +402,7 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
         BusinessPurpose.dailyExpense ||
         BusinessPurpose.dailyIncome ||
         BusinessPurpose.transfer ||
-        BusinessPurpose.reimbursementAdvance ||
+        BusinessPurpose.advance ||
         BusinessPurpose.borrowing => '/transaction/${transaction.id}/edit',
         BusinessPurpose.lending => '/transaction/${transaction.id}/edit',
         BusinessPurpose.receivableCollection =>
@@ -371,8 +416,8 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
         BusinessPurpose.openingBalance ||
         BusinessPurpose.balanceAdjustment => null,
         BusinessPurpose.refund ||
-        BusinessPurpose.reimbursementReceipt ||
-        BusinessPurpose.reimbursementClose => null,
+        BusinessPurpose.advanceCollection ||
+        BusinessPurpose.advanceSettlement => null,
       },
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
@@ -434,19 +479,19 @@ DetailEditPermission _tagEditPermissionFor(TransactionReadModel transaction) {
       : const DetailEditPermission.denied(reason: '跟随所属交易组标签，请在顶层交易修改');
 }
 
-bool _isEarlierReimbursementChildLocked(
+bool _isEarlierAdvanceChildLocked(
   TransactionReadModel detail,
   TransactionReadModel? parentDetail,
 ) {
   final purpose = detail.businessPurpose;
   if (purpose != BusinessPurpose.refund &&
-      purpose != BusinessPurpose.reimbursementReceipt) {
+      purpose != BusinessPurpose.advanceCollection) {
     return false;
   }
-  return parentDetail?.reimbursementSummary?.isClosed ?? false;
+  return parentDetail?.advanceSummary?.isClosed ?? false;
 }
 
-const String _reimbursementClosedEditReason = '报销已结束，请先删除结束报销';
+const String _advanceSettledEditReason = '垫付已结清，请先删除垫付结清';
 
 RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
   if (ownerRole == null) return null;
@@ -468,6 +513,6 @@ String _transactionDetailDeleteMessage(TransactionReadModel detail) {
     return '此操作将删除还款记录及其关联交易，并重新计算相关账单与合同的还款状态，无法恢复。';
   }
   return detail.parentTransactionId == null
-      ? '此操作将删除整个交易组及其账务记录（包括退款、报销等子交易），无法恢复。'
+      ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'
       : '此操作仅删除当前子交易及其账务记录，无法恢复。';
 }

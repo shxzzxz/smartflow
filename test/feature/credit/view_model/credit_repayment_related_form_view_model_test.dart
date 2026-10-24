@@ -26,7 +26,7 @@ import 'package:smartflow/feature/credit/view_model/unattributed_repayment_form_
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
-import 'package:smartflow/feature/transaction/view_model/reimbursement_form_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/advance_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 
@@ -777,10 +777,10 @@ void main() {
     expect(posting.refundCommands.single.amount, const Money(minorUnits: 500));
   });
 
-  test('reimbursement close form submits close command', () async {
+  test('advance close form submits close command', () async {
     final posting = _FakePostingService();
     final container = _container(postingService: posting);
-    final provider = reimbursementCloseFormViewModelProvider('parent');
+    final provider = advanceSettlementFormViewModelProvider('parent');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await container.read(provider.future);
@@ -963,7 +963,7 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
 
 class _FakePostingService implements TransactionPostingAppService {
   final refundCommands = <CreateRefundCommand>[];
-  final closeCommands = <CloseReimbursementCommand>[];
+  final closeCommands = <CreateAdvanceSettlementCommand>[];
 
   @override
   Future<PostedTransactionResult> createRefund(
@@ -974,8 +974,8 @@ class _FakePostingService implements TransactionPostingAppService {
   }
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) async {
     closeCommands.add(command);
     return _posted();
@@ -1221,7 +1221,7 @@ credit_query.CreditAccountOverviewReadModel _creditOverview() {
 TransactionReadModel _detail() {
   final transaction = Transaction(
     id: 'parent',
-    businessPurpose: BusinessPurpose.reimbursementAdvance,
+    businessPurpose: BusinessPurpose.advance,
     occurredAt: DateTime(2026),
     primaryAmount: const Money(minorUnits: 1000),
     sourceKind: SourceKind.manual,
@@ -1232,7 +1232,7 @@ TransactionReadModel _detail() {
         id: 'advance-category',
         transactionId: 'parent',
         lineNo: 1,
-        role: TransactionRole.reimbursementExpenseCategory,
+        role: TransactionRole.advanceExpenseCategory,
         accountId: 'expense',
         amount: Money(minorUnits: 1000),
       ),
@@ -1289,7 +1289,7 @@ TransactionReadModel _detail() {
         ),
       ],
     ),
-    reimbursementSummary: const ReimbursementSummary(
+    advanceSummary: const AdvanceSummary(
       advanceAmount: Money(minorUnits: 1000),
       refundedAmount: Money(minorUnits: 200),
       receivedAmount: Money(minorUnits: 0),

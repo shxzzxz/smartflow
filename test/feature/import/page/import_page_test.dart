@@ -348,56 +348,55 @@ void main() {
     expect(find.text('已选 0 笔'), findsOneWidget);
   });
 
-  testWidgets(
-    'shows parsing problems and skipped reasons on the issues page',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(480, 1400));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final plan = _plan().copyWith(
-        filteredRecords: const [
-          ImportFilteredRecord(
-            reasonCode: 'empty_row',
-            reason: '空白记录',
-            fileType: ImportSourceFileType(
-              source: ImportSource.yimu,
-              key: 'bill',
-              label: '账单',
-            ),
-            rowNumber: 8,
+  testWidgets('shows parsing problems and skipped reasons on the issues page', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan().copyWith(
+      filteredRecords: const [
+        ImportFilteredRecord(
+          reasonCode: 'empty_row',
+          reason: '空白记录',
+          fileType: ImportSourceFileType(
+            source: ImportSource.yimu,
+            key: 'bill',
+            label: '账单',
           ),
-        ],
-      );
-      await tester.pumpWidget(
-        _app(
-          planService: _FakePlanService(plan),
-          picker: _FakePicker(_bundle()),
-          workflow: _FakeWorkflow(_blockedReview(plan)),
+          rowNumber: 8,
         ),
-      );
-      await _selectAndParse(tester);
+      ],
+    );
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_blockedReview(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
 
-      expect(find.text('解析详情'), findsNothing);
-      await tester.tap(find.text('查看全部').last);
-      await tester.pumpAndSettle();
+    expect(find.text('解析详情'), findsNothing);
+    await tester.tap(find.text('查看全部').last);
+    await tester.pumpAndSettle();
 
-      expect(find.text('解析详情'), findsOneWidget);
-      expect(find.text('无法解析 1 · 已跳过 1'), findsOneWidget);
-      expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
+    expect(find.text('解析详情'), findsOneWidget);
+    expect(find.text('无法解析 1 · 已跳过 1'), findsOneWidget);
+    expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
 
-      await tester.tap(find.text('解析详情'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('解析详情'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('无法解析 (1)'), findsOneWidget);
-      expect(find.textContaining('来源账户缺失，无法生成交易。'), findsOneWidget);
-      expect(find.text('已跳过记录 (1)'), findsOneWidget);
-      expect(find.text('账单文件 · 第 8 行'), findsOneWidget);
-      expect(find.text('空白记录'), findsOneWidget);
+    expect(find.text('无法解析 (1)'), findsOneWidget);
+    expect(find.textContaining('来源账户缺失，无法生成交易。'), findsOneWidget);
+    expect(find.text('已跳过记录 (1)'), findsOneWidget);
+    expect(find.text('账单文件 · 第 8 行'), findsOneWidget);
+    expect(find.text('空白记录'), findsOneWidget);
 
-      await tester.tap(find.byTooltip('返回'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
-    },
-  );
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
+  });
 
   testWidgets('collapses missing accounts into a single no-account mapping', (
     tester,
@@ -430,7 +429,7 @@ void main() {
     const missingReceivable = ImportSourceEntity(
       source: ImportSource.yimu,
       kind: ImportEntityKind.account,
-      sourceEntityKey: 'review:missing:account:reimbursement:4:receivable',
+      sourceEntityKey: 'review:missing:account:advance:4:receivable',
       displayName: '缺失报销应收账户（报销文件第 4 行）',
       isReviewPlaceholder: true,
     );
@@ -538,11 +537,10 @@ void main() {
     expect(find.text('缺失账户'), findsOneWidget);
     expect(find.text('无账户'), findsOneWidget);
     expect(find.text('缺失收入分类（账单文件第 2 行）'), findsWidgets);
-    final semanticLabels =
-        tester
-            .widgetList<Semantics>(find.byType(Semantics))
-            .map((widget) => widget.properties.label)
-            .whereType<String>();
+    final semanticLabels = tester
+        .widgetList<Semantics>(find.byType(Semantics))
+        .map((widget) => widget.properties.label)
+        .whereType<String>();
     expect(
       semanticLabels,
       contains('缺失收入分类（账单文件第 2 行），导入时新建 缺失收入分类（账单文件第 2 行）'),
@@ -770,17 +768,15 @@ ImportPlanReview _review(ImportParseResult plan) {
     defaultMappings: const {},
     effectiveMappings: {
       ImportMappingKey(
-            source: ImportSource.yimu,
-            entityKind: ImportEntityKind.account,
-            sourceEntityKey: 'account:cash',
-          ):
-          'cash',
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: 'account:cash',
+      ): 'cash',
       ImportMappingKey(
-            source: ImportSource.yimu,
-            entityKind: ImportEntityKind.category,
-            sourceEntityKey: 'category:expense:餐饮',
-          ):
-          'food',
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:餐饮',
+      ): 'food',
     },
     suggestions: const [],
     targets: const [

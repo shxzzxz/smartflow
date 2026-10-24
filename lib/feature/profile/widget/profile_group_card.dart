@@ -155,6 +155,7 @@ class _ProfileListRow extends StatelessWidget {
           vertical: AppSpacing.space10,
         ),
         child: Row(
+          key: ValueKey('profile-entry-row-${entry.title}'),
           children: [
             BusinessIconBubble(
               size: AppSpacing.space32,
@@ -169,12 +170,16 @@ class _ProfileListRow extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
+              flex: 3,
               child: Text(entry.title, style: context.appTextStyles.listTitle),
             ),
             if (entry.value case final value?) ...[
               const SizedBox(width: AppSpacing.space8),
               Flexible(
+                flex: 2,
+                fit: FlexFit.tight,
                 child: Text(
+                  key: ValueKey('profile-entry-value-${entry.title}'),
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

@@ -12,25 +12,24 @@ import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
 
-part 'reimbursement_form_view_model.g.dart';
+part 'advance_form_view_model.g.dart';
 
-final _logger = Logger('feature.transaction.reimbursement_form');
+final _logger = Logger('feature.transaction.advance_form');
 
 @riverpod
-class ReimbursementReceiptFormViewModel
-    extends _$ReimbursementReceiptFormViewModel {
+class AdvanceCollectionFormViewModel extends _$AdvanceCollectionFormViewModel {
   @override
-  Future<ReimbursementReceiptFormState> build(
-    String advanceTransactionId,
-  ) async {
+  Future<AdvanceCollectionFormState> build(String advanceTransactionId) async {
     final base = await _loadBase(ref, advanceTransactionId);
     if (base == null) {
-      return ReimbursementReceiptFormState.notFound(accounts: const []);
+      return AdvanceCollectionFormState.notFound(accounts: const []);
     }
-    if (base.receivableAccountId == null || base.outstanding == null) {
-      return ReimbursementReceiptFormState.notEditable(accounts: base.accounts);
+    if (base.accountManaged ||
+        base.receivableAccountId == null ||
+        base.outstanding == null) {
+      return AdvanceCollectionFormState.notEditable(accounts: base.accounts);
     }
-    return ReimbursementReceiptFormState.loaded(
+    return AdvanceCollectionFormState.loaded(
       accounts: base.accounts,
       outstanding: base.outstanding!,
       receivableAccountId: base.receivableAccountId!,
@@ -62,9 +61,9 @@ class ReimbursementReceiptFormViewModel
     required String amountText,
     required String noteText,
   }) async {
-    final current = state.asData?.value;
+    final current = state.value;
     if (current == null || !current.isLoaded) {
-      return _invalidCommand('报销到账表单尚未加载');
+      return _invalidCommand('垫付到账表单尚未加载');
     }
     final amount = _parsePositiveMoney(amountText);
     if (amount == null) return _invalidCommand('请输入有效到账金额');
@@ -84,53 +83,49 @@ class ReimbursementReceiptFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      return await guardSubmit(
-        _logger,
-        'Reimbursement receipt submit',
-        () async {
-          await ref
-              .read(transactionPostingAppServiceProvider)
-              .createReimbursementReceipt(
-                CreateReimbursementReceiptCommand(
-                  amount: amount,
-                  advanceTransactionId: advanceTransactionId,
-                  receivableAccountId: current.receivableAccountId!,
-                  settlementAllocations: settlements,
-                  occurredAt: current.occurredAt,
-                  note: trimToNull(noteText),
-                ),
-              );
-          _invalidateAfterSubmit(ref, advanceTransactionId);
-        },
-      );
+      return await guardSubmit(_logger, 'Advance receipt submit', () async {
+        await ref
+            .read(transactionPostingAppServiceProvider)
+            .createAdvanceCollection(
+              CreateAdvanceCollectionCommand(
+                amount: amount,
+                advanceTransactionId: advanceTransactionId,
+                receivableAccountId: current.receivableAccountId!,
+                settlementAllocations: settlements,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+        _invalidateAfterSubmit(ref, advanceTransactionId);
+      });
     } finally {
       _update((state) => state.copyWith(submitting: false));
     }
   }
 
   void _update(
-    ReimbursementReceiptFormState Function(ReimbursementReceiptFormState)
-    update,
+    AdvanceCollectionFormState Function(AdvanceCollectionFormState) update,
   ) {
-    final current = state.asData?.value;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(update(current));
   }
 }
 
 @riverpod
-class ReimbursementCloseFormViewModel
-    extends _$ReimbursementCloseFormViewModel {
+class AdvanceSettlementFormViewModel extends _$AdvanceSettlementFormViewModel {
   @override
-  Future<ReimbursementCloseFormState> build(String advanceTransactionId) async {
+  Future<AdvanceSettlementFormState> build(String advanceTransactionId) async {
     final base = await _loadBase(ref, advanceTransactionId);
     if (base == null) {
-      return ReimbursementCloseFormState.notFound(accounts: const []);
+      return AdvanceSettlementFormState.notFound(accounts: const []);
     }
-    if (base.receivableAccountId == null || base.outstanding == null) {
-      return ReimbursementCloseFormState.notEditable(accounts: base.accounts);
+    if (base.accountManaged ||
+        base.receivableAccountId == null ||
+        base.outstanding == null) {
+      return AdvanceSettlementFormState.notEditable(accounts: base.accounts);
     }
-    return ReimbursementCloseFormState.loaded(
+    return AdvanceSettlementFormState.loaded(
       accounts: base.accounts,
       categoryAccounts: base.categoryAccounts,
       availableCategoryAllocations: base.availableCategoryAllocations,
@@ -163,13 +158,21 @@ class ReimbursementCloseFormViewModel
   void setGapExpenseAllocations(List<AccountAmountAllocation> allocations) =>
       _update((state) => state.copyWith(gapExpenseAllocations: allocations));
 
+  void setSelfBorne(bool value) => _update(
+    (state) => state.copyWith(
+      shortfallKind: value
+          ? AdvanceShortfallKind.selfBorne
+          : AdvanceShortfallKind.badDebt,
+    ),
+  );
+
   Future<SubmitOutcome> submit({
     required String amountText,
     required String noteText,
   }) async {
-    final current = state.asData?.value;
+    final current = state.value;
     if (current == null || !current.isLoaded) {
-      return _invalidCommand('结束报销表单尚未加载');
+      return _invalidCommand('垫付结清表单尚未加载');
     }
     final amount = Money.tryParse(amountText);
     if (amount == null || amount.minorUnits < 0) {
@@ -192,16 +195,17 @@ class ReimbursementCloseFormViewModel
 
     _update((state) => state.copyWith(submitting: true));
     try {
-      return await guardSubmit(_logger, 'Reimbursement close submit', () async {
+      return await guardSubmit(_logger, 'Advance close submit', () async {
         await ref
             .read(transactionPostingAppServiceProvider)
-            .closeReimbursement(
-              CloseReimbursementCommand(
+            .settleAdvance(
+              CreateAdvanceSettlementCommand(
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
                 settlementAllocations: settlements,
                 gapExpenseAllocations: gaps,
+                shortfallKind: current.shortfallKind,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -214,26 +218,28 @@ class ReimbursementCloseFormViewModel
   }
 
   void _update(
-    ReimbursementCloseFormState Function(ReimbursementCloseFormState) update,
+    AdvanceSettlementFormState Function(AdvanceSettlementFormState) update,
   ) {
-    final current = state.asData?.value;
+    final current = state.value;
     if (current == null) return;
     state = AsyncData(update(current));
   }
 }
 
 @riverpod
-class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
+class AdvanceFormViewModel extends _$AdvanceFormViewModel {
   @override
-  Future<ReimbursementFormState> build(String advanceTransactionId) async {
+  Future<AdvanceFormState> build(String advanceTransactionId) async {
     final base = await _loadUnifiedBase(ref, advanceTransactionId);
     if (base == null) {
-      return ReimbursementFormState.notFound(accounts: const []);
+      return AdvanceFormState.notFound(accounts: const []);
     }
-    if (base.receivableAccountId == null || base.outstanding == null) {
-      return ReimbursementFormState.notEditable(accounts: base.accounts);
+    if (base.accountManaged ||
+        base.receivableAccountId == null ||
+        base.outstanding == null) {
+      return AdvanceFormState.notEditable(accounts: base.accounts);
     }
-    return ReimbursementFormState.loaded(
+    return AdvanceFormState.loaded(
       accounts: base.accounts,
       categoryAccounts: base.categoryAccounts,
       availableCategoryAllocations: base.availableCategoryAllocations,
@@ -242,16 +248,15 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
       receiveAccountId: base.defaultSettlementAccountId,
       settlementAllocations: base.defaultSettlementAllocations,
       occurredAt: DateTime.now(),
-      mode: ReimbursementFormMode.close,
+      mode: AdvanceFormMode.close,
     );
   }
 
-  void setMode(ReimbursementFormMode mode) =>
+  void setMode(AdvanceFormMode mode) =>
       _update((state) => state.copyWith(mode: mode));
 
-  void setCloseReimbursement(bool value) => setMode(
-    value ? ReimbursementFormMode.close : ReimbursementFormMode.receipt,
-  );
+  void setCloseAdvance(bool value) =>
+      setMode(value ? AdvanceFormMode.close : AdvanceFormMode.receipt);
 
   void setOccurredAt(DateTime value) =>
       _update((state) => state.copyWith(occurredAt: value));
@@ -274,13 +279,21 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   void setGapExpenseAllocations(List<AccountAmountAllocation> allocations) =>
       _update((state) => state.copyWith(gapExpenseAllocations: allocations));
 
+  void setSelfBorne(bool value) => _update(
+    (state) => state.copyWith(
+      shortfallKind: value
+          ? AdvanceShortfallKind.selfBorne
+          : AdvanceShortfallKind.badDebt,
+    ),
+  );
+
   Future<SubmitOutcome> submit({
     required String amountText,
     required String noteText,
   }) async {
-    final current = state.asData?.value;
+    final current = state.value;
     if (current == null || !current.isLoaded) {
-      return _invalidCommand('报销表单尚未加载');
+      return _invalidCommand('垫付表单尚未加载');
     }
     final amount = Money.tryParse(amountText);
     if (amount == null) {
@@ -347,56 +360,22 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   }
 
   Future<SubmitOutcome> _submitReceipt(
-    ReimbursementFormState current, {
+    AdvanceFormState current, {
     required Money amount,
     required List<AccountAmountAllocation> settlementAllocations,
     required String noteText,
   }) async {
     _update((state) => state.copyWith(submitting: true));
     try {
-      return await guardSubmit(
-        _logger,
-        'Reimbursement receipt submit',
-        () async {
-          await ref
-              .read(transactionPostingAppServiceProvider)
-              .createReimbursementReceipt(
-                CreateReimbursementReceiptCommand(
-                  amount: amount,
-                  advanceTransactionId: advanceTransactionId,
-                  receivableAccountId: current.receivableAccountId!,
-                  settlementAllocations: settlementAllocations,
-                  occurredAt: current.occurredAt,
-                  note: trimToNull(noteText),
-                ),
-              );
-          _invalidateAfterSubmit(ref, advanceTransactionId);
-        },
-      );
-    } finally {
-      _update((state) => state.copyWith(submitting: false));
-    }
-  }
-
-  Future<SubmitOutcome> _submitClose(
-    ReimbursementFormState current, {
-    required Money amount,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required List<AccountAmountAllocation> gapExpenseAllocations,
-    required String noteText,
-  }) async {
-    _update((state) => state.copyWith(submitting: true));
-    try {
-      return await guardSubmit(_logger, 'Reimbursement close submit', () async {
+      return await guardSubmit(_logger, 'Advance receipt submit', () async {
         await ref
             .read(transactionPostingAppServiceProvider)
-            .closeReimbursement(
-              CloseReimbursementCommand(
-                actualReceivedAmount: amount,
+            .createAdvanceCollection(
+              CreateAdvanceCollectionCommand(
+                amount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
                 settlementAllocations: settlementAllocations,
-                gapExpenseAllocations: gapExpenseAllocations,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -408,7 +387,200 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
     }
   }
 
-  void _update(ReimbursementFormState Function(ReimbursementFormState) update) {
+  Future<SubmitOutcome> _submitClose(
+    AdvanceFormState current, {
+    required Money amount,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
+    required String noteText,
+  }) async {
+    _update((state) => state.copyWith(submitting: true));
+    try {
+      return await guardSubmit(_logger, 'Advance close submit', () async {
+        await ref
+            .read(transactionPostingAppServiceProvider)
+            .settleAdvance(
+              CreateAdvanceSettlementCommand(
+                actualReceivedAmount: amount,
+                advanceTransactionId: advanceTransactionId,
+                receivableAccountId: current.receivableAccountId!,
+                settlementAllocations: settlementAllocations,
+                gapExpenseAllocations: gapExpenseAllocations,
+                shortfallKind: current.shortfallKind,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+        _invalidateAfterSubmit(ref, advanceTransactionId);
+      });
+    } finally {
+      _update((state) => state.copyWith(submitting: false));
+    }
+  }
+
+  void _update(AdvanceFormState Function(AdvanceFormState) update) {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(update(current));
+  }
+
+  SubmitOutcome _invalidCommand(String message) {
+    return SubmitOutcome.failure(
+      UiError(
+        code: LedgerErrorCode.transactionInvalidCommand.code,
+        message: message,
+      ),
+    );
+  }
+}
+
+class AccountAdvanceFormTarget {
+  const AccountAdvanceFormTarget({
+    required this.accountId,
+    required this.scenario,
+  });
+
+  final String accountId;
+  final AdvanceScenario scenario;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AccountAdvanceFormTarget &&
+      other.accountId == accountId &&
+      other.scenario == scenario;
+
+  @override
+  int get hashCode => Object.hash(accountId, scenario);
+}
+
+@riverpod
+class AccountAdvanceFormViewModel extends _$AccountAdvanceFormViewModel {
+  @override
+  Future<AccountAdvanceFormState> build(AccountAdvanceFormTarget target) async {
+    final accounts = await ref.watch(
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.settlement,
+      ).future,
+    );
+    final accountLookup = await ref.watch(accountLookupProvider.future);
+    final account = accountLookup.byId[target.accountId];
+    if (account == null ||
+        !accountMatchesUsage(account, AccountUsage.receivable)) {
+      return AccountAdvanceFormState.notFound(
+        target: target,
+        accounts: accounts,
+      );
+    }
+    return AccountAdvanceFormState.loaded(
+      target: target,
+      accounts: accounts,
+      receiveAccountId: _selectedId(null, accounts),
+      occurredAt: DateTime.now(),
+    );
+  }
+
+  void setMode(AccountAdvanceFormMode value) =>
+      _update((state) => state.copyWith(mode: value));
+
+  void setSettlement(bool value) => setMode(
+    value
+        ? AccountAdvanceFormMode.settlement
+        : AccountAdvanceFormMode.collection,
+  );
+
+  void setOccurredAt(DateTime value) =>
+      _update((state) => state.copyWith(occurredAt: value));
+
+  void setReceiveAccountId(String? value) => _update(
+    (state) =>
+        state.copyWith(receiveAccountId: value, settlementAllocations: null),
+  );
+
+  void setSettlementAllocations(List<AccountAmountAllocation> allocations) =>
+      _update(
+        (state) => state.copyWith(
+          settlementAllocations: allocations,
+          receiveAccountId: allocations.isEmpty
+              ? null
+              : allocations.first.accountId,
+        ),
+      );
+
+  Future<SubmitOutcome> submit({
+    required String amountText,
+    required String noteText,
+  }) async {
+    final current = state.asData?.value;
+    if (current == null || !current.isLoaded) {
+      return _invalidCommand('账户垫付表单尚未加载');
+    }
+    final amount = _parsePositiveMoney(amountText);
+    if (amount == null) {
+      return _invalidCommand(current.isSettlement ? '请输入有效实收金额' : '请输入有效到账金额');
+    }
+    final receiveAccountId = _selectedId(
+      current.receiveAccountId,
+      current.accounts,
+    );
+    if (receiveAccountId == null) {
+      return _invalidCommand('请选择到账账户');
+    }
+    final settlements = current.settlementAllocations == null
+        ? singleAllocation(accountId: receiveAccountId, amount: amount)
+        : patchAllocations(
+            current: current.settlementAllocations!,
+            total: amount,
+          );
+    if (sumAllocations(settlements) != amount) {
+      return _invalidCommand('请完成到账账户分配');
+    }
+
+    _update((state) => state.copyWith(submitting: true));
+    try {
+      return await guardSubmit(_logger, 'Account advance submit', () async {
+        final posting = ref.read(transactionPostingAppServiceProvider);
+        final note = trimToNull(noteText);
+        switch (current.mode) {
+          case AccountAdvanceFormMode.collection:
+            await posting.createAdvanceCollection(
+              CreateAdvanceCollectionCommand.account(
+                amount: amount,
+                receivableAccountId: current.target.accountId,
+                settlementAllocations: settlements,
+                occurredAt: current.occurredAt,
+                scenario: current.target.scenario,
+                note: note,
+              ),
+            );
+          case AccountAdvanceFormMode.settlement:
+            await posting.settleAdvance(
+              CreateAdvanceSettlementCommand.account(
+                actualReceivedAmount: amount,
+                receivableAccountId: current.target.accountId,
+                settlementAllocations: settlements,
+                gapExpenseAllocations: const [],
+                occurredAt: current.occurredAt,
+                scenario: current.target.scenario,
+                note: note,
+              ),
+            );
+        }
+        ref.invalidate(accountsByIdProvider);
+        ref.invalidate(accountLookupProvider);
+        ref.invalidate(
+          accountsForSelectionPurposeProvider(
+            AccountSelectionPurpose.settlement,
+          ),
+        );
+      });
+    } finally {
+      _update((state) => state.copyWith(submitting: false));
+    }
+  }
+
+  void _update(
+    AccountAdvanceFormState Function(AccountAdvanceFormState) update,
+  ) {
     final current = state.asData?.value;
     if (current == null) return;
     state = AsyncData(update(current));
@@ -424,12 +596,106 @@ class ReimbursementFormViewModel extends _$ReimbursementFormViewModel {
   }
 }
 
-enum ReimbursementFormStatus { loaded, notFound, notEditable }
+enum AccountAdvanceFormStatus { loaded, notFound }
 
-enum ReimbursementFormMode { receipt, close }
+enum AccountAdvanceFormMode { collection, settlement }
 
-class ReimbursementFormState extends _ReimbursementFormState {
-  const ReimbursementFormState({
+class AccountAdvanceFormState {
+  AccountAdvanceFormState({
+    required this.status,
+    required this.target,
+    required List<Account> accounts,
+    required this.occurredAt,
+    required this.submitting,
+    required this.mode,
+    this.receiveAccountId,
+    List<AccountAmountAllocation>? settlementAllocations,
+  }) : accounts = List.unmodifiable(accounts),
+       settlementAllocations = settlementAllocations == null
+           ? null
+           : List.unmodifiable(settlementAllocations);
+
+  factory AccountAdvanceFormState.loaded({
+    required AccountAdvanceFormTarget target,
+    required List<Account> accounts,
+    required DateTime occurredAt,
+    String? receiveAccountId,
+    List<AccountAmountAllocation>? settlementAllocations,
+  }) {
+    return AccountAdvanceFormState(
+      status: AccountAdvanceFormStatus.loaded,
+      target: target,
+      accounts: accounts,
+      receiveAccountId: receiveAccountId,
+      settlementAllocations: settlementAllocations,
+      occurredAt: occurredAt,
+      submitting: false,
+      mode: AccountAdvanceFormMode.collection,
+    );
+  }
+
+  factory AccountAdvanceFormState.notFound({
+    required AccountAdvanceFormTarget target,
+    required List<Account> accounts,
+  }) {
+    return AccountAdvanceFormState(
+      status: AccountAdvanceFormStatus.notFound,
+      target: target,
+      accounts: accounts,
+      occurredAt: DateTime.now(),
+      submitting: false,
+      mode: AccountAdvanceFormMode.collection,
+    );
+  }
+
+  final AccountAdvanceFormStatus status;
+  final AccountAdvanceFormTarget target;
+  final List<Account> accounts;
+  final String? receiveAccountId;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final DateTime occurredAt;
+  final bool submitting;
+  final AccountAdvanceFormMode mode;
+
+  bool get isLoaded => status == AccountAdvanceFormStatus.loaded;
+  bool get isSettlement => mode == AccountAdvanceFormMode.settlement;
+
+  String get actionLabel => switch (target.scenario) {
+    AdvanceScenario.reimbursement => '报销',
+    AdvanceScenario.aa => '垫付收回',
+    AdvanceScenario.onBehalf => '代付收回',
+  };
+
+  AccountAdvanceFormState copyWith({
+    AccountAdvanceFormMode? mode,
+    DateTime? occurredAt,
+    Object? receiveAccountId = _sentinel,
+    Object? settlementAllocations = _sentinel,
+    bool? submitting,
+  }) {
+    return AccountAdvanceFormState(
+      status: status,
+      target: target,
+      accounts: accounts,
+      receiveAccountId: receiveAccountId == _sentinel
+          ? this.receiveAccountId
+          : receiveAccountId as String?,
+      settlementAllocations: settlementAllocations == _sentinel
+          ? this.settlementAllocations
+          : settlementAllocations as List<AccountAmountAllocation>?,
+      occurredAt: occurredAt ?? this.occurredAt,
+      submitting: submitting ?? this.submitting,
+      mode: mode ?? this.mode,
+    );
+  }
+}
+
+enum AdvanceFormStatus { loaded, notFound, notEditable }
+
+enum AdvanceFormMode { receipt, close }
+
+class AdvanceFormState extends _AdvanceFormState {
+  const AdvanceFormState({
     required super.status,
     required super.accounts,
     required super.occurredAt,
@@ -442,21 +708,22 @@ class ReimbursementFormState extends _ReimbursementFormState {
     super.availableCategoryAllocations,
     super.settlementAllocations,
     super.gapExpenseAllocations,
+    super.shortfallKind,
   });
 
-  factory ReimbursementFormState.loaded({
+  factory AdvanceFormState.loaded({
     required List<Account> accounts,
     required Money outstanding,
     required String receivableAccountId,
     required DateTime occurredAt,
-    required ReimbursementFormMode mode,
+    required AdvanceFormMode mode,
     String? receiveAccountId,
     List<AccountAmountAllocation>? settlementAllocations,
     List<Account> categoryAccounts = const [],
     List<AccountAmountAllocation> availableCategoryAllocations = const [],
   }) {
-    return ReimbursementFormState(
-      status: ReimbursementFormStatus.loaded,
+    return AdvanceFormState(
+      status: AdvanceFormStatus.loaded,
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
@@ -470,48 +737,47 @@ class ReimbursementFormState extends _ReimbursementFormState {
     );
   }
 
-  factory ReimbursementFormState.notFound({required List<Account> accounts}) {
-    return ReimbursementFormState._empty(
-      status: ReimbursementFormStatus.notFound,
+  factory AdvanceFormState.notFound({required List<Account> accounts}) {
+    return AdvanceFormState._empty(
+      status: AdvanceFormStatus.notFound,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementFormState.notEditable({
-    required List<Account> accounts,
-  }) {
-    return ReimbursementFormState._empty(
-      status: ReimbursementFormStatus.notEditable,
+  factory AdvanceFormState.notEditable({required List<Account> accounts}) {
+    return AdvanceFormState._empty(
+      status: AdvanceFormStatus.notEditable,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementFormState._empty({
-    required ReimbursementFormStatus status,
+  factory AdvanceFormState._empty({
+    required AdvanceFormStatus status,
     required List<Account> accounts,
   }) {
-    return ReimbursementFormState(
+    return AdvanceFormState(
       status: status,
       accounts: accounts,
       occurredAt: DateTime.now(),
       submitting: false,
-      mode: ReimbursementFormMode.close,
+      mode: AdvanceFormMode.close,
     );
   }
 
-  final ReimbursementFormMode mode;
+  final AdvanceFormMode mode;
 
-  bool get isClose => mode == ReimbursementFormMode.close;
+  bool get isClose => mode == AdvanceFormMode.close;
 
-  ReimbursementFormState copyWith({
-    ReimbursementFormMode? mode,
+  AdvanceFormState copyWith({
+    AdvanceFormMode? mode,
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
     Object? settlementAllocations = _sentinel,
     Object? gapExpenseAllocations = _sentinel,
+    AdvanceShortfallKind? shortfallKind,
     bool? submitting,
   }) {
-    return ReimbursementFormState(
+    return AdvanceFormState(
       status: status,
       accounts: accounts,
       outstanding: outstanding,
@@ -527,6 +793,7 @@ class ReimbursementFormState extends _ReimbursementFormState {
       gapExpenseAllocations: gapExpenseAllocations == _sentinel
           ? this.gapExpenseAllocations
           : gapExpenseAllocations as List<AccountAmountAllocation>?,
+      shortfallKind: shortfallKind ?? this.shortfallKind,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
       mode: mode ?? this.mode,
@@ -534,8 +801,8 @@ class ReimbursementFormState extends _ReimbursementFormState {
   }
 }
 
-class ReimbursementReceiptFormState extends _ReimbursementFormState {
-  const ReimbursementReceiptFormState({
+class AdvanceCollectionFormState extends _AdvanceFormState {
+  const AdvanceCollectionFormState({
     required super.status,
     required super.accounts,
     required super.occurredAt,
@@ -546,7 +813,7 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     super.settlementAllocations,
   });
 
-  factory ReimbursementReceiptFormState.loaded({
+  factory AdvanceCollectionFormState.loaded({
     required List<Account> accounts,
     required Money outstanding,
     required String receivableAccountId,
@@ -554,8 +821,8 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     String? receiveAccountId,
     List<AccountAmountAllocation>? settlementAllocations,
   }) {
-    return ReimbursementReceiptFormState(
-      status: ReimbursementFormStatus.loaded,
+    return AdvanceCollectionFormState(
+      status: AdvanceFormStatus.loaded,
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
@@ -566,29 +833,29 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     );
   }
 
-  factory ReimbursementReceiptFormState.notFound({
+  factory AdvanceCollectionFormState.notFound({
     required List<Account> accounts,
   }) {
-    return ReimbursementReceiptFormState._empty(
-      status: ReimbursementFormStatus.notFound,
+    return AdvanceCollectionFormState._empty(
+      status: AdvanceFormStatus.notFound,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementReceiptFormState.notEditable({
+  factory AdvanceCollectionFormState.notEditable({
     required List<Account> accounts,
   }) {
-    return ReimbursementReceiptFormState._empty(
-      status: ReimbursementFormStatus.notEditable,
+    return AdvanceCollectionFormState._empty(
+      status: AdvanceFormStatus.notEditable,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementReceiptFormState._empty({
-    required ReimbursementFormStatus status,
+  factory AdvanceCollectionFormState._empty({
+    required AdvanceFormStatus status,
     required List<Account> accounts,
   }) {
-    return ReimbursementReceiptFormState(
+    return AdvanceCollectionFormState(
       status: status,
       accounts: accounts,
       occurredAt: DateTime.now(),
@@ -596,13 +863,13 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
     );
   }
 
-  ReimbursementReceiptFormState copyWith({
+  AdvanceCollectionFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
     Object? settlementAllocations = _sentinel,
     bool? submitting,
   }) {
-    return ReimbursementReceiptFormState(
+    return AdvanceCollectionFormState(
       status: status,
       accounts: accounts,
       outstanding: outstanding,
@@ -619,8 +886,8 @@ class ReimbursementReceiptFormState extends _ReimbursementFormState {
   }
 }
 
-class ReimbursementCloseFormState extends _ReimbursementFormState {
-  const ReimbursementCloseFormState({
+class AdvanceSettlementFormState extends _AdvanceFormState {
+  const AdvanceSettlementFormState({
     required super.status,
     required super.accounts,
     required super.occurredAt,
@@ -632,9 +899,10 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     super.availableCategoryAllocations,
     super.settlementAllocations,
     super.gapExpenseAllocations,
+    super.shortfallKind,
   });
 
-  factory ReimbursementCloseFormState.loaded({
+  factory AdvanceSettlementFormState.loaded({
     required List<Account> accounts,
     required Money outstanding,
     required String receivableAccountId,
@@ -644,8 +912,8 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     List<Account> categoryAccounts = const [],
     List<AccountAmountAllocation> availableCategoryAllocations = const [],
   }) {
-    return ReimbursementCloseFormState(
-      status: ReimbursementFormStatus.loaded,
+    return AdvanceSettlementFormState(
+      status: AdvanceFormStatus.loaded,
       accounts: accounts,
       outstanding: outstanding,
       receivableAccountId: receivableAccountId,
@@ -658,29 +926,29 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     );
   }
 
-  factory ReimbursementCloseFormState.notFound({
+  factory AdvanceSettlementFormState.notFound({
     required List<Account> accounts,
   }) {
-    return ReimbursementCloseFormState._empty(
-      status: ReimbursementFormStatus.notFound,
+    return AdvanceSettlementFormState._empty(
+      status: AdvanceFormStatus.notFound,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementCloseFormState.notEditable({
+  factory AdvanceSettlementFormState.notEditable({
     required List<Account> accounts,
   }) {
-    return ReimbursementCloseFormState._empty(
-      status: ReimbursementFormStatus.notEditable,
+    return AdvanceSettlementFormState._empty(
+      status: AdvanceFormStatus.notEditable,
       accounts: accounts,
     );
   }
 
-  factory ReimbursementCloseFormState._empty({
-    required ReimbursementFormStatus status,
+  factory AdvanceSettlementFormState._empty({
+    required AdvanceFormStatus status,
     required List<Account> accounts,
   }) {
-    return ReimbursementCloseFormState(
+    return AdvanceSettlementFormState(
       status: status,
       accounts: accounts,
       occurredAt: DateTime.now(),
@@ -688,14 +956,15 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
     );
   }
 
-  ReimbursementCloseFormState copyWith({
+  AdvanceSettlementFormState copyWith({
     DateTime? occurredAt,
     Object? receiveAccountId = _sentinel,
     Object? settlementAllocations = _sentinel,
     Object? gapExpenseAllocations = _sentinel,
+    AdvanceShortfallKind? shortfallKind,
     bool? submitting,
   }) {
-    return ReimbursementCloseFormState(
+    return AdvanceSettlementFormState(
       status: status,
       accounts: accounts,
       outstanding: outstanding,
@@ -711,14 +980,15 @@ class ReimbursementCloseFormState extends _ReimbursementFormState {
       gapExpenseAllocations: gapExpenseAllocations == _sentinel
           ? this.gapExpenseAllocations
           : gapExpenseAllocations as List<AccountAmountAllocation>?,
+      shortfallKind: shortfallKind ?? this.shortfallKind,
       occurredAt: occurredAt ?? this.occurredAt,
       submitting: submitting ?? this.submitting,
     );
   }
 }
 
-abstract class _ReimbursementFormState {
-  const _ReimbursementFormState({
+abstract class _AdvanceFormState {
+  const _AdvanceFormState({
     required this.status,
     required this.accounts,
     required this.occurredAt,
@@ -730,9 +1000,10 @@ abstract class _ReimbursementFormState {
     this.availableCategoryAllocations = const [],
     this.settlementAllocations,
     this.gapExpenseAllocations,
+    this.shortfallKind = AdvanceShortfallKind.selfBorne,
   });
 
-  final ReimbursementFormStatus status;
+  final AdvanceFormStatus status;
   final List<Account> accounts;
   final Money? outstanding;
   final String? receivableAccountId;
@@ -741,15 +1012,17 @@ abstract class _ReimbursementFormState {
   final List<AccountAmountAllocation> availableCategoryAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
+  final AdvanceShortfallKind shortfallKind;
   final DateTime occurredAt;
   final bool submitting;
 
-  bool get isLoaded => status == ReimbursementFormStatus.loaded;
+  bool get isLoaded => status == AdvanceFormStatus.loaded;
 }
 
-class _ReimbursementBase {
-  const _ReimbursementBase({
+class _AdvanceBase {
+  const _AdvanceBase({
     required this.accounts,
+    this.accountManaged = false,
     this.outstanding,
     this.receivableAccountId,
     this.defaultSettlementAccountId,
@@ -759,6 +1032,7 @@ class _ReimbursementBase {
   });
 
   final List<Account> accounts;
+  final bool accountManaged;
   final Money? outstanding;
   final String? receivableAccountId;
   final String? defaultSettlementAccountId;
@@ -767,10 +1041,7 @@ class _ReimbursementBase {
   final List<AccountAmountAllocation> availableCategoryAllocations;
 }
 
-Future<_ReimbursementBase?> _loadBase(
-  Ref ref,
-  String advanceTransactionId,
-) async {
+Future<_AdvanceBase?> _loadBase(Ref ref, String advanceTransactionId) async {
   final accounts = await ref.watch(
     accountsForSelectionPurposeProvider(
       AccountSelectionPurpose.settlement,
@@ -781,10 +1052,12 @@ Future<_ReimbursementBase?> _loadBase(
     transactionDetailProvider(advanceTransactionId).future,
   );
   if (detail == null) return null;
-  return _ReimbursementBase(
+  return _AdvanceBase(
     accounts: accounts,
-    outstanding: detail.reimbursementSummary?.outstanding,
-    receivableAccountId: reimbursementReceivableAccountId(detail, accountsById),
+    accountManaged:
+        detail.ownership?.advanceManagement == AdvanceManagement.account,
+    outstanding: detail.advanceSummary?.outstanding,
+    receivableAccountId: advanceReceivableAccountId(detail, accountsById),
     defaultSettlementAccountId: effectiveRefundToAccountId(
       selectedId: null,
       parentSettlementAccountId: parentSettlementAccountIdForRefund(
@@ -806,7 +1079,7 @@ Future<_ReimbursementBase?> _loadBase(
   );
 }
 
-Future<_ReimbursementBase?> _loadUnifiedBase(
+Future<_AdvanceBase?> _loadUnifiedBase(
   Ref ref,
   String advanceTransactionId,
 ) async {
@@ -820,13 +1093,12 @@ Future<_ReimbursementBase?> _loadUnifiedBase(
     transactionDetailProvider(advanceTransactionId).future,
   );
   if (detail == null) return null;
-  return _ReimbursementBase(
+  return _AdvanceBase(
     accounts: accounts,
-    outstanding: detail.reimbursementSummary?.outstanding,
-    receivableAccountId: reimbursementReceivableAccountId(
-      detail,
-      accountLookup.byId,
-    ),
+    accountManaged:
+        detail.ownership?.advanceManagement == AdvanceManagement.account,
+    outstanding: detail.advanceSummary?.outstanding,
+    receivableAccountId: advanceReceivableAccountId(detail, accountLookup.byId),
     defaultSettlementAccountId: effectiveRefundToAccountId(
       selectedId: null,
       parentSettlementAccountId: parentSettlementAccountIdForRefund(
@@ -876,7 +1148,7 @@ Money? _parsePositiveMoney(String value) {
 }
 
 List<AccountAmountAllocation> _resolveSettlementAllocations(
-  _ReimbursementFormState state, {
+  _AdvanceFormState state, {
   required String accountId,
   required Money amount,
 }) {
@@ -890,13 +1162,14 @@ List<AccountAmountAllocation> _resolveSettlementAllocations(
 }
 
 List<AccountAmountAllocation>? _resolveGapExpenseAllocations(
-  _ReimbursementFormState state,
+  _AdvanceFormState state,
   Money actual,
 ) {
   final outstanding = state.outstanding;
   if (outstanding == null) return null;
   final shortfall = outstanding - actual;
   if (shortfall.minorUnits <= 0) return const [];
+  if (state.shortfallKind == AdvanceShortfallKind.badDebt) return const [];
   final allocations = switch (state.gapExpenseAllocations) {
     final allocations? => patchAllocations(
       current: allocations,

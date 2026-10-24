@@ -17,6 +17,7 @@ import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import '../../../helper/fake_counterparty_repository.dart';
@@ -108,6 +109,116 @@ void main() {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
     expect(find.byType(TransactionAmountInput), findsOneWidget);
+  });
+
+  testWidgets('selects expense scenes and filters advance account profiles', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      advanceReceivableAccounts: [
+        _account('报销A', profileKey: AccountProfileKind.reimbursement.key),
+        _account('应收B', profileKey: AccountProfileKind.receivable.key),
+      ],
+    );
+
+    expect(find.text('再记'), findsNothing);
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择场景'), findsOneWidget);
+    expect(find.text('普通支出'), findsOneWidget);
+    expect(find.text('报销'), findsOneWidget);
+    expect(find.text('代付'), findsOneWidget);
+    expect(find.text('AA'), findsOneWidget);
+    expect(find.text('报销（账户）'), findsOneWidget);
+    expect(find.text('AA（账户）'), findsOneWidget);
+
+    await tester.tap(find.text('报销'));
+    await tester.pumpAndSettle();
+    expect(find.text('不报销'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('advance-account-option')));
+    await tester.pumpAndSettle();
+    expect(find.text('选择报销账户'), findsOneWidget);
+    expect(find.text('报销A'), findsOneWidget);
+    expect(find.text('应收B'), findsNothing);
+
+    Navigator.of(tester.element(find.text('选择报销账户'))).pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('代付'));
+    await tester.pumpAndSettle();
+    expect(find.text('不代付'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('advance-account-option')));
+    await tester.pumpAndSettle();
+    expect(find.text('选择垫付账户'), findsOneWidget);
+    expect(find.text('报销A'), findsOneWidget);
+    expect(find.text('应收B'), findsOneWidget);
+  });
+
+  for (final scenario in [
+    ('收入', '普通收入', 'transaction-mode-scene-income'),
+    ('转账', '普通转账', 'transaction-mode-scene-transfer'),
+    ('借入', '普通借入', 'transaction-mode-scene-borrowing'),
+    ('借出', '普通借出', 'transaction-mode-scene-lending'),
+  ]) {
+    testWidgets('${scenario.$1} tab owns only its ${scenario.$2} scene', (
+      tester,
+    ) async {
+      await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+
+      await tester.tap(find.text(scenario.$1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(scenario.$2), findsOneWidget);
+      expect(find.text('普通支出'), findsNothing);
+      expect(find.text('报销'), findsNothing);
+      expect(find.byKey(ValueKey(scenario.$3)), findsOneWidget);
+    });
+  }
+
+  testWidgets('sets AA headcount from the advance account row', (tester) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      advanceReceivableAccounts: [
+        _account('应收A', profileKey: AccountProfileKind.receivable.key),
+      ],
+    );
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AA'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('不AA'), findsOneWidget);
+    expect(find.text('2人'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('advance-account-option')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('应收A'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3'));
+    await tester.tap(find.text('0'));
+    await tester.tap(find.text('0'));
+    await tester.pumpAndSettle();
+    expect(find.text('按 2 人 AA：自承担 150.00，垫付 150.00'), findsOneWidget);
+    expect(find.text('垫付金额'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('aa-people-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('aa-people-plus')));
+    await tester.tap(find.byKey(const ValueKey('aa-people-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('3人'), findsOneWidget);
+    expect(find.text('按 3 人 AA：自承担 100.00，垫付 200.00'), findsOneWidget);
   });
 
   testWidgets('switches category and account panes to inline allocation mode', (
@@ -465,6 +576,13 @@ void main() {
       tester.getTopLeft(find.text('标签')).dy,
       lessThan(tester.getTopLeft(find.byType(TransactionAmountInput)).dy),
     );
+    final actionRow = tester.getRect(
+      find.byKey(const ValueKey('transaction-metadata-action-row')),
+    );
+    final entryMode = tester.getRect(
+      find.byKey(const ValueKey('toggle-transaction-entry-mode')),
+    );
+    expect(actionRow.right - entryMode.right, lessThan(4));
   });
 
   testWidgets('keeps the tag row above amount for every transaction mode', (
@@ -577,7 +695,7 @@ void main() {
           AccountSelectionPurpose.borrowingLiability,
         ).overrideWithValue(const AsyncLoading<List<Account>>()),
         accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.reimbursementReceivable,
+          AccountSelectionPurpose.advanceReceivable,
         ).overrideWithValue(const AsyncLoading<List<Account>>()),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.ordinaryReceivable,
@@ -729,7 +847,7 @@ List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
       AccountSelectionPurpose.borrowingLiability,
     ).overrideWithValue(const AsyncData(<Account>[])),
     accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.reimbursementReceivable,
+      AccountSelectionPurpose.advanceReceivable,
     ).overrideWithValue(const AsyncData(<Account>[])),
     accountsForSelectionPurposeProvider(
       AccountSelectionPurpose.ordinaryReceivable,
@@ -765,6 +883,7 @@ Future<void> _pumpTransactionForm(
   List<TagView> tags = const [],
   List<CounterpartyView> counterparties = const [],
   List<Account>? settlementAccounts,
+  List<Account> advanceReceivableAccounts = const [],
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
 }) async {
@@ -803,8 +922,8 @@ Future<void> _pumpTransactionForm(
           AccountSelectionPurpose.borrowingLiability,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
         accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.reimbursementReceivable,
-        ).overrideWith((ref) => Stream.value(const <Account>[])),
+          AccountSelectionPurpose.advanceReceivable,
+        ).overrideWith((ref) => Stream.value(advanceReceivableAccounts)),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.ordinaryReceivable,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
@@ -852,11 +971,13 @@ class _DirectTransactionRunner implements TransactionRunner {
   Future<T> run<T>(Future<T> Function() body) => body();
 }
 
-Account _account(String id) {
+Account _account(String id, {String? profileKey}) {
   return Account(
     id: id,
     name: id,
     type: AccountType.asset,
+    subtype: profileKey == null ? null : AccountSubtype.receivable,
+    profileKey: profileKey,
     balance: const Money(minorUnits: 0),
   );
 }
@@ -949,8 +1070,8 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) {
     throw UnimplementedError();
   }
@@ -980,15 +1101,13 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementAdvance(
-    CreateReimbursementAdvanceCommand command,
-  ) {
+  Future<PostedTransactionResult> createAdvance(CreateAdvanceCommand command) {
     throw UnimplementedError();
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementReceipt(
-    CreateReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> createAdvanceCollection(
+    CreateAdvanceCollectionCommand command,
   ) {
     throw UnimplementedError();
   }

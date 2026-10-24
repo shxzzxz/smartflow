@@ -11,39 +11,37 @@ import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_plan.dart';
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
-import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/advance_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
+import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
-  test(
-    'receipt cannot exceed reimbursement outstanding after refunds',
-    () async {
-      final fixture = _Fixture();
+  test('receipt cannot exceed advance outstanding after refunds', () async {
+    final fixture = _Fixture();
 
-      await expectLater(
-        () => fixture.service.postReceipt(
-          singleReimbursementReceiptInstruction(
-            advanceTransactionId: fixture.advance.id,
-            amount: Money.parse('40.01'),
-            receivableAccountId: 'receivable',
-            receiveAccountId: 'cash',
-            occurredAt: DateTime(2026, 7, 3),
-          ),
+    await expectLater(
+      () => fixture.service.postCollection(
+        singleAdvanceCollectionInstruction(
+          advanceTransactionId: fixture.advance.id,
+          amount: Money.parse('40.01'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
         ),
-        throwsA(isA<BusinessException>()),
-      );
-    },
-  );
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
 
   test('close settles only the outstanding left after refunds', () async {
     final fixture = _Fixture(refundAmount: Money.parse('20.00'));
 
-    final result = await fixture.service.close(
-      singleReimbursementCloseInstruction(
+    final result = await fixture.service.settle(
+      singleAdvanceSettlementInstruction(
         advanceTransactionId: fixture.advance.id,
         actualReceivedAmount: Money.parse('80.00'),
         receivableAccountId: 'receivable',
@@ -61,8 +59,8 @@ void main() {
     expect(
       result.transaction.lines.where(
         (detail) =>
-            detail.role == TransactionRole.reimbursementGapExpense ||
-            detail.role == TransactionRole.reimbursementGapIncome,
+            detail.role == TransactionRole.advanceSelfBorne ||
+            detail.role == TransactionRole.advanceCompensationIncome,
       ),
       isEmpty,
     );
@@ -82,8 +80,140 @@ void main() {
     final fixture = _Fixture();
 
     await expectLater(
-      () => fixture.service.close(
-        singleReimbursementCloseInstruction(
+      () => fixture.service.settle(
+        singleAdvanceSettlementInstruction(
+          advanceTransactionId: fixture.advance.id,
+          actualReceivedAmount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test('close accepts an explicit shortfall allocation', () async {
+    final fixture = _Fixture();
+
+    final result = await fixture.service.settle(
+      singleAdvanceSettlementInstruction(
+        advanceTransactionId: fixture.advance.id,
+        actualReceivedAmount: Money.parse('20.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'cash',
+        occurredAt: DateTime(2026, 7, 3),
+        gapExpenseAllocations: singleAllocation(
+          accountId: 'travel',
+          amount: Money.parse('20.00'),
+        ),
+      ),
+    );
+
+    expect(
+      result.transaction.lines
+          .singleWhere((line) => line.role == TransactionRole.advanceSelfBorne)
+          .amount,
+      Money.parse('20.00'),
+    );
+  });
+
+  test('bad-debt shortfall uses the system bad-debt expense account', () async {
+    final fixture = _Fixture();
+
+    final result = await fixture.service.settle(
+      singleAdvanceSettlementInstruction(
+        advanceTransactionId: fixture.advance.id,
+        actualReceivedAmount: Money.parse('20.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'cash',
+        occurredAt: DateTime(2026, 7, 3),
+        shortfallKind: AdvanceShortfallKind.badDebt,
+      ),
+    );
+
+    final line = result.transaction.lines.singleWhere(
+      (line) => line.role == TransactionRole.advanceBadDebtExpense,
+    );
+    expect(line.accountId, isNull);
+    expect(line.amount, Money.parse('20.00'));
+    expect(
+      result.transaction.entries
+          .singleWhere(
+            (entry) =>
+                entry.accountId == 'system-bad-debt-expense' &&
+                entry.direction == EntryDirection.debit,
+          )
+          .amount,
+      Money.parse('20.00'),
+    );
+  });
+
+  test('self-borne shortfall may use a category outside the advance', () async {
+    final fixture = _Fixture();
+
+    final result = await fixture.service.settle(
+      singleAdvanceSettlementInstruction(
+        advanceTransactionId: fixture.advance.id,
+        actualReceivedAmount: Money.parse('20.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'cash',
+        occurredAt: DateTime(2026, 7, 3),
+        gapExpenseAllocations: singleAllocation(
+          accountId: 'other-expense',
+          amount: Money.parse('20.00'),
+        ),
+      ),
+    );
+
+    expect(
+      result.transaction.lines
+          .singleWhere((line) => line.role == TransactionRole.advanceSelfBorne)
+          .accountId,
+      'other-expense',
+    );
+  });
+
+  test('itemized receipt must use the parent receivable account', () async {
+    final fixture = _Fixture();
+
+    await expectLater(
+      () => fixture.service.postCollection(
+        singleAdvanceCollectionInstruction(
+          advanceTransactionId: fixture.advance.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'other-receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test('account-managed advances reject itemized collection', () async {
+    final fixture = _Fixture(management: AdvanceManagement.account);
+
+    await expectLater(
+      () => fixture.service.postCollection(
+        singleAdvanceCollectionInstruction(
+          advanceTransactionId: fixture.advance.id,
+          amount: Money.parse('20.00'),
+          receivableAccountId: 'receivable',
+          receiveAccountId: 'cash',
+          occurredAt: DateTime(2026, 7, 3),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test('account-managed advances reject itemized settlement', () async {
+    final fixture = _Fixture(management: AdvanceManagement.account);
+
+    await expectLater(
+      () => fixture.service.settle(
+        singleAdvanceSettlementInstruction(
           advanceTransactionId: fixture.advance.id,
           actualReceivedAmount: Money.parse('20.00'),
           receivableAccountId: 'receivable',
@@ -96,43 +226,13 @@ void main() {
   });
 
   test(
-    'close accepts an explicit shortfall allocation within the remainder',
-    () async {
-      final fixture = _Fixture();
-
-      final result = await fixture.service.close(
-        singleReimbursementCloseInstruction(
-          advanceTransactionId: fixture.advance.id,
-          actualReceivedAmount: Money.parse('20.00'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'cash',
-          occurredAt: DateTime(2026, 7, 3),
-          gapExpenseAllocations: singleAllocation(
-            accountId: 'travel',
-            amount: Money.parse('20.00'),
-          ),
-        ),
-      );
-
-      expect(
-        result.transaction.lines
-            .singleWhere(
-              (line) => line.role == TransactionRole.reimbursementGapExpense,
-            )
-            .amount,
-        Money.parse('20.00'),
-      );
-    },
-  );
-
-  test(
-    'close rejects a gap allocation above the remaining category amount',
+    'close rejects a gap allocation total that differs from the shortfall',
     () async {
       final fixture = _Fixture();
 
       await expectLater(
-        () => fixture.service.close(
-          singleReimbursementCloseInstruction(
+        () => fixture.service.settle(
+          singleAdvanceSettlementInstruction(
             advanceTransactionId: fixture.advance.id,
             actualReceivedAmount: Money.parse('20.00'),
             receivableAccountId: 'receivable',
@@ -151,14 +251,18 @@ void main() {
 }
 
 class _Fixture {
-  _Fixture({Money? refundAmount}) {
-    advance = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+  _Fixture({
+    Money? refundAmount,
+    AdvanceManagement management = AdvanceManagement.itemized,
+  }) {
+    advance = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: DateTime(2026, 7, 1),
+        management: management,
       ),
     );
     final refund = engine.createRefund(
@@ -177,9 +281,16 @@ class _Fixture {
         AccountType.asset,
         subtype: AccountSubtype.receivable,
       ),
+      _account(
+        'other-receivable',
+        AccountType.asset,
+        subtype: AccountSubtype.receivable,
+      ),
       _account('travel', AccountType.expense),
+      _account('other-expense', AccountType.expense),
+      _account('system-bad-debt-expense', AccountType.expense),
     ]);
-    service = ReimbursementPostingService(
+    service = AdvancePostingService(
       transactionGroupRepository: _TransactionGroupRepository(
         TransactionGroup(
           parentTransaction: advance,
@@ -200,7 +311,7 @@ class _Fixture {
     idGenerator: SequentialIdGenerator(prefix: 'tx'),
   );
   late final Transaction advance;
-  late final ReimbursementPostingService service;
+  late final AdvancePostingService service;
 }
 
 Account _account(String id, AccountType type, {AccountSubtype? subtype}) {
@@ -282,7 +393,7 @@ class _AccountRepository implements AccountRepository {
   }
 }
 
-class _SystemAccountResolver implements SystemAccountResolver {
+class _SystemAccountResolver implements ReceivableSystemAccountResolver {
   const _SystemAccountResolver();
 
   @override
@@ -297,15 +408,19 @@ class _SystemAccountResolver implements SystemAccountResolver {
   @override
   Future<String> resolveInterestExpense() => throw UnimplementedError();
 
+  @override
   Future<String> resolveInterestIncome() => throw UnimplementedError();
 
   @override
   Future<String> resolveOpeningBalance() => throw UnimplementedError();
 
   @override
-  Future<String> resolveReimbursementGapIncome() => throw UnimplementedError();
+  Future<String> resolveAdvanceCompensationIncome() =>
+      throw UnimplementedError();
 
-  Future<String> resolveBadDebtExpense() => throw UnimplementedError();
+  @override
+  Future<String> resolveBadDebtExpense() async => 'system-bad-debt-expense';
 
+  @override
   Future<String> resolveDebtReliefIncome() => throw UnimplementedError();
 }

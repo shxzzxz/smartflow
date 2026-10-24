@@ -290,9 +290,9 @@ String importOperationLabel(ImportOperationKind kind) {
     ImportOperationKind.income => '普通收入',
     ImportOperationKind.transfer => '转账',
     ImportOperationKind.refund => '退款',
-    ImportOperationKind.reimbursementAdvance => '报销垫付',
-    ImportOperationKind.reimbursementReceipt => '报销到账',
-    ImportOperationKind.reimbursementClose => '结束报销',
+    ImportOperationKind.advance => '垫付',
+    ImportOperationKind.advanceCollection => '垫付到账',
+    ImportOperationKind.advanceSettlement => '垫付结清',
     ImportOperationKind.repayment => '还款',
     ImportOperationKind.interestExpense => '利息支出',
     ImportOperationKind.borrowing => '借入',
@@ -336,12 +336,11 @@ TransactionRowPresentation _buildImportPreviewRow(
       ImportOperationKind.income => BusinessPurpose.dailyIncome,
       ImportOperationKind.transfer => BusinessPurpose.transfer,
       ImportOperationKind.refund => BusinessPurpose.refund,
-      ImportOperationKind.reimbursementAdvance =>
-        BusinessPurpose.reimbursementAdvance,
-      ImportOperationKind.reimbursementReceipt =>
-        BusinessPurpose.reimbursementReceipt,
-      ImportOperationKind.reimbursementClose =>
-        BusinessPurpose.reimbursementClose,
+      ImportOperationKind.advance => BusinessPurpose.advance,
+      ImportOperationKind.advanceCollection =>
+        BusinessPurpose.advanceCollection,
+      ImportOperationKind.advanceSettlement =>
+        BusinessPurpose.advanceSettlement,
       ImportOperationKind.repayment => BusinessPurpose.debtRepayment,
       ImportOperationKind.borrowing => BusinessPurpose.borrowing,
       ImportOperationKind.lending => BusinessPurpose.lending,
@@ -411,7 +410,7 @@ String _previewTitle(
       groupReview,
       draft.category,
     ),
-    ImportReimbursementAdvanceDraft draft => _categoryLabel(
+    ImportAdvanceDraft draft => _categoryLabel(
       review,
       groupReview,
       draft.category,
@@ -451,16 +450,16 @@ TransactionAccountFlowPresentation _previewAccountFlow(
     ImportRefundDraft draft => TransactionAccountFlowPresentation(
       in_: endpoint(draft.refundTo),
     ),
-    ImportReimbursementAdvanceDraft draft => TransactionAccountFlowPresentation(
+    ImportAdvanceDraft draft => TransactionAccountFlowPresentation(
       out: endpoint(draft.paidFrom),
       in_: endpoint(draft.receivableAccount),
       separator: '|',
     ),
-    ImportReimbursementReceiptDraft draft => TransactionAccountFlowPresentation(
+    ImportAdvanceCollectionDraft draft => TransactionAccountFlowPresentation(
       out: endpoint(draft.receivableAccount),
       in_: endpoint(draft.receiveAccount),
     ),
-    ImportReimbursementCloseDraft draft => TransactionAccountFlowPresentation(
+    ImportAdvanceSettlementDraft draft => TransactionAccountFlowPresentation(
       out: endpoint(draft.receivableAccount),
       in_: endpoint(draft.receiveAccount),
     ),
@@ -538,7 +537,7 @@ String _mappingLabel(
 bool _isIncomeDraft(ImportTransactionDraft draft) {
   return draft is ImportIncomeDraft ||
       draft is ImportRefundDraft ||
-      draft is ImportReimbursementReceiptDraft;
+      draft is ImportAdvanceCollectionDraft;
 }
 
 bool _isExpenseDraft(ImportTransactionDraft draft) {

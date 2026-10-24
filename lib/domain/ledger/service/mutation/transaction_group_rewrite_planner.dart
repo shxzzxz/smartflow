@@ -3,10 +3,13 @@ import '../../entity/transaction_group.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/account_amount_allocation.dart';
+import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
+import '../../valobj/transaction_ownership.dart';
 import '../posting/posting_engine.dart';
 import '../posting/posting_instruction_resolver.dart';
+import '../advance/advance_share_calculator.dart';
 import 'transaction_group_rewrite_plan.dart';
 
 class TransactionGroupRewritePlanner {
@@ -14,13 +17,16 @@ class TransactionGroupRewritePlanner {
     required PostingEngine postingEngine,
     required PostingInstructionResolver postingInstructionResolver,
     required SystemAccountResolver systemAccountResolver,
+    AdvanceSharePolicy advanceSharePolicy = const AdvanceShareCalculator(),
   }) : _postingEngine = postingEngine,
        _postingInstructionResolver = postingInstructionResolver,
-       _systemAccountResolver = systemAccountResolver;
+       _systemAccountResolver = systemAccountResolver,
+       _advanceSharePolicy = advanceSharePolicy;
 
   final PostingEngine _postingEngine;
   final PostingInstructionResolver _postingInstructionResolver;
   final SystemAccountResolver _systemAccountResolver;
+  final AdvanceSharePolicy _advanceSharePolicy;
 
   Future<TransactionGroupRewritePlan> planParentRewrite({
     required TransactionGroup currentGroup,
@@ -28,38 +34,48 @@ class TransactionGroupRewritePlanner {
   }) async {
     final currentParent = currentGroup.parentTransaction;
     _ensurePurposeChangeSupported(
-      current: currentParent.businessPurpose,
-      target: candidateParent.businessPurpose,
+      currentParent: currentParent,
+      candidateParent: candidateParent,
     );
-    if (currentParent.businessPurpose == BusinessPurpose.reimbursementAdvance &&
+    if (currentParent.businessPurpose == BusinessPurpose.advance &&
         candidateParent.businessPurpose == BusinessPurpose.dailyExpense &&
         currentGroup.childTransactions.any(
           (child) =>
-              child.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-              child.businessPurpose == BusinessPurpose.reimbursementClose,
+              child.businessPurpose == BusinessPurpose.advanceCollection ||
+              child.businessPurpose == BusinessPurpose.advanceSettlement,
         )) {
       LedgerViolationReason.transactionGroupHasIncompatibleChildren
           .throwException();
     }
-    if (currentGroup.reimbursementClosed &&
+    if (currentGroup.advanceSettled &&
         currentParent.primaryAmount != candidateParent.primaryAmount) {
-      LedgerViolationReason.reimbursementAlreadyClosed.throwException();
+      LedgerViolationReason.advanceAlreadyClosed.throwException();
     }
 
+    final nextOwnership = _advanceOwnershipFor(
+      currentParent: currentParent,
+      candidateParent: candidateParent,
+    );
     final rewrittenParent = candidateParent.copyWith(
       id: currentParent.id,
       postedAt: currentParent.postedAt,
       sourceKind: currentParent.sourceKind,
-      ownership: currentParent.ownership,
+      ownership: nextOwnership,
+      clearOwnership:
+          currentParent.businessPurpose == BusinessPurpose.advance &&
+          candidateParent.businessPurpose != BusinessPurpose.advance,
     );
-    if (!currentGroup.reimbursementClosed) {
+    if (!currentGroup.advanceSettled) {
       final refunded = currentGroup.refundedTotal();
-      if (rewrittenParent.businessPurpose ==
-          BusinessPurpose.reimbursementAdvance) {
-        final recovered = refunded + currentGroup.reimbursementReceivedTotal();
-        if (recovered.minorUnits > rewrittenParent.primaryAmount.minorUnits) {
-          LedgerViolationReason.reimbursementRecoveryExceedsAdvance
-              .throwException();
+      if (rewrittenParent.businessPurpose == BusinessPurpose.advance) {
+        final recovered =
+            currentGroup.advanceRefundedTotal() +
+            currentGroup.advanceCollectedTotal();
+        final nextAdvanceAmount =
+            rewrittenParent.amountOf(TransactionRole.receivable) ??
+            rewrittenParent.primaryAmount;
+        if (recovered.minorUnits > nextAdvanceAmount.minorUnits) {
+          LedgerViolationReason.advanceRecoveryExceedsAdvance.throwException();
         }
       } else if (refunded.minorUnits >
           rewrittenParent.primaryAmount.minorUnits) {
@@ -87,7 +103,8 @@ class TransactionGroupRewritePlanner {
       if (!child.hasSameAccountingExpressionAs(rewritten)) {
         rewrites.add(TransactionRewrite(before: child, after: rewritten));
       } else if (!identical(child, rewritten) &&
-          (child.isExcludedFromStats != rewritten.isExcludedFromStats ||
+          (child.ownership != rewritten.ownership ||
+              child.isExcludedFromStats != rewritten.isExcludedFromStats ||
               child.isExcludedFromBudget != rewritten.isExcludedFromBudget)) {
         rowUpdates.add(rewritten);
       }
@@ -97,7 +114,7 @@ class TransactionGroupRewritePlanner {
       parentTransaction: rewrittenParent,
       childTransactions: rewrittenChildren,
     );
-    _validateCategoryAllocations(rewrittenGroup);
+    _validateRefundCategoryAllocations(rewrittenGroup);
     return TransactionGroupRewritePlan(
       rewrites: rewrites,
       rowUpdates: rowUpdates,
@@ -111,9 +128,9 @@ class TransactionGroupRewritePlanner {
     required Transaction parent,
   }) async {
     switch (child.businessPurpose) {
-      case BusinessPurpose.reimbursementReceipt:
+      case BusinessPurpose.advanceCollection:
         return _rebuildReceipt(child: child, parent: parent);
-      case BusinessPurpose.reimbursementClose:
+      case BusinessPurpose.advanceSettlement:
         return _rebuildClose(
           child: child,
           currentGroup: currentGroup,
@@ -144,11 +161,23 @@ class TransactionGroupRewritePlanner {
       nextParent: parent,
       allocations: instruction.categoryAllocations,
     );
+    final refundShare = _advanceSharePolicy.splitForRefund(
+      group: TransactionGroup(
+        parentTransaction: parent,
+        childTransactions: currentGroup.childTransactions
+            .where((candidate) => candidate.id != child.id)
+            .toList(),
+      ),
+      refundAmount: instruction.amount,
+      refundCategoryAllocations: categories,
+      excludingRefundTransactionId: child.id,
+    );
     final candidate = _postingEngine.createRefund(
       instruction: RefundInstruction(
         parentTransactionId: parent.id,
         amount: instruction.amount,
         categoryAllocations: categories,
+        selfBorneAllocations: refundShare.selfBorneAllocations,
         settlementAllocations: instruction.settlementAllocations,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
@@ -160,22 +189,22 @@ class TransactionGroupRewritePlanner {
     return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  /// 报销到账跟随父交易的应收科目重建:重算分项后重新过账,而不是改写既有分录。
+  /// 垫付到账跟随父交易的应收科目重建:重算分项后重新过账,而不是改写既有分录。
   Transaction _rebuildReceipt({
     required Transaction child,
     required Transaction parent,
   }) {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
-    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    if (parentInstruction is! AdvanceInstruction) return child;
     final settlements = child.accountAllocationsOf(
       TransactionRole.settlementIn,
     );
     if (settlements.isEmpty) {
-      LedgerViolationReason.reimbursementReceiptAccountsUnresolved
+      LedgerViolationReason.advanceCollectionAccountsUnresolved
           .throwException();
     }
-    final candidate = _postingEngine.createReimbursementReceipt(
-      instruction: ReimbursementReceiptInstruction(
+    final candidate = _postingEngine.createAdvanceCollection(
+      instruction: AdvanceCollectionInstruction(
         advanceTransactionId: parent.id,
         amount: child.primaryAmount,
         receivableAccountId: parentInstruction.receivableAccountId,
@@ -196,34 +225,45 @@ class TransactionGroupRewritePlanner {
     required Transaction parent,
   }) async {
     final parentInstruction = _postingInstructionResolver.resolve(parent);
-    if (parentInstruction is! ReimbursementAdvanceInstruction) return child;
+    if (parentInstruction is! AdvanceInstruction) return child;
     final settlements = child.accountAllocationsOf(
       TransactionRole.settlementIn,
     );
     if (settlements.isEmpty) {
-      LedgerViolationReason.reimbursementCloseAccountsUnresolved
+      LedgerViolationReason.advanceSettlementAccountsUnresolved
           .throwException();
     }
-    // 待核销由交易组推导,不读结束报销自己的派生分项。
+    // 待核销由交易组推导,不读垫付结清自己的派生分项。
     final outstanding = TransactionGroup(
       parentTransaction: parent,
       childTransactions: currentGroup.childTransactions,
-    ).reimbursementOutstandingExcluding(child.id);
+    ).advanceOutstandingExcluding(child.id);
     final actual = sumAllocations(settlements);
-    final gapExpenseAllocations = _rebaseSingleCategoryAllocations(
-      currentParent: currentGroup.parentTransaction,
-      nextParent: parent,
-      allocations: child.accountAllocationsOf(
-        TransactionRole.reimbursementGapExpense,
-      ),
-    );
-    final candidate = _postingEngine.createReimbursementClose(
-      instruction: ReimbursementCloseInstruction(
+    final shortfallKind =
+        child.linesOf(TransactionRole.advanceBadDebtExpense).isNotEmpty
+        ? AdvanceShortfallKind.badDebt
+        : AdvanceShortfallKind.selfBorne;
+    final gapExpenseAllocations = shortfallKind == AdvanceShortfallKind.badDebt
+        ? const <AccountAmountAllocation>[]
+        : _rebaseSingleCategoryAllocations(
+            currentParent: currentGroup.parentTransaction,
+            nextParent: parent,
+            allocations: child.accountAllocationsOf(
+              TransactionRole.advanceSelfBorne,
+            ),
+          );
+    final badDebtExpenseAccountId =
+        shortfallKind == AdvanceShortfallKind.badDebt
+        ? await _systemAccountResolver.resolveByKey(SystemKey.badDebtExpense)
+        : null;
+    final candidate = _postingEngine.createAdvanceSettlement(
+      instruction: AdvanceSettlementInstruction(
         advanceTransactionId: parent.id,
         actualReceivedAmount: actual,
         receivableAccountId: parentInstruction.receivableAccountId,
         settlementAllocations: settlements,
         gapExpenseAllocations: gapExpenseAllocations,
+        shortfallKind: shortfallKind,
         occurredAt: child.occurredAt,
         postedAt: child.postedAt,
         counterpartyId: child.counterpartyId,
@@ -232,13 +272,14 @@ class TransactionGroupRewritePlanner {
       advance: parent,
       outstanding: outstanding,
       gapIncomeAccountId: actual.minorUnits > outstanding.minorUnits
-          ? await _systemAccountResolver.resolveReimbursementGapIncome()
+          ? await _systemAccountResolver.resolveAdvanceCompensationIncome()
           : null,
+      badDebtExpenseAccountId: badDebtExpenseAccountId,
     );
     return _preserveIdentity(original: child, candidate: candidate);
   }
 
-  void _validateCategoryAllocations(TransactionGroup group) {
+  void _validateRefundCategoryAllocations(TransactionGroup group) {
     for (final child in group.childTransactions) {
       if (child.businessPurpose == BusinessPurpose.refund &&
           !group.allocationsFitRefundableCategories(
@@ -246,14 +287,6 @@ class TransactionGroupRewritePlanner {
             excludingTransactionId: child.id,
           )) {
         LedgerViolationReason.allocationExceedsAvailable.throwException();
-      }
-      if (child.businessPurpose == BusinessPurpose.reimbursementClose) {
-        final gaps = child.accountAllocationsOf(
-          TransactionRole.reimbursementGapExpense,
-        );
-        if (!group.allocationsFitRefundableCategories(gaps)) {
-          LedgerViolationReason.allocationExceedsAvailable.throwException();
-        }
       }
     }
   }
@@ -314,21 +347,58 @@ class TransactionGroupRewritePlanner {
       id: original.id,
       postedAt: original.postedAt,
       sourceKind: original.sourceKind,
-      ownership: original.ownership,
+    );
+  }
+
+  TransactionOwnership? _advanceOwnershipFor({
+    required Transaction currentParent,
+    required Transaction candidateParent,
+  }) {
+    if (candidateParent.businessPurpose != BusinessPurpose.advance) {
+      return null;
+    }
+    final management =
+        candidateParent.ownership?.advanceManagement ??
+        currentParent.ownership?.advanceManagement ??
+        AdvanceManagement.itemized;
+    final scenario =
+        candidateParent.ownership?.advanceScenario ??
+        currentParent.ownership?.advanceScenario ??
+        AdvanceScenario.reimbursement;
+    final ownerId = management == AdvanceManagement.itemized
+        ? currentParent.id
+        : candidateParent.ownership?.ownerId ??
+              candidateParent.accountOf(TransactionRole.receivable);
+    if (ownerId == null) {
+      LedgerViolationReason.advanceInstructionUnresolvable.throwException(
+        message: 'Advance owner id is required.',
+      );
+    }
+    return advanceOwnership(
+      management: management,
+      ownerId: ownerId,
+      scenario: scenario,
     );
   }
 
   void _ensurePurposeChangeSupported({
-    required BusinessPurpose current,
-    required BusinessPurpose target,
+    required Transaction currentParent,
+    required Transaction candidateParent,
   }) {
+    final current = currentParent.businessPurpose;
+    final target = candidateParent.businessPurpose;
     if (current == target) return;
     final supported =
         (current == BusinessPurpose.dailyExpense &&
-            target == BusinessPurpose.reimbursementAdvance) ||
-        (current == BusinessPurpose.reimbursementAdvance &&
+            target == BusinessPurpose.advance) ||
+        (current == BusinessPurpose.advance &&
             target == BusinessPurpose.dailyExpense);
-    if (!supported) {
+    final usesAccountManagedAdvance =
+        currentParent.ownership?.advanceManagement ==
+            AdvanceManagement.account ||
+        candidateParent.ownership?.advanceManagement ==
+            AdvanceManagement.account;
+    if (!supported || usesAccountManagedAdvance) {
       LedgerViolationReason.unsupportedEditSource.throwException();
     }
   }

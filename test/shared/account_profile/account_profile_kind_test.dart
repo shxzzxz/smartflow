@@ -83,52 +83,26 @@ void main() {
     );
   });
 
-  test('keeps reimbursement and ordinary receivable selection distinct', () {
-    final reimbursement = _receivable(AccountProfileKind.reimbursement);
-    final receivable = _receivable(AccountProfileKind.receivable);
+  test('all receivable profiles support receivable transaction roles', () {
+    final accounts = [
+      _receivable(AccountProfileKind.reimbursement),
+      _receivable(AccountProfileKind.receivable),
+    ];
+    const purposes = [
+      AccountSelectionPurpose.advanceReceivable,
+      AccountSelectionPurpose.ordinaryReceivable,
+      AccountSelectionPurpose.receivable,
+    ];
 
-    expect(
-      accountMatchesSelectionPurpose(
-        reimbursement,
-        AccountSelectionPurpose.reimbursementReceivable,
-      ),
-      isTrue,
-    );
-    expect(
-      accountMatchesSelectionPurpose(
-        receivable,
-        AccountSelectionPurpose.reimbursementReceivable,
-      ),
-      isFalse,
-    );
-    expect(
-      accountMatchesSelectionPurpose(
-        reimbursement,
-        AccountSelectionPurpose.receivable,
-      ),
-      isTrue,
-    );
-    expect(
-      accountMatchesSelectionPurpose(
-        receivable,
-        AccountSelectionPurpose.receivable,
-      ),
-      isTrue,
-    );
-    expect(
-      accountMatchesSelectionPurpose(
-        reimbursement,
-        AccountSelectionPurpose.ordinaryReceivable,
-      ),
-      isFalse,
-    );
-    expect(
-      accountMatchesSelectionPurpose(
-        receivable,
-        AccountSelectionPurpose.ordinaryReceivable,
-      ),
-      isTrue,
-    );
+    for (final account in accounts) {
+      for (final purpose in purposes) {
+        expect(accountMatchesSelectionPurpose(account, purpose), isTrue);
+      }
+      expect(
+        accountMatchesSelectionPurpose(account, AccountSelectionPurpose.fund),
+        isFalse,
+      );
+    }
   });
 }
 

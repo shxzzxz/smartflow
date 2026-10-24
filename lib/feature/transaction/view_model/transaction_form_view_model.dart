@@ -49,9 +49,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         AccountSelectionPurpose.borrowingLiability,
       ),
     );
-    final reimbursementAccountsAsync = ref.watch(
+    final advanceReceivableAccountsAsync = ref.watch(
       accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.reimbursementReceivable,
+        AccountSelectionPurpose.advanceReceivable,
       ),
     );
     final ordinaryReceivableAccountsAsync = ref.watch(
@@ -82,7 +82,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         settlementAccounts: settlementAccountsAsync.value,
         fundAccounts: fundAccountsAsync.value,
         liabilityAccounts: liabilityAccountsAsync.value,
-        reimbursementAccounts: reimbursementAccountsAsync.value,
+        advanceReceivableAccounts: advanceReceivableAccountsAsync.value,
         ordinaryReceivableAccounts: ordinaryReceivableAccountsAsync.value,
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
@@ -104,8 +104,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               settlementAccountsAsync.value ?? const <Account>[],
           fundAccounts: fundAccountsAsync.value ?? const <Account>[],
           liabilityAccounts: liabilityAccountsAsync.value ?? const <Account>[],
-          reimbursementAccounts:
-              reimbursementAccountsAsync.value ?? const <Account>[],
+          advanceReceivableAccounts:
+              advanceReceivableAccountsAsync.value ?? const <Account>[],
           ordinaryReceivableAccounts:
               ordinaryReceivableAccountsAsync.value ?? const <Account>[],
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
@@ -121,7 +121,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       settlementAccountsAsync,
       fundAccountsAsync,
       liabilityAccountsAsync,
-      reimbursementAccountsAsync,
+      advanceReceivableAccountsAsync,
       ordinaryReceivableAccountsAsync,
       expenseTreeAsync,
       incomeTreeAsync,
@@ -143,7 +143,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     final settlementAccounts = settlementAccountsAsync.requireValue;
     final fundAccounts = fundAccountsAsync.requireValue;
     final liabilityAccounts = liabilityAccountsAsync.requireValue;
-    final reimbursementAccounts = reimbursementAccountsAsync.requireValue;
+    final advanceReceivableAccounts =
+        advanceReceivableAccountsAsync.requireValue;
     final ordinaryReceivableAccounts =
         ordinaryReceivableAccountsAsync.requireValue;
     final expenseTree = expenseTreeAsync.requireValue;
@@ -166,7 +167,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         settlementAccounts: settlementAccounts,
         fundAccounts: fundAccounts,
         liabilityAccounts: liabilityAccounts,
-        reimbursementAccounts: reimbursementAccounts,
+        advanceReceivableAccounts: advanceReceivableAccounts,
         ordinaryReceivableAccounts: ordinaryReceivableAccounts,
         expenseTree: expenseTree,
         incomeTree: incomeTree,
@@ -185,7 +186,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         entryMode: TransactionEntryMode.normal,
         categoryAllocations: const [],
         settlementAllocations: const [],
-        reimbursementAccountId: null,
+        advanceReceivableAccountId: null,
+        advanceScenario: AdvanceScenario.reimbursement,
+        expenseScene: TransactionExpenseScene.ordinary,
         ordinaryReceivableAccountId: null,
         excludeStats:
             value == TransactionFormMode.transfer ||
@@ -340,8 +343,59 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     );
   }
 
-  void setReimbursementAccountId(String? value) {
-    _update((current) => current.copyWith(reimbursementAccountId: value));
+  void setAdvanceAccountId(String? value) {
+    _update((current) => current.copyWith(advanceReceivableAccountId: value));
+  }
+
+  void setAdvanceScenario(AdvanceScenario value) {
+    setExpenseScene(transactionExpenseSceneForAdvanceScenario(value));
+  }
+
+  void setExpenseScene(TransactionExpenseScene value) {
+    _update((current) {
+      final changingMode = current.mode != TransactionFormMode.expense;
+      final selectedAccountId = current.advanceReceivableAccountId;
+      final availableAccountIds = {
+        for (final account in advanceAccountsForExpenseScene(
+          value,
+          current.advanceReceivableAccounts,
+        ))
+          account.id,
+      };
+      final selectedAccount = current.advanceReceivableAccounts
+          .where((account) => account.id == selectedAccountId)
+          .firstOrNull;
+      final canKeepSelectedAccount =
+          selectedAccountId != null &&
+          selectedAccount != null &&
+          (selectedAccount.profileKey == null ||
+              availableAccountIds.contains(selectedAccountId));
+      return current.copyWith(
+        mode: TransactionFormMode.expense,
+        entryMode: changingMode
+            ? TransactionEntryMode.normal
+            : current.entryMode,
+        categoryAllocations: changingMode
+            ? const []
+            : current.categoryAllocations,
+        settlementAllocations: changingMode
+            ? const []
+            : current.settlementAllocations,
+        expenseScene: value,
+        advanceScenario: value.advanceScenario ?? AdvanceScenario.reimbursement,
+        advanceReceivableAccountId: canKeepSelectedAccount
+            ? selectedAccountId
+            : null,
+        ordinaryReceivableAccountId: null,
+        excludeBudget: current.excludeBudget,
+      );
+    });
+  }
+
+  void setAaPeopleCount(int value) {
+    _update(
+      (current) => current.copyWith(aaPeopleCount: value.clamp(2, 99).toInt()),
+    );
   }
 
   void setOrdinaryReceivableAccountId(String? value) {
@@ -393,7 +447,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             current.entryMode == TransactionEntryMode.allocated
             ? const []
             : current.settlementAllocations,
-        reimbursementAccountId: null,
+        advanceReceivableAccountId: null,
+        advanceScenario: AdvanceScenario.reimbursement,
+        expenseScene: TransactionExpenseScene.ordinary,
+        aaPeopleCount: 2,
         ordinaryReceivableAccountId: null,
         excludeStats: false,
         excludeBudget: false,
@@ -475,11 +532,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     switch (formState.mode) {
       case TransactionFormMode.expense:
         final allocations = _expenseAllocations(formState, amount);
-        final reimbursementAccountId = _selectedId(
-          formState.reimbursementAccountId,
-          formState.reimbursementAccounts,
+        final advanceReceivableAccountId = _selectedId(
+          formState.advanceReceivableAccountId,
+          formState.advanceReceivableAccounts,
         );
-        if (reimbursementAccountId == null) {
+        if (advanceReceivableAccountId == null) {
           await postingService.createExpense(
             CreateExpenseCommand(
               amount: amount,
@@ -494,11 +551,26 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             ),
           );
         } else {
-          await postingService.createReimbursementAdvance(
-            CreateReimbursementAdvanceCommand(
+          final scenario =
+              formState.expenseScene.advanceScenario ??
+              formState.advanceScenario;
+          final advanceShare = calculateAdvanceEntrySplit(
+            scenario: scenario,
+            total: amount,
+            aaPeopleCount: formState.aaPeopleCount,
+            categoryAllocations: allocations.categories,
+          );
+          await postingService.createAdvance(
+            CreateAdvanceCommand(
               amount: amount,
-              receivableAccountId: reimbursementAccountId,
+              advanceAmount: advanceShare.advanceAmount,
+              receivableAccountId: advanceReceivableAccountId,
+              management:
+                  formState.expenseScene.advanceManagement ??
+                  AdvanceManagement.itemized,
+              scenario: scenario,
               categoryAllocations: allocations.categories,
+              selfBorneAllocations: advanceShare.selfBorneAllocations,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               counterpartyId: formState.counterpartyId,
@@ -612,11 +684,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     switch (formState.mode) {
       case TransactionFormMode.expense:
         final allocations = _expenseAllocations(formState, amount);
-        final reimbursementAccountId = _selectedId(
-          formState.reimbursementAccountId,
-          formState.reimbursementAccounts,
+        final advanceReceivableAccountId = _selectedId(
+          formState.advanceReceivableAccountId,
+          formState.advanceReceivableAccounts,
         );
-        if (reimbursementAccountId == null) {
+        if (advanceReceivableAccountId == null) {
           await editService.editExpense(
             EditExpenseCommand(
               transactionId: transactionId,
@@ -632,12 +704,24 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             ),
           );
         } else {
-          await editService.editReimbursementAdvance(
-            EditReimbursementAdvanceCommand(
+          final scenario =
+              formState.expenseScene.advanceScenario ??
+              formState.advanceScenario;
+          final advanceShare = calculateAdvanceEntrySplit(
+            scenario: scenario,
+            total: amount,
+            aaPeopleCount: formState.aaPeopleCount,
+            categoryAllocations: allocations.categories,
+          );
+          await editService.editAdvance(
+            EditAdvanceCommand(
               transactionId: transactionId,
               amount: amount,
-              receivableAccountId: reimbursementAccountId,
+              advanceAmount: advanceShare.advanceAmount,
+              receivableAccountId: advanceReceivableAccountId,
+              scenario: scenario,
               categoryAllocations: allocations.categories,
+              selfBorneAllocations: advanceShare.selfBorneAllocations,
               settlementAllocations: allocations.settlements,
               occurredAt: formState.occurredAt,
               counterpartyId: counterpartyId,
@@ -752,7 +836,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<Account>? settlementAccounts,
     required List<Account>? fundAccounts,
     required List<Account>? liabilityAccounts,
-    required List<Account>? reimbursementAccounts,
+    required List<Account>? advanceReceivableAccounts,
     required List<Account>? ordinaryReceivableAccounts,
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
@@ -763,7 +847,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
-      reimbursementAccounts: reimbursementAccounts,
+      advanceReceivableAccounts: advanceReceivableAccounts,
       ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
@@ -912,7 +996,7 @@ class TransactionFormState {
     required List<Account> settlementAccounts,
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
-    required List<Account> reimbursementAccounts,
+    required List<Account> advanceReceivableAccounts,
     required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
@@ -926,7 +1010,10 @@ class TransactionFormState {
     this.incomeRootId,
     this.fromAccountId,
     this.toAccountId,
-    this.reimbursementAccountId,
+    this.advanceReceivableAccountId,
+    this.advanceScenario = AdvanceScenario.reimbursement,
+    this.expenseScene = TransactionExpenseScene.ordinary,
+    this.aaPeopleCount = 2,
     this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
     List<AccountAmountAllocation> categoryAllocations = const [],
@@ -934,7 +1021,7 @@ class TransactionFormState {
   }) : settlementAccounts = List.unmodifiable(settlementAccounts),
        fundAccounts = List.unmodifiable(fundAccounts),
        liabilityAccounts = List.unmodifiable(liabilityAccounts),
-       reimbursementAccounts = List.unmodifiable(reimbursementAccounts),
+       advanceReceivableAccounts = List.unmodifiable(advanceReceivableAccounts),
        ordinaryReceivableAccounts = List.unmodifiable(
          ordinaryReceivableAccounts,
        ),
@@ -953,7 +1040,7 @@ class TransactionFormState {
     required List<Account> settlementAccounts,
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
-    required List<Account> reimbursementAccounts,
+    required List<Account> advanceReceivableAccounts,
     required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
@@ -983,7 +1070,7 @@ class TransactionFormState {
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
-      reimbursementAccounts: reimbursementAccounts,
+      advanceReceivableAccounts: advanceReceivableAccounts,
       ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
@@ -997,7 +1084,7 @@ class TransactionFormState {
     required List<Account> settlementAccounts,
     required List<Account> fundAccounts,
     required List<Account> liabilityAccounts,
-    required List<Account> reimbursementAccounts,
+    required List<Account> advanceReceivableAccounts,
     required List<Account> ordinaryReceivableAccounts,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
@@ -1026,7 +1113,15 @@ class TransactionFormState {
       incomeRootId: usesAllocatedEntry ? null : snapshot.incomeRootId,
       fromAccountId: usesAllocatedEntry ? null : snapshot.fromAccountId,
       toAccountId: usesAllocatedEntry ? null : snapshot.toAccountId,
-      reimbursementAccountId: snapshot.reimbursementAccountId,
+      advanceReceivableAccountId: snapshot.advanceReceivableAccountId,
+      advanceScenario: snapshot.advanceScenario,
+      expenseScene: snapshot.advanceReceivableAccountId == null
+          ? TransactionExpenseScene.ordinary
+          : transactionExpenseSceneForAdvanceScenario(
+              snapshot.advanceScenario,
+              management: snapshot.advanceManagement,
+            ),
+      aaPeopleCount: _aaPeopleCountFromSnapshot(snapshot),
       ordinaryReceivableAccountId: snapshot.ordinaryReceivableAccountId,
       liabilityAccountId: snapshot.liabilityAccountId,
       categoryAllocations: usesAllocatedEntry ? categoryAllocations : const [],
@@ -1039,7 +1134,7 @@ class TransactionFormState {
       settlementAccounts: settlementAccounts,
       fundAccounts: fundAccounts,
       liabilityAccounts: liabilityAccounts,
-      reimbursementAccounts: reimbursementAccounts,
+      advanceReceivableAccounts: advanceReceivableAccounts,
       ordinaryReceivableAccounts: ordinaryReceivableAccounts,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
@@ -1058,7 +1153,10 @@ class TransactionFormState {
   final String? incomeRootId;
   final String? fromAccountId;
   final String? toAccountId;
-  final String? reimbursementAccountId;
+  final String? advanceReceivableAccountId;
+  final AdvanceScenario advanceScenario;
+  final TransactionExpenseScene expenseScene;
+  final int aaPeopleCount;
   final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
   final List<AccountAmountAllocation> categoryAllocations;
@@ -1071,7 +1169,7 @@ class TransactionFormState {
   final List<Account> settlementAccounts;
   final List<Account> fundAccounts;
   final List<Account> liabilityAccounts;
-  final List<Account> reimbursementAccounts;
+  final List<Account> advanceReceivableAccounts;
   final List<Account> ordinaryReceivableAccounts;
   final List<CategoryNode> expenseTree;
   final List<CategoryNode> incomeTree;
@@ -1089,7 +1187,10 @@ class TransactionFormState {
     Object? incomeRootId = _sentinel,
     Object? fromAccountId = _sentinel,
     Object? toAccountId = _sentinel,
-    Object? reimbursementAccountId = _sentinel,
+    Object? advanceReceivableAccountId = _sentinel,
+    AdvanceScenario? advanceScenario,
+    TransactionExpenseScene? expenseScene,
+    int? aaPeopleCount,
     Object? ordinaryReceivableAccountId = _sentinel,
     Object? liabilityAccountId = _sentinel,
     List<AccountAmountAllocation>? categoryAllocations,
@@ -1100,7 +1201,7 @@ class TransactionFormState {
     List<Account>? settlementAccounts,
     List<Account>? fundAccounts,
     List<Account>? liabilityAccounts,
-    List<Account>? reimbursementAccounts,
+    List<Account>? advanceReceivableAccounts,
     List<Account>? ordinaryReceivableAccounts,
     List<CategoryNode>? expenseTree,
     List<CategoryNode>? incomeTree,
@@ -1132,9 +1233,12 @@ class TransactionFormState {
       toAccountId: toAccountId == _sentinel
           ? this.toAccountId
           : toAccountId as String?,
-      reimbursementAccountId: reimbursementAccountId == _sentinel
-          ? this.reimbursementAccountId
-          : reimbursementAccountId as String?,
+      advanceReceivableAccountId: advanceReceivableAccountId == _sentinel
+          ? this.advanceReceivableAccountId
+          : advanceReceivableAccountId as String?,
+      advanceScenario: advanceScenario ?? this.advanceScenario,
+      expenseScene: expenseScene ?? this.expenseScene,
+      aaPeopleCount: aaPeopleCount ?? this.aaPeopleCount,
       ordinaryReceivableAccountId: ordinaryReceivableAccountId == _sentinel
           ? this.ordinaryReceivableAccountId
           : ordinaryReceivableAccountId as String?,
@@ -1150,8 +1254,8 @@ class TransactionFormState {
       settlementAccounts: settlementAccounts ?? this.settlementAccounts,
       fundAccounts: fundAccounts ?? this.fundAccounts,
       liabilityAccounts: liabilityAccounts ?? this.liabilityAccounts,
-      reimbursementAccounts:
-          reimbursementAccounts ?? this.reimbursementAccounts,
+      advanceReceivableAccounts:
+          advanceReceivableAccounts ?? this.advanceReceivableAccounts,
       ordinaryReceivableAccounts:
           ordinaryReceivableAccounts ?? this.ordinaryReceivableAccounts,
       expenseTree: expenseTree ?? this.expenseTree,
@@ -1188,6 +1292,14 @@ class TransactionFormInitialValues {
   final String amount;
   final String fee;
   final String note;
+}
+
+int _aaPeopleCountFromSnapshot(TransactionFormEditSnapshot snapshot) {
+  if (snapshot.advanceScenario != AdvanceScenario.aa) return 2;
+  final total = Money.tryParse(snapshot.amountText);
+  final advance = Money.tryParse(snapshot.advanceAmountText);
+  if (total == null || advance == null) return 2;
+  return inferAaPeopleCount(total: total, advanceAmount: advance);
 }
 
 const Object _sentinel = Object();

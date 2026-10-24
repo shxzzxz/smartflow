@@ -63,7 +63,7 @@ void main() {
       final service = _service(
         accounts: [root, child],
         entryCounts: {root.id: 3},
-        reimbursementRefCounts: {root.id: 2},
+        advanceRefCounts: {root.id: 2},
       );
 
       final preview = await service.previewCategoryDeletion(root.id);
@@ -73,11 +73,11 @@ void main() {
       expect(preview.canDelete, isFalse);
     });
 
-    test('counts reimbursement expense column references alone', () async {
+    test('counts advance expense column references alone', () async {
       final category = _category('advance-only');
       final service = _service(
         accounts: [category],
-        reimbursementRefCounts: {category.id: 1},
+        advanceRefCounts: {category.id: 1},
       );
 
       final preview = await service.previewCategoryDeletion(category.id);
@@ -162,13 +162,13 @@ void main() {
     });
 
     test(
-      'rejects deletion while reimbursement advances reference the category',
+      'rejects deletion while advance transactions reference the category',
       () async {
         final category = _category('advance-referenced');
         final repository = _FakeAccountRepository([category]);
         final service = _service(
           repository: repository,
-          reimbursementRefCounts: {category.id: 1},
+          advanceRefCounts: {category.id: 1},
         );
 
         await expectLater(
@@ -226,13 +226,13 @@ CategoryAppServiceImpl _service({
   _FakeAccountRepository? repository,
   Iterable<Account> accounts = const [],
   Map<String, int> entryCounts = const {},
-  Map<String, int> reimbursementRefCounts = const {},
+  Map<String, int> advanceRefCounts = const {},
 }) {
   return CategoryAppServiceImpl(
     repository: repository ?? _FakeAccountRepository(accounts),
     transactionRepository: _FakeTransactionRepository(
       entryCounts: entryCounts,
-      reimbursementRefCounts: reimbursementRefCounts,
+      advanceRefCounts: advanceRefCounts,
     ),
     transactionRunner: _PassthroughTransactionRunner(),
     idGenerator: SequentialIdGenerator(),
@@ -298,12 +298,12 @@ class _FakeAccountRepository implements AccountRepository {
 class _FakeTransactionRepository implements TransactionRepository {
   _FakeTransactionRepository({
     required Map<String, int> entryCounts,
-    required Map<String, int> reimbursementRefCounts,
+    required Map<String, int> advanceRefCounts,
   }) : _entryCounts = entryCounts,
-       _reimbursementRefCounts = reimbursementRefCounts;
+       _advanceRefCounts = advanceRefCounts;
 
   final Map<String, int> _entryCounts;
-  final Map<String, int> _reimbursementRefCounts;
+  final Map<String, int> _advanceRefCounts;
 
   @override
   Future<Map<String, int>> countEntriesByAccount(Set<String> accountIds) async {
@@ -314,12 +314,12 @@ class _FakeTransactionRepository implements TransactionRepository {
   }
 
   @override
-  Future<Map<String, int>> countReimbursementExpenseRefs(
+  Future<Map<String, int>> countAdvanceExpenseRefs(
     Set<String> accountIds,
   ) async {
     return {
       for (final id in accountIds)
-        if (_reimbursementRefCounts[id] case final int count when count > 0)
+        if (_advanceRefCounts[id] case final int count when count > 0)
           id: count,
     };
   }

@@ -19,7 +19,7 @@ String importTargetDescription(ImportTargetDescriptor descriptor) {
     ImportTargetDescriptor.incomeCategory => '收入分类',
     ImportTargetDescriptor.expenseCategory => '支出分类',
     ImportTargetDescriptor.fundAccount => '资金账户',
-    ImportTargetDescriptor.reimbursementAccount => '报销账户',
+    ImportTargetDescriptor.advanceAccount => '垫付应收账户',
     ImportTargetDescriptor.receivableAccount => '应收账户',
     ImportTargetDescriptor.payableAccount => '应付账户',
     ImportTargetDescriptor.creditAccount => '信用账户',
@@ -111,30 +111,25 @@ class ImportMappingReviewItem {
       sourceName: sourceName ?? this.sourceName,
       sourceDescription: sourceDescription ?? this.sourceDescription,
       action: action ?? this.action,
-      targetName:
-          targetName == _mappingItemSentinel
-              ? this.targetName
-              : targetName as String?,
-      targetId:
-          targetId == _mappingItemSentinel
-              ? this.targetId
-              : targetId as String?,
-      targetPath:
-          targetPath == _mappingItemSentinel
-              ? this.targetPath
-              : targetPath as String?,
-      targetDescription:
-          targetDescription == _mappingItemSentinel
-              ? this.targetDescription
-              : targetDescription as String?,
+      targetName: targetName == _mappingItemSentinel
+          ? this.targetName
+          : targetName as String?,
+      targetId: targetId == _mappingItemSentinel
+          ? this.targetId
+          : targetId as String?,
+      targetPath: targetPath == _mappingItemSentinel
+          ? this.targetPath
+          : targetPath as String?,
+      targetDescription: targetDescription == _mappingItemSentinel
+          ? this.targetDescription
+          : targetDescription as String?,
       existingTargetOptions:
           existingTargetOptions ?? this.existingTargetOptions,
       creationOptions: creationOptions ?? this.creationOptions,
       issues: issues ?? this.issues,
-      decision:
-          decision == _mappingItemSentinel
-              ? this.decision
-              : decision as ImportMappingDecision?,
+      decision: decision == _mappingItemSentinel
+          ? this.decision
+          : decision as ImportMappingDecision?,
     );
   }
 }
@@ -149,7 +144,7 @@ const Object _mappingItemSentinel = Object();
 enum ImportMappingTargetKind {
   asset,
   liability,
-  reimbursement,
+  advance,
   incomeCategory,
   expenseCategory,
   ghost,
@@ -161,8 +156,7 @@ extension ImportMappingTargetKindDescriptor on ImportMappingTargetKind {
     ImportMappingTargetKind.asset => ImportTargetDescriptor.fundAccount,
     // A legacy liability kind does not identify a credit card versus a loan.
     ImportMappingTargetKind.liability => ImportTargetDescriptor.unsupported,
-    ImportMappingTargetKind.reimbursement =>
-      ImportTargetDescriptor.reimbursementAccount,
+    ImportMappingTargetKind.advance => ImportTargetDescriptor.advanceAccount,
     ImportMappingTargetKind.incomeCategory =>
       ImportTargetDescriptor.incomeCategory,
     ImportMappingTargetKind.expenseCategory =>
@@ -175,8 +169,7 @@ extension ImportMappingTargetKindDescriptor on ImportMappingTargetKind {
 extension ImportTargetDescriptorMappingProjection on ImportTargetDescriptor {
   ImportMappingTargetKind get legacyMappingKind => switch (this) {
     ImportTargetDescriptor.fundAccount => ImportMappingTargetKind.asset,
-    ImportTargetDescriptor.reimbursementAccount =>
-      ImportMappingTargetKind.reimbursement,
+    ImportTargetDescriptor.advanceAccount => ImportMappingTargetKind.advance,
     ImportTargetDescriptor.receivableAccount => ImportMappingTargetKind.asset,
     ImportTargetDescriptor.payableAccount => ImportMappingTargetKind.liability,
     ImportTargetDescriptor.creditAccount ||

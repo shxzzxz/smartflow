@@ -11,6 +11,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
+import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
 import 'package:smartflow/feature/account/page/account_bills_page.dart';
 import 'package:smartflow/feature/account/page/account_detail_page.dart';
 import 'package:smartflow/feature/account/page/account_installments_page.dart';
@@ -118,14 +119,43 @@ void main() {
     },
   );
   testWidgets('shows receivable account actions', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       _app(account: _account(kind: AccountProfileKind.receivable)),
     );
 
     expect(find.text('借出'), findsOneWidget);
     expect(find.text('收回'), findsOneWidget);
+    expect(find.text('垫付收回'), findsOneWidget);
     expect(find.text('坏账'), findsOneWidget);
     expect(find.text('债务豁免'), findsNothing);
+    expect(
+      tester
+          .getSize(
+            find.ancestor(
+              of: find.text('垫付收回'),
+              matching: find.byType(AppInlineActionButton),
+            ),
+          )
+          .width,
+      greaterThan(100),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows reimbursement account actions without transfer', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(account: _account(kind: AccountProfileKind.reimbursement)),
+    );
+
+    expect(find.text('记账'), findsOneWidget);
+    expect(find.text('报销'), findsOneWidget);
+    expect(find.text('坏账'), findsOneWidget);
+    expect(find.text('转账'), findsNothing);
+    expect(find.text('垫付收回'), findsNothing);
   });
 
   testWidgets('shows payable account actions', (tester) async {

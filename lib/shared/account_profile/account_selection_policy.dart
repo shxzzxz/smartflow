@@ -27,12 +27,8 @@ bool accountMatchesSelectionPurpose(
       account,
       AccountUsage.liability,
     ),
-    AccountSelectionPurpose.reimbursementReceivable =>
-      accountMatchesUsage(account, AccountUsage.receivable) &&
-          account.profileKey == AccountProfileKind.reimbursement.key,
-    AccountSelectionPurpose.ordinaryReceivable =>
-      accountMatchesUsage(account, AccountUsage.receivable) &&
-          account.profileKey == AccountProfileKind.receivable.key,
+    AccountSelectionPurpose.advanceReceivable ||
+    AccountSelectionPurpose.ordinaryReceivable ||
     AccountSelectionPurpose.receivable => accountMatchesUsage(
       account,
       AccountUsage.receivable,

@@ -124,7 +124,7 @@ class DriftPostingRepository
   }
 
   @override
-  Future<Map<String, int>> countReimbursementExpenseRefs(
+  Future<Map<String, int>> countAdvanceExpenseRefs(
     Set<String> accountIds,
   ) async {
     if (accountIds.isEmpty) {
@@ -138,9 +138,10 @@ class DriftPostingRepository
               ..addColumns([refColumn, countExpr])
               ..where(
                 refColumn.isIn(accountIds) &
-                    _database.transactionLines.role.equalsValue(
-                      TransactionRole.reimbursementExpenseCategory,
-                    ),
+                    _database.transactionLines.role.isInValues(const {
+                      TransactionRole.advanceExpenseCategory,
+                      TransactionRole.advanceSelfBorne,
+                    }),
               )
               ..groupBy([refColumn]))
             .get();

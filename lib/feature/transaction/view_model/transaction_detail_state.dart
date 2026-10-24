@@ -22,7 +22,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required String createdAtText,
     required List<DetailAccountRow> accountRows,
     required DetailRefund? refund,
-    required DetailReimbursement? reimbursement,
+    required DetailAdvance? advance,
     @Default(true) bool canEditReportingFlags,
     required bool showExcludeStats,
     required bool showExcludeBudget,
@@ -78,14 +78,14 @@ abstract class DetailRefund with _$DetailRefund {
 }
 
 @freezed
-abstract class DetailReimbursement with _$DetailReimbursement {
-  const factory DetailReimbursement({
+abstract class DetailAdvance with _$DetailAdvance {
+  const factory DetailAdvance({
     required String summaryText,
     required bool hasActivity,
     required bool isClosed,
     required List<DetailSheetItem> items,
     Money? outstanding,
-  }) = _DetailReimbursement;
+  }) = _DetailAdvance;
 }
 
 @freezed
@@ -100,13 +100,13 @@ abstract class DetailActionButton with _$DetailActionButton {
   }) = _DetailActionButton;
 }
 
-enum DetailActionKind { refund, reimbursement, edit }
+enum DetailActionKind { refund, advance, edit }
 
-class ReimbursementSubmitInput {
-  const ReimbursementSubmitInput({
+class AdvanceSubmitInput {
+  const AdvanceSubmitInput({
     required this.amount,
     required this.occurredAt,
-    required this.closeReimbursement,
+    required this.settleAdvance,
     this.receiveAccountId,
     this.gapExpenseAllocations,
     this.noteText,
@@ -114,7 +114,7 @@ class ReimbursementSubmitInput {
 
   final Money amount;
   final DateTime occurredAt;
-  final bool closeReimbursement;
+  final bool settleAdvance;
   final String? receiveAccountId;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
   final String? noteText;

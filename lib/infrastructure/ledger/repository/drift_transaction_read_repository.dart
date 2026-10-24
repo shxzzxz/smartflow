@@ -84,7 +84,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
       match.categoryAccountIds,
       factRoles: const {
         TransactionRole.category,
-        TransactionRole.reimbursementExpenseCategory,
+        TransactionRole.advanceExpenseCategory,
+        TransactionRole.advanceSelfBorne,
       },
     );
     _andMatch(
@@ -224,7 +225,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
           _db.transactionLines.accountId.equals(categoryId) &
               _db.transactionLines.role.isInValues(const {
                 TransactionRole.category,
-                TransactionRole.reimbursementExpenseCategory,
+                TransactionRole.advanceExpenseCategory,
+                TransactionRole.advanceSelfBorne,
               }) &
               (members.id.equalsExp(_db.transactions.id) |
                   members.parentTransactionId.equalsExp(_db.transactions.id)),
@@ -262,7 +264,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
               _db.transactionLines.accountId.equals(query.categoryId) &
               _db.transactionLines.role.isInValues(const {
                 TransactionRole.category,
-                TransactionRole.reimbursementExpenseCategory,
+                TransactionRole.advanceExpenseCategory,
+                TransactionRole.advanceSelfBorne,
               }),
         ),
     );
@@ -324,7 +327,8 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
     }
     expression = _andFactAccountMatch(expression, query.categoryIds, const {
       TransactionRole.category,
-      TransactionRole.reimbursementExpenseCategory,
+      TransactionRole.advanceExpenseCategory,
+      TransactionRole.advanceSelfBorne,
     });
     expression = _andFactAccountMatch(expression, query.accountIds, const {
       TransactionRole.settlementIn,

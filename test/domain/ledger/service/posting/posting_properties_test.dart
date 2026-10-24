@@ -17,7 +17,7 @@ void main() {
   final postedAt = DateTime(2026, 8, 2, 10);
   const systemAccountIds = <SystemKey, String>{
     SystemKey.openingBalance: 'system-opening',
-    SystemKey.reimbursementGapIncome: 'system-gap-income',
+    SystemKey.advanceCompensationIncome: 'system-gap-income',
     SystemKey.interestExpense: 'system-interest-expense',
     SystemKey.feeExpense: 'system-fee-expense',
     SystemKey.discountIncome: 'system-discount-income',
@@ -36,6 +36,17 @@ void main() {
     'salary': AccountType.income,
     'bonus': AccountType.income,
   };
+
+  test('advance bad debt resolves to the system expense classification', () {
+    expect(roleCarriesAccount(TransactionRole.advanceBadDebtExpense), isFalse);
+    expect(
+      systemKeyForRole(
+        businessPurpose: BusinessPurpose.advanceSettlement,
+        role: TransactionRole.advanceBadDebtExpense,
+      ),
+      SystemKey.badDebtExpense,
+    );
+  });
 
   test('posting instructions round-trip through transaction lines', () {
     final engine = PostingEngine(
@@ -84,7 +95,7 @@ void main() {
         isExcludedFromStats: true,
         sourceKind: SourceKind.import,
       ),
-      singleReimbursementAdvanceInstruction(
+      singleAdvanceInstruction(
         amount: const Money(minorUnits: 3400),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -212,8 +223,8 @@ void main() {
         occurredAt: occurredAt,
       ),
     );
-    final advance = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final advance = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: const Money(minorUnits: 10000),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -221,7 +232,7 @@ void main() {
         occurredAt: occurredAt,
       ),
     );
-    final reimbursementRefund = engine.createRefund(
+    final advanceRefund = engine.createRefund(
       instruction: singleRefundInstruction(
         parentTransactionId: advance.id,
         amount: const Money(minorUnits: 500),
@@ -272,9 +283,9 @@ void main() {
         parent: expense,
       ),
       advance,
-      reimbursementRefund,
-      engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      advanceRefund,
+      engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: advance.id,
           amount: const Money(minorUnits: 2000),
           receivableAccountId: 'receivable',
@@ -283,8 +294,8 @@ void main() {
         ),
         advance: advance,
       ),
-      engine.createReimbursementClose(
-        instruction: singleReimbursementCloseInstruction(
+      engine.createAdvanceSettlement(
+        instruction: singleAdvanceSettlementInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: const Money(minorUnits: 8500),
           receivableAccountId: 'receivable',
@@ -293,7 +304,8 @@ void main() {
         ),
         advance: advance,
         outstanding: const Money(minorUnits: 8000),
-        gapIncomeAccountId: systemAccountIds[SystemKey.reimbursementGapIncome],
+        gapIncomeAccountId:
+            systemAccountIds[SystemKey.advanceCompensationIncome],
       ),
       engine.createRepayment(
         RepaymentInstruction(

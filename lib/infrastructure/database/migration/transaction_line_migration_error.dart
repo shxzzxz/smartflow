@@ -3,7 +3,7 @@ enum TransactionLineMigrationFailureReason {
   unexpectedEntryShape,
 
   /// 报销垫付缺少支出分类,分项无法补齐。
-  missingReimbursementExpenseCategory,
+  missingAdvanceExpenseCategory,
 
   /// 分录引用了 accounts 表中不存在的账户。
   unknownAccount,

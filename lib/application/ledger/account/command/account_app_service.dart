@@ -199,11 +199,12 @@ class AccountAppServiceImpl
       final entryCounts = await _transactionRepository.countEntriesByAccount({
         account.id,
       });
-      final reimbursementRefs = await _transactionRepository
-          .countReimbursementExpenseRefs({account.id});
+      final advanceRefs = await _transactionRepository.countAdvanceExpenseRefs({
+        account.id,
+      });
       if (account.balance.minorUnits != 0 ||
           (entryCounts[account.id] ?? 0) > 0 ||
-          (reimbursementRefs[account.id] ?? 0) > 0) {
+          (advanceRefs[account.id] ?? 0) > 0) {
         throw BusinessException(LedgerErrorCode.accountInUse);
       }
 

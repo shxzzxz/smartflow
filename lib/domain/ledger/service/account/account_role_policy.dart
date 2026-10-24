@@ -93,7 +93,7 @@ class AccountRoleContext {
     ]);
   }
 
-  factory AccountRoleContext.reimbursementAdvance({
+  factory AccountRoleContext.advance({
     required String receivableAccountId,
     required Iterable<String> paidFromAccountIds,
     required Iterable<String> expenseCategoryIds,
@@ -116,7 +116,7 @@ class AccountRoleContext {
     ]);
   }
 
-  factory AccountRoleContext.reimbursementReceipt({
+  factory AccountRoleContext.advanceCollection({
     required String receivableAccountId,
     required Iterable<String> receiveAccountIds,
   }) {
@@ -133,7 +133,7 @@ class AccountRoleContext {
     ]);
   }
 
-  factory AccountRoleContext.reimbursementClose({
+  factory AccountRoleContext.advanceSettlement({
     required String receivableAccountId,
     required Iterable<String> receiveAccountIds,
     required Iterable<String> gapExpenseCategoryIds,

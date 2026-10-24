@@ -23,7 +23,7 @@ class DriftCreditBillSourceRepository implements CreditBillSourceRepository {
       purposes: const {
         BusinessPurpose.dailyExpense,
         BusinessPurpose.transfer,
-        BusinessPurpose.reimbursementAdvance,
+        BusinessPurpose.advance,
       },
     );
     final refunds = await _sumEntries(

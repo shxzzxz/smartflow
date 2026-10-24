@@ -8,15 +8,17 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/reimbursement_form_view_model.dart';
+import '../view_model/advance_form_view_model.dart';
 import '../widget/transaction_allocation_fields.dart';
 
-class ReimbursementCloseFormPage extends ConsumerStatefulWidget {
-  const ReimbursementCloseFormPage({
+class AdvanceSettlementFormPage extends ConsumerStatefulWidget {
+  const AdvanceSettlementFormPage({
     required this.advanceTransactionId,
     super.key,
   });
@@ -24,12 +26,12 @@ class ReimbursementCloseFormPage extends ConsumerStatefulWidget {
   final String advanceTransactionId;
 
   @override
-  ConsumerState<ReimbursementCloseFormPage> createState() =>
-      _ReimbursementCloseFormPageState();
+  ConsumerState<AdvanceSettlementFormPage> createState() =>
+      _AdvanceSettlementFormPageState();
 }
 
-class _ReimbursementCloseFormPageState
-    extends ConsumerState<ReimbursementCloseFormPage> {
+class _AdvanceSettlementFormPageState
+    extends ConsumerState<AdvanceSettlementFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -44,7 +46,7 @@ class _ReimbursementCloseFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final provider = reimbursementCloseFormViewModelProvider(
+    final provider = advanceSettlementFormViewModelProvider(
       widget.advanceTransactionId,
     );
     final asyncState = ref.watch(provider);
@@ -61,14 +63,14 @@ class _ReimbursementCloseFormPageState
   }
 
   Widget _buildLoaded(
-    ReimbursementCloseFormViewModelProvider provider,
-    ReimbursementCloseFormState state,
+    AdvanceSettlementFormViewModelProvider provider,
+    AdvanceSettlementFormState state,
   ) {
-    if (state.status == ReimbursementFormStatus.notFound) {
-      return const Center(child: Text('报销垫付不存在'));
+    if (state.status == AdvanceFormStatus.notFound) {
+      return const Center(child: Text('垫付不存在'));
     }
-    if (state.status == ReimbursementFormStatus.notEditable) {
-      return const Center(child: Text('该报销记录不可结束'));
+    if (state.status == AdvanceFormStatus.notEditable) {
+      return const Center(child: Text('该垫付记录不可结清'));
     }
     if (_hydratedAdvanceTransactionId != widget.advanceTransactionId) {
       syncTextControllerText(
@@ -81,7 +83,7 @@ class _ReimbursementCloseFormPageState
       key: _formKey,
       child: Column(
         children: [
-          const AppPageHeader(title: '结束报销', subtitle: '记录最后一笔到账并对账差额'),
+          const AppPageHeader(title: '垫付结清', subtitle: '记录最后一笔到账并对账差额'),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -112,7 +114,7 @@ class _ReimbursementCloseFormPageState
                       ),
                       child: Text(
                         gap.minorUnits > 0
-                            ? '多收 ${gap.format()}（计入报销差额收入）'
+                            ? '多收 ${gap.format()}（计入垫付补偿）'
                             : '少收 ${gap.abs().format()}（按差额分类分配计入支出）',
                       ),
                     );
@@ -122,13 +124,14 @@ class _ReimbursementCloseFormPageState
                   title: '到账信息',
                   children: [
                     MoneyPlainFormRow(
+                      key: const ValueKey('advance-close-amount'),
                       label: '实收金额',
                       controller: _amountController,
                       hintText: '请输入实收金额',
                       validator: validateNonNegativeMoneyText,
                     ),
                     DateTimePlainFormRow(
-                      label: '结束时间',
+                      label: '结清时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
                       onTap: (onSelected) =>
@@ -144,7 +147,7 @@ class _ReimbursementCloseFormPageState
                 ),
                 const SizedBox(height: AppSpacing.space14),
                 _buildSettlementAllocations(provider, state),
-                _buildGapAllocations(provider, state),
+                _buildShortfallSection(provider, state),
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
                   label: '保存',
@@ -160,15 +163,15 @@ class _ReimbursementCloseFormPageState
   }
 
   Widget _buildSettlementAllocations(
-    ReimbursementCloseFormViewModelProvider provider,
-    ReimbursementCloseFormState state,
+    AdvanceSettlementFormViewModelProvider provider,
+    AdvanceSettlementFormState state,
   ) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _amountController,
       builder: (context, value, _) {
         final amount = Money.tryParse(value.text);
         return TransactionInlineAllocationColumn(
-          key: const ValueKey('reimbursement-close-settlement-allocations'),
+          key: const ValueKey('advance-close-settlement-allocations'),
           title: '到账账户',
           allocations: transactionAllocationFieldValues(
             allocations: state.settlementAllocations,
@@ -191,9 +194,9 @@ class _ReimbursementCloseFormPageState
     );
   }
 
-  Widget _buildGapAllocations(
-    ReimbursementCloseFormViewModelProvider provider,
-    ReimbursementCloseFormState state,
+  Widget _buildShortfallSection(
+    AdvanceSettlementFormViewModelProvider provider,
+    AdvanceSettlementFormState state,
   ) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _amountController,
@@ -212,25 +215,49 @@ class _ReimbursementCloseFormPageState
             : null;
         return Padding(
           padding: const EdgeInsets.only(top: AppSpacing.space14),
-          child: TransactionAllocationAmountFields(
-            key: const ValueKey('reimbursement-close-gap-allocations'),
-            title: '差额分类',
-            allocations: transactionAllocationFieldValues(
-              allocations: state.gapExpenseAllocations,
-              fallbackAccountId: fallbackCategoryId,
-              total: shortfall,
-            ),
-            options: transactionAllocationOptionsForAccounts(
-              state.categoryAccounts,
-            ),
-            expectedTotal: shortfall,
-            maximumByAccountId: transactionAllocationMaximums(
-              options: transactionAllocationOptionsForAccounts(
-                state.categoryAccounts,
+          child: Column(
+            children: [
+              AppPlainSwitchRow(
+                key: const ValueKey('advance-close-self-borne-switch'),
+                label: '自承担',
+                description:
+                    state.shortfallKind == AdvanceShortfallKind.selfBorne
+                    ? '差额计入所选支出分类'
+                    : '差额计入内置坏账损失分类',
+                value: state.shortfallKind == AdvanceShortfallKind.selfBorne,
+                onChanged: ref.read(provider.notifier).setSelfBorne,
               ),
-              availableAllocations: state.availableCategoryAllocations,
-            ),
-            onChanged: ref.read(provider.notifier).setGapExpenseAllocations,
+              if (state.shortfallKind == AdvanceShortfallKind.selfBorne) ...[
+                const SizedBox(height: AppSpacing.space8),
+                TransactionAllocationAmountFields(
+                  key: const ValueKey('advance-close-gap-allocations'),
+                  title: '自承担分类',
+                  allocations: transactionAllocationFieldValues(
+                    allocations: state.gapExpenseAllocations,
+                    fallbackAccountId: fallbackCategoryId,
+                    total: shortfall,
+                  ),
+                  options: transactionAllocationOptionsForAccounts(
+                    state.categoryAccounts,
+                  ),
+                  expectedTotal: shortfall,
+                  maximumByAccountId: transactionAllocationMaximums(
+                    options: transactionAllocationOptionsForAccounts(
+                      state.categoryAccounts,
+                    ),
+                    availableAllocations: state.availableCategoryAllocations,
+                  ),
+                  onChanged: ref
+                      .read(provider.notifier)
+                      .setGapExpenseAllocations,
+                ),
+              ] else
+                Padding(
+                  key: const ValueKey('advance-close-gap-builtin'),
+                  padding: const EdgeInsets.only(top: AppSpacing.space8),
+                  child: Text('计入内置分类“坏账损失” ${shortfall.format()}'),
+                ),
+            ],
           ),
         );
       },
@@ -244,13 +271,13 @@ class _ReimbursementCloseFormPageState
     final picked = await showAppDateTimePicker(
       context: context,
       initialDateTime: occurredAt,
-      title: '选择结束时间',
+      title: '选择结清时间',
     );
     if (!mounted || picked == null) return;
     onSelected(picked);
   }
 
-  Future<void> _submit(ReimbursementCloseFormViewModelProvider provider) async {
+  Future<void> _submit(AdvanceSettlementFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
     final outcome = await ref
         .read(provider.notifier)

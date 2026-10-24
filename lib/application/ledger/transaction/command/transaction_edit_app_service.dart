@@ -20,18 +20,16 @@ abstract interface class TransactionEditAppService {
 
   Future<PostedTransactionResult> editTransfer(EditTransferCommand command);
 
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand command,
-  );
+  Future<PostedTransactionResult> editAdvance(EditAdvanceCommand command);
 
   Future<PostedTransactionResult> editRefund(EditRefundCommand command);
 
-  Future<PostedTransactionResult> editReimbursementReceipt(
-    EditReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editAdvanceCollection(
+    EditAdvanceCollectionCommand command,
   );
 
-  Future<PostedTransactionResult> editReimbursementClose(
-    EditReimbursementCloseCommand command,
+  Future<PostedTransactionResult> editAdvanceSettlement(
+    EditAdvanceSettlementCommand command,
   );
 
   Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command);
@@ -154,9 +152,7 @@ class TransactionEditAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand cmd,
-  ) async {
+  Future<PostedTransactionResult> editAdvance(EditAdvanceCommand cmd) async {
     return _ledgerWriter.planAndPersistRewrite(
       () => _transactionGroupRewriteService.rewriteParentTransaction(
         EditParentTransactionInstruction(
@@ -166,10 +162,13 @@ class TransactionEditAppServiceImpl
           note: cmd.note,
           isExcludedFromStats: cmd.isExcludedFromStats,
           isExcludedFromBudget: cmd.isExcludedFromBudget,
-          editPatch: ReimbursementAdvanceEditPatch(
+          editPatch: AdvanceEditPatch(
             amount: cmd.amount,
+            advanceAmount: cmd.advanceAmount,
             receivableAccountId: cmd.receivableAccountId,
+            scenario: cmd.scenario,
             categoryAllocations: cmd.categoryAllocations,
+            selfBorneAllocations: cmd.selfBorneAllocations,
             settlementAllocations: cmd.settlementAllocations,
           ),
         ),
@@ -216,12 +215,12 @@ class TransactionEditAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementReceipt(
-    EditReimbursementReceiptCommand cmd,
+  Future<PostedTransactionResult> editAdvanceCollection(
+    EditAdvanceCollectionCommand cmd,
   ) async {
     return _ledgerWriter.planAndPersistRewrite(
-      () => _transactionGroupRewriteService.rewriteReimbursementReceipt(
-        EditReimbursementReceiptTransactionInstruction(
+      () => _transactionGroupRewriteService.rewriteAdvanceCollection(
+        EditAdvanceCollectionTransactionInstruction(
           transactionId: cmd.transactionId,
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
@@ -235,17 +234,18 @@ class TransactionEditAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementClose(
-    EditReimbursementCloseCommand cmd,
+  Future<PostedTransactionResult> editAdvanceSettlement(
+    EditAdvanceSettlementCommand cmd,
   ) async {
     return _ledgerWriter.planAndPersistRewrite(
-      () => _transactionGroupRewriteService.rewriteReimbursementClose(
-        EditReimbursementCloseTransactionInstruction(
+      () => _transactionGroupRewriteService.rewriteAdvanceSettlement(
+        EditAdvanceSettlementTransactionInstruction(
           transactionId: cmd.transactionId,
           actualReceivedAmount: cmd.actualReceivedAmount,
           receivableAccountId: cmd.receivableAccountId,
           settlementAllocations: cmd.settlementAllocations,
           gapExpenseAllocations: cmd.gapExpenseAllocations,
+          shortfallKind: cmd.shortfallKind,
           occurredAt: cmd.occurredAt,
           counterpartyId: cmd.counterpartyId,
           note: cmd.note,

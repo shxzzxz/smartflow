@@ -5,6 +5,7 @@ import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_planner.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
+import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
@@ -14,6 +15,65 @@ import '../../../../helper/posting_instruction_fixtures.dart';
 import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
+  test('advance scene changes propagate to the parent and children', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'scene'),
+    );
+    final current = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('100'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final receipt = engine.createAdvanceCollection(
+      instruction: singleAdvanceCollectionInstruction(
+        advanceTransactionId: current.id,
+        amount: Money.parse('20'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: current,
+    );
+    final candidate = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('100'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: current.occurredAt,
+        scenario: AdvanceScenario.aa,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
+    );
+
+    final plan = await planner.planParentRewrite(
+      currentGroup: TransactionGroup(
+        parentTransaction: current,
+        childTransactions: [receipt],
+      ),
+      candidateParent: candidate,
+    );
+
+    expect(plan.currentGroup.parentTransaction.ownership?.ownerRole, 'aa');
+    expect(plan.currentGroup.parentTransaction.ownership?.ownerId, current.id);
+    expect(
+      plan.currentGroup.childTransactions.single.ownership?.ownerRole,
+      'aa',
+    );
+    expect(
+      plan.rowUpdates.map((row) => row.id),
+      containsAll([current.id, receipt.id]),
+    );
+  });
+
   test(
     'metadata-only parent edit updates the row without rewriting lines',
     () async {
@@ -125,60 +185,97 @@ void main() {
     },
   );
 
-  test(
-    'reimbursement advance with a receipt cannot be edited as an expense',
-    () async {
-      final engine = PostingEngine(
-        idGenerator: SequentialIdGenerator(prefix: 'tx'),
-      );
-      final parent = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
-          amount: Money.parse('100.00'),
-          receivableAccountId: 'receivable',
-          paidFromAccountId: 'cash',
-          expenseAccountId: 'travel',
-          occurredAt: DateTime(2026, 7, 1),
-        ),
-      );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
-          advanceTransactionId: parent.id,
-          amount: Money.parse('20.00'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'bank',
-          occurredAt: DateTime(2026, 7, 2),
-        ),
-        advance: parent,
-      );
-      final candidate = engine.createExpense(
-        singleExpenseInstruction(
-          amount: parent.primaryAmount,
-          paidFromAccountId: 'cash',
-          expenseAccountId: 'travel',
-          occurredAt: parent.occurredAt,
-        ),
-      );
-      final planner = TransactionGroupRewritePlanner(
-        postingEngine: engine,
-        postingInstructionResolver: const DefaultPostingInstructionResolver(),
-        systemAccountResolver: const FakeSystemAccountResolver(),
-      );
+  test('advance with a receipt cannot be edited as an expense', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final receipt = engine.createAdvanceCollection(
+      instruction: singleAdvanceCollectionInstruction(
+        advanceTransactionId: parent.id,
+        amount: Money.parse('20.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+    );
+    final candidate = engine.createExpense(
+      singleExpenseInstruction(
+        amount: parent.primaryAmount,
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
+    );
 
-      await expectLater(
-        planner.planParentRewrite(
-          currentGroup: TransactionGroup(
-            parentTransaction: parent,
-            childTransactions: [receipt],
-          ),
-          candidateParent: candidate,
+    await expectLater(
+      planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [receipt],
         ),
-        throwsA(isA<BusinessException>()),
-      );
-    },
-  );
+        candidateParent: candidate,
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+
+  test('account-managed advance cannot convert to daily expense', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'account-edit'),
+    );
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+        management: AdvanceManagement.account,
+      ),
+    );
+    final candidate = engine.createExpense(
+      singleExpenseInstruction(
+        amount: parent.primaryAmount,
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
+    );
+
+    await expectLater(
+      planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: const [],
+        ),
+        candidateParent: candidate,
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
 
   test(
-    'expense with refund can become reimbursement advance and resets group reporting flags',
+    'expense with refund can become advance and resets group reporting flags',
     () async {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
@@ -202,8 +299,8 @@ void main() {
         ),
         parent: parent,
       );
-      final candidate = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final candidate = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: parent.primaryAmount,
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -241,12 +338,12 @@ void main() {
     },
   );
 
-  test('closed reimbursement rejects a parent amount edit', () async {
+  test('closed advance rejects a parent amount edit', () async {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'tx'),
     );
-    final parent = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -254,8 +351,8 @@ void main() {
         occurredAt: DateTime(2026, 7, 1),
       ),
     );
-    final close = engine.createReimbursementClose(
-      instruction: singleReimbursementCloseInstruction(
+    final close = engine.createAdvanceSettlement(
+      instruction: singleAdvanceSettlementInstruction(
         advanceTransactionId: parent.id,
         actualReceivedAmount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
@@ -266,8 +363,8 @@ void main() {
       outstanding: parent.primaryAmount,
       gapIncomeAccountId: null,
     );
-    final candidate = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final candidate = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: Money.parse('120.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -293,64 +390,61 @@ void main() {
     );
   });
 
-  test(
-    'advance amount cannot fall below received reimbursement total',
-    () async {
-      final engine = PostingEngine(
-        idGenerator: SequentialIdGenerator(prefix: 'tx'),
-      );
-      final parent = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
-          amount: Money.parse('100.00'),
-          receivableAccountId: 'receivable',
-          paidFromAccountId: 'cash',
-          expenseAccountId: 'travel',
-          occurredAt: DateTime(2026, 7, 1),
-        ),
-      );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
-          advanceTransactionId: parent.id,
-          amount: Money.parse('60.00'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'bank',
-          occurredAt: DateTime(2026, 7, 2),
-        ),
-        advance: parent,
-      );
-      final candidate = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
-          amount: Money.parse('50.00'),
-          receivableAccountId: 'receivable',
-          paidFromAccountId: 'cash',
-          expenseAccountId: 'travel',
-          occurredAt: parent.occurredAt,
-        ),
-      );
-      final planner = TransactionGroupRewritePlanner(
-        postingEngine: engine,
-        postingInstructionResolver: const DefaultPostingInstructionResolver(),
-        systemAccountResolver: const FakeSystemAccountResolver(),
-      );
+  test('advance amount cannot fall below received advance total', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'tx'),
+    );
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('100.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: DateTime(2026, 7, 1),
+      ),
+    );
+    final receipt = engine.createAdvanceCollection(
+      instruction: singleAdvanceCollectionInstruction(
+        advanceTransactionId: parent.id,
+        amount: Money.parse('60.00'),
+        receivableAccountId: 'receivable',
+        receiveAccountId: 'bank',
+        occurredAt: DateTime(2026, 7, 2),
+      ),
+      advance: parent,
+    );
+    final candidate = engine.createAdvance(
+      singleAdvanceInstruction(
+        amount: Money.parse('50.00'),
+        receivableAccountId: 'receivable',
+        paidFromAccountId: 'cash',
+        expenseAccountId: 'travel',
+        occurredAt: parent.occurredAt,
+      ),
+    );
+    final planner = TransactionGroupRewritePlanner(
+      postingEngine: engine,
+      postingInstructionResolver: const DefaultPostingInstructionResolver(),
+      systemAccountResolver: const FakeSystemAccountResolver(),
+    );
 
-      await expectLater(
-        planner.planParentRewrite(
-          currentGroup: TransactionGroup(
-            parentTransaction: parent,
-            childTransactions: [receipt],
-          ),
-          candidateParent: candidate,
+    await expectLater(
+      planner.planParentRewrite(
+        currentGroup: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [receipt],
         ),
-        throwsA(
-          isA<BusinessException>().having(
-            (error) => error.code,
-            'code',
-            LedgerErrorCode.transactionInvalidCommand.code,
-          ),
+        candidateParent: candidate,
+      ),
+      throwsA(
+        isA<BusinessException>().having(
+          (error) => error.code,
+          'code',
+          LedgerErrorCode.transactionInvalidCommand.code,
         ),
-      );
-    },
-  );
+      ),
+    );
+  });
 
   test(
     'advance amount cannot fall below combined refunds and receipts',
@@ -358,8 +452,8 @@ void main() {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final parent = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final parent = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -367,8 +461,8 @@ void main() {
           occurredAt: DateTime(2026, 7, 1),
         ),
       );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      final receipt = engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('60.00'),
           receivableAccountId: 'receivable',
@@ -386,8 +480,8 @@ void main() {
         ),
         parent: parent,
       );
-      final candidate = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final candidate = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('70.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -415,13 +509,13 @@ void main() {
   );
 
   test(
-    'editing reimbursement receivable account rebases receipt entries without changing receipt facts',
+    'editing advance receivable account rebases receipt entries without changing receipt facts',
     () async {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final parent = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final parent = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable-old',
           paidFromAccountId: 'cash',
@@ -429,8 +523,8 @@ void main() {
           occurredAt: DateTime(2026, 7, 1),
         ),
       );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      final receipt = engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('20.00'),
           receivableAccountId: 'receivable-old',
@@ -440,8 +534,8 @@ void main() {
         ),
         advance: parent,
       );
-      final candidate = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final candidate = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: parent.primaryAmount,
           receivableAccountId: 'receivable-new',
           paidFromAccountId: 'cash',
@@ -487,8 +581,8 @@ void main() {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'tx'),
     );
-    final parent = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable-old',
         paidFromAccountId: 'cash',
@@ -496,8 +590,8 @@ void main() {
         occurredAt: DateTime(2026, 7, 1),
       ),
     );
-    final close = engine.createReimbursementClose(
-      instruction: singleReimbursementCloseInstruction(
+    final close = engine.createAdvanceSettlement(
+      instruction: singleAdvanceSettlementInstruction(
         advanceTransactionId: parent.id,
         actualReceivedAmount: Money.parse('110.00'),
         receivableAccountId: 'receivable-old',
@@ -508,8 +602,8 @@ void main() {
       outstanding: Money.parse('100.00'),
       gapIncomeAccountId: 'system-gap-income',
     );
-    final candidate = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final candidate = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: parent.primaryAmount,
         receivableAccountId: 'receivable-new',
         paidFromAccountId: 'cash',
@@ -543,8 +637,8 @@ void main() {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'tx'),
     );
-    final parent = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final parent = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: Money.parse('100.00'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -552,8 +646,8 @@ void main() {
         occurredAt: DateTime(2026, 7, 1),
       ),
     );
-    final close = engine.createReimbursementClose(
-      instruction: singleReimbursementCloseInstruction(
+    final close = engine.createAdvanceSettlement(
+      instruction: singleAdvanceSettlementInstruction(
         advanceTransactionId: parent.id,
         actualReceivedAmount: Money.parse('90.00'),
         receivableAccountId: 'receivable',
@@ -568,8 +662,8 @@ void main() {
       outstanding: parent.primaryAmount,
       gapIncomeAccountId: null,
     );
-    final candidate = engine.createReimbursementAdvance(
-      singleReimbursementAdvanceInstruction(
+    final candidate = engine.createAdvance(
+      singleAdvanceInstruction(
         amount: parent.primaryAmount,
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',

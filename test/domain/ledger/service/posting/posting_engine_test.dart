@@ -67,12 +67,12 @@ void main() {
       expect(transaction.postedAt, postedAt);
     });
 
-    test('propagates import metadata to reimbursement children', () {
+    test('propagates import metadata to advance children', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final advance = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final advance = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -82,8 +82,8 @@ void main() {
           sourceKind: SourceKind.import,
         ),
       );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      final receipt = engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: advance.id,
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
@@ -208,8 +208,8 @@ void main() {
       expect(transaction.postedAt, postedAt);
     });
 
-    test('expense edit patch converts a reimbursement advance to expense', () {
-      final current = singleReimbursementAdvanceInstruction(
+    test('expense edit patch converts an advance to expense', () {
+      final current = singleAdvanceInstruction(
         amount: Money.parse('12.30'),
         receivableAccountId: 'receivable',
         paidFromAccountId: 'cash',
@@ -230,7 +230,7 @@ void main() {
       expect(edited.isExcludedFromBudget, isTrue);
     });
 
-    test('advance edit patch converts an expense to reimbursement advance', () {
+    test('advance edit patch converts an expense to advance', () {
       final current = singleExpenseInstruction(
         amount: Money.parse('12.30'),
         paidFromAccountId: 'cash',
@@ -241,7 +241,7 @@ void main() {
         isExcludedFromBudget: true,
       );
 
-      final edited = const ReimbursementAdvanceEditPatch(
+      final edited = const AdvanceEditPatch(
         receivableAccountId: 'receivable',
       ).applyTo(current);
 
@@ -322,12 +322,12 @@ void main() {
       expect(edited.postedAt, current.postedAt);
     });
 
-    test('reimbursement children inherit parent reporting flags', () {
+    test('advance children inherit parent reporting flags', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final advance = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final advance = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -338,8 +338,8 @@ void main() {
         ),
       );
 
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      final receipt = engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: advance.id,
           amount: Money.parse('20.00'),
           receivableAccountId: 'receivable',
@@ -348,8 +348,8 @@ void main() {
         ),
         advance: advance,
       );
-      final close = engine.createReimbursementClose(
-        instruction: singleReimbursementCloseInstruction(
+      final close = engine.createAdvanceSettlement(
+        instruction: singleAdvanceSettlementInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: Money.parse('80.00'),
           receivableAccountId: 'receivable',
@@ -367,12 +367,12 @@ void main() {
       expect(close.isExcludedFromBudget, isTrue);
     });
 
-    test('zero-cash reimbursement close keeps zero primary amount', () {
+    test('zero-cash advance close keeps zero primary amount', () {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final advance = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final advance = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -381,8 +381,8 @@ void main() {
         ),
       );
 
-      final close = engine.createReimbursementClose(
-        instruction: singleReimbursementCloseInstruction(
+      final close = engine.createAdvanceSettlement(
+        instruction: singleAdvanceSettlementInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: Money.zero(),
           receivableAccountId: 'receivable',
@@ -416,20 +416,15 @@ void main() {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final advance = engine.createReimbursementAdvance(
-        ReimbursementAdvanceInstruction(
+      final advance = engine.createAdvance(
+        AdvanceInstruction(
           amount: Money.parse('100.00'),
+          advanceAmount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
-          categoryAllocations: const [
-            AccountAmountAllocation(
-              accountId: 'food',
-              amount: Money(minorUnits: 5000),
-            ),
-            AccountAmountAllocation(
-              accountId: 'travel',
-              amount: Money(minorUnits: 5000),
-            ),
-          ],
+          categoryAllocations: singleAllocation(
+            accountId: 'food',
+            amount: Money.parse('100.00'),
+          ),
           settlementAllocations: singleAllocation(
             accountId: 'cash',
             amount: Money.parse('100.00'),
@@ -439,8 +434,8 @@ void main() {
       );
 
       expect(
-        () => engine.createReimbursementClose(
-          instruction: singleReimbursementCloseInstruction(
+        () => engine.createAdvanceSettlement(
+          instruction: singleAdvanceSettlementInstruction(
             advanceTransactionId: advance.id,
             actualReceivedAmount: Money.parse('80.00'),
             receivableAccountId: 'receivable',
@@ -454,8 +449,8 @@ void main() {
         throwsA(isA<BusinessException>()),
       );
 
-      final close = engine.createReimbursementClose(
-        instruction: singleReimbursementCloseInstruction(
+      final close = engine.createAdvanceSettlement(
+        instruction: singleAdvanceSettlementInstruction(
           advanceTransactionId: advance.id,
           actualReceivedAmount: Money.parse('80.00'),
           receivableAccountId: 'receivable',
@@ -479,9 +474,7 @@ void main() {
 
       expect(
         close.lines
-            .where(
-              (line) => line.role == TransactionRole.reimbursementGapExpense,
-            )
+            .where((line) => line.role == TransactionRole.advanceSelfBorne)
             .map((line) => line.accountId),
         ['food', 'travel'],
       );

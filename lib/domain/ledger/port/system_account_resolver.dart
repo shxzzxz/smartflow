@@ -3,7 +3,7 @@ import '../valobj/ledger_enum.dart';
 abstract interface class SystemAccountResolver {
   Future<String> resolveOpeningBalance();
 
-  Future<String> resolveReimbursementGapIncome();
+  Future<String> resolveAdvanceCompensationIncome();
 
   Future<String> resolveInterestExpense();
 
@@ -35,7 +35,7 @@ extension SystemAccountResolution on SystemAccountResolver {
   Future<String> resolveByKey(SystemKey key) {
     return switch (key) {
       SystemKey.openingBalance => resolveOpeningBalance(),
-      SystemKey.reimbursementGapIncome => resolveReimbursementGapIncome(),
+      SystemKey.advanceCompensationIncome => resolveAdvanceCompensationIncome(),
       SystemKey.interestExpense => resolveInterestExpense(),
       SystemKey.feeExpense => resolveFeeExpense(),
       SystemKey.discountIncome => resolveDiscountIncome(),

@@ -50,14 +50,16 @@ import '../feature/profile/page/reference_rates_page.dart';
 import '../feature/profile/page/settings_page.dart';
 import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
-import '../feature/transaction/page/reimbursement_close_form_page.dart';
-import '../feature/transaction/page/reimbursement_edit_form_page.dart';
-import '../feature/transaction/page/reimbursement_form_page.dart';
-import '../feature/transaction/page/reimbursement_receipt_form_page.dart';
+import '../feature/transaction/page/account_advance_form_page.dart';
+import '../feature/transaction/page/advance_settlement_form_page.dart';
+import '../feature/transaction/page/advance_edit_form_page.dart';
+import '../feature/transaction/page/advance_form_page.dart';
+import '../feature/transaction/page/advance_collection_form_page.dart';
 import '../feature/transaction/page/receivable_payable_form_pages.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
 import '../feature/transaction/page/filtered_transactions_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
+import '../feature/transaction/view_model/advance_form_view_model.dart';
 import '../feature/transaction/view_model/filtered_transactions_view_model.dart';
 
 final appRouter = GoRouter(
@@ -284,27 +286,26 @@ final appRouter = GoRouter(
           RefundFormPage.edit(editTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
-      path: '/transaction/:id/reimbursement',
-      builder: (context, state) => ReimbursementFormPage(
-        advanceTransactionId: state.pathParameters['id']!,
-      ),
+      path: '/transaction/:id/advance',
+      builder: (context, state) =>
+          AdvanceFormPage(advanceTransactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-receipt',
-      builder: (context, state) => ReimbursementReceiptFormPage(
+      builder: (context, state) => AdvanceCollectionFormPage(
         advanceTransactionId: state.pathParameters['id']!,
       ),
     ),
     GoRoute(
       path: '/transaction/:id/reimburse-close',
-      builder: (context, state) => ReimbursementCloseFormPage(
+      builder: (context, state) => AdvanceSettlementFormPage(
         advanceTransactionId: state.pathParameters['id']!,
       ),
     ),
     GoRoute(
-      path: '/transaction/:id/reimbursement/edit',
+      path: '/transaction/:id/advance/edit',
       builder: (context, state) =>
-          ReimbursementEditFormPage(transactionId: state.pathParameters['id']!),
+          AdvanceEditFormPage(transactionId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/new',
@@ -340,6 +341,22 @@ final appRouter = GoRouter(
       builder: (context, state) => ReceivableCollectionFormPage(
         receivableAccountId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/account/:id/advance-collection',
+      builder: (context, state) {
+        final scenario = switch (state.uri.queryParameters['scenario']) {
+          'reimbursement' => AdvanceScenario.reimbursement,
+          'onBehalf' => AdvanceScenario.onBehalf,
+          _ => AdvanceScenario.aa,
+        };
+        return AccountAdvanceFormPage(
+          target: AccountAdvanceFormTarget(
+            accountId: state.pathParameters['id']!,
+            scenario: scenario,
+          ),
+        );
+      },
     ),
     GoRoute(
       path: '/account/:id/bad-debt',

@@ -431,7 +431,13 @@ class _AllocationAmountRowState extends State<_AllocationAmountRow> {
   void didUpdateWidget(covariant _AllocationAmountRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_amountFocusNode.hasFocus && oldWidget.amount != widget.amount) {
-      _syncAmountText();
+      final amount = widget.amount;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _amountFocusNode.hasFocus || widget.amount != amount) {
+          return;
+        }
+        _syncAmountText();
+      });
     }
   }
 

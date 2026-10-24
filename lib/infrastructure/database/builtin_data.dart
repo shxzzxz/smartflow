@@ -10,7 +10,7 @@ import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 12;
+const currentBuiltinDataVersion = 13;
 
 const _uuid = Uuid();
 
@@ -88,8 +88,18 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
           ))
           .write(const InstallmentProductsCompanion(archived: Value(true)));
     }
+    if (version < 13) {
+      await _renameAdvanceCompensationIncome(database);
+    }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _renameAdvanceCompensationIncome(AppDatabase database) async {
+  await database.customStatement(
+    "UPDATE accounts SET name = '垫付补偿' "
+    "WHERE system_key = 'advanceCompensationIncome'",
+  );
 }
 
 Future<void> _seedReceivableAndPayableCategories(AppDatabase database) async {
@@ -434,9 +444,9 @@ Future<void> _upgradeBuiltinIncomeIcons(AppDatabase database) async {
   );
   await _updateCategoryIcon(
     database,
-    name: '报销收入',
+    name: '垫付补偿',
     type: AccountType.income,
-    systemKey: SystemKey.reimbursementGapIncome,
+    systemKey: SystemKey.advanceCompensationIncome,
     iconKey: 'currency-line',
   );
 }
@@ -844,10 +854,10 @@ const _incomeCategories = [
     children: [
       _BuiltinCategory(name: '借入', iconKey: 'hand-coin-line', sortOrder: 10),
       _BuiltinCategory(
-        name: '报销收入',
+        name: '垫付补偿',
         iconKey: 'currency-line',
         sortOrder: 20,
-        systemKey: SystemKey.reimbursementGapIncome,
+        systemKey: SystemKey.advanceCompensationIncome,
       ),
       _BuiltinCategory(
         name: '优惠',

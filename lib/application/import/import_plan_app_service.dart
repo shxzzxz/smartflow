@@ -53,11 +53,10 @@ class ImportPlanAppServiceImpl implements ImportPlanAppService {
       null => group.topLevel,
       final index when index >= 0 && index < group.children.length =>
         group.children[index],
-      _ =>
-        throw ImportWorkflowException(
-          ImportErrorCode.invalidDraftStructure,
-          groupIndex: groupIndex,
-        ),
+      _ => throw ImportWorkflowException(
+        ImportErrorCode.invalidDraftStructure,
+        groupIndex: groupIndex,
+      ),
     };
     final editedDraft = applyImportDraftEdit(currentDraft, edit);
     final nextChildren = [...group.children];
@@ -115,13 +114,13 @@ Set<String> _amountIssueCodes(ImportTransactionDraft draft) {
       '退款_negative',
       'refund_negative',
     },
-    ImportReimbursementAdvanceDraft() => amount,
-    ImportReimbursementReceiptDraft() => const {
+    ImportAdvanceDraft() => amount,
+    ImportAdvanceCollectionDraft() => const {
       '报销明细金额_missing',
       '报销明细金额_invalid',
       '报销明细金额_negative',
     },
-    ImportReimbursementCloseDraft() => const {
+    ImportAdvanceSettlementDraft() => const {
       '报销金额_missing',
       '报销金额_invalid',
       '报销金额_negative',

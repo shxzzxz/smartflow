@@ -6,100 +6,74 @@ import 'package:smartflow/core/money/money.dart';
 import '../../../../helper/fake_counterparty_repository.dart';
 
 void main() {
-  test(
-    'unified model fills children and derives reimbursement summary',
-    () async {
-      final parent = _transaction(
-        'parent',
-        BusinessPurpose.reimbursementAdvance,
-        10000,
-      );
-      // Child headers are not the cumulative source; settlement lines are.
-      final refund = _transaction(
-        'refund',
-        BusinessPurpose.refund,
-        9999,
-        parentId: 'parent',
-      );
-      final receipt = _transaction(
-        'receipt',
-        BusinessPurpose.reimbursementReceipt,
-        8888,
-        parentId: 'parent',
-      );
-      final service = _service(
-        transactions: {
-          parent.id: parent,
-          refund.id: refund,
-          receipt.id: receipt,
-        },
-        lines: {
-          parent.id: [
-            _line(
-              parent.id,
-              2,
-              TransactionRole.receivable,
-              10000,
-              'receivable',
-            ),
-            _line(parent.id, 1, TransactionRole.settlementOut, 10000, 'card'),
-          ],
-          refund.id: [
-            _line(refund.id, 1, TransactionRole.settlementIn, 1200, 'cash'),
-            _line(refund.id, 2, TransactionRole.settlementIn, 800, 'bank'),
-          ],
-          receipt.id: [
-            _line(receipt.id, 1, TransactionRole.settlementIn, 2500, 'cash'),
-            _line(receipt.id, 2, TransactionRole.settlementIn, 3500, 'bank'),
-          ],
-        },
-      );
+  test('unified model fills children and derives advance summary', () async {
+    final parent = _transaction('parent', BusinessPurpose.advance, 10000);
+    // Child headers are not the cumulative source; settlement lines are.
+    final refund = _transaction(
+      'refund',
+      BusinessPurpose.refund,
+      9999,
+      parentId: 'parent',
+    );
+    final receipt = _transaction(
+      'receipt',
+      BusinessPurpose.advanceCollection,
+      8888,
+      parentId: 'parent',
+    );
+    final service = _service(
+      transactions: {parent.id: parent, refund.id: refund, receipt.id: receipt},
+      lines: {
+        parent.id: [
+          _line(parent.id, 2, TransactionRole.receivable, 10000, 'receivable'),
+          _line(parent.id, 1, TransactionRole.settlementOut, 10000, 'card'),
+        ],
+        refund.id: [
+          _line(refund.id, 1, TransactionRole.settlementIn, 1200, 'cash'),
+          _line(refund.id, 2, TransactionRole.settlementIn, 800, 'bank'),
+        ],
+        receipt.id: [
+          _line(receipt.id, 1, TransactionRole.settlementIn, 2500, 'cash'),
+          _line(receipt.id, 2, TransactionRole.settlementIn, 3500, 'bank'),
+        ],
+      },
+    );
 
-      final detail = await service.findTransactionDetail(parent.id);
+    final detail = await service.findTransactionDetail(parent.id);
 
-      expect(detail!.lines.map((line) => line.lineNo), [1, 2]);
-      expect(detail.children.map((child) => child.id), ['refund', 'receipt']);
-      expect(detail.children.every((child) => child.children.isEmpty), isTrue);
-      expect(detail.refundSummary?.refundedTotal.minorUnits, 2000);
-      expect(detail.reimbursementSummary?.receivedAmount.minorUnits, 6000);
-      expect(detail.reimbursementSummary?.outstanding.minorUnits, 2000);
-      expect(detail.refundSummary?.refundedTotal.minorUnits, 2000);
-      expect(detail.reimbursementSummary?.refundedAmount.minorUnits, 2000);
-      expect(detail.reimbursementSummary?.receivedAmount.minorUnits, 6000);
-      expect(detail.reimbursementSummary?.gapAmount, Money.zero());
-      expect(detail.reimbursementSummary?.outstanding.minorUnits, 2000);
-    },
-  );
+    expect(detail!.lines.map((line) => line.lineNo), [1, 2]);
+    expect(detail.children.map((child) => child.id), ['refund', 'receipt']);
+    expect(detail.children.every((child) => child.children.isEmpty), isTrue);
+    expect(detail.refundSummary?.refundedTotal.minorUnits, 2000);
+    expect(detail.advanceSummary?.receivedAmount.minorUnits, 6000);
+    expect(detail.advanceSummary?.outstanding.minorUnits, 2000);
+    expect(detail.refundSummary?.refundedTotal.minorUnits, 2000);
+    expect(detail.advanceSummary?.refundedAmount.minorUnits, 2000);
+    expect(detail.advanceSummary?.receivedAmount.minorUnits, 6000);
+    expect(detail.advanceSummary?.gapAmount, Money.zero());
+    expect(detail.advanceSummary?.outstanding.minorUnits, 2000);
+  });
 
-  test(
-    'zero-cash reimbursement close contributes zero received amount',
-    () async {
-      final parent = _transaction(
-        'parent',
-        BusinessPurpose.reimbursementAdvance,
-        10000,
-      );
-      final close = _transaction(
-        'close',
-        BusinessPurpose.reimbursementClose,
-        0,
-        parentId: parent.id,
-      );
-      final service = _service(
-        transactions: {parent.id: parent, close.id: close},
-        lines: {
-          close.id: [
-            _line(close.id, 1, TransactionRole.settlementIn, 0, 'cash'),
-          ],
-        },
-      );
+  test('zero-cash advance close contributes zero received amount', () async {
+    final parent = _transaction('parent', BusinessPurpose.advance, 10000);
+    final close = _transaction(
+      'close',
+      BusinessPurpose.advanceSettlement,
+      0,
+      parentId: parent.id,
+    );
+    final service = _service(
+      transactions: {parent.id: parent, close.id: close},
+      lines: {
+        close.id: [_line(close.id, 1, TransactionRole.settlementIn, 0, 'cash')],
+      },
+    );
 
-      final detail = await service.findTransactionDetail(parent.id);
+    final detail = await service.findTransactionDetail(parent.id);
 
-      expect(detail!.reimbursementSummary?.receivedAmount, Money.zero());
-      expect(detail.reimbursementSummary?.isClosed, isTrue);
-    },
-  );
+    expect(detail!.advanceSummary?.receivedAmount, Money.zero());
+    expect(detail.advanceSummary?.isClosed, isTrue);
+  });
 
   test('topLevelOnly false returns children both flat and nested', () async {
     final parent = _transaction('parent', BusinessPurpose.dailyExpense, 1000);

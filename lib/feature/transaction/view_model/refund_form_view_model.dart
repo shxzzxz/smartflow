@@ -113,7 +113,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
         editing: true,
       );
     }
-    if (parentDetail.reimbursementSummary?.isClosed ?? false) {
+    if (parentDetail.advanceSummary?.isClosed ?? false) {
       return RefundFormState.notEditable(
         accounts: accounts,
         transactionId: transactionId,
@@ -445,11 +445,6 @@ class RefundFormState {
 }
 
 Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
-  final summary = detail.reimbursementSummary;
-  if (detail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
-      summary is ReimbursementSummary) {
-    return summary.outstanding;
-  }
   return detail.primaryAmount - refunded;
 }
 
@@ -457,12 +452,7 @@ Money _remainingForEditedRefund(
   TransactionReadModel parentDetail,
   TransactionReadModel refund,
 ) {
-  final summary = parentDetail.reimbursementSummary;
   final refundAmount = refund.amountOf(TransactionRole.settlementIn);
-  if (parentDetail.businessPurpose == BusinessPurpose.reimbursementAdvance &&
-      summary is ReimbursementSummary) {
-    return summary.outstanding + refundAmount;
-  }
   return parentDetail.primaryAmount -
       (parentDetail.refundSummary?.refundedTotal ?? Money.zero()) +
       refundAmount;
@@ -497,11 +487,11 @@ List<AccountAmountAllocation> _allocationsOf(
 List<AccountAmountAllocation> _refundCategoryAllocations(
   TransactionReadModel transaction,
 ) {
-  final reimbursementCategories = transaction.linesOf(
-    TransactionRole.reimbursementExpenseCategory,
+  final advanceCategories = transaction.linesOf(
+    TransactionRole.advanceExpenseCategory,
   );
-  final lines = reimbursementCategories.isNotEmpty
-      ? reimbursementCategories
+  final lines = advanceCategories.isNotEmpty
+      ? advanceCategories
       : transaction.linesOf(TransactionRole.refundOffset);
   return [
     for (final line in lines)

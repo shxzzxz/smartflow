@@ -18,7 +18,7 @@ enum ImportTargetDescriptor {
   incomeCategory,
   expenseCategory,
   fundAccount,
-  reimbursementAccount,
+  advanceAccount,
   receivableAccount,
   payableAccount,
   creditAccount,
@@ -32,9 +32,9 @@ enum ImportOperationKind {
   income,
   transfer,
   refund,
-  reimbursementAdvance,
-  reimbursementReceipt,
-  reimbursementClose,
+  advance,
+  advanceCollection,
+  advanceSettlement,
   repayment,
   interestExpense,
   borrowing,
@@ -172,17 +172,15 @@ class ImportSourceEntity {
       kind: kind ?? this.kind,
       sourceEntityKey: sourceEntityKey ?? this.sourceEntityKey,
       displayName: displayName ?? this.displayName,
-      categoryKind:
-          categoryKind == _entitySentinel
-              ? this.categoryKind
-              : categoryKind as ImportCategoryKind?,
+      categoryKind: categoryKind == _entitySentinel
+          ? this.categoryKind
+          : categoryKind as ImportCategoryKind?,
       isReviewPlaceholder: isReviewPlaceholder ?? this.isReviewPlaceholder,
       allowedTargetDescriptors:
           allowedTargetDescriptors ?? this.allowedTargetDescriptors,
-      preferredTargetDescriptor:
-          preferredTargetDescriptor == _entitySentinel
-              ? this.preferredTargetDescriptor
-              : preferredTargetDescriptor as ImportTargetDescriptor?,
+      preferredTargetDescriptor: preferredTargetDescriptor == _entitySentinel
+          ? this.preferredTargetDescriptor
+          : preferredTargetDescriptor as ImportTargetDescriptor?,
       hasTargetDescriptorConflict:
           hasTargetDescriptorConflict ?? this.hasTargetDescriptorConflict,
     );
@@ -339,8 +337,8 @@ class ImportRefundDraft extends ImportTransactionDraft {
   ];
 }
 
-class ImportReimbursementAdvanceDraft extends ImportTransactionDraft {
-  const ImportReimbursementAdvanceDraft({
+class ImportAdvanceDraft extends ImportTransactionDraft {
+  const ImportAdvanceDraft({
     required super.amount,
     required this.receivableAccount,
     required this.paidFrom,
@@ -357,8 +355,7 @@ class ImportReimbursementAdvanceDraft extends ImportTransactionDraft {
   final ImportCategoryReference category;
 
   @override
-  ImportOperationKind get operationKind =>
-      ImportOperationKind.reimbursementAdvance;
+  ImportOperationKind get operationKind => ImportOperationKind.advance;
 
   @override
   Iterable<String> get sourceEntityKeys => [
@@ -369,8 +366,8 @@ class ImportReimbursementAdvanceDraft extends ImportTransactionDraft {
   ];
 }
 
-class ImportReimbursementReceiptDraft extends ImportTransactionDraft {
-  const ImportReimbursementReceiptDraft({
+class ImportAdvanceCollectionDraft extends ImportTransactionDraft {
+  const ImportAdvanceCollectionDraft({
     required super.amount,
     required this.receivableAccount,
     required this.receiveAccount,
@@ -384,7 +381,7 @@ class ImportReimbursementReceiptDraft extends ImportTransactionDraft {
 
   @override
   ImportOperationKind get operationKind =>
-      ImportOperationKind.reimbursementReceipt;
+      ImportOperationKind.advanceCollection;
 
   @override
   Iterable<String> get sourceEntityKeys => [
@@ -394,8 +391,8 @@ class ImportReimbursementReceiptDraft extends ImportTransactionDraft {
   ];
 }
 
-class ImportReimbursementCloseDraft extends ImportTransactionDraft {
-  const ImportReimbursementCloseDraft({
+class ImportAdvanceSettlementDraft extends ImportTransactionDraft {
+  const ImportAdvanceSettlementDraft({
     required this.actualReceivedAmount,
     required this.receivableAccount,
     required this.receiveAccount,
@@ -410,7 +407,7 @@ class ImportReimbursementCloseDraft extends ImportTransactionDraft {
 
   @override
   ImportOperationKind get operationKind =>
-      ImportOperationKind.reimbursementClose;
+      ImportOperationKind.advanceSettlement;
 
   @override
   Iterable<String> get sourceEntityKeys => [
@@ -795,8 +792,8 @@ ImportTransactionDraft applyImportDraftEdit(
         postedAt: postedAt,
         note: note,
       );
-    case ImportReimbursementAdvanceDraft draft:
-      return ImportReimbursementAdvanceDraft(
+    case ImportAdvanceDraft draft:
+      return ImportAdvanceDraft(
         amount: edit.amount ?? draft.amount,
         receivableAccount: draft.receivableAccount,
         paidFrom: draft.paidFrom,
@@ -807,8 +804,8 @@ ImportTransactionDraft applyImportDraftEdit(
         isExcludedFromStats: draft.isExcludedFromStats,
         isExcludedFromBudget: draft.isExcludedFromBudget,
       );
-    case ImportReimbursementReceiptDraft draft:
-      return ImportReimbursementReceiptDraft(
+    case ImportAdvanceCollectionDraft draft:
+      return ImportAdvanceCollectionDraft(
         amount: edit.amount ?? draft.amount,
         receivableAccount: draft.receivableAccount,
         receiveAccount: draft.receiveAccount,
@@ -816,9 +813,9 @@ ImportTransactionDraft applyImportDraftEdit(
         postedAt: postedAt,
         note: note,
       );
-    case ImportReimbursementCloseDraft draft:
+    case ImportAdvanceSettlementDraft draft:
       final amount = edit.amount ?? draft.actualReceivedAmount;
-      return ImportReimbursementCloseDraft(
+      return ImportAdvanceSettlementDraft(
         actualReceivedAmount: amount,
         receivableAccount: draft.receivableAccount,
         receiveAccount: draft.receiveAccount,

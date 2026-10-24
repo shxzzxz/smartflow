@@ -2,9 +2,9 @@ import '../../entity/entry.dart';
 import '../../entity/transaction_line.dart';
 import '../../valobj/ledger_enum.dart';
 
-/// 交易主金额的正数约束。结束报销的主金额表达实际到账,允许一分未收。
+/// 交易主金额的正数约束。垫付结清的主金额表达实际到账,允许一分未收。
 bool primaryAmountAllowsZero(BusinessPurpose businessPurpose) =>
-    businessPurpose == BusinessPurpose.reimbursementClose;
+    businessPurpose == BusinessPurpose.advanceSettlement;
 
 /// 账户余额按借贷的净增量。
 ///
@@ -125,22 +125,23 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
     BusinessPurpose.dailyIncome,
     BusinessPurpose.transfer,
     BusinessPurpose.refund,
-    BusinessPurpose.reimbursementReceipt,
-    BusinessPurpose.reimbursementClose,
+    BusinessPurpose.advanceCollection,
+    BusinessPurpose.advanceSettlement,
     BusinessPurpose.borrowing,
     BusinessPurpose.receivableCollection,
   },
   TransactionRole.settlementOut: {
     BusinessPurpose.dailyExpense,
     BusinessPurpose.transfer,
-    BusinessPurpose.reimbursementAdvance,
+    BusinessPurpose.advance,
     BusinessPurpose.debtRepayment,
     BusinessPurpose.lending,
   },
   TransactionRole.receivable: {
-    BusinessPurpose.reimbursementAdvance,
-    BusinessPurpose.reimbursementReceipt,
-    BusinessPurpose.reimbursementClose,
+    BusinessPurpose.advance,
+    BusinessPurpose.advanceCollection,
+    BusinessPurpose.advanceSettlement,
+    BusinessPurpose.refund,
     BusinessPurpose.lending,
     BusinessPurpose.receivableCollection,
     BusinessPurpose.badDebt,
@@ -160,12 +161,19 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
   },
   TransactionRole.discount: {BusinessPurpose.debtRepayment},
   TransactionRole.refundOffset: {BusinessPurpose.refund},
-  TransactionRole.reimbursementExpenseCategory: {
-    BusinessPurpose.reimbursementAdvance,
+  TransactionRole.advanceExpenseCategory: {
+    BusinessPurpose.advance,
     BusinessPurpose.refund,
   },
-  TransactionRole.reimbursementGapIncome: {BusinessPurpose.reimbursementClose},
-  TransactionRole.reimbursementGapExpense: {BusinessPurpose.reimbursementClose},
+  TransactionRole.advanceSelfBorne: {
+    BusinessPurpose.advance,
+    BusinessPurpose.refund,
+    BusinessPurpose.advanceSettlement,
+  },
+  TransactionRole.advanceCompensationIncome: {
+    BusinessPurpose.advanceSettlement,
+  },
+  TransactionRole.advanceBadDebtExpense: {BusinessPurpose.advanceSettlement},
   TransactionRole.openingBalance: {BusinessPurpose.openingBalance},
   TransactionRole.balanceAdjustment: {BusinessPurpose.balanceAdjustment},
 };
@@ -175,7 +183,8 @@ const _ruleAccountRoles = <TransactionRole>{
   TransactionRole.interest,
   TransactionRole.fee,
   TransactionRole.discount,
-  TransactionRole.reimbursementGapIncome,
+  TransactionRole.advanceCompensationIncome,
+  TransactionRole.advanceBadDebtExpense,
 };
 
 /// 金额带符号存储的角色:方向由符号与账户类型共同决定。
@@ -209,7 +218,9 @@ SystemKey? systemKeyForRole({
       businessPurpose == BusinessPurpose.debtRepayment
           ? SystemKey.interestExpense
           : SystemKey.interestIncome,
-    TransactionRole.reimbursementGapIncome => SystemKey.reimbursementGapIncome,
+    TransactionRole.advanceCompensationIncome =>
+      SystemKey.advanceCompensationIncome,
+    TransactionRole.advanceBadDebtExpense => SystemKey.badDebtExpense,
     _ => null,
   };
 }
@@ -228,8 +239,13 @@ EntryDirection? entryDirectionFor({
     TransactionRole.refundOffset => EntryDirection.credit,
     TransactionRole.fee => EntryDirection.debit,
     TransactionRole.discount => EntryDirection.credit,
-    TransactionRole.reimbursementGapIncome => EntryDirection.credit,
-    TransactionRole.reimbursementGapExpense => EntryDirection.debit,
+    TransactionRole.advanceCompensationIncome => EntryDirection.credit,
+    TransactionRole.advanceBadDebtExpense => EntryDirection.debit,
+    TransactionRole.advanceSelfBorne =>
+      businessPurpose == BusinessPurpose.refund
+          ? EntryDirection.credit
+          : EntryDirection.debit,
+    TransactionRole.advanceExpenseCategory => null,
     TransactionRole.category =>
       businessPurpose == BusinessPurpose.dailyExpense
           ? EntryDirection.debit
@@ -238,9 +254,9 @@ EntryDirection? entryDirectionFor({
       businessPurpose == BusinessPurpose.debtRepayment
           ? EntryDirection.debit
           : EntryDirection.credit,
-    // 应收增加(垫付 / 借出)记借方,应收减少(到账 / 收回 / 结束报销 / 坏账)记贷方。
+    // 应收增加(垫付 / 借出)记借方,应收减少(到账 / 收回 / 垫付结清 / 坏账)记贷方。
     TransactionRole.receivable =>
-      businessPurpose == BusinessPurpose.reimbursementAdvance ||
+      businessPurpose == BusinessPurpose.advance ||
               businessPurpose == BusinessPurpose.lending
           ? EntryDirection.debit
           : EntryDirection.credit,
@@ -249,8 +265,6 @@ EntryDirection? entryDirectionFor({
       businessPurpose == BusinessPurpose.borrowing
           ? EntryDirection.credit
           : EntryDirection.debit,
-    // 报销垫付时支出分类只是业务事实,不产生分录;它在结束报销少收时才被使用。
-    TransactionRole.reimbursementExpenseCategory => null,
     TransactionRole.openingBalance || TransactionRole.balanceAdjustment => null,
   };
 }

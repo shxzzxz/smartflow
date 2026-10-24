@@ -194,7 +194,7 @@ void main() {
     test('ledger domain 不编码账户画像身份', () {
       final violations = <_Violation>[];
       final profileIdentity = RegExp(
-        r'''(?:ledger|credit)\.(?:fund|reimbursement|receivable|payable|credit|loan)''',
+        r'''(?:ledger|credit)\.(?:fund|advance|receivable|payable|credit|loan)''',
       );
       for (final file in _dartFiles('lib/domain/ledger')) {
         final content = file.readAsStringSync();

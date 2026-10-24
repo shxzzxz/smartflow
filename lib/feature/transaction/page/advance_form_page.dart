@@ -11,21 +11,22 @@ import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../presentation/reimbursement_edit_form_presentation.dart';
-import '../view_model/reimbursement_form_view_model.dart';
+import '../presentation/advance_edit_form_presentation.dart';
+import '../view_model/advance_form_view_model.dart';
 import '../widget/transaction_allocation_fields.dart';
 
-class ReimbursementFormPage extends ConsumerWidget {
-  const ReimbursementFormPage({required this.advanceTransactionId, super.key});
+class AdvanceFormPage extends ConsumerWidget {
+  const AdvanceFormPage({required this.advanceTransactionId, super.key});
 
   final String advanceTransactionId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = reimbursementFormViewModelProvider(advanceTransactionId);
+    final provider = advanceFormViewModelProvider(advanceTransactionId);
     final asyncState = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -40,16 +41,16 @@ class ReimbursementFormPage extends ConsumerWidget {
   }
 
   Widget _buildLoaded(
-    ReimbursementFormViewModelProvider provider,
-    ReimbursementFormState state,
+    AdvanceFormViewModelProvider provider,
+    AdvanceFormState state,
   ) {
-    if (state.status == ReimbursementFormStatus.notFound) {
-      return const Center(child: Text('报销垫付不存在'));
+    if (state.status == AdvanceFormStatus.notFound) {
+      return const Center(child: Text('垫付不存在'));
     }
-    if (state.status == ReimbursementFormStatus.notEditable) {
-      return const Center(child: Text('该报销记录不可继续到账'));
+    if (state.status == AdvanceFormStatus.notEditable) {
+      return const Center(child: Text('该垫付记录不可继续到账'));
     }
-    return _ReimbursementFormContent(
+    return _AdvanceFormContent(
       key: ValueKey(advanceTransactionId),
       provider: provider,
       state: state,
@@ -57,23 +58,22 @@ class ReimbursementFormPage extends ConsumerWidget {
   }
 }
 
-class _ReimbursementFormContent extends ConsumerStatefulWidget {
-  const _ReimbursementFormContent({
+class _AdvanceFormContent extends ConsumerStatefulWidget {
+  const _AdvanceFormContent({
     required this.provider,
     required this.state,
     super.key,
   });
 
-  final ReimbursementFormViewModelProvider provider;
-  final ReimbursementFormState state;
+  final AdvanceFormViewModelProvider provider;
+  final AdvanceFormState state;
 
   @override
-  ConsumerState<_ReimbursementFormContent> createState() =>
-      _ReimbursementFormContentState();
+  ConsumerState<_AdvanceFormContent> createState() =>
+      _AdvanceFormContentState();
 }
 
-class _ReimbursementFormContentState
-    extends ConsumerState<_ReimbursementFormContent> {
+class _AdvanceFormContentState extends ConsumerState<_AdvanceFormContent> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
@@ -103,7 +103,7 @@ class _ReimbursementFormContentState
       key: _formKey,
       child: Column(
         children: [
-          const AppPageHeader(title: '报销'),
+          const AppPageHeader(title: '垫付'),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -128,18 +128,19 @@ class _ReimbursementFormContentState
                   title: '到账信息',
                   children: [
                     MoneyPlainFormRow(
+                      key: const ValueKey('advance-form-amount'),
                       label: isClose ? '实收金额' : '到账金额',
                       controller: _amountController,
                       hintText: isClose ? '请输入实收金额' : '请输入到账金额',
                       validator: isClose
                           ? validateNonNegativeMoneyText
-                          : (value) => validateReimbursementReceiptAmount(
+                          : (value) => validateAdvanceCollectionAmount(
                               amountText: value ?? '',
                               outstanding: state.outstanding,
                             ),
                     ),
                     DateTimePlainFormRow(
-                      label: isClose ? '结束时间' : '到账时间',
+                      label: isClose ? '结清时间' : '到账时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
                       onTap: (onSelected) => _pickOccurredAt(
@@ -155,17 +156,15 @@ class _ReimbursementFormContentState
                     ),
                     NotePlainFormRow(controller: _noteController),
                     AppPlainSwitchRow(
-                      label: '结束报销',
+                      label: '垫付结清',
                       value: isClose,
-                      onChanged: ref
-                          .read(provider.notifier)
-                          .setCloseReimbursement,
+                      onChanged: ref.read(provider.notifier).setCloseAdvance,
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space14),
                 _buildSettlementAllocations(provider, state),
-                _buildGapAllocations(provider, state),
+                _buildShortfallSection(provider, state),
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
                   label: '保存',
@@ -181,15 +180,15 @@ class _ReimbursementFormContentState
   }
 
   Widget _buildSettlementAllocations(
-    ReimbursementFormViewModelProvider provider,
-    ReimbursementFormState state,
+    AdvanceFormViewModelProvider provider,
+    AdvanceFormState state,
   ) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _amountController,
       builder: (context, value, _) {
         final amount = Money.tryParse(value.text);
         return TransactionInlineAllocationColumn(
-          key: const ValueKey('reimbursement-settlement-allocations'),
+          key: const ValueKey('advance-settlement-allocations'),
           title: '到账账户',
           allocations: transactionAllocationFieldValues(
             allocations: state.settlementAllocations,
@@ -212,9 +211,9 @@ class _ReimbursementFormContentState
     );
   }
 
-  Widget _buildGapAllocations(
-    ReimbursementFormViewModelProvider provider,
-    ReimbursementFormState state,
+  Widget _buildShortfallSection(
+    AdvanceFormViewModelProvider provider,
+    AdvanceFormState state,
   ) {
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _amountController,
@@ -234,25 +233,49 @@ class _ReimbursementFormContentState
             : null;
         return Padding(
           padding: const EdgeInsets.only(top: AppSpacing.space14),
-          child: TransactionAllocationAmountFields(
-            key: const ValueKey('reimbursement-gap-allocations'),
-            title: '差额分类',
-            allocations: transactionAllocationFieldValues(
-              allocations: state.gapExpenseAllocations,
-              fallbackAccountId: fallbackCategoryId,
-              total: shortfall,
-            ),
-            options: transactionAllocationOptionsForAccounts(
-              state.categoryAccounts,
-            ),
-            expectedTotal: shortfall,
-            maximumByAccountId: transactionAllocationMaximums(
-              options: transactionAllocationOptionsForAccounts(
-                state.categoryAccounts,
+          child: Column(
+            children: [
+              AppPlainSwitchRow(
+                key: const ValueKey('advance-self-borne-switch'),
+                label: '自承担',
+                description:
+                    state.shortfallKind == AdvanceShortfallKind.selfBorne
+                    ? '差额计入所选支出分类'
+                    : '差额计入内置坏账损失分类',
+                value: state.shortfallKind == AdvanceShortfallKind.selfBorne,
+                onChanged: ref.read(provider.notifier).setSelfBorne,
               ),
-              availableAllocations: state.availableCategoryAllocations,
-            ),
-            onChanged: ref.read(provider.notifier).setGapExpenseAllocations,
+              if (state.shortfallKind == AdvanceShortfallKind.selfBorne) ...[
+                const SizedBox(height: AppSpacing.space8),
+                TransactionAllocationAmountFields(
+                  key: const ValueKey('advance-gap-allocations'),
+                  title: '自承担分类',
+                  allocations: transactionAllocationFieldValues(
+                    allocations: state.gapExpenseAllocations,
+                    fallbackAccountId: fallbackCategoryId,
+                    total: shortfall,
+                  ),
+                  options: transactionAllocationOptionsForAccounts(
+                    state.categoryAccounts,
+                  ),
+                  expectedTotal: shortfall,
+                  maximumByAccountId: transactionAllocationMaximums(
+                    options: transactionAllocationOptionsForAccounts(
+                      state.categoryAccounts,
+                    ),
+                    availableAllocations: state.availableCategoryAllocations,
+                  ),
+                  onChanged: ref
+                      .read(provider.notifier)
+                      .setGapExpenseAllocations,
+                ),
+              ] else
+                Padding(
+                  key: const ValueKey('advance-gap-builtin'),
+                  padding: const EdgeInsets.only(top: AppSpacing.space8),
+                  child: Text('计入内置分类“坏账损失” ${shortfall.format()}'),
+                ),
+            ],
           ),
         );
       },
@@ -267,13 +290,13 @@ class _ReimbursementFormContentState
     final picked = await showAppDateTimePicker(
       context: context,
       initialDateTime: occurredAt,
-      title: isClose ? '选择结束时间' : '选择到账时间',
+      title: isClose ? '选择结清时间' : '选择到账时间',
     );
     if (!mounted || picked == null) return;
     onSelected(picked);
   }
 
-  Future<void> _submit(ReimbursementFormViewModelProvider provider) async {
+  Future<void> _submit(AdvanceFormViewModelProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
     final outcome = await ref
         .read(provider.notifier)

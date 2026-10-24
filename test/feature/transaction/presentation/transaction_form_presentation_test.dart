@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   group('transactionFormEditSnapshot', () {
@@ -100,10 +101,10 @@ void main() {
       );
     });
 
-    test('maps reimbursement advance detail to form state snapshot', () {
+    test('maps advance detail to form state snapshot', () {
       final detail = _detail(
-        purpose: BusinessPurpose.reimbursementAdvance,
-        reimbursementExpenseAccountId: 'taxi',
+        purpose: BusinessPurpose.advance,
+        advanceExpenseAccountId: 'taxi',
         entries: [
           _entry('company', EntryDirection.debit),
           _entry('cash', EntryDirection.credit),
@@ -130,7 +131,7 @@ void main() {
       expect(snapshot.expenseCategoryId, 'taxi');
       expect(snapshot.expenseRootId, 'travel');
       expect(snapshot.fromAccountId, 'cash');
-      expect(snapshot.reimbursementAccountId, 'company');
+      expect(snapshot.advanceReceivableAccountId, 'company');
     });
 
     test('maps transfer fee detail to form state snapshot', () {
@@ -202,6 +203,123 @@ void main() {
   });
 
   group('transaction semantic helpers', () {
+    test('filters account-managed scenes by account profile', () {
+      final accounts = [
+        _account(
+          'reimbursement',
+          profileKey: AccountProfileKind.reimbursement.key,
+        ),
+        _account('receivable', profileKey: AccountProfileKind.receivable.key),
+      ];
+
+      expect(
+        advanceAccountsForExpenseScene(
+          TransactionExpenseScene.reimbursementAccount,
+          accounts,
+        ).map((account) => account.id),
+        ['reimbursement'],
+      );
+      expect(
+        advanceAccountsForExpenseScene(
+          TransactionExpenseScene.aaAccount,
+          accounts,
+        ).map((account) => account.id),
+        ['receivable'],
+      );
+      expect(
+        advanceAccountsForExpenseScene(
+          TransactionExpenseScene.aa,
+          accounts,
+        ).map((account) => account.id),
+        ['reimbursement', 'receivable'],
+      );
+    });
+
+    test('maps account and itemized scenes to the same business scenarios', () {
+      expect(
+        TransactionExpenseScene.reimbursement.advanceManagement,
+        AdvanceManagement.itemized,
+      );
+      expect(
+        TransactionExpenseScene.reimbursementAccount.advanceManagement,
+        AdvanceManagement.account,
+      );
+      expect(
+        TransactionExpenseScene.reimbursementAccount.advanceScenario,
+        AdvanceScenario.reimbursement,
+      );
+      expect(
+        TransactionExpenseScene.aa.advanceManagement,
+        AdvanceManagement.itemized,
+      );
+      expect(
+        TransactionExpenseScene.aaAccount.advanceManagement,
+        AdvanceManagement.account,
+      );
+      expect(
+        TransactionExpenseScene.aaAccount.advanceScenario,
+        AdvanceScenario.aa,
+      );
+      expect(
+        TransactionExpenseScene.onBehalf.advanceManagement,
+        AdvanceManagement.itemized,
+      );
+
+      expect(TransactionExpenseScene.reimbursementAccount.label, '报销（账户）');
+      expect(TransactionExpenseScene.aaAccount.label, 'AA（账户）');
+      expect(
+        transactionExpenseSceneForAdvanceScenario(
+          AdvanceScenario.reimbursement,
+          management: AdvanceManagement.account,
+        ),
+        TransactionExpenseScene.reimbursementAccount,
+      );
+      expect(
+        transactionExpenseSceneForAdvanceScenario(
+          AdvanceScenario.aa,
+          management: AdvanceManagement.account,
+        ),
+        TransactionExpenseScene.aaAccount,
+      );
+    });
+
+    test('rounds AA per-person amount up to the next cent', () {
+      const total = Money(minorUnits: 3700);
+
+      expect(
+        selfBorneAmountForExpenseScene(
+          scene: TransactionExpenseScene.aa,
+          total: total,
+          aaPeopleCount: 3,
+        ),
+        const Money(minorUnits: 1232),
+      );
+      expect(
+        advanceAmountForExpenseScene(
+          scene: TransactionExpenseScene.aa,
+          total: total,
+          aaPeopleCount: 3,
+        ),
+        const Money(minorUnits: 2468),
+      );
+      expect(
+        advanceAmountForExpenseScene(
+          scene: TransactionExpenseScene.reimbursement,
+          total: total,
+          aaPeopleCount: 3,
+        ),
+        total,
+      );
+      expect(
+        advanceAmountForExpenseScene(
+          scene: TransactionExpenseScene.aaAccount,
+          total: total,
+          aaPeopleCount: 3,
+        ),
+        const Money(minorUnits: 2468),
+      );
+    });
+
     test('resolves refund target with selected account first', () {
       final accounts = [_account('cash'), _account('bank')];
 
@@ -248,16 +366,16 @@ void main() {
       expect(accountId, 'cash');
     });
 
-    test('resolves reimbursement receivable account', () {
+    test('resolves advance receivable account', () {
       final detail = _detail(
-        purpose: BusinessPurpose.reimbursementAdvance,
+        purpose: BusinessPurpose.advance,
         entries: [
           _entry('company', EntryDirection.debit),
           _entry('cash', EntryDirection.credit),
         ],
       );
 
-      final accountId = reimbursementReceivableAccountId(detail, {
+      final accountId = advanceReceivableAccountId(detail, {
         'company': _account('company'),
         'cash': _account('cash'),
       });
@@ -272,16 +390,16 @@ TransactionReadModel _detail({
   required List<Entry> entries,
   List<TransactionLine> lines = const [],
   Money primaryAmount = const Money(minorUnits: 1234),
-  String? reimbursementExpenseAccountId,
+  String? advanceExpenseAccountId,
 }) {
   final allLines = [
-    if (reimbursementExpenseAccountId != null)
+    if (advanceExpenseAccountId != null)
       TransactionLine(
         id: 'expense-category',
         transactionId: 'tx-1',
         lineNo: 1,
-        role: TransactionRole.reimbursementExpenseCategory,
-        accountId: reimbursementExpenseAccountId,
+        role: TransactionRole.advanceExpenseCategory,
+        accountId: advanceExpenseAccountId,
         amount: primaryAmount,
       ),
     for (var index = 0; index < entries.length; index++)
@@ -298,7 +416,7 @@ TransactionReadModel _detail({
             entries[index].direction == EntryDirection.debit
                 ? TransactionRole.category
                 : TransactionRole.settlementOut,
-          BusinessPurpose.reimbursementAdvance =>
+          BusinessPurpose.advance =>
             entries[index].direction == EntryDirection.debit
                 ? TransactionRole.receivable
                 : TransactionRole.settlementOut,
@@ -344,11 +462,16 @@ Entry _entry(String accountId, EntryDirection direction) {
   );
 }
 
-Account _account(String id, {AccountType type = AccountType.asset}) {
+Account _account(
+  String id, {
+  AccountType type = AccountType.asset,
+  String? profileKey,
+}) {
   return Account(
     id: id,
     name: id,
     type: type,
+    profileKey: profileKey,
     balance: const Money(minorUnits: 0),
   );
 }

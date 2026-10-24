@@ -168,8 +168,12 @@ class _TransactionFormContentState
     final settlementAccounts = formState.settlementAccounts;
     final fundAccounts = formState.fundAccounts;
     final liabilityAccounts = formState.liabilityAccounts;
-    final reimbursementAccounts = formState.reimbursementAccounts;
+    final advanceReceivableAccounts = formState.advanceReceivableAccounts;
     final ordinaryReceivableAccounts = formState.ordinaryReceivableAccounts;
+    final selectableAdvanceAccounts = advanceAccountsForExpenseScene(
+      formState.expenseScene,
+      advanceReceivableAccounts,
+    );
     final editTransactionId = widget.editTransactionId;
 
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
@@ -373,10 +377,13 @@ class _TransactionFormContentState
                       mode: formState.mode,
                       occurredAt: formState.occurredAt,
                       moneyAccounts: settlementAccounts,
-                      reimbursementAccounts: reimbursementAccounts,
+                      advanceAccounts: selectableAdvanceAccounts,
                       fromAccountId: formState.fromAccountId,
                       toAccountId: formState.toAccountId,
-                      reimbursementAccountId: formState.reimbursementAccountId,
+                      advanceReceivableAccountId:
+                          formState.advanceReceivableAccountId,
+                      expenseScene: formState.expenseScene,
+                      aaPeopleCount: formState.aaPeopleCount,
                       allocatedEntry:
                           formState.entryMode == TransactionEntryMode.allocated,
                       excludeStats: formState.excludeStats,
@@ -388,9 +395,10 @@ class _TransactionFormContentState
                       onToAccountChanged: (value) => ref
                           .read(_formProvider.notifier)
                           .setToAccountId(value),
-                      onReimbursementAccountChanged: (value) => ref
+                      onAdvanceAccountChanged: (value) => ref
                           .read(_formProvider.notifier)
-                          .setReimbursementAccountId(value),
+                          .setAdvanceAccountId(value),
+                      onAaPeopleTap: _selectAaPeopleCount,
                       onExcludeStatsChanged: (value) => ref
                           .read(_formProvider.notifier)
                           .setExcludeStats(value),
@@ -398,6 +406,14 @@ class _TransactionFormContentState
                           .read(_formProvider.notifier)
                           .setExcludeBudget(value),
                     ),
+                    if (formState.mode == TransactionFormMode.expense &&
+                        formState.expenseScene.isAdvance &&
+                        formState.advanceReceivableAccountId != null)
+                      _AdvanceSplitSummary(
+                        scene: formState.expenseScene,
+                        aaPeopleCount: formState.aaPeopleCount,
+                        amountController: _amountController,
+                      ),
                     if (keyboardVisible)
                       SizedBox(height: keyboardInset)
                     else ...[
@@ -406,7 +422,7 @@ class _TransactionFormContentState
                         submitting: formState.submitting,
                         onInput: _handleNumberInput,
                         onBackspace: _deleteAmountDigit,
-                        onClear: _clearForNext,
+                        onSelectScene: _selectScene,
                         onCancel: () => context.pop(),
                         onSubmit: _submit,
                       ),
@@ -505,11 +521,58 @@ class _TransactionFormContentState
     );
   }
 
-  void _clearForNext() {
-    _amountController.clear();
-    _feeController.clear();
-    _noteController.clear();
-    ref.read(_formProvider.notifier).clearForNext();
+  Future<void> _selectScene() async {
+    final formState = ref.read(_formProvider).requireValue!;
+    if (formState.mode != TransactionFormMode.expense) {
+      await showTransactionModeSceneSheet(
+        context: context,
+        mode: formState.mode,
+      );
+      return;
+    }
+    final selected = await showTransactionExpenseSceneSheet(
+      context: context,
+      selected: formState.expenseScene,
+      scenes: _editableExpenseScenes(formState),
+    );
+    if (!mounted || selected == null) return;
+    ref.read(_formProvider.notifier).setExpenseScene(selected);
+  }
+
+  List<TransactionExpenseScene> _editableExpenseScenes(
+    TransactionFormState formState,
+  ) {
+    if (widget.editTransactionId == null) {
+      return TransactionExpenseScene.values;
+    }
+    final management = formState.expenseScene.advanceManagement;
+    return switch (management) {
+      null => [
+        for (final scene in TransactionExpenseScene.values)
+          if (scene.advanceManagement != AdvanceManagement.account) scene,
+      ],
+      AdvanceManagement.itemized => [
+        for (final scene in TransactionExpenseScene.values)
+          if (scene == TransactionExpenseScene.ordinary ||
+              scene.advanceManagement == AdvanceManagement.itemized)
+            scene,
+      ],
+      AdvanceManagement.account => [
+        for (final scene in TransactionExpenseScene.values)
+          if (scene.advanceManagement == AdvanceManagement.account) scene,
+      ],
+    };
+  }
+
+  Future<void> _selectAaPeopleCount() async {
+    final formState = ref.read(_formProvider).requireValue!;
+    if (!formState.expenseScene.isAa) return;
+    final selected = await showAaPeopleCountSheet(
+      context: context,
+      initialCount: formState.aaPeopleCount,
+    );
+    if (!mounted || selected == null) return;
+    ref.read(_formProvider.notifier).setAaPeopleCount(selected);
   }
 
   void _setCategoryAllocations(List<AccountAmountAllocation> allocations) {
@@ -1071,6 +1134,368 @@ class _CategoryAllocationPickerSheetState
   }
 }
 
+Future<TransactionExpenseScene?> showTransactionExpenseSceneSheet({
+  required BuildContext context,
+  required TransactionExpenseScene selected,
+  List<TransactionExpenseScene>? scenes,
+}) {
+  return showModalBottomSheet<TransactionExpenseScene>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => _TransactionExpenseSceneSheet(
+      selected: selected,
+      scenes: scenes ?? TransactionExpenseScene.values,
+    ),
+  );
+}
+
+Future<void> showTransactionModeSceneSheet({
+  required BuildContext context,
+  required TransactionFormMode mode,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => _TransactionModeSceneSheet(mode: mode),
+  );
+}
+
+class _TransactionModeSceneSheet extends StatelessWidget {
+  const _TransactionModeSceneSheet({required this.mode});
+
+  final TransactionFormMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('选择场景', style: context.appTextStyles.subsectionTitle),
+            const SizedBox(height: AppSpacing.space8),
+            Material(
+              color: colors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+              child: InkWell(
+                key: ValueKey('transaction-mode-scene-${mode.name}'),
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space12,
+                    vertical: AppSpacing.space10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _modeSceneIcon(mode),
+                        size: AppSpacing.space24,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.space12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _modeSceneLabel(mode),
+                              style: context.appTextStyles.listTitle,
+                            ),
+                            const SizedBox(height: AppSpacing.space2),
+                            Text(
+                              _modeSceneDescription(mode),
+                              style: context.appTextStyles.listSupporting
+                                  .copyWith(color: colors.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        RemixIcons.check_line,
+                        size: AppSpacing.space20,
+                        color: colors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionExpenseSceneSheet extends StatelessWidget {
+  const _TransactionExpenseSceneSheet({
+    required this.selected,
+    required this.scenes,
+  });
+
+  final TransactionExpenseScene selected;
+  final List<TransactionExpenseScene> scenes;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('选择场景', style: context.appTextStyles.subsectionTitle),
+            const SizedBox(height: AppSpacing.space8),
+            for (final scene in scenes)
+              _ExpenseSceneOption(
+                scene: scene,
+                selected: scene == selected,
+                onTap: () => Navigator.of(context).pop(scene),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpenseSceneOption extends StatelessWidget {
+  const _ExpenseSceneOption({
+    required this.scene,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TransactionExpenseScene scene;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final icon = switch (scene) {
+      TransactionExpenseScene.ordinary => RemixIcons.wallet_line,
+      TransactionExpenseScene.reimbursement ||
+      TransactionExpenseScene.reimbursementAccount =>
+        RemixIcons.file_list_3_line,
+      TransactionExpenseScene.onBehalf => RemixIcons.hand_coin_line,
+      TransactionExpenseScene.aa ||
+      TransactionExpenseScene.aaAccount => RemixIcons.user_shared_line,
+    };
+    final description = switch (scene) {
+      TransactionExpenseScene.ordinary => '直接记录支出，不形成应收',
+      TransactionExpenseScene.reimbursement => '逐笔跟踪一笔报销应收',
+      TransactionExpenseScene.reimbursementAccount => '归入报销账户，不跟踪单笔',
+      TransactionExpenseScene.onBehalf => '逐笔跟踪一笔代付应收',
+      TransactionExpenseScene.aa => '逐笔跟踪 AA 中其他人的应收',
+      TransactionExpenseScene.aaAccount => '归入垫付账户，不跟踪单笔',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space4),
+      child: Material(
+        color: selected
+            ? colors.primary.withValues(alpha: 0.08)
+            : colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        child: InkWell(
+          key: ValueKey('transaction-scene-${scene.name}'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space12,
+              vertical: AppSpacing.space10,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: AppSpacing.space24, color: colors.primary),
+                const SizedBox(width: AppSpacing.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(scene.label, style: context.appTextStyles.listTitle),
+                      const SizedBox(height: AppSpacing.space2),
+                      Text(
+                        description,
+                        style: context.appTextStyles.listSupporting.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  Icon(
+                    RemixIcons.check_line,
+                    size: AppSpacing.space20,
+                    color: colors.primary,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<int?> showAaPeopleCountSheet({
+  required BuildContext context,
+  required int initialCount,
+}) {
+  return showModalBottomSheet<int>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => _AaPeopleCountSheet(initialCount: initialCount),
+  );
+}
+
+class _AaPeopleCountSheet extends StatefulWidget {
+  const _AaPeopleCountSheet({required this.initialCount});
+
+  final int initialCount;
+
+  @override
+  State<_AaPeopleCountSheet> createState() => _AaPeopleCountSheetState();
+}
+
+class _AaPeopleCountSheetState extends State<_AaPeopleCountSheet> {
+  late int _count = widget.initialCount.clamp(2, 99).toInt();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('AA人数', style: context.appTextStyles.subsectionTitle),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              '人数仅用于本次场景录入。',
+              style: context.appTextStyles.listSupporting.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  key: const ValueKey('aa-people-minus'),
+                  onPressed: _count > 2
+                      ? () => setState(() => _count -= 1)
+                      : null,
+                  icon: const Icon(RemixIcons.subtract_line),
+                  tooltip: '减少人数',
+                ),
+                SizedBox(
+                  width: 88,
+                  child: Text(
+                    '$_count人',
+                    textAlign: TextAlign.center,
+                    style: context.appTextStyles.subsectionTitleStrong,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('aa-people-plus'),
+                  onPressed: _count < 99
+                      ? () => setState(() => _count += 1)
+                      : null,
+                  icon: const Icon(RemixIcons.add_line),
+                  tooltip: '增加人数',
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            AppSubmitButton(
+              key: const ValueKey('aa-people-confirm'),
+              label: '确定',
+              onPressed: () => Navigator.of(context).pop(_count),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdvanceSplitSummary extends StatelessWidget {
+  const _AdvanceSplitSummary({
+    required this.scene,
+    required this.aaPeopleCount,
+    required this.amountController,
+  });
+
+  final TransactionExpenseScene scene;
+  final int aaPeopleCount;
+  final TextEditingController amountController;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: amountController,
+      builder: (context, value, _) {
+        final total = Money.tryParse(value.text);
+        if (total == null || total.minorUnits <= 0) {
+          return const SizedBox.shrink();
+        }
+        final selfBorne = selfBorneAmountForExpenseScene(
+          scene: scene,
+          total: total,
+          aaPeopleCount: aaPeopleCount,
+        );
+        final advance = advanceAmountForExpenseScene(
+          scene: scene,
+          total: total,
+          aaPeopleCount: aaPeopleCount,
+        );
+        final text = scene.isAa
+            ? '按 $aaPeopleCount 人 AA：自承担 ${selfBorne.format()}，'
+                  '垫付 ${advance.format()}'
+            : '按交易金额全额垫付 ${advance.format()}';
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.space8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              style: context.appTextStyles.formSupporting.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _TransactionMetadataActionRow extends StatelessWidget {
   const _TransactionMetadataActionRow({
     required this.allocated,
@@ -1126,14 +1551,20 @@ class _TransactionMetadataActionRow extends StatelessWidget {
       key: const ValueKey('transaction-metadata-action-row'),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Flexible(flex: 2, child: counterparty),
-        const SizedBox(width: AppSpacing.space8),
         Expanded(
-          flex: 3,
-          child: Align(alignment: Alignment.centerLeft, child: tags),
+          child: Row(
+            children: [
+              Flexible(flex: 2, child: counterparty),
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                flex: 3,
+                child: Align(alignment: Alignment.centerLeft, child: tags),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(width: AppSpacing.space8),
-        if (showEntryMode)
+        if (showEntryMode) ...[
+          const SizedBox(width: AppSpacing.space8),
           _QuickActionChip(
             key: const ValueKey('toggle-transaction-entry-mode'),
             icon: RemixIcons.list_check_3,
@@ -1141,6 +1572,7 @@ class _TransactionMetadataActionRow extends StatelessWidget {
             selected: allocated,
             onTap: onToggleMode,
           ),
+        ],
       ],
     );
   }
@@ -1341,17 +1773,20 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.mode,
     required this.occurredAt,
     required this.moneyAccounts,
-    required this.reimbursementAccounts,
+    required this.advanceAccounts,
     required this.fromAccountId,
     required this.toAccountId,
-    required this.reimbursementAccountId,
+    required this.advanceReceivableAccountId,
+    required this.expenseScene,
+    required this.aaPeopleCount,
     required this.allocatedEntry,
     required this.excludeStats,
     required this.excludeBudget,
     required this.onPickDate,
     required this.onFromAccountChanged,
     required this.onToAccountChanged,
-    required this.onReimbursementAccountChanged,
+    required this.onAdvanceAccountChanged,
+    required this.onAaPeopleTap,
     required this.onExcludeStatsChanged,
     required this.onExcludeBudgetChanged,
   });
@@ -1359,17 +1794,20 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final TransactionFormMode mode;
   final DateTime occurredAt;
   final List<Account> moneyAccounts;
-  final List<Account> reimbursementAccounts;
+  final List<Account> advanceAccounts;
   final String? fromAccountId;
   final String? toAccountId;
-  final String? reimbursementAccountId;
+  final String? advanceReceivableAccountId;
+  final TransactionExpenseScene expenseScene;
+  final int aaPeopleCount;
   final bool allocatedEntry;
   final bool excludeStats;
   final bool excludeBudget;
   final VoidCallback onPickDate;
   final ValueChanged<String?> onFromAccountChanged;
   final ValueChanged<String?> onToAccountChanged;
-  final ValueChanged<String?> onReimbursementAccountChanged;
+  final ValueChanged<String?> onAdvanceAccountChanged;
+  final VoidCallback onAaPeopleTap;
   final ValueChanged<bool> onExcludeStatsChanged;
   final ValueChanged<bool> onExcludeBudgetChanged;
 
@@ -1416,14 +1854,24 @@ class _TransactionOptionsPanel extends StatelessWidget {
                       selectedId: primaryAccountId,
                       onChanged: accountChanged,
                     ),
-                  if (mode == TransactionFormMode.expense)
+                  if (mode == TransactionFormMode.expense &&
+                      expenseScene.isAdvance)
                     _AccountSelectorChip(
-                      label: '报销账户',
-                      accounts: reimbursementAccounts,
-                      selectedId: reimbursementAccountId,
+                      key: const ValueKey('advance-account-option'),
+                      label: expenseScene.accountLabel,
+                      accounts: advanceAccounts,
+                      selectedId: advanceReceivableAccountId,
                       allowNone: true,
-                      noneLabel: '不报销',
-                      onChanged: onReimbursementAccountChanged,
+                      noneLabel: expenseScene.noneLabel,
+                      onChanged: onAdvanceAccountChanged,
+                    ),
+                  if (mode == TransactionFormMode.expense && expenseScene.isAa)
+                    _QuickActionChip(
+                      key: const ValueKey('aa-people-action'),
+                      icon: RemixIcons.user_shared_line,
+                      label: '$aaPeopleCount人',
+                      selected: false,
+                      onTap: onAaPeopleTap,
                     ),
                   if (showExcludeStats)
                     _ToggleChip(
@@ -1483,13 +1931,15 @@ class _AccountSelectorChip extends StatelessWidget {
     final selected = selectedId == null
         ? null
         : accounts.where((account) => account.id == selectedId).firstOrNull;
-    final effective = selected ?? effectiveAccount(null, accounts);
-    final text = allowNone && selectedId == null
+    final effective =
+        selected ?? (allowNone ? null : effectiveAccount(null, accounts));
+    final showsNone = allowNone && selected == null;
+    final text = showsNone
         ? noneLabel
         : effective == null
         ? '$label为空'
         : effective.name;
-    final leading = effective == null || (allowNone && selectedId == null)
+    final leading = effective == null
         ? null
         : BusinessIcon(
             iconKey: effective.iconKey,
@@ -1626,7 +2076,7 @@ class _NumberPad extends StatelessWidget {
     required this.submitting,
     required this.onInput,
     required this.onBackspace,
-    required this.onClear,
+    required this.onSelectScene,
     required this.onCancel,
     required this.onSubmit,
   });
@@ -1634,7 +2084,7 @@ class _NumberPad extends StatelessWidget {
   final bool submitting;
   final ValueChanged<String> onInput;
   final VoidCallback onBackspace;
-  final VoidCallback onClear;
+  final VoidCallback onSelectScene;
   final VoidCallback onCancel;
   final VoidCallback onSubmit;
 
@@ -1653,7 +2103,7 @@ class _NumberPad extends StatelessWidget {
                   ['1', '2', '3'],
                   ['4', '5', '6'],
                   ['7', '8', '9'],
-                  ['再记', '0', '.'],
+                  ['场景', '0', '.'],
                 ])
                   Row(
                     children: [
@@ -1661,8 +2111,8 @@ class _NumberPad extends StatelessWidget {
                         Expanded(
                           child: _PadKey(
                             label: value,
-                            onTap: value == '再记'
-                                ? onClear
+                            onTap: value == '场景'
+                                ? onSelectScene
                                 : () => onInput(value),
                           ),
                         ),
@@ -1734,7 +2184,7 @@ class _PadKey extends StatelessWidget {
               child: icon == null
                   ? Text(
                       label!,
-                      style: label == '再记'
+                      style: label == '场景'
                           ? textStyles.keypadSecondary
                           : textStyles.keypadPrimary,
                     )
@@ -1802,6 +2252,36 @@ String _modeLabel(TransactionFormMode mode) {
     TransactionFormMode.transfer => '转账',
     TransactionFormMode.borrowing => '借入',
     TransactionFormMode.lending => '借出',
+  };
+}
+
+String _modeSceneLabel(TransactionFormMode mode) {
+  return switch (mode) {
+    TransactionFormMode.expense => '普通支出',
+    TransactionFormMode.income => '普通收入',
+    TransactionFormMode.transfer => '普通转账',
+    TransactionFormMode.borrowing => '普通借入',
+    TransactionFormMode.lending => '普通借出',
+  };
+}
+
+String _modeSceneDescription(TransactionFormMode mode) {
+  return switch (mode) {
+    TransactionFormMode.expense => '直接记录支出，不形成应收',
+    TransactionFormMode.income => '记录一笔收入，不形成往来余额',
+    TransactionFormMode.transfer => '在两个账户之间转移资金',
+    TransactionFormMode.borrowing => '收到资金并形成负债',
+    TransactionFormMode.lending => '支付资金并形成应收',
+  };
+}
+
+IconData _modeSceneIcon(TransactionFormMode mode) {
+  return switch (mode) {
+    TransactionFormMode.expense => RemixIcons.wallet_line,
+    TransactionFormMode.income => RemixIcons.money_dollar_circle_line,
+    TransactionFormMode.transfer => RemixIcons.arrow_left_right_line,
+    TransactionFormMode.borrowing => RemixIcons.bank_card_line,
+    TransactionFormMode.lending => RemixIcons.hand_coin_line,
   };
 }
 

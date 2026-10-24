@@ -127,6 +127,11 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
         route: '/account/${account.id}/receivable-collection',
       ),
       AccountDetailAction(
+        label: '垫付收回',
+        iconKey: 'advance-collection',
+        route: '/account/${account.id}/advance-collection?scenario=aa',
+      ),
+      AccountDetailAction(
         label: '坏账',
         iconKey: 'money-cny-circle-line',
         route: '/account/${account.id}/bad-debt',
@@ -152,7 +157,7 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
         route: '/account/${account.id}/debt-relief',
       ),
     ],
-    AccountProfileKind.fund || AccountProfileKind.reimbursement => [
+    AccountProfileKind.fund => [
       _recordTransactionAction(account),
       AccountDetailAction(
         label: '转账',
@@ -161,6 +166,21 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
           mode: 'transfer',
           queryParameters: {'fromAccountId': account.id},
         ),
+      ),
+    ],
+    AccountProfileKind.reimbursement => [
+      _recordTransactionAction(account),
+      AccountDetailAction(
+        label: '报销',
+        iconKey: 'refund-income',
+        route:
+            '/account/${account.id}/advance-collection'
+            '?scenario=reimbursement',
+      ),
+      AccountDetailAction(
+        label: '坏账',
+        iconKey: 'money-cny-circle-line',
+        route: '/account/${account.id}/bad-debt',
       ),
     ],
     AccountProfileKind.credit || AccountProfileKind.loan => [

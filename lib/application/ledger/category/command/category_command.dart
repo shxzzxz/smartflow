@@ -56,7 +56,7 @@ class CategoryDeletionPreview {
   /// active 子分类数量；一级分类须先处理或删除其二级分类。
   final int childCount;
 
-  /// 交易引用数量：分类分录引用 + 报销垫付支出分类引用。
+  /// 交易引用数量：分类分录引用 + 垫付支出分类引用。
   final int transactionRefCount;
 
   bool get canDelete => childCount == 0 && transactionRefCount == 0;

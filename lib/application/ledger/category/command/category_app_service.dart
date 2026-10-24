@@ -161,9 +161,9 @@ class CategoryAppServiceImpl implements CategoryAppService {
     final entryCounts = await _transactionRepository.countEntriesByAccount({
       categoryId,
     });
-    final reimbursementCounts = await _transactionRepository
-        .countReimbursementExpenseRefs({categoryId});
-    return (entryCounts[categoryId] ?? 0) +
-        (reimbursementCounts[categoryId] ?? 0);
+    final advanceCounts = await _transactionRepository.countAdvanceExpenseRefs({
+      categoryId,
+    });
+    return (entryCounts[categoryId] ?? 0) + (advanceCounts[categoryId] ?? 0);
   }
 }

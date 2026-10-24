@@ -71,14 +71,12 @@ class YimuImportParser implements ImportSourceParser {
             error.failure == ImportFileReadFailure.unsupportedFormat;
         addFileIssue(
           ImportIssue(
-            code:
-                isUnsupported
-                    ? 'unsupported_file_format'
-                    : 'file_decode_failed',
-            message:
-                isUnsupported
-                    ? '无法识别文件 ${file.name} 的格式。支持 CSV 和 XLSX；XLS 文件请先另存为这两种格式。'
-                    : '无法读取一木文件 ${file.name}，请重新导出或选择有效文件。',
+            code: isUnsupported
+                ? 'unsupported_file_format'
+                : 'file_decode_failed',
+            message: isUnsupported
+                ? '无法识别文件 ${file.name} 的格式。支持 CSV 和 XLSX；XLS 文件请先另存为这两种格式。'
+                : '无法读取一木文件 ${file.name}，请重新导出或选择有效文件。',
             severity: ImportIssueSeverity.fatal,
           ),
         );
@@ -267,16 +265,16 @@ void _parseBillRows(
       'category=${_normalized(path)}',
       'account=${_normalized(record.accountName)}',
       'refund=${_normalized(record.refundSource)}',
-      'receivable=${_normalized(record.reimbursementAccountName)}',
-      'reimbursement=${_normalized(record.reimbursementAmountSource)}',
-      'details=${_normalized(record.reimbursementDetailsSource)}',
+      'receivable=${_normalized(record.advanceAccountName)}',
+      'reimbursement=${_normalized(record.advanceAmountSource)}',
+      'details=${_normalized(record.advanceDetailsSource)}',
       'note=${_normalized(note)}',
       'other=${_normalized(other)}',
     ];
 
-    if (kind == '支出' && record.hasReimbursementFields) {
+    if (kind == '支出' && record.hasAdvanceFields) {
       groups.add(
-        _parseReimbursement(
+        _parseAdvance(
           record,
           rowNumber: rowNumber,
           amount: actualAmount,
@@ -414,7 +412,7 @@ void _parseBillRows(
   }
 }
 
-ImportTransactionGroupDraft _parseReimbursement(
+ImportTransactionGroupDraft _parseAdvance(
   YimuBillRecord record, {
   required int rowNumber,
   required Money amount,
@@ -445,16 +443,16 @@ ImportTransactionGroupDraft _parseReimbursement(
     required: false,
   );
   final receivable = _accountReference(
-    record.reimbursementAccountName,
+    record.advanceAccountName,
     entities: entities,
     issues: issues,
     rowNumber: rowNumber,
     required: true,
     fileType: YimuFileType.bill,
-    fieldKey: 'reimbursement',
+    fieldKey: 'advance',
     fieldName: '报销账户',
   );
-  final reimbursementAmount = record.reimbursementAmount;
+  final advanceAmount = record.advanceAmount;
   final refund = record.refundAmount;
   if (refund != null && refund.minorUnits < 0) {
     issues.add(_blocking('refund_negative', '退款金额不能为负数。', rowNumber));
@@ -464,9 +462,9 @@ ImportTransactionGroupDraft _parseReimbursement(
     issues.add(_blocking('expense_amount_invalid', '支出金额必须大于零。', rowNumber));
   }
   final details = [
-    for (final detail in record.reimbursementDetails)
+    for (final detail in record.advanceDetails)
       if (detail.occurredAt != null && detail.amount != null)
-        _ReimbursementDetail(
+        _AdvanceDetail(
           date: detail.occurredAt!,
           account: _accountReference(
             detail.accountName,
@@ -475,7 +473,7 @@ ImportTransactionGroupDraft _parseReimbursement(
             rowNumber: rowNumber,
             required: true,
             fileType: YimuFileType.bill,
-            fieldKey: 'reimbursement_detail_account',
+            fieldKey: 'advance_detail_account',
             fieldName: '报销明细到账账户',
           ),
           amount: detail.amount!.abs(),
@@ -483,26 +481,22 @@ ImportTransactionGroupDraft _parseReimbursement(
   ];
   if (details.isEmpty) {
     issues.add(
-      _blocking('reimbursement_details_missing', '报销记录缺少有效报销明细。', rowNumber),
+      _blocking('advance_details_missing', '报销记录缺少有效报销明细。', rowNumber),
     );
   }
-  if (reimbursementAmount != null) {
+  if (advanceAmount != null) {
     final detailTotal = details.fold(
       Money.zero(),
       (sum, item) => sum + item.amount,
     );
-    if (detailTotal != reimbursementAmount) {
+    if (detailTotal != advanceAmount) {
       issues.add(
-        _blocking(
-          'reimbursement_amount_mismatch',
-          '报销金额与报销明细到账合计不一致。',
-          rowNumber,
-        ),
+        _blocking('advance_amount_mismatch', '报销金额与报销明细到账合计不一致。', rowNumber),
       );
     }
   }
 
-  final top = ImportReimbursementAdvanceDraft(
+  final top = ImportAdvanceDraft(
     amount: grossAdvance,
     receivableAccount: receivable,
     paidFrom: paidFrom,
@@ -527,7 +521,7 @@ ImportTransactionGroupDraft _parseReimbursement(
     for (var index = 0; index < details.length - 1; index++) {
       final detail = details[index];
       children.add(
-        ImportReimbursementReceiptDraft(
+        ImportAdvanceCollectionDraft(
           amount: detail.amount,
           receivableAccount: receivable,
           receiveAccount: detail.account,
@@ -538,7 +532,7 @@ ImportTransactionGroupDraft _parseReimbursement(
     }
     final last = details.last;
     children.add(
-      ImportReimbursementCloseDraft(
+      ImportAdvanceSettlementDraft(
         actualReceivedAmount: last.amount,
         receivableAccount: receivable,
         receiveAccount: last.account,
@@ -548,7 +542,7 @@ ImportTransactionGroupDraft _parseReimbursement(
     );
   } else {
     children.add(
-      ImportReimbursementCloseDraft(
+      ImportAdvanceSettlementDraft(
         actualReceivedAmount: Money.zero(),
         receivableAccount: receivable,
         receiveAccount: ImportAccountReference.unresolved(),
@@ -674,21 +668,19 @@ void _parseTransferRows(
         fileType: role,
         fieldKey: 'to',
         fieldName: '转入账户',
-        allowedTargetDescriptors:
-            role == YimuFileType.debt
-                ? const {
-                  ImportTargetDescriptor.payableAccount,
-                  ImportTargetDescriptor.loanAccount,
-                }
-                : const {
-                  ImportTargetDescriptor.payableAccount,
-                  ImportTargetDescriptor.creditAccount,
-                  ImportTargetDescriptor.loanAccount,
-                },
-        preferredTargetDescriptor:
-            role == YimuFileType.debt
-                ? ImportTargetDescriptor.payableAccount
-                : ImportTargetDescriptor.creditAccount,
+        allowedTargetDescriptors: role == YimuFileType.debt
+            ? const {
+                ImportTargetDescriptor.payableAccount,
+                ImportTargetDescriptor.loanAccount,
+              }
+            : const {
+                ImportTargetDescriptor.payableAccount,
+                ImportTargetDescriptor.creditAccount,
+                ImportTargetDescriptor.loanAccount,
+              },
+        preferredTargetDescriptor: role == YimuFileType.debt
+            ? ImportTargetDescriptor.payableAccount
+            : ImportTargetDescriptor.creditAccount,
       );
       final fee = record.feeAmount;
       final interest = fee != null && fee.minorUnits > 0 ? fee : null;
@@ -966,9 +958,7 @@ void _parseTransferRows(
 
 bool _isGeneratedTransferFee(YimuBillRecord bill) {
   final note = bill.note;
-  return bill.kind == '支出' &&
-      note != null &&
-      note.endsWith(' 转账手续费');
+  return bill.kind == '支出' && note != null && note.endsWith(' 转账手续费');
 }
 
 ImportTransactionGroupDraft _group(
@@ -984,12 +974,12 @@ ImportTransactionGroupDraft _group(
       issue.fileType != null
           ? issue
           : ImportIssue(
-            code: issue.code,
-            message: issue.message,
-            severity: issue.severity,
-            rowNumber: issue.rowNumber,
-            fileType: fileType.descriptor,
-          ),
+              code: issue.code,
+              message: issue.message,
+              severity: issue.severity,
+              rowNumber: issue.rowNumber,
+              fileType: fileType.descriptor,
+            ),
   ];
   final canonicalText = [
     ...canonical,
@@ -1084,10 +1074,9 @@ ImportAccountReference _accountReference(
     }
     final role = fileType ?? YimuFileType.bill;
     final key = 'review:missing:account:${role.name}:$rowNumber:$fieldKey';
-    final label =
-        isExplicitNone
-            ? '$fieldName明确为无账户（${_roleName(role)}文件第 $rowNumber 行）'
-            : '缺失$fieldName（${_roleName(role)}文件第 $rowNumber 行）';
+    final label = isExplicitNone
+        ? '$fieldName明确为无账户（${_roleName(role)}文件第 $rowNumber 行）'
+        : '缺失$fieldName（${_roleName(role)}文件第 $rowNumber 行）';
     _mergeSourceEntity(
       entities,
       ImportSourceEntity(
@@ -1180,7 +1169,7 @@ String _canonicalDate(DateTime date) => date.toIso8601String();
 
 String _canonicalDraft(ImportTransactionDraft draft) {
   return [
-    'kind=${draft.operationKind.name}',
+    'kind=${_canonicalOperationKind(draft.operationKind)}',
     'amount=${draft.amount.minorUnits}',
     'occurred=${_canonicalDate(draft.occurredAt)}',
     'posted=${_canonicalDate(draft.postedAt)}',
@@ -1195,11 +1184,20 @@ String _canonicalDraft(ImportTransactionDraft draft) {
             'interest=${draft.interest?.minorUnits ?? ''};'
             'fee=${draft.fee?.minorUnits ?? ''};'
             'discount=${draft.discount?.minorUnits ?? ''}',
-      ImportReimbursementCloseDraft draft =>
+      ImportAdvanceSettlementDraft draft =>
         'received=${draft.actualReceivedAmount.minorUnits}',
       _ => '',
     },
   ].join(';');
+}
+
+String _canonicalOperationKind(ImportOperationKind kind) {
+  return switch (kind) {
+    ImportOperationKind.advance => 'reimbursementAdvance',
+    ImportOperationKind.advanceCollection => 'reimbursementReceipt',
+    ImportOperationKind.advanceSettlement => 'reimbursementClose',
+    _ => kind.name,
+  };
 }
 
 ImportIssue _blocking(String code, String message, int? rowNumber) {
@@ -1365,8 +1363,8 @@ class _MutableImportFileParseResult {
   }
 }
 
-class _ReimbursementDetail {
-  const _ReimbursementDetail({
+class _AdvanceDetail {
+  const _AdvanceDetail({
     required this.date,
     required this.account,
     required this.amount,

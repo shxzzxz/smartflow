@@ -411,8 +411,8 @@ void main() {
 
     for (final purpose in [
       BusinessPurpose.refund,
-      BusinessPurpose.reimbursementReceipt,
-      BusinessPurpose.reimbursementClose,
+      BusinessPurpose.advanceCollection,
+      BusinessPurpose.advanceSettlement,
     ]) {
       test('supports single receipt account editing for $purpose', () async {
         final editing = _FakeTransactionEditAppService();
@@ -438,7 +438,7 @@ void main() {
         final allocations = switch (purpose) {
           BusinessPurpose.refund =>
             editing.refundCommands.single.settlementAllocations!,
-          BusinessPurpose.reimbursementReceipt =>
+          BusinessPurpose.advanceCollection =>
             editing.receiptCommands.single.settlementAllocations!,
           _ => editing.closeCommands.single.settlementAllocations!,
         };
@@ -519,16 +519,16 @@ void main() {
       expect(update.basicInfoCommands.single.postedAt, postedAt);
     });
 
-    test('submits reimbursement close command', () async {
+    test('submits advance close command', () async {
       final posting = _FakeTransactionPostingAppService();
       final detail = _detail(
-        purpose: BusinessPurpose.reimbursementAdvance,
+        purpose: BusinessPurpose.advance,
         entries: [
           _entry('cash', EntryDirection.credit),
           _entry('company', EntryDirection.debit),
           _entry('food', EntryDirection.debit),
         ],
-        reimbursementSummary: const ReimbursementSummary(
+        advanceSummary: const AdvanceSummary(
           advanceAmount: Money(minorUnits: 10000),
           receivedAmount: Money(minorUnits: 3000),
           outstanding: Money(minorUnits: 7000),
@@ -540,12 +540,12 @@ void main() {
 
       final outcome = await container
           .read(transactionDetailViewModelProvider('tx-1').notifier)
-          .submitReimbursement(
-            ReimbursementSubmitInput(
+          .submitAdvance(
+            AdvanceSubmitInput(
               amount: const Money(minorUnits: 7000),
               receiveAccountId: 'bank',
               occurredAt: DateTime(2026, 1, 2, 9),
-              closeReimbursement: true,
+              settleAdvance: true,
               noteText: ' done ',
             ),
           );
@@ -560,11 +560,11 @@ void main() {
     });
 
     test(
-      'submits a single remaining category for a reimbursement shortfall',
+      'submits a single remaining category for an advance shortfall',
       () async {
         final posting = _FakeTransactionPostingAppService();
         final detail = _detail(
-          purpose: BusinessPurpose.reimbursementAdvance,
+          purpose: BusinessPurpose.advance,
           entries: [
             _entry('cash', EntryDirection.credit),
             _entry('company', EntryDirection.debit),
@@ -580,7 +580,7 @@ void main() {
             ],
             refundedCategoryAllocations: [],
           ),
-          reimbursementSummary: const ReimbursementSummary(
+          advanceSummary: const AdvanceSummary(
             advanceAmount: Money(minorUnits: 10000),
             receivedAmount: Money(minorUnits: 0),
             outstanding: Money(minorUnits: 7000),
@@ -592,12 +592,12 @@ void main() {
 
         final outcome = await container
             .read(transactionDetailViewModelProvider('tx-1').notifier)
-            .submitReimbursement(
-              ReimbursementSubmitInput(
+            .submitAdvance(
+              AdvanceSubmitInput(
                 amount: const Money(minorUnits: 6000),
                 receiveAccountId: 'bank',
                 occurredAt: DateTime(2026, 1, 2, 9),
-                closeReimbursement: true,
+                settleAdvance: true,
               ),
             );
 
@@ -721,7 +721,7 @@ TransactionReadModel _detail({
   List<Entry>? entries,
   Money? refundedTotal,
   RefundSummary? refundSummary,
-  ReimbursementSummary? reimbursementSummary,
+  AdvanceSummary? advanceSummary,
 }) {
   final sourceEntries =
       entries ??
@@ -729,7 +729,7 @@ TransactionReadModel _detail({
         _entry('cash', EntryDirection.credit),
         _entry('food', EntryDirection.debit),
       ];
-  final lines = purpose == BusinessPurpose.reimbursementAdvance
+  final lines = purpose == BusinessPurpose.advance
       ? _advanceLines
       : [
           for (var index = 0; index < sourceEntries.length; index++)
@@ -787,7 +787,7 @@ TransactionReadModel _detail({
                 originalCategoryAllocations: const [],
                 refundedCategoryAllocations: const [],
               )),
-    reimbursementSummary: reimbursementSummary,
+    advanceSummary: advanceSummary,
     children: [
       if (refundedTotal != null)
         TransactionReadModel(
@@ -809,28 +809,26 @@ TransactionReadModel _detail({
             ),
           ],
         ),
-      if (reimbursementSummary != null &&
-          reimbursementSummary.receivedAmount.minorUnits > 0)
+      if (advanceSummary != null &&
+          advanceSummary.receivedAmount.minorUnits > 0)
         TransactionReadModel(
-          id: reimbursementSummary.isClosed ? 'close' : 'receipt',
+          id: advanceSummary.isClosed ? 'close' : 'receipt',
           parentTransactionId: 'tx-1',
-          businessPurpose: reimbursementSummary.isClosed
-              ? BusinessPurpose.reimbursementClose
-              : BusinessPurpose.reimbursementReceipt,
+          businessPurpose: advanceSummary.isClosed
+              ? BusinessPurpose.advanceSettlement
+              : BusinessPurpose.advanceCollection,
           occurredAt: DateTime(2026, 1, 2),
-          primaryAmount: reimbursementSummary.receivedAmount,
+          primaryAmount: advanceSummary.receivedAmount,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
           lines: [
             TransactionLine(
-              id: 'reimbursement-settlement',
-              transactionId: reimbursementSummary.isClosed
-                  ? 'close'
-                  : 'receipt',
+              id: 'advance-settlement',
+              transactionId: advanceSummary.isClosed ? 'close' : 'receipt',
               lineNo: 1,
               role: TransactionRole.settlementIn,
               accountId: 'cash',
-              amount: reimbursementSummary.receivedAmount,
+              amount: advanceSummary.receivedAmount,
             ),
           ],
         ),
@@ -936,11 +934,11 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   final canceledTransactionIds = <String>[];
   final expenseCommands = <EditExpenseCommand>[];
   final incomeCommands = <EditIncomeCommand>[];
-  final reimbursementAdvanceCommands = <EditReimbursementAdvanceCommand>[];
+  final advanceCommands = <EditAdvanceCommand>[];
   final transferCommands = <EditTransferCommand>[];
   final refundCommands = <EditRefundCommand>[];
-  final receiptCommands = <EditReimbursementReceiptCommand>[];
-  final closeCommands = <EditReimbursementCloseCommand>[];
+  final receiptCommands = <EditAdvanceCollectionCommand>[];
+  final closeCommands = <EditAdvanceSettlementCommand>[];
 
   @override
   Future<void> deleteTransaction(DeleteTransactionCommand command) async {
@@ -948,10 +946,10 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementAdvance(
-    EditReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> editAdvance(
+    EditAdvanceCommand command,
   ) async {
-    reimbursementAdvanceCommands.add(command);
+    advanceCommands.add(command);
     return _posted();
   }
 
@@ -981,16 +979,16 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementClose(
-    EditReimbursementCloseCommand command,
+  Future<PostedTransactionResult> editAdvanceSettlement(
+    EditAdvanceSettlementCommand command,
   ) async {
     closeCommands.add(command);
     return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> editReimbursementReceipt(
-    EditReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> editAdvanceCollection(
+    EditAdvanceCollectionCommand command,
   ) async {
     receiptCommands.add(command);
     return _posted();
@@ -1019,20 +1017,20 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
 
 class _FakeTransactionPostingAppService
     implements TransactionPostingAppService {
-  final receiptCommands = <CreateReimbursementReceiptCommand>[];
-  final closeCommands = <CloseReimbursementCommand>[];
+  final receiptCommands = <CreateAdvanceCollectionCommand>[];
+  final closeCommands = <CreateAdvanceSettlementCommand>[];
 
   @override
-  Future<PostedTransactionResult> createReimbursementReceipt(
-    CreateReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> createAdvanceCollection(
+    CreateAdvanceCollectionCommand command,
   ) async {
     receiptCommands.add(command);
     return _posted();
   }
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) async {
     closeCommands.add(command);
     return _posted();
@@ -1075,9 +1073,7 @@ class _FakeTransactionPostingAppService
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementAdvance(
-    CreateReimbursementAdvanceCommand command,
-  ) {
+  Future<PostedTransactionResult> createAdvance(CreateAdvanceCommand command) {
     throw UnimplementedError();
   }
 
@@ -1177,7 +1173,7 @@ const _advanceLines = [
     id: 'advance-category',
     transactionId: 'tx-1',
     lineNo: 1,
-    role: TransactionRole.reimbursementExpenseCategory,
+    role: TransactionRole.advanceExpenseCategory,
     accountId: 'food',
     amount: Money(minorUnits: 10000),
   ),

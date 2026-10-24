@@ -17,9 +17,9 @@ final class V29TransactionSnapshot {
     required this.transactionId,
     required this.businessPurpose,
     required this.primaryAmount,
-    required this.reimbursementExpenseAccountId,
+    required this.advanceExpenseAccountId,
     required this.parentBusinessPurpose,
-    required this.parentReimbursementExpenseAccountId,
+    required this.parentAdvanceExpenseAccountId,
     required this.entries,
     required this.legacyAmounts,
     required this.accountTypes,
@@ -29,9 +29,9 @@ final class V29TransactionSnapshot {
   final String transactionId;
   final BusinessPurpose businessPurpose;
   final Money primaryAmount;
-  final String? reimbursementExpenseAccountId;
+  final String? advanceExpenseAccountId;
   final BusinessPurpose? parentBusinessPurpose;
-  final String? parentReimbursementExpenseAccountId;
+  final String? parentAdvanceExpenseAccountId;
   final List<Entry> entries;
   final Map<String, int> legacyAmounts;
   final Map<String, AccountType> accountTypes;
@@ -63,7 +63,7 @@ final class V29TransactionLineBackfiller {
     final lines = _linesFor(snapshot);
     _verifyPostingReplay(snapshot: snapshot, lines: lines);
     final correction =
-        snapshot.businessPurpose == BusinessPurpose.reimbursementClose
+        snapshot.businessPurpose == BusinessPurpose.advanceSettlement
         ? (_legacy(snapshot, 'reimbursementCloseMain') +
                   _legacy(snapshot, 'reimbursementGapIncome') -
                   _legacy(snapshot, 'reimbursementGapExpense'))
@@ -126,24 +126,23 @@ final class V29TransactionLineBackfiller {
           primaryAmount,
           builder.onlyDebit(),
         );
-        if (snapshot.parentBusinessPurpose ==
-            BusinessPurpose.reimbursementAdvance) {
-          final accountId = snapshot.parentReimbursementExpenseAccountId;
+        if (snapshot.parentBusinessPurpose == BusinessPurpose.advance) {
+          final accountId = snapshot.parentAdvanceExpenseAccountId;
           if (accountId == null) {
             throw _migrationError(
               snapshot,
               TransactionLineMigrationFailureReason
-                  .missingReimbursementExpenseCategory,
+                  .missingAdvanceExpenseCategory,
             );
           }
           builder
             ..add(
-              TransactionRole.reimbursementExpenseCategory,
+              TransactionRole.advanceExpenseCategory,
               primaryAmount,
               accountId,
             )
             ..add(
-              TransactionRole.refundOffset,
+              TransactionRole.receivable,
               primaryAmount,
               builder.onlyCredit(),
             );
@@ -154,18 +153,17 @@ final class V29TransactionLineBackfiller {
             builder.onlyCredit(),
           );
         }
-      case BusinessPurpose.reimbursementAdvance:
-        final accountId = snapshot.reimbursementExpenseAccountId;
+      case BusinessPurpose.advance:
+        final accountId = snapshot.advanceExpenseAccountId;
         if (accountId == null) {
           throw _migrationError(
             snapshot,
-            TransactionLineMigrationFailureReason
-                .missingReimbursementExpenseCategory,
+            TransactionLineMigrationFailureReason.missingAdvanceExpenseCategory,
           );
         }
         builder
           ..add(
-            TransactionRole.reimbursementExpenseCategory,
+            TransactionRole.advanceExpenseCategory,
             primaryAmount,
             accountId,
           )
@@ -175,7 +173,7 @@ final class V29TransactionLineBackfiller {
             primaryAmount,
             builder.onlyCredit(),
           );
-      case BusinessPurpose.reimbursementReceipt:
+      case BusinessPurpose.advanceCollection:
         builder
           ..add(
             TransactionRole.settlementIn,
@@ -187,7 +185,7 @@ final class V29TransactionLineBackfiller {
             primaryAmount,
             builder.onlyCredit(),
           );
-      case BusinessPurpose.reimbursementClose:
+      case BusinessPurpose.advanceSettlement:
         final outstanding = legacy('reimbursementCloseMain');
         final gapIncome = legacy('reimbursementGapIncome');
         final gapExpense = legacy('reimbursementGapExpense');
@@ -208,11 +206,15 @@ final class V29TransactionLineBackfiller {
           );
         }
         if (gapIncome.minorUnits > 0) {
-          builder.add(TransactionRole.reimbursementGapIncome, gapIncome, null);
+          builder.add(
+            TransactionRole.advanceCompensationIncome,
+            gapIncome,
+            null,
+          );
         }
         if (gapExpense.minorUnits > 0) {
           builder.add(
-            TransactionRole.reimbursementGapExpense,
+            TransactionRole.advanceSelfBorne,
             gapExpense,
             builder.debitWhere(typeIs: AccountType.expense),
           );
@@ -560,7 +562,7 @@ const _ruleAccountRoles = <TransactionRole>{
   TransactionRole.interest,
   TransactionRole.fee,
   TransactionRole.discount,
-  TransactionRole.reimbursementGapIncome,
+  TransactionRole.advanceCompensationIncome,
 };
 
 bool _roleCarriesAccount(TransactionRole role) =>
@@ -581,7 +583,9 @@ SystemKey? _systemKeyForRole({
       businessPurpose == BusinessPurpose.debtRepayment
           ? SystemKey.interestExpense
           : SystemKey.interestIncome,
-    TransactionRole.reimbursementGapIncome => SystemKey.reimbursementGapIncome,
+    TransactionRole.advanceCompensationIncome =>
+      SystemKey.advanceCompensationIncome,
+    TransactionRole.advanceBadDebtExpense => SystemKey.badDebtExpense,
     _ => null,
   };
 }
@@ -596,8 +600,9 @@ EntryDirection? _entryDirectionFor({
     TransactionRole.refundOffset => EntryDirection.credit,
     TransactionRole.fee => EntryDirection.debit,
     TransactionRole.discount => EntryDirection.credit,
-    TransactionRole.reimbursementGapIncome => EntryDirection.credit,
-    TransactionRole.reimbursementGapExpense => EntryDirection.debit,
+    TransactionRole.advanceCompensationIncome => EntryDirection.credit,
+    TransactionRole.advanceBadDebtExpense => EntryDirection.debit,
+    TransactionRole.advanceSelfBorne => EntryDirection.debit,
     TransactionRole.category =>
       businessPurpose == BusinessPurpose.dailyExpense
           ? EntryDirection.debit
@@ -607,7 +612,7 @@ EntryDirection? _entryDirectionFor({
           ? EntryDirection.debit
           : EntryDirection.credit,
     TransactionRole.receivable =>
-      businessPurpose == BusinessPurpose.reimbursementAdvance ||
+      businessPurpose == BusinessPurpose.advance ||
               businessPurpose == BusinessPurpose.lending
           ? EntryDirection.debit
           : EntryDirection.credit,
@@ -615,7 +620,7 @@ EntryDirection? _entryDirectionFor({
       businessPurpose == BusinessPurpose.borrowing
           ? EntryDirection.credit
           : EntryDirection.debit,
-    TransactionRole.reimbursementExpenseCategory => null,
+    TransactionRole.advanceExpenseCategory => null,
     TransactionRole.openingBalance || TransactionRole.balanceAdjustment => null,
   };
 }

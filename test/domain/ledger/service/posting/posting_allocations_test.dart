@@ -157,7 +157,7 @@ void main() {
   });
 
   test(
-    'advance refund keeps category facts and offsets the parent receivable',
+    'advance refund keeps category facts and reduces the parent receivable',
     () {
       final advance = _advance(engine, occurredAt);
       final refund = engine.createRefund(
@@ -180,20 +180,19 @@ void main() {
       expect(
         refund.lines
             .where(
-              (line) =>
-                  line.role == TransactionRole.reimbursementExpenseCategory,
+              (line) => line.role == TransactionRole.advanceExpenseCategory,
             )
             .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
         ['travel:25', 'meal:15'],
       );
       expect(
         refund.lines
-            .where((line) => line.role == TransactionRole.refundOffset)
+            .where((line) => line.role == TransactionRole.receivable)
             .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
         ['receivable:40'],
       );
       expect(
-        refund.lines.where((line) => line.role == TransactionRole.receivable),
+        refund.lines.where((line) => line.role == TransactionRole.refundOffset),
         isEmpty,
       );
       final resolved = const DefaultPostingInstructionResolver().resolveRefund(
@@ -252,10 +251,61 @@ void main() {
     },
   );
 
+  test('advance refund splits self-borne and receivable reductions', () {
+    final advance = _advance(engine, occurredAt);
+    final refund = engine.createRefund(
+      instruction: RefundInstruction(
+        parentTransactionId: advance.id,
+        amount: _money(40),
+        categoryAllocations: [
+          _allocation('travel', 25),
+          _allocation('meal', 15),
+        ],
+        selfBorneAllocations: [_allocation('travel', 10)],
+        settlementAllocations: [
+          _allocation('card', 10),
+          _allocation('cash', 30),
+        ],
+        occurredAt: occurredAt,
+      ),
+      parent: advance,
+    );
+
+    expect(
+      refund.lines
+          .where((line) => line.role == TransactionRole.advanceSelfBorne)
+          .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
+      ['travel:10'],
+    );
+    expect(
+      refund.lines
+          .where((line) => line.role == TransactionRole.receivable)
+          .map((line) => '${line.accountId}:${line.amount.minorUnits}'),
+      ['receivable:30'],
+    );
+    expect(
+      refund.entries.map(
+        (entry) => (entry.accountId, entry.direction, entry.amount),
+      ),
+      containsAll([
+        ('card', EntryDirection.debit, _money(10)),
+        ('cash', EntryDirection.debit, _money(30)),
+        ('travel', EntryDirection.credit, _money(10)),
+        ('receivable', EntryDirection.credit, _money(30)),
+      ]),
+    );
+    expect(entriesAreBalanced(refund.entries), isTrue);
+
+    final resolved = const DefaultPostingInstructionResolver().resolveRefund(
+      refund,
+    );
+    expect(_shape(resolved.selfBorneAllocations), ['travel:10']);
+  });
+
   test('receipt supports multiple receiving accounts', () {
     final advance = _advance(engine, occurredAt);
-    final receipt = engine.createReimbursementReceipt(
-      instruction: ReimbursementReceiptInstruction(
+    final receipt = engine.createAdvanceCollection(
+      instruction: AdvanceCollectionInstruction(
         advanceTransactionId: advance.id,
         amount: _money(40),
         receivableAccountId: 'receivable',
@@ -282,8 +332,8 @@ void main() {
 
   test('close allocates cash and shortfall categories independently', () {
     final advance = _advance(engine, occurredAt);
-    final close = engine.createReimbursementClose(
-      instruction: ReimbursementCloseInstruction(
+    final close = engine.createAdvanceSettlement(
+      instruction: AdvanceSettlementInstruction(
         advanceTransactionId: advance.id,
         actualReceivedAmount: _money(50),
         receivableAccountId: 'receivable',
@@ -416,10 +466,42 @@ void main() {
     expect(_shape(edited.categoryAllocations), ['bonus:80', 'other:20']);
     expect(_shape(edited.settlementAllocations), ['bank:100']);
   });
+
+  test(
+    'targeted category replacement updates advance totals and self-borne shares',
+    () {
+      final current = AdvanceInstruction(
+        amount: _money(100),
+        advanceAmount: _money(70),
+        receivableAccountId: 'receivable',
+        categoryAllocations: [
+          _allocation('travel', 70),
+          _allocation('meal', 30),
+        ],
+        selfBorneAllocations: [
+          _allocation('travel', 20),
+          _allocation('meal', 10),
+        ],
+        settlementAllocations: [_allocation('cash', 100)],
+        occurredAt: DateTime(2026, 10, 22),
+      );
+
+      final edited =
+          const CategoryReplacementEditPatch(
+                businessPurpose: BusinessPurpose.advance,
+                sourceCategoryId: 'travel',
+                targetCategoryId: 'trip',
+              ).applyTo(current)
+              as AdvanceInstruction;
+
+      expect(_shape(edited.categoryAllocations), ['trip:70', 'meal:30']);
+      expect(_shape(edited.selfBorneAllocations), ['trip:20', 'meal:10']);
+    },
+  );
 }
 
-ReimbursementAdvanceInstruction _advanceInstruction(DateTime occurredAt) {
-  return ReimbursementAdvanceInstruction(
+AdvanceInstruction _advanceInstruction(DateTime occurredAt) {
+  return AdvanceInstruction(
     amount: _money(100),
     receivableAccountId: 'receivable',
     categoryAllocations: [_allocation('travel', 70), _allocation('meal', 30)],
@@ -429,7 +511,7 @@ ReimbursementAdvanceInstruction _advanceInstruction(DateTime occurredAt) {
 }
 
 Transaction _advance(PostingEngine engine, DateTime occurredAt) {
-  return engine.createReimbursementAdvance(_advanceInstruction(occurredAt));
+  return engine.createAdvance(_advanceInstruction(occurredAt));
 }
 
 AccountAmountAllocation _allocation(String accountId, int amount) {

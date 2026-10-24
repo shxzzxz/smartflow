@@ -172,7 +172,7 @@ final class FilteredTransactionsProvider
 }
 
 String _$filteredTransactionsHash() =>
-    r'ea609d3de592f3e937293298dda508c8eca10351';
+    r'371855e475dc8fa41a8b22b93aae7594996a62f4';
 
 final class FilteredTransactionsFamily extends $Family
     with
@@ -258,7 +258,7 @@ final class FilteredTransactionsViewModelProvider
 }
 
 String _$filteredTransactionsViewModelHash() =>
-    r'0cc291c10adf8ea6c44496c1fbcbb3f886212caf';
+    r'a6d810bdf598552397f8dd9a12c020482f9e76bf';
 
 final class FilteredTransactionsViewModelFamily extends $Family
     with

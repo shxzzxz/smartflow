@@ -15,13 +15,13 @@ import '../../../../helper/posting_instruction_fixtures.dart';
 
 void main() {
   test(
-    'closed reimbursement allows basic-info edits to an earlier receipt',
+    'closed advance allows basic-info edits to an earlier receipt',
     () async {
       final engine = PostingEngine(
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final parent = engine.createReimbursementAdvance(
-        singleReimbursementAdvanceInstruction(
+      final parent = engine.createAdvance(
+        singleAdvanceInstruction(
           amount: Money.parse('100.00'),
           receivableAccountId: 'receivable',
           paidFromAccountId: 'cash',
@@ -29,8 +29,8 @@ void main() {
           occurredAt: DateTime(2026, 7, 1),
         ),
       );
-      final receipt = engine.createReimbursementReceipt(
-        instruction: singleReimbursementReceiptInstruction(
+      final receipt = engine.createAdvanceCollection(
+        instruction: singleAdvanceCollectionInstruction(
           advanceTransactionId: parent.id,
           amount: Money.parse('60.00'),
           receivableAccountId: 'receivable',
@@ -39,8 +39,8 @@ void main() {
         ),
         advance: parent,
       );
-      final close = engine.createReimbursementClose(
-        instruction: singleReimbursementCloseInstruction(
+      final close = engine.createAdvanceSettlement(
+        instruction: singleAdvanceSettlementInstruction(
           advanceTransactionId: parent.id,
           actualReceivedAmount: Money.parse('40.00'),
           receivableAccountId: 'receivable',
@@ -129,7 +129,7 @@ class _MemoryTransactionRepository
       throw UnimplementedError();
 
   @override
-  Future<Map<String, int>> countReimbursementExpenseRefs(
+  Future<Map<String, int>> countAdvanceExpenseRefs(
     Set<String> accountIds,
   ) async => const {};
 }

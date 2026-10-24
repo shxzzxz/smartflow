@@ -43,7 +43,7 @@ final class CounterpartyManagementViewModelProvider
 }
 
 String _$counterpartyManagementViewModelHash() =>
-    r'55484e1762b63375b8593a754875a9b6930e39f3';
+    r'ff9c46bd7f39fa1ed778a28a52ec0e81b3fdebb1';
 
 abstract class _$CounterpartyManagementViewModel extends $Notifier<void> {
   void build();

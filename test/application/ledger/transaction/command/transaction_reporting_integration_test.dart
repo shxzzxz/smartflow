@@ -448,10 +448,10 @@ void main() {
   );
 
   test(
-    'closed reimbursement allows metadata and receipt account changes but keeps amounts locked',
+    'closed advance allows metadata and receipt account changes but keeps amounts locked',
     () async {
-      final parent = await posting.createReimbursementAdvance(
-        CreateReimbursementAdvanceCommand(
+      final parent = await posting.createAdvance(
+        CreateAdvanceCommand(
           amount: Money.parse('100'),
           receivableAccountId: 'receivable',
           occurredAt: date,
@@ -459,14 +459,15 @@ void main() {
             accountId: 'food',
             amount: Money.parse('100'),
           ),
+          selfBorneAllocations: const [],
           settlementAllocations: singleAllocation(
             accountId: 'cash',
             amount: Money.parse('100'),
           ),
         ),
       );
-      final receipt = await posting.createReimbursementReceipt(
-        CreateReimbursementReceiptCommand(
+      final receipt = await posting.createAdvanceCollection(
+        CreateAdvanceCollectionCommand(
           advanceTransactionId: parent.transactionId,
           amount: Money.parse('60'),
           receivableAccountId: 'receivable',
@@ -492,8 +493,8 @@ void main() {
           ),
         ),
       );
-      await posting.closeReimbursement(
-        CloseReimbursementCommand(
+      await posting.settleAdvance(
+        CreateAdvanceSettlementCommand(
           advanceTransactionId: parent.transactionId,
           actualReceivedAmount: Money.parse('20'),
           receivableAccountId: 'receivable',
@@ -511,8 +512,8 @@ void main() {
           occurredAt: date.add(const Duration(hours: 1)),
         ),
       );
-      await editing.editReimbursementReceipt(
-        EditReimbursementReceiptCommand(
+      await editing.editAdvanceCollection(
+        EditAdvanceCollectionCommand(
           transactionId: receipt.transactionId,
           settlementAllocations: singleAllocation(
             accountId: 'bank',
@@ -532,7 +533,7 @@ void main() {
       final group = await transactions.findByTransactionId(
         parent.transactionId,
       );
-      expect(group!.reimbursementClosed, isTrue);
+      expect(group!.advanceSettled, isTrue);
       expect(
         (await transactions.findCompleteById(
           receipt.transactionId,
@@ -546,8 +547,8 @@ void main() {
         'bank',
       );
       await expectLater(
-        editing.editReimbursementReceipt(
-          EditReimbursementReceiptCommand(
+        editing.editAdvanceCollection(
+          EditAdvanceCollectionCommand(
             transactionId: receipt.transactionId,
             amount: Money.parse('61'),
           ),
@@ -573,55 +574,141 @@ void main() {
   );
 
   test(
-    'reimbursement conversion and amount edits preserve group flags',
+    'account-managed receipt edit persists a top-level transaction',
     () async {
-      final parent = await posting.createExpense(
-        CreateExpenseCommand(
-          amount: Money.parse('100'),
-          occurredAt: date,
-          categoryAllocations: singleAllocation(
-            accountId: 'food',
-            amount: Money.parse('100'),
-          ),
+      final receipt = await posting.createAdvanceCollection(
+        CreateAdvanceCollectionCommand.account(
+          amount: Money.parse('40'),
+          receivableAccountId: 'receivable',
           settlementAllocations: singleAllocation(
             accountId: 'cash',
-            amount: Money.parse('100'),
+            amount: Money.parse('40'),
+          ),
+          occurredAt: date,
+          scenario: AdvanceScenario.reimbursement,
+        ),
+      );
+
+      await editing.editAdvanceCollection(
+        EditAdvanceCollectionCommand(
+          transactionId: receipt.transactionId,
+          amount: Money.parse('45'),
+          settlementAllocations: singleAllocation(
+            accountId: 'bank',
+            amount: Money.parse('45'),
           ),
         ),
       );
-      await updates.updateReportingFlag(
-        UpdateTransactionReportingFlagCommand(
-          transactionId: parent.transactionId,
-          isExcludedFromStats: true,
-          isExcludedFromBudget: true,
-        ),
+
+      final rewritten = (await transactions.findCompleteById(
+        receipt.transactionId,
+      ))!;
+      expect(rewritten.id, receipt.transactionId);
+      expect(rewritten.parentTransactionId, null);
+      expect(rewritten.primaryAmount, Money.parse('45'));
+      expect(
+        rewritten.ownership?.ownerType,
+        AdvanceManagement.account.ownerType,
       );
-      await editing.editReimbursementAdvance(
-        EditReimbursementAdvanceCommand(
-          transactionId: parent.transactionId,
-          receivableAccountId: 'receivable',
-        ),
-      );
-      final advanced = await transactions.findById(parent.transactionId);
-      expect(advanced!.isExcludedFromStats, isTrue);
-      expect(advanced.isExcludedFromBudget, isTrue);
-      await editing.editExpense(
-        EditExpenseCommand(transactionId: parent.transactionId),
-      );
-      await editing.editExpense(
-        EditExpenseCommand(
-          transactionId: parent.transactionId,
-          amount: Money.parse('120'),
-        ),
-      );
-      await expectReporting(0, 0);
-      await updates.updateReportingFlag(
-        UpdateTransactionReportingFlagCommand(
-          transactionId: parent.transactionId,
-          isExcludedFromStats: false,
-        ),
-      );
-      await expectReporting(12000, 0);
+      expect(rewritten.ownership?.ownerId, 'receivable');
+      expect(rewritten.accountOf(TransactionRole.settlementIn), 'bank');
+      expect(rewritten.amountOf(TransactionRole.receivable), Money.parse('45'));
     },
   );
+
+  test(
+    'account-managed settlement edit persists a top-level transaction',
+    () async {
+      final close = await posting.settleAdvance(
+        CreateAdvanceSettlementCommand.account(
+          actualReceivedAmount: Money.parse('60'),
+          receivableAccountId: 'receivable',
+          settlementAllocations: singleAllocation(
+            accountId: 'cash',
+            amount: Money.parse('60'),
+          ),
+          gapExpenseAllocations: const [],
+          occurredAt: date,
+          scenario: AdvanceScenario.reimbursement,
+        ),
+      );
+
+      await editing.editAdvanceSettlement(
+        EditAdvanceSettlementCommand(
+          transactionId: close.transactionId,
+          actualReceivedAmount: Money.parse('70'),
+          settlementAllocations: singleAllocation(
+            accountId: 'bank',
+            amount: Money.parse('70'),
+          ),
+          gapExpenseAllocations: const [],
+        ),
+      );
+
+      final rewritten = (await transactions.findCompleteById(
+        close.transactionId,
+      ))!;
+      expect(rewritten.id, close.transactionId);
+      expect(rewritten.parentTransactionId, null);
+      expect(rewritten.primaryAmount, Money.parse('70'));
+      expect(
+        rewritten.ownership?.ownerType,
+        AdvanceManagement.account.ownerType,
+      );
+      expect(rewritten.ownership?.ownerId, 'receivable');
+      expect(rewritten.accountOf(TransactionRole.settlementIn), 'bank');
+      expect(rewritten.amountOf(TransactionRole.receivable), Money.parse('70'));
+      expect(rewritten.linesOf(TransactionRole.advanceSelfBorne), isEmpty);
+    },
+  );
+
+  test('advance conversion and amount edits preserve group flags', () async {
+    final parent = await posting.createExpense(
+      CreateExpenseCommand(
+        amount: Money.parse('100'),
+        occurredAt: date,
+        categoryAllocations: singleAllocation(
+          accountId: 'food',
+          amount: Money.parse('100'),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: Money.parse('100'),
+        ),
+      ),
+    );
+    await updates.updateReportingFlag(
+      UpdateTransactionReportingFlagCommand(
+        transactionId: parent.transactionId,
+        isExcludedFromStats: true,
+        isExcludedFromBudget: true,
+      ),
+    );
+    await editing.editAdvance(
+      EditAdvanceCommand(
+        transactionId: parent.transactionId,
+        receivableAccountId: 'receivable',
+      ),
+    );
+    final advanced = await transactions.findById(parent.transactionId);
+    expect(advanced!.isExcludedFromStats, isTrue);
+    expect(advanced.isExcludedFromBudget, isTrue);
+    await editing.editExpense(
+      EditExpenseCommand(transactionId: parent.transactionId),
+    );
+    await editing.editExpense(
+      EditExpenseCommand(
+        transactionId: parent.transactionId,
+        amount: Money.parse('120'),
+      ),
+    );
+    await expectReporting(0, 0);
+    await updates.updateReportingFlag(
+      UpdateTransactionReportingFlagCommand(
+        transactionId: parent.transactionId,
+        isExcludedFromStats: false,
+      ),
+    );
+    await expectReporting(12000, 0);
+  });
 }

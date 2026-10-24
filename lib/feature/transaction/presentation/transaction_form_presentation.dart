@@ -1,9 +1,146 @@
+import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/presentation/transaction_detail_amount.dart';
 
 enum TransactionFormMode { expense, income, transfer, borrowing, lending }
+
+/// 支出录入的业务场景。它只在 feature 层组织入口与账户候选，
+/// 最终通过 [AdvanceScenario] 和 [AdvanceManagement] 写入垫付 owner。
+enum TransactionExpenseScene {
+  ordinary,
+  reimbursement,
+  onBehalf,
+  aa,
+  reimbursementAccount,
+  aaAccount,
+}
+
+extension TransactionExpenseScenePresentation on TransactionExpenseScene {
+  String get label => switch (this) {
+    TransactionExpenseScene.ordinary => '普通支出',
+    TransactionExpenseScene.reimbursement => '报销',
+    TransactionExpenseScene.onBehalf => '代付',
+    TransactionExpenseScene.aa => 'AA',
+    TransactionExpenseScene.reimbursementAccount => '报销（账户）',
+    TransactionExpenseScene.aaAccount => 'AA（账户）',
+  };
+
+  bool get isAdvance => this != TransactionExpenseScene.ordinary;
+
+  bool get isAa =>
+      this == TransactionExpenseScene.aa ||
+      this == TransactionExpenseScene.aaAccount;
+
+  String get accountLabel => switch (this) {
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.reimbursementAccount => '报销账户',
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.aa ||
+    TransactionExpenseScene.aaAccount => '垫付账户',
+    TransactionExpenseScene.ordinary => '垫付账户',
+  };
+
+  String get noneLabel => switch (this) {
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.reimbursementAccount => '不报销',
+    TransactionExpenseScene.onBehalf => '不代付',
+    TransactionExpenseScene.aa || TransactionExpenseScene.aaAccount => '不AA',
+    TransactionExpenseScene.ordinary => '不垫付',
+  };
+
+  AdvanceScenario? get advanceScenario => switch (this) {
+    TransactionExpenseScene.ordinary => null,
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.reimbursementAccount =>
+      AdvanceScenario.reimbursement,
+    TransactionExpenseScene.onBehalf => AdvanceScenario.onBehalf,
+    TransactionExpenseScene.aa ||
+    TransactionExpenseScene.aaAccount => AdvanceScenario.aa,
+  };
+
+  AdvanceManagement? get advanceManagement => switch (this) {
+    TransactionExpenseScene.ordinary => null,
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.aa => AdvanceManagement.itemized,
+    TransactionExpenseScene.reimbursementAccount ||
+    TransactionExpenseScene.aaAccount => AdvanceManagement.account,
+  };
+}
+
+TransactionExpenseScene transactionExpenseSceneForAdvanceScenario(
+  AdvanceScenario scenario, {
+  AdvanceManagement management = AdvanceManagement.itemized,
+}) {
+  return switch (scenario) {
+    AdvanceScenario.reimbursement =>
+      management == AdvanceManagement.account
+          ? TransactionExpenseScene.reimbursementAccount
+          : TransactionExpenseScene.reimbursement,
+    AdvanceScenario.onBehalf when management == AdvanceManagement.itemized =>
+      TransactionExpenseScene.onBehalf,
+    AdvanceScenario.onBehalf => throw ArgumentError.value(
+      management,
+      'management',
+      '代付不支持账户垫付',
+    ),
+    AdvanceScenario.aa =>
+      management == AdvanceManagement.account
+          ? TransactionExpenseScene.aaAccount
+          : TransactionExpenseScene.aa,
+  };
+}
+
+List<Account> advanceAccountsForExpenseScene(
+  TransactionExpenseScene scene,
+  Iterable<Account> accounts,
+) {
+  final acceptedProfiles = switch (scene) {
+    TransactionExpenseScene.ordinary => const <String>{},
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.reimbursementAccount => {
+      AccountProfileKind.reimbursement.key,
+    },
+    TransactionExpenseScene.onBehalf || TransactionExpenseScene.aa => {
+      AccountProfileKind.reimbursement.key,
+      AccountProfileKind.receivable.key,
+    },
+    TransactionExpenseScene.aaAccount => {AccountProfileKind.receivable.key},
+  };
+  return [
+    for (final account in accounts)
+      if (acceptedProfiles.contains(account.profileKey)) account,
+  ];
+}
+
+Money selfBorneAmountForExpenseScene({
+  required TransactionExpenseScene scene,
+  required Money total,
+  required int aaPeopleCount,
+}) {
+  return calculateAdvanceEntrySplit(
+    scenario: scene.advanceScenario ?? AdvanceScenario.reimbursement,
+    total: total,
+    aaPeopleCount: aaPeopleCount,
+    categoryAllocations: const [],
+  ).selfBorneAmount;
+}
+
+Money advanceAmountForExpenseScene({
+  required TransactionExpenseScene scene,
+  required Money total,
+  required int aaPeopleCount,
+}) {
+  return calculateAdvanceEntrySplit(
+    scenario: scene.advanceScenario ?? AdvanceScenario.reimbursement,
+    total: total,
+    aaPeopleCount: aaPeopleCount,
+    categoryAllocations: const [],
+  ).advanceAmount;
+}
 
 class TransactionFormEditSnapshot {
   const TransactionFormEditSnapshot({
@@ -15,13 +152,16 @@ class TransactionFormEditSnapshot {
     required this.excludeBudget,
     this.counterpartyId,
     this.feeText = '',
+    this.advanceAmountText = '',
+    this.advanceScenario = AdvanceScenario.reimbursement,
+    this.advanceManagement = AdvanceManagement.itemized,
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
     this.incomeRootId,
     this.fromAccountId,
     this.toAccountId,
-    this.reimbursementAccountId,
+    this.advanceReceivableAccountId,
     this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
     this.categoryAllocations,
@@ -36,13 +176,16 @@ class TransactionFormEditSnapshot {
   final bool excludeBudget;
   final String? counterpartyId;
   final String feeText;
+  final String advanceAmountText;
+  final AdvanceScenario advanceScenario;
+  final AdvanceManagement advanceManagement;
   final String? expenseCategoryId;
   final String? expenseRootId;
   final String? incomeCategoryId;
   final String? incomeRootId;
   final String? fromAccountId;
   final String? toAccountId;
-  final String? reimbursementAccountId;
+  final String? advanceReceivableAccountId;
   final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
   final List<AccountAmountAllocation>? categoryAllocations;
@@ -54,12 +197,12 @@ bool supportsTransactionFormEdit(BusinessPurpose purpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.transfer ||
-    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.advance ||
     BusinessPurpose.borrowing => true,
     BusinessPurpose.lending => true,
     BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose ||
+    BusinessPurpose.advanceCollection ||
+    BusinessPurpose.advanceSettlement ||
     BusinessPurpose.debtRepayment ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment => false,
@@ -95,6 +238,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.expense,
         amountText: amountText,
+        advanceAmountText: amountText,
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
@@ -110,18 +254,25 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         categoryAllocations: categories,
         settlementAllocations: settlements,
       );
-    case BusinessPurpose.reimbursementAdvance:
+    case BusinessPurpose.advance:
       final categories = _allocationsOf(
         detail,
-        TransactionRole.reimbursementExpenseCategory,
+        TransactionRole.advanceExpenseCategory,
       );
       final settlements = _allocationsOf(detail, TransactionRole.settlementOut);
       final categoryId = transaction.accountOf(
-        TransactionRole.reimbursementExpenseCategory,
+        TransactionRole.advanceExpenseCategory,
       );
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.expense,
         amountText: amountText,
+        advanceAmountText: _lineAmountText(detail, TransactionRole.receivable),
+        advanceScenario:
+            transaction.ownership?.advanceScenario ??
+            AdvanceScenario.reimbursement,
+        advanceManagement:
+            transaction.ownership?.advanceManagement ??
+            AdvanceManagement.itemized,
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,
@@ -134,7 +285,9 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
           accountsById,
           EntryDirection.credit,
         ),
-        reimbursementAccountId: detail.accountOf(TransactionRole.receivable),
+        advanceReceivableAccountId: detail.accountOf(
+          TransactionRole.receivable,
+        ),
         categoryAllocations: categories,
         settlementAllocations: settlements,
       );
@@ -229,8 +382,8 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         ),
       );
     case BusinessPurpose.refund:
-    case BusinessPurpose.reimbursementReceipt:
-    case BusinessPurpose.reimbursementClose:
+    case BusinessPurpose.advanceCollection:
+    case BusinessPurpose.advanceSettlement:
     case BusinessPurpose.debtRepayment:
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
@@ -309,7 +462,7 @@ List<AccountAmountAllocation>? defaultSettlementAllocationsForRefund({
   return sourceAllocations.length > 1 ? sourceAllocations : null;
 }
 
-String? reimbursementReceivableAccountId(
+String? advanceReceivableAccountId(
   TransactionReadModel? detail,
   Map<String, Account> accountsById,
 ) {

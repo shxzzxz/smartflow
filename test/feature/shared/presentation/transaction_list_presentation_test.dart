@@ -408,15 +408,15 @@ void main() {
     });
 
     test(
-      'shows refund and reimbursement badges while refund adjusts advance amount',
+      'shows refund and advance badges while refund adjusts advance amount',
       () {
         final row = buildTransactionRowPresentation(
           accountLookup: _lookup,
           item: _item(
-            businessPurpose: BusinessPurpose.reimbursementAdvance,
+            businessPurpose: BusinessPurpose.advance,
             primaryAmount: const Money(minorUnits: 10000),
             refundedTotal: const Money(minorUnits: 2000),
-            reimbursementReceivedTotal: const Money(minorUnits: 4000),
+            advanceCollectedTotal: const Money(minorUnits: 4000),
           ),
         );
 
@@ -426,6 +426,39 @@ void main() {
         expect(row.amountTone, FinanceTone.neutral);
       },
     );
+
+    test('labels advance compensation badge as compensation', () {
+      final row = buildTransactionRowPresentation(
+        accountLookup: _lookup,
+        item: _item(
+          businessPurpose: BusinessPurpose.advance,
+          primaryAmount: const Money(minorUnits: 10000),
+          advanceCollectedTotal: Money.zero(),
+          additionalChildren: [
+            TransactionReadModel(
+              id: 'close',
+              parentTransactionId: 'tx-1',
+              businessPurpose: BusinessPurpose.advanceSettlement,
+              occurredAt: DateTime(2026, 1, 2),
+              primaryAmount: const Money(minorUnits: 1000),
+              isExcludedFromStats: false,
+              isExcludedFromBudget: false,
+              lines: const [
+                TransactionLine(
+                  id: 'close-compensation',
+                  transactionId: 'close',
+                  lineNo: 1,
+                  role: TransactionRole.advanceCompensationIncome,
+                  amount: Money(minorUnits: 1000),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(row.badges.map((badge) => badge.label), ['补偿 10']);
+    });
 
     test('hides collection principal badge and keeps interest badge', () {
       final row = buildTransactionRowPresentation(
@@ -694,10 +727,11 @@ TransactionReadModel _item({
   Money primaryAmount = const Money(minorUnits: 1234),
   bool isExcludedFromStats = false,
   Money? refundedTotal,
-  Money? reimbursementReceivedTotal,
+  Money? advanceCollectedTotal,
   String? categoryAccountId = 'food',
   Map<String, TransactionAccountImpact>? impactsByAccountId,
   List<TransactionAdjustment> adjustments = const [],
+  List<TransactionReadModel> additionalChildren = const [],
 }) {
   final refundSummary = refundedTotal == null
       ? null
@@ -713,17 +747,17 @@ TransactionReadModel _item({
                 ],
           refundedCategoryAllocations: const [],
         );
-  final reimbursementSummary =
-      businessPurpose == BusinessPurpose.reimbursementAdvance &&
-          (refundedTotal != null || reimbursementReceivedTotal != null)
-      ? ReimbursementSummary(
+  final advanceSummary =
+      businessPurpose == BusinessPurpose.advance &&
+          (refundedTotal != null || advanceCollectedTotal != null)
+      ? AdvanceSummary(
           advanceAmount: primaryAmount,
           refundedAmount: refundedTotal ?? Money.zero(),
-          receivedAmount: reimbursementReceivedTotal ?? Money.zero(),
+          receivedAmount: advanceCollectedTotal ?? Money.zero(),
           outstanding:
               primaryAmount -
               (refundedTotal ?? Money.zero()) -
-              (reimbursementReceivedTotal ?? Money.zero()),
+              (advanceCollectedTotal ?? Money.zero()),
           isClosed: false,
         )
       : null;
@@ -740,8 +774,8 @@ TransactionReadModel _item({
           id: '$id-category',
           transactionId: id,
           lineNo: 1,
-          role: businessPurpose == BusinessPurpose.reimbursementAdvance
-              ? TransactionRole.reimbursementExpenseCategory
+          role: businessPurpose == BusinessPurpose.advance
+              ? TransactionRole.advanceExpenseCategory
               : TransactionRole.category,
           accountId: categoryAccountId,
           amount: primaryAmount,
@@ -822,13 +856,13 @@ TransactionReadModel _item({
             ),
           ],
         ),
-      if (reimbursementReceivedTotal != null)
+      if (advanceCollectedTotal != null)
         TransactionReadModel(
           id: '$id-receipt',
           parentTransactionId: id,
-          businessPurpose: BusinessPurpose.reimbursementReceipt,
+          businessPurpose: BusinessPurpose.advanceCollection,
           occurredAt: occurredAt ?? DateTime(2026, 1, 1),
-          primaryAmount: reimbursementReceivedTotal,
+          primaryAmount: advanceCollectedTotal,
           isExcludedFromStats: false,
           isExcludedFromBudget: false,
           lines: [
@@ -838,13 +872,14 @@ TransactionReadModel _item({
               lineNo: 1,
               role: TransactionRole.settlementIn,
               accountId: 'cash',
-              amount: reimbursementReceivedTotal,
+              amount: advanceCollectedTotal,
             ),
           ],
         ),
+      ...additionalChildren,
     ],
     refundSummary: refundSummary,
-    reimbursementSummary: reimbursementSummary,
+    advanceSummary: advanceSummary,
   );
 }
 

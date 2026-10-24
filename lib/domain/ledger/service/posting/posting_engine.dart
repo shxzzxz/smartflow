@@ -5,6 +5,7 @@ import '../../entity/entry.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_line.dart';
 import '../../valobj/account_amount_allocation.dart';
+import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -87,7 +88,7 @@ class PostingEngine {
     return switch (instruction) {
       ExpenseInstruction i => createExpense(i),
       IncomeInstruction i => createIncome(i),
-      ReimbursementAdvanceInstruction i => createReimbursementAdvance(i),
+      AdvanceInstruction i => createAdvance(i),
       TransferInstruction i => createTransfer(
         i,
         systemAccountIds: systemAccountIds,
@@ -215,29 +216,50 @@ class PostingEngine {
     );
   }
 
-  Transaction createReimbursementAdvance(
-    ReimbursementAdvanceInstruction instruction,
-  ) {
-    if (instruction.amount.minorUnits <= 0) {
-      return LedgerViolationReason.reimbursementAmountNotPositive
-          .throwException(
-            message: 'Reimbursement advance amount must be positive.',
-          );
+  Transaction createAdvance(AdvanceInstruction instruction) {
+    if (instruction.amount.minorUnits <= 0 ||
+        instruction.advanceAmount.minorUnits <= 0 ||
+        instruction.advanceAmount.minorUnits > instruction.amount.minorUnits) {
+      return LedgerViolationReason.advanceAmountNotPositive.throwException(
+        message:
+            'Advance amount must be positive and no greater than the '
+            'transaction amount.',
+      );
     }
+    final selfBorneAmount = instruction.amount - instruction.advanceAmount;
     _validateAllocations(
       total: instruction.amount,
       allocations: instruction.categoryAllocations,
     );
+    if (selfBorneAmount.minorUnits == 0) {
+      if (instruction.selfBorneAllocations.isNotEmpty) {
+        return LedgerViolationReason.allocationTotalMismatch.throwException(
+          message: 'Self-borne allocations require an expense amount.',
+        );
+      }
+    } else {
+      _validateAllocations(
+        total: selfBorneAmount,
+        allocations: instruction.selfBorneAllocations,
+      );
+    }
     _validateAllocations(
       total: instruction.amount,
       allocations: instruction.settlementAllocations,
     );
     final transactionId = _idGenerator.newId();
+    final ownership = advanceOwnership(
+      management: instruction.management,
+      ownerId: instruction.management == AdvanceManagement.itemized
+          ? transactionId
+          : instruction.receivableAccountId,
+      scenario: instruction.scenario,
+    );
     var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
-        businessPurpose: BusinessPurpose.reimbursementAdvance,
+        businessPurpose: BusinessPurpose.advance,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
         primaryAmount: instruction.amount,
@@ -246,14 +268,23 @@ class PostingEngine {
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
-        ownership: instruction.ownership,
+        ownership: ownership,
         lines: [
-          // 支出分类在垫付时不产生分录,它在结束报销少收差额时才被使用。
+          // 分类分项保存整笔交易分类事实，不直接产生分录。
           for (final allocation in instruction.categoryAllocations)
             _line(
               transactionId: transactionId,
               lineNo: lineNo++,
-              role: TransactionRole.reimbursementExpenseCategory,
+              role: TransactionRole.advanceExpenseCategory,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          // 自承担部分才形成实际支出分录；其余支付金额形成垫付应收。
+          for (final allocation in instruction.selfBorneAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.advanceSelfBorne,
               accountId: allocation.accountId,
               amount: allocation.amount,
             ),
@@ -262,7 +293,7 @@ class PostingEngine {
             lineNo: lineNo++,
             role: TransactionRole.receivable,
             accountId: instruction.receivableAccountId,
-            amount: instruction.amount,
+            amount: instruction.advanceAmount,
           ),
           for (final allocation in instruction.settlementAllocations)
             _line(
@@ -289,23 +320,47 @@ class PostingEngine {
     final categoryAllocations = instruction.categoryAllocations.isNotEmpty
         ? instruction.categoryAllocations
         : _singleRefundCategoryAllocation(parent, instruction.amount);
-    _validateAllocations(
-      total: instruction.amount,
-      allocations: categoryAllocations,
-    );
+    final reimbursable = parent.businessPurpose == BusinessPurpose.advance;
+    if (!reimbursable || categoryAllocations.isNotEmpty) {
+      _validateAllocations(
+        total: instruction.amount,
+        allocations: categoryAllocations,
+      );
+    }
     _validateAllocations(
       total: instruction.amount,
       allocations: instruction.settlementAllocations,
     );
-    final reimbursable =
-        parent.businessPurpose == BusinessPurpose.reimbursementAdvance;
-    final refundOffsetAccountId = reimbursable
+    final receivableAccountId = reimbursable
         ? parent.accountOf(TransactionRole.receivable)
         : null;
-    if (reimbursable && refundOffsetAccountId == null) {
-      return LedgerViolationReason.reimbursementInstructionUnresolvable
+    if (reimbursable && receivableAccountId == null) {
+      return LedgerViolationReason.advanceInstructionUnresolvable
           .throwException(message: 'Refund receivable account is missing.');
     }
+    final selfBorneAllocations = reimbursable
+        ? instruction.selfBorneAllocations
+        : const <AccountAmountAllocation>[];
+    if (selfBorneAllocations.isNotEmpty) {
+      for (final allocation in selfBorneAllocations) {
+        if (allocation.amount.minorUnits <= 0) {
+          return LedgerViolationReason.allocationAmountNotPositive
+              .throwException();
+        }
+      }
+      if (!allocationsFitAvailable(
+        requested: selfBorneAllocations,
+        available: categoryAllocations,
+      )) {
+        return LedgerViolationReason.allocationExceedsAvailable
+            .throwException();
+      }
+    }
+    final selfBorneRefundAmount = sumAllocations(selfBorneAllocations);
+    if (selfBorneRefundAmount.minorUnits > instruction.amount.minorUnits) {
+      return LedgerViolationReason.allocationTotalMismatch.throwException();
+    }
+    final advanceRefundAmount = instruction.amount - selfBorneRefundAmount;
     final transactionId = _idGenerator.newId();
     var lineNo = 1;
     return _posted(
@@ -336,18 +391,26 @@ class PostingEngine {
               transactionId: transactionId,
               lineNo: lineNo++,
               role: reimbursable
-                  ? TransactionRole.reimbursementExpenseCategory
+                  ? TransactionRole.advanceExpenseCategory
                   : TransactionRole.refundOffset,
               accountId: allocation.accountId,
               amount: allocation.amount,
             ),
-          if (refundOffsetAccountId != null)
+          for (final allocation in selfBorneAllocations)
             _line(
               transactionId: transactionId,
               lineNo: lineNo++,
-              role: TransactionRole.refundOffset,
-              accountId: refundOffsetAccountId,
-              amount: instruction.amount,
+              role: TransactionRole.advanceSelfBorne,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          if (reimbursable && advanceRefundAmount.minorUnits > 0)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.receivable,
+              accountId: receivableAccountId,
+              amount: advanceRefundAmount,
             ),
         ],
       ),
@@ -422,34 +485,42 @@ class PostingEngine {
     );
   }
 
-  Transaction createReimbursementReceipt({
-    required ReimbursementReceiptInstruction instruction,
-    required Transaction advance,
+  Transaction createAdvanceCollection({
+    required AdvanceCollectionInstruction instruction,
+    Transaction? advance,
   }) {
     if (instruction.amount.minorUnits <= 0) {
-      return LedgerViolationReason.reimbursementAmountNotPositive
-          .throwException(message: 'Receipt amount must be positive.');
+      return LedgerViolationReason.advanceAmountNotPositive.throwException(
+        message: 'Receipt amount must be positive.',
+      );
     }
     _validateAllocations(
       total: instruction.amount,
       allocations: instruction.settlementAllocations,
     );
+    final ownership = advance?.ownership ?? instruction.ownership;
+    if (ownership == null) {
+      return LedgerViolationReason.advanceInstructionUnresolvable
+          .throwException(message: 'Advance ownership is required.');
+    }
     final transactionId = _idGenerator.newId();
     var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
-        parentTransactionId: advance.id,
-        businessPurpose: BusinessPurpose.reimbursementReceipt,
+        parentTransactionId: advance?.id,
+        businessPurpose: BusinessPurpose.advanceCollection,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
         primaryAmount: instruction.amount,
         counterpartyId: instruction.counterpartyId,
         note: instruction.note,
-        isExcludedFromStats: advance.isExcludedFromStats,
-        isExcludedFromBudget: advance.isExcludedFromBudget,
-        sourceKind: advance.sourceKind,
-        ownership: advance.ownership,
+        isExcludedFromStats:
+            advance?.isExcludedFromStats ?? instruction.isExcludedFromStats,
+        isExcludedFromBudget:
+            advance?.isExcludedFromBudget ?? instruction.isExcludedFromBudget,
+        sourceKind: advance?.sourceKind ?? SourceKind.manual,
+        ownership: ownership,
         lines: [
           for (final allocation in instruction.settlementAllocations)
             _line(
@@ -849,20 +920,76 @@ class PostingEngine {
     );
   }
 
-  Transaction createReimbursementClose({
-    required ReimbursementCloseInstruction instruction,
-    required Transaction advance,
+  Transaction createAdvanceSettlement({
+    required AdvanceSettlementInstruction instruction,
+    Transaction? advance,
     required Money outstanding,
     required String? gapIncomeAccountId,
+    String? badDebtExpenseAccountId,
   }) {
     final actual = instruction.actualReceivedAmount;
     if (actual.minorUnits < 0) {
-      return LedgerViolationReason.reimbursementCloseAmountNegative
+      return LedgerViolationReason.advanceSettlementAmountNegative
           .throwException(message: 'Received amount cannot be negative.');
+    }
+    if (advance == null) {
+      if (actual.minorUnits <= 0) {
+        return LedgerViolationReason.allocationAmountNotPositive.throwException(
+          message: 'Account settlement amount is required.',
+        );
+      }
+      _validateAllocations(
+        total: actual,
+        allocations: instruction.settlementAllocations,
+      );
+      if (instruction.gapExpenseAllocations.isNotEmpty) {
+        return LedgerViolationReason.allocationTotalMismatch.throwException(
+          message: 'Account settlement cannot infer a shortfall allocation.',
+        );
+      }
+      final ownership = instruction.ownership;
+      if (ownership == null) {
+        return LedgerViolationReason.advanceInstructionUnresolvable
+            .throwException(message: 'Advance ownership is required.');
+      }
+      final transactionId = _idGenerator.newId();
+      var lineNo = 1;
+      return _posted(
+        Transaction(
+          id: transactionId,
+          businessPurpose: BusinessPurpose.advanceSettlement,
+          occurredAt: instruction.occurredAt,
+          postedAt: instruction.postedAt,
+          primaryAmount: actual,
+          counterpartyId: instruction.counterpartyId,
+          note: instruction.note,
+          isExcludedFromStats: instruction.isExcludedFromStats,
+          isExcludedFromBudget: instruction.isExcludedFromBudget,
+          sourceKind: SourceKind.manual,
+          ownership: ownership,
+          lines: [
+            for (final allocation in instruction.settlementAllocations)
+              _line(
+                transactionId: transactionId,
+                lineNo: lineNo++,
+                role: TransactionRole.settlementIn,
+                accountId: allocation.accountId,
+                amount: allocation.amount,
+              ),
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.receivable,
+              accountId: instruction.receivableAccountId,
+              amount: actual,
+            ),
+          ],
+        ),
+      );
     }
     final gap = actual - outstanding;
     if (gap.minorUnits > 0 && gapIncomeAccountId == null) {
-      return LedgerViolationReason.reimbursementGapIncomeRequired
+      return LedgerViolationReason.advanceCompensationIncomeRequired
           .throwException(message: 'Gap income account is required.');
     }
     _validateAllocations(
@@ -872,11 +999,28 @@ class PostingEngine {
     );
     final gapExpenseAllocations = instruction.gapExpenseAllocations;
     if (gap.minorUnits < 0) {
-      _validateAllocations(total: -gap, allocations: gapExpenseAllocations);
+      if (instruction.shortfallKind == AdvanceShortfallKind.badDebt) {
+        if (gapExpenseAllocations.isNotEmpty) {
+          return LedgerViolationReason.allocationTotalMismatch.throwException(
+            message: 'Bad-debt shortfalls use the system bad-debt account.',
+          );
+        }
+        if (badDebtExpenseAccountId == null) {
+          return LedgerViolationReason.badDebtExpenseAccountMissing
+              .throwException(message: 'Bad debt expense account is required.');
+        }
+      } else {
+        _validateAllocations(total: -gap, allocations: gapExpenseAllocations);
+      }
     } else if (gapExpenseAllocations.isNotEmpty) {
       return LedgerViolationReason.allocationTotalMismatch.throwException(
-        message: 'Gap expense allocations require a reimbursement shortfall.',
+        message: 'Shortfall allocations require an advance shortfall.',
       );
+    }
+    final ownership = advance.ownership ?? instruction.ownership;
+    if (ownership == null) {
+      return LedgerViolationReason.advanceInstructionUnresolvable
+          .throwException(message: 'Advance ownership is required.');
     }
 
     final transactionId = _idGenerator.newId();
@@ -885,17 +1029,17 @@ class PostingEngine {
       Transaction(
         id: transactionId,
         parentTransactionId: advance.id,
-        businessPurpose: BusinessPurpose.reimbursementClose,
+        businessPurpose: BusinessPurpose.advanceSettlement,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
-        // 主金额表达结束报销的实际到账,未收到现金时就是 0。
+        // 主金额表达垫付结清的实际到账,未收到现金时就是 0。
         primaryAmount: actual,
         counterpartyId: instruction.counterpartyId,
         note: instruction.note,
         isExcludedFromStats: advance.isExcludedFromStats,
         isExcludedFromBudget: advance.isExcludedFromBudget,
         sourceKind: advance.sourceKind,
-        ownership: advance.ownership,
+        ownership: ownership,
         lines: [
           // 一分未收时金额为零,但收款账户仍是用户给出的事实,必须留痕。
           for (final allocation in instruction.settlementAllocations)
@@ -918,21 +1062,33 @@ class PostingEngine {
             _line(
               transactionId: transactionId,
               lineNo: lineNo++,
-              role: TransactionRole.reimbursementGapIncome,
+              role: TransactionRole.advanceCompensationIncome,
               amount: gap,
             ),
-          if (gap.minorUnits < 0)
+          if (gap.minorUnits < 0 &&
+              instruction.shortfallKind == AdvanceShortfallKind.badDebt)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.advanceBadDebtExpense,
+              amount: -gap,
+            ),
+          if (gap.minorUnits < 0 &&
+              instruction.shortfallKind == AdvanceShortfallKind.selfBorne)
             for (final allocation in gapExpenseAllocations)
               _line(
                 transactionId: transactionId,
                 lineNo: lineNo++,
-                role: TransactionRole.reimbursementGapExpense,
+                role: TransactionRole.advanceSelfBorne,
                 accountId: allocation.accountId,
                 amount: allocation.amount,
               ),
         ],
       ),
-      systemAccountIds: {SystemKey.reimbursementGapIncome: ?gapIncomeAccountId},
+      systemAccountIds: {
+        SystemKey.advanceCompensationIncome: ?gapIncomeAccountId,
+        SystemKey.badDebtExpense: ?badDebtExpenseAccountId,
+      },
     );
   }
 
@@ -962,8 +1118,8 @@ class PostingEngine {
     Transaction parent,
     Money amount,
   ) {
-    final role = parent.businessPurpose == BusinessPurpose.reimbursementAdvance
-        ? TransactionRole.reimbursementExpenseCategory
+    final role = parent.businessPurpose == BusinessPurpose.advance
+        ? TransactionRole.advanceExpenseCategory
         : TransactionRole.category;
     final categories = parent.linesOf(role).toList();
     if (categories.length != 1) return const [];

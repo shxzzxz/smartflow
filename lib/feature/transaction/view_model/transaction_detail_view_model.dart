@@ -116,11 +116,11 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             accountId,
             currentAccountId: currentAccountId,
           );
-        case AccountSelectionPurpose.reimbursementReceivable:
+        case AccountSelectionPurpose.advanceReceivable:
           await ref
               .read(transactionEditAppServiceProvider)
-              .editReimbursementAdvance(
-                EditReimbursementAdvanceCommand(
+              .editAdvance(
+                EditAdvanceCommand(
                   transactionId: loaded.detail.id,
                   receivableAccountId: accountId,
                 ),
@@ -170,9 +170,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     });
   }
 
-  Future<UiActionOutcome<void>> submitReimbursement(
-    ReimbursementSubmitInput input,
-  ) {
+  Future<UiActionOutcome<void>> submitAdvance(AdvanceSubmitInput input) {
     return _runAction((loaded) async {
       final accountLookup = AccountLookup(
         await ref.read(accountQueryServiceProvider).findAccountsById(),
@@ -182,17 +180,17 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         accountLookup,
       );
       if (receivableAccountId == null) {
-        return detailInvalidCommand('无法定位报销账户');
+        return detailInvalidCommand('无法定位垫付应收账户');
       }
       final receiveAccountId = input.receiveAccountId ?? receivableAccountId;
       final note = trimToNull(input.noteText);
       final service = ref.read(transactionPostingAppServiceProvider);
-      if (input.closeReimbursement) {
+      if (input.settleAdvance) {
         final gapExpenseAllocations =
             input.gapExpenseAllocations ??
             _defaultGapExpenseAllocations(loaded.detail, input.amount);
-        await service.closeReimbursement(
-          CloseReimbursementCommand(
+        await service.settleAdvance(
+          CreateAdvanceSettlementCommand(
             actualReceivedAmount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
@@ -206,8 +204,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           ),
         );
       } else {
-        await service.createReimbursementReceipt(
-          CreateReimbursementReceiptCommand(
+        await service.createAdvanceCollection(
+          CreateAdvanceCollectionCommand(
             amount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
@@ -285,7 +283,7 @@ List<AccountAmountAllocation> _defaultGapExpenseAllocations(
   TransactionReadModel detail,
   Money actualReceivedAmount,
 ) {
-  final outstanding = detail.reimbursementSummary?.outstanding;
+  final outstanding = detail.advanceSummary?.outstanding;
   if (outstanding == null) return const [];
   final shortfall = outstanding - actualReceivedAmount;
   final remaining =

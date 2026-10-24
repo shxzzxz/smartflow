@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 
+import 'advance_backup_migration.dart';
 import 'backup_models.dart';
 import 'counterparty_backup_migration.dart';
 import 'installment_backup_migration.dart';
@@ -183,6 +184,7 @@ class BackupService {
       formatVersion: manifest.formatVersion,
     );
     migrateCounterpartyBackup(tables);
+    migrateAdvanceBackup(tables);
     for (final table in BackupTables.all) {
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
@@ -914,9 +916,9 @@ class BackupService {
         'dailyIncome',
         'transfer',
         'refund',
-        'reimbursementAdvance',
-        'reimbursementReceipt',
-        'reimbursementClose',
+        'advance',
+        'advanceCollection',
+        'advanceSettlement',
         'debtRepayment',
         'borrowing',
         'lending',
@@ -937,9 +939,10 @@ class BackupService {
         'fee',
         'discount',
         'refundOffset',
-        'reimbursementExpenseCategory',
-        'reimbursementGapIncome',
-        'reimbursementGapExpense',
+        'advanceExpenseCategory',
+        'advanceSelfBorne',
+        'advanceCompensationIncome',
+        'advanceBadDebtExpense',
         'openingBalance',
         'balanceAdjustment',
       },

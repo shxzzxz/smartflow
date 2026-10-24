@@ -51,7 +51,7 @@ void main() {
     expect(group.sourceOperationFingerprint, isNotEmpty);
   });
 
-  test('keeps reimbursement children in receipt then close order', () {
+  test('keeps advance children in receipt then close order', () {
     final result = _parser(
       billRows: [
         {
@@ -71,19 +71,19 @@ void main() {
     ).parse(_bundle());
 
     final group = _groups(result).single;
-    expect(group.topLevel, isA<ImportReimbursementAdvanceDraft>());
+    expect(group.topLevel, isA<ImportAdvanceDraft>());
     expect(group.children, hasLength(2));
-    expect(group.children[0], isA<ImportReimbursementReceiptDraft>());
-    expect(group.children[1], isA<ImportReimbursementCloseDraft>());
-    final receipt = group.children[0] as ImportReimbursementReceiptDraft;
-    final close = group.children[1] as ImportReimbursementCloseDraft;
+    expect(group.children[0], isA<ImportAdvanceCollectionDraft>());
+    expect(group.children[1], isA<ImportAdvanceSettlementDraft>());
+    final receipt = group.children[0] as ImportAdvanceCollectionDraft;
+    final close = group.children[1] as ImportAdvanceSettlementDraft;
     expect(receipt.amount, Money.parse('50'));
     expect(close.actualReceivedAmount, Money.parse('50'));
     expect(receipt.occurredAt, DateTime(2026, 3, 17));
     expect(close.occurredAt, DateTime(2026, 3, 18));
   });
 
-  test('filters generated reimbursement gaps and repayment interest rows', () {
+  test('filters generated advance gaps and repayment interest rows', () {
     final result = _parser(
       billRows: [
         {
@@ -113,10 +113,7 @@ void main() {
     expect(result.filteredRecords, hasLength(2));
     expect(
       result.filteredRecords.map((record) => record.reasonCode),
-      containsAll([
-        'reimbursement_gap_generated',
-        'repayment_interest_generated',
-      ]),
+      containsAll(['advance_gap_generated', 'repayment_interest_generated']),
     );
   });
 
@@ -221,11 +218,9 @@ void main() {
       result.filteredRecords.map((record) => record.reasonCode),
       contains('repayment_discount_generated'),
     );
-    final repayments =
-        _groups(result)
-            .map((group) => group.topLevel)
-            .whereType<ImportRepaymentDraft>()
-            .toList();
+    final repayments = _groups(
+      result,
+    ).map((group) => group.topLevel).whereType<ImportRepaymentDraft>().toList();
     expect(repayments, hasLength(2));
     expect(repayments[0].interest, Money.parse('2'));
     expect(repayments[0].discount, isNull);
@@ -497,45 +492,41 @@ void main() {
     ).parse(_bundle(names: const ['账单.xls']));
 
     final group = result.groups.single;
-    final advance = group.topLevel as ImportReimbursementAdvanceDraft;
+    final advance = group.topLevel as ImportAdvanceDraft;
     expect(advance.amount, Money.parse('20.00'));
     expect(group.children, hasLength(3));
     final refund = group.children[0] as ImportRefundDraft;
     expect(refund.amount, Money.parse('2.00'));
-    final receipt = group.children[1] as ImportReimbursementReceiptDraft;
+    final receipt = group.children[1] as ImportAdvanceCollectionDraft;
     expect(receipt.amount, Money.parse('10.00'));
-    final close = group.children[2] as ImportReimbursementCloseDraft;
+    final close = group.children[2] as ImportAdvanceSettlementDraft;
     expect(close.actualReceivedAmount, Money.parse('7.00'));
   });
 
   test('filters a bill transfer-fee result from its generated note', () {
-      final result = _parser(
-        billRows: [
-          {
-            '日期': '2026-01-01 09:00',
-            '收支类型': '支出',
-            '金额': -3.0,
-            '类别': '其他',
-            '二级分类': '',
-            '账户': '现金',
-            '退款': 0.0,
-            '报销账户': '',
-            '报销金额': '',
-            '报销明细': '',
-            '备注': '银行卡 转账手续费',
-            '其他': '',
-          },
-        ],
+    final result = _parser(
+      billRows: [
+        {
+          '日期': '2026-01-01 09:00',
+          '收支类型': '支出',
+          '金额': -3.0,
+          '类别': '其他',
+          '二级分类': '',
+          '账户': '现金',
+          '退款': 0.0,
+          '报销账户': '',
+          '报销金额': '',
+          '报销明细': '',
+          '备注': '银行卡 转账手续费',
+          '其他': '',
+        },
+      ],
     ).parse(_bundle(names: const ['账单.xls']));
 
     expect(result.groups, isEmpty);
-      expect(
-        result.filteredRecords.single.reasonCode,
-        'transfer_fee_generated',
-      );
-      expect(result.sourceCategories, isEmpty);
-    },
-  );
+    expect(result.filteredRecords.single.reasonCode, 'transfer_fee_generated');
+    expect(result.sourceCategories, isEmpty);
+  });
 
   test('runs additional source ParseUnits without changing the parser', () {
     final parser = _parser(additionalParseUnits: const [_AdditionalBillUnit()]);
@@ -989,10 +980,9 @@ YimuImportParser _parser({
           sheets: [
             YimuSheet(
               name: '转账',
-              rows:
-                  transferRows.isEmpty
-                      ? const [_fixtureTransferRow]
-                      : transferRows,
+              rows: transferRows.isEmpty
+                  ? const [_fixtureTransferRow]
+                  : transferRows,
               headers: _transferHeaders,
             ),
           ],

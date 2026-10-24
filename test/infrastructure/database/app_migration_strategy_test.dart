@@ -11,6 +11,149 @@ import 'package:smartflow/infrastructure/database/migration/account_profile_migr
 
 void main() {
   test(
+    'v47 migrates reimbursement advance data to generalized advances',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-advance-migration-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/smartflow.sqlite');
+      final old = _openDatabase(file);
+      await old.customSelect('SELECT 1').get();
+      await old.customStatement(
+        "UPDATE accounts SET system_key = 'reimbursementGapIncome', "
+        "name = '报销差额收入' WHERE system_key = 'advanceCompensationIncome'",
+      );
+      await old.customStatement('''
+INSERT INTO accounts
+  (id, name, account_type, account_subtype, account_profile_key, group_id, source)
+VALUES
+  ('legacy-receivable', '旧垫付账户', 'asset', 'receivable',
+   'ledger.reimbursement', 'builtin-account-group-reimbursement', 'user')
+''');
+      await old.customStatement('''
+INSERT INTO transactions
+  (id, business_purpose, occurred_at, posted_at, primary_amount_minor,
+   parent_transaction_id, source_kind, owner_type, owner_id, owner_role)
+VALUES
+  ('legacy-advance', 'reimbursementAdvance', 1, 1, 1000, NULL, 'manual', NULL, NULL, NULL),
+  ('legacy-refund', 'refund', 2, 2, 200, 'legacy-advance', 'manual', NULL, NULL, NULL),
+  ('legacy-receipt', 'reimbursementReceipt', 3, 3, 600, 'legacy-advance', 'manual', NULL, NULL, NULL),
+  ('legacy-close', 'reimbursementClose', 4, 4, 400, 'legacy-advance', 'manual', NULL, NULL, NULL),
+  ('legacy-expense', 'dailyExpense', 5, 5, 300, NULL, 'manual', NULL, NULL, NULL),
+  ('legacy-expense-refund', 'refund', 6, 6, 100, 'legacy-expense', 'manual', NULL, NULL, NULL)
+''');
+      await old.customStatement('''
+INSERT INTO transaction_lines
+  (id, transaction_id, line_no, role, account_id, amount_minor)
+VALUES
+  ('legacy-category', 'legacy-advance', 1, 'reimbursementExpenseCategory', 'travel', 1000),
+  ('legacy-advance-receivable', 'legacy-advance', 2, 'receivable', 'legacy-receivable', 1000),
+  ('legacy-refund-settlement', 'legacy-refund', 1, 'settlementIn', 'bank', 200),
+  ('legacy-refund-category', 'legacy-refund', 2, 'reimbursementExpenseCategory', 'travel', 200),
+  ('legacy-refund-offset', 'legacy-refund', 3, 'refundOffset', 'legacy-receivable', 200),
+  ('legacy-receipt-role', 'legacy-receipt', 1, 'settlementIn', 'bank', 600),
+  ('legacy-close-gap', 'legacy-close', 1, 'reimbursementGapExpense', 'travel', 400),
+  ('legacy-close-income', 'legacy-close', 2, 'reimbursementGapIncome', NULL, 200),
+  ('legacy-expense-category', 'legacy-expense', 1, 'category', 'travel', 300),
+  ('legacy-expense-refund-offset', 'legacy-expense-refund', 1, 'refundOffset', 'travel', 100)
+''');
+      await old.customStatement('PRAGMA user_version = 47');
+      await old.close();
+
+      final upgraded = _openDatabase(file);
+      addTearDown(upgraded.close);
+      final transactions = await upgraded
+          .customSelect(
+            'SELECT id, business_purpose, owner_type, owner_id, owner_role '
+            'FROM transactions ORDER BY id',
+          )
+          .get();
+      expect(
+        {
+          for (final row in transactions)
+            row.read<String>('id'): (
+              row.read<String>('business_purpose'),
+              row.readNullable<String>('owner_type'),
+              row.readNullable<String>('owner_id'),
+              row.readNullable<String>('owner_role'),
+            ),
+        },
+        {
+          'legacy-advance': (
+            'advance',
+            'advance.itemized',
+            'legacy-advance',
+            'reimbursement',
+          ),
+          'legacy-close': (
+            'advanceSettlement',
+            'advance.itemized',
+            'legacy-advance',
+            'reimbursement',
+          ),
+          'legacy-refund': (
+            'refund',
+            'advance.itemized',
+            'legacy-advance',
+            'reimbursement',
+          ),
+          'legacy-receipt': (
+            'advanceCollection',
+            'advance.itemized',
+            'legacy-advance',
+            'reimbursement',
+          ),
+          'legacy-expense': ('dailyExpense', null, null, null),
+          'legacy-expense-refund': ('refund', null, null, null),
+        },
+      );
+      final roles = await upgraded
+          .customSelect('SELECT id, role FROM transaction_lines ORDER BY id')
+          .get();
+      expect(
+        {
+          for (final row in roles)
+            row.read<String>('id'): row.read<String>('role'),
+        },
+        {
+          'legacy-category': 'advanceExpenseCategory',
+          'legacy-advance-receivable': 'receivable',
+          'legacy-close-gap': 'advanceSelfBorne',
+          'legacy-close-income': 'advanceCompensationIncome',
+          'legacy-expense-category': 'category',
+          'legacy-expense-refund-offset': 'refundOffset',
+          'legacy-refund-category': 'advanceExpenseCategory',
+          'legacy-refund-offset': 'receivable',
+          'legacy-refund-settlement': 'settlementIn',
+          'legacy-receipt-role': 'settlementIn',
+        },
+      );
+      final compensation = await upgraded
+          .customSelect(
+            "SELECT name FROM accounts "
+            "WHERE system_key = 'advanceCompensationIncome'",
+          )
+          .getSingle();
+      expect(compensation.read<String>('name'), '垫付补偿');
+      final profile = await upgraded
+          .customSelect(
+            "SELECT account_profile_key, group_id FROM accounts "
+            "WHERE id = 'legacy-receivable'",
+          )
+          .getSingle();
+      expect(
+        profile.read<String>('account_profile_key'),
+        'ledger.reimbursement',
+      );
+      expect(
+        profile.read<String>('group_id'),
+        'builtin-account-group-reimbursement',
+      );
+    },
+  );
+
+  test(
     'v38 preserves pending and applied repricings as distinct states',
     () async {
       final directory = await Directory.systemTemp.createTemp(
@@ -653,7 +796,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 47);
+    expect(version.read<int>('user_version'), 48);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -694,7 +837,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 47);
+      expect(version.read<int>('user_version'), 48);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -750,7 +893,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 47);
+      expect(version.read<int>('user_version'), 48);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -863,7 +1006,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 47);
+      expect(version.read<int>('user_version'), 48);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -1034,7 +1177,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 47);
+      expect(version.read<int>('user_version'), 48);
 
       for (final table in [
         'import_entity_mappings',
@@ -1162,7 +1305,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         .customSelect(
           "SELECT account_id FROM transaction_lines "
           "WHERE transaction_id = 'advance' "
-          "AND role = 'reimbursementExpenseCategory'",
+          "AND role = 'advanceExpenseCategory'",
         )
         .getSingle();
     expect(transactionLine.read<String>('account_id'), 'food');
@@ -1244,9 +1387,9 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       "('income-main', 'income', 1, 'primaryIncome', 1000), "
       "('transfer-main', 'transfer', 1, 'transferMain', 1000), "
       "('transfer-fee', 'transfer', 2, 'transferFee', 50), "
-      "('advance-main', 'advance', 1, 'reimbursementAdvanceMain', 1000), "
+      "('advance-main', 'advance', 1, 'advanceMain', 1000), "
       "('refund-main', 'refund', 1, 'refundMain', 100), "
-      "('receipt-main', 'receipt', 1, 'reimbursementReceiptMain', 800), "
+      "('receipt-main', 'receipt', 1, 'advanceCollectionMain', 800), "
       "('close-main', 'close', 1, 'reimbursementCloseMain', 1000), "
       "('close-gap', 'close', 2, 'reimbursementGapExpense', 200), "
       "('close-zero-main', 'close-zero', 1, 'reimbursementCloseMain', 1000), "
@@ -1330,12 +1473,12 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
         'transfer:fee:-:50',
         'close:settlementIn:migration-bank:800',
         'close:receivable:migration-receivable:1000',
-        'close:reimbursementGapExpense:migration-travel:200',
+        'close:advanceSelfBorne:migration-travel:200',
         'close-zero:receivable:migration-receivable:1000',
-        'close-zero:reimbursementGapExpense:migration-travel:1000',
+        'close-zero:advanceSelfBorne:migration-travel:1000',
         'refund:settlementIn:migration-bank:100',
-        'refund:reimbursementExpenseCategory:migration-travel:100',
-        'refund:refundOffset:migration-receivable:100',
+        'refund:advanceExpenseCategory:migration-travel:100',
+        'refund:receivable:migration-receivable:100',
         'repayment:liability:migration-liability:1000',
         'repayment:interest:-:100',
         'repayment:fee:-:50',

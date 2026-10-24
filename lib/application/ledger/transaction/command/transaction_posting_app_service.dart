@@ -7,8 +7,9 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
-import 'package:smartflow/domain/ledger/service/posting/reimbursement_posting_service.dart';
+import 'package:smartflow/domain/ledger/service/posting/advance_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_application_service.dart';
+import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';
@@ -23,16 +24,14 @@ abstract interface class TransactionPostingAppService {
 
   Future<PostedTransactionResult> createRefund(CreateRefundCommand command);
 
-  Future<PostedTransactionResult> createReimbursementAdvance(
-    CreateReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> createAdvance(CreateAdvanceCommand command);
+
+  Future<PostedTransactionResult> createAdvanceCollection(
+    CreateAdvanceCollectionCommand command,
   );
 
-  Future<PostedTransactionResult> createReimbursementReceipt(
-    CreateReimbursementReceiptCommand command,
-  );
-
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   );
 
   Future<PostedTransactionResult> createRepayment(
@@ -77,7 +76,7 @@ class TransactionPostingAppServiceImpl
         const DefaultAccountPostingService(),
     LedgerPostingService? ledgerPostingService,
     RefundPostingService? refundPostingService,
-    ReimbursementPostingService? reimbursementPostingService,
+    AdvancePostingService? advancePostingService,
     PostingApplicationService? postingApplicationService,
   }) : this._withPostingApplication(
          accountRepository: accountRepository,
@@ -90,7 +89,7 @@ class TransactionPostingAppServiceImpl
          accountPostingService: accountPostingService,
          ledgerPostingService: ledgerPostingService,
          refundPostingService: refundPostingService,
-         reimbursementPostingService: reimbursementPostingService,
+         advancePostingService: advancePostingService,
          postingApplicationService:
              postingApplicationService ??
              PostingApplicationService(
@@ -110,7 +109,7 @@ class TransactionPostingAppServiceImpl
     required AccountPostingService accountPostingService,
     LedgerPostingService? ledgerPostingService,
     RefundPostingService? refundPostingService,
-    ReimbursementPostingService? reimbursementPostingService,
+    AdvancePostingService? advancePostingService,
     required PostingApplicationService postingApplicationService,
   }) : _ledgerWriter = ledgerWriter,
        _ledgerPostingService =
@@ -139,9 +138,9 @@ class TransactionPostingAppServiceImpl
                  AccountRolePolicy(accountRepository: accountRepository),
              postingApplicationService: postingApplicationService,
            ),
-       _reimbursementPostingService =
-           reimbursementPostingService ??
-           ReimbursementPostingService(
+       _advancePostingService =
+           advancePostingService ??
+           AdvancePostingService(
              transactionGroupRepository: transactionGroupRepository,
              accountRepository: accountRepository,
              systemAccountResolver: systemAccountResolver,
@@ -157,7 +156,7 @@ class TransactionPostingAppServiceImpl
   final TransactionLedgerWriter _ledgerWriter;
   final LedgerPostingService _ledgerPostingService;
   final RefundPostingService _refundPostingService;
-  final ReimbursementPostingService _reimbursementPostingService;
+  final AdvancePostingService _advancePostingService;
 
   @override
   Future<PostedTransactionResult> createExpense(
@@ -248,17 +247,21 @@ class TransactionPostingAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementAdvance(
-    CreateReimbursementAdvanceCommand command,
+  Future<PostedTransactionResult> createAdvance(
+    CreateAdvanceCommand command,
   ) async {
     return _ledgerWriter.persistPosting(
-      await _reimbursementPostingService.postAdvance(
-        ReimbursementAdvanceInstruction(
+      await _advancePostingService.postAdvance(
+        AdvanceInstruction(
           amount: command.amount,
+          advanceAmount: command.advanceAmount,
           receivableAccountId: command.receivableAccountId,
           categoryAllocations: command.categoryAllocations,
+          selfBorneAllocations: command.selfBorneAllocations,
           settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
+          management: command.management,
+          scenario: command.scenario,
           postedAt: command.postedAt,
           counterpartyId: command.counterpartyId,
           note: command.note,
@@ -272,43 +275,80 @@ class TransactionPostingAppServiceImpl
   }
 
   @override
-  Future<PostedTransactionResult> createReimbursementReceipt(
-    CreateReimbursementReceiptCommand command,
+  Future<PostedTransactionResult> createAdvanceCollection(
+    CreateAdvanceCollectionCommand command,
   ) async {
+    final ownership = advanceOwnership(
+      management: command.management,
+      ownerId: command.receivableAccountId,
+      scenario: command.scenario,
+    );
+    final instruction = command.advanceTransactionId == null
+        ? AdvanceCollectionInstruction.account(
+            amount: command.amount,
+            receivableAccountId: command.receivableAccountId,
+            settlementAllocations: command.settlementAllocations,
+            ownership: ownership,
+            occurredAt: command.occurredAt,
+            postedAt: command.postedAt,
+            counterpartyId: command.counterpartyId,
+            note: command.note,
+            isExcludedFromStats: command.isExcludedFromStats,
+            isExcludedFromBudget: command.isExcludedFromBudget,
+          )
+        : AdvanceCollectionInstruction(
+            advanceTransactionId: command.advanceTransactionId!,
+            amount: command.amount,
+            receivableAccountId: command.receivableAccountId,
+            settlementAllocations: command.settlementAllocations,
+            occurredAt: command.occurredAt,
+            postedAt: command.postedAt,
+            counterpartyId: command.counterpartyId,
+            note: command.note,
+          );
     return _ledgerWriter.persistPosting(
-      await _reimbursementPostingService.postReceipt(
-        ReimbursementReceiptInstruction(
-          advanceTransactionId: command.advanceTransactionId,
-          amount: command.amount,
-          receivableAccountId: command.receivableAccountId,
-          settlementAllocations: command.settlementAllocations,
-          occurredAt: command.occurredAt,
-          postedAt: command.postedAt,
-          counterpartyId: command.counterpartyId,
-          note: command.note,
-        ),
-      ),
+      await _advancePostingService.postCollection(instruction),
     );
   }
 
   @override
-  Future<PostedTransactionResult> closeReimbursement(
-    CloseReimbursementCommand command,
+  Future<PostedTransactionResult> settleAdvance(
+    CreateAdvanceSettlementCommand command,
   ) async {
+    final ownership = advanceOwnership(
+      management: command.management,
+      ownerId: command.receivableAccountId,
+      scenario: command.scenario,
+    );
+    final instruction = command.advanceTransactionId == null
+        ? AdvanceSettlementInstruction.account(
+            actualReceivedAmount: command.actualReceivedAmount,
+            receivableAccountId: command.receivableAccountId,
+            settlementAllocations: command.settlementAllocations,
+            gapExpenseAllocations: command.gapExpenseAllocations,
+            ownership: ownership,
+            shortfallKind: command.shortfallKind,
+            occurredAt: command.occurredAt,
+            postedAt: command.postedAt,
+            counterpartyId: command.counterpartyId,
+            note: command.note,
+            isExcludedFromStats: command.isExcludedFromStats,
+            isExcludedFromBudget: command.isExcludedFromBudget,
+          )
+        : AdvanceSettlementInstruction(
+            advanceTransactionId: command.advanceTransactionId!,
+            actualReceivedAmount: command.actualReceivedAmount,
+            receivableAccountId: command.receivableAccountId,
+            settlementAllocations: command.settlementAllocations,
+            gapExpenseAllocations: command.gapExpenseAllocations,
+            shortfallKind: command.shortfallKind,
+            occurredAt: command.occurredAt,
+            postedAt: command.postedAt,
+            counterpartyId: command.counterpartyId,
+            note: command.note,
+          );
     return _ledgerWriter.persistPosting(
-      await _reimbursementPostingService.close(
-        ReimbursementCloseInstruction(
-          advanceTransactionId: command.advanceTransactionId,
-          actualReceivedAmount: command.actualReceivedAmount,
-          receivableAccountId: command.receivableAccountId,
-          settlementAllocations: command.settlementAllocations,
-          gapExpenseAllocations: command.gapExpenseAllocations,
-          occurredAt: command.occurredAt,
-          postedAt: command.postedAt,
-          counterpartyId: command.counterpartyId,
-          note: command.note,
-        ),
-      ),
+      await _advancePostingService.settle(instruction),
     );
   }
 

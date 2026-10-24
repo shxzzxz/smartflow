@@ -240,9 +240,9 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionNotFound,
     'Original expense not found.',
   ),
-  refundParentReimbursementClosed(
+  refundParentAdvanceClosed(
     LedgerErrorCode.transactionNotEditable,
-    'Refund is not supported after reimbursement is closed.',
+    'Refund is not supported after advance is closed.',
   ),
   refundParentNotSupported(
     LedgerErrorCode.transactionNotEditable,
@@ -256,62 +256,67 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionNotEditable,
     'A refund transaction is required.',
   ),
-  reimbursementAdvanceReceivableRequired(
+  advanceReceivableRequired(
     LedgerErrorCode.transactionInvalidCommand,
-    'A reimbursement receivable account is required.',
+    'An advance receivable account is required.',
   ),
-  reimbursementAlreadyClosed(
+  advanceManagementMismatch(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Account-managed advances use top-level collection and settlement.',
+  ),
+  advanceReceivableAccountMismatch(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Itemized advance children must use the parent receivable account.',
+  ),
+  advanceAlreadyClosed(
     LedgerErrorCode.transactionNotEditable,
-    'This reimbursement chain is already closed.',
+    'This advance chain is already closed.',
   ),
-  reimbursementAmountNotPositive(
+  advanceAmountNotPositive(
     LedgerErrorCode.transactionInvalidCommand,
-    'Reimbursement amount must be positive.',
+    'Advance amount must be positive.',
   ),
-  reimbursementCloseAccountsUnresolved(
+  advanceSettlementAccountsUnresolved(
     LedgerErrorCode.transactionInvalidCommand,
-    'Reimbursement close accounts cannot be resolved.',
+    'Advance close accounts cannot be resolved.',
   ),
-  reimbursementCloseAmountNegative(
+  advanceSettlementAmountNegative(
     LedgerErrorCode.transactionInvalidCommand,
     'Received amount cannot be negative.',
   ),
-  reimbursementCloseTransactionRequired(
+  advanceSettlementTransactionRequired(
     LedgerErrorCode.transactionNotEditable,
-    'A reimbursement close transaction is required.',
+    'An advance settlement transaction is required.',
   ),
-  reimbursementGapIncomeRequired(
+  advanceCompensationIncomeRequired(
     LedgerErrorCode.transactionPostingFailed,
     'Gap income account is required.',
   ),
-  reimbursementInstructionUnresolvable(
+  advanceInstructionUnresolvable(
     LedgerErrorCode.transactionPostingFailed,
-    'Reimbursement advance accounts cannot be resolved.',
+    'Advance accounts cannot be resolved.',
   ),
-  reimbursementParentNotAdvance(
+  advanceParentNotAdvance(
     LedgerErrorCode.transactionNotEditable,
-    'Parent transaction is not a reimbursement advance.',
+    'Parent transaction is not an advance.',
   ),
-  reimbursementReceiptAccountsUnresolved(
+  advanceCollectionAccountsUnresolved(
     LedgerErrorCode.transactionInvalidCommand,
-    'Reimbursement receipt accounts cannot be resolved.',
+    'Advance receipt accounts cannot be resolved.',
   ),
-  reimbursementReceiptExceedsOutstanding(
+  advanceCollectionExceedsOutstanding(
     LedgerErrorCode.transactionInvalidCommand,
     'Receipt exceeds outstanding receivable.',
   ),
-  reimbursementRecoveryExceedsAdvance(
+  advanceRecoveryExceedsAdvance(
     LedgerErrorCode.transactionInvalidCommand,
-    'Refunds and reimbursement receipts exceed the advance amount.',
+    'Refunds and advance receipts exceed the advance amount.',
   ),
-  reimbursementReceiptTransactionRequired(
+  advanceCollectionTransactionRequired(
     LedgerErrorCode.transactionNotEditable,
-    'A reimbursement receipt transaction is required.',
+    'An advance collection transaction is required.',
   ),
-  reimbursementAdvanceNotFound(
-    LedgerErrorCode.transactionNotFound,
-    'Reimbursement advance not found.',
-  ),
+  advanceNotFound(LedgerErrorCode.transactionNotFound, 'Advance not found.'),
   repaymentDiscountAccountMissing(
     LedgerErrorCode.transactionInvalidCommand,
     'Discount income system account is required.',

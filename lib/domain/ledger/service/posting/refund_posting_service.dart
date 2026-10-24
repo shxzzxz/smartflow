@@ -8,6 +8,7 @@ import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
+import '../advance/advance_share_calculator.dart';
 import 'account_posting_service.dart';
 import 'posting_engine.dart';
 import 'posting_application_service.dart';
@@ -19,12 +20,14 @@ class RefundPostingService {
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
+    AdvanceSharePolicy advanceSharePolicy = const AdvanceShareCalculator(),
     PostingApplicationService? postingApplicationService,
   }) : _transactionGroupRepository = transactionGroupRepository,
        _postingEngine = postingEngine,
        _accountRolePolicy = accountRolePolicy,
        _accountRepository = accountRepository,
        _accountPostingService = accountPostingService,
+       _advanceSharePolicy = advanceSharePolicy,
        _postingApplicationService = postingApplicationService;
 
   final TransactionGroupRepository _transactionGroupRepository;
@@ -32,6 +35,7 @@ class RefundPostingService {
   final PostingEngine _postingEngine;
   final AccountRolePolicy _accountRolePolicy;
   final AccountPostingService _accountPostingService;
+  final AdvanceSharePolicy _advanceSharePolicy;
   final PostingApplicationService? _postingApplicationService;
 
   PostingApplicationService get _postingApplication =>
@@ -53,10 +57,7 @@ class RefundPostingService {
     final parentViolation = _validateRefundParent(parent, group, instruction);
     if (parentViolation != null) parentViolation.throwException();
 
-    final remaining =
-        parent.businessPurpose == BusinessPurpose.reimbursementAdvance
-        ? group.reimbursementOutstanding()
-        : parent.primaryAmount - group.refundedTotal();
+    final remaining = parent.primaryAmount - group.refundedTotal();
     if (instruction.amount.minorUnits > remaining.minorUnits) {
       LedgerViolationReason.refundExceedsRemaining.throwException();
     }
@@ -65,13 +66,20 @@ class RefundPostingService {
       instruction: instruction,
       group: group,
     );
-    if (!group.allocationsFitRefundableCategories(categoryAllocations)) {
+    if (categoryAllocations.isNotEmpty &&
+        !group.allocationsFitRefundableCategories(categoryAllocations)) {
       LedgerViolationReason.allocationExceedsAvailable.throwException();
     }
+    final refundShare = _advanceSharePolicy.splitForRefund(
+      group: group,
+      refundAmount: instruction.amount,
+      refundCategoryAllocations: categoryAllocations,
+    );
     final normalizedInstruction = RefundInstruction(
       parentTransactionId: instruction.parentTransactionId,
       amount: instruction.amount,
       categoryAllocations: categoryAllocations,
+      selfBorneAllocations: refundShare.selfBorneAllocations,
       settlementAllocations: instruction.settlementAllocations,
       occurredAt: instruction.occurredAt,
       postedAt: instruction.postedAt,
@@ -106,6 +114,10 @@ class RefundPostingService {
       return instruction.categoryAllocations;
     }
     final remaining = group.remainingRefundableCategoryAllocations();
+    if (remaining.isEmpty &&
+        group.parentTransaction.businessPurpose == BusinessPurpose.advance) {
+      return const [];
+    }
     if (remaining.length != 1) {
       LedgerViolationReason.allocationRequired.throwException(
         message: 'Refund category allocations are required.',
@@ -121,12 +133,12 @@ class RefundPostingService {
   ) {
     if (parent.id != instruction.parentTransactionId ||
         (parent.businessPurpose != BusinessPurpose.dailyExpense &&
-            parent.businessPurpose != BusinessPurpose.reimbursementAdvance)) {
+            parent.businessPurpose != BusinessPurpose.advance)) {
       return LedgerViolationReason.refundParentNotExpense;
     }
-    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance &&
-        group.reimbursementClosed) {
-      return LedgerViolationReason.refundParentReimbursementClosed;
+    if (parent.businessPurpose == BusinessPurpose.advance &&
+        group.advanceSettled) {
+      return LedgerViolationReason.refundParentAdvanceClosed;
     }
     return null;
   }
