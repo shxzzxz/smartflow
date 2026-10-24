@@ -31,6 +31,7 @@ void main() {
         refund.id: [
           _line(refund.id, 1, TransactionRole.settlementIn, 1200, 'cash'),
           _line(refund.id, 2, TransactionRole.settlementIn, 800, 'bank'),
+          _line(refund.id, 3, TransactionRole.receivable, 2000, 'receivable'),
         ],
         receipt.id: [
           _line(receipt.id, 1, TransactionRole.settlementIn, 2500, 'cash'),
@@ -49,6 +50,7 @@ void main() {
     expect(detail.advanceSummary?.outstanding.minorUnits, 2000);
     expect(detail.refundSummary?.refundedTotal.minorUnits, 2000);
     expect(detail.advanceSummary?.refundedAmount.minorUnits, 2000);
+    expect(detail.advanceSummary?.advanceRefundedAmount.minorUnits, 2000);
     expect(detail.advanceSummary?.receivedAmount.minorUnits, 6000);
     expect(detail.advanceSummary?.gapAmount, Money.zero());
     expect(detail.advanceSummary?.outstanding.minorUnits, 2000);
