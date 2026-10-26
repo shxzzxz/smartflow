@@ -13,6 +13,8 @@ abstract final class AppComponentTokens {
   /// 底部栏图标字形，导航栏与占用同一槽位的批量操作栏共用。
   static const double bottomBarIconSize = 22;
   static const double iconChoiceGridTileExtent = 72;
+  static const double choiceGridMinItemWidth = 88;
+  static const double choiceGridItemMainExtent = 64;
   static const double profileGridMinTileWidth = 60;
   static const double profileGridTileMainExtent = 104;
   static const double menuElevation = 8;

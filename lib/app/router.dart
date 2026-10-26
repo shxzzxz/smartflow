@@ -14,6 +14,7 @@ import '../feature/account/page/account_installments_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
+import '../feature/account/presentation/account_creation_presets.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/tag/page/tags_page.dart';
 import '../feature/category/page/category_form_page.dart';
@@ -309,7 +310,11 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/account/new',
-      builder: (context, state) => const AccountFormPage(),
+      builder: (context, state) => AccountFormPage(
+        creationPreset: accountCreationPresetForId(
+          state.uri.queryParameters['preset'],
+        ),
+      ),
     ),
     GoRoute(
       path: '/account/archived',

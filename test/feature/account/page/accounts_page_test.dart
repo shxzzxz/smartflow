@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/account/command/account_group_app_service.dart';
@@ -13,7 +14,9 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
+import 'package:smartflow/feature/account/page/account_form_page.dart';
 import 'package:smartflow/feature/account/page/accounts_page.dart';
+import 'package:smartflow/feature/account/presentation/account_creation_presets.dart';
 import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -281,6 +284,59 @@ void main() {
     expect(find.text('隐藏余额'), findsOneWidget);
   });
 
+  testWidgets('opens grouped account creation choices from add action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_buildAccountsPageApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('新建账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('新建账户'), findsNothing);
+    for (final id in ['fund', 'credit', 'relations']) {
+      expect(find.byKey(ValueKey('app-choice-grid-$id')), findsOneWidget);
+    }
+    expect(find.text('微信'), findsOneWidget);
+    expect(find.text('花呗'), findsOneWidget);
+    expect(find.text('报销'), findsOneWidget);
+  });
+
+  testWidgets('opens the selected account type after choosing a preset', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/accounts',
+      routes: [
+        GoRoute(
+          path: '/accounts',
+          builder: (context, state) => const AccountsPage(),
+        ),
+        GoRoute(
+          path: '/account/new',
+          builder: (context, state) => AccountFormPage(
+            creationPreset: accountCreationPresetForId(
+              state.uri.queryParameters['preset'],
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_buildAccountsPageApp(router: router));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('新建账户'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('app-choice-grid-item-fund-boc')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountFormPage), findsOneWidget);
+    expect(find.text('中国银行'), findsOneWidget);
+  });
+
   testWidgets('starts group sorting after a delayed long press', (
     tester,
   ) async {
@@ -440,6 +496,7 @@ Widget _buildAccountsPageApp({
   List<AccountGroup>? groups,
   AssetSectionCollapseStore? collapseStore,
   AccountGroupAppService? groupService,
+  GoRouter? router,
 }) {
   return ProviderScope(
     overrides: [
@@ -478,7 +535,9 @@ Widget _buildAccountsPageApp({
         ),
       ),
     ],
-    child: MaterialApp(theme: AppTheme.light(), home: const AccountsPage()),
+    child: router == null
+        ? MaterialApp(theme: AppTheme.light(), home: const AccountsPage())
+        : MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
 }
 

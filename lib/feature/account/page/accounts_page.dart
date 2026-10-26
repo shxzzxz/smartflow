@@ -22,6 +22,7 @@ import '../view_model/account_view.dart';
 import '../view_model/account_organization_view_model.dart';
 import '../view_model/account_views_provider.dart';
 import '../view_model/asset_section_collapse_view_model.dart';
+import '../widget/account_creation_sheet.dart';
 import '../widget/account_list_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
@@ -131,6 +132,7 @@ class _AccountsContent extends ConsumerWidget {
               ]);
             }
           },
+          onAddAccount: () => _openAccountCreation(context),
           onManageGroups: () => _showAccountGroupManagerSheet(context, ref),
         ),
         Expanded(
@@ -214,6 +216,12 @@ class _AccountsContent extends ConsumerWidget {
       ],
     );
   }
+
+  Future<void> _openAccountCreation(BuildContext context) async {
+    final preset = await showAccountCreationSheet(context: context);
+    if (preset == null || !context.mounted) return;
+    context.push(preset.routeLocation);
+  }
 }
 
 Future<void> _moveAccount(
@@ -276,11 +284,13 @@ class _AssetsHeader extends StatelessWidget {
     required this.onToggleHide,
     required this.allCollapsed,
     required this.onToggleCollapseAll,
+    required this.onAddAccount,
     required this.onManageGroups,
   });
 
   final bool hideBalances;
   final VoidCallback onToggleHide;
+  final VoidCallback onAddAccount;
 
   /// null 表示没有可折叠的分组，不显示折叠按钮。
   final bool? allCollapsed;
@@ -302,7 +312,7 @@ class _AssetsHeader extends StatelessWidget {
             tooltip: allCollapsed ? '展开全部分组' : '折叠全部分组',
           ),
         AppHeaderIconButton(
-          onPressed: () => context.push('/account/new'),
+          onPressed: onAddAccount,
           icon: RemixIcons.add_line,
           tooltip: '新建账户',
         ),
@@ -745,6 +755,7 @@ Future<void> _showAccountGroupManagerSheet(
 ) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (_) => const _AccountGroupManagerSheet(),

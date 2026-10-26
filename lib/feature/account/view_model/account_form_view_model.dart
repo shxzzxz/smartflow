@@ -53,6 +53,23 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     });
   }
 
+  void initializeNewAccount({
+    required AccountProfileKind kind,
+    required String iconKey,
+  }) {
+    if (accountId != null) return;
+    _update(
+      (current) => current.copyWith(
+        kind: kind,
+        groupId: initialAccountGroupIdForProfile(kind),
+        iconKey: iconKey,
+        billingDay: null,
+        repaymentDay: null,
+        billingDayToNext: true,
+      ),
+    );
+  }
+
   void setIconKey(String value) {
     _update(
       (current) =>

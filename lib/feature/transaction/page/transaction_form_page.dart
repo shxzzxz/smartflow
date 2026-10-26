@@ -14,6 +14,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
+import '../../../design_system/widget/app_grouped_choice_grid.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
@@ -523,20 +524,54 @@ class _TransactionFormContentState
 
   Future<void> _selectScene() async {
     final formState = ref.read(_formProvider).requireValue!;
-    if (formState.mode != TransactionFormMode.expense) {
-      await showTransactionModeSceneSheet(
-        context: context,
-        mode: formState.mode,
-      );
-      return;
-    }
-    final selected = await showTransactionExpenseSceneSheet(
+    final selected = await _showTransactionSceneSheet(
       context: context,
-      selected: formState.expenseScene,
-      scenes: _editableExpenseScenes(formState),
+      mode: formState.mode,
+      expenseScene: formState.expenseScene,
+      groups: _sceneGroups(formState),
     );
     if (!mounted || selected == null) return;
-    ref.read(_formProvider.notifier).setExpenseScene(selected);
+    final form = ref.read(_formProvider.notifier);
+    if (selected.mode == TransactionFormMode.expense) {
+      form.setExpenseScene(
+        selected.expenseScene ?? TransactionExpenseScene.ordinary,
+      );
+    } else {
+      form.setMode(selected.mode);
+    }
+  }
+
+  List<AppChoiceGridGroup<_TransactionSceneChoice>> _sceneGroups(
+    TransactionFormState formState,
+  ) {
+    if (widget.editTransactionId == null) {
+      return _allTransactionSceneGroups;
+    }
+    if (formState.mode == TransactionFormMode.expense) {
+      final editableScenes = _editableExpenseScenes(formState).toSet();
+      return [
+        AppChoiceGridGroup(
+          id: 'expense',
+          label: '支出',
+          items: [
+            for (final item in _expenseSceneItems)
+              if (editableScenes.contains(item.value.expenseScene)) item,
+          ],
+        ),
+      ];
+    }
+    return [
+      for (final group in _allTransactionSceneGroups)
+        if (group.items.any((item) => item.value.mode == formState.mode))
+          AppChoiceGridGroup(
+            id: group.id,
+            label: group.label,
+            items: [
+              for (final item in group.items)
+                if (item.value.mode == formState.mode) item,
+            ],
+          ),
+    ];
   }
 
   List<TransactionExpenseScene> _editableExpenseScenes(
@@ -1134,120 +1169,117 @@ class _CategoryAllocationPickerSheetState
   }
 }
 
-Future<TransactionExpenseScene?> showTransactionExpenseSceneSheet({
-  required BuildContext context,
-  required TransactionExpenseScene selected,
-  List<TransactionExpenseScene>? scenes,
+typedef _TransactionSceneChoice = ({
+  TransactionFormMode mode,
+  TransactionExpenseScene? expenseScene,
+});
+
+final _expenseSceneItems = <AppChoiceGridItem<_TransactionSceneChoice>>[
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.ordinary,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.aa,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.reimbursement,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.onBehalf,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.aaAccount,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.reimbursementAccount,
+  ),
+];
+
+final _allTransactionSceneGroups =
+    <AppChoiceGridGroup<_TransactionSceneChoice>>[
+      AppChoiceGridGroup(id: 'expense', label: '支出', items: _expenseSceneItems),
+      AppChoiceGridGroup(
+        id: 'income',
+        label: '收入',
+        items: [_sceneGridItem(TransactionFormMode.income)],
+      ),
+      AppChoiceGridGroup(
+        id: 'transfer',
+        label: '转账',
+        items: [_sceneGridItem(TransactionFormMode.transfer)],
+      ),
+      AppChoiceGridGroup(
+        id: 'relations',
+        label: '往来',
+        items: [
+          _sceneGridItem(TransactionFormMode.borrowing),
+          _sceneGridItem(TransactionFormMode.lending),
+        ],
+      ),
+    ];
+
+AppChoiceGridItem<_TransactionSceneChoice> _sceneGridItem(
+  TransactionFormMode mode, {
+  TransactionExpenseScene? expenseScene,
 }) {
-  return showModalBottomSheet<TransactionExpenseScene>(
+  final choice = (mode: mode, expenseScene: expenseScene);
+  return AppChoiceGridItem(
+    id: _sceneChoiceKey(choice),
+    value: choice,
+    label: _sceneChoiceLabel(choice),
+    iconBuilder: (context, size) => Icon(_sceneChoiceIcon(choice), size: size),
+  );
+}
+
+Future<_TransactionSceneChoice?> _showTransactionSceneSheet({
+  required BuildContext context,
+  required TransactionFormMode mode,
+  required TransactionExpenseScene expenseScene,
+  required List<AppChoiceGridGroup<_TransactionSceneChoice>> groups,
+}) {
+  return showModalBottomSheet<_TransactionSceneChoice>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) => _TransactionExpenseSceneSheet(
-      selected: selected,
-      scenes: scenes ?? TransactionExpenseScene.values,
+    builder: (context) => _TransactionSceneSheet(
+      mode: mode,
+      expenseScene: expenseScene,
+      groups: groups,
     ),
   );
 }
 
-Future<void> showTransactionModeSceneSheet({
-  required BuildContext context,
-  required TransactionFormMode mode,
-}) {
-  return showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (context) => _TransactionModeSceneSheet(mode: mode),
-  );
-}
-
-class _TransactionModeSceneSheet extends StatelessWidget {
-  const _TransactionModeSceneSheet({required this.mode});
-
-  final TransactionFormMode mode;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('选择场景', style: context.appTextStyles.subsectionTitle),
-            const SizedBox(height: AppSpacing.space8),
-            Material(
-              color: colors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-              child: InkWell(
-                key: ValueKey('transaction-mode-scene-${mode.name}'),
-                onTap: () => Navigator.of(context).pop(),
-                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space12,
-                    vertical: AppSpacing.space10,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _modeSceneIcon(mode),
-                        size: AppSpacing.space24,
-                        color: colors.primary,
-                      ),
-                      const SizedBox(width: AppSpacing.space12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _modeSceneLabel(mode),
-                              style: context.appTextStyles.listTitle,
-                            ),
-                            const SizedBox(height: AppSpacing.space2),
-                            Text(
-                              _modeSceneDescription(mode),
-                              style: context.appTextStyles.listSupporting
-                                  .copyWith(color: colors.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        RemixIcons.check_line,
-                        size: AppSpacing.space20,
-                        color: colors.primary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TransactionExpenseSceneSheet extends StatelessWidget {
-  const _TransactionExpenseSceneSheet({
-    required this.selected,
-    required this.scenes,
+class _TransactionSceneSheet extends StatelessWidget {
+  const _TransactionSceneSheet({
+    required this.mode,
+    required this.expenseScene,
+    required this.groups,
   });
 
-  final TransactionExpenseScene selected;
-  final List<TransactionExpenseScene> scenes;
+  final TransactionFormMode mode;
+  final TransactionExpenseScene expenseScene;
+  final List<AppChoiceGridGroup<_TransactionSceneChoice>> groups;
 
   @override
   Widget build(BuildContext context) {
+    final selectedId = groups
+        .expand((group) => group.items)
+        .where(
+          (item) => _isSceneChoiceSelected(
+            item.value,
+            mode: mode,
+            expenseScene: expenseScene,
+          ),
+        )
+        .map((item) => item.id)
+        .firstOrNull;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -1260,14 +1292,11 @@ class _TransactionExpenseSceneSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('选择场景', style: context.appTextStyles.subsectionTitle),
-            const SizedBox(height: AppSpacing.space8),
-            for (final scene in scenes)
-              _ExpenseSceneOption(
-                scene: scene,
-                selected: scene == selected,
-                onTap: () => Navigator.of(context).pop(scene),
-              ),
+            AppGroupedChoiceGrid<_TransactionSceneChoice>(
+              groups: groups,
+              selectedId: selectedId,
+              onSelected: (item) => Navigator.of(context).pop(item.value),
+            ),
           ],
         ),
       ),
@@ -1275,21 +1304,37 @@ class _TransactionExpenseSceneSheet extends StatelessWidget {
   }
 }
 
-class _ExpenseSceneOption extends StatelessWidget {
-  const _ExpenseSceneOption({
-    required this.scene,
-    required this.selected,
-    required this.onTap,
-  });
+bool _isSceneChoiceSelected(
+  _TransactionSceneChoice choice, {
+  required TransactionFormMode mode,
+  required TransactionExpenseScene expenseScene,
+}) {
+  if (choice.mode != mode) return false;
+  return choice.mode != TransactionFormMode.expense ||
+      choice.expenseScene == expenseScene;
+}
 
-  final TransactionExpenseScene scene;
-  final bool selected;
-  final VoidCallback onTap;
+String _sceneChoiceKey(_TransactionSceneChoice choice) {
+  final scene = choice.expenseScene;
+  return scene == null ? 'mode:${choice.mode.name}' : 'expense:${scene.name}';
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final icon = switch (scene) {
+String _sceneChoiceLabel(_TransactionSceneChoice choice) {
+  final scene = choice.expenseScene;
+  if (scene != null) return scene.label;
+  return switch (choice.mode) {
+    TransactionFormMode.expense => '普通支出',
+    TransactionFormMode.income => '普通收入',
+    TransactionFormMode.transfer => '转账',
+    TransactionFormMode.borrowing => '借入',
+    TransactionFormMode.lending => '借出',
+  };
+}
+
+IconData _sceneChoiceIcon(_TransactionSceneChoice choice) {
+  final scene = choice.expenseScene;
+  if (scene != null) {
+    return switch (scene) {
       TransactionExpenseScene.ordinary => RemixIcons.wallet_line,
       TransactionExpenseScene.reimbursement ||
       TransactionExpenseScene.reimbursementAccount =>
@@ -1298,62 +1343,14 @@ class _ExpenseSceneOption extends StatelessWidget {
       TransactionExpenseScene.aa ||
       TransactionExpenseScene.aaAccount => RemixIcons.user_shared_line,
     };
-    final description = switch (scene) {
-      TransactionExpenseScene.ordinary => '直接记录支出，不形成应收',
-      TransactionExpenseScene.reimbursement => '逐笔跟踪一笔报销应收',
-      TransactionExpenseScene.reimbursementAccount => '归入报销账户，不跟踪单笔',
-      TransactionExpenseScene.onBehalf => '逐笔跟踪一笔代付应收',
-      TransactionExpenseScene.aa => '逐笔跟踪 AA 中其他人的应收',
-      TransactionExpenseScene.aaAccount => '归入垫付账户，不跟踪单笔',
-    };
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space4),
-      child: Material(
-        color: selected
-            ? colors.primary.withValues(alpha: 0.08)
-            : colors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-        child: InkWell(
-          key: ValueKey('transaction-scene-${scene.name}'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space12,
-              vertical: AppSpacing.space10,
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: AppSpacing.space24, color: colors.primary),
-                const SizedBox(width: AppSpacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(scene.label, style: context.appTextStyles.listTitle),
-                      const SizedBox(height: AppSpacing.space2),
-                      Text(
-                        description,
-                        style: context.appTextStyles.listSupporting.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (selected)
-                  Icon(
-                    RemixIcons.check_line,
-                    size: AppSpacing.space20,
-                    color: colors.primary,
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
+  return switch (choice.mode) {
+    TransactionFormMode.expense => RemixIcons.wallet_line,
+    TransactionFormMode.income => RemixIcons.money_dollar_circle_line,
+    TransactionFormMode.transfer => RemixIcons.arrow_left_right_line,
+    TransactionFormMode.borrowing => RemixIcons.bank_card_line,
+    TransactionFormMode.lending => RemixIcons.hand_coin_line,
+  };
 }
 
 Future<int?> showAaPeopleCountSheet({
@@ -2252,36 +2249,6 @@ String _modeLabel(TransactionFormMode mode) {
     TransactionFormMode.transfer => '转账',
     TransactionFormMode.borrowing => '借入',
     TransactionFormMode.lending => '借出',
-  };
-}
-
-String _modeSceneLabel(TransactionFormMode mode) {
-  return switch (mode) {
-    TransactionFormMode.expense => '普通支出',
-    TransactionFormMode.income => '普通收入',
-    TransactionFormMode.transfer => '普通转账',
-    TransactionFormMode.borrowing => '普通借入',
-    TransactionFormMode.lending => '普通借出',
-  };
-}
-
-String _modeSceneDescription(TransactionFormMode mode) {
-  return switch (mode) {
-    TransactionFormMode.expense => '直接记录支出，不形成应收',
-    TransactionFormMode.income => '记录一笔收入，不形成往来余额',
-    TransactionFormMode.transfer => '在两个账户之间转移资金',
-    TransactionFormMode.borrowing => '收到资金并形成负债',
-    TransactionFormMode.lending => '支付资金并形成应收',
-  };
-}
-
-IconData _modeSceneIcon(TransactionFormMode mode) {
-  return switch (mode) {
-    TransactionFormMode.expense => RemixIcons.wallet_line,
-    TransactionFormMode.income => RemixIcons.money_dollar_circle_line,
-    TransactionFormMode.transfer => RemixIcons.arrow_left_right_line,
-    TransactionFormMode.borrowing => RemixIcons.bank_card_line,
-    TransactionFormMode.lending => RemixIcons.hand_coin_line,
   };
 }
 

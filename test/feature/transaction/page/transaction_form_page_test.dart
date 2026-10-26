@@ -68,6 +68,13 @@ void main() {
       Theme.of(tester.element(find.byType(TransactionFormPage))).brightness,
       Brightness.dark,
     );
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('app-choice-grid-relations')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -127,7 +134,7 @@ void main() {
     await tester.tap(find.text('场景'));
     await tester.pumpAndSettle();
 
-    expect(find.text('选择场景'), findsOneWidget);
+    expect(find.text('选择场景'), findsNothing);
     expect(find.text('普通支出'), findsOneWidget);
     expect(find.text('报销'), findsOneWidget);
     expect(find.text('代付'), findsOneWidget);
@@ -161,28 +168,94 @@ void main() {
     expect(find.text('应收B'), findsOneWidget);
   });
 
-  for (final scenario in [
-    ('收入', '普通收入', 'transaction-mode-scene-income'),
-    ('转账', '普通转账', 'transaction-mode-scene-transfer'),
-    ('借入', '普通借入', 'transaction-mode-scene-borrowing'),
-    ('借出', '普通借出', 'transaction-mode-scene-lending'),
-  ]) {
-    testWidgets('${scenario.$1} tab owns only its ${scenario.$2} scene', (
-      tester,
-    ) async {
-      await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+  testWidgets('shows all grouped scene grids from every transaction tab', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
-      await tester.tap(find.text(scenario.$1));
+    const expectedItems = {
+      'expense': ['普通支出', 'AA', '报销', '代付', 'AA（账户）', '报销（账户）'],
+      'income': ['普通收入'],
+      'transfer': ['转账'],
+      'relations': ['借入', '借出'],
+    };
+
+    for (final tab in ['支出', '收入', '转账', '借入', '借出']) {
+      await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
       await tester.tap(find.text('场景'));
       await tester.pumpAndSettle();
 
-      expect(find.text(scenario.$2), findsOneWidget);
-      expect(find.text('普通支出'), findsNothing);
-      expect(find.text('报销'), findsNothing);
-      expect(find.byKey(ValueKey(scenario.$3)), findsOneWidget);
-    });
-  }
+      expect(find.text('选择场景'), findsNothing);
+      for (final entry in expectedItems.entries) {
+        final group = find.byKey(
+          ValueKey('app-choice-grid-group-${entry.key}'),
+        );
+        final grid = find.byKey(ValueKey('app-choice-grid-${entry.key}'));
+        expect(group, findsOneWidget);
+        expect(grid, findsOneWidget);
+        expect(tester.widget(grid), isA<GridView>());
+        for (final label in entry.value) {
+          expect(
+            find.descendant(of: grid, matching: find.text(label)),
+            findsOneWidget,
+          );
+        }
+      }
+
+      final groupTops = [
+        for (final id in expectedItems.keys)
+          tester
+              .getTopLeft(find.byKey(ValueKey('app-choice-grid-group-$id')))
+              .dy,
+      ];
+      expect(
+        groupTops,
+        orderedEquals([...groupTops]..sort()),
+        reason: '支出、收入、转账、往来应按顺序纵向排列',
+      );
+
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('app-choice-grid-expense'))),
+      ).pop();
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets(
+    'switches modes and expense scenes from the grouped scene grids',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: const [],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final incomeScene = _sceneItem('income', '普通收入');
+      await tester.ensureVisible(incomeScene);
+      await tester.tap(incomeScene);
+      await tester.pumpAndSettle();
+      expect(find.text('收入账户为空'), findsOneWidget);
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final borrowingScene = _sceneItem('relations', '借入');
+      await tester.ensureVisible(borrowingScene);
+      await tester.tap(borrowingScene);
+      await tester.pumpAndSettle();
+      expect(find.text('负债账户'), findsOneWidget);
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final aaScene = _sceneItem('expense', 'AA');
+      await tester.ensureVisible(aaScene);
+      await tester.tap(aaScene);
+      await tester.pumpAndSettle();
+      expect(find.text('不AA'), findsOneWidget);
+    },
+  );
 
   testWidgets('sets AA headcount from the advance account row', (tester) async {
     await _pumpTransactionForm(
@@ -988,6 +1061,13 @@ Account _category(String id, {AccountType type = AccountType.expense}) {
     name: id,
     type: type,
     balance: const Money(minorUnits: 0),
+  );
+}
+
+Finder _sceneItem(String groupId, String label) {
+  return find.descendant(
+    of: find.byKey(ValueKey('app-choice-grid-$groupId')),
+    matching: find.text(label),
   );
 }
 

@@ -20,22 +20,47 @@ import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../presentation/account_creation_presets.dart';
 import '../view_model/account_form_view_model.dart';
 
-class AccountFormPage extends ConsumerWidget {
-  const AccountFormPage({this.accountId, super.key});
+class AccountFormPage extends ConsumerStatefulWidget {
+  const AccountFormPage({this.accountId, this.creationPreset, super.key});
 
   final String? accountId;
+  final AccountCreationPreset? creationPreset;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountFormPage> createState() => _AccountFormPageState();
+}
+
+class _AccountFormPageState extends ConsumerState<AccountFormPage> {
+  @override
+  void initState() {
+    super.initState();
+    final preset = widget.creationPreset;
+    if (widget.accountId == null && preset != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(accountFormViewModelProvider(null).notifier)
+            .initializeNewAccount(kind: preset.kind, iconKey: preset.iconKey);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accountId = widget.accountId;
     final asyncState = ref.watch(accountFormViewModelProvider(accountId));
     return switch (asyncState) {
       AsyncData(value: final formState) when formState != null =>
         _AccountFormContent(
-          key: ValueKey<String?>(accountId),
+          key: ValueKey<String>(
+            '${accountId ?? 'new'}:${widget.creationPreset?.id ?? ''}',
+          ),
           accountId: accountId,
           initialState: formState,
+          creationPreset: widget.creationPreset,
         ),
       AsyncData(value: null) => const _AccountFormStatusPage(
         title: '编辑账户',
@@ -75,11 +100,13 @@ class _AccountFormContent extends ConsumerStatefulWidget {
   const _AccountFormContent({
     required this.accountId,
     required this.initialState,
+    required this.creationPreset,
     super.key,
   });
 
   final String? accountId;
   final AccountFormState initialState;
+  final AccountCreationPreset? creationPreset;
 
   @override
   ConsumerState<_AccountFormContent> createState() =>
@@ -100,7 +127,11 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
   void initState() {
     super.initState();
     final initialValues = widget.initialState.initialValues;
-    _nameController = TextEditingController(text: initialValues.name);
+    _nameController = TextEditingController(
+      text: _isEditMode
+          ? initialValues.name
+          : widget.creationPreset?.defaultName ?? initialValues.name,
+    );
     _openingBalanceController = TextEditingController(
       text: initialValues.openingBalance,
     );

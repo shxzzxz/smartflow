@@ -45,6 +45,7 @@ import '../widget/app_dropdown.dart';
 import '../widget/app_empty_state.dart';
 import '../widget/app_form_field.dart';
 import '../widget/app_form_section.dart';
+import '../widget/app_grouped_choice_grid.dart';
 import '../widget/app_inline_action_button.dart';
 import '../widget/app_list_section.dart';
 import '../widget/app_month_picker.dart';
@@ -112,6 +113,7 @@ enum _ShowcaseExampleKind {
   businessFormRows,
   transactionAmountPanel,
   iconChoiceGrid,
+  groupedChoiceGrid,
   iconCatalogPicker,
   categoryGridPicker,
   cascadeMultiSelect,
@@ -318,6 +320,14 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '图标选择网格',
     componentNames: 'IconChoiceGrid',
     keywords: ['图标', '选择', '网格'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.groupedChoiceGrid,
+    category: '选择器与弹层',
+    title: '分组选择网格',
+    componentNames:
+        'AppGroupedChoiceGrid / AppChoiceGridGroup / AppChoiceGridItem',
+    keywords: ['分组', '选择', '网格', '自适应', '紧凑'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.iconCatalogPicker,
@@ -793,6 +803,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   var _selectedTermUnit = 0;
   String? _selectedAccountId = 'acc-cash';
   String? _selectedIconKey = 'meal';
+  String? _selectedGroupedChoiceId = 'expense-ordinary';
   String? _selectedCategoryRootId = 'cat-dining';
   String? _selectedCategoryId = 'cat-breakfast';
   Set<String> _selectedCascadeValues = {'parent', 'child'};
@@ -970,6 +981,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.transactionAmountPanel =>
         _transactionAmountPanelPreview(),
       _ShowcaseExampleKind.iconChoiceGrid => _iconChoiceGridPreview(),
+      _ShowcaseExampleKind.groupedChoiceGrid => _groupedChoiceGridPreview(),
       _ShowcaseExampleKind.iconCatalogPicker => _iconCatalogPickerPreview(),
       _ShowcaseExampleKind.categoryGridPicker => _categoryGridPickerPreview(),
       _ShowcaseExampleKind.cascadeMultiSelect => _cascadeMultiSelectPreview(),
@@ -1627,6 +1639,45 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       onChanged: (value) => setState(() => _selectedIconKey = value),
       maxVisibleRows: 2,
       tileMainExtent: 132,
+    );
+  }
+
+  Widget _groupedChoiceGridPreview() {
+    AppChoiceGridItem<String> item(String id, String label, IconData icon) {
+      return AppChoiceGridItem(
+        id: id,
+        value: id,
+        label: label,
+        iconBuilder: (context, size) => Icon(icon, size: size),
+      );
+    }
+
+    return AppGroupedChoiceGrid<String>(
+      groups: [
+        AppChoiceGridGroup(
+          id: 'expense',
+          label: '支出',
+          items: [
+            item('expense-ordinary', '普通支出', RemixIcons.wallet_line),
+            item('expense-aa', 'AA', RemixIcons.user_shared_line),
+            item('expense-reimbursement', '报销', RemixIcons.file_list_3_line),
+          ],
+        ),
+        AppChoiceGridGroup(
+          id: 'income',
+          label: '收入',
+          items: [
+            item(
+              'income-ordinary',
+              '普通收入',
+              RemixIcons.money_dollar_circle_line,
+            ),
+            item('income-transfer', '转账收入', RemixIcons.arrow_left_right_line),
+          ],
+        ),
+      ],
+      selectedId: _selectedGroupedChoiceId,
+      onSelected: (item) => setState(() => _selectedGroupedChoiceId = item.id),
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_empty_state.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_grouped_choice_grid.dart';
 import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
 import 'package:smartflow/design_system/widget/app_list_divider.dart';
 import 'package:smartflow/design_system/widget/app_list_section.dart';
@@ -385,6 +386,33 @@ void main() {
     expect(find.text('图标目录选择'), findsOneWidget);
     expect(find.byType(IconCatalogPicker), findsOneWidget);
     expect(find.byType(IconChoiceGrid), findsOneWidget);
+  });
+
+  testWidgets('shows grouped choice grids and reports selection', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'AppGroupedChoiceGrid');
+    await tester.pumpAndSettle();
+
+    expect(find.text('分组选择网格'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('app-choice-grid-expense')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('app-choice-grid-income')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('AA'));
+    await tester.pumpAndSettle();
+
+    final grid = tester.widget<AppGroupedChoiceGrid<String>>(
+      find.byType(AppGroupedChoiceGrid<String>),
+    );
+    expect(grid.selectedId, 'expense-aa');
   });
 
   testWidgets('switches category roots in the category grid picker', (
