@@ -1,13 +1,12 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 
-/// 垫付创建与退款共用的分担规则。
+import '../valobj/advance_enums.dart';
+
 abstract interface class AdvanceSharePolicy {
-  /// 计算一笔新垫付的自承担与垫付应收。
   AdvanceShareSplit splitForEntry({
     required AdvanceScenario scenario,
     required Money total,
@@ -15,15 +14,17 @@ abstract interface class AdvanceSharePolicy {
     required List<AccountAmountAllocation> categoryAllocations,
   });
 
-  /// 从交易组的当前事实计算一笔退款的退款构成。
   AdvanceRefundSplit splitForRefund({
+    required AdvanceScenario scenario,
     required TransactionGroup group,
     required Money refundAmount,
     required List<AccountAmountAllocation> refundCategoryAllocations,
+    Money? parentTotal,
+    Money? advanceAmount,
+    int? aaPeopleCount,
     String? excludingRefundTransactionId,
   });
 
-  /// 从交易总额与垫付应收反算 AA 人数。
   int inferAaPeopleCount({required Money total, required Money advanceAmount});
 }
 
@@ -57,9 +58,13 @@ class AdvanceShareCalculator implements AdvanceSharePolicy {
 
   @override
   AdvanceRefundSplit splitForRefund({
+    required AdvanceScenario scenario,
     required TransactionGroup group,
     required Money refundAmount,
     required List<AccountAmountAllocation> refundCategoryAllocations,
+    Money? parentTotal,
+    Money? advanceAmount,
+    int? aaPeopleCount,
     String? excludingRefundTransactionId,
   }) {
     final parent = group.parentTransaction;
@@ -87,31 +92,30 @@ class AdvanceShareCalculator implements AdvanceSharePolicy {
               (child.amountOf(TransactionRole.advanceSelfBorne) ??
                   Money.zero()),
         );
-    final remainingTotal = parent.primaryAmount - previouslyRefundedTotal;
+    final total = parentTotal ?? parent.primaryAmount;
+    final remainingTotal = total - previouslyRefundedTotal;
     if (refundAmount.minorUnits > remainingTotal.minorUnits) {
       LedgerViolationReason.refundExceedsRemaining.throwException();
     }
 
-    final advanceAmount =
-        parent.amountOf(TransactionRole.receivable) ?? parent.primaryAmount;
-    final originalSelfBorne = parent.primaryAmount - advanceAmount;
-    final scenario =
-        parent.ownership?.advanceScenario ?? AdvanceScenario.reimbursement;
-    final aaPeopleCount = scenario == AdvanceScenario.aa
-        ? inferAaPeopleCount(
-            total: parent.primaryAmount,
-            advanceAmount: advanceAmount,
-          )
+    final receivableAmount =
+        advanceAmount ??
+        parent.amountOf(TransactionRole.receivable) ??
+        parent.primaryAmount;
+    final originalSelfBorne = total - receivableAmount;
+    final participants = scenario == AdvanceScenario.aa
+        ? aaPeopleCount ??
+              inferAaPeopleCount(total: total, advanceAmount: receivableAmount)
         : null;
-    final currentSelfBorne = aaPeopleCount == null
+    final currentSelfBorne = participants == null
         ? _nonNegative(originalSelfBorne - previouslyRefundedSelfBorne)
-        : _aaSelfBorneAmount(total: remainingTotal, peopleCount: aaPeopleCount);
+        : _aaSelfBorneAmount(total: remainingTotal, peopleCount: participants);
     final remainingAfterRefund = remainingTotal - refundAmount;
-    final nextSelfBorne = aaPeopleCount == null
+    final nextSelfBorne = participants == null
         ? _nonNegative(currentSelfBorne - refundAmount)
         : _aaSelfBorneAmount(
             total: remainingAfterRefund,
-            peopleCount: aaPeopleCount,
+            peopleCount: participants,
           );
     final aaSelfBorneRefund = _nonNegative(currentSelfBorne - nextSelfBorne);
     final proportionalSelfBorneRefund = remainingTotal.minorUnits <= 0
@@ -123,7 +127,7 @@ class AdvanceShareCalculator implements AdvanceSharePolicy {
                 remainingTotal.minorUnits,
           );
     final selfBorneAmount = _clampMoney(
-      aaPeopleCount == null ? proportionalSelfBorneRefund : aaSelfBorneRefund,
+      participants == null ? proportionalSelfBorneRefund : aaSelfBorneRefund,
       min: Money.zero(),
       max: refundAmount,
     );
@@ -134,7 +138,7 @@ class AdvanceShareCalculator implements AdvanceSharePolicy {
         amount: selfBorneAmount,
         allocations: refundCategoryAllocations,
       ),
-      aaPeopleCount: aaPeopleCount,
+      aaPeopleCount: participants,
     );
   }
 

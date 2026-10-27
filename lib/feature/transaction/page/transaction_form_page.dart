@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -580,21 +581,21 @@ class _TransactionFormContentState
     if (widget.editTransactionId == null) {
       return TransactionExpenseScene.values;
     }
-    final management = formState.expenseScene.advanceManagement;
-    return switch (management) {
+    final trackingMode = formState.expenseScene.advanceTrackingMode;
+    return switch (trackingMode) {
       null => [
         for (final scene in TransactionExpenseScene.values)
-          if (scene.advanceManagement != AdvanceManagement.account) scene,
+          if (scene.advanceTrackingMode != AdvanceTrackingMode.account) scene,
       ],
-      AdvanceManagement.itemized => [
+      AdvanceTrackingMode.itemized => [
         for (final scene in TransactionExpenseScene.values)
           if (scene == TransactionExpenseScene.ordinary ||
-              scene.advanceManagement == AdvanceManagement.itemized)
+              scene.advanceTrackingMode == AdvanceTrackingMode.itemized)
             scene,
       ],
-      AdvanceManagement.account => [
+      AdvanceTrackingMode.account => [
         for (final scene in TransactionExpenseScene.values)
-          if (scene.advanceManagement == AdvanceManagement.account) scene,
+          if (scene.advanceTrackingMode == AdvanceTrackingMode.account) scene,
       ],
     };
   }

@@ -25,24 +25,4 @@ enum InstallmentScheduleStatus { pending, partiallyPaid, paid, skipped }
 enum InstallmentRepricingStatus { pending, applied, userConfirmed }
 
 /// 分期模块写入 `transaction.owner_type` 的固定值。
-const String installmentOwnerType = 'installment';
-
-/// 分期模块写入 `transaction.owner_role` 的角色枚举。
-///
-/// wire 值即落库字符串：迁移 SQL、单测断言、跨存储读取都以 [wireValue] 为准。
-/// 仅在分期模块内部以枚举形式使用；账务核心 / 通用 UI 不感知具体取值。
-enum InstallmentOwnerRole {
-  disbursement('disbursement');
-
-  const InstallmentOwnerRole(this.wireValue);
-
-  final String wireValue;
-
-  static InstallmentOwnerRole? fromWire(String? value) {
-    if (value == null) return null;
-    for (final role in InstallmentOwnerRole.values) {
-      if (role.wireValue == value) return role;
-    }
-    return null;
-  }
-}
+const String installmentOwnerType = 'credit.installment_contract';

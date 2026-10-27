@@ -1,6 +1,5 @@
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
@@ -44,8 +43,6 @@ AdvanceInstruction singleAdvanceInstruction({
   required String paidFromAccountId,
   required String expenseAccountId,
   required DateTime occurredAt,
-  AdvanceManagement management = AdvanceManagement.itemized,
-  AdvanceScenario scenario = AdvanceScenario.reimbursement,
   DateTime? postedAt,
   String? counterpartyId,
   String? note,
@@ -75,15 +72,18 @@ AdvanceInstruction singleAdvanceInstruction({
       amount: amount,
     ),
     occurredAt: occurredAt,
-    management: management,
-    scenario: scenario,
     postedAt: postedAt,
     counterpartyId: counterpartyId,
     note: note,
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget,
     sourceKind: sourceKind,
-    ownership: ownership,
+    ownership:
+        ownership ??
+        const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'test-advance',
+        ),
   );
 }
 
@@ -92,6 +92,7 @@ RefundInstruction singleRefundInstruction({
   required Money amount,
   required String refundToAccountId,
   required DateTime occurredAt,
+  List<AccountAmountAllocation> selfBorneAllocations = const [],
   DateTime? postedAt,
   String? counterpartyId,
   String? note,
@@ -99,6 +100,7 @@ RefundInstruction singleRefundInstruction({
   parentTransactionId: parentTransactionId,
   amount: amount,
   categoryAllocations: const [],
+  selfBorneAllocations: selfBorneAllocations,
   settlementAllocations: singleAllocation(
     accountId: refundToAccountId,
     amount: amount,

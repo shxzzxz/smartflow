@@ -157,6 +157,7 @@ class TransactionEditAppServiceImpl
       () => _transactionGroupRewriteService.rewriteParentTransaction(
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
+          refundSelfBorneAllocations: cmd.refundSelfBorneAllocations,
           occurredAt: cmd.occurredAt,
           counterpartyId: cmd.counterpartyId,
           note: cmd.note,
@@ -166,7 +167,7 @@ class TransactionEditAppServiceImpl
             amount: cmd.amount,
             advanceAmount: cmd.advanceAmount,
             receivableAccountId: cmd.receivableAccountId,
-            scenario: cmd.scenario,
+            ownership: cmd.ownership,
             categoryAllocations: cmd.categoryAllocations,
             selfBorneAllocations: cmd.selfBorneAllocations,
             settlementAllocations: cmd.settlementAllocations,
@@ -207,6 +208,7 @@ class TransactionEditAppServiceImpl
           editPatch: RefundEditPatch(
             amount: cmd.amount,
             categoryAllocations: cmd.categoryAllocations,
+            selfBorneAllocations: cmd.selfBorneAllocations,
             settlementAllocations: cmd.settlementAllocations,
           ),
         ),
@@ -224,6 +226,7 @@ class TransactionEditAppServiceImpl
           transactionId: cmd.transactionId,
           amount: cmd.amount,
           receivableAccountId: cmd.receivableAccountId,
+          ownership: cmd.ownership,
           settlementAllocations: cmd.settlementAllocations,
           occurredAt: cmd.occurredAt,
           counterpartyId: cmd.counterpartyId,
@@ -243,6 +246,7 @@ class TransactionEditAppServiceImpl
           transactionId: cmd.transactionId,
           actualReceivedAmount: cmd.actualReceivedAmount,
           receivableAccountId: cmd.receivableAccountId,
+          ownership: cmd.ownership,
           settlementAllocations: cmd.settlementAllocations,
           gapExpenseAllocations: cmd.gapExpenseAllocations,
           shortfallKind: cmd.shortfallKind,

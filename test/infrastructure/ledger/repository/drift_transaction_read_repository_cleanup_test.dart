@@ -69,7 +69,10 @@ void main() {
         occurredAt: DateTime(2026, 7, 12),
         debitAccountId: 'acc-cash',
         creditAccountId: 'cat-food',
-        ownership: const TransactionOwnership(ownerType: 'installment'),
+        ownership: const TransactionOwnership(
+          ownerType: 'credit.installment_contract',
+          ownerId: 'contract',
+        ),
       ),
     ]);
     await database.batch((batch) {

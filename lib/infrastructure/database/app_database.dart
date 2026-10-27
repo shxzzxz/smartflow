@@ -8,6 +8,7 @@ import '../../domain/import/import_persistence_models.dart';
 import '../../domain/credit/valobj/bill_enums.dart';
 import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';
+import '../../domain/orchestration/valobj/advance_enums.dart';
 import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
 import 'table/ledger/account_groups.dart';
@@ -37,6 +38,7 @@ import 'table/ledger/transaction_tags.dart';
 import 'table/import_entity_mappings.dart';
 import 'table/import_batches.dart';
 import 'table/import_batch_items.dart';
+import 'table/orchestration/advance_cases.dart';
 
 part 'app_database.g.dart';
 
@@ -70,13 +72,14 @@ part 'app_database.g.dart';
     ImportEntityMappings,
     ImportBatches,
     ImportBatchItems,
+    AdvanceCases,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 48;
+  int get schemaVersion => 49;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

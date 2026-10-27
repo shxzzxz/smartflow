@@ -850,7 +850,6 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         ownership: CreditLedgerOwnership(
           ownerType: creditRepaymentOwnerType,
           ownerId: repaymentId,
-          ownerRole: repaymentType.code,
         ),
       ),
     );

@@ -2,8 +2,8 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
-import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../core/patch/patch.dart';
@@ -46,9 +46,10 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
       _ => null,
     };
     final parentTransactionId = transaction.parentTransactionId;
-    // 账户垫付的到账与结清是顶层交易，ownerId 指向应收账户而非父交易。
+    final advanceCase = await _advanceCaseFor(ref, transaction);
+    // 账户垫付的到账与结清是顶层交易，通过 owner 归入同一个编排实例。
     final accountManaged =
-        transaction.ownership?.advanceManagement == AdvanceManagement.account &&
+        advanceCase?.trackingMode == AdvanceTrackingMode.account &&
         parentTransactionId == null;
     if (kind == null || (!accountManaged && parentTransactionId == null)) {
       return AdvanceEditFormState.notFound(
@@ -256,11 +257,11 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Advance edit form submit', () async {
-        final editService = ref.read(transactionEditAppServiceProvider);
+        final orchestration = ref.read(advanceOrchestrationAppServiceProvider);
         switch (kind) {
           case AdvanceEditKind.receipt:
-            await editService.editAdvanceCollection(
-              EditAdvanceCollectionCommand(
+            await orchestration.editCollection(
+              EditAdvanceCollectionWorkflowCommand(
                 transactionId: current.transactionId,
                 amount: amount,
                 receivableAccountId: current.receivableAccountId,
@@ -270,8 +271,8 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
               ),
             );
           case AdvanceEditKind.close:
-            await editService.editAdvanceSettlement(
-              EditAdvanceSettlementCommand(
+            await orchestration.editSettlement(
+              EditAdvanceSettlementWorkflowCommand(
                 transactionId: current.transactionId,
                 actualReceivedAmount: amount,
                 receivableAccountId: current.receivableAccountId,
@@ -515,6 +516,14 @@ Money? _lineAmount(TransactionReadModel detail, TransactionRole role) {
     if (line.role == role) return line.amount;
   }
   return null;
+}
+
+Future<AdvanceCase?> _advanceCaseFor(Ref ref, TransactionReadModel detail) {
+  final ownership = detail.ownership;
+  if (ownership?.ownerType != orchestrationAdvanceOwnerType) {
+    return Future.value(null);
+  }
+  return ref.read(advanceCaseQueryServiceProvider).findById(ownership!.ownerId);
 }
 
 Patch<String?> _stringPatch(String? value) {

@@ -8,7 +8,6 @@ import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/posting_result.dart';
 import '../account/account_role_policy.dart';
-import '../advance/advance_share_calculator.dart';
 import 'account_posting_service.dart';
 import 'posting_engine.dart';
 import 'posting_application_service.dart';
@@ -20,14 +19,12 @@ class RefundPostingService {
     required PostingEngine postingEngine,
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
-    AdvanceSharePolicy advanceSharePolicy = const AdvanceShareCalculator(),
     PostingApplicationService? postingApplicationService,
   }) : _transactionGroupRepository = transactionGroupRepository,
        _postingEngine = postingEngine,
        _accountRolePolicy = accountRolePolicy,
        _accountRepository = accountRepository,
        _accountPostingService = accountPostingService,
-       _advanceSharePolicy = advanceSharePolicy,
        _postingApplicationService = postingApplicationService;
 
   final TransactionGroupRepository _transactionGroupRepository;
@@ -35,7 +32,6 @@ class RefundPostingService {
   final PostingEngine _postingEngine;
   final AccountRolePolicy _accountRolePolicy;
   final AccountPostingService _accountPostingService;
-  final AdvanceSharePolicy _advanceSharePolicy;
   final PostingApplicationService? _postingApplicationService;
 
   PostingApplicationService get _postingApplication =>
@@ -70,16 +66,11 @@ class RefundPostingService {
         !group.allocationsFitRefundableCategories(categoryAllocations)) {
       LedgerViolationReason.allocationExceedsAvailable.throwException();
     }
-    final refundShare = _advanceSharePolicy.splitForRefund(
-      group: group,
-      refundAmount: instruction.amount,
-      refundCategoryAllocations: categoryAllocations,
-    );
     final normalizedInstruction = RefundInstruction(
       parentTransactionId: instruction.parentTransactionId,
       amount: instruction.amount,
       categoryAllocations: categoryAllocations,
-      selfBorneAllocations: refundShare.selfBorneAllocations,
+      selfBorneAllocations: instruction.selfBorneAllocations,
       settlementAllocations: instruction.settlementAllocations,
       occurredAt: instruction.occurredAt,
       postedAt: instruction.postedAt,

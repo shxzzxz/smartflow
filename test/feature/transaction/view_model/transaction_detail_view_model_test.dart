@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/repayment/query/repayment_owner_query.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -129,7 +131,6 @@ void main() {
           ownership: const TransactionOwnership(
             ownerType: installmentOwnerType,
             ownerId: 'contract-1',
-            ownerRole: 'disbursement',
           ),
           entries: [
             _entry('loan', EntryDirection.credit),
@@ -164,7 +165,6 @@ void main() {
           ownership: const TransactionOwnership(
             ownerType: installmentOwnerType,
             ownerId: 'contract-1',
-            ownerRole: 'disbursement',
           ),
         );
         final container = _container(detail: detail, installment: installment);
@@ -193,7 +193,6 @@ void main() {
           ownership: const TransactionOwnership(
             ownerType: creditRepaymentOwnerType,
             ownerId: 'repayment-1',
-            ownerRole: 'BILL',
           ),
           entries: [
             _entry('cash', EntryDirection.credit),
@@ -258,7 +257,6 @@ void main() {
           ownership: const TransactionOwnership(
             ownerType: installmentOwnerType,
             ownerId: 'contract-1',
-            ownerRole: 'disbursement',
           ),
         );
         final container = _container(detail: detail, installment: installment);
@@ -348,7 +346,6 @@ void main() {
             ownership: const TransactionOwnership(
               ownerType: creditRepaymentOwnerType,
               ownerId: 'repayment',
-              ownerRole: 'BILL',
             ),
           ),
           update: update,
@@ -520,7 +517,7 @@ void main() {
     });
 
     test('submits advance close command', () async {
-      final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationService();
       final detail = _detail(
         purpose: BusinessPurpose.advance,
         entries: [
@@ -535,7 +532,10 @@ void main() {
           isClosed: false,
         ),
       );
-      final container = _container(detail: detail, posting: posting);
+      final container = _container(
+        detail: detail,
+        orchestration: orchestration,
+      );
       await _readState(container);
 
       final outcome = await container
@@ -551,7 +551,7 @@ void main() {
           );
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      final command = posting.closeCommands.single;
+      final command = orchestration.closeCommands.single;
       expect(command.advanceTransactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
       expect(command.settlementAllocations.single.accountId, 'bank');
@@ -562,7 +562,7 @@ void main() {
     test(
       'submits a single remaining category for an advance shortfall',
       () async {
-        final posting = _FakeTransactionPostingAppService();
+        final orchestration = _FakeAdvanceOrchestrationService();
         final detail = _detail(
           purpose: BusinessPurpose.advance,
           entries: [
@@ -587,7 +587,10 @@ void main() {
             isClosed: false,
           ),
         );
-        final container = _container(detail: detail, posting: posting);
+        final container = _container(
+          detail: detail,
+          orchestration: orchestration,
+        );
         await _readState(container);
 
         final outcome = await container
@@ -602,7 +605,7 @@ void main() {
             );
 
         expect(outcome, isA<UiActionSuccess<void>>());
-        final command = posting.closeCommands.single;
+        final command = orchestration.closeCommands.single;
         expect(command.gapExpenseAllocations, hasLength(1));
         expect(command.gapExpenseAllocations.single.accountId, 'food');
         expect(
@@ -616,7 +619,10 @@ void main() {
       final update = _FakeTransactionUpdateAppService();
       final detail = _detail(
         purpose: BusinessPurpose.dailyExpense,
-        ownership: const TransactionOwnership(ownerType: 'unknown-owner'),
+        ownership: const TransactionOwnership(
+          ownerType: 'unknown-owner',
+          ownerId: 'unknown',
+        ),
       );
       final container = _container(detail: detail, update: update);
 
@@ -653,6 +659,7 @@ ProviderContainer _container({
   _FakeTransactionUpdateAppService? update,
   _FakeTransactionEditAppService? editService,
   _FakeTransactionPostingAppService? posting,
+  _FakeAdvanceOrchestrationService? orchestration,
   _FakeInstallmentContractAppService? installment,
   _FakeRepaymentAppService? repayment,
 }) {
@@ -692,6 +699,12 @@ ProviderContainer _container({
       ),
       transactionPostingAppServiceProvider.overrideWithValue(
         posting ?? _FakeTransactionPostingAppService(),
+      ),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(
+        orchestration ?? _FakeAdvanceOrchestrationService(),
+      ),
+      repaymentOwnerQueryProvider.overrideWithValue(
+        const _FakeRepaymentOwnerQuery(),
       ),
       installmentContractAppServiceProvider.overrideWithValue(
         installment ?? _FakeInstallmentContractAppService(),
@@ -1013,6 +1026,32 @@ class _FakeTransactionEditAppService implements TransactionEditAppService {
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeRepaymentOwnerQuery implements RepaymentOwnerQuery {
+  const _FakeRepaymentOwnerQuery();
+
+  @override
+  Future<RepaymentType?> findType(String repaymentId) async {
+    return RepaymentType.bill;
+  }
+}
+
+class _FakeAdvanceOrchestrationService
+    implements AdvanceOrchestrationAppService {
+  final closeCommands = <CreateAdvanceSettlementWorkflowCommand>[];
+
+  @override
+  Future<String> createSettlement(
+    CreateAdvanceSettlementWorkflowCommand command,
+  ) async {
+    closeCommands.add(command);
+    return 'close';
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeTransactionPostingAppService

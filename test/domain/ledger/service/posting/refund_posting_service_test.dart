@@ -10,8 +10,8 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewri
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
@@ -80,7 +80,6 @@ void main() {
           paidFromAccountId: 'cash',
           expenseAccountId: 'travel',
           occurredAt: DateTime(2026, 7, 1),
-          scenario: AdvanceScenario.aa,
         ),
       );
       final receipt = engine.createAdvanceCollection(
@@ -123,6 +122,10 @@ void main() {
           amount: Money.parse('20.00'),
           refundToAccountId: 'cash',
           occurredAt: DateTime(2026, 7, 3),
+          selfBorneAllocations: singleAllocation(
+            accountId: 'travel',
+            amount: Money.parse('6.66'),
+          ),
         ),
       );
 
@@ -149,7 +152,6 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: DateTime(2026, 7, 1),
-        scenario: AdvanceScenario.aa,
       ),
     );
     final accountRepository = _AccountRepository([

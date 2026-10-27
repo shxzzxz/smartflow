@@ -260,10 +260,6 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionInvalidCommand,
     'An advance receivable account is required.',
   ),
-  advanceManagementMismatch(
-    LedgerErrorCode.transactionInvalidCommand,
-    'Account-managed advances use top-level collection and settlement.',
-  ),
   advanceReceivableAccountMismatch(
     LedgerErrorCode.transactionInvalidCommand,
     'Itemized advance children must use the parent receivable account.',

@@ -100,7 +100,10 @@ void main() {
         debitAccountId: 'acc-cash',
         creditAccountId: 'acc-bank',
         businessPurpose: BusinessPurpose.transfer,
-        ownership: const TransactionOwnership(ownerType: 'credit_repayment'),
+        ownership: const TransactionOwnership(
+          ownerType: 'credit.repayment',
+          ownerId: 'repayment',
+        ),
       ),
     ]);
   });

@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../core/patch/patch.dart';
@@ -72,6 +73,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       transactionId: transactionId,
       parentTransactionId: transactionId,
       editing: false,
+      advanceParent: detail.businessPurpose == BusinessPurpose.advance,
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(
         categoryAllocations,
@@ -152,6 +154,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
       editing: true,
+      advanceParent: parentDetail.businessPurpose == BusinessPurpose.advance,
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(parentCategories, accountsById),
       availableCategoryAllocations: availableCategories,
@@ -237,7 +240,34 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Refund form submit', () async {
-        if (current.editing) {
+        if (current.advanceParent) {
+          final orchestration = ref.read(
+            advanceOrchestrationAppServiceProvider,
+          );
+          if (current.editing) {
+            await orchestration.editRefund(
+              EditAdvanceRefundWorkflowCommand(
+                transactionId: current.transactionId,
+                amount: amount,
+                categoryAllocations: categoryAllocations,
+                settlementAllocations: settlementAllocations,
+                occurredAt: current.occurredAt,
+                note: _stringPatch(trimToNull(noteText)),
+              ),
+            );
+          } else {
+            await orchestration.createRefund(
+              CreateAdvanceRefundWorkflowCommand(
+                parentTransactionId: current.parentTransactionId,
+                amount: amount,
+                categoryAllocations: categoryAllocations,
+                settlementAllocations: settlementAllocations,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+          }
+        } else if (current.editing) {
           await ref
               .read(transactionEditAppServiceProvider)
               .editRefund(
@@ -313,6 +343,7 @@ class RefundFormState {
     this.refundToAccountId,
     this.categoryAllocations,
     this.settlementAllocations,
+    this.advanceParent = false,
   }) : accounts = List.unmodifiable(accounts),
        categoryAccounts = List.unmodifiable(categoryAccounts),
        availableCategoryAllocations = List.unmodifiable(
@@ -323,6 +354,7 @@ class RefundFormState {
     required String transactionId,
     required String parentTransactionId,
     required bool editing,
+    bool advanceParent = false,
     required List<Account> accounts,
     required List<Account> categoryAccounts,
     required List<AccountAmountAllocation> availableCategoryAllocations,
@@ -339,6 +371,7 @@ class RefundFormState {
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
       editing: editing,
+      advanceParent: advanceParent,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,
@@ -397,6 +430,7 @@ class RefundFormState {
   final String transactionId;
   final String parentTransactionId;
   final bool editing;
+  final bool advanceParent;
   final List<Account> accounts;
   final List<Account> categoryAccounts;
   final List<AccountAmountAllocation> availableCategoryAllocations;
@@ -423,6 +457,7 @@ class RefundFormState {
       transactionId: transactionId,
       parentTransactionId: parentTransactionId,
       editing: editing,
+      advanceParent: advanceParent,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,

@@ -3,9 +3,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_action_dispatcher.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
 
 class _MockTransactionEditAppService extends Mock
     implements TransactionEditAppService {}
@@ -18,19 +20,29 @@ class _MockInstallmentContractAppService extends Mock
 
 class _MockRepaymentAppService extends Mock implements RepaymentAppService {}
 
-class _FakeEditAdvanceCommand extends Fake implements EditAdvanceCommand {}
+class _MockAdvanceOrchestrationAppService extends Mock
+    implements AdvanceOrchestrationAppService {}
 
-class _FakeEditRefundCommand extends Fake implements EditRefundCommand {}
+class _MockAdvanceCaseQueryService extends Mock
+    implements AdvanceCaseQueryService {}
+
+class _FakeEditAdvanceWorkflowCommand extends Fake
+    implements EditAdvanceWorkflowCommand {}
+
+class _FakeEditAdvanceRefundWorkflowCommand extends Fake
+    implements EditAdvanceRefundWorkflowCommand {}
 
 void main() {
   late _MockTransactionEditAppService editService;
   late _MockTransactionUpdateAppService updateService;
   late _MockInstallmentContractAppService installmentAppService;
   late _MockRepaymentAppService repaymentAppService;
+  late _MockAdvanceOrchestrationAppService advanceAppService;
+  late _MockAdvanceCaseQueryService advanceCaseQuery;
 
   setUpAll(() {
-    registerFallbackValue(_FakeEditAdvanceCommand());
-    registerFallbackValue(_FakeEditRefundCommand());
+    registerFallbackValue(_FakeEditAdvanceWorkflowCommand());
+    registerFallbackValue(_FakeEditAdvanceRefundWorkflowCommand());
   });
 
   setUp(() {
@@ -38,10 +50,12 @@ void main() {
     updateService = _MockTransactionUpdateAppService();
     installmentAppService = _MockInstallmentContractAppService();
     repaymentAppService = _MockRepaymentAppService();
+    advanceAppService = _MockAdvanceOrchestrationAppService();
+    advanceCaseQuery = _MockAdvanceCaseQueryService();
   });
 
   test(
-    'advance ownership keeps ledger actions in the default dispatcher',
+    'advance ownership routes account edits through orchestration',
     () async {
       final transaction = TransactionReadModel(
         id: 'advance',
@@ -49,16 +63,24 @@ void main() {
         occurredAt: DateTime(2026, 10, 23),
         primaryAmount: const Money(minorUnits: 10000),
         ownership: advanceOwnership(
-          management: AdvanceManagement.itemized,
+          management: AdvanceTrackingMode.itemized,
           ownerId: 'advance',
           scenario: AdvanceScenario.aa,
         ),
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
       );
-      when(() => editService.editAdvance(any())).thenAnswer(
-        (_) async => const PostedTransactionResult(transactionId: 'advance'),
+      when(() => advanceCaseQuery.findById('advance')).thenAnswer(
+        (_) async => const AdvanceCase(
+          id: 'advance',
+          scenario: AdvanceScenario.aa,
+          trackingMode: AdvanceTrackingMode.itemized,
+          aaPeopleCount: 2,
+        ),
       );
+      when(
+        () => advanceAppService.editAdvance(any()),
+      ).thenAnswer((_) async => 'advance');
 
       final dispatcher = createTransactionDetailActionDispatcher(
         transaction: transaction,
@@ -66,16 +88,18 @@ void main() {
         updateService: updateService,
         installmentAppService: installmentAppService,
         repaymentAppService: repaymentAppService,
+        advanceAppService: advanceAppService,
+        advanceCaseQuery: advanceCaseQuery,
       );
       final outcome = await dispatcher.changeSettlementAccount('cash');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      verify(() => editService.editAdvance(any())).called(1);
+      verify(() => advanceAppService.editAdvance(any())).called(1);
     },
   );
 
   test(
-    'advance refund inheritance keeps ledger actions in the default dispatcher',
+    'advance refund inheritance routes account edits through orchestration',
     () async {
       final transaction = TransactionReadModel(
         id: 'refund',
@@ -84,16 +108,16 @@ void main() {
         occurredAt: DateTime(2026, 10, 23),
         primaryAmount: const Money(minorUnits: 2000),
         ownership: advanceOwnership(
-          management: AdvanceManagement.itemized,
+          management: AdvanceTrackingMode.itemized,
           ownerId: 'advance',
           scenario: AdvanceScenario.aa,
         ),
         isExcludedFromStats: false,
         isExcludedFromBudget: false,
       );
-      when(() => editService.editRefund(any())).thenAnswer(
-        (_) async => const PostedTransactionResult(transactionId: 'refund'),
-      );
+      when(
+        () => advanceAppService.editRefund(any()),
+      ).thenAnswer((_) async => 'refund');
 
       final dispatcher = createTransactionDetailActionDispatcher(
         transaction: transaction,
@@ -101,11 +125,13 @@ void main() {
         updateService: updateService,
         installmentAppService: installmentAppService,
         repaymentAppService: repaymentAppService,
+        advanceAppService: advanceAppService,
+        advanceCaseQuery: advanceCaseQuery,
       );
       final outcome = await dispatcher.changeSettlementAccount('cash');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      verify(() => editService.editRefund(any())).called(1);
+      verify(() => advanceAppService.editRefund(any())).called(1);
     },
   );
 }

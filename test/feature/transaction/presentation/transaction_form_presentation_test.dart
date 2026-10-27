@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
@@ -237,32 +238,32 @@ void main() {
 
     test('maps account and itemized scenes to the same business scenarios', () {
       expect(
-        TransactionExpenseScene.reimbursement.advanceManagement,
-        AdvanceManagement.itemized,
+        TransactionExpenseScene.reimbursement.advanceTrackingMode,
+        AdvanceTrackingMode.itemized,
       );
       expect(
-        TransactionExpenseScene.reimbursementAccount.advanceManagement,
-        AdvanceManagement.account,
+        TransactionExpenseScene.reimbursementAccount.advanceTrackingMode,
+        AdvanceTrackingMode.account,
       );
       expect(
         TransactionExpenseScene.reimbursementAccount.advanceScenario,
         AdvanceScenario.reimbursement,
       );
       expect(
-        TransactionExpenseScene.aa.advanceManagement,
-        AdvanceManagement.itemized,
+        TransactionExpenseScene.aa.advanceTrackingMode,
+        AdvanceTrackingMode.itemized,
       );
       expect(
-        TransactionExpenseScene.aaAccount.advanceManagement,
-        AdvanceManagement.account,
+        TransactionExpenseScene.aaAccount.advanceTrackingMode,
+        AdvanceTrackingMode.account,
       );
       expect(
         TransactionExpenseScene.aaAccount.advanceScenario,
         AdvanceScenario.aa,
       );
       expect(
-        TransactionExpenseScene.onBehalf.advanceManagement,
-        AdvanceManagement.itemized,
+        TransactionExpenseScene.onBehalf.advanceTrackingMode,
+        AdvanceTrackingMode.itemized,
       );
 
       expect(TransactionExpenseScene.reimbursementAccount.label, '报销（账户）');
@@ -270,14 +271,14 @@ void main() {
       expect(
         transactionExpenseSceneForAdvanceScenario(
           AdvanceScenario.reimbursement,
-          management: AdvanceManagement.account,
+          trackingMode: AdvanceTrackingMode.account,
         ),
         TransactionExpenseScene.reimbursementAccount,
       );
       expect(
         transactionExpenseSceneForAdvanceScenario(
           AdvanceScenario.aa,
-          management: AdvanceManagement.account,
+          trackingMode: AdvanceTrackingMode.account,
         ),
         TransactionExpenseScene.aaAccount,
       );

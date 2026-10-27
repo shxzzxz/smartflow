@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
@@ -13,7 +12,7 @@ import '../../../../helper/sequential_id_generator.dart';
 void main() {
   final occurredAt = DateTime(2026, 10, 22);
 
-  test('itemized AA advance keeps category totals and self-borne shares', () {
+  test('advance keeps category totals and self-borne shares', () {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'aa'),
     );
@@ -54,14 +53,15 @@ void main() {
           ),
         ],
         occurredAt: occurredAt,
-        management: AdvanceManagement.itemized,
-        scenario: AdvanceScenario.aa,
+        ownership: const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'case-1',
+        ),
       ),
     );
 
-    expect(advance.ownership?.ownerType, 'advance.itemized');
-    expect(advance.ownership?.ownerId, advance.id);
-    expect(advance.ownership?.ownerRole, 'aa');
+    expect(advance.ownership?.ownerType, 'orchestration.advance');
+    expect(advance.ownership?.ownerId, 'case-1');
     expect(
       advance
           .accountAllocationsOf(TransactionRole.advanceExpenseCategory)
@@ -103,49 +103,46 @@ void main() {
     expect(entriesAreBalanced(advance.entries), isTrue);
   });
 
-  test(
-    'account-managed advance belongs to the selected receivable account',
-    () {
-      final engine = PostingEngine(
-        idGenerator: SequentialIdGenerator(prefix: 'account-advance'),
-      );
+  test('advance preserves a caller-provided top-level owner', () {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'account-advance'),
+    );
 
-      final advance = engine.createAdvance(
-        AdvanceInstruction(
+    final advance = engine.createAdvance(
+      AdvanceInstruction(
+        amount: Money.parse('300.00'),
+        advanceAmount: Money.parse('300.00'),
+        receivableAccountId: 'receivable',
+        categoryAllocations: singleAllocation(
+          accountId: 'travel',
           amount: Money.parse('300.00'),
-          advanceAmount: Money.parse('300.00'),
-          receivableAccountId: 'receivable',
-          categoryAllocations: singleAllocation(
-            accountId: 'travel',
-            amount: Money.parse('300.00'),
-          ),
-          selfBorneAllocations: const [],
-          settlementAllocations: singleAllocation(
-            accountId: 'cash',
-            amount: Money.parse('300.00'),
-          ),
-          occurredAt: occurredAt,
-          management: AdvanceManagement.account,
-          scenario: AdvanceScenario.reimbursement,
         ),
-      );
+        selfBorneAllocations: const [],
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: Money.parse('300.00'),
+        ),
+        occurredAt: occurredAt,
+        ownership: const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'case-2',
+        ),
+      ),
+    );
 
-      expect(advance.parentTransactionId, isNull);
-      expect(advance.ownership?.ownerType, 'advance.account');
-      expect(advance.ownership?.ownerId, 'receivable');
-      expect(advance.ownership?.ownerRole, 'reimbursement');
-      expect(entriesAreBalanced(advance.entries), isTrue);
-    },
-  );
+    expect(advance.parentTransactionId, isNull);
+    expect(advance.ownership?.ownerType, 'orchestration.advance');
+    expect(advance.ownership?.ownerId, 'case-2');
+    expect(entriesAreBalanced(advance.entries), isTrue);
+  });
 
   test('account-managed collection and settlement do not validate a pool', () {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'account'),
     );
     const ownership = TransactionOwnership(
-      ownerType: 'advance.account',
-      ownerId: 'receivable',
-      ownerRole: 'onBehalf',
+      ownerType: 'orchestration.advance',
+      ownerId: 'case-3',
     );
 
     final collection = engine.createAdvanceCollection(

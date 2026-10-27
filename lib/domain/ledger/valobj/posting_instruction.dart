@@ -1,7 +1,6 @@
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import 'account_amount_allocation.dart';
-import 'advance_ownership.dart';
 import 'ledger_enum.dart';
 import 'ledger_violation_reason.dart';
 import 'transaction_ownership.dart';
@@ -173,8 +172,6 @@ class AdvanceInstruction extends PostingInstruction {
     List<AccountAmountAllocation> selfBorneAllocations = const [],
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
-    this.management = AdvanceManagement.itemized,
-    this.scenario = AdvanceScenario.reimbursement,
     this.postedAt,
     this.counterpartyId,
     this.note,
@@ -195,8 +192,6 @@ class AdvanceInstruction extends PostingInstruction {
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
-  final AdvanceManagement management;
-  final AdvanceScenario scenario;
   final String? counterpartyId;
   final String? note;
   final bool isExcludedFromStats;
@@ -224,8 +219,6 @@ class AdvanceInstruction extends PostingInstruction {
     List<AccountAmountAllocation>? settlementAllocations,
     DateTime? occurredAt,
     DateTime? postedAt,
-    AdvanceManagement? management,
-    AdvanceScenario? scenario,
     String? counterpartyId,
     String? note,
     bool? isExcludedFromStats,
@@ -257,8 +250,6 @@ class AdvanceInstruction extends PostingInstruction {
       ),
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
-      management: management ?? this.management,
-      scenario: scenario ?? this.scenario,
       counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
@@ -719,6 +710,7 @@ class EditParentTransactionInstruction {
   const EditParentTransactionInstruction({
     required this.transactionId,
     required this.editPatch,
+    this.refundSelfBorneAllocations = const {},
     this.occurredAt,
     this.counterpartyId,
     this.note,
@@ -728,6 +720,7 @@ class EditParentTransactionInstruction {
 
   final String transactionId;
   final PostingEditPatch editPatch;
+  final Map<String, List<AccountAmountAllocation>> refundSelfBorneAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
@@ -756,6 +749,7 @@ class EditAdvanceCollectionTransactionInstruction {
     required this.transactionId,
     this.amount,
     this.receivableAccountId,
+    this.ownership,
     this.settlementAllocations,
     this.occurredAt,
     this.counterpartyId,
@@ -765,6 +759,7 @@ class EditAdvanceCollectionTransactionInstruction {
   final String transactionId;
   final Money? amount;
   final String? receivableAccountId;
+  final TransactionOwnership? ownership;
   final List<AccountAmountAllocation>? settlementAllocations;
   final DateTime? occurredAt;
   final Patch<String?>? counterpartyId;
@@ -776,6 +771,7 @@ class EditAdvanceSettlementTransactionInstruction {
     required this.transactionId,
     this.actualReceivedAmount,
     this.receivableAccountId,
+    this.ownership,
     this.settlementAllocations,
     this.gapExpenseAllocations,
     this.shortfallKind,
@@ -787,6 +783,7 @@ class EditAdvanceSettlementTransactionInstruction {
   final String transactionId;
   final Money? actualReceivedAmount;
   final String? receivableAccountId;
+  final TransactionOwnership? ownership;
   final List<AccountAmountAllocation>? settlementAllocations;
   final List<AccountAmountAllocation>? gapExpenseAllocations;
   final AdvanceShortfallKind? shortfallKind;
@@ -1030,7 +1027,7 @@ class AdvanceEditPatch extends PostingEditPatch {
     this.amount,
     this.advanceAmount,
     this.receivableAccountId,
-    this.scenario,
+    this.ownership,
     this.categoryAllocations,
     this.selfBorneAllocations,
     this.settlementAllocations,
@@ -1039,7 +1036,7 @@ class AdvanceEditPatch extends PostingEditPatch {
   final Money? amount;
   final Money? advanceAmount;
   final String? receivableAccountId;
-  final AdvanceScenario? scenario;
+  final TransactionOwnership? ownership;
   final List<AccountAmountAllocation>? categoryAllocations;
   final List<AccountAmountAllocation>? selfBorneAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
@@ -1054,7 +1051,7 @@ class AdvanceEditPatch extends PostingEditPatch {
         amount: amount,
         advanceAmount: advanceAmount,
         receivableAccountId: receivableAccountId,
-        scenario: scenario,
+        ownership: ownership,
         categoryAllocations: categoryAllocations,
         selfBorneAllocations: selfBorneAllocations,
         settlementAllocations: settlementAllocations,
@@ -1088,14 +1085,13 @@ class AdvanceEditPatch extends PostingEditPatch {
           explicit: settlementAllocations,
         ),
         occurredAt: current.occurredAt,
-        scenario: scenario ?? AdvanceScenario.reimbursement,
         postedAt: current.postedAt,
         counterpartyId: current.counterpartyId,
         note: current.note,
         isExcludedFromStats: current.isExcludedFromStats,
         isExcludedFromBudget: current.isExcludedFromBudget,
         sourceKind: current.sourceKind,
-        ownership: current.ownership,
+        ownership: ownership ?? current.ownership,
       );
     }
     return LedgerViolationReason.unsupportedEditSource.throwException(
@@ -1291,11 +1287,13 @@ class RefundEditPatch {
   const RefundEditPatch({
     this.amount,
     this.categoryAllocations,
+    this.selfBorneAllocations,
     this.settlementAllocations,
   });
 
   final Money? amount;
   final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? selfBorneAllocations;
   final List<AccountAmountAllocation>? settlementAllocations;
 
   RefundInstruction applyTo(RefundInstruction current) {
@@ -1308,7 +1306,8 @@ class RefundEditPatch {
         total: nextAmount,
         explicit: categoryAllocations,
       ),
-      selfBorneAllocations: current.selfBorneAllocations,
+      selfBorneAllocations:
+          selfBorneAllocations ?? current.selfBorneAllocations,
       settlementAllocations: patchAllocations(
         current: current.settlementAllocations,
         total: nextAmount,

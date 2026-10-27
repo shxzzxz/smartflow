@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -13,12 +13,14 @@ import 'package:smartflow/feature/transaction/page/advance_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/advance_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
+import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   test(
     'settles shortfall as self-borne or bad debt from the same form',
     () async {
-      final posting = _FakeAdvancePostingService();
+      final posting = _FakeAdvanceOrchestrationService();
       final container = _container(posting);
       final provider = advanceFormViewModelProvider('advance');
       final subscription = container.listen(provider, (_, _) {});
@@ -65,10 +67,18 @@ void main() {
     () async {
       final provider = advanceFormViewModelProvider('advance');
       final container = _container(
-        _FakeAdvancePostingService(),
+        _FakeAdvanceOrchestrationService(),
+        advanceCaseRepository: FakeAdvanceCaseRepository(const [
+          AdvanceCase(
+            id: 'receivable',
+            scenario: AdvanceScenario.reimbursement,
+            trackingMode: AdvanceTrackingMode.account,
+            receivableAccountId: 'receivable',
+          ),
+        ]),
         detail: _advanceDetail(
           ownership: advanceOwnership(
-            management: AdvanceManagement.account,
+            management: AdvanceTrackingMode.account,
             ownerId: 'receivable',
             scenario: AdvanceScenario.reimbursement,
           ),
@@ -86,7 +96,7 @@ void main() {
   testWidgets('switches shortfall allocation between self-borne and bad debt', (
     tester,
   ) async {
-    final container = _container(_FakeAdvancePostingService());
+    final container = _container(_FakeAdvanceOrchestrationService());
     final provider = advanceFormViewModelProvider('advance');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -132,8 +142,9 @@ void main() {
 }
 
 ProviderContainer _container(
-  _FakeAdvancePostingService posting, {
+  _FakeAdvanceOrchestrationService posting, {
   TransactionReadModel? detail,
+  FakeAdvanceCaseRepository? advanceCaseRepository,
 }) {
   final cash = Account(
     id: 'cash',
@@ -167,7 +178,10 @@ ProviderContainer _container(
       transactionDetailProvider(
         'advance',
       ).overrideWithValue(AsyncData(detail ?? _advanceDetail())),
-      transactionPostingAppServiceProvider.overrideWithValue(posting),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(posting),
+      advanceCaseRepositoryProvider.overrideWithValue(
+        advanceCaseRepository ?? FakeAdvanceCaseRepository(),
+      ),
     ],
   );
   addTearDown(container.dispose);
@@ -229,59 +243,19 @@ TransactionReadModel _advanceDetail({TransactionOwnership? ownership}) {
   );
 }
 
-class _FakeAdvancePostingService implements TransactionPostingAppService {
-  final commands = <CreateAdvanceSettlementCommand>[];
+class _FakeAdvanceOrchestrationService
+    implements AdvanceOrchestrationAppService {
+  final commands = <CreateAdvanceSettlementWorkflowCommand>[];
 
   @override
-  Future<PostedTransactionResult> settleAdvance(
-    CreateAdvanceSettlementCommand command,
+  Future<String> createSettlement(
+    CreateAdvanceSettlementWorkflowCommand command,
   ) async {
     commands.add(command);
-    return const PostedTransactionResult(transactionId: 'settlement');
+    return 'settlement';
   }
 
   @override
-  Future<PostedTransactionResult> adjustBalance(AdjustBalanceCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createAdvance(CreateAdvanceCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createAdvanceCollection(
-    CreateAdvanceCollectionCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createBorrowing(
-    CreateBorrowingCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createExpense(CreateExpenseCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createIncome(CreateIncomeCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createOpeningBalance(
-    CreateOpeningBalanceCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createRefund(CreateRefundCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createRepayment(
-    CreateRepaymentCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> createTransfer(
-    CreateTransferCommand command,
-  ) => throw UnimplementedError();
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }

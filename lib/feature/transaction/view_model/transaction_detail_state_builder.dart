@@ -1,5 +1,6 @@
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -13,9 +14,12 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
   required TransactionReadModel detail,
   TransactionReadModel? parentDetail,
   required AccountLookup accountLookup,
+  AdvanceCase? advanceCase,
+  RepaymentType? creditRepaymentType,
 }) {
   final behavior = _behaviorConfigFor(
     detail,
+    creditRepaymentType,
   ).copyWith(deleteMessage: _transactionDetailDeleteMessage(detail));
   return TransactionDetailUiState.loaded(
     transactionId: transactionId,
@@ -32,9 +36,9 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
       detail.createdAt ?? detail.occurredAt,
     ),
     noteText: detail.note,
-    accountRows: _accountRows(detail, accountLookup, behavior),
+    accountRows: _accountRows(detail, accountLookup, behavior, advanceCase),
     refund: _refundState(detail),
-    advance: _advanceState(detail),
+    advance: _advanceState(detail, advanceCase),
     canEditReportingFlags: detail.parentTransactionId == null,
     showExcludeStats: true,
     showExcludeBudget: true,
@@ -42,7 +46,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
         parentDetail?.isExcludedFromStats ?? detail.isExcludedFromStats,
     excludeBudget:
         parentDetail?.isExcludedFromBudget ?? detail.isExcludedFromBudget,
-    actionButtons: _actionButtons(detail, parentDetail, behavior),
+    actionButtons: _actionButtons(detail, parentDetail, behavior, advanceCase),
     submitting: false,
   );
 }
@@ -51,6 +55,7 @@ List<DetailAccountRow> _accountRows(
   TransactionReadModel detail,
   AccountLookup accountLookup,
   DetailBehaviorConfig behavior,
+  AdvanceCase? advanceCase,
 ) {
   final purpose = detail.businessPurpose;
 
@@ -164,7 +169,7 @@ List<DetailAccountRow> _accountRows(
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       final receivables = detail.linesOf(TransactionRole.receivable).toList();
       final receivableLabel = _advanceReceivableAccountLabel(
-        detail.ownership?.advanceScenario,
+        advanceCase?.scenario,
       );
       return [
         if (outgoing.length > 1)
@@ -228,9 +233,12 @@ DetailRefund? _refundState(TransactionReadModel detail) {
   );
 }
 
-DetailAdvance? _advanceState(TransactionReadModel detail) {
+DetailAdvance? _advanceState(
+  TransactionReadModel detail,
+  AdvanceCase? advanceCase,
+) {
   if (detail.businessPurpose != BusinessPurpose.advance ||
-      _advanceManagement(detail) != AdvanceManagement.itemized) {
+      advanceCase?.trackingMode != AdvanceTrackingMode.itemized) {
     return null;
   }
   final summary = detail.advanceSummary;
@@ -256,6 +264,7 @@ List<DetailActionButton> _actionButtons(
   TransactionReadModel detail,
   TransactionReadModel? parentDetail,
   DetailBehaviorConfig behavior,
+  AdvanceCase? advanceCase,
 ) {
   final transaction = detail;
   final editLocked = _isEarlierAdvanceChildLocked(detail, parentDetail);
@@ -273,7 +282,7 @@ List<DetailActionButton> _actionButtons(
       );
     case BusinessPurpose.advance:
       final closed = detail.advanceSummary?.isClosed ?? false;
-      if (_advanceManagement(detail) == AdvanceManagement.itemized) {
+      if (advanceCase?.trackingMode == AdvanceTrackingMode.itemized) {
         if (!closed) {
           result.add(
             DetailActionButton(
@@ -288,7 +297,7 @@ List<DetailActionButton> _actionButtons(
         result.add(
           DetailActionButton(
             kind: DetailActionKind.advance,
-            label: _advanceActionLabel(transaction.ownership?.advanceScenario),
+            label: _advanceActionLabel(advanceCase?.scenario),
             primary: false,
             enabled: !closed,
             route: '/transaction/${transaction.id}/advance',
@@ -321,10 +330,6 @@ List<DetailActionButton> _actionButtons(
     ),
   );
   return result;
-}
-
-AdvanceManagement _advanceManagement(TransactionReadModel detail) {
-  return detail.ownership?.advanceManagement ?? AdvanceManagement.itemized;
 }
 
 String _advanceActionLabel(AdvanceScenario? scenario) {
@@ -362,7 +367,10 @@ DetailEditPermission _accountEditPermission(
   };
 }
 
-DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
+DetailBehaviorConfig _behaviorConfigFor(
+  TransactionReadModel detail,
+  RepaymentType? creditRepaymentType,
+) {
   final transaction = detail;
   const postedAtPermission = DetailEditPermission.allowed();
   if (transaction.businessPurpose == BusinessPurpose.refund ||
@@ -427,37 +435,29 @@ DetailBehaviorConfig _behaviorConfigFor(TransactionReadModel detail) {
     );
   }
 
-  if (ownership.ownerType == installmentOwnerType &&
-      ownership.ownerId != null) {
-    final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
-    if (role != null) {
-      return DetailBehaviorConfig(
-        editRoute: '/installments/${ownership.ownerId}',
-        canEditOccurredAt: const DetailEditPermission.allowed(),
-        canEditPostedAt: postedAtPermission,
-        canEditNote: const DetailEditPermission.allowed(),
-        canEditSettlementAccount: const DetailEditPermission.allowed(),
-        canEditTags: _tagEditPermissionFor(transaction),
-      );
-    }
+  if (ownership.ownerType == installmentOwnerType) {
+    return DetailBehaviorConfig(
+      editRoute: '/installments/${ownership.ownerId}',
+      canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditPostedAt: postedAtPermission,
+      canEditNote: const DetailEditPermission.allowed(),
+      canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditTags: _tagEditPermissionFor(transaction),
+    );
   }
 
-  if (ownership.ownerType == creditRepaymentOwnerType &&
-      ownership.ownerId != null) {
-    final repaymentType = _repaymentTypeFromOwnerRole(ownership.ownerRole);
-    if (repaymentType != null) {
-      return DetailBehaviorConfig(
-        editRoute: repaymentType == RepaymentType.bill
-            ? '/repayments/${ownership.ownerId}/edit'
-                  '?transactionId=${transaction.id}'
-            : null,
-        canEditOccurredAt: const DetailEditPermission.allowed(),
-        canEditPostedAt: postedAtPermission,
-        canEditNote: const DetailEditPermission.allowed(),
-        canEditSettlementAccount: const DetailEditPermission.allowed(),
-        canEditTags: _tagEditPermissionFor(transaction),
-      );
-    }
+  if (ownership.ownerType == creditRepaymentOwnerType) {
+    return DetailBehaviorConfig(
+      editRoute: creditRepaymentType == RepaymentType.bill
+          ? '/repayments/${ownership.ownerId}/edit'
+                '?transactionId=${transaction.id}'
+          : null,
+      canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditPostedAt: postedAtPermission,
+      canEditNote: const DetailEditPermission.allowed(),
+      canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditTags: _tagEditPermissionFor(transaction),
+    );
   }
 
   return DetailBehaviorConfig(
@@ -493,23 +493,12 @@ bool _isEarlierAdvanceChildLocked(
 
 const String _advanceSettledEditReason = '垫付已结清，请先删除垫付结清';
 
-RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
-  if (ownerRole == null) return null;
-  try {
-    return RepaymentType.fromCode(ownerRole);
-  } on ArgumentError {
-    return null;
-  }
-}
-
 String _transactionDetailDeleteMessage(TransactionReadModel detail) {
   final owner = detail.ownership;
-  if (owner?.ownerType == installmentOwnerType &&
-      owner?.ownerId != null &&
-      InstallmentOwnerRole.fromWire(owner?.ownerRole) != null) {
+  if (owner?.ownerType == installmentOwnerType) {
     return '此操作将删除关联分期合同、还款计划及其关联账务记录，无法恢复。';
   }
-  if (owner?.ownerType == creditRepaymentOwnerType && owner?.ownerId != null) {
+  if (owner?.ownerType == creditRepaymentOwnerType) {
     return '此操作将删除还款记录及其关联交易，并重新计算相关账单与合同的还款状态，无法恢复。';
   }
   return detail.parentTransactionId == null

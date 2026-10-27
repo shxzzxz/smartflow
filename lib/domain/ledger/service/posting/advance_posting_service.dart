@@ -5,7 +5,6 @@ import '../../port/account_repository.dart';
 import '../../port/transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/account_amount_allocation.dart';
-import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -222,9 +221,6 @@ class AdvancePostingService {
     required String receivableAccountId,
   }) {
     final advance = group.parentTransaction;
-    if (advance.ownership?.advanceManagement != AdvanceManagement.itemized) {
-      return LedgerViolationReason.advanceManagementMismatch;
-    }
     final parentReceivableAccountId = advance.accountOf(
       TransactionRole.receivable,
     );

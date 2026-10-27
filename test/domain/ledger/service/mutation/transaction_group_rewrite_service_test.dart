@@ -13,7 +13,6 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewri
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
@@ -22,6 +21,7 @@ import 'package:test/test.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
+import '../../../../helper/advance_ownership_fixtures.dart';
 
 void main() {
   test(
@@ -168,8 +168,8 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final ownership = advanceOwnership(
-        management: AdvanceManagement.account,
-        ownerId: 'receivable',
+        management: AdvanceTrackingMode.account,
+        ownerId: 'case-account',
         scenario: AdvanceScenario.reimbursement,
       );
       final receipt = engine.createAdvanceCollection(
@@ -215,7 +215,7 @@ void main() {
       expect(rewritten.id, receipt.id);
       expect(rewritten.parentTransactionId, isNull);
       expect(rewritten.businessPurpose, BusinessPurpose.advanceCollection);
-      expect(rewritten.ownership?.ownerId, 'other-receivable');
+      expect(rewritten.ownership?.ownerId, 'case-account');
       expect(rewritten.primaryAmount, Money.parse('45.00'));
       expect(
         rewritten.amountOf(TransactionRole.receivable),
@@ -231,8 +231,8 @@ void main() {
         idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
       final ownership = advanceOwnership(
-        management: AdvanceManagement.account,
-        ownerId: 'receivable',
+        management: AdvanceTrackingMode.account,
+        ownerId: 'case-account',
         scenario: AdvanceScenario.reimbursement,
       );
       final close = engine.createAdvanceSettlement(
@@ -282,7 +282,7 @@ void main() {
       expect(rewritten.id, close.id);
       expect(rewritten.parentTransactionId, isNull);
       expect(rewritten.businessPurpose, BusinessPurpose.advanceSettlement);
-      expect(rewritten.ownership?.ownerId, 'other-receivable');
+      expect(rewritten.ownership?.ownerId, 'case-account');
       expect(rewritten.primaryAmount, Money.parse('70.00'));
       expect(
         rewritten.amountOf(TransactionRole.receivable),

@@ -21,6 +21,9 @@ void main() {
       final old = _openDatabase(file);
       await old.customSelect('SELECT 1').get();
       await old.customStatement(
+        'ALTER TABLE transactions ADD COLUMN owner_role TEXT NULL',
+      );
+      await old.customStatement(
         "UPDATE accounts SET system_key = 'reimbursementGapIncome', "
         "name = '报销差额收入' WHERE system_key = 'advanceCompensationIncome'",
       );
@@ -65,7 +68,7 @@ VALUES
       addTearDown(upgraded.close);
       final transactions = await upgraded
           .customSelect(
-            'SELECT id, business_purpose, owner_type, owner_id, owner_role '
+            'SELECT id, business_purpose, owner_type, owner_id '
             'FROM transactions ORDER BY id',
           )
           .get();
@@ -76,38 +79,37 @@ VALUES
               row.read<String>('business_purpose'),
               row.readNullable<String>('owner_type'),
               row.readNullable<String>('owner_id'),
-              row.readNullable<String>('owner_role'),
             ),
         },
         {
           'legacy-advance': (
             'advance',
-            'advance.itemized',
-            'legacy-advance',
-            'reimbursement',
+            'orchestration.advance',
+            'orchestration:advance:itemized:legacy-advance',
           ),
           'legacy-close': (
             'advanceSettlement',
-            'advance.itemized',
-            'legacy-advance',
-            'reimbursement',
+            'orchestration.advance',
+            'orchestration:advance:itemized:legacy-advance',
           ),
           'legacy-refund': (
             'refund',
-            'advance.itemized',
-            'legacy-advance',
-            'reimbursement',
+            'orchestration.advance',
+            'orchestration:advance:itemized:legacy-advance',
           ),
           'legacy-receipt': (
             'advanceCollection',
-            'advance.itemized',
-            'legacy-advance',
-            'reimbursement',
+            'orchestration.advance',
+            'orchestration:advance:itemized:legacy-advance',
           ),
-          'legacy-expense': ('dailyExpense', null, null, null),
-          'legacy-expense-refund': ('refund', null, null, null),
+          'legacy-expense': ('dailyExpense', null, null),
+          'legacy-expense-refund': ('refund', null, null),
         },
       );
+      final advanceCases = await upgraded.select(upgraded.advanceCases).get();
+      expect(advanceCases, hasLength(1));
+      expect(advanceCases.single.scenario.name, 'reimbursement');
+      expect(advanceCases.single.trackingMode.name, 'itemized');
       final roles = await upgraded
           .customSelect('SELECT id, role FROM transaction_lines ORDER BY id')
           .get();
@@ -796,7 +798,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
     final version = await upgraded
         .customSelect('PRAGMA user_version')
         .getSingle();
-    expect(version.read<int>('user_version'), 48);
+    expect(version.read<int>('user_version'), 49);
     final rows = await upgraded
         .customSelect('SELECT id, repayment_date FROM repayments ORDER BY id')
         .get();
@@ -837,7 +839,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 48);
+      expect(version.read<int>('user_version'), 49);
       await _insertNoTransactionContract(upgradedDatabase);
     },
   );
@@ -893,7 +895,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 48);
+      expect(version.read<int>('user_version'), 49);
 
       final row = await upgradedDatabase
           .customSelect(
@@ -1006,7 +1008,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 48);
+      expect(version.read<int>('user_version'), 49);
 
       final transactions = await upgradedDatabase
           .customSelect(
@@ -1177,7 +1179,7 @@ VALUES ('item', 'with-tx', 'bill-item', 1000, 50, 0, 0)
       final version = await upgradedDatabase
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 48);
+      expect(version.read<int>('user_version'), 49);
 
       for (final table in [
         'import_entity_mappings',

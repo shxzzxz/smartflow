@@ -2,6 +2,7 @@ import 'package:logging/logging.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/patch/patch.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../shared/view_model/action_guard.dart';
@@ -30,9 +31,11 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required TransactionUpdateAppService updateService,
   required InstallmentContractAppService installmentAppService,
   required RepaymentAppService repaymentAppService,
+  AdvanceOrchestrationAppService? advanceAppService,
+  AdvanceCaseQueryService? advanceCaseQuery,
 }) {
   final ownership = transaction.ownership;
-  if (ownership == null || ownership.isAdvance) {
+  if (ownership == null) {
     return _DefaultActionDispatcher(
       transaction: transaction,
       editService: editService,
@@ -40,45 +43,44 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     );
   }
 
-  if (ownership.ownerType == installmentOwnerType &&
-      ownership.ownerId != null) {
-    final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
-    if (role != null) {
-      return _InstallmentActionDispatcher(
-        transaction: transaction,
-        installmentAppService: installmentAppService,
-        updateService: updateService,
-        contractId: ownership.ownerId!,
-      );
+  if (ownership.ownerType == orchestrationAdvanceOwnerType) {
+    if (advanceAppService == null || advanceCaseQuery == null) {
+      throw StateError('Advance orchestration services are not configured.');
     }
+    return _AdvanceActionDispatcher(
+      transaction: transaction,
+      advanceAppService: advanceAppService,
+      advanceCaseQuery: advanceCaseQuery,
+      fallback: _DefaultActionDispatcher(
+        transaction: transaction,
+        editService: editService,
+        updateService: updateService,
+      ),
+    );
   }
 
-  if (ownership.ownerType == creditRepaymentOwnerType &&
-      ownership.ownerId != null) {
-    final repaymentType = _repaymentTypeFromOwnerRole(ownership.ownerRole);
-    if (repaymentType != null) {
-      return _CreditRepaymentActionDispatcher(
-        transaction: transaction,
-        repaymentAppService: repaymentAppService,
-        updateService: updateService,
-        repaymentId: ownership.ownerId!,
-      );
-    }
+  if (ownership.ownerType == installmentOwnerType) {
+    return _InstallmentActionDispatcher(
+      transaction: transaction,
+      installmentAppService: installmentAppService,
+      updateService: updateService,
+      contractId: ownership.ownerId,
+    );
+  }
+
+  if (ownership.ownerType == creditRepaymentOwnerType) {
+    return _CreditRepaymentActionDispatcher(
+      transaction: transaction,
+      repaymentAppService: repaymentAppService,
+      updateService: updateService,
+      repaymentId: ownership.ownerId,
+    );
   }
 
   return _UnknownActionDispatcher(
     transaction: transaction,
     updateService: updateService,
   );
-}
-
-RepaymentType? _repaymentTypeFromOwnerRole(String? ownerRole) {
-  if (ownerRole == null) return null;
-  try {
-    return RepaymentType.fromCode(ownerRole);
-  } on ArgumentError {
-    return null;
-  }
 }
 
 Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
@@ -122,6 +124,109 @@ Future<UiActionOutcome<void>> _changePostedAt({
       ),
     );
   });
+}
+
+final class _AdvanceActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _AdvanceActionDispatcher({
+    required this.transaction,
+    required this.advanceAppService,
+    required this.advanceCaseQuery,
+    required this.fallback,
+  });
+
+  final TransactionReadModel transaction;
+  final AdvanceOrchestrationAppService advanceAppService;
+  final AdvanceCaseQueryService advanceCaseQuery;
+  final TransactionDetailActionDispatcher fallback;
+
+  @override
+  Future<UiActionOutcome<void>> delete() => fallback.delete();
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) =>
+      fallback.changeNote(value);
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) =>
+      fallback.changeOccurredAt(value);
+
+  @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) =>
+      fallback.changePostedAt(value);
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId, {
+    String? currentAccountId,
+  }) async {
+    final allocations = singleAllocation(
+      accountId: accountId,
+      amount: transaction.amountOf(TransactionRole.settlementIn),
+    );
+    switch (transaction.businessPurpose) {
+      case BusinessPurpose.advance:
+        final ownership = transaction.ownership;
+        final advanceCase = ownership == null
+            ? null
+            : await advanceCaseQuery.findById(ownership.ownerId);
+        if (advanceCase == null) {
+          return detailInvalidCommand('无法定位垫付编排实例');
+        }
+        await advanceAppService.editAdvance(
+          EditAdvanceWorkflowCommand(
+            transactionId: transaction.id,
+            scenario: advanceCase.scenario,
+            settlementAllocations: singleAllocation(
+              accountId: accountId,
+              amount: transaction.primaryAmount,
+            ),
+          ),
+        );
+        return const UiActionOutcome.success(null);
+      case BusinessPurpose.advanceCollection:
+        await advanceAppService.editCollection(
+          EditAdvanceCollectionWorkflowCommand(
+            transactionId: transaction.id,
+            settlementAllocations: allocations,
+          ),
+        );
+        return const UiActionOutcome.success(null);
+      case BusinessPurpose.advanceSettlement:
+        await advanceAppService.editSettlement(
+          EditAdvanceSettlementWorkflowCommand(
+            transactionId: transaction.id,
+            settlementAllocations: allocations,
+          ),
+        );
+        return const UiActionOutcome.success(null);
+      case BusinessPurpose.refund:
+        await advanceAppService.editRefund(
+          EditAdvanceRefundWorkflowCommand(
+            transactionId: transaction.id,
+            amount: transaction.primaryAmount,
+            categoryAllocations: [
+              for (final line in transaction.linesOf(
+                TransactionRole.advanceExpenseCategory,
+              ))
+                if (line.accountId != null)
+                  AccountAmountAllocation(
+                    accountId: line.accountId!,
+                    amount: line.amount,
+                  ),
+            ],
+            settlementAllocations: allocations,
+            occurredAt: transaction.occurredAt,
+          ),
+        );
+        return const UiActionOutcome.success(null);
+      default:
+        return fallback.changeSettlementAccount(
+          accountId,
+          currentAccountId: currentAccountId,
+        );
+    }
+  }
 }
 
 final class _DefaultActionDispatcher

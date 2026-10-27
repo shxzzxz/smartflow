@@ -81,15 +81,10 @@ class CreditLedgerRepaymentEntry {
 }
 
 class CreditLedgerOwnership {
-  const CreditLedgerOwnership({
-    required this.ownerType,
-    required this.ownerId,
-    required this.ownerRole,
-  });
+  const CreditLedgerOwnership({required this.ownerType, required this.ownerId});
 
   final String ownerType;
   final String ownerId;
-  final String ownerRole;
 }
 
 class CreditLedgerCreateLiabilityAccountCommand {

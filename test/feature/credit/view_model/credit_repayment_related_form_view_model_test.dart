@@ -9,6 +9,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart'
     as credit_query;
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
@@ -761,8 +762,8 @@ void main() {
   });
 
   test('refund form submits refund command', () async {
-    final posting = _FakePostingService();
-    final container = _container(postingService: posting);
+    final posting = _FakeAdvanceOrchestrationService();
+    final container = _container(advanceOrchestration: posting);
     final provider = refundFormViewModelProvider('parent');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -778,8 +779,8 @@ void main() {
   });
 
   test('advance close form submits close command', () async {
-    final posting = _FakePostingService();
-    final container = _container(postingService: posting);
+    final posting = _FakeAdvanceOrchestrationService();
+    final container = _container(advanceOrchestration: posting);
     final provider = advanceSettlementFormViewModelProvider('parent');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -801,7 +802,7 @@ void main() {
 ProviderContainer _container({
   _FakeInstallmentContractAppService? installmentAppService,
   _FakeRepaymentAppService? repaymentAppService,
-  _FakePostingService? postingService,
+  _FakeAdvanceOrchestrationService? advanceOrchestration,
   credit_query.BillDetailReadModel? billDetail,
   credit_query.CreditAccountOverviewReadModel? creditOverview,
 }) {
@@ -851,8 +852,8 @@ ProviderContainer _container({
       repaymentAppServiceProvider.overrideWithValue(
         repaymentAppService ?? _FakeRepaymentAppService(),
       ),
-      transactionPostingAppServiceProvider.overrideWithValue(
-        postingService ?? _FakePostingService(),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(
+        advanceOrchestration ?? _FakeAdvanceOrchestrationService(),
       ),
     ],
   );
@@ -961,32 +962,29 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePostingService implements TransactionPostingAppService {
-  final refundCommands = <CreateRefundCommand>[];
-  final closeCommands = <CreateAdvanceSettlementCommand>[];
+class _FakeAdvanceOrchestrationService
+    implements AdvanceOrchestrationAppService {
+  final refundCommands = <CreateAdvanceRefundWorkflowCommand>[];
+  final closeCommands = <CreateAdvanceSettlementWorkflowCommand>[];
 
   @override
-  Future<PostedTransactionResult> createRefund(
-    CreateRefundCommand command,
+  Future<String> createRefund(
+    CreateAdvanceRefundWorkflowCommand command,
   ) async {
     refundCommands.add(command);
-    return _posted();
+    return 'transaction';
   }
 
   @override
-  Future<PostedTransactionResult> settleAdvance(
-    CreateAdvanceSettlementCommand command,
+  Future<String> createSettlement(
+    CreateAdvanceSettlementWorkflowCommand command,
   ) async {
     closeCommands.add(command);
-    return _posted();
+    return 'transaction';
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-PostedTransactionResult _posted() {
-  return const PostedTransactionResult(transactionId: 'transaction');
 }
 
 Account _account(String id, AccountType type) {

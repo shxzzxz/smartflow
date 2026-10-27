@@ -1,6 +1,5 @@
 import 'package:smartflow/core/money/money.dart';
 import '../../entity/transaction.dart';
-import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -164,12 +163,6 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       selfBorneAllocations: selfBorne,
       settlementAllocations: settlements,
       occurredAt: transaction.occurredAt,
-      management:
-          transaction.ownership?.advanceManagement ??
-          AdvanceManagement.itemized,
-      scenario:
-          transaction.ownership?.advanceScenario ??
-          AdvanceScenario.reimbursement,
       postedAt: transaction.postedAt,
       counterpartyId: transaction.counterpartyId,
       note: transaction.note,

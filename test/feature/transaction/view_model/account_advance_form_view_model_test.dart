@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -15,7 +16,7 @@ import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   test('creates an account-managed reimbursement collection', () async {
-    final posting = _FakePostingService();
+    final posting = _FakeOrchestrationService();
     final target = const AccountAdvanceFormTarget(
       accountId: 'reimbursement',
       scenario: AdvanceScenario.reimbursement,
@@ -35,7 +36,6 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     final command = posting.collectionCommands.single;
-    expect(command.management, AdvanceManagement.account);
     expect(command.scenario, AdvanceScenario.reimbursement);
     expect(command.advanceTransactionId, isNull);
     expect(command.receivableAccountId, 'reimbursement');
@@ -43,7 +43,7 @@ void main() {
   });
 
   test('creates an account-managed AA settlement', () async {
-    final posting = _FakePostingService();
+    final posting = _FakeOrchestrationService();
     final target = const AccountAdvanceFormTarget(
       accountId: 'receivable',
       scenario: AdvanceScenario.aa,
@@ -60,7 +60,6 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     final command = posting.settlementCommands.single;
-    expect(command.management, AdvanceManagement.account);
     expect(command.scenario, AdvanceScenario.aa);
     expect(command.advanceTransactionId, isNull);
     expect(command.actualReceivedAmount, const Money(minorUnits: 3000));
@@ -70,7 +69,7 @@ void main() {
   testWidgets('switches the account collection form to settlement', (
     tester,
   ) async {
-    final container = _container(_FakePostingService());
+    final container = _container(_FakeOrchestrationService());
     const target = AccountAdvanceFormTarget(
       accountId: 'reimbursement',
       scenario: AdvanceScenario.reimbursement,
@@ -108,7 +107,7 @@ void main() {
   });
 }
 
-ProviderContainer _container(_FakePostingService posting) {
+ProviderContainer _container(_FakeOrchestrationService posting) {
   final cash = Account(
     id: 'cash',
     name: '现金',
@@ -146,31 +145,31 @@ ProviderContainer _container(_FakePostingService posting) {
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
-      transactionPostingAppServiceProvider.overrideWithValue(posting),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(posting),
     ],
   );
   addTearDown(container.dispose);
   return container;
 }
 
-class _FakePostingService implements TransactionPostingAppService {
-  final collectionCommands = <CreateAdvanceCollectionCommand>[];
-  final settlementCommands = <CreateAdvanceSettlementCommand>[];
+class _FakeOrchestrationService implements AdvanceOrchestrationAppService {
+  final collectionCommands = <CreateAdvanceCollectionWorkflowCommand>[];
+  final settlementCommands = <CreateAdvanceSettlementWorkflowCommand>[];
 
   @override
-  Future<PostedTransactionResult> createAdvanceCollection(
-    CreateAdvanceCollectionCommand command,
+  Future<String> createCollection(
+    CreateAdvanceCollectionWorkflowCommand command,
   ) async {
     collectionCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'collection');
+    return 'collection';
   }
 
   @override
-  Future<PostedTransactionResult> settleAdvance(
-    CreateAdvanceSettlementCommand command,
+  Future<String> createSettlement(
+    CreateAdvanceSettlementWorkflowCommand command,
   ) async {
     settlementCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'settlement');
+    return 'settlement';
   }
 
   @override

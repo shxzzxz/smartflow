@@ -54,6 +54,8 @@ class DriftBackupGateway
         'accounts': (await database.select(database.accounts).get()).map(_json),
         'account_groups': (await database.select(database.accountGroups).get())
             .map(_json),
+        'advance_cases': (await database.select(database.advanceCases).get())
+            .map(_json),
         'transactions': (await database.select(database.transactions).get())
             .map(_json),
         'transaction_lines':
@@ -169,6 +171,7 @@ class DriftBackupGateway
         'entries',
         'transaction_lines',
         'transactions',
+        'advance_cases',
         'counterparties',
         'budgets',
         'tags',
@@ -225,6 +228,12 @@ class DriftBackupGateway
           snapshot
               .rows('accounts')
               .map((row) => AccountRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.advanceCases,
+          snapshot
+              .rows('advance_cases')
+              .map((row) => AdvanceCaseRow.fromJson(row).toCompanion(true)),
         );
         batch.insertAll(
           database.tags,
@@ -402,6 +411,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is AccountGroupRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AdvanceCaseRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is TransactionRow) {

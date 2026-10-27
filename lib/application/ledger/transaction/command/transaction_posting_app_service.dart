@@ -9,7 +9,6 @@ import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/refund_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/advance_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_application_service.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import 'transaction_command.dart';
@@ -236,6 +235,7 @@ class TransactionPostingAppServiceImpl
           parentTransactionId: command.parentTransactionId,
           amount: command.amount,
           categoryAllocations: command.categoryAllocations,
+          selfBorneAllocations: command.selfBorneAllocations,
           settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
@@ -260,8 +260,7 @@ class TransactionPostingAppServiceImpl
           selfBorneAllocations: command.selfBorneAllocations,
           settlementAllocations: command.settlementAllocations,
           occurredAt: command.occurredAt,
-          management: command.management,
-          scenario: command.scenario,
+          ownership: command.ownership,
           postedAt: command.postedAt,
           counterpartyId: command.counterpartyId,
           note: command.note,
@@ -278,17 +277,12 @@ class TransactionPostingAppServiceImpl
   Future<PostedTransactionResult> createAdvanceCollection(
     CreateAdvanceCollectionCommand command,
   ) async {
-    final ownership = advanceOwnership(
-      management: command.management,
-      ownerId: command.receivableAccountId,
-      scenario: command.scenario,
-    );
     final instruction = command.advanceTransactionId == null
         ? AdvanceCollectionInstruction.account(
             amount: command.amount,
             receivableAccountId: command.receivableAccountId,
             settlementAllocations: command.settlementAllocations,
-            ownership: ownership,
+            ownership: command.ownership!,
             occurredAt: command.occurredAt,
             postedAt: command.postedAt,
             counterpartyId: command.counterpartyId,
@@ -315,18 +309,13 @@ class TransactionPostingAppServiceImpl
   Future<PostedTransactionResult> settleAdvance(
     CreateAdvanceSettlementCommand command,
   ) async {
-    final ownership = advanceOwnership(
-      management: command.management,
-      ownerId: command.receivableAccountId,
-      scenario: command.scenario,
-    );
     final instruction = command.advanceTransactionId == null
         ? AdvanceSettlementInstruction.account(
             actualReceivedAmount: command.actualReceivedAmount,
             receivableAccountId: command.receivableAccountId,
             settlementAllocations: command.settlementAllocations,
             gapExpenseAllocations: command.gapExpenseAllocations,
-            ownership: ownership,
+            ownership: command.ownership!,
             shortfallKind: command.shortfallKind,
             occurredAt: command.occurredAt,
             postedAt: command.postedAt,

@@ -13,6 +13,7 @@ import 'package:smartflow/application/ledger/transaction/command/transaction_edi
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/query/transaction_query_service.dart';
+import 'package:smartflow/application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -43,6 +44,8 @@ import 'package:smartflow/infrastructure/ledger/repository/drift_entry_read_repo
 import 'package:smartflow/infrastructure/ledger/repository/drift_ledger_metrics_source.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
+import 'package:smartflow/infrastructure/orchestration/advance_ledger_port.dart';
+import 'package:smartflow/infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 
@@ -155,15 +158,15 @@ void main() {
         ),
       );
 
-      final account = (await fixture.database
-              .select(fixture.database.accounts)
-              .get())
-          .singleWhere((row) => row.name == '来源信用卡');
+      final account =
+          (await fixture.database.select(fixture.database.accounts).get())
+              .singleWhere((row) => row.name == '来源信用卡');
       expect(account.accountProfileKey, 'credit.credit');
-      final extension = (await fixture.database
-              .select(fixture.database.creditLiabilityAccounts)
-              .get())
-          .singleWhere((row) => row.accountId == account.id);
+      final extension =
+          (await fixture.database
+                  .select(fixture.database.creditLiabilityAccounts)
+                  .get())
+              .singleWhere((row) => row.accountId == account.id);
       expect(extension.kind, CreditLiabilityAccountKind.credit);
       expect(extension.billingDay, 1);
       expect(extension.repaymentDay, 15);
@@ -233,15 +236,13 @@ void main() {
         ),
       );
       expect(result.createdBatch, isTrue);
-      final account = (await fixture.database
-              .select(fixture.database.accounts)
-              .get())
-          .singleWhere((row) => row.name == '来源贷款');
+      final account =
+          (await fixture.database.select(fixture.database.accounts).get())
+              .singleWhere((row) => row.name == '来源贷款');
       expect(account.accountProfileKey, 'credit.loan');
-      final extensions =
-          await fixture.database
-              .select(fixture.database.creditLiabilityAccounts)
-              .get();
+      final extensions = await fixture.database
+          .select(fixture.database.creditLiabilityAccounts)
+          .get();
       final extension = extensions.singleWhere(
         (row) => row.accountId == account.id,
       );
@@ -304,8 +305,9 @@ void main() {
       );
 
       expect(result.createdBatch, isTrue);
-      final rows =
-          await fixture.database.select(fixture.database.accounts).get();
+      final rows = await fixture.database
+          .select(fixture.database.accounts)
+          .get();
       final parent = rows.singleWhere((row) => row.name == '临时食品');
       final leaf = rows.singleWhere((row) => row.name == '临时午餐');
       expect(leaf.parentId, parent.id);
@@ -485,8 +487,9 @@ void main() {
 
       expect(result.createdMappings, contains(accountKey));
       expect(result.createdMappings, isNot(contains(categoryKey)));
-      final accounts =
-          await fixture.database.select(fixture.database.accounts).get();
+      final accounts = await fixture.database
+          .select(fixture.database.accounts)
+          .get();
       expect(accounts.where((row) => row.name == '新结算账户'), hasLength(1));
       expect(accounts.where((row) => row.name == '未使用分类'), isEmpty);
     },
@@ -598,10 +601,9 @@ void main() {
           ),
         ],
       );
-      final ghost = (await fixture.database
-              .select(fixture.database.accounts)
-              .get())
-          .singleWhere((row) => row.systemKey == SystemKey.ghostAccount);
+      final ghost =
+          (await fixture.database.select(fixture.database.accounts).get())
+              .singleWhere((row) => row.systemKey == SystemKey.ghostAccount);
       final mappings = {
         ImportMappingKey.fromEntity(account): ghost.id,
         ImportMappingKey.fromEntity(category): 'food',
@@ -700,8 +702,9 @@ void main() {
       expect(result.batch?.createdTransactionCount, 3);
       expect(result.batch?.skippedGroupCount, 0);
 
-      final rows =
-          await fixture.database.select(fixture.database.transactions).get();
+      final rows = await fixture.database
+          .select(fixture.database.transactions)
+          .get();
       expect(rows, hasLength(3));
       expect(rows.every((row) => row.sourceKind == SourceKind.import), isTrue);
       final expense = rows.singleWhere(
@@ -929,7 +932,11 @@ void main() {
                 ImportErrorCode.commitFailed.code,
               )
               .having((error) => error.groupIndex, 'groupIndex', 1)
-              .having((error) => error.cause, 'cause', isA<BusinessException>()),
+              .having(
+                (error) => error.cause,
+                'cause',
+                isA<BusinessException>(),
+              ),
         ),
       );
 
@@ -947,7 +954,10 @@ void main() {
       expect(records.single.level, Level.WARNING);
       expect(records.single.loggerName, 'feature.import');
       expect(records.single.message, contains('group 2'));
-      expect(records.single.message, contains(ImportErrorCode.commitFailed.code));
+      expect(
+        records.single.message,
+        contains(ImportErrorCode.commitFailed.code),
+      );
       expect(records.single.error, isA<BusinessException>());
       expect(records.single.stackTrace, isNotNull);
 
@@ -1018,8 +1028,9 @@ void main() {
       expect(transaction.occurredAt, DateTime(2026, 4, 9, 8, 30));
       expect(transaction.postedAt, DateTime(2026, 4, 10));
       expect(transaction.note, '审阅后修正');
-      final item =
-          (await fixture.service.findBatchItems(result.batch!.id)).single;
+      final item = (await fixture.service.findBatchItems(
+        result.batch!.id,
+      )).single;
       expect(
         item.sourceOperationFingerprint,
         original.sourceOperationFingerprint,
@@ -1271,17 +1282,15 @@ void main() {
       plan,
       temporaryMappings: {
         const ImportMappingKey(
-              source: ImportSource.yimu,
-              entityKind: ImportEntityKind.account,
-              sourceEntityKey: missingKey,
-            ):
-            'cash',
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.account,
+          sourceEntityKey: missingKey,
+        ): 'cash',
         const ImportMappingKey(
-              source: ImportSource.yimu,
-              entityKind: ImportEntityKind.category,
-              sourceEntityKey: categoryKey,
-            ):
-            'food',
+          source: ImportSource.yimu,
+          entityKind: ImportEntityKind.category,
+          sourceEntityKey: categoryKey,
+        ): 'food',
       },
     );
 
@@ -1507,6 +1516,16 @@ class _Fixture {
       transactionRunner: runner,
       idGenerator: ids,
     );
+    final advances = AdvanceOrchestrationAppServiceImpl(
+      cases: DriftAdvanceCaseRepository(database),
+      ledger: LedgerAdvancePort(
+        posting: posting,
+        editing: editing,
+        groups: postings,
+      ),
+      transactionRunner: runner,
+      idGenerator: ids,
+    );
     final ledger = LedgerImportPort(
       posting: posting,
       editing: editing,
@@ -1515,6 +1534,7 @@ class _Fixture {
       accountCommands: accountCommands,
       categoryCommands: categoryCommands,
       systemAccounts: systemAccounts,
+      advances: advances,
       creditAccounts: CreditAccountAppServiceImpl(
         ledger: LedgerCreditAccountPort(
           accountCommands,

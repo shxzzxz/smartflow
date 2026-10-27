@@ -1898,6 +1898,200 @@ final class TransactionLedgerWriterProvider
 String _$transactionLedgerWriterHash() =>
     r'42d2fb511c97cf356237c8afa3d056e4c8f58308';
 
+@ProviderFor(advanceCaseRepository)
+final advanceCaseRepositoryProvider = AdvanceCaseRepositoryProvider._();
+
+final class AdvanceCaseRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AdvanceCaseRepository,
+          AdvanceCaseRepository,
+          AdvanceCaseRepository
+        >
+    with $Provider<AdvanceCaseRepository> {
+  AdvanceCaseRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'advanceCaseRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$advanceCaseRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AdvanceCaseRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AdvanceCaseRepository create(Ref ref) {
+    return advanceCaseRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AdvanceCaseRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AdvanceCaseRepository>(value),
+    );
+  }
+}
+
+String _$advanceCaseRepositoryHash() =>
+    r'855f3905d19b30ac65e680c16f6d837940ef264d';
+
+@ProviderFor(advanceLedgerPort)
+final advanceLedgerPortProvider = AdvanceLedgerPortProvider._();
+
+final class AdvanceLedgerPortProvider
+    extends
+        $FunctionalProvider<
+          AdvanceLedgerPort,
+          AdvanceLedgerPort,
+          AdvanceLedgerPort
+        >
+    with $Provider<AdvanceLedgerPort> {
+  AdvanceLedgerPortProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'advanceLedgerPortProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$advanceLedgerPortHash();
+
+  @$internal
+  @override
+  $ProviderElement<AdvanceLedgerPort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AdvanceLedgerPort create(Ref ref) {
+    return advanceLedgerPort(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AdvanceLedgerPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AdvanceLedgerPort>(value),
+    );
+  }
+}
+
+String _$advanceLedgerPortHash() => r'cba52b506f4fdb2899d74c0807844054a9962de1';
+
+@ProviderFor(advanceOrchestrationAppService)
+final advanceOrchestrationAppServiceProvider =
+    AdvanceOrchestrationAppServiceProvider._();
+
+final class AdvanceOrchestrationAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AdvanceOrchestrationAppService,
+          AdvanceOrchestrationAppService,
+          AdvanceOrchestrationAppService
+        >
+    with $Provider<AdvanceOrchestrationAppService> {
+  AdvanceOrchestrationAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'advanceOrchestrationAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$advanceOrchestrationAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AdvanceOrchestrationAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AdvanceOrchestrationAppService create(Ref ref) {
+    return advanceOrchestrationAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AdvanceOrchestrationAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AdvanceOrchestrationAppService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$advanceOrchestrationAppServiceHash() =>
+    r'744f73f49cefefb71be0d9a7241dbe7426cf7291';
+
+@ProviderFor(advanceCaseQueryService)
+final advanceCaseQueryServiceProvider = AdvanceCaseQueryServiceProvider._();
+
+final class AdvanceCaseQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AdvanceCaseQueryService,
+          AdvanceCaseQueryService,
+          AdvanceCaseQueryService
+        >
+    with $Provider<AdvanceCaseQueryService> {
+  AdvanceCaseQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'advanceCaseQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$advanceCaseQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AdvanceCaseQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AdvanceCaseQueryService create(Ref ref) {
+    return advanceCaseQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AdvanceCaseQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AdvanceCaseQueryService>(value),
+    );
+  }
+}
+
+String _$advanceCaseQueryServiceHash() =>
+    r'6261f6b03d4378819e908c59e5a6879ad826eb52';
+
 @ProviderFor(ledgerPostingService)
 final ledgerPostingServiceProvider = LedgerPostingServiceProvider._();
 
@@ -2819,6 +3013,54 @@ final class RepaymentRepositoryProvider
 
 String _$repaymentRepositoryHash() =>
     r'4e0367be733a7a3427bf4ffd5cc592cc67011aab';
+
+@ProviderFor(repaymentOwnerQuery)
+final repaymentOwnerQueryProvider = RepaymentOwnerQueryProvider._();
+
+final class RepaymentOwnerQueryProvider
+    extends
+        $FunctionalProvider<
+          RepaymentOwnerQuery,
+          RepaymentOwnerQuery,
+          RepaymentOwnerQuery
+        >
+    with $Provider<RepaymentOwnerQuery> {
+  RepaymentOwnerQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'repaymentOwnerQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$repaymentOwnerQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<RepaymentOwnerQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  RepaymentOwnerQuery create(Ref ref) {
+    return repaymentOwnerQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RepaymentOwnerQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RepaymentOwnerQuery>(value),
+    );
+  }
+}
+
+String _$repaymentOwnerQueryHash() =>
+    r'9124722af7e1932a76df9d8e47c37111366078c9';
 
 @ProviderFor(creditAccountLedgerPort)
 final creditAccountLedgerPortProvider = CreditAccountLedgerPortProvider._();

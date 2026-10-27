@@ -2,7 +2,8 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
-import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
@@ -85,9 +86,9 @@ class AdvanceCollectionFormViewModel extends _$AdvanceCollectionFormViewModel {
     try {
       return await guardSubmit(_logger, 'Advance receipt submit', () async {
         await ref
-            .read(transactionPostingAppServiceProvider)
-            .createAdvanceCollection(
-              CreateAdvanceCollectionCommand(
+            .read(advanceOrchestrationAppServiceProvider)
+            .createCollection(
+              CreateAdvanceCollectionWorkflowCommand(
                 amount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -197,9 +198,9 @@ class AdvanceSettlementFormViewModel extends _$AdvanceSettlementFormViewModel {
     try {
       return await guardSubmit(_logger, 'Advance close submit', () async {
         await ref
-            .read(transactionPostingAppServiceProvider)
-            .settleAdvance(
-              CreateAdvanceSettlementCommand(
+            .read(advanceOrchestrationAppServiceProvider)
+            .createSettlement(
+              CreateAdvanceSettlementWorkflowCommand(
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -369,9 +370,9 @@ class AdvanceFormViewModel extends _$AdvanceFormViewModel {
     try {
       return await guardSubmit(_logger, 'Advance receipt submit', () async {
         await ref
-            .read(transactionPostingAppServiceProvider)
-            .createAdvanceCollection(
-              CreateAdvanceCollectionCommand(
+            .read(advanceOrchestrationAppServiceProvider)
+            .createCollection(
+              CreateAdvanceCollectionWorkflowCommand(
                 amount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -398,9 +399,9 @@ class AdvanceFormViewModel extends _$AdvanceFormViewModel {
     try {
       return await guardSubmit(_logger, 'Advance close submit', () async {
         await ref
-            .read(transactionPostingAppServiceProvider)
-            .settleAdvance(
-              CreateAdvanceSettlementCommand(
+            .read(advanceOrchestrationAppServiceProvider)
+            .createSettlement(
+              CreateAdvanceSettlementWorkflowCommand(
                 actualReceivedAmount: amount,
                 advanceTransactionId: advanceTransactionId,
                 receivableAccountId: current.receivableAccountId!,
@@ -538,12 +539,12 @@ class AccountAdvanceFormViewModel extends _$AccountAdvanceFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Account advance submit', () async {
-        final posting = ref.read(transactionPostingAppServiceProvider);
+        final orchestration = ref.read(advanceOrchestrationAppServiceProvider);
         final note = trimToNull(noteText);
         switch (current.mode) {
           case AccountAdvanceFormMode.collection:
-            await posting.createAdvanceCollection(
-              CreateAdvanceCollectionCommand.account(
+            await orchestration.createCollection(
+              CreateAdvanceCollectionWorkflowCommand.account(
                 amount: amount,
                 receivableAccountId: current.target.accountId,
                 settlementAllocations: settlements,
@@ -553,8 +554,8 @@ class AccountAdvanceFormViewModel extends _$AccountAdvanceFormViewModel {
               ),
             );
           case AccountAdvanceFormMode.settlement:
-            await posting.settleAdvance(
-              CreateAdvanceSettlementCommand.account(
+            await orchestration.createSettlement(
+              CreateAdvanceSettlementWorkflowCommand.account(
                 actualReceivedAmount: amount,
                 receivableAccountId: current.target.accountId,
                 settlementAllocations: settlements,
@@ -1052,10 +1053,10 @@ Future<_AdvanceBase?> _loadBase(Ref ref, String advanceTransactionId) async {
     transactionDetailProvider(advanceTransactionId).future,
   );
   if (detail == null) return null;
+  final advanceCase = await _advanceCaseFor(ref, detail);
   return _AdvanceBase(
     accounts: accounts,
-    accountManaged:
-        detail.ownership?.advanceManagement == AdvanceManagement.account,
+    accountManaged: advanceCase?.trackingMode == AdvanceTrackingMode.account,
     outstanding: detail.advanceSummary?.outstanding,
     receivableAccountId: advanceReceivableAccountId(detail, accountsById),
     defaultSettlementAccountId: effectiveRefundToAccountId(
@@ -1093,10 +1094,10 @@ Future<_AdvanceBase?> _loadUnifiedBase(
     transactionDetailProvider(advanceTransactionId).future,
   );
   if (detail == null) return null;
+  final advanceCase = await _advanceCaseFor(ref, detail);
   return _AdvanceBase(
     accounts: accounts,
-    accountManaged:
-        detail.ownership?.advanceManagement == AdvanceManagement.account,
+    accountManaged: advanceCase?.trackingMode == AdvanceTrackingMode.account,
     outstanding: detail.advanceSummary?.outstanding,
     receivableAccountId: advanceReceivableAccountId(detail, accountLookup.byId),
     defaultSettlementAccountId: effectiveRefundToAccountId(
@@ -1118,6 +1119,14 @@ Future<_AdvanceBase?> _loadUnifiedBase(
       accountLookup.byId,
     ),
   );
+}
+
+Future<AdvanceCase?> _advanceCaseFor(Ref ref, TransactionReadModel detail) {
+  final ownership = detail.ownership;
+  if (ownership?.ownerType != orchestrationAdvanceOwnerType) {
+    return Future.value(null);
+  }
+  return ref.read(advanceCaseQueryServiceProvider).findById(ownership!.ownerId);
 }
 
 void _invalidateAfterSubmit(Ref ref, String advanceTransactionId) {

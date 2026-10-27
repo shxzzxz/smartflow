@@ -16,6 +16,9 @@ void main() {
       final file = File('${directory.path}/smartflow.sqlite');
       final current = _open(file);
       await current.customSelect('SELECT 1').get();
+      await current.customStatement(
+        'ALTER TABLE transactions ADD COLUMN owner_role TEXT NULL',
+      );
       await current.customStatement('''
 INSERT INTO transactions (
   id, business_purpose, occurred_at, posted_at, primary_amount_minor,

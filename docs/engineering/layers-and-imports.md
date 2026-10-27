@@ -80,6 +80,7 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 | :--- | :--- | :--- |
 | `ledger`（账务核心） | Shared Kernel | 账户、交易、分录、过账规则、账务流图原语；查询投影位于 application query side |
 | `credit`（信贷） | 独立业务域 | 分期合同 / 计划 / 还款状态机；调用账务核心完成入账 |
+| `orchestration`（交易编排） | 独立业务域 | AA／报销／代付等复杂交易场景、场景规则、编排实例与可选状态；调用账务核心原语 |
 | `preset`（预设记账） | 独立业务域候选 | 周期记账、模板记账，待业务复杂度明确后落地 |
 | `analytics`（分析） | 薄业务域 / 查询域 | 趋势、洞察、预测、报告投影 |
 
@@ -195,5 +196,6 @@ lib/infrastructure/database/table/*
 - application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。
 - `shared/*` 可承载跨 feature / application 复用的项目级业务语义；不得依赖 `feature/*`，不得承载账务核心不变量。
 - `domain/ledger` 不依赖 `domain/credit` 等兄弟业务域；轻量预算能力位于 ledger 内部。
+- `domain/ledger` 不保存垫付场景、跟踪方式或状态；这些规则位于 `domain/orchestration`。
 - 兄弟业务域之间如需组合，由消费域 application 编排本域 port；port adapter 位于消费域 infrastructure，并可调用提供域 application facade。
 - 跨聚合状态同步由 application coordinator 加载聚合、调用实体行为并通过 aggregate repository 保存；禁止为局部更新方便在 port 暴露状态 patch。

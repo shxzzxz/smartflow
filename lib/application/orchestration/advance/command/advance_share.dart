@@ -1,14 +1,13 @@
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/ledger/service/advance/advance_share_calculator.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
+import 'package:smartflow/domain/orchestration/service/advance_share_calculator.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
-export 'package:smartflow/domain/ledger/service/advance/advance_share_calculator.dart'
+export 'package:smartflow/domain/orchestration/service/advance_share_calculator.dart'
     show AdvanceShareSplit;
 
 const _advanceSharePolicy = AdvanceShareCalculator();
 
-/// UI 与其它 application 用例调用垫付分担规则的稳定入口。
 AdvanceShareSplit calculateAdvanceEntrySplit({
   required AdvanceScenario scenario,
   required Money total,

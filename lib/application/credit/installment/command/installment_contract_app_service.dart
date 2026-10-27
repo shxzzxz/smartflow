@@ -123,10 +123,7 @@ class InstallmentContractAppServiceImpl
       if (borrowing != null) {
         await _ledger.updateOwnership(
           transactionId: borrowing.transactionId,
-          ownership: _installmentOwnership(
-            contractId,
-            InstallmentOwnerRole.disbursement,
-          ),
+          ownership: _installmentOwnership(contractId),
         );
       }
       return CreateContractResult(
@@ -139,7 +136,8 @@ class InstallmentContractAppServiceImpl
   @override
   Future<void> updateContractDetails(UpdateContractDetailsCommand command) =>
       _runner.run(() async {
-        final contract = await _repository.findContract(command.contractId) ??
+        final contract =
+            await _repository.findContract(command.contractId) ??
             (throw BusinessException(CreditErrorCode.contractNotFound));
         contract.reviseDetails(
           name: command.name,
@@ -147,10 +145,7 @@ class InstallmentContractAppServiceImpl
           note: command.note,
           disbursementAccountId: command.disbursementAccountId,
         );
-        await _synchronizeBorrowing(
-          contract,
-          command,
-        );
+        await _synchronizeBorrowing(contract, command);
         final schedules = await _repository.listSchedules(command.contractId);
         await _repository.saveAggregate(contract, schedules);
       });
@@ -255,15 +250,10 @@ class InstallmentContractAppServiceImpl
     }
   }
 
-  CreditLedgerOwnership _installmentOwnership(
-    String contractId,
-    InstallmentOwnerRole role,
-  ) {
+  CreditLedgerOwnership _installmentOwnership(String contractId) {
     return CreditLedgerOwnership(
       ownerType: installmentOwnerType,
       ownerId: contractId,
-      ownerRole: role.wireValue,
     );
   }
 }
-

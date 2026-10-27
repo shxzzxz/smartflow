@@ -46,6 +46,9 @@ enum TransactionRole {
 
 enum SourceKind { manual, import, auto }
 
+/// 逐笔垫付结清时，少收部分采用的账务处理。
+enum AdvanceShortfallKind { selfBorne, badDebt }
+
 enum SystemKey {
   openingBalance,
   advanceCompensationIncome,

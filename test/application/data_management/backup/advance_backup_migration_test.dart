@@ -48,19 +48,21 @@ void main() {
         'id': 'advance',
         'businessPurpose': 'advance',
         'parentTransactionId': null,
-        'ownerType': 'advance.itemized',
-        'ownerId': 'advance',
-        'ownerRole': 'reimbursement',
+        'ownerType': 'orchestration.advance',
+        'ownerId': 'orchestration:advance:itemized:advance',
       },
       {
         'id': 'receipt',
         'businessPurpose': 'advanceCollection',
         'parentTransactionId': 'advance',
-        'ownerType': 'advance.itemized',
-        'ownerId': 'advance',
-        'ownerRole': 'reimbursement',
+        'ownerType': 'orchestration.advance',
+        'ownerId': 'orchestration:advance:itemized:advance',
       },
     ]);
+    final advanceCase = tables['advance_cases']!.single;
+    expect(advanceCase['id'], 'orchestration:advance:itemized:advance');
+    expect(advanceCase['scenario'], 'reimbursement');
+    expect(advanceCase['trackingMode'], 'itemized');
     expect(tables['transaction_lines']!.map((row) => row['role']), [
       'advanceExpenseCategory',
       'advanceSelfBorne',

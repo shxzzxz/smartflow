@@ -514,8 +514,6 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           fixture.posting.repaymentCommand!.ownership!.ownerId,
           result.repaymentId,
         );
-        expect(fixture.posting.repaymentCommand!.ownership!.ownerRole, 'BILL');
-
         final repayment = await fixture.repayments.findRepayment(
           result.repaymentId,
         );
@@ -2025,7 +2023,6 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
             : ledger.TransactionOwnership(
                 ownerType: command.ownership!.ownerType,
                 ownerId: command.ownership!.ownerId,
-                ownerRole: command.ownership!.ownerRole,
               ),
       ),
     );

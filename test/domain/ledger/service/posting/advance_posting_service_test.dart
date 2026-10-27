@@ -13,7 +13,6 @@ import 'package:smartflow/domain/ledger/service/posting/account_posting_service.
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/advance_posting_service.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
@@ -191,40 +190,6 @@ void main() {
     );
   });
 
-  test('account-managed advances reject itemized collection', () async {
-    final fixture = _Fixture(management: AdvanceManagement.account);
-
-    await expectLater(
-      () => fixture.service.postCollection(
-        singleAdvanceCollectionInstruction(
-          advanceTransactionId: fixture.advance.id,
-          amount: Money.parse('20.00'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'cash',
-          occurredAt: DateTime(2026, 7, 3),
-        ),
-      ),
-      throwsA(isA<BusinessException>()),
-    );
-  });
-
-  test('account-managed advances reject itemized settlement', () async {
-    final fixture = _Fixture(management: AdvanceManagement.account);
-
-    await expectLater(
-      () => fixture.service.settle(
-        singleAdvanceSettlementInstruction(
-          advanceTransactionId: fixture.advance.id,
-          actualReceivedAmount: Money.parse('20.00'),
-          receivableAccountId: 'receivable',
-          receiveAccountId: 'cash',
-          occurredAt: DateTime(2026, 7, 3),
-        ),
-      ),
-      throwsA(isA<BusinessException>()),
-    );
-  });
-
   test(
     'close rejects a gap allocation total that differs from the shortfall',
     () async {
@@ -251,10 +216,7 @@ void main() {
 }
 
 class _Fixture {
-  _Fixture({
-    Money? refundAmount,
-    AdvanceManagement management = AdvanceManagement.itemized,
-  }) {
+  _Fixture({Money? refundAmount}) {
     advance = engine.createAdvance(
       singleAdvanceInstruction(
         amount: Money.parse('100.00'),
@@ -262,7 +224,6 @@ class _Fixture {
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: DateTime(2026, 7, 1),
-        management: management,
       ),
     );
     final refund = engine.createRefund(

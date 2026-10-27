@@ -2,13 +2,13 @@ import 'package:test/test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/transaction.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
-import 'package:smartflow/domain/ledger/service/advance/advance_share_calculator.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import 'package:smartflow/domain/orchestration/service/advance_share_calculator.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
-import '../../../../helper/sequential_id_generator.dart';
+import '../../../helper/sequential_id_generator.dart';
 
 void main() {
   const policy = AdvanceShareCalculator();
@@ -56,8 +56,10 @@ void main() {
       );
 
       final share = policy.splitForRefund(
+        scenario: AdvanceScenario.aa,
         group: group,
         refundAmount: _money(2000),
+        aaPeopleCount: 3,
         refundCategoryAllocations: [
           _allocation('food', 1000),
           _allocation('travel', 1000),
@@ -111,7 +113,6 @@ void main() {
         ],
         settlementAllocations: [_allocation('cash', 7000)],
         occurredAt: occurredAt,
-        scenario: AdvanceScenario.reimbursement,
       ),
     );
     final group = TransactionGroup(
@@ -120,6 +121,7 @@ void main() {
     );
 
     final share = policy.splitForRefund(
+      scenario: AdvanceScenario.reimbursement,
       group: group,
       refundAmount: _money(700),
       refundCategoryAllocations: [
@@ -158,9 +160,11 @@ void main() {
     );
 
     final share = policy.splitForRefund(
+      scenario: AdvanceScenario.aa,
       group: group,
       refundAmount: _money(1000),
       refundCategoryAllocations: [_allocation('food', 1000)],
+      aaPeopleCount: 3,
       excludingRefundTransactionId: refund.id,
     );
 
@@ -185,7 +189,6 @@ Transaction _aaAdvance(PostingEngine engine, DateTime occurredAt) {
       ],
       settlementAllocations: [_allocation('cash', 7000)],
       occurredAt: occurredAt,
-      scenario: AdvanceScenario.aa,
     ),
   );
 }

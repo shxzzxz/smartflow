@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -16,8 +16,8 @@ import 'package:smartflow/shared/account_profile/account_selection_purpose.dart'
 
 void main() {
   test('loads refund edit values and submits refund edit command', () async {
-    final editService = _FakeTransactionEditAppService();
-    final container = _container(editService: editService);
+    final orchestration = _FakeAdvanceOrchestrationService();
+    final container = _container(orchestration: orchestration);
     final provider = refundFormViewModelProvider('refund', editing: true);
 
     final state = await container.read(provider.future);
@@ -36,10 +36,10 @@ void main() {
         .submit(amountText: '35', noteText: '');
 
     expect(outcome, isA<SubmitSuccess>());
-    final command = editService.refundCommands.single;
+    final command = orchestration.refundCommands.single;
     expect(command.transactionId, 'refund');
     expect(command.amount, const Money(minorUnits: 3500));
-    expect(command.settlementAllocations!.single.accountId, 'bank');
+    expect(command.settlementAllocations.single.accountId, 'bank');
     expect(command.occurredAt, DateTime(2026, 7, 2, 9));
     expect(command.note, isA<PatchClear<String?>>());
   });
@@ -105,8 +105,8 @@ void main() {
   );
 
   test('submits a visible single-category default for advance close', () async {
-    final posting = _FakeTransactionPostingAppService();
-    final container = _container(posting: posting);
+    final posting = _FakeAdvanceOrchestrationService();
+    final container = _container(orchestration: posting);
     final provider = advanceSettlementFormViewModelProvider('parent');
     await container.read(provider.future);
 
@@ -122,8 +122,8 @@ void main() {
   });
 
   test('does not recreate a cleared single-category default', () async {
-    final posting = _FakeTransactionPostingAppService();
-    final container = _container(posting: posting);
+    final posting = _FakeAdvanceOrchestrationService();
+    final container = _container(orchestration: posting);
     final provider = advanceSettlementFormViewModelProvider('parent');
     await container.read(provider.future);
     container.read(provider.notifier).setGapExpenseAllocations(const []);
@@ -172,13 +172,13 @@ void main() {
   );
 
   test('maps AppException to submit failure', () async {
-    final editService = _FakeTransactionEditAppService(
+    final orchestration = _FakeAdvanceOrchestrationService(
       exception: BusinessException(
         LedgerErrorCode.transactionNotEditable,
         message: '退款当前不可编辑',
       ),
     );
-    final container = _container(editService: editService);
+    final container = _container(orchestration: orchestration);
     final provider = refundFormViewModelProvider('refund', editing: true);
     await container.read(provider.future);
 
@@ -194,10 +194,10 @@ void main() {
   });
 
   test('maps regular Exception to unknown submit failure', () async {
-    final editService = _FakeTransactionEditAppService(
+    final orchestration = _FakeAdvanceOrchestrationService(
       exception: Exception('database failed'),
     );
-    final container = _container(editService: editService);
+    final container = _container(orchestration: orchestration);
     final provider = refundFormViewModelProvider('refund', editing: true);
     await container.read(provider.future);
 
@@ -215,8 +215,7 @@ ProviderContainer _container({
   bool closed = false,
   bool includeReceipt = false,
   bool combinedPayment = false,
-  _FakeTransactionEditAppService? editService,
-  _FakeTransactionPostingAppService? posting,
+  _FakeAdvanceOrchestrationService? orchestration,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
@@ -249,11 +248,8 @@ ProviderContainer _container({
           ),
         ),
       ),
-      transactionEditAppServiceProvider.overrideWithValue(
-        editService ?? _FakeTransactionEditAppService(),
-      ),
-      transactionPostingAppServiceProvider.overrideWithValue(
-        posting ?? _FakeTransactionPostingAppService(),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(
+        orchestration ?? _FakeAdvanceOrchestrationService(),
       ),
     ],
   );
@@ -261,16 +257,28 @@ ProviderContainer _container({
   return container;
 }
 
-class _FakeTransactionPostingAppService
-    implements TransactionPostingAppService {
-  final closeCommands = <CreateAdvanceSettlementCommand>[];
+class _FakeAdvanceOrchestrationService
+    implements AdvanceOrchestrationAppService {
+  _FakeAdvanceOrchestrationService({this.exception});
+
+  final Object? exception;
+  final closeCommands = <CreateAdvanceSettlementWorkflowCommand>[];
+  final refundCommands = <EditAdvanceRefundWorkflowCommand>[];
 
   @override
-  Future<PostedTransactionResult> settleAdvance(
-    CreateAdvanceSettlementCommand command,
+  Future<String> createSettlement(
+    CreateAdvanceSettlementWorkflowCommand command,
   ) async {
+    if (exception != null) throw exception!;
     closeCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'close');
+    return 'close';
+  }
+
+  @override
+  Future<String> editRefund(EditAdvanceRefundWorkflowCommand command) async {
+    if (exception != null) throw exception!;
+    refundCommands.add(command);
+    return 'refund';
   }
 
   @override
@@ -395,63 +403,6 @@ TransactionLine _line(
 
 Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
-}
-
-class _FakeTransactionEditAppService implements TransactionEditAppService {
-  _FakeTransactionEditAppService({this.exception});
-
-  final Object? exception;
-  final refundCommands = <EditRefundCommand>[];
-
-  @override
-  Future<PostedTransactionResult> editRefund(EditRefundCommand command) async {
-    if (exception != null) throw exception!;
-    refundCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'refund');
-  }
-
-  @override
-  Future<void> deleteTransaction(DeleteTransactionCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editIncome(EditIncomeCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editAdvance(EditAdvanceCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editAdvanceSettlement(
-    EditAdvanceSettlementCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editAdvanceCollection(
-    EditAdvanceCollectionCommand command,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> replaceTransactionCategory(
-    ReplaceTransactionCategoryCommand command,
-  ) => throw UnimplementedError();
 }
 
 const _advanceLines = [

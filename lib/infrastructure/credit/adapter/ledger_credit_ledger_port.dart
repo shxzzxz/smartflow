@@ -222,7 +222,6 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     return ledger_command.TransactionOwnership(
       ownerType: ownership.ownerType,
       ownerId: ownership.ownerId,
-      ownerRole: ownership.ownerRole,
     );
   }
 

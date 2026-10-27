@@ -8,6 +8,7 @@ import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
@@ -430,6 +431,10 @@ void main() {
             amount: Money.parse('100.00'),
           ),
           occurredAt: DateTime(2026, 5, 1),
+          ownership: const TransactionOwnership(
+            ownerType: 'orchestration.advance',
+            ownerId: 'case',
+          ),
         ),
       );
 

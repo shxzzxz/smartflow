@@ -8,6 +8,7 @@ import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
+import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 
@@ -507,6 +508,10 @@ AdvanceInstruction _advanceInstruction(DateTime occurredAt) {
     categoryAllocations: [_allocation('travel', 70), _allocation('meal', 30)],
     settlementAllocations: [_allocation('card', 60), _allocation('cash', 40)],
     occurredAt: occurredAt,
+    ownership: const TransactionOwnership(
+      ownerType: 'orchestration.advance',
+      ownerId: 'case',
+    ),
   );
 }
 

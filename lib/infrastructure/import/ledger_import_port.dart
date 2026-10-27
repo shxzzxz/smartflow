@@ -7,6 +7,7 @@ import '../../application/ledger/transaction/command/transaction_command.dart';
 import '../../application/ledger/transaction/command/transaction_edit_app_service.dart';
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
 import '../../application/ledger/transaction/query/transaction_query_service.dart';
+import '../../application/orchestration/orchestration_command_api.dart';
 import '../../core/money/money.dart';
 import '../../application/credit/account/command/credit_account_app_service.dart';
 import '../../application/credit/account/command/credit_account_command.dart';
@@ -29,6 +30,7 @@ class LedgerImportPort implements ImportLedgerPort {
     required CategoryAppService categoryCommands,
     required SystemAccountResolver systemAccounts,
     CreditAccountAppService? creditAccounts,
+    AdvanceOrchestrationAppService? advances,
   }) : _posting = posting,
        _editing = editing,
        _transactions = transactions,
@@ -36,7 +38,8 @@ class LedgerImportPort implements ImportLedgerPort {
        _accountCommands = accountCommands,
        _categoryCommands = categoryCommands,
        _systemAccounts = systemAccounts,
-       _creditAccounts = creditAccounts;
+       _creditAccounts = creditAccounts,
+       _advances = advances;
 
   final TransactionPostingAppService _posting;
   final TransactionEditAppService _editing;
@@ -46,6 +49,7 @@ class LedgerImportPort implements ImportLedgerPort {
   final CategoryAppService _categoryCommands;
   final SystemAccountResolver _systemAccounts;
   final CreditAccountAppService? _creditAccounts;
+  final AdvanceOrchestrationAppService? _advances;
 
   @override
   Future<List<ImportLedgerTarget>> listTargets() async {
@@ -244,6 +248,32 @@ class LedgerImportPort implements ImportLedgerPort {
     required DateTime postedAt,
     String? note,
   }) async {
+    final parent = await _transactions.findTransactionDetail(
+      topLevelTransactionId,
+    );
+    if (parent?.ownership?.ownerType == orchestrationAdvanceOwnerType) {
+      final advances = _advances;
+      if (advances == null) {
+        throw StateError('Advance orchestration is not configured for import.');
+      }
+      final available =
+          parent!.refundSummary?.remainingCategoryAllocations ?? const [];
+      final categories = patchAllocations(current: available, total: amount);
+      return advances.createRefund(
+        CreateAdvanceRefundWorkflowCommand(
+          parentTransactionId: topLevelTransactionId,
+          amount: amount,
+          categoryAllocations: categories,
+          settlementAllocations: singleAllocation(
+            accountId: refundToAccountId,
+            amount: amount,
+          ),
+          occurredAt: occurredAt,
+          postedAt: postedAt,
+          note: note,
+        ),
+      );
+    }
     final result = await _posting.createRefund(
       CreateRefundCommand(
         amount: amount,
@@ -273,15 +303,21 @@ class LedgerImportPort implements ImportLedgerPort {
     bool isExcludedFromStats = false,
     bool isExcludedFromBudget = false,
   }) async {
-    final result = await _posting.createAdvance(
-      CreateAdvanceCommand(
+    final advances = _advances;
+    if (advances == null) {
+      throw StateError('Advance orchestration is not configured for import.');
+    }
+    return advances.createAdvance(
+      CreateAdvanceWorkflowCommand(
         amount: amount,
+        scenario: AdvanceScenario.reimbursement,
+        trackingMode: AdvanceTrackingMode.itemized,
+        aaPeopleCount: 2,
         receivableAccountId: receivableAccountId,
         categoryAllocations: singleAllocation(
           accountId: expenseCategoryId,
           amount: amount,
         ),
-        selfBorneAllocations: const [],
         settlementAllocations: singleAllocation(
           accountId: paidFromAccountId,
           amount: amount,
@@ -294,7 +330,6 @@ class LedgerImportPort implements ImportLedgerPort {
         sourceKind: SourceKind.import,
       ),
     );
-    return result.transactionId;
   }
 
   @override
@@ -307,8 +342,12 @@ class LedgerImportPort implements ImportLedgerPort {
     required DateTime postedAt,
     String? note,
   }) async {
-    final result = await _posting.createAdvanceCollection(
-      CreateAdvanceCollectionCommand(
+    final advances = _advances;
+    if (advances == null) {
+      throw StateError('Advance orchestration is not configured for import.');
+    }
+    return advances.createCollection(
+      CreateAdvanceCollectionWorkflowCommand(
         amount: amount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -321,7 +360,6 @@ class LedgerImportPort implements ImportLedgerPort {
         note: note,
       ),
     );
-    return result.transactionId;
   }
 
   @override
@@ -340,8 +378,12 @@ class LedgerImportPort implements ImportLedgerPort {
       actualReceivedAmount: actualReceivedAmount,
       categoryId: gapExpenseCategoryId,
     );
-    final result = await _posting.settleAdvance(
-      CreateAdvanceSettlementCommand(
+    final advances = _advances;
+    if (advances == null) {
+      throw StateError('Advance orchestration is not configured for import.');
+    }
+    return advances.createSettlement(
+      CreateAdvanceSettlementWorkflowCommand(
         actualReceivedAmount: actualReceivedAmount,
         advanceTransactionId: topLevelTransactionId,
         receivableAccountId: receivableAccountId,
@@ -355,7 +397,6 @@ class LedgerImportPort implements ImportLedgerPort {
         note: note,
       ),
     );
-    return result.transactionId;
   }
 
   Future<List<AccountAmountAllocation>> _importGapExpenseAllocations({

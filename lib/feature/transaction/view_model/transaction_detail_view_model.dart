@@ -2,8 +2,10 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
@@ -38,11 +40,24 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           );
 
     final accountLookup = await ref.watch(accountLookupProvider.future);
+    final ownership = detail.ownership;
+    final advanceCase = ownership?.ownerType == orchestrationAdvanceOwnerType
+        ? await ref
+              .read(advanceCaseQueryServiceProvider)
+              .findById(ownership!.ownerId)
+        : null;
+    final creditRepaymentType = ownership?.ownerType == creditRepaymentOwnerType
+        ? await ref
+              .read(repaymentOwnerQueryProvider)
+              .findType(ownership!.ownerId)
+        : null;
     return buildTransactionDetailLoadedState(
       transactionId: transactionId,
       detail: detail,
       parentDetail: parentDetail,
       accountLookup: accountLookup,
+      advanceCase: advanceCase,
+      creditRepaymentType: creditRepaymentType,
     );
   }
 
@@ -117,11 +132,22 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             currentAccountId: currentAccountId,
           );
         case AccountSelectionPurpose.advanceReceivable:
+          final ownership = loaded.detail.ownership;
+          if (ownership?.ownerType != orchestrationAdvanceOwnerType) {
+            return detailInvalidCommand('无法定位垫付编排实例');
+          }
+          final advanceCase = await ref
+              .read(advanceCaseQueryServiceProvider)
+              .findById(ownership!.ownerId);
+          if (advanceCase == null) {
+            return detailInvalidCommand('无法定位垫付编排实例');
+          }
           await ref
-              .read(transactionEditAppServiceProvider)
+              .read(advanceOrchestrationAppServiceProvider)
               .editAdvance(
-                EditAdvanceCommand(
+                EditAdvanceWorkflowCommand(
                   transactionId: loaded.detail.id,
+                  scenario: advanceCase.scenario,
                   receivableAccountId: accountId,
                 ),
               );
@@ -184,13 +210,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       }
       final receiveAccountId = input.receiveAccountId ?? receivableAccountId;
       final note = trimToNull(input.noteText);
-      final service = ref.read(transactionPostingAppServiceProvider);
+      final service = ref.read(advanceOrchestrationAppServiceProvider);
       if (input.settleAdvance) {
         final gapExpenseAllocations =
             input.gapExpenseAllocations ??
             _defaultGapExpenseAllocations(loaded.detail, input.amount);
-        await service.settleAdvance(
-          CreateAdvanceSettlementCommand(
+        await service.createSettlement(
+          CreateAdvanceSettlementWorkflowCommand(
             actualReceivedAmount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
@@ -204,8 +230,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           ),
         );
       } else {
-        await service.createAdvanceCollection(
-          CreateAdvanceCollectionCommand(
+        await service.createCollection(
+          CreateAdvanceCollectionWorkflowCommand(
             amount: input.amount,
             advanceTransactionId: loaded.detail.id,
             receivableAccountId: receivableAccountId,
@@ -225,12 +251,20 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   TransactionDetailActionDispatcher _actionDispatcherFor(
     TransactionReadModel transaction,
   ) {
+    final isAdvance =
+        transaction.ownership?.ownerType == orchestrationAdvanceOwnerType;
     return createTransactionDetailActionDispatcher(
       transaction: transaction,
       editService: ref.read(transactionEditAppServiceProvider),
       updateService: ref.read(transactionUpdateAppServiceProvider),
       installmentAppService: ref.read(installmentContractAppServiceProvider),
       repaymentAppService: ref.read(repaymentAppServiceProvider),
+      advanceAppService: isAdvance
+          ? ref.read(advanceOrchestrationAppServiceProvider)
+          : null,
+      advanceCaseQuery: isAdvance
+          ? ref.read(advanceCaseQueryServiceProvider)
+          : null,
     );
   }
 

@@ -2018,17 +2018,6 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _ownerRoleMeta = const VerificationMeta(
-    'ownerRole',
-  );
-  @override
-  late final GeneratedColumn<String> ownerRole = GeneratedColumn<String>(
-    'owner_role',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2068,7 +2057,6 @@ class $TransactionsTable extends Transactions
     sourceKind,
     ownerType,
     ownerId,
-    ownerRole,
     createdAt,
     updatedAt,
   ];
@@ -2170,12 +2158,6 @@ class $TransactionsTable extends Transactions
         ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
       );
     }
-    if (data.containsKey('owner_role')) {
-      context.handle(
-        _ownerRoleMeta,
-        ownerRole.isAcceptableOrUnknown(data['owner_role']!, _ownerRoleMeta),
-      );
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2253,10 +2235,6 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}owner_id'],
       ),
-      ownerRole: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}owner_role'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2295,7 +2273,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final SourceKind sourceKind;
   final String? ownerType;
   final String? ownerId;
-  final String? ownerRole;
   final DateTime createdAt;
   final DateTime updatedAt;
   const TransactionRow({
@@ -2312,7 +2289,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.sourceKind,
     this.ownerType,
     this.ownerId,
-    this.ownerRole,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2350,9 +2326,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || ownerId != null) {
       map['owner_id'] = Variable<String>(ownerId);
     }
-    if (!nullToAbsent || ownerRole != null) {
-      map['owner_role'] = Variable<String>(ownerRole);
-    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2381,9 +2354,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ownerId: ownerId == null && nullToAbsent
           ? const Value.absent()
           : Value(ownerId),
-      ownerRole: ownerRole == null && nullToAbsent
-          ? const Value.absent()
-          : Value(ownerRole),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2418,7 +2388,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ),
       ownerType: serializer.fromJson<String?>(json['ownerType']),
       ownerId: serializer.fromJson<String?>(json['ownerId']),
-      ownerRole: serializer.fromJson<String?>(json['ownerRole']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2444,7 +2413,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       ),
       'ownerType': serializer.toJson<String?>(ownerType),
       'ownerId': serializer.toJson<String?>(ownerId),
-      'ownerRole': serializer.toJson<String?>(ownerRole),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2464,7 +2432,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     SourceKind? sourceKind,
     Value<String?> ownerType = const Value.absent(),
     Value<String?> ownerId = const Value.absent(),
-    Value<String?> ownerRole = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => TransactionRow(
@@ -2485,7 +2452,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     sourceKind: sourceKind ?? this.sourceKind,
     ownerType: ownerType.present ? ownerType.value : this.ownerType,
     ownerId: ownerId.present ? ownerId.value : this.ownerId,
-    ownerRole: ownerRole.present ? ownerRole.value : this.ownerRole,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2520,7 +2486,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           : this.sourceKind,
       ownerType: data.ownerType.present ? data.ownerType.value : this.ownerType,
       ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
-      ownerRole: data.ownerRole.present ? data.ownerRole.value : this.ownerRole,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2542,7 +2507,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('sourceKind: $sourceKind, ')
           ..write('ownerType: $ownerType, ')
           ..write('ownerId: $ownerId, ')
-          ..write('ownerRole: $ownerRole, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2564,7 +2528,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     sourceKind,
     ownerType,
     ownerId,
-    ownerRole,
     createdAt,
     updatedAt,
   );
@@ -2585,7 +2548,6 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.sourceKind == this.sourceKind &&
           other.ownerType == this.ownerType &&
           other.ownerId == this.ownerId &&
-          other.ownerRole == this.ownerRole &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2604,7 +2566,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<SourceKind> sourceKind;
   final Value<String?> ownerType;
   final Value<String?> ownerId;
-  final Value<String?> ownerRole;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -2622,7 +2583,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.sourceKind = const Value.absent(),
     this.ownerType = const Value.absent(),
     this.ownerId = const Value.absent(),
-    this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2641,7 +2601,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     required SourceKind sourceKind,
     this.ownerType = const Value.absent(),
     this.ownerId = const Value.absent(),
-    this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2665,7 +2624,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? sourceKind,
     Expression<String>? ownerType,
     Expression<String>? ownerId,
-    Expression<String>? ownerRole,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -2688,7 +2646,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (sourceKind != null) 'source_kind': sourceKind,
       if (ownerType != null) 'owner_type': ownerType,
       if (ownerId != null) 'owner_id': ownerId,
-      if (ownerRole != null) 'owner_role': ownerRole,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2709,7 +2666,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<SourceKind>? sourceKind,
     Value<String?>? ownerType,
     Value<String?>? ownerId,
-    Value<String?>? ownerRole,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -2728,7 +2684,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       sourceKind: sourceKind ?? this.sourceKind,
       ownerType: ownerType ?? this.ownerType,
       ownerId: ownerId ?? this.ownerId,
-      ownerRole: ownerRole ?? this.ownerRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2787,9 +2742,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (ownerId.present) {
       map['owner_id'] = Variable<String>(ownerId.value);
     }
-    if (ownerRole.present) {
-      map['owner_role'] = Variable<String>(ownerRole.value);
-    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2818,7 +2770,6 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('sourceKind: $sourceKind, ')
           ..write('ownerType: $ownerType, ')
           ..write('ownerId: $ownerId, ')
-          ..write('ownerRole: $ownerRole, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -17009,6 +16960,505 @@ class ImportBatchItemsCompanion extends UpdateCompanion<ImportBatchItemRow> {
   }
 }
 
+class $AdvanceCasesTable extends AdvanceCases
+    with TableInfo<$AdvanceCasesTable, AdvanceCaseRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AdvanceCasesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AdvanceScenario, String>
+  scenario = GeneratedColumn<String>(
+    'scenario',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<AdvanceScenario>($AdvanceCasesTable.$converterscenario);
+  @override
+  late final GeneratedColumnWithTypeConverter<AdvanceTrackingMode, String>
+  trackingMode =
+      GeneratedColumn<String>(
+        'tracking_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AdvanceTrackingMode>(
+        $AdvanceCasesTable.$convertertrackingMode,
+      );
+  static const VerificationMeta _receivableAccountIdMeta =
+      const VerificationMeta('receivableAccountId');
+  @override
+  late final GeneratedColumn<String> receivableAccountId =
+      GeneratedColumn<String>(
+        'receivable_account_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _aaPeopleCountMeta = const VerificationMeta(
+    'aaPeopleCount',
+  );
+  @override
+  late final GeneratedColumn<int> aaPeopleCount = GeneratedColumn<int>(
+    'aa_people_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    scenario,
+    trackingMode,
+    receivableAccountId,
+    aaPeopleCount,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'advance_cases';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AdvanceCaseRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('receivable_account_id')) {
+      context.handle(
+        _receivableAccountIdMeta,
+        receivableAccountId.isAcceptableOrUnknown(
+          data['receivable_account_id']!,
+          _receivableAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('aa_people_count')) {
+      context.handle(
+        _aaPeopleCountMeta,
+        aaPeopleCount.isAcceptableOrUnknown(
+          data['aa_people_count']!,
+          _aaPeopleCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AdvanceCaseRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AdvanceCaseRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      scenario: $AdvanceCasesTable.$converterscenario.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}scenario'],
+        )!,
+      ),
+      trackingMode: $AdvanceCasesTable.$convertertrackingMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}tracking_mode'],
+        )!,
+      ),
+      receivableAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receivable_account_id'],
+      ),
+      aaPeopleCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}aa_people_count'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AdvanceCasesTable createAlias(String alias) {
+    return $AdvanceCasesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<AdvanceScenario, String, String>
+  $converterscenario = const EnumNameConverter<AdvanceScenario>(
+    AdvanceScenario.values,
+  );
+  static JsonTypeConverter2<AdvanceTrackingMode, String, String>
+  $convertertrackingMode = const EnumNameConverter<AdvanceTrackingMode>(
+    AdvanceTrackingMode.values,
+  );
+}
+
+class AdvanceCaseRow extends DataClass implements Insertable<AdvanceCaseRow> {
+  final String id;
+  final AdvanceScenario scenario;
+  final AdvanceTrackingMode trackingMode;
+  final String? receivableAccountId;
+  final int? aaPeopleCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AdvanceCaseRow({
+    required this.id,
+    required this.scenario,
+    required this.trackingMode,
+    this.receivableAccountId,
+    this.aaPeopleCount,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['scenario'] = Variable<String>(
+        $AdvanceCasesTable.$converterscenario.toSql(scenario),
+      );
+    }
+    {
+      map['tracking_mode'] = Variable<String>(
+        $AdvanceCasesTable.$convertertrackingMode.toSql(trackingMode),
+      );
+    }
+    if (!nullToAbsent || receivableAccountId != null) {
+      map['receivable_account_id'] = Variable<String>(receivableAccountId);
+    }
+    if (!nullToAbsent || aaPeopleCount != null) {
+      map['aa_people_count'] = Variable<int>(aaPeopleCount);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AdvanceCasesCompanion toCompanion(bool nullToAbsent) {
+    return AdvanceCasesCompanion(
+      id: Value(id),
+      scenario: Value(scenario),
+      trackingMode: Value(trackingMode),
+      receivableAccountId: receivableAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivableAccountId),
+      aaPeopleCount: aaPeopleCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(aaPeopleCount),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AdvanceCaseRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AdvanceCaseRow(
+      id: serializer.fromJson<String>(json['id']),
+      scenario: $AdvanceCasesTable.$converterscenario.fromJson(
+        serializer.fromJson<String>(json['scenario']),
+      ),
+      trackingMode: $AdvanceCasesTable.$convertertrackingMode.fromJson(
+        serializer.fromJson<String>(json['trackingMode']),
+      ),
+      receivableAccountId: serializer.fromJson<String?>(
+        json['receivableAccountId'],
+      ),
+      aaPeopleCount: serializer.fromJson<int?>(json['aaPeopleCount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'scenario': serializer.toJson<String>(
+        $AdvanceCasesTable.$converterscenario.toJson(scenario),
+      ),
+      'trackingMode': serializer.toJson<String>(
+        $AdvanceCasesTable.$convertertrackingMode.toJson(trackingMode),
+      ),
+      'receivableAccountId': serializer.toJson<String?>(receivableAccountId),
+      'aaPeopleCount': serializer.toJson<int?>(aaPeopleCount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AdvanceCaseRow copyWith({
+    String? id,
+    AdvanceScenario? scenario,
+    AdvanceTrackingMode? trackingMode,
+    Value<String?> receivableAccountId = const Value.absent(),
+    Value<int?> aaPeopleCount = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AdvanceCaseRow(
+    id: id ?? this.id,
+    scenario: scenario ?? this.scenario,
+    trackingMode: trackingMode ?? this.trackingMode,
+    receivableAccountId: receivableAccountId.present
+        ? receivableAccountId.value
+        : this.receivableAccountId,
+    aaPeopleCount: aaPeopleCount.present
+        ? aaPeopleCount.value
+        : this.aaPeopleCount,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AdvanceCaseRow copyWithCompanion(AdvanceCasesCompanion data) {
+    return AdvanceCaseRow(
+      id: data.id.present ? data.id.value : this.id,
+      scenario: data.scenario.present ? data.scenario.value : this.scenario,
+      trackingMode: data.trackingMode.present
+          ? data.trackingMode.value
+          : this.trackingMode,
+      receivableAccountId: data.receivableAccountId.present
+          ? data.receivableAccountId.value
+          : this.receivableAccountId,
+      aaPeopleCount: data.aaPeopleCount.present
+          ? data.aaPeopleCount.value
+          : this.aaPeopleCount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdvanceCaseRow(')
+          ..write('id: $id, ')
+          ..write('scenario: $scenario, ')
+          ..write('trackingMode: $trackingMode, ')
+          ..write('receivableAccountId: $receivableAccountId, ')
+          ..write('aaPeopleCount: $aaPeopleCount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    scenario,
+    trackingMode,
+    receivableAccountId,
+    aaPeopleCount,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AdvanceCaseRow &&
+          other.id == this.id &&
+          other.scenario == this.scenario &&
+          other.trackingMode == this.trackingMode &&
+          other.receivableAccountId == this.receivableAccountId &&
+          other.aaPeopleCount == this.aaPeopleCount &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AdvanceCasesCompanion extends UpdateCompanion<AdvanceCaseRow> {
+  final Value<String> id;
+  final Value<AdvanceScenario> scenario;
+  final Value<AdvanceTrackingMode> trackingMode;
+  final Value<String?> receivableAccountId;
+  final Value<int?> aaPeopleCount;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AdvanceCasesCompanion({
+    this.id = const Value.absent(),
+    this.scenario = const Value.absent(),
+    this.trackingMode = const Value.absent(),
+    this.receivableAccountId = const Value.absent(),
+    this.aaPeopleCount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AdvanceCasesCompanion.insert({
+    required String id,
+    required AdvanceScenario scenario,
+    required AdvanceTrackingMode trackingMode,
+    this.receivableAccountId = const Value.absent(),
+    this.aaPeopleCount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       scenario = Value(scenario),
+       trackingMode = Value(trackingMode);
+  static Insertable<AdvanceCaseRow> custom({
+    Expression<String>? id,
+    Expression<String>? scenario,
+    Expression<String>? trackingMode,
+    Expression<String>? receivableAccountId,
+    Expression<int>? aaPeopleCount,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (scenario != null) 'scenario': scenario,
+      if (trackingMode != null) 'tracking_mode': trackingMode,
+      if (receivableAccountId != null)
+        'receivable_account_id': receivableAccountId,
+      if (aaPeopleCount != null) 'aa_people_count': aaPeopleCount,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AdvanceCasesCompanion copyWith({
+    Value<String>? id,
+    Value<AdvanceScenario>? scenario,
+    Value<AdvanceTrackingMode>? trackingMode,
+    Value<String?>? receivableAccountId,
+    Value<int?>? aaPeopleCount,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AdvanceCasesCompanion(
+      id: id ?? this.id,
+      scenario: scenario ?? this.scenario,
+      trackingMode: trackingMode ?? this.trackingMode,
+      receivableAccountId: receivableAccountId ?? this.receivableAccountId,
+      aaPeopleCount: aaPeopleCount ?? this.aaPeopleCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (scenario.present) {
+      map['scenario'] = Variable<String>(
+        $AdvanceCasesTable.$converterscenario.toSql(scenario.value),
+      );
+    }
+    if (trackingMode.present) {
+      map['tracking_mode'] = Variable<String>(
+        $AdvanceCasesTable.$convertertrackingMode.toSql(trackingMode.value),
+      );
+    }
+    if (receivableAccountId.present) {
+      map['receivable_account_id'] = Variable<String>(
+        receivableAccountId.value,
+      );
+    }
+    if (aaPeopleCount.present) {
+      map['aa_people_count'] = Variable<int>(aaPeopleCount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AdvanceCasesCompanion(')
+          ..write('id: $id, ')
+          ..write('scenario: $scenario, ')
+          ..write('trackingMode: $trackingMode, ')
+          ..write('receivableAccountId: $receivableAccountId, ')
+          ..write('aaPeopleCount: $aaPeopleCount, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -17057,6 +17507,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ImportBatchItemsTable importBatchItems = $ImportBatchItemsTable(
     this,
   );
+  late final $AdvanceCasesTable advanceCases = $AdvanceCasesTable(this);
   late final Index installmentRepricingRecordsPendingIdx = Index(
     'installment_repricing_records_pending_idx',
     'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
@@ -17098,6 +17549,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     importEntityMappings,
     importBatches,
     importBatchItems,
+    advanceCases,
     installmentRepricingRecordsPendingIdx,
     installmentRepricingConfigsActiveIdx,
   ];
@@ -18022,7 +18474,6 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required SourceKind sourceKind,
       Value<String?> ownerType,
       Value<String?> ownerId,
-      Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -18042,7 +18493,6 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<SourceKind> sourceKind,
       Value<String?> ownerType,
       Value<String?> ownerId,
-      Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -18121,11 +18571,6 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get ownerId => $composableBuilder(
     column: $table.ownerId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get ownerRole => $composableBuilder(
-    column: $table.ownerRole,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18214,11 +18659,6 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get ownerRole => $composableBuilder(
-    column: $table.ownerRole,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -18296,9 +18736,6 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<String> get ownerId =>
       $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
-  GeneratedColumn<String> get ownerRole =>
-      $composableBuilder(column: $table.ownerRole, builder: (column) => column);
-
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -18350,7 +18787,6 @@ class $$TransactionsTableTableManager
                 Value<SourceKind> sourceKind = const Value.absent(),
                 Value<String?> ownerType = const Value.absent(),
                 Value<String?> ownerId = const Value.absent(),
-                Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -18368,7 +18804,6 @@ class $$TransactionsTableTableManager
                 sourceKind: sourceKind,
                 ownerType: ownerType,
                 ownerId: ownerId,
-                ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -18388,7 +18823,6 @@ class $$TransactionsTableTableManager
                 required SourceKind sourceKind,
                 Value<String?> ownerType = const Value.absent(),
                 Value<String?> ownerId = const Value.absent(),
-                Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -18406,7 +18840,6 @@ class $$TransactionsTableTableManager
                 sourceKind: sourceKind,
                 ownerType: ownerType,
                 ownerId: ownerId,
-                ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -25513,6 +25946,257 @@ typedef $$ImportBatchItemsTableProcessedTableManager =
       ImportBatchItemRow,
       PrefetchHooks Function()
     >;
+typedef $$AdvanceCasesTableCreateCompanionBuilder =
+    AdvanceCasesCompanion Function({
+      required String id,
+      required AdvanceScenario scenario,
+      required AdvanceTrackingMode trackingMode,
+      Value<String?> receivableAccountId,
+      Value<int?> aaPeopleCount,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AdvanceCasesTableUpdateCompanionBuilder =
+    AdvanceCasesCompanion Function({
+      Value<String> id,
+      Value<AdvanceScenario> scenario,
+      Value<AdvanceTrackingMode> trackingMode,
+      Value<String?> receivableAccountId,
+      Value<int?> aaPeopleCount,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AdvanceCasesTableFilterComposer
+    extends Composer<_$AppDatabase, $AdvanceCasesTable> {
+  $$AdvanceCasesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AdvanceScenario, AdvanceScenario, String>
+  get scenario => $composableBuilder(
+    column: $table.scenario,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    AdvanceTrackingMode,
+    AdvanceTrackingMode,
+    String
+  >
+  get trackingMode => $composableBuilder(
+    column: $table.trackingMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get receivableAccountId => $composableBuilder(
+    column: $table.receivableAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get aaPeopleCount => $composableBuilder(
+    column: $table.aaPeopleCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AdvanceCasesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AdvanceCasesTable> {
+  $$AdvanceCasesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scenario => $composableBuilder(
+    column: $table.scenario,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get trackingMode => $composableBuilder(
+    column: $table.trackingMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receivableAccountId => $composableBuilder(
+    column: $table.receivableAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get aaPeopleCount => $composableBuilder(
+    column: $table.aaPeopleCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AdvanceCasesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AdvanceCasesTable> {
+  $$AdvanceCasesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AdvanceScenario, String> get scenario =>
+      $composableBuilder(column: $table.scenario, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AdvanceTrackingMode, String>
+  get trackingMode => $composableBuilder(
+    column: $table.trackingMode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receivableAccountId => $composableBuilder(
+    column: $table.receivableAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get aaPeopleCount => $composableBuilder(
+    column: $table.aaPeopleCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AdvanceCasesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AdvanceCasesTable,
+          AdvanceCaseRow,
+          $$AdvanceCasesTableFilterComposer,
+          $$AdvanceCasesTableOrderingComposer,
+          $$AdvanceCasesTableAnnotationComposer,
+          $$AdvanceCasesTableCreateCompanionBuilder,
+          $$AdvanceCasesTableUpdateCompanionBuilder,
+          (
+            AdvanceCaseRow,
+            BaseReferences<_$AppDatabase, $AdvanceCasesTable, AdvanceCaseRow>,
+          ),
+          AdvanceCaseRow,
+          PrefetchHooks Function()
+        > {
+  $$AdvanceCasesTableTableManager(_$AppDatabase db, $AdvanceCasesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AdvanceCasesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AdvanceCasesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AdvanceCasesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<AdvanceScenario> scenario = const Value.absent(),
+                Value<AdvanceTrackingMode> trackingMode = const Value.absent(),
+                Value<String?> receivableAccountId = const Value.absent(),
+                Value<int?> aaPeopleCount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AdvanceCasesCompanion(
+                id: id,
+                scenario: scenario,
+                trackingMode: trackingMode,
+                receivableAccountId: receivableAccountId,
+                aaPeopleCount: aaPeopleCount,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required AdvanceScenario scenario,
+                required AdvanceTrackingMode trackingMode,
+                Value<String?> receivableAccountId = const Value.absent(),
+                Value<int?> aaPeopleCount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AdvanceCasesCompanion.insert(
+                id: id,
+                scenario: scenario,
+                trackingMode: trackingMode,
+                receivableAccountId: receivableAccountId,
+                aaPeopleCount: aaPeopleCount,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AdvanceCasesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AdvanceCasesTable,
+      AdvanceCaseRow,
+      $$AdvanceCasesTableFilterComposer,
+      $$AdvanceCasesTableOrderingComposer,
+      $$AdvanceCasesTableAnnotationComposer,
+      $$AdvanceCasesTableCreateCompanionBuilder,
+      $$AdvanceCasesTableUpdateCompanionBuilder,
+      (
+        AdvanceCaseRow,
+        BaseReferences<_$AppDatabase, $AdvanceCasesTable, AdvanceCaseRow>,
+      ),
+      AdvanceCaseRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -25598,4 +26282,6 @@ class $AppDatabaseManager {
       $$ImportBatchesTableTableManager(_db, _db.importBatches);
   $$ImportBatchItemsTableTableManager get importBatchItems =>
       $$ImportBatchItemsTableTableManager(_db, _db.importBatchItems);
+  $$AdvanceCasesTableTableManager get advanceCases =>
+      $$AdvanceCasesTableTableManager(_db, _db.advanceCases);
 }

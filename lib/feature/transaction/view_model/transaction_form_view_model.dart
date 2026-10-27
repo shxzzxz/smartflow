@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
@@ -20,6 +21,11 @@ import '../presentation/transaction_form_presentation.dart';
 part 'transaction_form_view_model.g.dart';
 
 final _logger = Logger('feature.transaction.form');
+
+@riverpod
+Future<AdvanceCase?> advanceCaseForForm(Ref ref, String advanceCaseId) {
+  return ref.watch(advanceCaseQueryServiceProvider).findById(advanceCaseId);
+}
 
 enum TransactionEntryMode { normal, allocated }
 
@@ -155,11 +161,24 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (!supportsTransactionFormEdit(detail.businessPurpose)) {
       return const AsyncValue.data(null);
     }
+    final ownership = detail.ownership;
+    final advanceCaseAsync =
+        ownership?.ownerType == orchestrationAdvanceOwnerType
+        ? ref.watch(advanceCaseForFormProvider(ownership!.ownerId))
+        : null;
+    if (advanceCaseAsync case AsyncError(:final error, :final stackTrace)) {
+      return AsyncValue.error(error, stackTrace);
+    }
+    if (advanceCaseAsync != null && !advanceCaseAsync.hasValue) {
+      return const AsyncValue.loading();
+    }
+    final advanceCase = advanceCaseAsync?.requireValue;
     final snapshot = transactionFormEditSnapshot(
       detail: detail,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       accountsById: accountsByIdAsync!.requireValue,
+      advanceCase: advanceCase,
     );
     return AsyncValue.data(
       _initializedState ??= TransactionFormState.fromEditSnapshot(
@@ -554,32 +573,27 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           final scenario =
               formState.expenseScene.advanceScenario ??
               formState.advanceScenario;
-          final advanceShare = calculateAdvanceEntrySplit(
-            scenario: scenario,
-            total: amount,
-            aaPeopleCount: formState.aaPeopleCount,
-            categoryAllocations: allocations.categories,
-          );
-          await postingService.createAdvance(
-            CreateAdvanceCommand(
-              amount: amount,
-              advanceAmount: advanceShare.advanceAmount,
-              receivableAccountId: advanceReceivableAccountId,
-              management:
-                  formState.expenseScene.advanceManagement ??
-                  AdvanceManagement.itemized,
-              scenario: scenario,
-              categoryAllocations: allocations.categories,
-              selfBorneAllocations: advanceShare.selfBorneAllocations,
-              settlementAllocations: allocations.settlements,
-              occurredAt: formState.occurredAt,
-              counterpartyId: formState.counterpartyId,
-              note: note,
-              isExcludedFromStats: formState.excludeStats,
-              isExcludedFromBudget: formState.excludeBudget,
-              tagIds: formState.selectedTagIds,
-            ),
-          );
+          await ref
+              .read(advanceOrchestrationAppServiceProvider)
+              .createAdvance(
+                CreateAdvanceWorkflowCommand(
+                  amount: amount,
+                  scenario: scenario,
+                  trackingMode:
+                      formState.expenseScene.advanceTrackingMode ??
+                      AdvanceTrackingMode.itemized,
+                  aaPeopleCount: formState.aaPeopleCount,
+                  receivableAccountId: advanceReceivableAccountId,
+                  categoryAllocations: allocations.categories,
+                  settlementAllocations: allocations.settlements,
+                  occurredAt: formState.occurredAt,
+                  counterpartyId: formState.counterpartyId,
+                  note: note,
+                  isExcludedFromStats: formState.excludeStats,
+                  isExcludedFromBudget: formState.excludeBudget,
+                  tagIds: formState.selectedTagIds,
+                ),
+              );
         }
       case TransactionFormMode.income:
         final allocations = _incomeAllocations(formState, amount);
@@ -707,30 +721,25 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           final scenario =
               formState.expenseScene.advanceScenario ??
               formState.advanceScenario;
-          final advanceShare = calculateAdvanceEntrySplit(
-            scenario: scenario,
-            total: amount,
-            aaPeopleCount: formState.aaPeopleCount,
-            categoryAllocations: allocations.categories,
-          );
-          await editService.editAdvance(
-            EditAdvanceCommand(
-              transactionId: transactionId,
-              amount: amount,
-              advanceAmount: advanceShare.advanceAmount,
-              receivableAccountId: advanceReceivableAccountId,
-              scenario: scenario,
-              categoryAllocations: allocations.categories,
-              selfBorneAllocations: advanceShare.selfBorneAllocations,
-              settlementAllocations: allocations.settlements,
-              occurredAt: formState.occurredAt,
-              counterpartyId: counterpartyId,
-              note: note,
-              isExcludedFromStats: formState.excludeStats,
-              isExcludedFromBudget: formState.excludeBudget,
-              tagIds: formState.selectedTagIds,
-            ),
-          );
+          await ref
+              .read(advanceOrchestrationAppServiceProvider)
+              .editAdvance(
+                EditAdvanceWorkflowCommand(
+                  transactionId: transactionId,
+                  scenario: scenario,
+                  aaPeopleCount: formState.aaPeopleCount,
+                  amount: amount,
+                  receivableAccountId: advanceReceivableAccountId,
+                  categoryAllocations: allocations.categories,
+                  settlementAllocations: allocations.settlements,
+                  occurredAt: formState.occurredAt,
+                  counterpartyId: counterpartyId,
+                  note: note,
+                  isExcludedFromStats: formState.excludeStats,
+                  isExcludedFromBudget: formState.excludeBudget,
+                  tagIds: formState.selectedTagIds,
+                ),
+              );
         }
       case TransactionFormMode.income:
         final allocations = _incomeAllocations(formState, amount);
@@ -1119,7 +1128,7 @@ class TransactionFormState {
           ? TransactionExpenseScene.ordinary
           : transactionExpenseSceneForAdvanceScenario(
               snapshot.advanceScenario,
-              management: snapshot.advanceManagement,
+              trackingMode: snapshot.advanceTrackingMode,
             ),
       aaPeopleCount: _aaPeopleCountFromSnapshot(snapshot),
       ordinaryReceivableAccountId: snapshot.ordinaryReceivableAccountId,
@@ -1296,6 +1305,9 @@ class TransactionFormInitialValues {
 
 int _aaPeopleCountFromSnapshot(TransactionFormEditSnapshot snapshot) {
   if (snapshot.advanceScenario != AdvanceScenario.aa) return 2;
+  if (snapshot.advanceAaPeopleCount != null) {
+    return snapshot.advanceAaPeopleCount!;
+  }
   final total = Money.tryParse(snapshot.amountText);
   final advance = Money.tryParse(snapshot.advanceAmountText);
   if (total == null || advance == null) return 2;

@@ -48,6 +48,12 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         return;
       }
       _logger.info('Upgrading database schema: v$from -> v$to.');
+      if (from < 49 &&
+          !await _hasColumn(database, 'transactions', 'owner_role')) {
+        await database.customStatement(
+          'ALTER TABLE transactions ADD COLUMN owner_role TEXT NULL',
+        );
+      }
       // 历史迁移会按当前表定义重建记录表，先补齐新列再执行这些步骤。
       if (from < 46 &&
           await _hasColumn(database, 'installment_repricing_records', 'id') &&
@@ -522,8 +528,185 @@ WHERE NOT EXISTS (
       if (from < 48) {
         await _migrateAdvancesToGeneralizedModel(database);
       }
+      if (from < 49) {
+        await _migrateOrchestrationOwnership(database, migrator);
+      }
     }),
   );
+}
+
+Future<void> _migrateOrchestrationOwnership(
+  AppDatabase database,
+  Migrator migrator,
+) async {
+  final hasAdvanceCases = (await database.customSelect('''
+SELECT name
+FROM sqlite_master
+WHERE type = 'table'
+  AND name = 'advance_cases'
+''').get()).isNotEmpty;
+  if (!hasAdvanceCases) {
+    await migrator.createTable(database.advanceCases);
+  }
+
+  final itemizedOwners = await database.customSelect('''
+SELECT DISTINCT owner_id, owner_role
+FROM transactions
+WHERE owner_type = 'advance.itemized'
+  AND owner_id IS NOT NULL
+''').get();
+  for (final owner in itemizedOwners) {
+    final ownerId = owner.read<String>('owner_id');
+    final scenario = _requiredAdvanceScenario(
+      owner.readNullable<String>('owner_role'),
+    );
+    final parent = await database
+        .customSelect(
+          '''
+SELECT primary_amount_minor,
+       (
+         SELECT SUM(line.amount_minor)
+         FROM transaction_lines AS line
+         WHERE line.transaction_id = transactions.id
+           AND line.role = 'receivable'
+       ) AS receivable_minor
+FROM transactions
+WHERE id = ?
+  AND business_purpose = 'advance'
+''',
+          variables: [Variable.withString(ownerId)],
+        )
+        .getSingleOrNull();
+    if (parent == null) {
+      throw StateError('Advance owner $ownerId has no parent transaction.');
+    }
+    final aaPeopleCount = scenario == 'aa'
+        ? _inferAaPeopleCount(
+            totalMinor: parent.read<int>('primary_amount_minor'),
+            advanceMinor:
+                parent.readNullable<int>('receivable_minor') ??
+                parent.read<int>('primary_amount_minor'),
+          )
+        : null;
+    final caseId = 'orchestration:advance:itemized:$ownerId';
+    if (aaPeopleCount == null) {
+      await database.customStatement(
+        '''
+INSERT INTO advance_cases (
+  id, scenario, tracking_mode, receivable_account_id, aa_people_count,
+  created_at, updated_at
+)
+VALUES (?, ?, 'itemized', NULL, NULL,
+        strftime('%s', CURRENT_TIMESTAMP), strftime('%s', CURRENT_TIMESTAMP))
+''',
+        [caseId, scenario],
+      );
+    } else {
+      await database.customStatement(
+        '''
+INSERT INTO advance_cases (
+  id, scenario, tracking_mode, receivable_account_id, aa_people_count,
+  created_at, updated_at
+)
+VALUES (?, ?, 'itemized', NULL, ?,
+        strftime('%s', CURRENT_TIMESTAMP), strftime('%s', CURRENT_TIMESTAMP))
+''',
+        [caseId, scenario, aaPeopleCount],
+      );
+    }
+    await database.customStatement(
+      '''
+UPDATE transactions
+SET owner_type = 'orchestration.advance',
+    owner_id = ?,
+    owner_role = NULL
+WHERE owner_type = 'advance.itemized'
+  AND owner_id = ?
+''',
+      [caseId, ownerId],
+    );
+  }
+
+  final accountOwners = await database.customSelect('''
+SELECT DISTINCT owner_id, owner_role
+FROM transactions
+WHERE owner_type = 'advance.account'
+  AND owner_id IS NOT NULL
+''').get();
+  for (final owner in accountOwners) {
+    final accountId = owner.read<String>('owner_id');
+    final scenario = _requiredAdvanceScenario(
+      owner.readNullable<String>('owner_role'),
+    );
+    final caseId = 'orchestration:advance:account:$scenario:$accountId';
+    await database.customStatement(
+      '''
+INSERT INTO advance_cases (
+  id, scenario, tracking_mode, receivable_account_id, aa_people_count,
+  created_at, updated_at
+)
+VALUES (?, ?, 'account', ?, NULL,
+        strftime('%s', CURRENT_TIMESTAMP), strftime('%s', CURRENT_TIMESTAMP))
+''',
+      [caseId, scenario, accountId],
+    );
+    await database.customStatement(
+      '''
+UPDATE transactions
+SET owner_type = 'orchestration.advance',
+    owner_id = ?,
+    owner_role = NULL
+WHERE owner_type = 'advance.account'
+  AND owner_id = ?
+  AND owner_role = ?
+''',
+      [caseId, accountId, scenario],
+    );
+  }
+
+  await database.customStatement('''
+UPDATE transactions
+SET owner_type = CASE owner_type
+  WHEN 'installment' THEN 'credit.installment_contract'
+  WHEN 'credit_repayment' THEN 'credit.repayment'
+  ELSE owner_type
+END,
+    owner_role = NULL
+WHERE owner_type IN ('installment', 'credit_repayment')
+''');
+
+  final invalidOwnership = await database.customSelect('''
+SELECT COUNT(*) AS count
+FROM transactions
+WHERE (owner_type IS NULL AND owner_id IS NOT NULL)
+   OR (owner_type IS NOT NULL AND owner_id IS NULL)
+   OR (owner_type IS NOT NULL AND TRIM(owner_type) = '')
+   OR (owner_id IS NOT NULL AND TRIM(owner_id) = '')
+''').getSingle();
+  if (invalidOwnership.read<int>('count') > 0) {
+    throw StateError('Transaction ownership contains an incomplete reference.');
+  }
+
+  await database.customStatement('DROP INDEX IF EXISTS transactions_owner_idx');
+  await migrator.alterTable(TableMigration(database.transactions));
+  await _createTransactionRowIndexes(database);
+}
+
+String _requiredAdvanceScenario(String? value) {
+  if (value == 'aa' || value == 'onBehalf' || value == 'reimbursement') {
+    return value!;
+  }
+  throw StateError('Unknown legacy advance scenario: $value');
+}
+
+int _inferAaPeopleCount({required int totalMinor, required int advanceMinor}) {
+  for (var people = 2; people <= 99; people++) {
+    final perPersonMinor = (totalMinor + people - 1) ~/ people;
+    if (perPersonMinor * (people - 1) == advanceMinor) return people;
+  }
+  final selfBorneMinor = totalMinor - advanceMinor;
+  if (selfBorneMinor <= 0 || totalMinor <= 0) return 2;
+  return (totalMinor / selfBorneMinor).round().clamp(2, 99);
 }
 
 Future<void> _migrateAdvancesToGeneralizedModel(AppDatabase database) async {
@@ -646,7 +829,6 @@ SET counterparty_id = (
 WHERE counterparty_name IS NOT NULL
   AND TRIM(counterparty_name) <> ''
 ''');
-    await migrator.alterTable(TableMigration(database.transactions));
   }
   await _createCounterpartyIndexes(database);
   await _createTransactionRowIndexes(database);
@@ -1234,7 +1416,7 @@ Future<void> _createTransactionRowIndexes(AppDatabase database) async {
   );
   await database.customStatement(
     'CREATE INDEX IF NOT EXISTS transactions_owner_idx '
-    'ON transactions (owner_type, owner_id, owner_role)',
+    'ON transactions (owner_type, owner_id)',
   );
 }
 

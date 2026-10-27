@@ -12,6 +12,7 @@ import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
+import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
@@ -19,6 +20,8 @@ import 'package:smartflow/feature/transaction/page/advance_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
+import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   for (final scenario in [
@@ -231,6 +234,9 @@ void main() {
           ).overrideWith((ref) => Stream.value(_combinedAdvanceDetail())),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+          advanceCaseRepositoryProvider.overrideWithValue(
+            FakeAdvanceCaseRepository(const [_advanceCase]),
           ),
         ],
         child: MaterialApp(
@@ -660,6 +666,9 @@ void main() {
               _ => const <Account>[],
             }),
           ),
+          advanceCaseRepositoryProvider.overrideWithValue(
+            FakeAdvanceCaseRepository(const [_advanceCase]),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.light(),
@@ -669,7 +678,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('垫付'));
+    await tester.tap(find.text('报销'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
@@ -975,6 +984,11 @@ TransactionReadModel _advanceDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
+      ownership: advanceOwnership(
+        management: AdvanceTrackingMode.itemized,
+        ownerId: 'tx-advance',
+        scenario: AdvanceScenario.reimbursement,
+      ),
       lines: _advanceLines,
     ),
     createdAt: DateTime(2026, 1, 1, 8, 1),
@@ -999,6 +1013,13 @@ TransactionReadModel _advanceDetail() {
     ),
   );
 }
+
+const _advanceCase = AdvanceCase(
+  id: 'tx-advance',
+  scenario: AdvanceScenario.reimbursement,
+  trackingMode: AdvanceTrackingMode.itemized,
+  receivableAccountId: 'receivable',
+);
 
 TransactionReadModel _combinedAdvanceDetail() {
   final detail = _advanceDetail();

@@ -5,10 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/orchestration/port/advance_case_repository.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
@@ -16,6 +18,8 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
+import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   group('TransactionFormViewModel', () {
@@ -479,8 +483,10 @@ void main() {
 
     test('creates advance command when account is selected', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
         advanceReceivableAccounts: [_account('company')],
       );
@@ -494,38 +500,40 @@ void main() {
       final outcome = await viewModel.submit(amountText: '20', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = posting.advanceCommands.single;
+      final command = orchestration.createCommands.single;
       expect(command.amount, const Money(minorUnits: 2000));
       expect(command.settlementAllocations.single.accountId, 'cash');
       expect(command.receivableAccountId, 'company');
       expect(command.categoryAllocations.single.accountId, 'taxi');
-      expect(command.selfBorneAllocations, isEmpty);
-      expect(command.advanceAmount, const Money(minorUnits: 2000));
+      expect(command.scenario, AdvanceScenario.reimbursement);
+      expect(command.trackingMode, AdvanceTrackingMode.itemized);
     });
 
     for (final scenario in [
       (
         TransactionExpenseScene.reimbursement,
         AdvanceScenario.reimbursement,
-        AdvanceManagement.itemized,
+        AdvanceTrackingMode.itemized,
       ),
       (
         TransactionExpenseScene.reimbursementAccount,
         AdvanceScenario.reimbursement,
-        AdvanceManagement.account,
+        AdvanceTrackingMode.account,
       ),
       (
         TransactionExpenseScene.onBehalf,
         AdvanceScenario.onBehalf,
-        AdvanceManagement.itemized,
+        AdvanceTrackingMode.itemized,
       ),
     ]) {
       test(
         'creates a full advance for ${scenario.$1.name} without amount input',
         () async {
           final posting = _FakeTransactionPostingAppService();
+          final orchestration = _FakeAdvanceOrchestrationAppService();
           final container = _container(
             postingService: posting,
+            advanceOrchestrationService: orchestration,
             settlementAccounts: [_account('cash')],
             advanceReceivableAccounts: [_account('company')],
           );
@@ -543,19 +551,20 @@ void main() {
           );
 
           expect(outcome, isA<SubmitSuccess>());
-          final command = posting.advanceCommands.single;
-          expect(command.advanceAmount, const Money(minorUnits: 2000));
-          expect(command.selfBorneAllocations, isEmpty);
+          final command = orchestration.createCommands.single;
+          expect(command.amount, const Money(minorUnits: 2000));
           expect(command.scenario, scenario.$2);
-          expect(command.management, scenario.$3);
+          expect(command.trackingMode, scenario.$3);
         },
       );
     }
 
     test('computes AA self-borne shares across multiple categories', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
         advanceReceivableAccounts: [_account('company')],
       );
@@ -586,23 +595,21 @@ void main() {
       final outcome = await viewModel.submit(amountText: '300', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = posting.advanceCommands.single;
+      final command = orchestration.createCommands.single;
       expect(
         command.categoryAllocations.map((item) => item.amount.minorUnits),
         [12000, 18000],
       );
-      expect(
-        command.selfBorneAllocations.map((item) => item.amount.minorUnits),
-        [4000, 6000],
-      );
-      expect(command.advanceAmount, const Money(minorUnits: 20000));
       expect(command.scenario, AdvanceScenario.aa);
+      expect(command.aaPeopleCount, 3);
     });
 
     test('creates an account-managed AA advance', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
         advanceReceivableAccounts: [_account('company')],
       );
@@ -618,22 +625,20 @@ void main() {
       final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = posting.advanceCommands.single;
-      expect(command.management, AdvanceManagement.account);
+      final command = orchestration.createCommands.single;
+      expect(command.trackingMode, AdvanceTrackingMode.account);
       expect(command.scenario, AdvanceScenario.aa);
-      expect(command.advanceAmount, const Money(minorUnits: 2000));
-      expect(
-        command.selfBorneAllocations.single.amount,
-        const Money(minorUnits: 1000),
-      );
+      expect(command.aaPeopleCount, 3);
     });
 
     test(
       'rounds AA per-person up and assigns category remainder to the last row',
       () async {
         final posting = _FakeTransactionPostingAppService();
+        final orchestration = _FakeAdvanceOrchestrationAppService();
         final container = _container(
           postingService: posting,
+          advanceOrchestrationService: orchestration,
           settlementAccounts: [_account('cash')],
           advanceReceivableAccounts: [_account('company')],
         );
@@ -664,36 +669,45 @@ void main() {
         final outcome = await viewModel.submit(amountText: '100', noteText: '');
 
         expect(outcome, isA<SubmitSuccess>());
-        final command = posting.advanceCommands.single;
-        expect(command.advanceAmount, const Money(minorUnits: 6668));
-        expect(
-          command.selfBorneAllocations.map((item) => item.amount.minorUnits),
-          [1332, 2000],
-        );
-        expect(sumAllocations(command.selfBorneAllocations).minorUnits, 3332);
+        final command = orchestration.createCommands.single;
+        expect(command.aaPeopleCount, 3);
+        expect(command.scenario, AdvanceScenario.aa);
+        expect(command.categoryAllocations.map((item) => item.amount), [
+          const Money(minorUnits: 4000),
+          const Money(minorUnits: 6000),
+        ]);
       },
     );
 
-    test('reconstructs AA headcount from the ceiling split while editing', () {
-      final container = _container(
-        editTransactionId: 'aa-1',
-        editDetail: _aaAdvanceDetail(),
-        accountsById: {
-          'food': _account('food', type: AccountType.expense),
-          'cash': _account('cash'),
-          'company': _account('company'),
-        },
-        settlementAccounts: [_account('cash')],
-        advanceReceivableAccounts: [_account('company')],
-      );
+    test(
+      'loads AA headcount from its orchestration case while editing',
+      () async {
+        final container = _container(
+          editTransactionId: 'aa-1',
+          editDetail: _aaAdvanceDetail(),
+          editAdvanceCase: const AdvanceCase(
+            id: 'aa-1',
+            scenario: AdvanceScenario.aa,
+            trackingMode: AdvanceTrackingMode.itemized,
+            aaPeopleCount: 9,
+          ),
+          accountsById: {
+            'food': _account('food', type: AccountType.expense),
+            'cash': _account('cash'),
+            'company': _account('company'),
+          },
+          settlementAccounts: [_account('cash')],
+          advanceReceivableAccounts: [_account('company')],
+        );
 
-      final state = container
-          .read(_provider(editTransactionId: 'aa-1'))
-          .requireValue!;
+        final state = container
+            .read(_provider(editTransactionId: 'aa-1'))
+            .requireValue!;
 
-      expect(state.expenseScene, TransactionExpenseScene.aa);
-      expect(state.aaPeopleCount, 9);
-    });
+        expect(state.expenseScene, TransactionExpenseScene.aa);
+        expect(state.aaPeopleCount, 9);
+      },
+    );
 
     test('creates income command', () async {
       final posting = _FakeTransactionPostingAppService();
@@ -1116,8 +1130,10 @@ void main() {
 
     test('submits advance edit for edited advance', () async {
       final editService = _FakeTransactionEditAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         editService: editService,
+        advanceOrchestrationService: orchestration,
         editTransactionId: 'tx-1',
         editDetail: _transactionDetail(),
         accountsById: {
@@ -1140,7 +1156,7 @@ void main() {
       final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = editService.advanceCommands.single;
+      final command = orchestration.editCommands.single;
       expect(command.transactionId, 'tx-1');
       expect(command.receivableAccountId, 'company');
       expect(command.categoryAllocations!.single.accountId, 'hotel');
@@ -1237,6 +1253,9 @@ TransactionFormViewModelProvider _provider({String? editTransactionId}) {
 ProviderContainer _container({
   TransactionPostingAppService? postingService,
   TransactionEditAppService? editService,
+  AdvanceOrchestrationAppService? advanceOrchestrationService,
+  AdvanceCaseRepository? advanceCaseRepository,
+  AdvanceCase? editAdvanceCase,
   TransactionQueryService? transactionQueryService,
   String? editTransactionId,
   TransactionReadModel? editDetail,
@@ -1256,6 +1275,16 @@ ProviderContainer _container({
       transactionEditAppServiceProvider.overrideWith(
         (ref) => editService ?? _FakeTransactionEditAppService(),
       ),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(
+        advanceOrchestrationService ?? _FakeAdvanceOrchestrationAppService(),
+      ),
+      advanceCaseRepositoryProvider.overrideWithValue(
+        advanceCaseRepository ?? FakeAdvanceCaseRepository(),
+      ),
+      if (editAdvanceCase != null)
+        advanceCaseForFormProvider(
+          editAdvanceCase.id,
+        ).overrideWith((ref) => editAdvanceCase),
       transactionQueryServiceProvider.overrideWithValue(
         transactionQueryService ?? _FakeTransactionQueryService(),
       ),
@@ -1391,7 +1420,7 @@ TransactionReadModel _aaAdvanceDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       ownership: advanceOwnership(
-        management: AdvanceManagement.itemized,
+        management: AdvanceTrackingMode.itemized,
         ownerId: 'aa-1',
         scenario: AdvanceScenario.aa,
       ),
@@ -1495,6 +1524,28 @@ class _FakeTransactionQueryService implements TransactionQueryService {
     categoryIds.add(categoryId);
     if (lookup case final lookup?) return lookup(categoryId);
     return _accountIdByCategory[categoryId];
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeAdvanceOrchestrationAppService
+    implements AdvanceOrchestrationAppService {
+  final createCommands = <CreateAdvanceWorkflowCommand>[];
+  final editCommands = <EditAdvanceWorkflowCommand>[];
+
+  @override
+  Future<String> createAdvance(CreateAdvanceWorkflowCommand command) async {
+    createCommands.add(command);
+    return 'advance-transaction';
+  }
+
+  @override
+  Future<String> editAdvance(EditAdvanceWorkflowCommand command) async {
+    editCommands.add(command);
+    return command.transactionId;
   }
 
   @override

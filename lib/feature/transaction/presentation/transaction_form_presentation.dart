@@ -1,5 +1,5 @@
-import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/orchestration/orchestration_command_api.dart';
 import '../../../core/money/money.dart';
 import '../../../core/money/money_formatter.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
@@ -8,7 +8,7 @@ import '../../shared/presentation/transaction_detail_amount.dart';
 enum TransactionFormMode { expense, income, transfer, borrowing, lending }
 
 /// 支出录入的业务场景。它只在 feature 层组织入口与账户候选，
-/// 最终通过 [AdvanceScenario] 和 [AdvanceManagement] 写入垫付 owner。
+/// 最终交给交易编排域创建垫付编排实例。
 enum TransactionExpenseScene {
   ordinary,
   reimbursement,
@@ -61,34 +61,35 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.aaAccount => AdvanceScenario.aa,
   };
 
-  AdvanceManagement? get advanceManagement => switch (this) {
+  AdvanceTrackingMode? get advanceTrackingMode => switch (this) {
     TransactionExpenseScene.ordinary => null,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.onBehalf ||
-    TransactionExpenseScene.aa => AdvanceManagement.itemized,
+    TransactionExpenseScene.aa => AdvanceTrackingMode.itemized,
     TransactionExpenseScene.reimbursementAccount ||
-    TransactionExpenseScene.aaAccount => AdvanceManagement.account,
+    TransactionExpenseScene.aaAccount => AdvanceTrackingMode.account,
   };
 }
 
 TransactionExpenseScene transactionExpenseSceneForAdvanceScenario(
   AdvanceScenario scenario, {
-  AdvanceManagement management = AdvanceManagement.itemized,
+  AdvanceTrackingMode trackingMode = AdvanceTrackingMode.itemized,
 }) {
   return switch (scenario) {
     AdvanceScenario.reimbursement =>
-      management == AdvanceManagement.account
+      trackingMode == AdvanceTrackingMode.account
           ? TransactionExpenseScene.reimbursementAccount
           : TransactionExpenseScene.reimbursement,
-    AdvanceScenario.onBehalf when management == AdvanceManagement.itemized =>
+    AdvanceScenario.onBehalf
+        when trackingMode == AdvanceTrackingMode.itemized =>
       TransactionExpenseScene.onBehalf,
     AdvanceScenario.onBehalf => throw ArgumentError.value(
-      management,
-      'management',
+      trackingMode,
+      'trackingMode',
       '代付不支持账户垫付',
     ),
     AdvanceScenario.aa =>
-      management == AdvanceManagement.account
+      trackingMode == AdvanceTrackingMode.account
           ? TransactionExpenseScene.aaAccount
           : TransactionExpenseScene.aa,
   };
@@ -154,7 +155,8 @@ class TransactionFormEditSnapshot {
     this.feeText = '',
     this.advanceAmountText = '',
     this.advanceScenario = AdvanceScenario.reimbursement,
-    this.advanceManagement = AdvanceManagement.itemized,
+    this.advanceTrackingMode = AdvanceTrackingMode.itemized,
+    this.advanceAaPeopleCount,
     this.expenseCategoryId,
     this.expenseRootId,
     this.incomeCategoryId,
@@ -178,7 +180,8 @@ class TransactionFormEditSnapshot {
   final String feeText;
   final String advanceAmountText;
   final AdvanceScenario advanceScenario;
-  final AdvanceManagement advanceManagement;
+  final AdvanceTrackingMode advanceTrackingMode;
+  final int? advanceAaPeopleCount;
   final String? expenseCategoryId;
   final String? expenseRootId;
   final String? incomeCategoryId;
@@ -217,6 +220,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
   required List<CategoryNode> expenseTree,
   required List<CategoryNode> incomeTree,
   required Map<String, Account> accountsById,
+  AdvanceCase? advanceCase,
 }) {
   final transaction = detail;
   final amountText = formatMoney(
@@ -267,12 +271,10 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.expense,
         amountText: amountText,
         advanceAmountText: _lineAmountText(detail, TransactionRole.receivable),
-        advanceScenario:
-            transaction.ownership?.advanceScenario ??
-            AdvanceScenario.reimbursement,
-        advanceManagement:
-            transaction.ownership?.advanceManagement ??
-            AdvanceManagement.itemized,
+        advanceScenario: advanceCase?.scenario ?? AdvanceScenario.reimbursement,
+        advanceTrackingMode:
+            advanceCase?.trackingMode ?? AdvanceTrackingMode.itemized,
+        advanceAaPeopleCount: advanceCase?.aaPeopleCount,
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,

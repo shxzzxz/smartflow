@@ -5,6 +5,8 @@ import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state_builder.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
 
 void main() {
   for (final scenario in [
@@ -123,17 +125,23 @@ void main() {
     expect(action.enabled, isTrue);
   });
 
-  for (final management in AdvanceManagement.values) {
+  for (final management in AdvanceTrackingMode.values) {
     test('routes ${management.name} advance transaction to edit', () {
       final state = _build(
         purpose: BusinessPurpose.advance,
         parentTransactionId: null,
         ownership: advanceOwnership(
           management: management,
-          ownerId: management == AdvanceManagement.itemized
+          ownerId: management == AdvanceTrackingMode.itemized
               ? 'child'
               : 'receivable',
           scenario: AdvanceScenario.aa,
+        ),
+        advanceCase: AdvanceCase(
+          id: 'case',
+          scenario: AdvanceScenario.aa,
+          trackingMode: management,
+          aaPeopleCount: management == AdvanceTrackingMode.itemized ? 2 : null,
         ),
       );
 
@@ -158,9 +166,15 @@ void main() {
           isClosed: false,
         ),
         ownership: advanceOwnership(
-          management: AdvanceManagement.account,
+          management: AdvanceTrackingMode.account,
           ownerId: 'receivable',
           scenario: scenario,
+        ),
+        advanceCase: AdvanceCase(
+          id: 'case',
+          scenario: scenario,
+          trackingMode: AdvanceTrackingMode.account,
+          receivableAccountId: 'receivable',
         ),
       );
 
@@ -200,9 +214,15 @@ void main() {
           isClosed: false,
         ),
         ownership: advanceOwnership(
-          management: AdvanceManagement.itemized,
+          management: AdvanceTrackingMode.itemized,
           ownerId: 'child',
           scenario: scenario.$1,
+        ),
+        advanceCase: AdvanceCase(
+          id: 'case',
+          scenario: scenario.$1,
+          trackingMode: AdvanceTrackingMode.itemized,
+          aaPeopleCount: scenario.$1 == AdvanceScenario.aa ? 2 : null,
         ),
       );
 
@@ -237,9 +257,15 @@ void main() {
           amount: Money(minorUnits: 10000),
         ),
         ownership: advanceOwnership(
-          management: AdvanceManagement.itemized,
+          management: AdvanceTrackingMode.itemized,
           ownerId: 'child',
           scenario: scenario.$1,
+        ),
+        advanceCase: AdvanceCase(
+          id: 'case',
+          scenario: scenario.$1,
+          trackingMode: AdvanceTrackingMode.itemized,
+          aaPeopleCount: scenario.$1 == AdvanceScenario.aa ? 2 : null,
         ),
       );
 
@@ -397,6 +423,7 @@ TransactionDetailLoaded _build({
   TransactionLine? counterpart,
   Iterable<TransactionLine> additionalLines = const [],
   TransactionOwnership? ownership,
+  AdvanceCase? advanceCase,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -502,6 +529,15 @@ TransactionDetailLoaded _build({
         detail: detail,
         parentDetail: parentDetail,
         accountLookup: AccountLookup(accounts),
+        advanceCase:
+            advanceCase ??
+            (purpose == BusinessPurpose.advance
+                ? const AdvanceCase(
+                    id: 'default-case',
+                    scenario: AdvanceScenario.reimbursement,
+                    trackingMode: AdvanceTrackingMode.itemized,
+                  )
+                : null),
       )
       as TransactionDetailLoaded;
 }

@@ -260,6 +260,7 @@ class BackupService {
     final accounts = _index(snapshot.rows('accounts'));
     final groups = _index(snapshot.rows('account_groups'));
     final transactions = _index(snapshot.rows('transactions'));
+    final advanceCases = _index(snapshot.rows('advance_cases'));
     final tags = _index(snapshot.rows('tags'));
     final counterparties = _index(snapshot.rows('counterparties'));
     final contracts = _index(snapshot.rows('installment_contracts'));
@@ -304,8 +305,30 @@ class BackupService {
         counterparties,
         'transactions.counterpartyId',
       );
-      if (row['ownerId'] != null && row['ownerType'] == 'installment') {
+      final ownerType = row['ownerType'];
+      final ownerId = row['ownerId'];
+      if ((ownerType == null) != (ownerId == null)) {
+        throw const BackupValidationException('交易业务归属必须同时为空或同时存在。');
+      }
+      if (ownerType is String &&
+          (ownerType.trim().isEmpty ||
+              ownerId is! String ||
+              ownerId.trim().isEmpty)) {
+        throw const BackupValidationException('交易业务归属包含空标识。');
+      }
+      if (ownerType == 'orchestration.advance') {
+        _requiredReference(
+          row,
+          'ownerId',
+          advanceCases,
+          'transactions.ownerId',
+        );
+      }
+      if (ownerType == 'credit.installment_contract') {
         _requiredReference(row, 'ownerId', contracts, 'transactions.ownerId');
+      }
+      if (ownerType == 'credit.repayment') {
+        _requiredReference(row, 'ownerId', repayments, 'transactions.ownerId');
       }
     }
     final transactionParents = <String, String>{};
@@ -967,6 +990,8 @@ class BackupService {
       'importEntityKind': {'account', 'category'},
       'importBatchStatus': {'imported', 'reverted'},
       'repaymentType': {'BILL', 'INSTALLMENT', 'PREPAYMENT', 'UNATTRIBUTED'},
+      'advanceScenario': {'aa', 'onBehalf', 'reimbursement'},
+      'advanceTrackingMode': {'itemized', 'account'},
     };
     void check(
       BackupJson row,
@@ -992,6 +1017,20 @@ class BackupService {
     }
     for (final row in snapshot.rows('transaction_lines')) {
       check(row, 'role', 'transactionRole');
+    }
+    for (final row in snapshot.rows('advance_cases')) {
+      check(row, 'scenario', 'advanceScenario');
+      check(row, 'trackingMode', 'advanceTrackingMode');
+      final accountId = row['receivableAccountId'];
+      if (row['trackingMode'] == 'account' &&
+          (accountId is! String || accountId.trim().isEmpty)) {
+        throw const BackupValidationException('账户垫付编排实例缺少应收账户。');
+      }
+      final aaPeopleCount = row['aaPeopleCount'];
+      if (aaPeopleCount != null &&
+          (aaPeopleCount is! int || aaPeopleCount < 2 || aaPeopleCount > 99)) {
+        throw const BackupValidationException('AA 参与人数无效。');
+      }
     }
     for (final row in snapshot.rows('entries')) {
       check(row, 'direction', 'direction');

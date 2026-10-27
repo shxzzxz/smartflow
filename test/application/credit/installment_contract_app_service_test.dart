@@ -54,31 +54,30 @@ void main() {
         final ownership = fixture.update.ownershipCommands.single.ownership;
         expect(ownership.ownerType, installmentOwnerType);
         expect(ownership.ownerId, result.contractId);
-        expect(
-          ownership.ownerRole,
-          InstallmentOwnerRole.disbursement.wireValue,
-        );
       },
     );
 
-    test('updates contract details through the dedicated details command', () async {
-      final fixture = _Fixture();
-      final created = await fixture.service.createDisbursementContract(
-        _createDisbursementCommand(disbursementAccountId: null),
-      );
+    test(
+      'updates contract details through the dedicated details command',
+      () async {
+        final fixture = _Fixture();
+        final created = await fixture.service.createDisbursementContract(
+          _createDisbursementCommand(disbursementAccountId: null),
+        );
 
-      await fixture.service.updateContractDetails(
-        UpdateContractDetailsCommand(
-          contractId: created.contractId,
-          name: '家庭贷款',
-          note: Patch<String>.set('已核对'),
-        ),
-      );
+        await fixture.service.updateContractDetails(
+          UpdateContractDetailsCommand(
+            contractId: created.contractId,
+            name: '家庭贷款',
+            note: Patch<String>.set('已核对'),
+          ),
+        );
 
-      final contract = fixture.installments.contracts[created.contractId]!;
-      expect(contract.name, '家庭贷款');
-      expect(contract.note, '已核对');
-    });
+        final contract = fixture.installments.contracts[created.contractId]!;
+        expect(contract.name, '家庭贷款');
+        expect(contract.note, '已核对');
+      },
+    );
 
     test('keeps configured dates for cash installment schedules', () async {
       final fixture = _Fixture();
@@ -622,14 +621,15 @@ class _Fixture {
     update: update,
   );
 
-  late final InstallmentContractAppService service = InstallmentContractAppServiceImpl(
-    repository: installments,
-    bills: bills,
-    ledger: ledger,
-    repayments: repayments,
-    transactionRunner: const _ImmediateRunner(),
-    idGenerator: SequentialIdGenerator(prefix: 'contract-test'),
-  );
+  late final InstallmentContractAppService service =
+      InstallmentContractAppServiceImpl(
+        repository: installments,
+        bills: bills,
+        ledger: ledger,
+        repayments: repayments,
+        transactionRunner: const _ImmediateRunner(),
+        idGenerator: SequentialIdGenerator(prefix: 'contract-test'),
+      );
 
   late final InstallmentPlanAppService planService = InstallmentPlanAppService(
     installments: installments,
@@ -1001,7 +1001,6 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
         ownership: TransactionOwnership(
           ownerType: ownership.ownerType,
           ownerId: ownership.ownerId,
-          ownerRole: ownership.ownerRole,
         ),
       ),
     );

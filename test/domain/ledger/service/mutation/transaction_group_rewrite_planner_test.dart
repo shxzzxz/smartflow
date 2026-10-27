@@ -5,17 +5,17 @@ import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_planner.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_instruction_resolver.dart';
-import 'package:smartflow/domain/ledger/valobj/advance_ownership.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
+import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 import '../../../../helper/fake_system_account_resolver.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
 import '../../../../helper/sequential_id_generator.dart';
 
 void main() {
-  test('advance scene changes propagate to the parent and children', () async {
+  test('advance owner is preserved across a parent rewrite', () async {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'scene'),
     );
@@ -26,6 +26,10 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: DateTime(2026, 7, 1),
+        ownership: const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'case-1',
+        ),
       ),
     );
     final receipt = engine.createAdvanceCollection(
@@ -45,7 +49,7 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: current.occurredAt,
-        scenario: AdvanceScenario.aa,
+        ownership: current.ownership,
       ),
     );
     final planner = TransactionGroupRewritePlanner(
@@ -62,16 +66,12 @@ void main() {
       candidateParent: candidate,
     );
 
-    expect(plan.currentGroup.parentTransaction.ownership?.ownerRole, 'aa');
-    expect(plan.currentGroup.parentTransaction.ownership?.ownerId, current.id);
+    expect(plan.currentGroup.parentTransaction.ownership?.ownerId, 'case-1');
     expect(
-      plan.currentGroup.childTransactions.single.ownership?.ownerRole,
-      'aa',
+      plan.currentGroup.childTransactions.single.ownership?.ownerId,
+      'case-1',
     );
-    expect(
-      plan.rowUpdates.map((row) => row.id),
-      containsAll([current.id, receipt.id]),
-    );
+    expect(plan.rowUpdates.map((row) => row.id), contains(current.id));
   });
 
   test(
@@ -234,7 +234,7 @@ void main() {
     );
   });
 
-  test('account-managed advance cannot convert to daily expense', () async {
+  test('ledger conversion does not infer behavior from the owner', () async {
     final engine = PostingEngine(
       idGenerator: SequentialIdGenerator(prefix: 'account-edit'),
     );
@@ -245,7 +245,10 @@ void main() {
         paidFromAccountId: 'cash',
         expenseAccountId: 'travel',
         occurredAt: DateTime(2026, 7, 1),
-        management: AdvanceManagement.account,
+        ownership: const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'case-account',
+        ),
       ),
     );
     final candidate = engine.createExpense(
@@ -262,16 +265,14 @@ void main() {
       systemAccountResolver: const FakeSystemAccountResolver(),
     );
 
-    await expectLater(
-      planner.planParentRewrite(
-        currentGroup: TransactionGroup(
-          parentTransaction: parent,
-          childTransactions: const [],
-        ),
-        candidateParent: candidate,
+    final plan = await planner.planParentRewrite(
+      currentGroup: TransactionGroup(
+        parentTransaction: parent,
+        childTransactions: const [],
       ),
-      throwsA(isA<BusinessException>()),
+      candidateParent: candidate,
     );
+    expect(plan.currentGroup.parentTransaction.ownership, isNull);
   });
 
   test(

@@ -39,6 +39,8 @@ import '../infrastructure/ledger/repository/drift_transaction_line_read_reposito
 import '../infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
 import '../infrastructure/ledger/repository/drift_counterparty_repository.dart';
+import '../infrastructure/orchestration/advance_ledger_port.dart';
+import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
@@ -50,6 +52,8 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
+import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
+import '../application/orchestration/advance/query/advance_case_query_service.dart';
 import '../application/import/import_plan_app_service.dart';
 import '../application/import/import_parser_registry.dart';
 import '../application/import/import_file_picker.dart';
@@ -59,6 +63,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../application/shared/task/pull_task_scheduler.dart';
 import '../application/credit/installment/port/installment_plan_change_port.dart';
 import '../application/credit/installment/query/port/installment_statistics_change_source.dart';
+import '../application/credit/repayment/query/repayment_owner_query.dart';
 import '../application/credit/task/installment_repricing_task.dart';
 import '../infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 import '../domain/ledger/port/account_repository.dart';
@@ -77,6 +82,8 @@ import '../domain/credit/port/installment_repository.dart';
 import '../domain/credit/port/repayment_repository.dart';
 import '../domain/credit/port/credit_ledger_port.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
+import '../domain/orchestration/port/advance_case_repository.dart';
+import '../domain/orchestration/port/advance_ledger_port.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
 import '../domain/ledger/service/posting/ledger_posting_service.dart';
@@ -150,6 +157,7 @@ ImportLedgerPort importLedgerPort(Ref ref) {
     categoryCommands: ref.watch(categoryAppServiceProvider),
     systemAccounts: ref.watch(systemAccountResolverProvider),
     creditAccounts: ref.watch(creditAccountAppServiceProvider),
+    advances: ref.watch(advanceOrchestrationAppServiceProvider),
   );
 }
 
@@ -387,6 +395,37 @@ TransactionLedgerWriter transactionLedgerWriter(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+AdvanceCaseRepository advanceCaseRepository(Ref ref) {
+  return DriftAdvanceCaseRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+AdvanceLedgerPort advanceLedgerPort(Ref ref) {
+  return LedgerAdvancePort(
+    posting: ref.watch(transactionPostingAppServiceProvider),
+    editing: ref.watch(transactionEditAppServiceProvider),
+    groups: ref.watch(ledgerRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AdvanceOrchestrationAppService advanceOrchestrationAppService(Ref ref) {
+  return AdvanceOrchestrationAppServiceImpl(
+    cases: ref.watch(advanceCaseRepositoryProvider),
+    ledger: ref.watch(advanceLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AdvanceCaseQueryService advanceCaseQueryService(Ref ref) {
+  return AdvanceCaseQueryService(
+    repository: ref.watch(advanceCaseRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 LedgerPostingService ledgerPostingService(Ref ref) {
   return LedgerPostingService(
     accountRepository: ref.watch(accountRepositoryProvider),
@@ -554,6 +593,13 @@ InstallmentProductAppService installmentProductAppService(Ref ref) =>
 @Riverpod(keepAlive: true)
 RepaymentRepository repaymentRepository(Ref ref) {
   return DriftRepaymentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+RepaymentOwnerQuery repaymentOwnerQuery(Ref ref) {
+  return RepaymentOwnerQueryImpl(
+    repository: ref.watch(repaymentRepositoryProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)

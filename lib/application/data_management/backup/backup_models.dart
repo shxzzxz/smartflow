@@ -33,6 +33,7 @@ class BackupTables {
     'import_entity_mappings',
     'import_batches',
     'import_batch_items',
+    'advance_cases',
   ];
 
   static String sectionFor(String table) {
@@ -75,6 +76,7 @@ class BackupTables {
     }.contains(table)) {
       return 'import';
     }
+    if (table == 'advance_cases') return 'orchestration';
     throw ArgumentError('Unknown backup table: $table');
   }
 }
@@ -329,6 +331,7 @@ class BackupDiff {
         return '交易组';
       }
       if (table == 'budgets') return '预算';
+      if (table == 'advance_cases') return '垫付编排';
       if (table == 'import_batches' ||
           table == 'import_batch_items' ||
           table == 'import_entity_mappings') {

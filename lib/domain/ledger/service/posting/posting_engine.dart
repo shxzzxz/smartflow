@@ -5,7 +5,6 @@ import '../../entity/entry.dart';
 import '../../entity/transaction.dart';
 import '../../entity/transaction_line.dart';
 import '../../valobj/account_amount_allocation.dart';
-import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
@@ -248,13 +247,6 @@ class PostingEngine {
       allocations: instruction.settlementAllocations,
     );
     final transactionId = _idGenerator.newId();
-    final ownership = advanceOwnership(
-      management: instruction.management,
-      ownerId: instruction.management == AdvanceManagement.itemized
-          ? transactionId
-          : instruction.receivableAccountId,
-      scenario: instruction.scenario,
-    );
     var lineNo = 1;
     return _posted(
       Transaction(
@@ -268,7 +260,7 @@ class PostingEngine {
         isExcludedFromStats: instruction.isExcludedFromStats,
         isExcludedFromBudget: instruction.isExcludedFromBudget,
         sourceKind: instruction.sourceKind,
-        ownership: ownership,
+        ownership: instruction.ownership,
         lines: [
           // 分类分项保存整笔交易分类事实，不直接产生分录。
           for (final allocation in instruction.categoryAllocations)

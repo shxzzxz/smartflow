@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -11,12 +11,14 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/advance_edit_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import '../../../helper/advance_ownership_fixtures.dart';
+import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   test(
     'loads receipt mode and submits receipt edit without mode switching',
     () async {
-      final editService = _FakeTransactionEditAppService();
+      final editService = _FakeAdvanceEditOrchestrationService();
       final container = _container(editService: editService);
 
       final state = await container.read(
@@ -73,7 +75,7 @@ void main() {
   });
 
   test('loads and edits an account-managed receipt transaction', () async {
-    final editService = _FakeTransactionEditAppService();
+    final editService = _FakeAdvanceEditOrchestrationService();
     final container = _container(
       editService: editService,
       includeAccountManagedReceipt: true,
@@ -101,7 +103,7 @@ void main() {
   });
 
   test('loads and edits an account-managed settlement transaction', () async {
-    final editService = _FakeTransactionEditAppService();
+    final editService = _FakeAdvanceEditOrchestrationService();
     final container = _container(
       editService: editService,
       includeAccountManagedClose: true,
@@ -132,7 +134,7 @@ void main() {
   test(
     'keeps close mode fixed and allows zero amount without receive account',
     () async {
-      final editService = _FakeTransactionEditAppService();
+      final editService = _FakeAdvanceEditOrchestrationService();
       final container = _container(
         closed: true,
         editService: editService,
@@ -162,13 +164,14 @@ void main() {
       expect(command.receivableAccountId, 'receivable');
       expect(command.settlementAllocations!.single.accountId, 'receivable');
       expect(command.note, isA<PatchSet<String?>>());
+      expect((command.note as PatchSet<String?>).value, 'updated close');
     },
   );
 
   test(
     'zero amount close replaces the original receive account with receivable',
     () async {
-      final editService = _FakeTransactionEditAppService();
+      final editService = _FakeAdvanceEditOrchestrationService();
       final container = _container(
         closed: true,
         editService: editService,
@@ -196,7 +199,7 @@ void main() {
   test(
     'edit loads bad-debt allocation from its expense classification',
     () async {
-      final editService = _FakeTransactionEditAppService();
+      final editService = _FakeAdvanceEditOrchestrationService();
       final container = _container(
         closed: true,
         editService: editService,
@@ -223,7 +226,7 @@ void main() {
   );
 
   test('maps AppException to submit failure', () async {
-    final editService = _FakeTransactionEditAppService(
+    final editService = _FakeAdvanceEditOrchestrationService(
       exception: BusinessException(
         LedgerErrorCode.transactionNotEditable,
         message: '报销当前不可编辑',
@@ -245,7 +248,7 @@ void main() {
   });
 
   test('maps regular Exception to unknown submit failure', () async {
-    final editService = _FakeTransactionEditAppService(
+    final editService = _FakeAdvanceEditOrchestrationService(
       exception: Exception('database failed'),
     );
     final container = _container(editService: editService);
@@ -270,7 +273,7 @@ ProviderContainer _container({
   bool includeAccountManagedClose = false,
   bool closeHasReceiveAccount = false,
   bool closeBadDebt = false,
-  _FakeTransactionEditAppService? editService,
+  _FakeAdvanceEditOrchestrationService? editService,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
@@ -311,8 +314,19 @@ ProviderContainer _container({
         transactionDetailProvider(
           'account-close',
         ).overrideWithValue(AsyncData(_accountManagedCloseDetail())),
-      transactionEditAppServiceProvider.overrideWithValue(
-        editService ?? _FakeTransactionEditAppService(),
+      advanceOrchestrationAppServiceProvider.overrideWithValue(
+        editService ?? _FakeAdvanceEditOrchestrationService(),
+      ),
+      advanceCaseRepositoryProvider.overrideWithValue(
+        FakeAdvanceCaseRepository([
+          if (includeAccountManagedReceipt || includeAccountManagedClose)
+            const AdvanceCase(
+              id: 'receivable',
+              scenario: AdvanceScenario.reimbursement,
+              trackingMode: AdvanceTrackingMode.account,
+              receivableAccountId: 'receivable',
+            ),
+        ]),
       ),
     ],
   );
@@ -458,7 +472,7 @@ TransactionReadModel _accountManagedReceiptDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       ownership: advanceOwnership(
-        management: AdvanceManagement.account,
+        management: AdvanceTrackingMode.account,
         ownerId: 'receivable',
         scenario: AdvanceScenario.reimbursement,
       ),
@@ -496,7 +510,7 @@ TransactionReadModel _accountManagedCloseDetail() {
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
       ownership: advanceOwnership(
-        management: AdvanceManagement.account,
+        management: AdvanceTrackingMode.account,
         ownerId: 'receivable',
         scenario: AdvanceScenario.reimbursement,
       ),
@@ -587,67 +601,35 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
 }
 
-class _FakeTransactionEditAppService implements TransactionEditAppService {
-  _FakeTransactionEditAppService({this.exception});
+class _FakeAdvanceEditOrchestrationService
+    implements AdvanceOrchestrationAppService {
+  _FakeAdvanceEditOrchestrationService({this.exception});
 
   final Object? exception;
-  final receiptCommands = <EditAdvanceCollectionCommand>[];
-  final closeCommands = <EditAdvanceSettlementCommand>[];
+  final receiptCommands = <EditAdvanceCollectionWorkflowCommand>[];
+  final closeCommands = <EditAdvanceSettlementWorkflowCommand>[];
 
   @override
-  Future<PostedTransactionResult> editAdvanceCollection(
-    EditAdvanceCollectionCommand command,
+  Future<String> editCollection(
+    EditAdvanceCollectionWorkflowCommand command,
   ) async {
     if (exception != null) throw exception!;
     receiptCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'receipt');
+    return 'receipt';
   }
 
   @override
-  Future<PostedTransactionResult> editAdvanceSettlement(
-    EditAdvanceSettlementCommand command,
+  Future<String> editSettlement(
+    EditAdvanceSettlementWorkflowCommand command,
   ) async {
     if (exception != null) throw exception!;
     closeCommands.add(command);
-    return const PostedTransactionResult(transactionId: 'close');
+    return 'close';
   }
 
   @override
-  Future<void> deleteTransaction(DeleteTransactionCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editBorrowing(EditBorrowingCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editExpense(EditExpenseCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editIncome(EditIncomeCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editRefund(EditRefundCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editAdvance(EditAdvanceCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editRepayment(EditRepaymentCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> editTransfer(EditTransferCommand command) =>
-      throw UnimplementedError();
-
-  @override
-  Future<PostedTransactionResult> replaceTransactionCategory(
-    ReplaceTransactionCategoryCommand command,
-  ) => throw UnimplementedError();
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 const _advanceLines = [

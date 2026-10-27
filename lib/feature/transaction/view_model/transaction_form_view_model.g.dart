@@ -9,6 +9,82 @@ part of 'transaction_form_view_model.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
+@ProviderFor(advanceCaseForForm)
+final advanceCaseForFormProvider = AdvanceCaseForFormFamily._();
+
+final class AdvanceCaseForFormProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<AdvanceCase?>,
+          AdvanceCase?,
+          FutureOr<AdvanceCase?>
+        >
+    with $FutureModifier<AdvanceCase?>, $FutureProvider<AdvanceCase?> {
+  AdvanceCaseForFormProvider._({
+    required AdvanceCaseForFormFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'advanceCaseForFormProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$advanceCaseForFormHash();
+
+  @override
+  String toString() {
+    return r'advanceCaseForFormProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<AdvanceCase?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<AdvanceCase?> create(Ref ref) {
+    final argument = this.argument as String;
+    return advanceCaseForForm(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AdvanceCaseForFormProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$advanceCaseForFormHash() =>
+    r'cc4d29a0a44d0a9e2cd1964b07ec74fda3f090e4';
+
+final class AdvanceCaseForFormFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<AdvanceCase?>, String> {
+  AdvanceCaseForFormFamily._()
+    : super(
+        retry: null,
+        name: r'advanceCaseForFormProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AdvanceCaseForFormProvider call(String advanceCaseId) =>
+      AdvanceCaseForFormProvider._(argument: advanceCaseId, from: this);
+
+  @override
+  String toString() => r'advanceCaseForFormProvider';
+}
+
 @ProviderFor(TransactionFormViewModel)
 final transactionFormViewModelProvider = TransactionFormViewModelFamily._();
 
@@ -73,7 +149,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'cde6ef25aa358446421aa4335feff28a6a8f4923';
+    r'd6c8d333044bdc9718d4c03fb363b293e2a7a17c';
 
 final class TransactionFormViewModelFamily extends $Family
     with

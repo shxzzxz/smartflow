@@ -7,12 +7,10 @@ import '../../port/transaction_group_repository.dart';
 import '../../port/system_account_resolver.dart';
 import '../../valobj/ledger_enum.dart';
 import '../../valobj/account_amount_allocation.dart';
-import '../../valobj/advance_ownership.dart';
 import '../../valobj/ledger_violation_reason.dart';
 import '../../valobj/posting_instruction.dart';
 import '../../valobj/transaction_ownership.dart';
 import '../account/account_role_policy.dart';
-import '../advance/advance_share_calculator.dart';
 import '../posting/account_posting_service.dart';
 import '../posting/ledger_posting_service.dart';
 import '../posting/posting_engine.dart';
@@ -31,7 +29,6 @@ class TransactionGroupRewriteService {
     required AccountPostingService accountPostingService,
     required AccountRolePolicy accountRolePolicy,
     required SystemAccountResolver systemAccountResolver,
-    AdvanceSharePolicy advanceSharePolicy = const AdvanceShareCalculator(),
     TransactionGroupRewritePlanner? rewritePlanner,
     LedgerPostingService? postingService,
   }) : _transactionGroupRepository = transactionGroupRepository,
@@ -41,7 +38,6 @@ class TransactionGroupRewriteService {
        _accountPostingService = accountPostingService,
        _accountRolePolicy = accountRolePolicy,
        _systemAccountResolver = systemAccountResolver,
-       _advanceSharePolicy = advanceSharePolicy,
        _postingService =
            postingService ??
            LedgerPostingService(
@@ -57,7 +53,6 @@ class TransactionGroupRewriteService {
              postingEngine: postingEngine,
              postingInstructionResolver: postingInstructionResolver,
              systemAccountResolver: systemAccountResolver,
-             advanceSharePolicy: advanceSharePolicy,
            );
 
   final TransactionGroupRepository _transactionGroupRepository;
@@ -67,7 +62,6 @@ class TransactionGroupRewriteService {
   final AccountPostingService _accountPostingService;
   final AccountRolePolicy _accountRolePolicy;
   final SystemAccountResolver _systemAccountResolver;
-  final AdvanceSharePolicy _advanceSharePolicy;
   final LedgerPostingService _postingService;
   final TransactionGroupRewritePlanner _rewritePlanner;
 
@@ -108,6 +102,7 @@ class TransactionGroupRewriteService {
     final plan = await _rewritePlanner.planParentRewrite(
       currentGroup: currentGroup,
       candidateParent: candidateParent,
+      refundSelfBorneAllocations: instruction.refundSelfBorneAllocations,
     );
     final accounts = await _loadAccountsFor([
       for (final rewrite in plan.rewrites) rewrite.before,
@@ -205,18 +200,12 @@ class TransactionGroupRewriteService {
       ),
     );
     if (roleViolation != null) roleViolation.throwException();
-    final refundShare = _advanceSharePolicy.splitForRefund(
-      group: group,
-      refundAmount: editedInstruction.amount,
-      refundCategoryAllocations: editedInstruction.categoryAllocations,
-      excludingRefundTransactionId: currentRefund.id,
-    );
     final candidate = _postingEngine.createRefund(
       instruction: RefundInstruction(
         parentTransactionId: editedInstruction.parentTransactionId,
         amount: editedInstruction.amount,
         categoryAllocations: editedInstruction.categoryAllocations,
-        selfBorneAllocations: refundShare.selfBorneAllocations,
+        selfBorneAllocations: editedInstruction.selfBorneAllocations,
         settlementAllocations: editedInstruction.settlementAllocations,
         occurredAt: editedInstruction.occurredAt,
         postedAt: editedInstruction.postedAt,
@@ -469,7 +458,7 @@ class TransactionGroupRewriteService {
     if (roleViolation != null) roleViolation.throwException();
     final ownership = _accountManagedOwnership(
       current: currentReceipt,
-      receivableAccountId: receivableAccountId,
+      requested: instruction.ownership,
     );
     final candidate = _postingEngine.createAdvanceCollection(
       instruction: AdvanceCollectionInstruction.account(
@@ -542,7 +531,7 @@ class TransactionGroupRewriteService {
     if (roleViolation != null) roleViolation.throwException();
     final ownership = _accountManagedOwnership(
       current: currentClose,
-      receivableAccountId: receivableAccountId,
+      requested: instruction.ownership,
     );
     final candidate = _postingEngine.createAdvanceSettlement(
       instruction: AdvanceSettlementInstruction.account(
@@ -643,7 +632,7 @@ class TransactionGroupRewriteService {
     final transaction = group.parentTransaction;
     return transaction.id == transactionId &&
         transaction.businessPurpose == purpose &&
-        transaction.ownership?.advanceManagement == AdvanceManagement.account;
+        group.childTransactions.isEmpty;
   }
 
   ({TransactionGroup group, Transaction child}) _loadAdvanceChild({
@@ -776,9 +765,6 @@ class TransactionGroupRewriteService {
     if (advance.businessPurpose != BusinessPurpose.advance) {
       return LedgerViolationReason.advanceParentNotAdvance;
     }
-    if (advance.ownership?.advanceManagement != AdvanceManagement.itemized) {
-      return LedgerViolationReason.advanceManagementMismatch;
-    }
     return null;
   }
 
@@ -802,18 +788,14 @@ class TransactionGroupRewriteService {
 
   TransactionOwnership _accountManagedOwnership({
     required Transaction current,
-    required String receivableAccountId,
+    required TransactionOwnership? requested,
   }) {
-    final scenario = current.ownership?.advanceScenario;
-    if (scenario == null) {
+    final ownership = requested ?? current.ownership;
+    if (ownership == null) {
       LedgerViolationReason.advanceInstructionUnresolvable.throwException(
-        message: 'Account-managed advance scenario is required.',
+        message: 'Account-managed advance ownership is required.',
       );
     }
-    return advanceOwnership(
-      management: AdvanceManagement.account,
-      ownerId: receivableAccountId,
-      scenario: scenario,
-    );
+    return ownership;
   }
 }

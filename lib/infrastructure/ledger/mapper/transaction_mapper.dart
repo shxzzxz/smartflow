@@ -16,13 +16,11 @@ Transaction mapTransaction(TransactionRow row) {
     isExcludedFromStats: row.isExcludedFromStats,
     isExcludedFromBudget: row.isExcludedFromBudget,
     sourceKind: row.sourceKind,
-    ownership:
-        row.ownerType == null
-            ? null
-            : TransactionOwnership(
-              ownerType: row.ownerType!,
-              ownerId: row.ownerId,
-              ownerRole: row.ownerRole,
-            ),
+    ownership: row.ownerType == null
+        ? null
+        : TransactionOwnership(
+            ownerType: row.ownerType!,
+            ownerId: row.ownerId!,
+          ),
   );
 }
