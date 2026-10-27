@@ -46,12 +46,9 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
       _ => null,
     };
     final parentTransactionId = transaction.parentTransactionId;
-    final advanceCase = await _advanceCaseFor(ref, transaction);
-    // 账户垫付的到账与结清是顶层交易，通过 owner 归入同一个编排实例。
-    final accountManaged =
-        advanceCase?.trackingMode == AdvanceTrackingMode.account &&
-        parentTransactionId == null;
-    if (kind == null || (!accountManaged && parentTransactionId == null)) {
+    // 账户垫付的到账与结清是 ownerless 顶层交易。
+    final accountManaged = parentTransactionId == null;
+    if (kind == null) {
       return AdvanceEditFormState.notFound(
         transactionId: transactionId,
         accounts: accounts,
@@ -516,14 +513,6 @@ Money? _lineAmount(TransactionReadModel detail, TransactionRole role) {
     if (line.role == role) return line.amount;
   }
   return null;
-}
-
-Future<AdvanceCase?> _advanceCaseFor(Ref ref, TransactionReadModel detail) {
-  final ownership = detail.ownership;
-  if (ownership?.ownerType != orchestrationAdvanceOwnerType) {
-    return Future.value(null);
-  }
-  return ref.read(advanceCaseQueryServiceProvider).findById(ownership!.ownerId);
 }
 
 Patch<String?> _stringPatch(String? value) {

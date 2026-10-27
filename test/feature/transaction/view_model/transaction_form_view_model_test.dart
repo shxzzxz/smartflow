@@ -240,8 +240,10 @@ void main() {
 
     test('creates daily expense command and returns success', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
       );
       final viewModel = container.read(_provider().notifier);
@@ -260,7 +262,8 @@ void main() {
 
       expect(outcome, isA<SubmitSuccess>());
       expect(container.read(_provider()).requireValue!.submitting, false);
-      final command = posting.expenseCommands.single;
+      final command = orchestration.createSceneCommands.single;
+      expect(command.target, isA<OrdinaryExpenseSceneTarget>());
       expect(command.amount, const Money(minorUnits: 1234));
       expect(command.settlementAllocations.single.accountId, 'cash');
       expect(command.categoryAllocations.single.accountId, 'lunch');
@@ -272,8 +275,10 @@ void main() {
 
     test('creates a transaction with the selected counterparty id', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
         counterparties: const [CounterpartyView(id: 'cp-ziroom', name: '自如')],
       );
@@ -287,13 +292,18 @@ void main() {
       final outcome = await viewModel.submit(amountText: '12.34', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      expect(posting.expenseCommands.single.counterpartyId, 'cp-ziroom');
+      expect(
+        orchestration.createSceneCommands.single.counterpartyId,
+        'cp-ziroom',
+      );
     });
 
     test('uses explicit category-led allocations in allocated mode', () async {
       final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash'), _account('bank')],
       );
       final viewModel = container.read(_provider().notifier);
@@ -326,7 +336,7 @@ void main() {
       final outcome = await viewModel.submit(amountText: '15', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = posting.expenseCommands.single;
+      final command = orchestration.createSceneCommands.single;
       expect(command.amount, const Money(minorUnits: 1500));
       expect(
         command.categoryAllocations.map((item) => item.amount.minorUnits),
@@ -342,8 +352,10 @@ void main() {
       'rejects allocated payment totals that do not match categories',
       () async {
         final posting = _FakeTransactionPostingAppService();
+        final orchestration = _FakeAdvanceOrchestrationAppService();
         final container = _container(
           postingService: posting,
+          advanceOrchestrationService: orchestration,
           settlementAccounts: [_account('cash')],
         );
         final viewModel = container.read(_provider().notifier);
@@ -366,7 +378,7 @@ void main() {
         final outcome = await viewModel.submit(amountText: '15', noteText: '');
 
         expect(outcome, isA<SubmitFailure>());
-        expect(posting.expenseCommands, isEmpty);
+        expect(orchestration.createSceneCommands, isEmpty);
       },
     );
 
@@ -500,13 +512,13 @@ void main() {
       final outcome = await viewModel.submit(amountText: '20', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = orchestration.createCommands.single;
+      final command = orchestration.createSceneCommands.single;
       expect(command.amount, const Money(minorUnits: 2000));
       expect(command.settlementAllocations.single.accountId, 'cash');
-      expect(command.receivableAccountId, 'company');
       expect(command.categoryAllocations.single.accountId, 'taxi');
-      expect(command.scenario, AdvanceScenario.reimbursement);
-      expect(command.trackingMode, AdvanceTrackingMode.itemized);
+      final target = command.target as ItemizedAdvanceSceneTarget;
+      expect(target.receivableAccountId, 'company');
+      expect(target.scenario, AdvanceScenario.reimbursement);
     });
 
     for (final scenario in [
@@ -524,6 +536,11 @@ void main() {
         TransactionExpenseScene.onBehalf,
         AdvanceScenario.onBehalf,
         AdvanceTrackingMode.itemized,
+      ),
+      (
+        TransactionExpenseScene.onBehalfAccount,
+        AdvanceScenario.onBehalf,
+        AdvanceTrackingMode.account,
       ),
     ]) {
       test(
@@ -551,10 +568,16 @@ void main() {
           );
 
           expect(outcome, isA<SubmitSuccess>());
-          final command = orchestration.createCommands.single;
+          final command = orchestration.createSceneCommands.single;
           expect(command.amount, const Money(minorUnits: 2000));
-          expect(command.scenario, scenario.$2);
-          expect(command.trackingMode, scenario.$3);
+          switch (scenario.$3) {
+            case AdvanceTrackingMode.itemized:
+              final target = command.target as ItemizedAdvanceSceneTarget;
+              expect(target.scenario, scenario.$2);
+            case AdvanceTrackingMode.account:
+              final target = command.target as AccountAdvanceSceneTarget;
+              expect(target.scenario, scenario.$2);
+          }
         },
       );
     }
@@ -595,13 +618,14 @@ void main() {
       final outcome = await viewModel.submit(amountText: '300', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = orchestration.createCommands.single;
+      final command = orchestration.createSceneCommands.single;
       expect(
         command.categoryAllocations.map((item) => item.amount.minorUnits),
         [12000, 18000],
       );
-      expect(command.scenario, AdvanceScenario.aa);
-      expect(command.aaPeopleCount, 3);
+      final target = command.target as ItemizedAdvanceSceneTarget;
+      expect(target.scenario, AdvanceScenario.aa);
+      expect(target.aaPeopleCount, 3);
     });
 
     test('creates an account-managed AA advance', () async {
@@ -625,10 +649,10 @@ void main() {
       final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = orchestration.createCommands.single;
-      expect(command.trackingMode, AdvanceTrackingMode.account);
-      expect(command.scenario, AdvanceScenario.aa);
-      expect(command.aaPeopleCount, 3);
+      final command = orchestration.createSceneCommands.single;
+      final target = command.target as AccountAdvanceSceneTarget;
+      expect(target.scenario, AdvanceScenario.aa);
+      expect(target.aaPeopleCount, 3);
     });
 
     test(
@@ -669,9 +693,10 @@ void main() {
         final outcome = await viewModel.submit(amountText: '100', noteText: '');
 
         expect(outcome, isA<SubmitSuccess>());
-        final command = orchestration.createCommands.single;
-        expect(command.aaPeopleCount, 3);
-        expect(command.scenario, AdvanceScenario.aa);
+        final command = orchestration.createSceneCommands.single;
+        final target = command.target as ItemizedAdvanceSceneTarget;
+        expect(target.aaPeopleCount, 3);
+        expect(target.scenario, AdvanceScenario.aa);
         expect(command.categoryAllocations.map((item) => item.amount), [
           const Money(minorUnits: 4000),
           const Money(minorUnits: 6000),
@@ -1013,8 +1038,10 @@ void main() {
       'returns failure and skips service when command state is incomplete',
       () async {
         final posting = _FakeTransactionPostingAppService();
+        final orchestration = _FakeAdvanceOrchestrationAppService();
         final container = _container(
           postingService: posting,
+          advanceOrchestrationService: orchestration,
           settlementAccounts: [_account('cash')],
         );
         final viewModel = container.read(_provider().notifier);
@@ -1031,19 +1058,19 @@ void main() {
           LedgerErrorCode.transactionInvalidCommand.code,
         );
         expect(failure.error.message, '请选择支出分类');
-        expect(posting.expenseCommands, isEmpty);
+        expect(orchestration.createSceneCommands, isEmpty);
       },
     );
 
     test('maps business exceptions to submit failure', () async {
-      final posting = _FakeTransactionPostingAppService(
+      final orchestration = _FakeAdvanceOrchestrationAppService(
         exception: BusinessException(
           LedgerErrorCode.accountInvalidRole,
           message: '账户不能用于当前交易。',
         ),
       );
       final container = _container(
-        postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
       );
       final viewModel = container.read(_provider().notifier);
@@ -1060,9 +1087,11 @@ void main() {
 
     test('rethrows unexpected exceptions after resetting submitting', () async {
       final unexpected = StateError('unexpected');
-      final posting = _FakeTransactionPostingAppService(exception: unexpected);
+      final orchestration = _FakeAdvanceOrchestrationAppService(
+        exception: unexpected,
+      );
       final container = _container(
-        postingService: posting,
+        advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
       );
       final viewModel = container.read(_provider().notifier);
@@ -1128,7 +1157,7 @@ void main() {
       );
     });
 
-    test('submits advance edit for edited advance', () async {
+    test('submits ordinary expense conversion through orchestration', () async {
       final editService = _FakeTransactionEditAppService();
       final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
@@ -1151,21 +1180,25 @@ void main() {
       viewModel
         ..setExpenseCategory(rootId: 'travel', categoryId: 'hotel')
         ..setFromAccountId('cash')
+        ..setExpenseScene(TransactionExpenseScene.reimbursement)
         ..setAdvanceAccountId('company');
 
       final outcome = await viewModel.submit(amountText: '30', noteText: '');
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = orchestration.editCommands.single;
+      final command = orchestration.expenseSceneCommands.single;
       expect(command.transactionId, 'tx-1');
-      expect(command.receivableAccountId, 'company');
+      final target = command.target as ItemizedAdvanceSceneTarget;
+      expect(target.receivableAccountId, 'company');
       expect(command.categoryAllocations!.single.accountId, 'hotel');
     });
 
     test('saves a loaded daily expense without changing its fields', () async {
       final editService = _FakeTransactionEditAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
       final container = _container(
         editService: editService,
+        advanceOrchestrationService: orchestration,
         editTransactionId: 'tx-1',
         editDetail: _transactionDetail(),
         accountsById: {
@@ -1184,7 +1217,8 @@ void main() {
       );
 
       expect(outcome, isA<SubmitSuccess>());
-      final command = editService.expenseCommands.single;
+      final command = orchestration.expenseSceneCommands.single;
+      expect(command.target, isA<OrdinaryExpenseSceneTarget>());
       expect(command.transactionId, 'tx-1');
       expect(command.amount, const Money(minorUnits: 1234));
       expect(command.settlementAllocations!.single.accountId, 'cash');
@@ -1197,8 +1231,10 @@ void main() {
       'loads and updates the counterparty through the edit command',
       () async {
         final editService = _FakeTransactionEditAppService();
+        final orchestration = _FakeAdvanceOrchestrationAppService();
         final container = _container(
           editService: editService,
+          advanceOrchestrationService: orchestration,
           editTransactionId: 'tx-1',
           editDetail: _transactionDetail(counterpartyId: 'cp-ziroom'),
           accountsById: {
@@ -1226,7 +1262,7 @@ void main() {
 
         expect(outcome, isA<SubmitSuccess>());
         expect(
-          editService.expenseCommands.single.counterpartyId,
+          orchestration.expenseSceneCommands.single.counterpartyId,
           isA<PatchClear<String?>>(),
         );
       },
@@ -1533,8 +1569,13 @@ class _FakeTransactionQueryService implements TransactionQueryService {
 
 class _FakeAdvanceOrchestrationAppService
     implements AdvanceOrchestrationAppService {
+  _FakeAdvanceOrchestrationAppService({this.exception});
+
+  final Object? exception;
   final createCommands = <CreateAdvanceWorkflowCommand>[];
+  final createSceneCommands = <CreateExpenseSceneWorkflowCommand>[];
   final editCommands = <EditAdvanceWorkflowCommand>[];
+  final expenseSceneCommands = <EditExpenseSceneWorkflowCommand>[];
 
   @override
   Future<String> createAdvance(CreateAdvanceWorkflowCommand command) async {
@@ -1543,8 +1584,25 @@ class _FakeAdvanceOrchestrationAppService
   }
 
   @override
+  Future<String> createExpenseScene(
+    CreateExpenseSceneWorkflowCommand command,
+  ) async {
+    if (exception case final exception?) throw exception;
+    createSceneCommands.add(command);
+    return 'expense-transaction';
+  }
+
+  @override
   Future<String> editAdvance(EditAdvanceWorkflowCommand command) async {
     editCommands.add(command);
+    return command.transactionId;
+  }
+
+  @override
+  Future<String> editExpenseScene(
+    EditExpenseSceneWorkflowCommand command,
+  ) async {
+    expenseSceneCommands.add(command);
     return command.transactionId;
   }
 
@@ -1557,13 +1615,8 @@ class _FakeTransactionPostingAppService
     implements
         TransactionPostingAppService,
         ReceivableTransactionPostingAppService {
-  _FakeTransactionPostingAppService({this.exception});
-
-  final Object? exception;
-  final expenseCommands = <CreateExpenseCommand>[];
   final incomeCommands = <CreateIncomeCommand>[];
   final transferCommands = <CreateTransferCommand>[];
-  final advanceCommands = <CreateAdvanceCommand>[];
   final borrowingCommands = <CreateBorrowingCommand>[];
   final lendingCommands = <CreateLendingCommand>[];
 
@@ -1571,7 +1624,6 @@ class _FakeTransactionPostingAppService
   Future<PostedTransactionResult> createExpense(
     CreateExpenseCommand command,
   ) async {
-    expenseCommands.add(command);
     return _postedResult();
   }
 
@@ -1595,7 +1647,6 @@ class _FakeTransactionPostingAppService
   Future<PostedTransactionResult> createAdvance(
     CreateAdvanceCommand command,
   ) async {
-    advanceCommands.add(command);
     return _postedResult();
   }
 
@@ -1631,8 +1682,6 @@ class _FakeTransactionPostingAppService
   ) async => _postedResult();
 
   PostedTransactionResult _postedResult() {
-    final exception = this.exception;
-    if (exception != null) throw exception;
     return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
@@ -1677,8 +1726,6 @@ class _FakeTransactionPostingAppService
 
 class _FakeTransactionEditAppService
     implements TransactionEditAppService, ReceivableTransactionEditAppService {
-  final expenseCommands = <EditExpenseCommand>[];
-  final advanceCommands = <EditAdvanceCommand>[];
   final transferCommands = <EditTransferCommand>[];
   final lendingCommands = <EditLendingCommand>[];
   final deletedTransactionIds = <String>[];
@@ -1687,7 +1734,6 @@ class _FakeTransactionEditAppService
   Future<PostedTransactionResult> editExpense(
     EditExpenseCommand command,
   ) async {
-    expenseCommands.add(command);
     return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 
@@ -1708,7 +1754,6 @@ class _FakeTransactionEditAppService
   Future<PostedTransactionResult> editAdvance(
     EditAdvanceCommand command,
   ) async {
-    advanceCommands.add(command);
     return const PostedTransactionResult(transactionId: 'transaction-1');
   }
 

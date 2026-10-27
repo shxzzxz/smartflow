@@ -21,6 +21,38 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
   final TransactionGroupRepository _groups;
 
   @override
+  Future<String> postExpense({
+    required amount,
+    required categoryAllocations,
+    required settlementAllocations,
+    required occurredAt,
+    postedAt,
+    counterpartyId,
+    note,
+    isExcludedFromStats = false,
+    isExcludedFromBudget = false,
+    sourceKind = SourceKind.manual,
+    tagIds = const {},
+  }) async {
+    final result = await _posting.createExpense(
+      CreateExpenseCommand(
+        amount: amount,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
+        occurredAt: occurredAt,
+        postedAt: postedAt,
+        counterpartyId: counterpartyId,
+        note: note,
+        isExcludedFromStats: isExcludedFromStats,
+        isExcludedFromBudget: isExcludedFromBudget,
+        sourceKind: sourceKind,
+        tagIds: tagIds,
+      ),
+    );
+    return result.transactionId;
+  }
+
+  @override
   Future<String> postAdvance({
     required amount,
     required advanceAmount,
@@ -77,7 +109,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
             amount: amount,
             receivableAccountId: receivableAccountId,
             settlementAllocations: settlementAllocations,
-            ownership: ownership!,
+            ownership: ownership,
             occurredAt: occurredAt,
             postedAt: postedAt,
             counterpartyId: counterpartyId,
@@ -117,7 +149,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
             receivableAccountId: receivableAccountId,
             settlementAllocations: settlementAllocations,
             gapExpenseAllocations: gapExpenseAllocations,
-            ownership: ownership!,
+            ownership: ownership,
             shortfallKind: shortfallKind,
             occurredAt: occurredAt,
             postedAt: postedAt,
@@ -167,6 +199,38 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
         ownership: ownership,
         categoryAllocations: categoryAllocations,
         selfBorneAllocations: selfBorneAllocations,
+        settlementAllocations: settlementAllocations,
+        refundSelfBorneAllocations: refundSelfBorneAllocations,
+        occurredAt: occurredAt,
+        counterpartyId: counterpartyId,
+        note: note,
+        isExcludedFromStats: isExcludedFromStats,
+        isExcludedFromBudget: isExcludedFromBudget,
+        tagIds: tagIds,
+      ),
+    );
+    return result.transactionId;
+  }
+
+  @override
+  Future<String> rewriteExpense({
+    required transactionId,
+    required amount,
+    required categoryAllocations,
+    required settlementAllocations,
+    required refundSelfBorneAllocations,
+    required occurredAt,
+    Patch<String?>? counterpartyId,
+    Patch<String?>? note,
+    isExcludedFromStats,
+    isExcludedFromBudget,
+    tagIds,
+  }) async {
+    final result = await _editing.editExpense(
+      EditExpenseCommand(
+        transactionId: transactionId,
+        amount: amount,
+        categoryAllocations: categoryAllocations,
         settlementAllocations: settlementAllocations,
         refundSelfBorneAllocations: refundSelfBorneAllocations,
         occurredAt: occurredAt,
@@ -240,7 +304,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     required amount,
     required receivableAccountId,
     required settlementAllocations,
-    required ownership,
+    ownership,
     required occurredAt,
     Patch<String?>? counterpartyId,
     Patch<String?>? note,
@@ -268,7 +332,7 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     required settlementAllocations,
     required gapExpenseAllocations,
     required shortfallKind,
-    required ownership,
+    ownership,
     required occurredAt,
     Patch<String?>? counterpartyId,
     Patch<String?>? note,

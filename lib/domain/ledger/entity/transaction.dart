@@ -130,7 +130,7 @@ class Transaction {
     }
   }
 
-  void updateOwnership(TransactionOwnership ownership) {
+  void updateOwnership(TransactionOwnership? ownership) {
     this.ownership = ownership;
   }
 

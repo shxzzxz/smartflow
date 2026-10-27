@@ -627,40 +627,91 @@ WHERE owner_type = 'advance.itemized'
     );
   }
 
-  final accountOwners = await database.customSelect('''
-SELECT DISTINCT owner_id, owner_role
+  final accountTransactions = await database.customSelect('''
+SELECT id,
+       business_purpose,
+       parent_transaction_id,
+       owner_id,
+       owner_role,
+       primary_amount_minor,
+       (
+         SELECT SUM(line.amount_minor)
+         FROM transaction_lines AS line
+         WHERE line.transaction_id = transactions.id
+           AND line.role = 'receivable'
+       ) AS receivable_minor
 FROM transactions
 WHERE owner_type = 'advance.account'
   AND owner_id IS NOT NULL
+ORDER BY occurred_at, id
 ''').get();
-  for (final owner in accountOwners) {
-    final accountId = owner.read<String>('owner_id');
-    final scenario = _requiredAdvanceScenario(
-      owner.readNullable<String>('owner_role'),
+  for (final transaction in accountTransactions) {
+    final transactionId = transaction.read<String>('id');
+    final businessPurpose = transaction.read<String>('business_purpose');
+    final parentTransactionId = transaction.readNullable<String>(
+      'parent_transaction_id',
     );
-    final caseId = 'orchestration:advance:account:$scenario:$accountId';
-    await database.customStatement(
-      '''
+    if (businessPurpose == 'advance') {
+      final accountId = transaction.read<String>('owner_id');
+      final scenario = _requiredAdvanceScenario(
+        transaction.readNullable<String>('owner_role'),
+      );
+      final sampleTotal = transaction.read<int>('primary_amount_minor');
+      final sampleAdvance =
+          transaction.readNullable<int>('receivable_minor') ?? sampleTotal;
+      final aaPeopleCount = scenario == 'aa'
+          ? _inferAaPeopleCount(
+              totalMinor: sampleTotal,
+              advanceMinor: sampleAdvance,
+            )
+          : null;
+      final caseId = 'orchestration:advance:account:$transactionId';
+      await database.customStatement(
+        '''
 INSERT INTO advance_cases (
   id, scenario, tracking_mode, receivable_account_id, aa_people_count,
   created_at, updated_at
 )
-VALUES (?, ?, 'account', ?, NULL,
+VALUES (?, ?, 'account', ?, ?,
         strftime('%s', CURRENT_TIMESTAMP), strftime('%s', CURRENT_TIMESTAMP))
 ''',
-      [caseId, scenario, accountId],
-    );
-    await database.customStatement(
-      '''
+        [caseId, scenario, accountId, aaPeopleCount],
+      );
+      await database.customStatement(
+        '''
 UPDATE transactions
 SET owner_type = 'orchestration.advance',
     owner_id = ?,
     owner_role = NULL
-WHERE owner_type = 'advance.account'
-  AND owner_id = ?
-  AND owner_role = ?
+WHERE id = ?
 ''',
-      [caseId, accountId, scenario],
+        [caseId, transactionId],
+      );
+      continue;
+    }
+    if (businessPurpose == 'refund' && parentTransactionId != null) {
+      final caseId = 'orchestration:advance:account:$parentTransactionId';
+      await database.customStatement(
+        '''
+UPDATE transactions
+SET owner_type = 'orchestration.advance',
+    owner_id = ?,
+    owner_role = NULL
+WHERE id = ?
+''',
+        [caseId, transactionId],
+      );
+      continue;
+    }
+    await database.customStatement(
+      '''
+UPDATE transactions
+SET owner_type = NULL,
+    owner_id = NULL,
+    owner_role = NULL
+WHERE id = ?
+''',
+      [transactionId],
     );
   }
 

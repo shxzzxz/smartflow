@@ -151,4 +151,73 @@ void main() {
       },
     );
   });
+
+  test(
+    'splits account advances into per-transaction cases and clears receipt ownership',
+    () {
+      final tables = <String, Iterable<BackupJson>>{
+        'transactions': [
+          {
+            'id': 'account-1',
+            'businessPurpose': 'advance',
+            'ownerType': 'advance.account',
+            'ownerId': 'receivable',
+            'ownerRole': 'aa',
+            'primaryAmountMinor': 3000,
+          },
+          {
+            'id': 'account-2',
+            'businessPurpose': 'advance',
+            'ownerType': 'advance.account',
+            'ownerId': 'receivable',
+            'ownerRole': 'aa',
+            'primaryAmountMinor': 3000,
+          },
+          {
+            'id': 'account-receipt',
+            'businessPurpose': 'advanceCollection',
+            'ownerType': 'advance.account',
+            'ownerId': 'receivable',
+            'ownerRole': 'aa',
+            'primaryAmountMinor': 500,
+          },
+        ],
+        'transaction_lines': [
+          {
+            'id': 'receivable-1',
+            'transactionId': 'account-1',
+            'role': 'receivable',
+            'accountId': 'receivable',
+            'amountMinor': 1500,
+          },
+          {
+            'id': 'receivable-2',
+            'transactionId': 'account-2',
+            'role': 'receivable',
+            'accountId': 'receivable',
+            'amountMinor': 1500,
+          },
+        ],
+      };
+
+      migrateAdvanceBackup(tables);
+
+      final cases = tables['advance_cases']!.toList();
+      expect(cases, hasLength(2));
+      expect(cases.map((row) => row['aaPeopleCount']), everyElement(2));
+      final transactions = {
+        for (final row in tables['transactions']!) row['id']: row,
+      };
+      expect(
+        transactions['account-1']!['ownerId'],
+        'orchestration:advance:account:account-1',
+      );
+      expect(
+        transactions['account-2']!['ownerId'],
+        'orchestration:advance:account:account-2',
+      );
+      expect(transactions['account-receipt']!['ownerType'], isNull);
+      expect(transactions['account-receipt']!['ownerId'], isNull);
+    },
+  );
 }

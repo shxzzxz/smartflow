@@ -93,6 +93,7 @@ class TransactionEditAppServiceImpl
       () => _transactionGroupRewriteService.rewriteParentTransaction(
         EditParentTransactionInstruction(
           transactionId: cmd.transactionId,
+          refundSelfBorneAllocations: cmd.refundSelfBorneAllocations,
           occurredAt: cmd.occurredAt,
           counterpartyId: cmd.counterpartyId,
           note: cmd.note,

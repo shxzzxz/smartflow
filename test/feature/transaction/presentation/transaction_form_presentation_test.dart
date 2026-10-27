@@ -234,6 +234,13 @@ void main() {
         ).map((account) => account.id),
         ['reimbursement', 'receivable'],
       );
+      expect(
+        advanceAccountsForExpenseScene(
+          TransactionExpenseScene.onBehalfAccount,
+          accounts,
+        ).map((account) => account.id),
+        ['reimbursement', 'receivable'],
+      );
     });
 
     test('maps account and itemized scenes to the same business scenarios', () {
@@ -265,6 +272,10 @@ void main() {
         TransactionExpenseScene.onBehalf.advanceTrackingMode,
         AdvanceTrackingMode.itemized,
       );
+      expect(
+        TransactionExpenseScene.onBehalfAccount.advanceTrackingMode,
+        AdvanceTrackingMode.account,
+      );
 
       expect(TransactionExpenseScene.reimbursementAccount.label, '报销（账户）');
       expect(TransactionExpenseScene.aaAccount.label, 'AA（账户）');
@@ -281,6 +292,13 @@ void main() {
           trackingMode: AdvanceTrackingMode.account,
         ),
         TransactionExpenseScene.aaAccount,
+      );
+      expect(
+        transactionExpenseSceneForAdvanceScenario(
+          AdvanceScenario.onBehalf,
+          trackingMode: AdvanceTrackingMode.account,
+        ),
+        TransactionExpenseScene.onBehalfAccount,
       );
     });
 

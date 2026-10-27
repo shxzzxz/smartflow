@@ -491,10 +491,6 @@ class PostingEngine {
       allocations: instruction.settlementAllocations,
     );
     final ownership = advance?.ownership ?? instruction.ownership;
-    if (ownership == null) {
-      return LedgerViolationReason.advanceInstructionUnresolvable
-          .throwException(message: 'Advance ownership is required.');
-    }
     final transactionId = _idGenerator.newId();
     var lineNo = 1;
     return _posted(
@@ -940,10 +936,6 @@ class PostingEngine {
         );
       }
       final ownership = instruction.ownership;
-      if (ownership == null) {
-        return LedgerViolationReason.advanceInstructionUnresolvable
-            .throwException(message: 'Advance ownership is required.');
-      }
       final transactionId = _idGenerator.newId();
       var lineNo = 1;
       return _posted(

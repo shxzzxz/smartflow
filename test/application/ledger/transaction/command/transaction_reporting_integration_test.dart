@@ -578,10 +578,6 @@ void main() {
   test(
     'account-managed receipt edit persists a top-level transaction',
     () async {
-      const ownership = TransactionOwnership(
-        ownerType: 'orchestration.advance',
-        ownerId: 'advance-case',
-      );
       final receipt = await posting.createAdvanceCollection(
         CreateAdvanceCollectionCommand.account(
           amount: Money.parse('40'),
@@ -591,7 +587,6 @@ void main() {
             amount: Money.parse('40'),
           ),
           occurredAt: date,
-          ownership: ownership,
         ),
       );
 
@@ -612,8 +607,7 @@ void main() {
       expect(rewritten.id, receipt.transactionId);
       expect(rewritten.parentTransactionId, null);
       expect(rewritten.primaryAmount, Money.parse('45'));
-      expect(rewritten.ownership?.ownerType, 'orchestration.advance');
-      expect(rewritten.ownership?.ownerId, 'advance-case');
+      expect(rewritten.ownership, isA<Null>());
       expect(rewritten.accountOf(TransactionRole.settlementIn), 'bank');
       expect(rewritten.amountOf(TransactionRole.receivable), Money.parse('45'));
     },
@@ -622,10 +616,6 @@ void main() {
   test(
     'account-managed settlement edit persists a top-level transaction',
     () async {
-      const ownership = TransactionOwnership(
-        ownerType: 'orchestration.advance',
-        ownerId: 'advance-case',
-      );
       final close = await posting.settleAdvance(
         CreateAdvanceSettlementCommand.account(
           actualReceivedAmount: Money.parse('60'),
@@ -635,7 +625,6 @@ void main() {
             amount: Money.parse('60'),
           ),
           gapExpenseAllocations: const [],
-          ownership: ownership,
           occurredAt: date,
         ),
       );
@@ -658,8 +647,7 @@ void main() {
       expect(rewritten.id, close.transactionId);
       expect(rewritten.parentTransactionId, null);
       expect(rewritten.primaryAmount, Money.parse('70'));
-      expect(rewritten.ownership?.ownerType, 'orchestration.advance');
-      expect(rewritten.ownership?.ownerId, 'advance-case');
+      expect(rewritten.ownership, isA<Null>());
       expect(rewritten.accountOf(TransactionRole.settlementIn), 'bank');
       expect(rewritten.amountOf(TransactionRole.receivable), Money.parse('70'));
       expect(rewritten.linesOf(TransactionRole.advanceSelfBorne), isEmpty);

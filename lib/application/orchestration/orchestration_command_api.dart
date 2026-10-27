@@ -6,3 +6,4 @@ export 'package:smartflow/domain/orchestration/entity/advance_case.dart';
 export 'package:smartflow/domain/ledger/valobj/ledger_enum.dart'
     show AdvanceShortfallKind;
 export 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
+export 'package:smartflow/domain/orchestration/valobj/advance_error_code.dart';

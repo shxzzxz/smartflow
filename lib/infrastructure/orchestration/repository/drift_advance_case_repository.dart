@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 
 import '../../../domain/orchestration/entity/advance_case.dart';
 import '../../../domain/orchestration/port/advance_case_repository.dart';
-import '../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../database/app_database.dart';
 
 class DriftAdvanceCaseRepository implements AdvanceCaseRepository {
@@ -15,22 +14,6 @@ class DriftAdvanceCaseRepository implements AdvanceCaseRepository {
     final row = await (_database.select(
       _database.advanceCases,
     )..where((table) => table.id.equals(id))).getSingleOrNull();
-    return row == null ? null : _toDomain(row);
-  }
-
-  @override
-  Future<AdvanceCase?> findAccountCase({
-    required String receivableAccountId,
-    required AdvanceScenario scenario,
-  }) async {
-    final row =
-        await (_database.select(_database.advanceCases)..where(
-              (table) =>
-                  table.trackingMode.equalsValue(AdvanceTrackingMode.account) &
-                  table.receivableAccountId.equals(receivableAccountId) &
-                  table.scenario.equalsValue(scenario),
-            ))
-            .getSingleOrNull();
     return row == null ? null : _toDomain(row);
   }
 
@@ -49,6 +32,13 @@ class DriftAdvanceCaseRepository implements AdvanceCaseRepository {
             updatedAt: Value(DateTime.now()),
           ),
         );
+  }
+
+  @override
+  Future<void> deleteById(String id) async {
+    await (_database.delete(
+      _database.advanceCases,
+    )..where((table) => table.id.equals(id))).go();
   }
 
   AdvanceCase _toDomain(AdvanceCaseRow row) {

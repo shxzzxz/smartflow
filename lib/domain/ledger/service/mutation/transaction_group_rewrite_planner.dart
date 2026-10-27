@@ -135,8 +135,9 @@ class TransactionGroupRewritePlanner {
           child: child,
           currentGroup: currentGroup,
           parent: parent,
-          selfBorneAllocations:
-              refundSelfBorneAllocations[child.id] ?? const [],
+          selfBorneAllocations: refundSelfBorneAllocations.containsKey(child.id)
+              ? refundSelfBorneAllocations[child.id]
+              : null,
         );
       default:
         return child.copyWith(
@@ -150,7 +151,7 @@ class TransactionGroupRewritePlanner {
     required Transaction child,
     required TransactionGroup currentGroup,
     required Transaction parent,
-    required List<AccountAmountAllocation> selfBorneAllocations,
+    required List<AccountAmountAllocation>? selfBorneAllocations,
   }) {
     final instruction = _postingInstructionResolver.resolveRefund(child);
     final categories = _rebaseSingleCategoryAllocations(
@@ -163,9 +164,8 @@ class TransactionGroupRewritePlanner {
         parentTransactionId: parent.id,
         amount: instruction.amount,
         categoryAllocations: categories,
-        selfBorneAllocations: selfBorneAllocations.isEmpty
-            ? instruction.selfBorneAllocations
-            : selfBorneAllocations,
+        selfBorneAllocations:
+            selfBorneAllocations ?? instruction.selfBorneAllocations,
         settlementAllocations: instruction.settlementAllocations,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,

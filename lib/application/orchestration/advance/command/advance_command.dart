@@ -73,6 +73,97 @@ class EditAdvanceWorkflowCommand {
   final Set<String>? tagIds;
 }
 
+sealed class ExpenseSceneTarget {
+  const ExpenseSceneTarget();
+}
+
+final class OrdinaryExpenseSceneTarget extends ExpenseSceneTarget {
+  const OrdinaryExpenseSceneTarget();
+}
+
+final class ItemizedAdvanceSceneTarget extends ExpenseSceneTarget {
+  const ItemizedAdvanceSceneTarget({
+    required this.scenario,
+    required this.aaPeopleCount,
+    required this.receivableAccountId,
+  });
+
+  final AdvanceScenario scenario;
+  final int aaPeopleCount;
+  final String receivableAccountId;
+}
+
+final class AccountAdvanceSceneTarget extends ExpenseSceneTarget {
+  const AccountAdvanceSceneTarget({
+    required this.scenario,
+    required this.aaPeopleCount,
+    required this.receivableAccountId,
+  });
+
+  final AdvanceScenario scenario;
+  final int aaPeopleCount;
+  final String receivableAccountId;
+}
+
+class CreateExpenseSceneWorkflowCommand {
+  CreateExpenseSceneWorkflowCommand({
+    required this.amount,
+    required this.target,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyId,
+    this.note,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+    this.sourceKind = SourceKind.manual,
+    this.tagIds = const {},
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  final Money amount;
+  final ExpenseSceneTarget target;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyId;
+  final String? note;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
+  final SourceKind sourceKind;
+  final Set<String> tagIds;
+}
+
+class EditExpenseSceneWorkflowCommand {
+  const EditExpenseSceneWorkflowCommand({
+    required this.transactionId,
+    required this.target,
+    this.amount,
+    this.categoryAllocations,
+    this.settlementAllocations,
+    this.occurredAt,
+    this.counterpartyId,
+    this.note,
+    this.isExcludedFromStats,
+    this.isExcludedFromBudget,
+    this.tagIds,
+  });
+
+  final String transactionId;
+  final ExpenseSceneTarget target;
+  final Money? amount;
+  final List<AccountAmountAllocation>? categoryAllocations;
+  final List<AccountAmountAllocation>? settlementAllocations;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyId;
+  final Patch<String?>? note;
+  final bool? isExcludedFromStats;
+  final bool? isExcludedFromBudget;
+  final Set<String>? tagIds;
+}
+
 class CreateAdvanceCollectionWorkflowCommand {
   CreateAdvanceCollectionWorkflowCommand({
     required this.amount,
@@ -84,14 +175,12 @@ class CreateAdvanceCollectionWorkflowCommand {
     this.counterpartyId,
     this.note,
   }) : advanceTransactionId = advanceTransactionId,
-       scenario = null,
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
   CreateAdvanceCollectionWorkflowCommand.account({
     required this.amount,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
-    required this.scenario,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyId,
@@ -103,7 +192,6 @@ class CreateAdvanceCollectionWorkflowCommand {
   final String? advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
-  final AdvanceScenario? scenario;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyId;
@@ -123,7 +211,6 @@ class CreateAdvanceSettlementWorkflowCommand {
     this.counterpartyId,
     this.note,
   }) : advanceTransactionId = advanceTransactionId,
-       scenario = null,
        settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
@@ -132,7 +219,6 @@ class CreateAdvanceSettlementWorkflowCommand {
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
-    required this.scenario,
     this.shortfallKind = AdvanceShortfallKind.selfBorne,
     required this.occurredAt,
     this.postedAt,
@@ -147,7 +233,6 @@ class CreateAdvanceSettlementWorkflowCommand {
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final List<AccountAmountAllocation> gapExpenseAllocations;
-  final AdvanceScenario? scenario;
   final AdvanceShortfallKind shortfallKind;
   final DateTime occurredAt;
   final DateTime? postedAt;

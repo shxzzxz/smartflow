@@ -1,9 +1,10 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show DatabaseConnection;
+import 'package:drift/drift.dart' show DatabaseConnection, Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 void main() {
   test(
@@ -32,6 +33,12 @@ VALUES
    'advance.itemized', 'aa-parent', 'aa'),
   ('account-advance', 'advance', 3, 3, 1000, 'manual',
    'advance.account', 'receivable', 'reimbursement'),
+  ('account-aa-1', 'advance', 3, 3, 3000, 'manual',
+   'advance.account', 'receivable', 'aa'),
+  ('account-aa-2', 'advance', 4, 4, 3000, 'manual',
+   'advance.account', 'receivable', 'aa'),
+  ('account-receipt', 'advanceCollection', 4, 4, 500, 'manual',
+   'advance.account', 'receivable', 'aa'),
   ('repayment', 'debtRepayment', 4, 4, 500, 'manual',
    'credit_repayment', 'repayment-1', 'BILL'),
   ('plain-expense', 'dailyExpense', 5, 5, 100, 'manual', NULL, NULL, NULL)
@@ -41,7 +48,9 @@ INSERT INTO transaction_lines (
   id, transaction_id, line_no, role, account_id, amount_minor
 )
 VALUES
-  ('aa-receivable', 'aa-parent', 1, 'receivable', 'receivable', 20000)
+  ('aa-receivable', 'aa-parent', 1, 'receivable', 'receivable', 20000),
+  ('account-aa-1-receivable', 'account-aa-1', 1, 'receivable', 'receivable', 1500),
+  ('account-aa-2-receivable', 'account-aa-2', 1, 'receivable', 'receivable', 1500)
 ''');
       await old.customStatement('PRAGMA user_version = 48');
       await old.close();
@@ -67,8 +76,17 @@ ORDER BY id
       expect(byId['aa-refund'], byId['aa-parent']);
       expect(byId['account-advance'], (
         'orchestration.advance',
-        'orchestration:advance:account:reimbursement:receivable',
+        'orchestration:advance:account:account-advance',
       ));
+      expect(byId['account-aa-1'], (
+        'orchestration.advance',
+        'orchestration:advance:account:account-aa-1',
+      ));
+      expect(byId['account-aa-2'], (
+        'orchestration.advance',
+        'orchestration:advance:account:account-aa-2',
+      ));
+      expect(byId['account-receipt'], (null, null));
       expect(byId['repayment'], ('credit.repayment', 'repayment-1'));
       expect(byId['plain-expense'], (null, null));
 
@@ -79,9 +97,12 @@ ORDER BY id
       expect(aaCase.trackingMode.name, 'itemized');
       expect(aaCase.aaPeopleCount, 3);
       final accountCase =
-          caseById['orchestration:advance:account:reimbursement:receivable']!;
+          caseById['orchestration:advance:account:account-advance']!;
       expect(accountCase.trackingMode.name, 'account');
       expect(accountCase.receivableAccountId, 'receivable');
+      final accountAaCase =
+          caseById['orchestration:advance:account:account-aa-1']!;
+      expect(accountAaCase.aaPeopleCount, 2);
 
       final columns = await upgraded
           .customSelect('PRAGMA table_info(transactions)')
@@ -97,6 +118,20 @@ ORDER BY id
         'owner_type',
         'owner_id',
       ]);
+
+      await expectLater(
+        upgraded
+            .into(upgraded.advanceCases)
+            .insert(
+              AdvanceCasesCompanion.insert(
+                id: 'invalid-account-aa',
+                scenario: AdvanceScenario.aa,
+                trackingMode: AdvanceTrackingMode.account,
+                receivableAccountId: const Value('receivable'),
+              ),
+            ),
+        throwsA(anything),
+      );
     },
   );
 }

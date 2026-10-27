@@ -1194,6 +1194,10 @@ final _expenseSceneItems = <AppChoiceGridItem<_TransactionSceneChoice>>[
   ),
   _sceneGridItem(
     TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.onBehalfAccount,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
     expenseScene: TransactionExpenseScene.aaAccount,
   ),
   _sceneGridItem(
@@ -1340,7 +1344,8 @@ IconData _sceneChoiceIcon(_TransactionSceneChoice choice) {
       TransactionExpenseScene.reimbursement ||
       TransactionExpenseScene.reimbursementAccount =>
         RemixIcons.file_list_3_line,
-      TransactionExpenseScene.onBehalf => RemixIcons.hand_coin_line,
+      TransactionExpenseScene.onBehalf ||
+      TransactionExpenseScene.onBehalfAccount => RemixIcons.hand_coin_line,
       TransactionExpenseScene.aa ||
       TransactionExpenseScene.aaAccount => RemixIcons.user_shared_line,
     };

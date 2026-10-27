@@ -11,7 +11,6 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/advance_edit_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
-import '../../../helper/advance_ownership_fixtures.dart';
 import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
@@ -471,11 +470,6 @@ TransactionReadModel _accountManagedReceiptDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      ownership: advanceOwnership(
-        management: AdvanceTrackingMode.account,
-        ownerId: 'receivable',
-        scenario: AdvanceScenario.reimbursement,
-      ),
     ),
     createdAt: DateTime(2026, 7, 2, 9),
     lines: const [
@@ -509,11 +503,6 @@ TransactionReadModel _accountManagedCloseDetail() {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.manual,
-      ownership: advanceOwnership(
-        management: AdvanceTrackingMode.account,
-        ownerId: 'receivable',
-        scenario: AdvanceScenario.reimbursement,
-      ),
     ),
     createdAt: DateTime(2026, 7, 3, 10),
     lines: const [

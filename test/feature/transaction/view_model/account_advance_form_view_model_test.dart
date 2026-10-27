@@ -36,7 +36,6 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     final command = posting.collectionCommands.single;
-    expect(command.scenario, AdvanceScenario.reimbursement);
     expect(command.advanceTransactionId, isNull);
     expect(command.receivableAccountId, 'reimbursement');
     expect(command.settlementAllocations.single.accountId, 'cash');
@@ -60,7 +59,6 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     final command = posting.settlementCommands.single;
-    expect(command.scenario, AdvanceScenario.aa);
     expect(command.advanceTransactionId, isNull);
     expect(command.actualReceivedAmount, const Money(minorUnits: 3000));
     expect(command.gapExpenseAllocations, isEmpty);

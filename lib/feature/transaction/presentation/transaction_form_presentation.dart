@@ -16,6 +16,7 @@ enum TransactionExpenseScene {
   aa,
   reimbursementAccount,
   aaAccount,
+  onBehalfAccount,
 }
 
 extension TransactionExpenseScenePresentation on TransactionExpenseScene {
@@ -26,6 +27,7 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.aa => 'AA',
     TransactionExpenseScene.reimbursementAccount => '报销（账户）',
     TransactionExpenseScene.aaAccount => 'AA（账户）',
+    TransactionExpenseScene.onBehalfAccount => '代付（账户）',
   };
 
   bool get isAdvance => this != TransactionExpenseScene.ordinary;
@@ -38,6 +40,7 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount => '报销账户',
     TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.onBehalfAccount ||
     TransactionExpenseScene.aa ||
     TransactionExpenseScene.aaAccount => '垫付账户',
     TransactionExpenseScene.ordinary => '垫付账户',
@@ -46,7 +49,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
   String get noneLabel => switch (this) {
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount => '不报销',
-    TransactionExpenseScene.onBehalf => '不代付',
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.onBehalfAccount => '不代付',
     TransactionExpenseScene.aa || TransactionExpenseScene.aaAccount => '不AA',
     TransactionExpenseScene.ordinary => '不垫付',
   };
@@ -56,7 +60,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount =>
       AdvanceScenario.reimbursement,
-    TransactionExpenseScene.onBehalf => AdvanceScenario.onBehalf,
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.onBehalfAccount => AdvanceScenario.onBehalf,
     TransactionExpenseScene.aa ||
     TransactionExpenseScene.aaAccount => AdvanceScenario.aa,
   };
@@ -67,7 +72,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.onBehalf ||
     TransactionExpenseScene.aa => AdvanceTrackingMode.itemized,
     TransactionExpenseScene.reimbursementAccount ||
-    TransactionExpenseScene.aaAccount => AdvanceTrackingMode.account,
+    TransactionExpenseScene.aaAccount ||
+    TransactionExpenseScene.onBehalfAccount => AdvanceTrackingMode.account,
   };
 }
 
@@ -80,14 +86,10 @@ TransactionExpenseScene transactionExpenseSceneForAdvanceScenario(
       trackingMode == AdvanceTrackingMode.account
           ? TransactionExpenseScene.reimbursementAccount
           : TransactionExpenseScene.reimbursement,
-    AdvanceScenario.onBehalf
-        when trackingMode == AdvanceTrackingMode.itemized =>
-      TransactionExpenseScene.onBehalf,
-    AdvanceScenario.onBehalf => throw ArgumentError.value(
-      trackingMode,
-      'trackingMode',
-      '代付不支持账户垫付',
-    ),
+    AdvanceScenario.onBehalf =>
+      trackingMode == AdvanceTrackingMode.account
+          ? TransactionExpenseScene.onBehalfAccount
+          : TransactionExpenseScene.onBehalf,
     AdvanceScenario.aa =>
       trackingMode == AdvanceTrackingMode.account
           ? TransactionExpenseScene.aaAccount
@@ -105,7 +107,9 @@ List<Account> advanceAccountsForExpenseScene(
     TransactionExpenseScene.reimbursementAccount => {
       AccountProfileKind.reimbursement.key,
     },
-    TransactionExpenseScene.onBehalf || TransactionExpenseScene.aa => {
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.onBehalfAccount ||
+    TransactionExpenseScene.aa => {
       AccountProfileKind.reimbursement.key,
       AccountProfileKind.receivable.key,
     },

@@ -24,7 +24,8 @@ class AdvanceCases extends Table {
   List<String> get customConstraints => [
     "CHECK (tracking_mode = 'itemized' OR receivable_account_id IS NOT NULL)",
     "CHECK (scenario = 'aa' OR aa_people_count IS NULL)",
-    'CHECK (aa_people_count IS NULL OR '
-        '(aa_people_count >= 2 AND aa_people_count <= 99))',
+    "CHECK (scenario != 'aa' OR "
+        '(aa_people_count IS NOT NULL AND '
+        'aa_people_count >= 2 AND aa_people_count <= 99))',
   ];
 }

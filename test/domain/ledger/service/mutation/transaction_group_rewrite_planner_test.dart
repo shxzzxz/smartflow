@@ -8,6 +8,7 @@ import 'package:smartflow/domain/ledger/service/posting/posting_instruction_reso
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
+import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 import '../../../../helper/fake_system_account_resolver.dart';
@@ -73,6 +74,115 @@ void main() {
     );
     expect(plan.rowUpdates.map((row) => row.id), contains(current.id));
   });
+
+  test(
+    'an explicit empty refund share clears the previous self-borne split',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'refund-share'),
+      );
+      const ownership = TransactionOwnership(
+        ownerType: 'orchestration.advance',
+        ownerId: 'case-1',
+      );
+      final current = engine.createAdvance(
+        AdvanceInstruction(
+          amount: Money.parse('70'),
+          advanceAmount: Money.parse('46.68'),
+          receivableAccountId: 'receivable',
+          categoryAllocations: [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money.parse('70'),
+            ),
+          ],
+          selfBorneAllocations: [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money.parse('23.32'),
+            ),
+          ],
+          settlementAllocations: [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money.parse('70'),
+            ),
+          ],
+          occurredAt: DateTime(2026, 7, 1),
+          ownership: ownership,
+        ),
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: current.id,
+          amount: Money.parse('20'),
+          categoryAllocations: [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money.parse('20'),
+            ),
+          ],
+          selfBorneAllocations: [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money.parse('6.66'),
+            ),
+          ],
+          settlementAllocations: [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money.parse('20'),
+            ),
+          ],
+          occurredAt: DateTime(2026, 7, 2),
+        ),
+        parent: current,
+      );
+      final candidate = engine.createAdvance(
+        AdvanceInstruction(
+          amount: Money.parse('70'),
+          advanceAmount: Money.parse('70'),
+          receivableAccountId: 'receivable',
+          categoryAllocations: [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money.parse('70'),
+            ),
+          ],
+          settlementAllocations: [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money.parse('70'),
+            ),
+          ],
+          occurredAt: current.occurredAt,
+          ownership: ownership,
+        ),
+      );
+
+      final plan =
+          await TransactionGroupRewritePlanner(
+            postingEngine: engine,
+            postingInstructionResolver:
+                const DefaultPostingInstructionResolver(),
+            systemAccountResolver: const FakeSystemAccountResolver(),
+          ).planParentRewrite(
+            currentGroup: TransactionGroup(
+              parentTransaction: current,
+              childTransactions: [refund],
+            ),
+            candidateParent: candidate,
+            refundSelfBorneAllocations: {refund.id: const []},
+          );
+
+      expect(
+        plan.currentGroup.childTransactions.single.linesOf(
+          TransactionRole.advanceSelfBorne,
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test(
     'metadata-only parent edit updates the row without rewriting lines',

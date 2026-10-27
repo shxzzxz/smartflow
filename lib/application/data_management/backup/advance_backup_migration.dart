@@ -153,30 +153,54 @@ void _migrateOwnership(Map<String, Iterable<BackupJson>> tables) {
     }
   }
 
-  for (final transaction in [...transactions]) {
-    if (transaction['ownerType'] != 'advance.account' ||
-        transaction['ownerId'] is! String) {
-      continue;
-    }
-    final accountId = transaction['ownerId'] as String;
-    final scenario = _requiredScenario(transaction['ownerRole']);
-    final caseId = 'orchestration:advance:account:$scenario:$accountId';
+  final accountAdvanceParents = [
+    for (final transaction in transactions)
+      if (transaction['ownerType'] == 'advance.account' &&
+          transaction['businessPurpose'] == 'advance' &&
+          transaction['ownerId'] is String &&
+          transaction['id'] is String)
+        transaction,
+  ];
+  for (final parent in accountAdvanceParents) {
+    final parentId = parent['id'] as String;
+    final accountId = parent['ownerId'] as String;
+    final scenario = _requiredScenario(parent['ownerRole']);
+    final advanceMinor = lines
+        .where(
+          (line) =>
+              line['transactionId'] == parentId && line['role'] == 'receivable',
+        )
+        .fold<int>(
+          0,
+          (total, line) => total + _intValueOrZero(line['amountMinor']),
+        );
+    final caseId = 'orchestration:advance:account:$parentId';
     casesById[caseId] = {
       'id': caseId,
       'scenario': scenario,
       'trackingMode': 'account',
       'receivableAccountId': accountId,
-      'aaPeopleCount': null,
-      'createdAt': transaction['createdAt'] ?? _migrationTimestamp,
-      'updatedAt': transaction['updatedAt'] ?? _migrationTimestamp,
+      'aaPeopleCount': scenario == 'aa'
+          ? _inferAaPeopleCount(
+              _intValueOrZero(parent['primaryAmountMinor']),
+              advanceMinor,
+            )
+          : null,
+      'createdAt': parent['createdAt'] ?? _migrationTimestamp,
+      'updatedAt': parent['updatedAt'] ?? _migrationTimestamp,
     };
-    for (final row in transactions) {
-      if (row['ownerType'] == 'advance.account' &&
-          row['ownerId'] == accountId &&
-          row['ownerRole'] == scenario) {
-        row['ownerType'] = 'orchestration.advance';
-        row['ownerId'] = caseId;
+    for (final transaction in transactions) {
+      if (transaction['id'] == parentId ||
+          transaction['parentTransactionId'] == parentId) {
+        transaction['ownerType'] = 'orchestration.advance';
+        transaction['ownerId'] = caseId;
       }
+    }
+  }
+  for (final transaction in transactions) {
+    if (transaction['ownerType'] == 'advance.account') {
+      transaction['ownerType'] = null;
+      transaction['ownerId'] = null;
     }
   }
 

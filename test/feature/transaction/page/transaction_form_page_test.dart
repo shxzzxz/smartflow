@@ -8,6 +8,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -983,6 +984,9 @@ Future<void> _pumpTransactionForm(
     ProviderScope(
       overrides: [
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
+        advanceOrchestrationAppServiceProvider.overrideWithValue(
+          _FakeExpenseSceneOrchestrationAppService(fakeService),
+        ),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.settlement,
         ).overrideWith(
@@ -1205,4 +1209,40 @@ class _FakeTransactionPostingAppService
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeExpenseSceneOrchestrationAppService
+    implements AdvanceOrchestrationAppService {
+  const _FakeExpenseSceneOrchestrationAppService(this.posting);
+
+  final _FakeTransactionPostingAppService posting;
+
+  @override
+  Future<String> createExpenseScene(
+    CreateExpenseSceneWorkflowCommand command,
+  ) async {
+    if (command.target is! OrdinaryExpenseSceneTarget) {
+      throw UnimplementedError('advance submission is not used in this test');
+    }
+    final result = await posting.createExpense(
+      CreateExpenseCommand(
+        amount: command.amount,
+        categoryAllocations: command.categoryAllocations,
+        settlementAllocations: command.settlementAllocations,
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyId: command.counterpartyId,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        sourceKind: command.sourceKind,
+        tagIds: command.tagIds,
+      ),
+    );
+    return result.transactionId;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }

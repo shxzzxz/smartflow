@@ -555,46 +555,25 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.advanceReceivableAccountId,
           formState.advanceReceivableAccounts,
         );
-        if (advanceReceivableAccountId == null) {
-          await postingService.createExpense(
-            CreateExpenseCommand(
-              amount: amount,
-              categoryAllocations: allocations.categories,
-              settlementAllocations: allocations.settlements,
-              occurredAt: formState.occurredAt,
-              counterpartyId: formState.counterpartyId,
-              note: note,
-              isExcludedFromStats: formState.excludeStats,
-              isExcludedFromBudget: formState.excludeBudget,
-              tagIds: formState.selectedTagIds,
-            ),
-          );
-        } else {
-          final scenario =
-              formState.expenseScene.advanceScenario ??
-              formState.advanceScenario;
-          await ref
-              .read(advanceOrchestrationAppServiceProvider)
-              .createAdvance(
-                CreateAdvanceWorkflowCommand(
-                  amount: amount,
-                  scenario: scenario,
-                  trackingMode:
-                      formState.expenseScene.advanceTrackingMode ??
-                      AdvanceTrackingMode.itemized,
-                  aaPeopleCount: formState.aaPeopleCount,
-                  receivableAccountId: advanceReceivableAccountId,
-                  categoryAllocations: allocations.categories,
-                  settlementAllocations: allocations.settlements,
-                  occurredAt: formState.occurredAt,
-                  counterpartyId: formState.counterpartyId,
-                  note: note,
-                  isExcludedFromStats: formState.excludeStats,
-                  isExcludedFromBudget: formState.excludeBudget,
-                  tagIds: formState.selectedTagIds,
+        await ref
+            .read(advanceOrchestrationAppServiceProvider)
+            .createExpenseScene(
+              CreateExpenseSceneWorkflowCommand(
+                amount: amount,
+                target: _expenseSceneTarget(
+                  formState,
+                  advanceReceivableAccountId,
                 ),
-              );
-        }
+                categoryAllocations: allocations.categories,
+                settlementAllocations: allocations.settlements,
+                occurredAt: formState.occurredAt,
+                counterpartyId: formState.counterpartyId,
+                note: note,
+                isExcludedFromStats: formState.excludeStats,
+                isExcludedFromBudget: formState.excludeBudget,
+                tagIds: formState.selectedTagIds,
+              ),
+            );
       case TransactionFormMode.income:
         final allocations = _incomeAllocations(formState, amount);
         await postingService.createIncome(
@@ -702,45 +681,27 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.advanceReceivableAccountId,
           formState.advanceReceivableAccounts,
         );
-        if (advanceReceivableAccountId == null) {
-          await editService.editExpense(
-            EditExpenseCommand(
-              transactionId: transactionId,
-              amount: amount,
-              categoryAllocations: allocations.categories,
-              settlementAllocations: allocations.settlements,
-              occurredAt: formState.occurredAt,
-              counterpartyId: counterpartyId,
-              note: note,
-              isExcludedFromStats: formState.excludeStats,
-              isExcludedFromBudget: formState.excludeBudget,
-              tagIds: formState.selectedTagIds,
-            ),
-          );
-        } else {
-          final scenario =
-              formState.expenseScene.advanceScenario ??
-              formState.advanceScenario;
-          await ref
-              .read(advanceOrchestrationAppServiceProvider)
-              .editAdvance(
-                EditAdvanceWorkflowCommand(
-                  transactionId: transactionId,
-                  scenario: scenario,
-                  aaPeopleCount: formState.aaPeopleCount,
-                  amount: amount,
-                  receivableAccountId: advanceReceivableAccountId,
-                  categoryAllocations: allocations.categories,
-                  settlementAllocations: allocations.settlements,
-                  occurredAt: formState.occurredAt,
-                  counterpartyId: counterpartyId,
-                  note: note,
-                  isExcludedFromStats: formState.excludeStats,
-                  isExcludedFromBudget: formState.excludeBudget,
-                  tagIds: formState.selectedTagIds,
-                ),
-              );
-        }
+        final target = _expenseSceneTarget(
+          formState,
+          advanceReceivableAccountId,
+        );
+        await ref
+            .read(advanceOrchestrationAppServiceProvider)
+            .editExpenseScene(
+              EditExpenseSceneWorkflowCommand(
+                transactionId: transactionId,
+                target: target,
+                amount: amount,
+                categoryAllocations: allocations.categories,
+                settlementAllocations: allocations.settlements,
+                occurredAt: formState.occurredAt,
+                counterpartyId: counterpartyId,
+                note: note,
+                isExcludedFromStats: formState.excludeStats,
+                isExcludedFromBudget: formState.excludeBudget,
+                tagIds: formState.selectedTagIds,
+              ),
+            );
       case TransactionFormMode.income:
         final allocations = _incomeAllocations(formState, amount);
         await editService.editIncome(
@@ -910,6 +871,35 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     return value == null
         ? const Patch<String?>.clear()
         : Patch<String?>.set(value);
+  }
+
+  ExpenseSceneTarget _expenseSceneTarget(
+    TransactionFormState formState,
+    String? advanceReceivableAccountId,
+  ) {
+    if (formState.expenseScene == TransactionExpenseScene.ordinary &&
+        advanceReceivableAccountId == null) {
+      return const OrdinaryExpenseSceneTarget();
+    }
+    if (advanceReceivableAccountId == null) {
+      throw _invalidCommandException('请选择垫付账户');
+    }
+    final scenario =
+        formState.expenseScene.advanceScenario ?? AdvanceScenario.reimbursement;
+    final trackingMode =
+        formState.expenseScene.advanceTrackingMode ??
+        AdvanceTrackingMode.itemized;
+    return trackingMode == AdvanceTrackingMode.account
+        ? AccountAdvanceSceneTarget(
+            scenario: scenario,
+            aaPeopleCount: formState.aaPeopleCount,
+            receivableAccountId: advanceReceivableAccountId,
+          )
+        : ItemizedAdvanceSceneTarget(
+            scenario: scenario,
+            aaPeopleCount: formState.aaPeopleCount,
+            receivableAccountId: advanceReceivableAccountId,
+          );
   }
 
   ({

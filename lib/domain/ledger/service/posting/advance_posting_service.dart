@@ -145,7 +145,7 @@ class AdvancePostingService {
             receivableAccountId: instruction.receivableAccountId,
             settlementAllocations: instruction.settlementAllocations,
             gapExpenseAllocations: gapExpenseAllocations,
-            ownership: instruction.ownership!,
+            ownership: instruction.ownership,
             shortfallKind: instruction.shortfallKind,
             occurredAt: instruction.occurredAt,
             postedAt: instruction.postedAt,

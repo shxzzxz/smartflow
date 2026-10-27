@@ -6,6 +6,20 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
 
 abstract interface class AdvanceLedgerPort {
+  Future<String> postExpense({
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    String? counterpartyId,
+    String? note,
+    bool isExcludedFromStats = false,
+    bool isExcludedFromBudget = false,
+    SourceKind sourceKind = SourceKind.manual,
+    Set<String> tagIds = const {},
+  });
+
   Future<String> postAdvance({
     required Money amount,
     required Money advanceAmount,
@@ -69,6 +83,21 @@ abstract interface class AdvanceLedgerPort {
     Set<String>? tagIds,
   });
 
+  Future<String> rewriteExpense({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required Map<String, List<AccountAmountAllocation>>
+    refundSelfBorneAllocations,
+    required DateTime occurredAt,
+    Patch<String?>? counterpartyId,
+    Patch<String?>? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+    Set<String>? tagIds,
+  });
+
   Future<String> postRefund({
     required String parentTransactionId,
     required Money amount,
@@ -97,7 +126,7 @@ abstract interface class AdvanceLedgerPort {
     required Money amount,
     required String receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
-    required TransactionOwnership ownership,
+    TransactionOwnership? ownership,
     required DateTime occurredAt,
     Patch<String?>? counterpartyId,
     Patch<String?>? note,
@@ -110,7 +139,7 @@ abstract interface class AdvanceLedgerPort {
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
     required AdvanceShortfallKind shortfallKind,
-    required TransactionOwnership ownership,
+    TransactionOwnership? ownership,
     required DateTime occurredAt,
     Patch<String?>? counterpartyId,
     Patch<String?>? note,

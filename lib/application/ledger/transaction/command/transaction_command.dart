@@ -179,7 +179,7 @@ class CreateAdvanceCollectionCommand {
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
-    required TransactionOwnership this.ownership,
+    this.ownership,
     this.postedAt,
     this.counterpartyId,
     this.note,
@@ -226,7 +226,7 @@ class CreateAdvanceSettlementCommand {
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
     required this.occurredAt,
-    required TransactionOwnership this.ownership,
+    this.ownership,
     this.shortfallKind = AdvanceShortfallKind.selfBorne,
     this.postedAt,
     this.counterpartyId,
@@ -448,6 +448,7 @@ class EditExpenseCommand {
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
     this.tagIds,
+    this.refundSelfBorneAllocations = const {},
   });
 
   final String transactionId;
@@ -459,6 +460,8 @@ class EditExpenseCommand {
   final Patch<String?>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
+
+  final Map<String, List<AccountAmountAllocation>> refundSelfBorneAllocations;
 
   /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
   final Set<String>? tagIds;

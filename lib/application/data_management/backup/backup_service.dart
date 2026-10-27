@@ -1027,9 +1027,12 @@ class BackupService {
         throw const BackupValidationException('账户垫付编排实例缺少应收账户。');
       }
       final aaPeopleCount = row['aaPeopleCount'];
-      if (aaPeopleCount != null &&
+      if (row['scenario'] == 'aa' &&
           (aaPeopleCount is! int || aaPeopleCount < 2 || aaPeopleCount > 99)) {
         throw const BackupValidationException('AA 参与人数无效。');
+      }
+      if (row['scenario'] != 'aa' && aaPeopleCount != null) {
+        throw const BackupValidationException('非 AA 场景不能保存参与人数。');
       }
     }
     for (final row in snapshot.rows('entries')) {

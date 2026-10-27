@@ -549,7 +549,6 @@ class AccountAdvanceFormViewModel extends _$AccountAdvanceFormViewModel {
                 receivableAccountId: current.target.accountId,
                 settlementAllocations: settlements,
                 occurredAt: current.occurredAt,
-                scenario: current.target.scenario,
                 note: note,
               ),
             );
@@ -561,7 +560,6 @@ class AccountAdvanceFormViewModel extends _$AccountAdvanceFormViewModel {
                 settlementAllocations: settlements,
                 gapExpenseAllocations: const [],
                 occurredAt: current.occurredAt,
-                scenario: current.target.scenario,
                 note: note,
               ),
             );

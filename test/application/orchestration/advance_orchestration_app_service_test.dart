@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
@@ -55,33 +56,134 @@ void main() {
     },
   );
 
-  test('account advances reuse the account and scenario case', () async {
+  test('ordinary expense scene delegates explicit facts to ledger', () async {
     final cases = FakeAdvanceCaseRepository();
     final ledger = _FakeLedgerPort();
     final service = _service(cases, ledger);
-    for (var index = 0; index < 2; index++) {
-      await service.createAdvance(
+
+    await service.createExpenseScene(
+      CreateExpenseSceneWorkflowCommand(
+        amount: _money(1200),
+        target: const OrdinaryExpenseSceneTarget(),
+        categoryAllocations: [_allocation('food', 1200)],
+        settlementAllocations: [_allocation('cash', 1200)],
+        occurredAt: DateTime(2026, 10, 23),
+      ),
+    );
+
+    expect(cases.values, isEmpty);
+    expect(ledger.expenseRequests, hasLength(1));
+    expect(ledger.expenseRequests.single, _money(1200));
+  });
+
+  test(
+    'each account advance creates its own case and stores AA count',
+    () async {
+      final cases = FakeAdvanceCaseRepository();
+      final ledger = _FakeLedgerPort();
+      final service = _service(cases, ledger);
+      for (final peopleCount in [3, 4]) {
+        await service.createAdvance(
+          CreateAdvanceWorkflowCommand(
+            amount: _money(10000),
+            scenario: AdvanceScenario.aa,
+            trackingMode: AdvanceTrackingMode.account,
+            aaPeopleCount: peopleCount,
+            receivableAccountId: 'company',
+            categoryAllocations: [_allocation('travel', 10000)],
+            settlementAllocations: [_allocation('cash', 10000)],
+            occurredAt: DateTime(2026, 10, 23 + peopleCount),
+          ),
+        );
+      }
+
+      expect(cases.values, hasLength(2));
+      expect(ledger.advanceRequests, hasLength(2));
+      expect(
+        cases.values.map((advanceCase) => advanceCase.aaPeopleCount),
+        containsAll([3, 4]),
+      );
+      expect(
+        ledger.advanceRequests
+            .map((request) => request.ownership.ownerId)
+            .toSet(),
+        cases.values.map((advanceCase) => advanceCase.id).toSet(),
+      );
+    },
+  );
+
+  test('on-behalf advances support account tracking', () async {
+    final cases = FakeAdvanceCaseRepository();
+    final ledger = _FakeLedgerPort();
+    final service = _service(cases, ledger);
+
+    await service.createAdvance(
+      CreateAdvanceWorkflowCommand(
+        amount: _money(1000),
+        scenario: AdvanceScenario.onBehalf,
+        trackingMode: AdvanceTrackingMode.account,
+        aaPeopleCount: 2,
+        receivableAccountId: 'company',
+        categoryAllocations: [_allocation('travel', 1000)],
+        settlementAllocations: [_allocation('cash', 1000)],
+        occurredAt: DateTime(2026, 10, 23),
+      ),
+    );
+
+    final advanceCase = cases.values.single;
+    expect(advanceCase.scenario, AdvanceScenario.onBehalf);
+    expect(advanceCase.trackingMode, AdvanceTrackingMode.account);
+    expect(advanceCase.aaPeopleCount, isNull);
+  });
+
+  test('invalid AA participant count is a business failure', () async {
+    final cases = FakeAdvanceCaseRepository();
+    final service = _service(cases, _FakeLedgerPort());
+
+    await expectLater(
+      service.createAdvance(
         CreateAdvanceWorkflowCommand(
           amount: _money(1000),
-          scenario: AdvanceScenario.reimbursement,
+          scenario: AdvanceScenario.aa,
           trackingMode: AdvanceTrackingMode.account,
-          aaPeopleCount: 2,
+          aaPeopleCount: 1,
           receivableAccountId: 'company',
           categoryAllocations: [_allocation('travel', 1000)],
           settlementAllocations: [_allocation('cash', 1000)],
-          occurredAt: DateTime(2026, 10, 23 + index),
+          occurredAt: DateTime(2026, 10, 23),
         ),
-      );
-    }
-
-    expect(cases.values, hasLength(1));
-    expect(ledger.advanceRequests, hasLength(2));
-    expect(
-      ledger.advanceRequests
-          .map((request) => request.ownership.ownerId)
-          .toSet(),
-      {cases.values.single.id},
+      ),
+      throwsA(isA<BusinessException>()),
     );
+    expect(cases.values, isEmpty);
+  });
+
+  test('account collection and settlement are ownerless', () async {
+    final cases = FakeAdvanceCaseRepository();
+    final ledger = _FakeLedgerPort();
+    final service = _service(cases, ledger);
+
+    await service.createCollection(
+      CreateAdvanceCollectionWorkflowCommand.account(
+        amount: _money(1000),
+        receivableAccountId: 'company',
+        settlementAllocations: [_allocation('cash', 1000)],
+        occurredAt: DateTime(2026, 10, 23),
+      ),
+    );
+    await service.createSettlement(
+      CreateAdvanceSettlementWorkflowCommand.account(
+        actualReceivedAmount: _money(2000),
+        receivableAccountId: 'company',
+        settlementAllocations: [_allocation('cash', 2000)],
+        gapExpenseAllocations: const [],
+        occurredAt: DateTime(2026, 10, 24),
+      ),
+    );
+
+    expect(cases.values, isEmpty);
+    expect(ledger.collectionOwnerships, [isNull]);
+    expect(ledger.settlementOwnerships, [isNull]);
   });
 
   test(
@@ -225,6 +327,167 @@ void main() {
       expect(ledger.rewriteRequest!.advanceAmount, _money(4668));
     },
   );
+
+  test(
+    'ordinary expense converts to itemized advance through orchestration',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'convert'),
+      );
+      final parent = engine.createExpense(
+        ExpenseInstruction(
+          amount: _money(7000),
+          categoryAllocations: [_allocation('food', 7000)],
+          settlementAllocations: [_allocation('cash', 7000)],
+          occurredAt: DateTime(2026, 10, 23),
+        ),
+      );
+      final cases = FakeAdvanceCaseRepository();
+      final ledger = _FakeLedgerPort(
+        group: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: const [],
+        ),
+      );
+      final service = _service(cases, ledger);
+
+      await service.editExpenseScene(
+        EditExpenseSceneWorkflowCommand(
+          transactionId: parent.id,
+          target: const ItemizedAdvanceSceneTarget(
+            scenario: AdvanceScenario.reimbursement,
+            aaPeopleCount: 2,
+            receivableAccountId: 'receivable',
+          ),
+          amount: _money(7000),
+          categoryAllocations: [_allocation('food', 7000)],
+          settlementAllocations: [_allocation('cash', 7000)],
+          occurredAt: parent.occurredAt,
+        ),
+      );
+
+      final advanceCase = cases.values.single;
+      expect(advanceCase.trackingMode, AdvanceTrackingMode.itemized);
+      expect(ledger.rewriteRequest!.ownership.ownerId, advanceCase.id);
+      expect(ledger.rewriteRequest!.advanceAmount, _money(7000));
+    },
+  );
+
+  test(
+    'itemized advance conversion to expense clears case and refund shares',
+    () async {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'convert'),
+      );
+      const ownership = TransactionOwnership(
+        ownerType: orchestrationAdvanceOwnerType,
+        ownerId: 'case',
+      );
+      final parent = engine.createAdvance(
+        AdvanceInstruction(
+          amount: _money(7000),
+          advanceAmount: _money(4668),
+          receivableAccountId: 'receivable',
+          categoryAllocations: [_allocation('food', 7000)],
+          selfBorneAllocations: [_allocation('food', 2332)],
+          settlementAllocations: [_allocation('cash', 7000)],
+          occurredAt: DateTime(2026, 10, 23),
+          ownership: ownership,
+        ),
+      );
+      final refund = engine.createRefund(
+        instruction: RefundInstruction(
+          parentTransactionId: parent.id,
+          amount: _money(2000),
+          categoryAllocations: [_allocation('food', 2000)],
+          selfBorneAllocations: [_allocation('food', 666)],
+          settlementAllocations: [_allocation('cash', 2000)],
+          occurredAt: DateTime(2026, 10, 24),
+        ),
+        parent: parent,
+      );
+      final cases = FakeAdvanceCaseRepository(const [
+        AdvanceCase(
+          id: 'case',
+          scenario: AdvanceScenario.aa,
+          trackingMode: AdvanceTrackingMode.itemized,
+          aaPeopleCount: 3,
+        ),
+      ]);
+      final ledger = _FakeLedgerPort(
+        group: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: [refund],
+        ),
+      );
+      final service = _service(cases, ledger);
+
+      await service.editExpenseScene(
+        EditExpenseSceneWorkflowCommand(
+          transactionId: parent.id,
+          target: const OrdinaryExpenseSceneTarget(),
+          amount: _money(7000),
+          categoryAllocations: [_allocation('food', 7000)],
+          settlementAllocations: [_allocation('cash', 7000)],
+          occurredAt: parent.occurredAt,
+        ),
+      );
+
+      expect(cases.values, isEmpty);
+      expect(
+        ledger.expenseRewriteRequest!.refundSelfBorneAllocations[refund.id],
+        isEmpty,
+      );
+    },
+  );
+
+  test('account advance cannot convert to ordinary expense', () async {
+    final engine = PostingEngine(
+      idGenerator: SequentialIdGenerator(prefix: 'reject'),
+    );
+    const ownership = TransactionOwnership(
+      ownerType: orchestrationAdvanceOwnerType,
+      ownerId: 'case',
+    );
+    final parent = engine.createAdvance(
+      AdvanceInstruction(
+        amount: _money(7000),
+        advanceAmount: _money(7000),
+        receivableAccountId: 'receivable',
+        categoryAllocations: [_allocation('food', 7000)],
+        settlementAllocations: [_allocation('cash', 7000)],
+        occurredAt: DateTime(2026, 10, 23),
+        ownership: ownership,
+      ),
+    );
+    final cases = FakeAdvanceCaseRepository(const [
+      AdvanceCase(
+        id: 'case',
+        scenario: AdvanceScenario.reimbursement,
+        trackingMode: AdvanceTrackingMode.account,
+        receivableAccountId: 'receivable',
+      ),
+    ]);
+    final service = _service(
+      cases,
+      _FakeLedgerPort(
+        group: TransactionGroup(
+          parentTransaction: parent,
+          childTransactions: const [],
+        ),
+      ),
+    );
+
+    await expectLater(
+      service.editExpenseScene(
+        EditExpenseSceneWorkflowCommand(
+          transactionId: parent.id,
+          target: const OrdinaryExpenseSceneTarget(),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
 }
 
 AdvanceOrchestrationAppService _service(
@@ -270,15 +533,43 @@ class _RewriteRequest {
   final TransactionOwnership ownership;
 }
 
+class _ExpenseRewriteRequest {
+  const _ExpenseRewriteRequest({required this.refundSelfBorneAllocations});
+
+  final Map<String, List<AccountAmountAllocation>> refundSelfBorneAllocations;
+}
+
 class _FakeLedgerPort implements AdvanceLedgerPort {
   _FakeLedgerPort({this.group});
 
   final TransactionGroup? group;
   final advanceRequests = <_AdvanceRequest>[];
+  final collectionOwnerships = <TransactionOwnership?>[];
+  final settlementOwnerships = <TransactionOwnership?>[];
+  final expenseRequests = <Money>[];
   _RewriteRequest? rewriteRequest;
+  _ExpenseRewriteRequest? expenseRewriteRequest;
 
   _AdvanceRequest? get advanceRequest =>
       advanceRequests.isEmpty ? null : advanceRequests.last;
+
+  @override
+  Future<String> postExpense({
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    String? counterpartyId,
+    String? note,
+    bool isExcludedFromStats = false,
+    bool isExcludedFromBudget = false,
+    SourceKind sourceKind = SourceKind.manual,
+    Set<String> tagIds = const {},
+  }) async {
+    expenseRequests.add(amount);
+    return 'expense';
+  }
 
   @override
   Future<String> postAdvance({
@@ -312,6 +603,40 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
   Future<TransactionGroup?> findGroup(String transactionId) async => group;
 
   @override
+  Future<String> postAdvanceCollection({
+    required Money amount,
+    required String? advanceTransactionId,
+    required String receivableAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required TransactionOwnership? ownership,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    String? counterpartyId,
+    String? note,
+  }) async {
+    collectionOwnerships.add(ownership);
+    return 'collection';
+  }
+
+  @override
+  Future<String> postAdvanceSettlement({
+    required Money actualReceivedAmount,
+    required String? advanceTransactionId,
+    required String receivableAccountId,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required List<AccountAmountAllocation> gapExpenseAllocations,
+    required AdvanceShortfallKind shortfallKind,
+    required TransactionOwnership? ownership,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    String? counterpartyId,
+    String? note,
+  }) async {
+    settlementOwnerships.add(ownership);
+    return 'settlement';
+  }
+
+  @override
   Future<String> rewriteAdvance({
     required String transactionId,
     required Money amount,
@@ -334,6 +659,27 @@ class _FakeLedgerPort implements AdvanceLedgerPort {
       advanceAmount: advanceAmount,
       refundSelfBorneAllocations: refundSelfBorneAllocations,
       ownership: ownership,
+    );
+    return transactionId;
+  }
+
+  @override
+  Future<String> rewriteExpense({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required Map<String, List<AccountAmountAllocation>>
+    refundSelfBorneAllocations,
+    required DateTime occurredAt,
+    Patch<String?>? counterpartyId,
+    Patch<String?>? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+    Set<String>? tagIds,
+  }) async {
+    expenseRewriteRequest = _ExpenseRewriteRequest(
+      refundSelfBorneAllocations: refundSelfBorneAllocations,
     );
     return transactionId;
   }

@@ -628,7 +628,7 @@ class TransactionGroupRewriteService {
     required String transactionId,
     required BusinessPurpose purpose,
   }) {
-    // 账户垫付不建立父子交易，编辑目标是 owner 所属的顶层交易本身。
+    // 账户垫付的到账与结清是 ownerless 顶层交易。
     final transaction = group.parentTransaction;
     return transaction.id == transactionId &&
         transaction.businessPurpose == purpose &&
@@ -786,16 +786,10 @@ class TransactionGroupRewriteService {
     return parentReceivableAccountId;
   }
 
-  TransactionOwnership _accountManagedOwnership({
+  TransactionOwnership? _accountManagedOwnership({
     required Transaction current,
     required TransactionOwnership? requested,
   }) {
-    final ownership = requested ?? current.ownership;
-    if (ownership == null) {
-      LedgerViolationReason.advanceInstructionUnresolvable.throwException(
-        message: 'Account-managed advance ownership is required.',
-      );
-    }
-    return ownership;
+    return requested ?? current.ownership;
   }
 }
