@@ -34,6 +34,24 @@ class CategoriesViewModel extends _$CategoriesViewModel {
     });
   }
 
+  Future<UiActionOutcome<void>> reorderCategories({
+    required AccountType type,
+    required String? parentId,
+    required List<String> orderedIds,
+  }) {
+    return guardUiAction(_logger, 'Category reorder', () {
+      return ref
+          .read(categoryAppServiceProvider)
+          .reorderCategories(
+            ReorderCategoriesCommand(
+              type: type,
+              parentId: parentId,
+              orderedIds: orderedIds,
+            ),
+          );
+    });
+  }
+
   Future<UiActionOutcome<CategoryTransactionMigrationResult>>
   migrateTransactions({
     required String sourceCategoryId,
@@ -61,10 +79,9 @@ class CategoriesViewModel extends _$CategoriesViewModel {
           .editCategory(
             EditCategoryCommand(
               id: categoryId,
-              parentId:
-                  newParentId == null
-                      ? const Patch<String>.clear()
-                      : Patch.set(newParentId),
+              parentId: newParentId == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(newParentId),
             ),
           );
     });

@@ -177,6 +177,10 @@ class _FakeCategoryAppService implements CategoryAppService {
   Future<void> editCategory(EditCategoryCommand command) async {}
 
   @override
+  Future<void> reorderCategories(ReorderCategoriesCommand command) =>
+      throw UnimplementedError();
+
+  @override
   Future<CategoryDeletionPreview> previewCategoryDeletion(String categoryId) =>
       throw UnimplementedError();
 

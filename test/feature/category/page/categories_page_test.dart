@@ -69,6 +69,93 @@ void main() {
     expect(find.text('新增子分类'), findsOneWidget);
   });
 
+  testWidgets('reorders root categories after a delayed long press', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final food = _category('food', name: '餐饮');
+    final drink = _category('drink', name: '饮品');
+    final service = _FakeCategoryAppService(
+      preview: CategoryDeletionPreview(
+        category: food,
+        childCount: 0,
+        transactionRefCount: 0,
+      ),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [
+          CategoryNode(account: food),
+          CategoryNode(account: drink),
+        ],
+        categoryAppService: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('category-root-food'))),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveBy(const Offset(0, 240));
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(service.reorderCommands.single.orderedIds, ['drink', 'food']);
+    expect(service.reorderCommands.single.parentId, isNull);
+  });
+
+  testWidgets('keeps child drag sorting inside its parent group', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final food = _category('food', name: '餐饮');
+    final breakfast = _category('breakfast', name: '早餐', parentId: 'food');
+    final lunch = _category('lunch', name: '午餐', parentId: 'food');
+    final travel = _category('travel', name: '出行');
+    final taxi = _category('taxi', name: '打车', parentId: 'travel');
+    final service = _FakeCategoryAppService(
+      preview: CategoryDeletionPreview(
+        category: food,
+        childCount: 0,
+        transactionRefCount: 0,
+      ),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        expenseTree: [
+          CategoryNode(account: food, children: [breakfast, lunch]),
+          CategoryNode(account: travel, children: [taxi]),
+        ],
+        categoryAppService: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('展开子分类').first);
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('早餐')),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.moveTo(
+      tester.getCenter(find.text('午餐')) + const Offset(0, 60),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final command = service.reorderCommands.single;
+    expect(command.parentId, food.id);
+    expect(command.orderedIds, ['lunch', 'breakfast']);
+    expect(command.orderedIds, isNot(contains(taxi.id)));
+  });
+
   testWidgets(
     'opens action sheet without move option for roots with children',
     (tester) async {
@@ -319,6 +406,7 @@ class _FakeCategoryAppService implements CategoryAppService {
 
   final CategoryDeletionPreview preview;
   final deleteCommands = <DeleteCategoryCommand>[];
+  final reorderCommands = <ReorderCategoriesCommand>[];
 
   @override
   Future<Account> createCategory(CreateCategoryCommand command) =>
@@ -332,6 +420,11 @@ class _FakeCategoryAppService implements CategoryAppService {
   @override
   Future<void> editCategory(EditCategoryCommand command) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> reorderCategories(ReorderCategoriesCommand command) async {
+    reorderCommands.add(command);
+  }
 
   @override
   Future<CategoryDeletionPreview> previewCategoryDeletion(

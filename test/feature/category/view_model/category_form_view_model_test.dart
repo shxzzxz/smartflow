@@ -48,10 +48,9 @@ void main() {
         ],
       );
       addTearDown(loaded.dispose);
-      final loadedState =
-          loaded
-              .read(categoryFormViewModelProvider(categoryId: category.id))
-              .requireValue!;
+      final loadedState = loaded
+          .read(categoryFormViewModelProvider(categoryId: category.id))
+          .requireValue!;
       expect(loadedState.initialValues.name, 'Food');
       expect(loadedState.type, AccountType.expense);
 
@@ -225,6 +224,10 @@ class _FakeCategoryAppService implements CategoryAppService {
     editCommands.add(command);
     _throwIfNeeded();
   }
+
+  @override
+  Future<void> reorderCategories(ReorderCategoriesCommand command) =>
+      throw UnimplementedError();
 
   @override
   Future<CategoryDeletionPreview> previewCategoryDeletion(String categoryId) =>

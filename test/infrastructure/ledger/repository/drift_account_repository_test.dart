@@ -48,6 +48,38 @@ void main() {
 
       expect(await repository.findById('account-1'), isNull);
     });
+
+    test('reads active category siblings in display order', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftAccountRepository(database);
+      final second = Account(
+        id: 'second',
+        name: 'Second',
+        type: AccountType.expense,
+        balance: const Money(minorUnits: 0),
+        sortOrder: 2,
+      );
+      final first = Account(
+        id: 'first',
+        name: 'First',
+        type: AccountType.expense,
+        balance: const Money(minorUnits: 0),
+        sortOrder: 1,
+      );
+      await repository.create(second);
+      await repository.create(first);
+
+      final siblings = await repository.findCategorySiblings(
+        type: AccountType.expense,
+        parentId: null,
+      );
+
+      expect(siblings.take(2).map((account) => account.id), [
+        'first',
+        'second',
+      ]);
+    });
   });
 }
 

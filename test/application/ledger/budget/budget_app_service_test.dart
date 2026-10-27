@@ -321,6 +321,12 @@ class _MemoryAccountRepository implements AccountRepository {
   ];
 
   @override
+  Future<List<Account>> findCategorySiblings({
+    required AccountType type,
+    required String? parentId,
+  }) async => const [];
+
+  @override
   Future<List<Account>> findByGroupId(String? groupId) async => const [];
 
   @override

@@ -44,6 +44,81 @@ void main() {
         );
       },
     );
+
+    test(
+      'moving a child appends it and compacts the old sibling set',
+      () async {
+        final sourceParent = _category('source-parent');
+        final targetParent = _category('target-parent');
+        final moved = _category('moved', parentId: sourceParent.id);
+        final remaining = _category('remaining', parentId: sourceParent.id)
+          ..sortOrder = 1;
+        final target = _category('target', parentId: targetParent.id)
+          ..sortOrder = 8;
+        final service = _service(
+          accounts: [sourceParent, targetParent, moved, remaining, target],
+        );
+
+        await service.editCategory(
+          EditCategoryCommand(
+            id: moved.id,
+            parentId: Patch.set(targetParent.id),
+          ),
+        );
+
+        expect(moved.parentId, targetParent.id);
+        expect(moved.sortOrder, 9);
+        expect(remaining.sortOrder, 0);
+      },
+    );
+
+    test('appends a new category after existing siblings', () async {
+      final first = _category('first')..sortOrder = 4;
+      final second = _category('second')..sortOrder = 9;
+      final service = _service(accounts: [first, second]);
+
+      final created = await service.createCategory(
+        const CreateCategoryCommand(name: 'Third', type: AccountType.expense),
+      );
+
+      expect(created.sortOrder, 10);
+    });
+
+    test('reorders the full active sibling set', () async {
+      final first = _category('first')..sortOrder = 4;
+      final second = _category('second')..sortOrder = 9;
+      final child = _category('child', parentId: 'parent')..sortOrder = 1;
+      final service = _service(accounts: [first, second, child]);
+
+      await service.reorderCategories(
+        const ReorderCategoriesCommand(
+          type: AccountType.expense,
+          parentId: null,
+          orderedIds: ['second', 'first'],
+        ),
+      );
+
+      expect(second.sortOrder, 0);
+      expect(first.sortOrder, 1);
+      expect(child.sortOrder, 1);
+    });
+
+    test('rejects reordering an incomplete sibling set', () async {
+      final first = _category('first');
+      final second = _category('second');
+      final service = _service(accounts: [first, second]);
+
+      await expectLater(
+        () => service.reorderCategories(
+          const ReorderCategoriesCommand(
+            type: AccountType.expense,
+            parentId: null,
+            orderedIds: ['second'],
+          ),
+        ),
+        throwsA(_hasCode(LedgerErrorCode.categoryInvalidCommand)),
+      );
+    });
   });
 
   group('CategoryAppService.previewCategoryDeletion', () {
@@ -210,6 +285,7 @@ Account _category(
   AccountType type = AccountType.expense,
   bool archived = false,
   SystemKey? systemKey,
+  int sortOrder = 0,
 }) {
   return Account(
     id: id,
@@ -219,6 +295,7 @@ Account _category(
     balance: const Money(minorUnits: 0),
     archivedAt: archived ? DateTime(2026) : null,
     systemKey: systemKey,
+    sortOrder: sortOrder,
   );
 }
 
@@ -269,6 +346,27 @@ class _FakeAccountRepository implements AccountRepository {
       for (final account in _accounts.values)
         if (account.parentId == parentId && !account.isArchived) account,
     ];
+  }
+
+  @override
+  Future<List<Account>> findCategorySiblings({
+    required AccountType type,
+    required String? parentId,
+  }) async {
+    final siblings =
+        [
+          for (final account in _accounts.values)
+            if (!account.isArchived &&
+                account.type == type &&
+                account.parentId == parentId)
+              account,
+        ]..sort((left, right) {
+          final order = left.sortOrder.compareTo(right.sortOrder);
+          if (order != 0) return order;
+          final name = left.name.compareTo(right.name);
+          return name != 0 ? name : left.id.compareTo(right.id);
+        });
+    return siblings;
   }
 
   @override

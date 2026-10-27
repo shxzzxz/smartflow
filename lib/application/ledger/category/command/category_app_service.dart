@@ -17,6 +17,8 @@ abstract interface class CategoryAppService {
 
   Future<void> editCategory(EditCategoryCommand command);
 
+  Future<void> reorderCategories(ReorderCategoriesCommand command);
+
   Future<CategoryDeletionPreview> previewCategoryDeletion(String categoryId);
 
   Future<void> deleteCategory(DeleteCategoryCommand command);
@@ -42,77 +44,145 @@ class CategoryAppServiceImpl implements CategoryAppService {
   final CategoryFactory _categoryFactory;
 
   @override
-  Future<Account> createCategory(CreateCategoryCommand command) async {
-    Account? parent;
-    final parentId = command.parentId;
-    if (parentId != null) {
-      parent = await _repository.findById(parentId);
-      if (parent == null) {
-        throw BusinessException(
-          LedgerErrorCode.categoryInvalidParent,
-          message: 'Parent category does not exist.',
-        );
-      }
-    }
-    final category = _categoryFactory.createCategory(
-      id: _idGenerator.newId(),
-      name: command.name,
-      type: command.type,
-      parent: parent,
-      iconKey: command.iconKey,
-      note: command.note,
-      sortOrder: command.sortOrder,
-    );
-
-    await _repository.create(category);
-    return category;
-  }
-
-  @override
-  Future<void> editCategory(EditCategoryCommand command) async {
-    final category = await _repository.findById(command.id);
-    if (category == null || !category.type.isCategory) {
-      throw BusinessException(LedgerErrorCode.categoryNotFound);
-    }
-    if (category.isArchived) {
-      throw BusinessException(LedgerErrorCode.categoryUnavailable);
-    }
-    final nextParentId = command.parentId.applyTo(category.parentId);
-    Account? parent;
-    if (nextParentId != null) {
-      if (nextParentId == category.id) {
-        throw BusinessException(
-          LedgerErrorCode.categoryInvalidParent,
-          message: 'Category cannot use itself as parent.',
-        );
-      }
-      parent = await _repository.findById(nextParentId);
-      if (parent == null) {
-        throw BusinessException(
-          LedgerErrorCode.categoryInvalidParent,
-          message: 'Parent category does not exist.',
-        );
-      }
-      if (category.parentId == null) {
-        final children = await _repository.findChildrenOf(category.id);
-        if (children.isNotEmpty) {
+  Future<Account> createCategory(CreateCategoryCommand command) {
+    return _runner.run(() async {
+      Account? parent;
+      final parentId = command.parentId;
+      if (parentId != null) {
+        parent = await _repository.findById(parentId);
+        if (parent == null) {
           throw BusinessException(
             LedgerErrorCode.categoryInvalidParent,
-            message: '已有子分类，不能设为子分类。',
+            message: 'Parent category does not exist.',
           );
         }
       }
-    }
-
-    category.changeCategoryProfile(
-      CategoryProfilePatch(
+      final siblings = await _repository.findCategorySiblings(
+        type: command.type,
+        parentId: parent?.id,
+      );
+      final category = _categoryFactory.createCategory(
+        id: _idGenerator.newId(),
         name: command.name,
+        type: command.type,
+        parent: parent,
         iconKey: command.iconKey,
         note: command.note,
-      ),
-    );
-    category.moveCategoryTo(parent);
-    await _repository.save(category);
+        sortOrder: command.sortOrder ?? _nextSortOrder(siblings),
+      );
+
+      await _repository.create(category);
+      return category;
+    });
+  }
+
+  @override
+  Future<void> editCategory(EditCategoryCommand command) {
+    return _runner.run(() async {
+      final category = await _repository.findById(command.id);
+      if (category == null || !category.type.isCategory) {
+        throw BusinessException(LedgerErrorCode.categoryNotFound);
+      }
+      if (category.isArchived) {
+        throw BusinessException(LedgerErrorCode.categoryUnavailable);
+      }
+      final previousParentId = category.parentId;
+      final nextParentId = command.parentId.applyTo(previousParentId);
+      final parentChanged = nextParentId != previousParentId;
+      Account? parent;
+      if (nextParentId != null) {
+        if (nextParentId == category.id) {
+          throw BusinessException(
+            LedgerErrorCode.categoryInvalidParent,
+            message: 'Category cannot use itself as parent.',
+          );
+        }
+        parent = await _repository.findById(nextParentId);
+        if (parent == null) {
+          throw BusinessException(
+            LedgerErrorCode.categoryInvalidParent,
+            message: 'Parent category does not exist.',
+          );
+        }
+        if (previousParentId == null) {
+          final children = await _repository.findChildrenOf(category.id);
+          if (children.isNotEmpty) {
+            throw BusinessException(
+              LedgerErrorCode.categoryInvalidParent,
+              message: '已有子分类，不能设为子分类。',
+            );
+          }
+        }
+      }
+
+      final reorderedSiblings = <Account>[];
+      if (parentChanged) {
+        final oldSiblings = await _repository.findCategorySiblings(
+          type: category.type,
+          parentId: previousParentId,
+        );
+        final targetSiblings = await _repository.findCategorySiblings(
+          type: category.type,
+          parentId: nextParentId,
+        );
+        category.reorderCategory(_nextSortOrder(targetSiblings));
+        var oldSortOrder = 0;
+        for (final sibling in oldSiblings) {
+          if (sibling.id == category.id) continue;
+          sibling.reorderCategory(oldSortOrder++);
+          reorderedSiblings.add(sibling);
+        }
+      }
+
+      category.changeCategoryProfile(
+        CategoryProfilePatch(
+          name: command.name,
+          iconKey: command.iconKey,
+          note: command.note,
+        ),
+      );
+      category.moveCategoryTo(parent);
+      await _repository.saveAll([category, ...reorderedSiblings]);
+    });
+  }
+
+  @override
+  Future<void> reorderCategories(ReorderCategoriesCommand command) {
+    return _runner.run(() async {
+      if (!command.type.isCategory) {
+        throw BusinessException(
+          LedgerErrorCode.categoryInvalidCommand,
+          message: 'Only income and expense categories can be reordered.',
+        );
+      }
+      if (command.parentId case final parentId?) {
+        final parent = await _repository.findById(parentId);
+        if (parent == null ||
+            parent.isArchived ||
+            parent.parentId != null ||
+            parent.type != command.type) {
+          throw BusinessException(
+            LedgerErrorCode.categoryInvalidParent,
+            message: 'Parent category is unavailable.',
+          );
+        }
+      }
+      final siblings = await _repository.findCategorySiblings(
+        type: command.type,
+        parentId: command.parentId,
+      );
+      _requireSameIds(
+        actual: siblings.map((category) => category.id),
+        requested: command.orderedIds,
+      );
+      for (var index = 0; index < command.orderedIds.length; index++) {
+        final category = siblings.singleWhere(
+          (candidate) => candidate.id == command.orderedIds[index],
+        );
+        category.reorderCategory(index);
+      }
+      await _repository.saveAll(siblings);
+    });
   }
 
   @override
@@ -165,5 +235,30 @@ class CategoryAppServiceImpl implements CategoryAppService {
       categoryId,
     });
     return (entryCounts[categoryId] ?? 0) + (advanceCounts[categoryId] ?? 0);
+  }
+
+  int _nextSortOrder(Iterable<Account> siblings) {
+    var maxSortOrder = -1;
+    for (final sibling in siblings) {
+      if (sibling.sortOrder > maxSortOrder) {
+        maxSortOrder = sibling.sortOrder;
+      }
+    }
+    return maxSortOrder + 1;
+  }
+
+  void _requireSameIds({
+    required Iterable<String> actual,
+    required List<String> requested,
+  }) {
+    final actualIds = actual.toSet();
+    if (actualIds.length != requested.length ||
+        actualIds.length != requested.toSet().length ||
+        !actualIds.containsAll(requested)) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Category order does not match the active sibling set.',
+      );
+    }
   }
 }

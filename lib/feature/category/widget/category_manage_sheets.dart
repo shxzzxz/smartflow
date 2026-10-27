@@ -44,38 +44,35 @@ Future<void> showCategoryActionSheet(
               ListTile(
                 leading: const Icon(RemixIcons.edit_line),
                 title: const Text('编辑'),
-                onTap: () => Navigator.of(sheetContext).pop(_CategoryAction.edit),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CategoryAction.edit),
               ),
             if (isRoot)
               ListTile(
                 leading: const Icon(RemixIcons.add_line),
                 title: const Text('新增子分类'),
-                onTap:
-                    () => Navigator.of(
-                      sheetContext,
-                    ).pop(_CategoryAction.addChild),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CategoryAction.addChild),
               ),
             if (category.isManageableCategory && !hasActiveChildren)
               ListTile(
                 leading: const Icon(RemixIcons.folder_transfer_line),
                 title: const Text('移动到…'),
-                onTap:
-                    () => Navigator.of(sheetContext).pop(_CategoryAction.move),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CategoryAction.move),
               ),
             if (category.isManageableCategory) ...[
               ListTile(
                 leading: const Icon(RemixIcons.swap_line),
                 title: const Text('迁移交易'),
-                onTap:
-                    () =>
-                        Navigator.of(sheetContext).pop(_CategoryAction.migrate),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CategoryAction.migrate),
               ),
               ListTile(
                 leading: Icon(RemixIcons.delete_bin_line, color: colors.error),
                 title: Text('删除', style: TextStyle(color: colors.error)),
-                onTap:
-                    () =>
-                        Navigator.of(sheetContext).pop(_CategoryAction.delete),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_CategoryAction.delete),
               ),
             ],
           ],
@@ -425,10 +422,9 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
                         _selectedId == candidate.id
                             ? RemixIcons.checkbox_circle_fill
                             : RemixIcons.checkbox_blank_circle_line,
-                        color:
-                            _selectedId == candidate.id
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
+                        color: _selectedId == candidate.id
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
                       ),
                       onTap: () => setState(() => _selectedId = candidate.id),
                     ),
@@ -445,10 +441,9 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed:
-                      _selectedId == null
-                          ? null
-                          : () => Navigator.of(context).pop(_selectedId),
+                  onPressed: _selectedId == null
+                      ? null
+                      : () => Navigator.of(context).pop(_selectedId),
                   child: const Text('迁移交易'),
                 ),
               ),

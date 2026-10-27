@@ -170,6 +170,17 @@ class Account {
     note = patch.note.applyMappedTo(note, trimToNull);
   }
 
+  void reorderCategory(int sortOrder) {
+    _ensureCategoryEditable();
+    if (!type.isCategory || sortOrder < 0) {
+      throw BusinessException(
+        LedgerErrorCode.categoryInvalidCommand,
+        message: 'Category sort order is invalid.',
+      );
+    }
+    this.sortOrder = sortOrder;
+  }
+
   LedgerViolationReason? checkBalanceAdjustmentTarget(Money target) {
     if (isArchived) {
       return LedgerViolationReason.accountArchived;

@@ -9,7 +9,7 @@ class CreateCategoryCommand {
     this.parentId,
     this.iconKey,
     this.note,
-    this.sortOrder = 0,
+    this.sortOrder,
   });
 
   final String name;
@@ -17,7 +17,7 @@ class CreateCategoryCommand {
   final String? parentId;
   final String? iconKey;
   final String? note;
-  final int sortOrder;
+  final int? sortOrder;
 }
 
 class EditCategoryCommand {
@@ -34,6 +34,19 @@ class EditCategoryCommand {
   final Patch<String>? parentId;
   final Patch<String>? iconKey;
   final Patch<String>? note;
+}
+
+/// 重排同一父分类下的全部活跃分类；`orderedIds` 必须完整覆盖该同级集合。
+class ReorderCategoriesCommand {
+  const ReorderCategoriesCommand({
+    required this.type,
+    required this.parentId,
+    required this.orderedIds,
+  });
+
+  final AccountType type;
+  final String? parentId;
+  final List<String> orderedIds;
 }
 
 /// 删除只处理无交易引用且无子分类的单个分类；不满足条件时拒绝。

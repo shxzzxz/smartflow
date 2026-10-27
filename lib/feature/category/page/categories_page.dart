@@ -12,6 +12,8 @@ import '../../../application/ledger/ledger_query_api.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/ui_action_outcome.dart';
+import '../view_model/categories_view_model.dart';
 import '../widget/category_manage_sheets.dart';
 
 class CategoriesPage extends ConsumerWidget {
@@ -85,6 +87,7 @@ class _CategoryManageTab extends ConsumerStatefulWidget {
 
 class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
   final Set<String> _expandedIds = {};
+  var _savingOrder = false;
 
   @override
   Widget build(BuildContext context) {
@@ -98,58 +101,128 @@ class _CategoryManageTabState extends ConsumerState<_CategoryManageTab> {
           return _EmptyCategories(type: widget.type);
         }
 
-        return ListView(
+        return ReorderableListView.builder(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.space20,
-            AppSpacing.space24,
+            AppSpacing.space8,
             AppSpacing.space20,
             AppSpacing.space48,
           ),
-          children: [
-            AppSurface(
-              child: Column(
-                children: [
-                  for (var i = 0; i < nodes.length; i++) ...[
-                    _RootCategoryRow(
-                      node: nodes[i],
-                      expanded: _expandedIds.contains(nodes[i].account.id),
-                      onTap: () =>
-                          _openCategoryTransactions(nodes[i].account.id),
-                      onToggleExpanded: () => setState(() {
-                        final id = nodes[i].account.id;
-                        _expandedIds.contains(id)
-                            ? _expandedIds.remove(id)
-                            : _expandedIds.add(id);
-                      }),
-                      onMore: () => _openActionSheet(nodes[i].account, nodes),
+          buildDefaultDragHandles: false,
+          header: _savingOrder
+              ? const Padding(
+                  padding: EdgeInsets.only(bottom: AppSpacing.space8),
+                  child: LinearProgressIndicator(minHeight: 2),
+                )
+              : null,
+          itemCount: nodes.length,
+          onReorderItem: (oldIndex, newIndex) => _reorderCategories(
+            categories: [for (final node in nodes) node.account],
+            parentId: null,
+            oldIndex: oldIndex,
+            newIndex: newIndex,
+          ),
+          itemBuilder: (context, index) {
+            final node = nodes[index];
+            final expanded = _expandedIds.contains(node.account.id);
+            return Padding(
+              key: ValueKey('category-root-${node.account.id}'),
+              padding: EdgeInsets.only(
+                top: index == 0 ? AppSpacing.space16 : 0,
+                bottom: index == nodes.length - 1 ? 0 : AppSpacing.space12,
+              ),
+              child: AppSurface(
+                child: Column(
+                  children: [
+                    ReorderableDelayedDragStartListener(
+                      index: index,
+                      enabled: !_savingOrder,
+                      child: _RootCategoryRow(
+                        node: node,
+                        expanded: expanded,
+                        onTap: () => _openCategoryTransactions(node.account.id),
+                        onToggleExpanded: () => setState(() {
+                          final id = node.account.id;
+                          _expandedIds.contains(id)
+                              ? _expandedIds.remove(id)
+                              : _expandedIds.add(id);
+                        }),
+                        onMore: () => _openActionSheet(node.account, nodes),
+                      ),
                     ),
-                    if (_expandedIds.contains(nodes[i].account.id)) ...[
-                      for (final child in nodes[i].children)
-                        _ChildCategoryRow(
-                          category: child,
-                          onTap: () => _openCategoryTransactions(child.id),
-                          onMore: () => _openActionSheet(child, nodes),
+                    if (expanded) ...[
+                      if (node.children.isNotEmpty)
+                        ReorderableListView.builder(
+                          key: ValueKey(
+                            'category-child-order-${node.account.id}',
+                          ),
+                          shrinkWrap: true,
+                          primary: false,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          buildDefaultDragHandles: false,
+                          itemCount: node.children.length,
+                          onReorderItem: (oldIndex, newIndex) =>
+                              _reorderCategories(
+                                categories: node.children,
+                                parentId: node.account.id,
+                                oldIndex: oldIndex,
+                                newIndex: newIndex,
+                              ),
+                          itemBuilder: (context, childIndex) {
+                            final child = node.children[childIndex];
+                            return ReorderableDelayedDragStartListener(
+                              key: ValueKey('category-child-${child.id}'),
+                              index: childIndex,
+                              enabled: !_savingOrder,
+                              child: _ChildCategoryRow(
+                                category: child,
+                                onTap: () =>
+                                    _openCategoryTransactions(child.id),
+                                onMore: () => _openActionSheet(child, nodes),
+                              ),
+                            );
+                          },
                         ),
                       _AddChildRow(
-                        onTap: () => _openChildForm(nodes[i].account.id),
+                        onTap: () => _openChildForm(node.account.id),
                       ),
                     ],
-                    if (i < nodes.length - 1)
-                      const Padding(
-                        padding: EdgeInsets.only(
-                          left: AppSpacing.space48 + AppSpacing.space14,
-                          right: AppSpacing.space16,
-                        ),
-                        child: Divider(height: 1),
-                      ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
+  }
+
+  Future<void> _reorderCategories({
+    required List<Account> categories,
+    required String? parentId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    if (_savingOrder || oldIndex == newIndex) return;
+    final ordered = [...categories];
+    final moved = ordered.removeAt(oldIndex);
+    ordered.insert(newIndex, moved);
+    setState(() => _savingOrder = true);
+    final outcome = await ref
+        .read(categoriesViewModelProvider.notifier)
+        .reorderCategories(
+          type: widget.type,
+          parentId: parentId,
+          orderedIds: [for (final category in ordered) category.id],
+        );
+    if (!mounted) return;
+    setState(() => _savingOrder = false);
+    if (outcome case UiActionFailure(:final error)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   void _openActionSheet(Account category, List<CategoryNode> nodes) {

@@ -1,5 +1,6 @@
 import '../../../core/error/app_error_code.dart';
 import '../entity/account.dart';
+import '../valobj/ledger_enum.dart';
 
 enum AccountRepositoryErrorCode implements AppErrorCode {
   concurrentUpdate(
@@ -25,6 +26,12 @@ abstract interface class AccountRepository {
   Future<List<Account>> findByIds(Set<String> ids);
 
   Future<List<Account>> findChildrenOf(String parentId);
+
+  /// 按展示顺序读取同一父节点下的活跃收入或支出分类。
+  Future<List<Account>> findCategorySiblings({
+    required AccountType type,
+    required String? parentId,
+  });
 
   Future<List<Account>> findByGroupId(String? groupId);
 

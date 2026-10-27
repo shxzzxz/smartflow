@@ -370,6 +370,12 @@ class _AccountRepository implements AccountRepository {
   Future<List<Account>> findChildrenOf(String parentId) async => const [];
 
   @override
+  Future<List<Account>> findCategorySiblings({
+    required AccountType type,
+    required String? parentId,
+  }) async => const [];
+
+  @override
   Future<List<Account>> findByGroupId(String? groupId) async => [
     for (final account in _accounts.values)
       if (account.groupId == groupId) account,
