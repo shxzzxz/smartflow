@@ -12,6 +12,9 @@ bool accountMatchesSelectionPurpose(
     AccountSelectionPurpose.settlement =>
       accountMatchesUsage(account, AccountUsage.settlement) &&
           account.profileKey != AccountProfileKind.loan.key,
+    AccountSelectionPurpose.expenseSettlement =>
+      accountMatchesUsage(account, AccountUsage.expenseSettlement) &&
+          account.profileKey != AccountProfileKind.loan.key,
     AccountSelectionPurpose.fund => accountMatchesUsage(
       account,
       AccountUsage.fund,

@@ -202,6 +202,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       if (current.mode == value) return current;
       return current.copyWith(
         mode: value,
+        relationScene: value == TransactionFormMode.borrowing
+            ? TransactionRelationScene.borrowing
+            : value == TransactionFormMode.lending
+            ? TransactionRelationScene.lending
+            : current.relationScene,
         entryMode: TransactionEntryMode.normal,
         categoryAllocations: const [],
         settlementAllocations: const [],
@@ -281,9 +286,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           current == null ||
           requestRevision != _defaultAccountRequestRevision ||
           selectedCategoryId(current) != categoryId ||
-          !current.settlementAccounts.any(
-            (account) => account.id == accountId,
-          )) {
+          !(current.mode == TransactionFormMode.expense
+                  ? current.expenseSettlementAccounts
+                  : current.settlementAccounts)
+              .any((account) => account.id == accountId)) {
         return;
       }
       _update((current) => selectAccount(current, accountId));
@@ -306,6 +312,36 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(toAccountId: value));
   }
 
+  void setRelationScene(TransactionRelationScene value) {
+    _update((current) {
+      final changingMode = current.mode != value.mode;
+      return current.copyWith(
+        mode: value.mode,
+        relationScene: value,
+        entryMode: changingMode
+            ? TransactionEntryMode.normal
+            : current.entryMode,
+        categoryAllocations: changingMode
+            ? const []
+            : current.categoryAllocations,
+        settlementAllocations: changingMode
+            ? const []
+            : current.settlementAllocations,
+        advanceReceivableAccountId: null,
+        advanceScenario: AdvanceScenario.reimbursement,
+        expenseScene: TransactionExpenseScene.ordinary,
+        ordinaryReceivableAccountId: value.mode == TransactionFormMode.lending
+            ? current.ordinaryReceivableAccountId
+            : null,
+        liabilityAccountId: value.mode == TransactionFormMode.borrowing
+            ? current.liabilityAccountId
+            : null,
+        excludeStats: false,
+        excludeBudget: false,
+      );
+    });
+  }
+
   void setCategoryAllocations(List<AccountAmountAllocation> allocations) {
     _update((current) => current.copyWith(categoryAllocations: allocations));
   }
@@ -322,11 +358,16 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         TransactionFormMode.income => current.incomeCategoryId,
         _ => null,
       };
-      final settlementId = _effectiveId(switch (current.mode) {
-        TransactionFormMode.expense => current.fromAccountId,
-        TransactionFormMode.income => current.toAccountId,
-        _ => null,
-      }, current.settlementAccounts);
+      final settlementId = _effectiveId(
+        switch (current.mode) {
+          TransactionFormMode.expense => current.fromAccountId,
+          TransactionFormMode.income => current.toAccountId,
+          _ => null,
+        },
+        current.mode == TransactionFormMode.expense
+            ? current.expenseSettlementAccounts
+            : current.settlementAccounts,
+      );
       return current.copyWith(
         entryMode: TransactionEntryMode.allocated,
         categoryAllocations: categoryId == null
@@ -646,7 +687,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.ordinaryReceivableAccounts,
         );
         if (paidFromAccountId == null || receivableAccountId == null) {
-          throw _invalidCommandException('请选择付款账户和应收账户');
+          throw _invalidCommandException(
+            '请选择${formState.relationScene.cashAccountLabel}和'
+            '${formState.relationScene.receivableAccountLabel}',
+          );
         }
         await (postingService as ReceivableTransactionPostingAppService)
             .createLending(
@@ -776,7 +820,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           formState.ordinaryReceivableAccounts,
         );
         if (paidFromAccountId == null || receivableAccountId == null) {
-          throw _invalidCommandException('请选择付款账户和应收账户');
+          throw _invalidCommandException(
+            '请选择${formState.relationScene.cashAccountLabel}和'
+            '${formState.relationScene.receivableAccountLabel}',
+          );
         }
         await (editService as ReceivableTransactionEditAppService).editLending(
           EditLendingCommand(
@@ -914,7 +961,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       }
       final settlementId = _effectiveId(
         formState.fromAccountId,
-        formState.settlementAccounts,
+        formState.expenseSettlementAccounts,
       );
       if (settlementId == null) {
         throw _invalidCommandException('请选择支出账户');
@@ -1012,6 +1059,7 @@ class TransactionFormState {
     this.advanceReceivableAccountId,
     this.advanceScenario = AdvanceScenario.reimbursement,
     this.expenseScene = TransactionExpenseScene.ordinary,
+    this.relationScene = TransactionRelationScene.borrowing,
     this.aaPeopleCount = 2,
     this.ordinaryReceivableAccountId,
     this.liabilityAccountId,
@@ -1049,6 +1097,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
       mode: mode,
+      relationScene: transactionRelationSceneForMode(mode),
       entryMode: TransactionEntryMode.normal,
       occurredAt: DateTime.now(),
       excludeStats: false,
@@ -1100,6 +1149,7 @@ class TransactionFormState {
     return TransactionFormState(
       initialValues: TransactionFormInitialValues.fromSnapshot(snapshot),
       mode: snapshot.mode,
+      relationScene: snapshot.relationScene,
       entryMode: usesAllocatedEntry
           ? TransactionEntryMode.allocated
           : TransactionEntryMode.normal,
@@ -1155,6 +1205,7 @@ class TransactionFormState {
   final String? advanceReceivableAccountId;
   final AdvanceScenario advanceScenario;
   final TransactionExpenseScene expenseScene;
+  final TransactionRelationScene relationScene;
   final int aaPeopleCount;
   final String? ordinaryReceivableAccountId;
   final String? liabilityAccountId;
@@ -1175,6 +1226,11 @@ class TransactionFormState {
   final List<TagView> tags;
   final List<CounterpartyView> counterparties;
 
+  /// 日常支出可以把资金、负债或应收账户作为支出账户。
+  /// 应收账户仅在支出原语中进入结算角色，不扩大其它原语的账户范围。
+  List<Account> get expenseSettlementAccounts =>
+      List.unmodifiable([...settlementAccounts, ...ordinaryReceivableAccounts]);
+
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
     TransactionFormMode? mode,
@@ -1189,6 +1245,7 @@ class TransactionFormState {
     Object? advanceReceivableAccountId = _sentinel,
     AdvanceScenario? advanceScenario,
     TransactionExpenseScene? expenseScene,
+    TransactionRelationScene? relationScene,
     int? aaPeopleCount,
     Object? ordinaryReceivableAccountId = _sentinel,
     Object? liabilityAccountId = _sentinel,
@@ -1237,6 +1294,7 @@ class TransactionFormState {
           : advanceReceivableAccountId as String?,
       advanceScenario: advanceScenario ?? this.advanceScenario,
       expenseScene: expenseScene ?? this.expenseScene,
+      relationScene: relationScene ?? this.relationScene,
       aaPeopleCount: aaPeopleCount ?? this.aaPeopleCount,
       ordinaryReceivableAccountId: ordinaryReceivableAccountId == _sentinel
           ? this.ordinaryReceivableAccountId

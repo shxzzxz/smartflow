@@ -18,7 +18,7 @@ String transactionPurposeLabel(BusinessPurpose purpose) {
     BusinessPurpose.advanceSettlement => '垫付结清',
     BusinessPurpose.debtRepayment => '还款',
     BusinessPurpose.borrowing => '借入',
-    BusinessPurpose.lending => '借出',
+    BusinessPurpose.lending => '应收增加',
     BusinessPurpose.receivableCollection => '收回',
     BusinessPurpose.badDebt => '坏账',
     BusinessPurpose.debtRelief => '债务豁免',

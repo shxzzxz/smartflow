@@ -1,5 +1,6 @@
 enum AccountSelectionPurpose {
   settlement,
+  expenseSettlement,
   fund,
   repaymentTarget,
   repaymentSource,

@@ -92,6 +92,7 @@ void main() {
       AccountSelectionPurpose.advanceReceivable,
       AccountSelectionPurpose.ordinaryReceivable,
       AccountSelectionPurpose.receivable,
+      AccountSelectionPurpose.expenseSettlement,
     ];
 
     for (final account in accounts) {
@@ -100,6 +101,13 @@ void main() {
       }
       expect(
         accountMatchesSelectionPurpose(account, AccountSelectionPurpose.fund),
+        isFalse,
+      );
+      expect(
+        accountMatchesSelectionPurpose(
+          account,
+          AccountSelectionPurpose.settlement,
+        ),
         isFalse,
       );
     }

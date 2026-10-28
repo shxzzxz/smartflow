@@ -124,7 +124,7 @@ void main() {
       _app(account: _account(kind: AccountProfileKind.receivable)),
     );
 
-    expect(find.text('借出'), findsOneWidget);
+    expect(find.text('记应收'), findsOneWidget);
     expect(find.text('收回'), findsOneWidget);
     expect(find.text('坏账'), findsOneWidget);
     expect(find.text('债务豁免'), findsNothing);

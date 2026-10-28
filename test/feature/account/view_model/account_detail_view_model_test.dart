@@ -26,7 +26,7 @@ void main() {
         accountDetailActions(
           _accountView('receivable', AccountProfileKind.receivable),
         ).map((action) => action.label),
-        ['借出', '收回', '坏账'],
+        ['记应收', '收回', '坏账'],
       );
       final receivableActions = accountDetailActions(
         _accountView('receivable', AccountProfileKind.receivable),

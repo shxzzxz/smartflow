@@ -5,10 +5,15 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {
   group('transaction list presentation', () {
+    test('labels the receivable increase primitive in transaction flows', () {
+      expect(transactionPurposeLabel(BusinessPurpose.lending), '应收增加');
+    });
+
     test('builds budget transaction rows from category impact amounts', () {
       final groups = budgetTransactionGroups(
         transactions: [_item()],

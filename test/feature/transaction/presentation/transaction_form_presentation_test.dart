@@ -204,6 +204,33 @@ void main() {
   });
 
   group('transaction semantic helpers', () {
+    test('maps relation scenes to shared ledger modes and form copy', () {
+      expect(
+        TransactionRelationScene.borrowing.mode,
+        TransactionFormMode.borrowing,
+      );
+      expect(
+        TransactionRelationScene.lending.mode,
+        TransactionFormMode.lending,
+      );
+      expect(
+        TransactionRelationScene.deposit.mode,
+        TransactionFormMode.lending,
+      );
+      expect(TransactionRelationScene.lending.label, '借出');
+      expect(TransactionRelationScene.deposit.label, '押金');
+      expect(TransactionRelationScene.deposit.cashAccountLabel, '付款账户');
+      expect(TransactionRelationScene.deposit.receivableAccountLabel, '押金账户');
+      expect(
+        transactionRelationSceneForMode(TransactionFormMode.borrowing),
+        TransactionRelationScene.borrowing,
+      );
+      expect(
+        transactionRelationSceneForMode(TransactionFormMode.lending),
+        TransactionRelationScene.lending,
+      );
+    });
+
     test('filters account-managed scenes by account profile', () {
       final accounts = [
         _account(

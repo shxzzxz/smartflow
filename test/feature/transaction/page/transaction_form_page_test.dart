@@ -28,7 +28,7 @@ void main() {
   testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
-    for (final label in const ['支出', '收入', '转账', '借入']) {
+    for (final label in const ['支出', '收入', '转账', '往来']) {
       final tab = find.ancestor(
         of: find.text(label),
         matching: find.byType(InkWell),
@@ -37,16 +37,69 @@ void main() {
     }
   });
 
-  testWidgets('uses standardized account roles for borrowing', (tester) async {
+  testWidgets('uses standardized account roles for relations', (tester) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
-    await tester.tap(find.text('借入'));
+    await tester.tap(find.text('往来'));
     await tester.pumpAndSettle();
 
     expect(find.text('负债账户'), findsOneWidget);
     expect(find.text('收款账户'), findsOneWidget);
     expect(find.text('借出账户'), findsNothing);
     expect(find.text('借入账户'), findsNothing);
+  });
+
+  testWidgets('switches relation copy for lending and deposit scenes', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      fundAccounts: [_account('cash')],
+      ordinaryReceivableAccounts: [_account('receivable'), _account('deposit')],
+    );
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    final depositScene = _sceneItem('relations', '押金');
+    await tester.ensureVisible(depositScene);
+    await tester.tap(depositScene);
+    await tester.pumpAndSettle();
+
+    expect(find.text('付款账户'), findsOneWidget);
+    expect(find.text('押金账户'), findsOneWidget);
+    expect(find.text('应收账户'), findsNothing);
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    final lendingScene = _sceneItem('relations', '借出');
+    await tester.ensureVisible(lendingScene);
+    await tester.tap(lendingScene);
+    await tester.pumpAndSettle();
+
+    expect(find.text('付款账户'), findsOneWidget);
+    expect(find.text('应收账户'), findsOneWidget);
+    expect(find.text('押金账户'), findsNothing);
+  });
+
+  testWidgets('offers receivable accounts as daily expense accounts', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      settlementAccounts: [_account('cash')],
+      ordinaryReceivableAccounts: [_account('deposit')],
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('expense-primary-account-option')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择支出账户'), findsOneWidget);
+    expect(find.text('cash'), findsWidgets);
+    expect(find.text('deposit'), findsOneWidget);
   });
 
   testWidgets('renders on a common Android phone with accessibility text', (
@@ -178,10 +231,10 @@ void main() {
       'expense': ['普通支出', 'AA', '报销', '代付', 'AA（账户）', '报销（账户）'],
       'income': ['普通收入'],
       'transfer': ['转账'],
-      'relations': ['借入', '借出'],
+      'relations': ['借入', '借出', '押金'],
     };
 
-    for (final tab in ['支出', '收入', '转账', '借入', '借出']) {
+    for (final tab in ['支出', '收入', '转账', '往来']) {
       await tester.tap(find.text(tab));
       await tester.pumpAndSettle();
       await tester.tap(find.text('场景'));
@@ -664,7 +717,7 @@ void main() {
   ) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
-    for (final mode in const ['支出', '收入', '转账', '借入', '借出']) {
+    for (final mode in const ['支出', '收入', '转账', '往来']) {
       await tester.tap(find.text(mode));
       await tester.pumpAndSettle();
       expect(find.text('标签'), findsOneWidget);
@@ -957,7 +1010,9 @@ Future<void> _pumpTransactionForm(
   List<TagView> tags = const [],
   List<CounterpartyView> counterparties = const [],
   List<Account>? settlementAccounts,
+  List<Account> fundAccounts = const [],
   List<Account> advanceReceivableAccounts = const [],
+  List<Account> ordinaryReceivableAccounts = const [],
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
 }) async {
@@ -994,7 +1049,7 @@ Future<void> _pumpTransactionForm(
         ),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.fund,
-        ).overrideWith((ref) => Stream.value(const <Account>[])),
+        ).overrideWith((ref) => Stream.value(fundAccounts)),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.borrowingLiability,
         ).overrideWith((ref) => Stream.value(const <Account>[])),
@@ -1003,7 +1058,7 @@ Future<void> _pumpTransactionForm(
         ).overrideWith((ref) => Stream.value(advanceReceivableAccounts)),
         accountsForSelectionPurposeProvider(
           AccountSelectionPurpose.ordinaryReceivable,
-        ).overrideWith((ref) => Stream.value(const <Account>[])),
+        ).overrideWith((ref) => Stream.value(ordinaryReceivableAccounts)),
         categoryTreeProvider(AccountType.expense).overrideWith(
           (ref) => Stream.value(
             expenseTree ?? [CategoryNode(account: _category('food'))],

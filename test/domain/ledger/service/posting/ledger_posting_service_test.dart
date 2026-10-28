@@ -8,8 +8,10 @@ import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart
 import 'package:smartflow/domain/ledger/service/posting/account_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/ledger_posting_service.dart';
 import 'package:smartflow/domain/ledger/service/posting/posting_engine.dart';
+import 'package:smartflow/domain/ledger/service/posting/posting_rule.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 
 import '../../../../helper/sequential_id_generator.dart';
 import '../../../../helper/posting_instruction_fixtures.dart';
@@ -128,6 +130,44 @@ void main() {
       },
     );
 
+    test('allows a receivable account as the daily expense account', () async {
+      final accountRepository = _FakeAccountRepository([
+        _account(
+          'deposit',
+          AccountType.asset,
+          subtype: AccountSubtype.receivable,
+        ),
+        _account('rental-deduction', AccountType.expense),
+      ]);
+      final service = _service(accountRepository);
+
+      final result = await service.postExpense(
+        singleExpenseInstruction(
+          amount: Money.parse('200.00'),
+          paidFromAccountId: 'deposit',
+          expenseAccountId: 'rental-deduction',
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      expect(entriesAreBalanced(result.transaction.entries), isTrue);
+      expect(
+        result.transaction.entries.map(
+          (entry) => (entry.accountId, entry.direction),
+        ),
+        containsAll([
+          ('rental-deduction', EntryDirection.debit),
+          ('deposit', EntryDirection.credit),
+        ]),
+      );
+      expect(
+        result.accounts
+            .singleWhere((account) => account.id == 'deposit')
+            .balance,
+        const Money(minorUnits: -20000),
+      );
+    });
+
     test('does not allow a normal equity account as settlement', () async {
       final accountRepository = _FakeAccountRepository([
         _account('equity', AccountType.equity),
@@ -148,6 +188,61 @@ void main() {
       );
     });
   });
+
+  test('records a rental deposit through deduction and collection', () async {
+    final accountRepository = _FakeAccountRepository([
+      _account(
+        'fund',
+        AccountType.asset,
+        subtype: AccountSubtype.fund,
+        balance: Money.parse('5000.00'),
+      ),
+      _account(
+        'deposit',
+        AccountType.asset,
+        subtype: AccountSubtype.receivable,
+      ),
+      _account('rental-deduction', AccountType.expense),
+    ]);
+    final service = _service(accountRepository);
+
+    await service.postLending(
+      LendingInstruction(
+        amount: Money.parse('1000.00'),
+        receivableAccountId: 'deposit',
+        paidFromAccountId: 'fund',
+        occurredAt: DateTime(2026, 5, 1),
+      ),
+    );
+    await service.postExpense(
+      singleExpenseInstruction(
+        amount: Money.parse('200.00'),
+        paidFromAccountId: 'deposit',
+        expenseAccountId: 'rental-deduction',
+        occurredAt: DateTime(2026, 5, 2),
+      ),
+    );
+    await service.postReceivableCollection(
+      ReceivableCollectionInstruction(
+        principal: Money.parse('800.00'),
+        receivableAccountId: 'deposit',
+        receiveAccountId: 'fund',
+        occurredAt: DateTime(2026, 5, 3),
+      ),
+    );
+
+    final accounts = await accountRepository.findByIds({
+      'fund',
+      'deposit',
+      'rental-deduction',
+    });
+    final balances = {
+      for (final account in accounts) account.id: account.balance,
+    };
+    expect(balances['fund'], Money.parse('4800.00'));
+    expect(balances['deposit'], Money.zero());
+    expect(balances['rental-deduction'], Money.parse('200.00'));
+  });
 }
 
 LedgerPostingService _service(_FakeAccountRepository accountRepository) {
@@ -162,7 +257,12 @@ LedgerPostingService _service(_FakeAccountRepository accountRepository) {
   );
 }
 
-Account _account(String id, AccountType type, {AccountSubtype? subtype}) {
+Account _account(
+  String id,
+  AccountType type, {
+  AccountSubtype? subtype,
+  Money balance = const Money(minorUnits: 0),
+}) {
   return Account(
     id: id,
     name: id,
@@ -174,7 +274,7 @@ Account _account(String id, AccountType type, {AccountSubtype? subtype}) {
           AccountType.liability => AccountSubtype.payable,
           _ => null,
         },
-    balance: const Money(minorUnits: 0),
+    balance: balance,
   );
 }
 

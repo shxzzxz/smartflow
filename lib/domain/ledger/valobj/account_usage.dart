@@ -3,6 +3,7 @@ import 'ledger_enum.dart';
 
 enum AccountUsage {
   settlement,
+  expenseSettlement,
   fund,
   repaymentTarget,
   repaymentSource,
@@ -20,12 +21,16 @@ bool accountMatchesUsage(Account account, AccountUsage usage) {
   // liabilities, or advance receivables.
   if (account.systemKey == SystemKey.ghostAccount) {
     return usage == AccountUsage.settlement ||
+        usage == AccountUsage.expenseSettlement ||
         usage == AccountUsage.repaymentSource;
   }
   return switch (usage) {
     AccountUsage.settlement =>
       accountMatchesUsage(account, AccountUsage.fund) ||
           account.type == AccountType.liability,
+    AccountUsage.expenseSettlement =>
+      accountMatchesUsage(account, AccountUsage.settlement) ||
+          accountMatchesUsage(account, AccountUsage.receivable),
     AccountUsage.fund =>
       account.type == AccountType.asset &&
           account.subtype == AccountSubtype.fund,

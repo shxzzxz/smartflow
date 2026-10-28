@@ -125,6 +125,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     return _runAction((loaded) async {
       switch (purpose) {
         case AccountSelectionPurpose.settlement:
+        case AccountSelectionPurpose.expenseSettlement:
         case AccountSelectionPurpose.fund:
         case AccountSelectionPurpose.repaymentSource:
           return _actionDispatcherFor(loaded.detail).changeSettlementAccount(

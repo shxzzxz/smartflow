@@ -42,6 +42,27 @@ enum TransactionFormInitialMode {
   lending,
 }
 
+enum _TransactionModeTab { expense, income, transfer, relations }
+
+extension on _TransactionModeTab {
+  String get label => switch (this) {
+    _TransactionModeTab.expense => '支出',
+    _TransactionModeTab.income => '收入',
+    _TransactionModeTab.transfer => '转账',
+    _TransactionModeTab.relations => '往来',
+  };
+}
+
+_TransactionModeTab _modeTabFor(TransactionFormMode mode) {
+  return switch (mode) {
+    TransactionFormMode.expense => _TransactionModeTab.expense,
+    TransactionFormMode.income => _TransactionModeTab.income,
+    TransactionFormMode.transfer => _TransactionModeTab.transfer,
+    TransactionFormMode.borrowing ||
+    TransactionFormMode.lending => _TransactionModeTab.relations,
+  };
+}
+
 class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
     this.editTransactionId,
@@ -168,6 +189,7 @@ class _TransactionFormContentState
   Widget build(BuildContext context) {
     final formState = widget.formState;
     final settlementAccounts = formState.settlementAccounts;
+    final expenseSettlementAccounts = formState.expenseSettlementAccounts;
     final fundAccounts = formState.fundAccounts;
     final liabilityAccounts = formState.liabilityAccounts;
     final advanceReceivableAccounts = formState.advanceReceivableAccounts;
@@ -196,8 +218,7 @@ class _TransactionFormContentState
                 onDelete: editTransactionId != null && !formState.submitting
                     ? _confirmDelete
                     : null,
-                onModeChanged: (mode) =>
-                    ref.read(_formProvider.notifier).setMode(mode),
+                onModeChanged: _changeModeTab,
               ),
               Expanded(
                 child: ListView(
@@ -303,11 +324,12 @@ class _TransactionFormContentState
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
-                            label: '收款账户',
+                            label: formState.relationScene.cashAccountLabel,
                             accounts: fundAccounts,
                             selectedId: formState.toAccountId,
-                            validator: (value) =>
-                                value == null ? '请选择收款账户' : null,
+                            validator: (value) => value == null
+                                ? '请选择${formState.relationScene.cashAccountLabel}'
+                                : null,
                             onChanged: (value) => ref
                                 .read(_formProvider.notifier)
                                 .setToAccountId(value),
@@ -318,22 +340,25 @@ class _TransactionFormContentState
                       _MainAccountPickerSection(
                         children: [
                           _MainAccountPickerTile(
-                            label: '付款账户',
+                            label: formState.relationScene.cashAccountLabel,
                             accounts: fundAccounts,
                             selectedId: formState.fromAccountId,
-                            validator: (value) =>
-                                value == null ? '请选择付款账户' : null,
+                            validator: (value) => value == null
+                                ? '请选择${formState.relationScene.cashAccountLabel}'
+                                : null,
                             onChanged: (value) => ref
                                 .read(_formProvider.notifier)
                                 .setFromAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
                           _MainAccountPickerTile(
-                            label: '应收账户',
+                            label:
+                                formState.relationScene.receivableAccountLabel,
                             accounts: ordinaryReceivableAccounts,
                             selectedId: formState.ordinaryReceivableAccountId,
-                            validator: (value) =>
-                                value == null ? '请选择应收账户' : null,
+                            validator: (value) => value == null
+                                ? '请选择${formState.relationScene.receivableAccountLabel}'
+                                : null,
                             onChanged: (value) => ref
                                 .read(_formProvider.notifier)
                                 .setOrdinaryReceivableAccountId(value),
@@ -378,7 +403,10 @@ class _TransactionFormContentState
                     _TransactionOptionsPanel(
                       mode: formState.mode,
                       occurredAt: formState.occurredAt,
-                      moneyAccounts: settlementAccounts,
+                      moneyAccounts:
+                          formState.mode == TransactionFormMode.expense
+                          ? expenseSettlementAccounts
+                          : settlementAccounts,
                       advanceAccounts: selectableAdvanceAccounts,
                       fromAccountId: formState.fromAccountId,
                       toAccountId: formState.toAccountId,
@@ -523,12 +551,32 @@ class _TransactionFormContentState
     );
   }
 
+  void _changeModeTab(_TransactionModeTab tab) {
+    final notifier = ref.read(_formProvider.notifier);
+    switch (tab) {
+      case _TransactionModeTab.expense:
+        notifier.setMode(TransactionFormMode.expense);
+        return;
+      case _TransactionModeTab.income:
+        notifier.setMode(TransactionFormMode.income);
+        return;
+      case _TransactionModeTab.transfer:
+        notifier.setMode(TransactionFormMode.transfer);
+        return;
+      case _TransactionModeTab.relations:
+        final current = ref.read(_formProvider).requireValue!;
+        notifier.setRelationScene(current.relationScene);
+        return;
+    }
+  }
+
   Future<void> _selectScene() async {
     final formState = ref.read(_formProvider).requireValue!;
     final selected = await _showTransactionSceneSheet(
       context: context,
       mode: formState.mode,
       expenseScene: formState.expenseScene,
+      relationScene: formState.relationScene,
       groups: _sceneGroups(formState),
     );
     if (!mounted || selected == null) return;
@@ -537,6 +585,8 @@ class _TransactionFormContentState
       form.setExpenseScene(
         selected.expenseScene ?? TransactionExpenseScene.ordinary,
       );
+    } else if (selected.relationScene != null) {
+      form.setRelationScene(selected.relationScene!);
     } else {
       form.setMode(selected.mode);
     }
@@ -755,7 +805,7 @@ class _TopBar extends StatelessWidget {
   final bool editing;
   final VoidCallback onBack;
   final VoidCallback? onDelete;
-  final ValueChanged<TransactionFormMode> onModeChanged;
+  final ValueChanged<_TransactionModeTab> onModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -778,7 +828,7 @@ class _TopBar extends StatelessWidget {
             child: editing
                 ? Center(
                     child: Text(
-                      '编辑${_modeLabel(mode)}',
+                      '编辑${_modeTabFor(mode).label}',
                       style: context.appTextStyles.subsectionTitleStrong,
                     ),
                   )
@@ -803,7 +853,7 @@ class _ModeTabs extends StatelessWidget {
   const _ModeTabs({required this.mode, required this.onChanged});
 
   final TransactionFormMode mode;
-  final ValueChanged<TransactionFormMode> onChanged;
+  final ValueChanged<_TransactionModeTab> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -815,10 +865,10 @@ class _ModeTabs extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              for (final value in TransactionFormMode.values)
+              for (final value in _TransactionModeTab.values)
                 _ModeTabItem(
-                  label: _modeLabel(value),
-                  selected: value == mode,
+                  label: value.label,
+                  selected: value == _modeTabFor(mode),
                   onTap: () => onChanged(value),
                 ),
             ],
@@ -923,6 +973,9 @@ class _CategoryEntryArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settlementAccounts = categoryType == AccountType.expense
+        ? state.expenseSettlementAccounts
+        : state.settlementAccounts;
     if (state.entryMode == TransactionEntryMode.allocated) {
       final total = sumAllocations(state.categoryAllocations);
       return Column(
@@ -958,7 +1011,7 @@ class _CategoryEntryArea extends StatelessWidget {
             title: settlementTitle,
             allocations: state.settlementAllocations,
             options: transactionAllocationOptionsForAccounts(
-              state.settlementAccounts,
+              settlementAccounts,
             ),
             addLabel: settlementAddLabel,
             expectedTotal: total,
@@ -971,7 +1024,7 @@ class _CategoryEntryArea extends StatelessWidget {
                 context: context,
                 title: '选择账户',
                 accounts: [
-                  for (final account in state.settlementAccounts)
+                  for (final account in settlementAccounts)
                     if (optionIds.contains(account.id)) account,
                 ],
                 selectedId: selectedId,
@@ -1173,6 +1226,7 @@ class _CategoryAllocationPickerSheetState
 typedef _TransactionSceneChoice = ({
   TransactionFormMode mode,
   TransactionExpenseScene? expenseScene,
+  TransactionRelationScene? relationScene,
 });
 
 final _expenseSceneItems = <AppChoiceGridItem<_TransactionSceneChoice>>[
@@ -1223,8 +1277,18 @@ final _allTransactionSceneGroups =
         id: 'relations',
         label: '往来',
         items: [
-          _sceneGridItem(TransactionFormMode.borrowing),
-          _sceneGridItem(TransactionFormMode.lending),
+          _sceneGridItem(
+            TransactionFormMode.borrowing,
+            relationScene: TransactionRelationScene.borrowing,
+          ),
+          _sceneGridItem(
+            TransactionFormMode.lending,
+            relationScene: TransactionRelationScene.lending,
+          ),
+          _sceneGridItem(
+            TransactionFormMode.lending,
+            relationScene: TransactionRelationScene.deposit,
+          ),
         ],
       ),
     ];
@@ -1232,8 +1296,13 @@ final _allTransactionSceneGroups =
 AppChoiceGridItem<_TransactionSceneChoice> _sceneGridItem(
   TransactionFormMode mode, {
   TransactionExpenseScene? expenseScene,
+  TransactionRelationScene? relationScene,
 }) {
-  final choice = (mode: mode, expenseScene: expenseScene);
+  final choice = (
+    mode: mode,
+    expenseScene: expenseScene,
+    relationScene: relationScene,
+  );
   return AppChoiceGridItem(
     id: _sceneChoiceKey(choice),
     value: choice,
@@ -1246,6 +1315,7 @@ Future<_TransactionSceneChoice?> _showTransactionSceneSheet({
   required BuildContext context,
   required TransactionFormMode mode,
   required TransactionExpenseScene expenseScene,
+  required TransactionRelationScene relationScene,
   required List<AppChoiceGridGroup<_TransactionSceneChoice>> groups,
 }) {
   return showModalBottomSheet<_TransactionSceneChoice>(
@@ -1255,6 +1325,7 @@ Future<_TransactionSceneChoice?> _showTransactionSceneSheet({
     builder: (context) => _TransactionSceneSheet(
       mode: mode,
       expenseScene: expenseScene,
+      relationScene: relationScene,
       groups: groups,
     ),
   );
@@ -1264,11 +1335,13 @@ class _TransactionSceneSheet extends StatelessWidget {
   const _TransactionSceneSheet({
     required this.mode,
     required this.expenseScene,
+    required this.relationScene,
     required this.groups,
   });
 
   final TransactionFormMode mode;
   final TransactionExpenseScene expenseScene;
+  final TransactionRelationScene relationScene;
   final List<AppChoiceGridGroup<_TransactionSceneChoice>> groups;
 
   @override
@@ -1280,6 +1353,7 @@ class _TransactionSceneSheet extends StatelessWidget {
             item.value,
             mode: mode,
             expenseScene: expenseScene,
+            relationScene: relationScene,
           ),
         )
         .map((item) => item.id)
@@ -1313,26 +1387,34 @@ bool _isSceneChoiceSelected(
   _TransactionSceneChoice choice, {
   required TransactionFormMode mode,
   required TransactionExpenseScene expenseScene,
+  required TransactionRelationScene relationScene,
 }) {
   if (choice.mode != mode) return false;
-  return choice.mode != TransactionFormMode.expense ||
-      choice.expenseScene == expenseScene;
+  if (choice.mode == TransactionFormMode.expense) {
+    return choice.expenseScene == expenseScene;
+  }
+  return choice.relationScene == relationScene;
 }
 
 String _sceneChoiceKey(_TransactionSceneChoice choice) {
   final scene = choice.expenseScene;
-  return scene == null ? 'mode:${choice.mode.name}' : 'expense:${scene.name}';
+  final relationScene = choice.relationScene;
+  if (scene != null) return 'expense:${scene.name}';
+  if (relationScene != null) return 'relation:${relationScene.name}';
+  return 'mode:${choice.mode.name}';
 }
 
 String _sceneChoiceLabel(_TransactionSceneChoice choice) {
   final scene = choice.expenseScene;
   if (scene != null) return scene.label;
+  final relationScene = choice.relationScene;
+  if (relationScene != null) return relationScene.label;
   return switch (choice.mode) {
     TransactionFormMode.expense => '普通支出',
     TransactionFormMode.income => '普通收入',
     TransactionFormMode.transfer => '转账',
-    TransactionFormMode.borrowing => '借入',
-    TransactionFormMode.lending => '借出',
+    TransactionFormMode.borrowing ||
+    TransactionFormMode.lending => throw StateError('往来场景必须声明 relationScene。'),
   };
 }
 
@@ -1350,12 +1432,20 @@ IconData _sceneChoiceIcon(_TransactionSceneChoice choice) {
       TransactionExpenseScene.aaAccount => RemixIcons.user_shared_line,
     };
   }
+  final relationScene = choice.relationScene;
+  if (relationScene != null) {
+    return switch (relationScene) {
+      TransactionRelationScene.borrowing => RemixIcons.bank_card_line,
+      TransactionRelationScene.lending => RemixIcons.hand_coin_line,
+      TransactionRelationScene.deposit => RemixIcons.shield_check_line,
+    };
+  }
   return switch (choice.mode) {
     TransactionFormMode.expense => RemixIcons.wallet_line,
     TransactionFormMode.income => RemixIcons.money_dollar_circle_line,
     TransactionFormMode.transfer => RemixIcons.arrow_left_right_line,
-    TransactionFormMode.borrowing => RemixIcons.bank_card_line,
-    TransactionFormMode.lending => RemixIcons.hand_coin_line,
+    TransactionFormMode.borrowing ||
+    TransactionFormMode.lending => throw StateError('往来场景必须声明 relationScene。'),
   };
 }
 
@@ -2246,16 +2336,6 @@ class _ActionKey extends StatelessWidget {
             ),
     );
   }
-}
-
-String _modeLabel(TransactionFormMode mode) {
-  return switch (mode) {
-    TransactionFormMode.expense => '支出',
-    TransactionFormMode.income => '收入',
-    TransactionFormMode.transfer => '转账',
-    TransactionFormMode.borrowing => '借入',
-    TransactionFormMode.lending => '借出',
-  };
 }
 
 TransactionFormMode _toFormMode(TransactionFormInitialMode mode) {

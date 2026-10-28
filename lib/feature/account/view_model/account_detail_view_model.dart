@@ -114,7 +114,7 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
   return switch (account.kind) {
     AccountProfileKind.receivable => [
       AccountDetailAction(
-        label: '借出',
+        label: '记应收',
         iconKey: 'logout-box-r-line',
         route: _transactionRoute(
           mode: 'lending',

@@ -7,6 +7,39 @@ import '../../shared/presentation/transaction_detail_amount.dart';
 
 enum TransactionFormMode { expense, income, transfer, borrowing, lending }
 
+/// 往来入口下的录入场景。押金与借出共用应收增加账务原语，
+/// 场景只决定表单文案，不进入账务事实或交易编排域。
+enum TransactionRelationScene { borrowing, lending, deposit }
+
+extension TransactionRelationScenePresentation on TransactionRelationScene {
+  TransactionFormMode get mode => switch (this) {
+    TransactionRelationScene.borrowing => TransactionFormMode.borrowing,
+    TransactionRelationScene.lending ||
+    TransactionRelationScene.deposit => TransactionFormMode.lending,
+  };
+
+  String get label => switch (this) {
+    TransactionRelationScene.borrowing => '借入',
+    TransactionRelationScene.lending => '借出',
+    TransactionRelationScene.deposit => '押金',
+  };
+
+  String get cashAccountLabel =>
+      this == TransactionRelationScene.borrowing ? '收款账户' : '付款账户';
+
+  String get receivableAccountLabel =>
+      this == TransactionRelationScene.deposit ? '押金账户' : '应收账户';
+}
+
+TransactionRelationScene transactionRelationSceneForMode(
+  TransactionFormMode mode,
+) {
+  return switch (mode) {
+    TransactionFormMode.lending => TransactionRelationScene.lending,
+    _ => TransactionRelationScene.borrowing,
+  };
+}
+
 /// 支出录入的业务场景。它只在 feature 层组织入口与账户候选，
 /// 最终交给交易编排域创建垫付编排实例。
 enum TransactionExpenseScene {
@@ -160,6 +193,7 @@ class TransactionFormEditSnapshot {
     this.advanceAmountText = '',
     this.advanceScenario = AdvanceScenario.reimbursement,
     this.advanceTrackingMode = AdvanceTrackingMode.itemized,
+    this.relationScene = TransactionRelationScene.borrowing,
     this.advanceAaPeopleCount,
     this.expenseCategoryId,
     this.expenseRootId,
@@ -185,6 +219,7 @@ class TransactionFormEditSnapshot {
   final String advanceAmountText;
   final AdvanceScenario advanceScenario;
   final AdvanceTrackingMode advanceTrackingMode;
+  final TransactionRelationScene relationScene;
   final int? advanceAaPeopleCount;
   final String? expenseCategoryId;
   final String? expenseRootId;
@@ -348,6 +383,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
     case BusinessPurpose.borrowing:
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.borrowing,
+        relationScene: TransactionRelationScene.borrowing,
         amountText: amountText,
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,
@@ -369,6 +405,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
     case BusinessPurpose.lending:
       return TransactionFormEditSnapshot(
         mode: TransactionFormMode.lending,
+        relationScene: TransactionRelationScene.lending,
         amountText: amountText,
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,

@@ -45,6 +45,7 @@ void main() {
       final accountRow = loaded.accountRows.singleWhere(
         (row) => row.label == '收支账户',
       );
+      expect(accountRow.editPurpose, AccountSelectionPurpose.expenseSettlement);
       expect(accountRow.permission, isA<DetailEditAllowed>());
     });
 
@@ -60,7 +61,7 @@ void main() {
 
         final outcome = await container
             .read(transactionDetailViewModelProvider('tx-1').notifier)
-            .changeAccount(AccountSelectionPurpose.settlement, 'bank');
+            .changeAccount(AccountSelectionPurpose.expenseSettlement, 'bank');
 
         expect(outcome, isA<UiActionSuccess<void>>());
         final command = editService.expenseCommands.single;

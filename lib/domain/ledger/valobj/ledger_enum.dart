@@ -14,6 +14,8 @@ enum BusinessPurpose {
   advanceSettlement,
   debtRepayment,
   borrowing,
+
+  /// 稳定持久化标识；业务与展示语义为“应收增加”，覆盖借出和押金。
   lending,
   receivableCollection,
   badDebt,

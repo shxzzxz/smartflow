@@ -31,7 +31,7 @@ class AccountRoleContext {
       for (final accountId in paidFromAccountIds)
         AccountRoleRequirement(
           accountId: accountId,
-          requiredUsage: AccountUsage.settlement,
+          requiredUsage: AccountUsage.expenseSettlement,
         ),
       for (final accountId in expenseAccountIds)
         AccountRoleRequirement(

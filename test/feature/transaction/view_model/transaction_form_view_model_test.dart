@@ -999,6 +999,72 @@ void main() {
       },
     );
 
+    test(
+      'uses the deposit relation scene with the lending primitive',
+      () async {
+        final posting = _FakeTransactionPostingAppService();
+        final orchestration = _FakeAdvanceOrchestrationAppService();
+        final container = _container(
+          postingService: posting,
+          advanceOrchestrationService: orchestration,
+          fundAccounts: [_account('cash')],
+          ordinaryReceivableAccounts: [_account('deposit')],
+        );
+        final viewModel = container.read(_provider().notifier);
+
+        viewModel.setRelationScene(TransactionRelationScene.deposit);
+        expect(viewModel.state.requireValue!.mode, TransactionFormMode.lending);
+        expect(
+          viewModel.state.requireValue!.relationScene,
+          TransactionRelationScene.deposit,
+        );
+        viewModel
+          ..setFromAccountId('cash')
+          ..setOrdinaryReceivableAccountId('deposit');
+
+        final outcome = await viewModel.submit(
+          amountText: '1000',
+          noteText: '租房押金',
+        );
+
+        expect(outcome, isA<SubmitSuccess>());
+        final command = posting.lendingCommands.single;
+        expect(command.paidFromAccountId, 'cash');
+        expect(command.receivableAccountId, 'deposit');
+        expect(command.note, '租房押金');
+        expect(orchestration.createSceneCommands, isEmpty);
+      },
+    );
+
+    test('uses a receivable account as a daily expense account', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final orchestration = _FakeAdvanceOrchestrationAppService();
+      final container = _container(
+        postingService: posting,
+        advanceOrchestrationService: orchestration,
+        settlementAccounts: [_account('cash')],
+        ordinaryReceivableAccounts: [_account('deposit')],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseCategory(rootId: 'rental', categoryId: 'deduction')
+        ..setFromAccountId('deposit');
+
+      final outcome = await viewModel.submit(
+        amountText: '200',
+        noteText: '家具破损扣除押金',
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = orchestration.createSceneCommands.single;
+      expect(command.settlementAllocations.single.accountId, 'deposit');
+      expect(
+        command.settlementAllocations.single.amount,
+        const Money(minorUnits: 20000),
+      );
+    });
+
     test('loads and submits a lending edit', () async {
       final editService = _FakeTransactionEditAppService();
       final detail = _lendingTransactionDetail();

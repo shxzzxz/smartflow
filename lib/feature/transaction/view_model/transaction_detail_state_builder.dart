@@ -149,7 +149,7 @@ List<DetailAccountRow> _accountRows(
           ? AccountSelectionPurpose.repaymentSource
           : purpose == BusinessPurpose.lending
           ? AccountSelectionPurpose.fund
-          : AccountSelectionPurpose.settlement;
+          : AccountSelectionPurpose.expenseSettlement;
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       if (purpose == BusinessPurpose.dailyExpense && outgoing.length > 1) {
         return const [];
@@ -352,6 +352,7 @@ DetailEditPermission _accountEditPermission(
   return switch (editPurpose) {
     null => const DetailEditPermission.allowed(),
     AccountSelectionPurpose.settlement ||
+    AccountSelectionPurpose.expenseSettlement ||
     AccountSelectionPurpose.fund ||
     AccountSelectionPurpose.repaymentSource =>
       behavior.canEditSettlementAccount,

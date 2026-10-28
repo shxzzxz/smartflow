@@ -658,7 +658,7 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     transactionId: 'showcase-lending',
     businessPurpose: BusinessPurpose.lending,
     iconKey: null,
-    title: '借出',
+    title: '应收增加',
     subtitle: '11:00',
     amountText: '500',
     amountTone: FinanceTone.neutral,
