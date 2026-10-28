@@ -167,29 +167,17 @@ class EditExpenseSceneWorkflowCommand {
 class CreateAdvanceCollectionWorkflowCommand {
   CreateAdvanceCollectionWorkflowCommand({
     required this.amount,
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       settlementAllocations = List.unmodifiable(settlementAllocations);
-
-  CreateAdvanceCollectionWorkflowCommand.account({
-    required this.amount,
-    required this.receivableAccountId,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations);
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final Money amount;
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
@@ -201,7 +189,7 @@ class CreateAdvanceCollectionWorkflowCommand {
 class CreateAdvanceSettlementWorkflowCommand {
   CreateAdvanceSettlementWorkflowCommand({
     required this.actualReceivedAmount,
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
@@ -210,26 +198,11 @@ class CreateAdvanceSettlementWorkflowCommand {
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       settlementAllocations = List.unmodifiable(settlementAllocations),
-       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
-
-  CreateAdvanceSettlementWorkflowCommand.account({
-    required this.actualReceivedAmount,
-    required this.receivableAccountId,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required List<AccountAmountAllocation> gapExpenseAllocations,
-    this.shortfallKind = AdvanceShortfallKind.selfBorne,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations),
+  }) : settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
   final Money actualReceivedAmount;
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final List<AccountAmountAllocation> gapExpenseAllocations;

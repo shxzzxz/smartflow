@@ -288,7 +288,7 @@ class RefundInstruction {
 
 class AdvanceSettlementInstruction {
   AdvanceSettlementInstruction({
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.actualReceivedAmount,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -298,31 +298,13 @@ class AdvanceSettlementInstruction {
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       ownership = null,
+  }) : ownership = null,
        isExcludedFromStats = false,
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
-  AdvanceSettlementInstruction.account({
-    required this.receivableAccountId,
-    required this.actualReceivedAmount,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required List<AccountAmountAllocation> gapExpenseAllocations,
-    this.ownership,
-    this.shortfallKind = AdvanceShortfallKind.selfBorne,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations),
-       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
-
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final Money actualReceivedAmount;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
@@ -393,7 +375,7 @@ class TransferInstruction extends PostingInstruction {
 
 class AdvanceCollectionInstruction {
   AdvanceCollectionInstruction({
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.amount,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -401,27 +383,12 @@ class AdvanceCollectionInstruction {
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       ownership = null,
+  }) : ownership = null,
        isExcludedFromStats = false,
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
-  AdvanceCollectionInstruction.account({
-    required this.amount,
-    required this.receivableAccountId,
-    required List<AccountAmountAllocation> settlementAllocations,
-    this.ownership,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations);
-
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final Money amount;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;

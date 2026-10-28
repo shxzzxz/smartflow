@@ -73,63 +73,6 @@ void main() {
     expect(state.kind, AdvanceEditKind.receipt);
   });
 
-  test('loads and edits an account-managed receipt transaction', () async {
-    final editService = _FakeAdvanceEditOrchestrationService();
-    final container = _container(
-      editService: editService,
-      includeAccountManagedReceipt: true,
-    );
-
-    final state = await container.read(
-      advanceEditFormViewModelProvider('account-receipt').future,
-    );
-
-    expect(state.status, AdvanceEditFormStatus.loaded);
-    expect(state.kind, AdvanceEditKind.receipt);
-    expect(state.parentTransactionId, isNull);
-    expect(state.outstandingBeforeTransaction, isNull);
-    expect(state.amountText, '40');
-
-    final outcome = await container
-        .read(advanceEditFormViewModelProvider('account-receipt').notifier)
-        .submit(amountText: '45', noteText: 'updated account receipt');
-
-    expect(outcome, isA<SubmitSuccess>());
-    final command = editService.receiptCommands.single;
-    expect(command.transactionId, 'account-receipt');
-    expect(command.amount, const Money(minorUnits: 4500));
-    expect(command.receivableAccountId, 'receivable');
-  });
-
-  test('loads and edits an account-managed settlement transaction', () async {
-    final editService = _FakeAdvanceEditOrchestrationService();
-    final container = _container(
-      editService: editService,
-      includeAccountManagedClose: true,
-    );
-
-    final state = await container.read(
-      advanceEditFormViewModelProvider('account-close').future,
-    );
-
-    expect(state.status, AdvanceEditFormStatus.loaded);
-    expect(state.kind, AdvanceEditKind.close);
-    expect(state.parentTransactionId, isNull);
-    expect(state.outstandingBeforeTransaction, isNull);
-    expect(state.amountText, '60');
-
-    final outcome = await container
-        .read(advanceEditFormViewModelProvider('account-close').notifier)
-        .submit(amountText: '70', noteText: 'updated account close');
-
-    expect(outcome, isA<SubmitSuccess>());
-    final command = editService.closeCommands.single;
-    expect(command.transactionId, 'account-close');
-    expect(command.actualReceivedAmount, const Money(minorUnits: 7000));
-    expect(command.receivableAccountId, 'receivable');
-    expect(command.gapExpenseAllocations, isEmpty);
-  });
-
   test(
     'keeps close mode fixed and allows zero amount without receive account',
     () async {
@@ -268,8 +211,6 @@ ProviderContainer _container({
   bool closed = false,
   bool includeRefund = false,
   bool includeClose = false,
-  bool includeAccountManagedReceipt = false,
-  bool includeAccountManagedClose = false,
   bool closeHasReceiveAccount = false,
   bool closeBadDebt = false,
   _FakeAdvanceEditOrchestrationService? editService,
@@ -305,27 +246,11 @@ ProviderContainer _container({
             ),
           ),
         ),
-      if (includeAccountManagedReceipt)
-        transactionDetailProvider(
-          'account-receipt',
-        ).overrideWithValue(AsyncData(_accountManagedReceiptDetail())),
-      if (includeAccountManagedClose)
-        transactionDetailProvider(
-          'account-close',
-        ).overrideWithValue(AsyncData(_accountManagedCloseDetail())),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         editService ?? _FakeAdvanceEditOrchestrationService(),
       ),
       advanceCaseRepositoryProvider.overrideWithValue(
-        FakeAdvanceCaseRepository([
-          if (includeAccountManagedReceipt || includeAccountManagedClose)
-            const AdvanceCase(
-              id: 'receivable',
-              scenario: AdvanceScenario.reimbursement,
-              trackingMode: AdvanceTrackingMode.account,
-              receivableAccountId: 'receivable',
-            ),
-        ]),
+        FakeAdvanceCaseRepository(),
       ),
     ],
   );
@@ -455,72 +380,6 @@ TransactionReadModel _receiptDetail() {
         role: TransactionRole.receivable,
         accountId: 'receivable',
         amount: Money(minorUnits: 4000),
-      ),
-    ],
-  );
-}
-
-TransactionReadModel _accountManagedReceiptDetail() {
-  return TransactionReadModel.fromTransaction(
-    transaction: Transaction(
-      id: 'account-receipt',
-      businessPurpose: BusinessPurpose.advanceCollection,
-      occurredAt: DateTime(2026, 7, 2, 9),
-      primaryAmount: const Money(minorUnits: 4000),
-      isExcludedFromStats: false,
-      isExcludedFromBudget: false,
-      sourceKind: SourceKind.manual,
-    ),
-    createdAt: DateTime(2026, 7, 2, 9),
-    lines: const [
-      TransactionLine(
-        id: 'account-receipt-in',
-        transactionId: 'account-receipt',
-        lineNo: 1,
-        role: TransactionRole.settlementIn,
-        accountId: 'bank',
-        amount: Money(minorUnits: 4000),
-      ),
-      TransactionLine(
-        id: 'account-receipt-receivable',
-        transactionId: 'account-receipt',
-        lineNo: 2,
-        role: TransactionRole.receivable,
-        accountId: 'receivable',
-        amount: Money(minorUnits: 4000),
-      ),
-    ],
-  );
-}
-
-TransactionReadModel _accountManagedCloseDetail() {
-  return TransactionReadModel.fromTransaction(
-    transaction: Transaction(
-      id: 'account-close',
-      businessPurpose: BusinessPurpose.advanceSettlement,
-      occurredAt: DateTime(2026, 7, 3, 10),
-      primaryAmount: const Money(minorUnits: 6000),
-      isExcludedFromStats: false,
-      isExcludedFromBudget: false,
-      sourceKind: SourceKind.manual,
-    ),
-    createdAt: DateTime(2026, 7, 3, 10),
-    lines: const [
-      TransactionLine(
-        id: 'account-close-in',
-        transactionId: 'account-close',
-        lineNo: 1,
-        role: TransactionRole.settlementIn,
-        accountId: 'bank',
-        amount: Money(minorUnits: 6000),
-      ),
-      TransactionLine(
-        id: 'account-close-receivable',
-        transactionId: 'account-close',
-        lineNo: 2,
-        role: TransactionRole.receivable,
-        accountId: 'receivable',
-        amount: Money(minorUnits: 6000),
       ),
     ],
   );

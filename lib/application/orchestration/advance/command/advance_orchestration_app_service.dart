@@ -432,9 +432,9 @@ class AdvanceOrchestrationAppServiceImpl
     CreateAdvanceCollectionWorkflowCommand command,
   ) {
     return _transactionRunner.run(() async {
-      final ownership = command.advanceTransactionId == null
-          ? null
-          : await _ownershipForTransaction(command.advanceTransactionId!);
+      final ownership = await _ownershipForTransaction(
+        command.advanceTransactionId,
+      );
       return _ledger.postAdvanceCollection(
         amount: command.amount,
         advanceTransactionId: command.advanceTransactionId,
@@ -454,9 +454,9 @@ class AdvanceOrchestrationAppServiceImpl
     CreateAdvanceSettlementWorkflowCommand command,
   ) {
     return _transactionRunner.run(() async {
-      final ownership = command.advanceTransactionId == null
-          ? null
-          : await _ownershipForTransaction(command.advanceTransactionId!);
+      final ownership = await _ownershipForTransaction(
+        command.advanceTransactionId,
+      );
       return _ledger.postAdvanceSettlement(
         actualReceivedAmount: command.actualReceivedAmount,
         advanceTransactionId: command.advanceTransactionId,
@@ -484,9 +484,7 @@ class AdvanceOrchestrationAppServiceImpl
       if (receivableAccountId == null) {
         throw BusinessException(AdvanceErrorCode.invalidCommand);
       }
-      final ownership = transaction.parentTransactionId == null
-          ? null
-          : _ownership(await _requireCaseForGroup(group));
+      final ownership = _ownership(await _requireCaseForGroup(group));
       return _ledger.rewriteAdvanceCollection(
         transactionId: command.transactionId,
         amount: command.amount ?? transaction.primaryAmount,
@@ -516,9 +514,7 @@ class AdvanceOrchestrationAppServiceImpl
       if (receivableAccountId == null) {
         throw BusinessException(AdvanceErrorCode.invalidCommand);
       }
-      final ownership = transaction.parentTransactionId == null
-          ? null
-          : _ownership(await _requireCaseForGroup(group));
+      final ownership = _ownership(await _requireCaseForGroup(group));
       final hasBadDebt =
           (transaction
                   .amountOf(TransactionRole.advanceBadDebtExpense)

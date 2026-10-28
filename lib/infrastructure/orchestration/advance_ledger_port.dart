@@ -104,27 +104,16 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     counterpartyId,
     note,
   }) async {
-    final command = advanceTransactionId == null
-        ? CreateAdvanceCollectionCommand.account(
-            amount: amount,
-            receivableAccountId: receivableAccountId,
-            settlementAllocations: settlementAllocations,
-            ownership: ownership,
-            occurredAt: occurredAt,
-            postedAt: postedAt,
-            counterpartyId: counterpartyId,
-            note: note,
-          )
-        : CreateAdvanceCollectionCommand(
-            amount: amount,
-            advanceTransactionId: advanceTransactionId,
-            receivableAccountId: receivableAccountId,
-            settlementAllocations: settlementAllocations,
-            occurredAt: occurredAt,
-            postedAt: postedAt,
-            counterpartyId: counterpartyId,
-            note: note,
-          );
+    final command = CreateAdvanceCollectionCommand(
+      amount: amount,
+      advanceTransactionId: advanceTransactionId,
+      receivableAccountId: receivableAccountId,
+      settlementAllocations: settlementAllocations,
+      occurredAt: occurredAt,
+      postedAt: postedAt,
+      counterpartyId: counterpartyId,
+      note: note,
+    );
     final result = await _posting.createAdvanceCollection(command);
     return result.transactionId;
   }
@@ -143,31 +132,18 @@ class LedgerAdvancePort implements AdvanceLedgerPort {
     counterpartyId,
     note,
   }) async {
-    final command = advanceTransactionId == null
-        ? CreateAdvanceSettlementCommand.account(
-            actualReceivedAmount: actualReceivedAmount,
-            receivableAccountId: receivableAccountId,
-            settlementAllocations: settlementAllocations,
-            gapExpenseAllocations: gapExpenseAllocations,
-            ownership: ownership,
-            shortfallKind: shortfallKind,
-            occurredAt: occurredAt,
-            postedAt: postedAt,
-            counterpartyId: counterpartyId,
-            note: note,
-          )
-        : CreateAdvanceSettlementCommand(
-            actualReceivedAmount: actualReceivedAmount,
-            advanceTransactionId: advanceTransactionId,
-            receivableAccountId: receivableAccountId,
-            settlementAllocations: settlementAllocations,
-            gapExpenseAllocations: gapExpenseAllocations,
-            shortfallKind: shortfallKind,
-            occurredAt: occurredAt,
-            postedAt: postedAt,
-            counterpartyId: counterpartyId,
-            note: note,
-          );
+    final command = CreateAdvanceSettlementCommand(
+      actualReceivedAmount: actualReceivedAmount,
+      advanceTransactionId: advanceTransactionId,
+      receivableAccountId: receivableAccountId,
+      settlementAllocations: settlementAllocations,
+      gapExpenseAllocations: gapExpenseAllocations,
+      shortfallKind: shortfallKind,
+      occurredAt: occurredAt,
+      postedAt: postedAt,
+      counterpartyId: counterpartyId,
+      note: note,
+    );
     final result = await _posting.settleAdvance(command);
     return result.transactionId;
   }

@@ -161,7 +161,7 @@ class CreateAdvanceCommand {
 class CreateAdvanceCollectionCommand {
   CreateAdvanceCollectionCommand({
     required this.amount,
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required this.occurredAt,
@@ -169,27 +169,12 @@ class CreateAdvanceCollectionCommand {
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       isExcludedFromStats = false,
+  }) : isExcludedFromStats = false,
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
-  CreateAdvanceCollectionCommand.account({
-    required this.amount,
-    required this.receivableAccountId,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required this.occurredAt,
-    this.ownership,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations);
-
   final Money amount;
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final DateTime occurredAt;
@@ -204,7 +189,7 @@ class CreateAdvanceCollectionCommand {
 class CreateAdvanceSettlementCommand {
   CreateAdvanceSettlementCommand({
     required this.actualReceivedAmount,
-    required String advanceTransactionId,
+    required this.advanceTransactionId,
     required this.receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,
@@ -214,31 +199,13 @@ class CreateAdvanceSettlementCommand {
     this.postedAt,
     this.counterpartyId,
     this.note,
-  }) : advanceTransactionId = advanceTransactionId,
-       isExcludedFromStats = false,
+  }) : isExcludedFromStats = false,
        isExcludedFromBudget = false,
        settlementAllocations = List.unmodifiable(settlementAllocations),
        gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
 
-  CreateAdvanceSettlementCommand.account({
-    required this.actualReceivedAmount,
-    required this.receivableAccountId,
-    required List<AccountAmountAllocation> settlementAllocations,
-    required List<AccountAmountAllocation> gapExpenseAllocations,
-    required this.occurredAt,
-    this.ownership,
-    this.shortfallKind = AdvanceShortfallKind.selfBorne,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-  }) : advanceTransactionId = null,
-       settlementAllocations = List.unmodifiable(settlementAllocations),
-       gapExpenseAllocations = List.unmodifiable(gapExpenseAllocations);
-
   final Money actualReceivedAmount;
-  final String? advanceTransactionId;
+  final String advanceTransactionId;
   final String receivableAccountId;
   final List<AccountAmountAllocation> settlementAllocations;
   final List<AccountAmountAllocation> gapExpenseAllocations;

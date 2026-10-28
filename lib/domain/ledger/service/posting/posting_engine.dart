@@ -479,7 +479,7 @@ class PostingEngine {
 
   Transaction createAdvanceCollection({
     required AdvanceCollectionInstruction instruction,
-    Transaction? advance,
+    required Transaction advance,
   }) {
     if (instruction.amount.minorUnits <= 0) {
       return LedgerViolationReason.advanceAmountNotPositive.throwException(
@@ -490,24 +490,22 @@ class PostingEngine {
       total: instruction.amount,
       allocations: instruction.settlementAllocations,
     );
-    final ownership = advance?.ownership ?? instruction.ownership;
+    final ownership = advance.ownership ?? instruction.ownership;
     final transactionId = _idGenerator.newId();
     var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
-        parentTransactionId: advance?.id,
+        parentTransactionId: advance.id,
         businessPurpose: BusinessPurpose.advanceCollection,
         occurredAt: instruction.occurredAt,
         postedAt: instruction.postedAt,
         primaryAmount: instruction.amount,
         counterpartyId: instruction.counterpartyId,
         note: instruction.note,
-        isExcludedFromStats:
-            advance?.isExcludedFromStats ?? instruction.isExcludedFromStats,
-        isExcludedFromBudget:
-            advance?.isExcludedFromBudget ?? instruction.isExcludedFromBudget,
-        sourceKind: advance?.sourceKind ?? SourceKind.manual,
+        isExcludedFromStats: advance.isExcludedFromStats,
+        isExcludedFromBudget: advance.isExcludedFromBudget,
+        sourceKind: advance.sourceKind,
         ownership: ownership,
         lines: [
           for (final allocation in instruction.settlementAllocations)
@@ -910,7 +908,7 @@ class PostingEngine {
 
   Transaction createAdvanceSettlement({
     required AdvanceSettlementInstruction instruction,
-    Transaction? advance,
+    required Transaction advance,
     required Money outstanding,
     required String? gapIncomeAccountId,
     String? badDebtExpenseAccountId,
@@ -919,57 +917,6 @@ class PostingEngine {
     if (actual.minorUnits < 0) {
       return LedgerViolationReason.advanceSettlementAmountNegative
           .throwException(message: 'Received amount cannot be negative.');
-    }
-    if (advance == null) {
-      if (actual.minorUnits <= 0) {
-        return LedgerViolationReason.allocationAmountNotPositive.throwException(
-          message: 'Account settlement amount is required.',
-        );
-      }
-      _validateAllocations(
-        total: actual,
-        allocations: instruction.settlementAllocations,
-      );
-      if (instruction.gapExpenseAllocations.isNotEmpty) {
-        return LedgerViolationReason.allocationTotalMismatch.throwException(
-          message: 'Account settlement cannot infer a shortfall allocation.',
-        );
-      }
-      final ownership = instruction.ownership;
-      final transactionId = _idGenerator.newId();
-      var lineNo = 1;
-      return _posted(
-        Transaction(
-          id: transactionId,
-          businessPurpose: BusinessPurpose.advanceSettlement,
-          occurredAt: instruction.occurredAt,
-          postedAt: instruction.postedAt,
-          primaryAmount: actual,
-          counterpartyId: instruction.counterpartyId,
-          note: instruction.note,
-          isExcludedFromStats: instruction.isExcludedFromStats,
-          isExcludedFromBudget: instruction.isExcludedFromBudget,
-          sourceKind: SourceKind.manual,
-          ownership: ownership,
-          lines: [
-            for (final allocation in instruction.settlementAllocations)
-              _line(
-                transactionId: transactionId,
-                lineNo: lineNo++,
-                role: TransactionRole.settlementIn,
-                accountId: allocation.accountId,
-                amount: allocation.amount,
-              ),
-            _line(
-              transactionId: transactionId,
-              lineNo: lineNo++,
-              role: TransactionRole.receivable,
-              accountId: instruction.receivableAccountId,
-              amount: actual,
-            ),
-          ],
-        ),
-      );
     }
     final gap = actual - outstanding;
     if (gap.minorUnits > 0 && gapIncomeAccountId == null) {

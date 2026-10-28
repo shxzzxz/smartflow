@@ -7,6 +7,25 @@ import 'package:smartflow/domain/ledger/entity/transaction_line.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 void main() {
+  test('advance receipt and settlement require an advance parent', () {
+    for (final purpose in [
+      BusinessPurpose.advanceCollection,
+      BusinessPurpose.advanceSettlement,
+    ]) {
+      final transaction = Transaction(
+        id: purpose.name,
+        businessPurpose: purpose,
+        occurredAt: DateTime(2026, 10, 28),
+        primaryAmount: const Money(minorUnits: 1000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        sourceKind: SourceKind.manual,
+      );
+
+      expect(transaction.validateSelf, throwsA(isA<BusinessException>()));
+    }
+  });
+
   test('amountOf sums every line for the role', () {
     final transaction = Transaction(
       id: 'receipt',

@@ -466,7 +466,6 @@ class _AccountActionBar extends StatelessWidget {
             icon: switch (action.iconKey) {
               'logout-box-r-line' => RemixIcons.logout_box_r_line,
               'refund-income' => RemixIcons.refund_2_line,
-              'advance-collection' => RemixIcons.hand_coin_line,
               'money-cny-circle-line' => RemixIcons.money_cny_circle_line,
               'hand-coin-line' => RemixIcons.hand_coin_line,
               'loan' => RemixIcons.bank_line,

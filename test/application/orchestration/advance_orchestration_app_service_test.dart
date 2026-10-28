@@ -158,34 +158,6 @@ void main() {
     expect(cases.values, isEmpty);
   });
 
-  test('account collection and settlement are ownerless', () async {
-    final cases = FakeAdvanceCaseRepository();
-    final ledger = _FakeLedgerPort();
-    final service = _service(cases, ledger);
-
-    await service.createCollection(
-      CreateAdvanceCollectionWorkflowCommand.account(
-        amount: _money(1000),
-        receivableAccountId: 'company',
-        settlementAllocations: [_allocation('cash', 1000)],
-        occurredAt: DateTime(2026, 10, 23),
-      ),
-    );
-    await service.createSettlement(
-      CreateAdvanceSettlementWorkflowCommand.account(
-        actualReceivedAmount: _money(2000),
-        receivableAccountId: 'company',
-        settlementAllocations: [_allocation('cash', 2000)],
-        gapExpenseAllocations: const [],
-        occurredAt: DateTime(2026, 10, 24),
-      ),
-    );
-
-    expect(cases.values, isEmpty);
-    expect(ledger.collectionOwnerships, [isNull]);
-    expect(ledger.settlementOwnerships, [isNull]);
-  });
-
   test(
     'changing an itemized AA advance to reimbursement rewrites refund shares',
     () async {

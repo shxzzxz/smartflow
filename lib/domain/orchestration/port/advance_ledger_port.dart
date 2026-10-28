@@ -40,7 +40,7 @@ abstract interface class AdvanceLedgerPort {
 
   Future<String> postAdvanceCollection({
     required Money amount,
-    required String? advanceTransactionId,
+    required String advanceTransactionId,
     required String receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required TransactionOwnership? ownership,
@@ -52,7 +52,7 @@ abstract interface class AdvanceLedgerPort {
 
   Future<String> postAdvanceSettlement({
     required Money actualReceivedAmount,
-    required String? advanceTransactionId,
+    required String advanceTransactionId,
     required String receivableAccountId,
     required List<AccountAmountAllocation> settlementAllocations,
     required List<AccountAmountAllocation> gapExpenseAllocations,

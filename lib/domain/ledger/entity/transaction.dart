@@ -135,6 +135,13 @@ class Transaction {
   }
 
   void validateSelf() {
+    if (parentTransactionId == null &&
+        (businessPurpose == BusinessPurpose.advanceCollection ||
+            businessPurpose == BusinessPurpose.advanceSettlement)) {
+      LedgerViolationReason.parentTransactionRequired.throwException(
+        message: '${businessPurpose.name} requires an advance parent.',
+      );
+    }
     if (lines.isEmpty) {
       LedgerViolationReason.linesRequired.throwException(
         message: 'A transaction must have at least one line.',

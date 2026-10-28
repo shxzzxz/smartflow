@@ -46,22 +46,18 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
       _ => null,
     };
     final parentTransactionId = transaction.parentTransactionId;
-    // 账户垫付的到账与结清是 ownerless 顶层交易。
-    final accountManaged = parentTransactionId == null;
-    if (kind == null) {
+    if (kind == null || parentTransactionId == null) {
       return AdvanceEditFormState.notFound(
         transactionId: transactionId,
         accounts: accounts,
       );
     }
 
-    final parentDetail = parentTransactionId == null
-        ? null
-        : await ref.watch(
-            transactionDetailProvider(parentTransactionId).future,
-          );
+    final parentDetail = await ref.watch(
+      transactionDetailProvider(parentTransactionId).future,
+    );
     final summary = parentDetail?.advanceSummary;
-    if (!accountManaged && (parentDetail == null || summary == null)) {
+    if (parentDetail == null || summary == null) {
       return AdvanceEditFormState.notFound(
         transactionId: transactionId,
         parentTransactionId: parentTransactionId,
@@ -69,7 +65,7 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
         accounts: accounts,
       );
     }
-    if (kind == AdvanceEditKind.receipt && (summary?.isClosed ?? false)) {
+    if (kind == AdvanceEditKind.receipt && summary.isClosed) {
       return AdvanceEditFormState.notEditable(
         transactionId: transactionId,
         parentTransactionId: parentTransactionId,
@@ -80,10 +76,7 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
     }
 
     final receivableAccountId =
-        advanceReceivableAccountId(
-          accountManaged ? detail : parentDetail,
-          accountsById,
-        ) ??
+        advanceReceivableAccountId(parentDetail, accountsById) ??
         settlementAccountId(detail, accountsById, EntryDirection.credit);
     if (receivableAccountId == null) {
       return AdvanceEditFormState.notEditable(
@@ -95,21 +88,19 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
       );
     }
 
-    final outstandingBeforeTransaction = accountManaged
-        ? null
-        : switch (kind) {
-            AdvanceEditKind.receipt =>
-              summary!.outstanding +
-                  transaction.amountOf(TransactionRole.settlementIn),
-            AdvanceEditKind.close => _closeOutstanding(detail),
-          };
+    final outstandingBeforeTransaction = switch (kind) {
+      AdvanceEditKind.receipt =>
+        summary.outstanding +
+            transaction.amountOf(TransactionRole.settlementIn),
+      AdvanceEditKind.close => _closeOutstanding(detail),
+    };
     final amount = switch (kind) {
       AdvanceEditKind.receipt => transaction.amountOf(
         TransactionRole.settlementIn,
       ),
       AdvanceEditKind.close => _closeActualAmount(detail),
     };
-    final parentSummary = parentDetail?.refundSummary;
+    final parentSummary = parentDetail.refundSummary;
     final availableCategories =
         parentSummary?.remainingCategoryAllocations ?? const [];
     final parentCategories =
@@ -181,15 +172,11 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
       return _invalidCommand('垫付编辑表单尚未加载');
     }
     final kind = current.kind!;
-    final accountManaged = current.parentTransactionId == null;
     final amount = Money.tryParse(amountText);
     if (amount == null ||
         (kind == AdvanceEditKind.receipt
             ? amount.minorUnits <= 0
-            : amount.minorUnits < 0) ||
-        (kind == AdvanceEditKind.close &&
-            accountManaged &&
-            amount.minorUnits == 0)) {
+            : amount.minorUnits < 0)) {
       return _invalidCommand(
         kind == AdvanceEditKind.receipt ? '请输入有效到账金额' : '请输入有效实收金额',
       );
@@ -223,7 +210,6 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
     final shortfall =
         (current.outstandingBeforeTransaction ?? Money.zero()) - amount;
     final requiresGap =
-        !accountManaged &&
         kind == AdvanceEditKind.close &&
         shortfall.minorUnits > 0 &&
         current.shortfallKind == AdvanceShortfallKind.selfBorne;
@@ -282,9 +268,7 @@ class AdvanceEditFormViewModel extends _$AdvanceEditFormViewModel {
             );
         }
         ref.invalidate(transactionDetailProvider(current.transactionId));
-        if (current.parentTransactionId case final parentTransactionId?) {
-          ref.invalidate(transactionDetailProvider(parentTransactionId));
-        }
+        ref.invalidate(transactionDetailProvider(current.parentTransactionId!));
         ref.invalidate(accountsByIdProvider);
         ref.invalidate(
           accountsForSelectionPurposeProvider(

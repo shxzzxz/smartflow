@@ -26,7 +26,7 @@ void main() {
         accountDetailActions(
           _accountView('receivable', AccountProfileKind.receivable),
         ).map((action) => action.label),
-        ['借出', '收回', '垫付收回', '坏账'],
+        ['借出', '收回', '坏账'],
       );
       final receivableActions = accountDetailActions(
         _accountView('receivable', AccountProfileKind.receivable),
@@ -36,21 +36,17 @@ void main() {
         receivableActions[1].route,
         '/account/receivable/receivable-collection',
       );
-      expect(
-        receivableActions[2].route,
-        '/account/receivable/advance-collection?scenario=aa',
-      );
       final reimbursementActions = accountDetailActions(
         _accountView('reimbursement', AccountProfileKind.reimbursement),
       );
       expect(reimbursementActions.map((action) => action.label), [
         '记账',
-        '报销',
+        '收回',
         '坏账',
       ]);
       expect(
         reimbursementActions[1].route,
-        '/account/reimbursement/advance-collection?scenario=reimbursement',
+        '/account/reimbursement/receivable-collection',
       );
       expect(
         reimbursementActions.map((action) => action.label),

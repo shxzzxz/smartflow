@@ -1,5 +1,3 @@
-import 'package:smartflow/core/money/money.dart';
-
 import '../../entity/transaction_group.dart';
 import '../../port/account_repository.dart';
 import '../../port/transaction_group_repository.dart';
@@ -69,21 +67,15 @@ class AdvancePostingService {
   Future<PostingResult> postCollection(
     AdvanceCollectionInstruction instruction,
   ) async {
-    final advanceTransactionId = instruction.advanceTransactionId;
-    final group = advanceTransactionId == null
-        ? null
-        : await _loadOpenAdvance(advanceTransactionId);
-    if (group != null) {
-      final itemizedViolation = _validateItemizedChildTarget(
-        group: group,
-        receivableAccountId: instruction.receivableAccountId,
-      );
-      if (itemizedViolation != null) itemizedViolation.throwException();
-    }
-    final advance = group?.parentTransaction;
-    final outstanding = group?.advanceOutstanding() ?? Money.zero();
-    if (group != null &&
-        instruction.amount.minorUnits > outstanding.minorUnits) {
+    final group = await _loadOpenAdvance(instruction.advanceTransactionId);
+    final itemizedViolation = _validateItemizedChildTarget(
+      group: group,
+      receivableAccountId: instruction.receivableAccountId,
+    );
+    if (itemizedViolation != null) itemizedViolation.throwException();
+    final advance = group.parentTransaction;
+    final outstanding = group.advanceOutstanding();
+    if (instruction.amount.minorUnits > outstanding.minorUnits) {
       LedgerViolationReason.advanceCollectionExceedsOutstanding
           .throwException();
     }
@@ -107,27 +99,19 @@ class AdvancePostingService {
   }
 
   Future<PostingResult> settle(AdvanceSettlementInstruction instruction) async {
-    final advanceTransactionId = instruction.advanceTransactionId;
-    final group = advanceTransactionId == null
-        ? null
-        : await _loadOpenAdvance(advanceTransactionId);
-    if (group != null) {
-      final itemizedViolation = _validateItemizedChildTarget(
-        group: group,
-        receivableAccountId: instruction.receivableAccountId,
-      );
-      if (itemizedViolation != null) itemizedViolation.throwException();
-    }
-    final advance = group?.parentTransaction;
-    final outstanding = group?.advanceOutstanding() ?? Money.zero();
+    final group = await _loadOpenAdvance(instruction.advanceTransactionId);
+    final itemizedViolation = _validateItemizedChildTarget(
+      group: group,
+      receivableAccountId: instruction.receivableAccountId,
+    );
+    if (itemizedViolation != null) itemizedViolation.throwException();
+    final advance = group.parentTransaction;
+    final outstanding = group.advanceOutstanding();
     final actual = instruction.actualReceivedAmount;
-    final accountManaged = advanceTransactionId == null;
     final badDebtShortfall =
-        !accountManaged &&
         actual.minorUnits < outstanding.minorUnits &&
         instruction.shortfallKind == AdvanceShortfallKind.badDebt;
-    final gapIncomeAccountId =
-        !accountManaged && actual.minorUnits > outstanding.minorUnits
+    final gapIncomeAccountId = actual.minorUnits > outstanding.minorUnits
         ? await _systemAccountResolver.resolveAdvanceCompensationIncome()
         : null;
     final badDebtExpenseAccountId = badDebtShortfall
@@ -136,36 +120,21 @@ class AdvancePostingService {
     // A self-borne shortfall category is an input fact supplied by the caller.
     // It need not come from the original advance transaction: a fully advanced
     // payment has no self-borne category to begin with.
-    final gapExpenseAllocations = accountManaged || badDebtShortfall
+    final gapExpenseAllocations = badDebtShortfall
         ? const <AccountAmountAllocation>[]
         : instruction.gapExpenseAllocations;
-    final normalizedInstruction = accountManaged
-        ? AdvanceSettlementInstruction.account(
-            actualReceivedAmount: instruction.actualReceivedAmount,
-            receivableAccountId: instruction.receivableAccountId,
-            settlementAllocations: instruction.settlementAllocations,
-            gapExpenseAllocations: gapExpenseAllocations,
-            ownership: instruction.ownership,
-            shortfallKind: instruction.shortfallKind,
-            occurredAt: instruction.occurredAt,
-            postedAt: instruction.postedAt,
-            counterpartyId: instruction.counterpartyId,
-            note: instruction.note,
-            isExcludedFromStats: instruction.isExcludedFromStats,
-            isExcludedFromBudget: instruction.isExcludedFromBudget,
-          )
-        : AdvanceSettlementInstruction(
-            advanceTransactionId: advanceTransactionId,
-            actualReceivedAmount: instruction.actualReceivedAmount,
-            receivableAccountId: instruction.receivableAccountId,
-            settlementAllocations: instruction.settlementAllocations,
-            gapExpenseAllocations: gapExpenseAllocations,
-            shortfallKind: instruction.shortfallKind,
-            occurredAt: instruction.occurredAt,
-            postedAt: instruction.postedAt,
-            counterpartyId: instruction.counterpartyId,
-            note: instruction.note,
-          );
+    final normalizedInstruction = AdvanceSettlementInstruction(
+      advanceTransactionId: instruction.advanceTransactionId,
+      actualReceivedAmount: instruction.actualReceivedAmount,
+      receivableAccountId: instruction.receivableAccountId,
+      settlementAllocations: instruction.settlementAllocations,
+      gapExpenseAllocations: gapExpenseAllocations,
+      shortfallKind: instruction.shortfallKind,
+      occurredAt: instruction.occurredAt,
+      postedAt: instruction.postedAt,
+      counterpartyId: instruction.counterpartyId,
+      note: instruction.note,
+    );
 
     final roleViolation = await _accountRolePolicy.validate(
       AccountRoleContext.advanceSettlement(

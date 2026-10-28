@@ -127,11 +127,6 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
         route: '/account/${account.id}/receivable-collection',
       ),
       AccountDetailAction(
-        label: '垫付收回',
-        iconKey: 'advance-collection',
-        route: '/account/${account.id}/advance-collection?scenario=aa',
-      ),
-      AccountDetailAction(
         label: '坏账',
         iconKey: 'money-cny-circle-line',
         route: '/account/${account.id}/bad-debt',
@@ -171,11 +166,9 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
     AccountProfileKind.reimbursement => [
       _recordTransactionAction(account),
       AccountDetailAction(
-        label: '报销',
+        label: '收回',
         iconKey: 'refund-income',
-        route:
-            '/account/${account.id}/advance-collection'
-            '?scenario=reimbursement',
+        route: '/account/${account.id}/receivable-collection',
       ),
       AccountDetailAction(
         label: '坏账',

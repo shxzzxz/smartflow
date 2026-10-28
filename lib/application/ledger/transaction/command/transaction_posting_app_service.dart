@@ -277,29 +277,16 @@ class TransactionPostingAppServiceImpl
   Future<PostedTransactionResult> createAdvanceCollection(
     CreateAdvanceCollectionCommand command,
   ) async {
-    final instruction = command.advanceTransactionId == null
-        ? AdvanceCollectionInstruction.account(
-            amount: command.amount,
-            receivableAccountId: command.receivableAccountId,
-            settlementAllocations: command.settlementAllocations,
-            ownership: command.ownership,
-            occurredAt: command.occurredAt,
-            postedAt: command.postedAt,
-            counterpartyId: command.counterpartyId,
-            note: command.note,
-            isExcludedFromStats: command.isExcludedFromStats,
-            isExcludedFromBudget: command.isExcludedFromBudget,
-          )
-        : AdvanceCollectionInstruction(
-            advanceTransactionId: command.advanceTransactionId!,
-            amount: command.amount,
-            receivableAccountId: command.receivableAccountId,
-            settlementAllocations: command.settlementAllocations,
-            occurredAt: command.occurredAt,
-            postedAt: command.postedAt,
-            counterpartyId: command.counterpartyId,
-            note: command.note,
-          );
+    final instruction = AdvanceCollectionInstruction(
+      advanceTransactionId: command.advanceTransactionId,
+      amount: command.amount,
+      receivableAccountId: command.receivableAccountId,
+      settlementAllocations: command.settlementAllocations,
+      occurredAt: command.occurredAt,
+      postedAt: command.postedAt,
+      counterpartyId: command.counterpartyId,
+      note: command.note,
+    );
     return _ledgerWriter.persistPosting(
       await _advancePostingService.postCollection(instruction),
     );
@@ -309,33 +296,18 @@ class TransactionPostingAppServiceImpl
   Future<PostedTransactionResult> settleAdvance(
     CreateAdvanceSettlementCommand command,
   ) async {
-    final instruction = command.advanceTransactionId == null
-        ? AdvanceSettlementInstruction.account(
-            actualReceivedAmount: command.actualReceivedAmount,
-            receivableAccountId: command.receivableAccountId,
-            settlementAllocations: command.settlementAllocations,
-            gapExpenseAllocations: command.gapExpenseAllocations,
-            ownership: command.ownership,
-            shortfallKind: command.shortfallKind,
-            occurredAt: command.occurredAt,
-            postedAt: command.postedAt,
-            counterpartyId: command.counterpartyId,
-            note: command.note,
-            isExcludedFromStats: command.isExcludedFromStats,
-            isExcludedFromBudget: command.isExcludedFromBudget,
-          )
-        : AdvanceSettlementInstruction(
-            advanceTransactionId: command.advanceTransactionId!,
-            actualReceivedAmount: command.actualReceivedAmount,
-            receivableAccountId: command.receivableAccountId,
-            settlementAllocations: command.settlementAllocations,
-            gapExpenseAllocations: command.gapExpenseAllocations,
-            shortfallKind: command.shortfallKind,
-            occurredAt: command.occurredAt,
-            postedAt: command.postedAt,
-            counterpartyId: command.counterpartyId,
-            note: command.note,
-          );
+    final instruction = AdvanceSettlementInstruction(
+      advanceTransactionId: command.advanceTransactionId,
+      actualReceivedAmount: command.actualReceivedAmount,
+      receivableAccountId: command.receivableAccountId,
+      settlementAllocations: command.settlementAllocations,
+      gapExpenseAllocations: command.gapExpenseAllocations,
+      shortfallKind: command.shortfallKind,
+      occurredAt: command.occurredAt,
+      postedAt: command.postedAt,
+      counterpartyId: command.counterpartyId,
+      note: command.note,
+    );
     return _ledgerWriter.persistPosting(
       await _advancePostingService.settle(instruction),
     );
