@@ -13,6 +13,7 @@ import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -280,7 +281,6 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择还款账户',
       accounts: accounts,
       selectedId: selectedId,
     );

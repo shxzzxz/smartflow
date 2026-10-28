@@ -7,6 +7,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../widget/business/account/account_picker_sheet.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -247,7 +248,6 @@ class _ReceivablePayableFormContentState
   ) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择到账账户',
       accounts: state.receiveAccounts,
       selectedId: state.receiveAccountId,
     );

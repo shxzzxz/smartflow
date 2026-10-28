@@ -11,6 +11,7 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -119,7 +120,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                     (isEdit || state.liabilityAccounts.isEmpty)
                         ? null
                         : (onSelected) => _pickAccount(
-                          title: '选择债务账户',
                           accounts: state.liabilityAccounts,
                           selectedId: state.liabilityAccountId,
                           onSelected: onSelected,
@@ -171,7 +171,6 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                     state.repaymentAccounts.isEmpty
                         ? null
                         : (onSelected) => _pickAccount(
-                          title: '选择还款账户',
                           accounts: state.repaymentAccounts,
                           selectedId: state.paidFromAccountId,
                           onSelected: onSelected,
@@ -237,14 +236,12 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   }
 
   Future<void> _pickAccount({
-    required String title,
     required List<Account> accounts,
     required String? selectedId,
     required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: title,
       accounts: accounts,
       selectedId: selectedId,
     );

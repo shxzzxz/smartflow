@@ -20,6 +20,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -1022,7 +1023,6 @@ class _CategoryEntryArea extends StatelessWidget {
               };
               final selected = await showAccountPickerSheet(
                 context: context,
-                title: '选择账户',
                 accounts: [
                   for (final account in settlementAccounts)
                     if (optionIds.contains(account.id)) account,
@@ -1776,7 +1776,6 @@ class _MainAccountPickerTile extends StatelessWidget {
   ) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择$label',
       accounts: accounts,
       selectedId: effectiveAccount(selectedId, accounts)?.id,
     );
@@ -2052,7 +2051,6 @@ class _AccountSelectorChip extends StatelessWidget {
     if (allowNone) {
       final selected = await showOptionalAccountPickerSheet(
         context: context,
-        title: '选择$label',
         accounts: accounts,
         selectedId: selectedId,
         noneLabel: noneLabel,
@@ -2064,7 +2062,6 @@ class _AccountSelectorChip extends StatelessWidget {
 
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择$label',
       accounts: accounts,
       selectedId: effectiveAccount(selectedId, accounts)?.id,
     );

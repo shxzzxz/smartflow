@@ -106,7 +106,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('选择支出账户'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-picker-layout-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('选择支出账户'), findsNothing);
     expect(find.text('cash'), findsWidgets);
     expect(find.text('deposit'), findsOneWidget);
     expect(find.text('reimbursement'), findsNothing);
@@ -212,11 +216,19 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('advance-account-option')));
     await tester.pumpAndSettle();
-    expect(find.text('选择报销账户'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-picker-layout-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('选择报销账户'), findsNothing);
     expect(find.text('报销A'), findsOneWidget);
     expect(find.text('应收B'), findsNothing);
 
-    Navigator.of(tester.element(find.text('选择报销账户'))).pop();
+    Navigator.of(
+      tester.element(
+        find.byKey(const ValueKey('account-picker-layout-toggle')),
+      ),
+    ).pop();
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('场景'));
@@ -227,7 +239,11 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('advance-account-option')));
     await tester.pumpAndSettle();
-    expect(find.text('选择垫付账户'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-picker-layout-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('选择垫付账户'), findsNothing);
     expect(find.text('报销A'), findsOneWidget);
     expect(find.text('应收B'), findsOneWidget);
   });
@@ -536,7 +552,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(accountLabel);
       await tester.pumpAndSettle();
-      expect(find.text('选择账户'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('account-picker-layout-toggle')),
+        findsOneWidget,
+      );
+      expect(find.text('选择账户'), findsNothing);
       await tester.tap(find.text('card'));
       await tester.pumpAndSettle();
 

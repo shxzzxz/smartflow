@@ -9,8 +9,8 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../widget/business/account/account_picker_sheet.dart';
 import '../../../widget/business/finance/money_input.dart';
-import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../../../widget/business/icon/business_icon.dart';
 
 class TransactionAllocationOption {
@@ -86,7 +86,6 @@ Future<TransactionAllocationOption?> selectTransactionAllocationAccount(
   final optionIds = {for (final option in options) option.accountId};
   final selected = await showAccountPickerSheet(
     context: context,
-    title: '选择账户',
     accounts: [
       for (final account in accounts)
         if (optionIds.contains(account.id)) account,

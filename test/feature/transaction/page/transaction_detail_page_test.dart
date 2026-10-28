@@ -209,7 +209,11 @@ void main() {
 
     await tester.tap(find.text('现金'));
     await tester.pumpAndSettle();
-    expect(find.text('选择收支账户'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-picker-layout-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('选择收支账户'), findsNothing);
     expect(find.text('银行卡'), findsOneWidget);
 
     await tester.tap(find.text('银行卡'));

@@ -8,6 +8,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_repayment_form_view_model.dart';
@@ -162,7 +163,6 @@ class _InstallmentRepaymentFormPageState
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: '选择还款账户',
       accounts: accounts,
       selectedId: selectedId,
     );

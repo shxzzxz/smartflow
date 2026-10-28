@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 
 import '../../../application/credit/credit_query_api.dart';
@@ -131,7 +132,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   onTap: state.fundAccounts.isEmpty
                       ? null
                       : (onSelected) => _pickAccount(
-                          title: '选择到账账户',
                           accounts: state.fundAccounts,
                           selectedId: state.disbursementAccountId,
                           onSelected: onSelected,
@@ -192,14 +192,12 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   }
 
   Future<void> _pickAccount({
-    required String title,
     required List<Account> accounts,
     required String? selectedId,
     required ValueChanged<String?> onSelected,
   }) async {
     final selected = await showAccountPickerSheet(
       context: context,
-      title: title,
       accounts: accounts,
       selectedId: selectedId,
     );

@@ -337,7 +337,11 @@ void main() {
     await tester.tap(find.text('现金账户'));
     await tester.pumpAndSettle();
 
-    expect(find.text('选择账户'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('account-picker-layout-toggle')),
+      findsOneWidget,
+    );
+    expect(find.text('选择账户'), findsNothing);
     expect(find.text('工资卡'), findsOneWidget);
 
     await tester.tap(find.text('工资卡'));

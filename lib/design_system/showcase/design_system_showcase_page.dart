@@ -5,6 +5,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/analytics/analysis_chart_card.dart';
 import 'package:smartflow/widget/business/analytics/category_progress_list_item.dart';
 import 'package:smartflow/widget/business/analytics/chart/app_cartesian_chart.dart';
@@ -304,8 +305,8 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '业务字段行',
     componentNames:
         'AccountPlainFormRow / AppPlainSelectMenuFormRow / '
-        'ValueWithUnitPlainFormRow / showAccountPickerSheet',
-    keywords: ['账户', '下拉', '单位', '选择', '底部弹层'],
+        'ValueWithUnitPlainFormRow / AccountPickerSheet',
+    keywords: ['账户', '分组导航', '下拉', '单位', '选择', '底部弹层'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.transactionAmountPanel,
@@ -1570,7 +1571,6 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           onTap: (onSelected) async {
             final picked = await showAccountPickerSheet(
               context: context,
-              title: '选择账户',
               accounts: _sampleAccounts,
               selectedId: _selectedAccountId,
             );

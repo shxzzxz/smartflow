@@ -12,9 +12,9 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
-import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import 'package:smartflow/widget/business/transaction/transaction_avatar.dart';
@@ -281,7 +281,6 @@ class _DetailBody extends ConsumerWidget {
     if (!context.mounted) return;
     final selectedId = await showAccountPickerSheet(
       context: context,
-      title: '选择${row.label}',
       accounts: accounts,
       selectedId: row.accountId,
     );
