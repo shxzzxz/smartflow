@@ -2,9 +2,9 @@ import 'package:drift/drift.dart';
 
 import '../app_database.dart';
 
-/// Creates the complete schema for the first supported database baseline.
+/// Creates the complete schema at the database's current version.
 ///
-/// Future schema versions must add fixed `vN -> vN+1` steps instead of
+/// Schema changes must add fixed `vN -> vN+1` steps instead of
 /// changing this initializer or rebuilding tables from current definitions.
 Future<void> createCurrentSchema(
   AppDatabase database,

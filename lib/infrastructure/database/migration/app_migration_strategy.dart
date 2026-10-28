@@ -8,9 +8,10 @@ import 'schema_versions.dart';
 
 final _logger = Logger('infra.database');
 
-/// Schema v49 is the first supported database contract and v50 is current.
+/// Database schema compatibility starts at v49; the current version is
+/// defined by `AppDatabase.schemaVersion`.
 ///
-/// Pre-release databases are intentionally unsupported. Future versions must
+/// Pre-release databases are intentionally unsupported. Schema changes must
 /// add immutable one-step migrations backed by Drift schema snapshots.
 MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
