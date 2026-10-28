@@ -18,7 +18,7 @@ void main() {
       {
         'fund': ['微信', '支付宝', '中国银行', '工商银行', '建设银行', '农业银行', '招商银行', '资金账户'],
         'credit': ['花呗', '美团月付', '借呗', '房贷', '车贷', '信用账户', '贷款账户'],
-        'relations': ['报销', '押金', '应收账户', '应付账户'],
+        'relations': ['报销', '押金', '先享后付', '应收账户', '应付账户'],
       },
     );
   });
@@ -47,6 +47,14 @@ void main() {
       accountCreationPresetForId('payable')!.kind,
       AccountProfileKind.payable,
     );
+    final buyNowPayLater = accountCreationPresetForId('buy-now-pay-later')!;
+    expect(buyNowPayLater.kind, AccountProfileKind.payable);
+    expect(buyNowPayLater.iconKey, 'buy-now-pay-later');
+    expect(buyNowPayLater.defaultName, '先享后付');
+    expect(
+      buyNowPayLater.routeLocation,
+      '/account/new?preset=buy-now-pay-later',
+    );
     expect(
       accountCreationPresetForId('reimbursement')!.kind,
       AccountProfileKind.reimbursement,
@@ -56,6 +64,6 @@ void main() {
     final allPresets = accountCreationGroups
         .expand((group) => group.presets)
         .toList();
-    expect(allPresets.map((preset) => preset.id).toSet(), hasLength(19));
+    expect(allPresets.map((preset) => preset.id).toSet(), hasLength(20));
   });
 }

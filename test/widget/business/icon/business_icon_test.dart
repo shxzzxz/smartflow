@@ -45,6 +45,20 @@ void main() {
       );
       expect(catalog.resolve('meal', type: BusinessIconType.account), isNull);
       expect(catalog.resolve('cash', type: BusinessIconType.category), isNull);
+      expect(
+        catalog
+            .search(
+              type: BusinessIconType.account,
+              usage: BusinessIconUsage.account,
+              query: '先享后付',
+            )
+            .single
+            .iconKey,
+        'buy-now-pay-later',
+      );
+      for (final style in catalog.stylesFor(BusinessIconType.account)) {
+        expect(style.icons['buy-now-pay-later'], isNotNull);
+      }
     },
   );
 
@@ -120,6 +134,31 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets('renders buy-now-pay-later in every account style', (
+    tester,
+  ) async {
+    for (final style in catalog.stylesFor(BusinessIconType.account)) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BusinessIconScope(
+            catalog: catalog,
+            accountStyle: style.id,
+            child: const BusinessIcon(
+              iconKey: 'buy-now-pay-later',
+              usage: BusinessIconUsage.account,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(_assetNames(tester), [
+        'assets/styles/account/${style.id}/icons/buy-now-pay-later.svg',
+      ]);
+      expect(find.byIcon(RemixIcons.bank_line), findsNothing);
+    }
+  });
 
   testWidgets(
     'logs SVG load failures once per failure and logs a later retry failure',

@@ -32,6 +32,14 @@
       ]
     },
     {
+      "key": "buy-now-pay-later",
+      "label": "先享后付",
+      "keywords": [
+        "延付",
+        "赊购"
+      ]
+    },
+    {
       "key": "loan_out",
       "label": "应收账户",
       "keywords": [

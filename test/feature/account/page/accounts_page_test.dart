@@ -302,7 +302,7 @@ void main() {
     expect(find.text('报销'), findsOneWidget);
   });
 
-  testWidgets('opens the selected account type after choosing a preset', (
+  testWidgets('opens payable account creation for buy-now-pay-later', (
     tester,
   ) async {
     final router = GoRouter(
@@ -329,12 +329,14 @@ void main() {
     await tester.tap(find.byTooltip('新建账户'));
     await tester.pumpAndSettle();
     await tester.tap(
-      find.byKey(const ValueKey('app-choice-grid-item-fund-boc')),
+      find.byKey(
+        const ValueKey('app-choice-grid-item-relations-buy-now-pay-later'),
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(find.byType(AccountFormPage), findsOneWidget);
-    expect(find.text('中国银行'), findsOneWidget);
+    expect(find.text('先享后付'), findsOneWidget);
   });
 
   testWidgets('starts group sorting after a delayed long press', (

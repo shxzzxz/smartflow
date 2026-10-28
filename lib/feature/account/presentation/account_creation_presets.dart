@@ -168,6 +168,13 @@ const accountCreationGroups = <AccountCreationGroup>[
         defaultName: '押金',
       ),
       AccountCreationPreset(
+        id: 'buy-now-pay-later',
+        label: '先享后付',
+        kind: AccountProfileKind.payable,
+        iconKey: 'buy-now-pay-later',
+        defaultName: '先享后付',
+      ),
+      AccountCreationPreset(
         id: 'receivable',
         label: '应收账户',
         kind: AccountProfileKind.receivable,

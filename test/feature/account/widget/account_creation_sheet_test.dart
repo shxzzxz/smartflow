@@ -4,6 +4,7 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_grouped_choice_grid.dart';
 import 'package:smartflow/feature/account/presentation/account_creation_presets.dart';
 import 'package:smartflow/feature/account/widget/account_creation_sheet.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   testWidgets('shows grouped account creation choices and returns a preset', (
@@ -43,13 +44,17 @@ void main() {
     expect(find.text('微信'), findsOneWidget);
     expect(find.text('花呗'), findsOneWidget);
     expect(find.text('押金'), findsOneWidget);
+    expect(find.text('先享后付'), findsOneWidget);
 
     await tester.tap(
-      find.byKey(const ValueKey('app-choice-grid-item-fund-boc')),
+      find.byKey(
+        const ValueKey('app-choice-grid-item-relations-buy-now-pay-later'),
+      ),
     );
     await tester.pumpAndSettle();
 
-    expect(selected?.id, 'boc');
+    expect(selected?.id, 'buy-now-pay-later');
+    expect(selected?.kind, AccountProfileKind.payable);
     expect(find.text('新建账户'), findsNothing);
   });
 }
