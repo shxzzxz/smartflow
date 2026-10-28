@@ -391,13 +391,15 @@ String? _flowAccountId(
 }) {
   final role = switch ((item.businessPurpose, direction)) {
     (BusinessPurpose.lending, EntryDirection.debit) ||
+    (BusinessPurpose.receivableCollection, EntryDirection.credit) ||
     (
-      BusinessPurpose.receivableCollection,
+      BusinessPurpose.badDebt,
       EntryDirection.credit,
     ) => TransactionRole.receivable,
     (BusinessPurpose.borrowing, EntryDirection.credit) ||
+    (BusinessPurpose.debtRepayment, EntryDirection.debit) ||
     (
-      BusinessPurpose.debtRepayment,
+      BusinessPurpose.debtRelief,
       EntryDirection.debit,
     ) => TransactionRole.liability,
     (_, EntryDirection.debit) => TransactionRole.settlementIn,

@@ -332,6 +332,73 @@ void main() {
       });
     }
 
+    test('shows the receivable account for bad debt', () {
+      final item = TransactionReadModel(
+        id: 'bad-debt',
+        businessPurpose: BusinessPurpose.badDebt,
+        occurredAt: DateTime(2026, 10, 17),
+        primaryAmount: const Money(minorUnits: 10000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        lines: [
+          TransactionLine(
+            id: 'receivable',
+            transactionId: 'bad-debt',
+            lineNo: 1,
+            role: TransactionRole.receivable,
+            accountId: 'receivable',
+            amount: const Money(minorUnits: 10000),
+          ),
+        ],
+      );
+      final lookup = AccountLookup({
+        'receivable': _account('receivable', '应收款', iconKey: 'receivable'),
+      });
+
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: lookup,
+      );
+
+      expect(row.accountFlow.effectiveOutEndpoints.single.label, '应收款');
+    });
+
+    test('shows the liability account for debt relief', () {
+      final item = TransactionReadModel(
+        id: 'debt-relief',
+        businessPurpose: BusinessPurpose.debtRelief,
+        occurredAt: DateTime(2026, 10, 17),
+        primaryAmount: const Money(minorUnits: 10000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        lines: [
+          TransactionLine(
+            id: 'liability',
+            transactionId: 'debt-relief',
+            lineNo: 1,
+            role: TransactionRole.liability,
+            accountId: 'payable',
+            amount: const Money(minorUnits: 10000),
+          ),
+        ],
+      );
+      final lookup = AccountLookup({
+        'payable': _account(
+          'payable',
+          '应付款',
+          type: AccountType.liability,
+          iconKey: 'payable',
+        ),
+      });
+
+      final row = buildTransactionRowPresentation(
+        item: item,
+        accountLookup: lookup,
+      );
+
+      expect(row.accountFlow.effectiveInEndpoints.single.label, '应付款');
+    });
+
     test('keeps every combined payment account for icon-only rendering', () {
       final item = TransactionReadModel(
         id: 'combined-payment',
