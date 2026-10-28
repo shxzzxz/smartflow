@@ -1,4 +1,3 @@
-import '../../helper/legacy_installment_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/installment/command/installment_repricing_app_service.dart';
 import 'package:smartflow/application/credit/installment/query/installment_query_service.dart';
@@ -35,7 +34,6 @@ import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repos
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
-import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
 import '../../helper/test_app_database.dart';
 import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
@@ -1078,52 +1076,6 @@ void main() {
     );
   });
 
-  test(
-    'v38 backups migrate application state and invalid new states are rejected',
-    () async {
-      await f.service.runDue(DateTime(2026, 1, 5));
-      f.currentDate = DateTime(2026, 3, 20);
-      await f.service.prepare('loan', f.currentDate);
-      final snapshot = await DriftBackupGateway(f.db).readSnapshot();
-      final tables = <String, Iterable<BackupJson>>{
-        ...legacyInstallmentSnapshot(snapshot, stageRepricing: true),
-        'installment_repricing_records': [
-          for (final row in snapshot.rows('installment_repricing_records'))
-            {...row, 'applied': row['status'] == 'applied'}..remove('status'),
-        ],
-      };
-      migrateInstallmentBackup(tables, schemaVersion: 38, formatVersion: 3);
-      final migrated = snapshot.copyWith(tables: tables);
-      BackupService.validateSnapshot(migrated);
-      expect(BackupDiff.compare(snapshot, migrated).changedCount, 0);
-      final target = createTestDatabase();
-      addTearDown(target.close);
-      await DriftBackupGateway(target).replaceSnapshot(migrated);
-      expect(
-        (await DriftInstallmentRepricingRepository(
-          target,
-        ).list('loan')).map((r) => r.status),
-        [
-          InstallmentRepricingStatus.applied,
-          InstallmentRepricingStatus.pending,
-        ],
-      );
-      final invalid = snapshot.copyWith(
-        tables: {
-          ...snapshot.tables,
-          'installment_repricing_records': [
-            for (final row in snapshot.rows('installment_repricing_records'))
-              {...row, 'status': 'unknown'},
-          ],
-        },
-      );
-      expect(
-        () => BackupService.validateSnapshot(invalid),
-        throwsA(isA<BackupValidationException>()),
-      );
-    },
-  );
-
   for (final now in [DateTime(2025, 12, 20), DateTime(2026, 1, 5)]) {
     test('repricing at $now excludes the reset day quote', () async {
       f.currentDate = now;
@@ -1493,73 +1445,6 @@ void main() {
       },
     );
   }
-
-  test(
-    'schema 37 backup migrates floating terms and snapshots before validation and restore',
-    () async {
-      await f.service.runDue(DateTime(2026, 1, 5));
-      final snapshot = await DriftBackupGateway(f.db).readSnapshot();
-      final tables = legacyInstallmentSnapshot(snapshot, stageRepricing: true);
-      final configuration = snapshot
-          .rows('installment_repricing_configs')
-          .single;
-      tables.remove('installment_repricing_configs');
-      tables.remove('installment_interest_adjustments');
-      tables['installment_stage_configs'] = [
-        for (final row in tables['installment_stage_configs']!)
-          if (row['ownerType'] != 'contract' || row['stageKind'] != 'repayment')
-            row
-          else
-            {
-              ...row,
-              'lprTenor': 'fiveYearPlus',
-              'spreadBp': configuration['spreadBp'],
-              'firstResetDate': configuration['firstResetDate'],
-              'firstEffectiveDate': configuration['firstEffectiveDate'],
-              'repricingCycleMonths': configuration['cycleMonths'],
-            }..remove('referenceRateType'),
-      ];
-      tables['installment_repricing_records'] = [
-        for (final row in snapshot.rows('installment_repricing_records'))
-          {
-              ...row,
-              'stageId': 'stage',
-              'applied': true,
-              'tenor': 'fiveYearPlus',
-              'quoteDate': row['referenceRateDate'],
-              'lprPpm': row['referenceRatePpm'],
-            }
-            ..remove('status')
-            ..remove('referenceRateType')
-            ..remove('referenceRateDate')
-            ..remove('referenceRatePpm'),
-      ];
-      migrateInstallmentBackup(tables, schemaVersion: 37, formatVersion: 3);
-      final migrated = snapshot.copyWith(tables: tables);
-      BackupService.validateSnapshot(migrated);
-      expect(BackupDiff.compare(snapshot, migrated).changedCount, 0);
-      final target = createTestDatabase();
-      addTearDown(target.close);
-      await DriftBackupGateway(target).replaceSnapshot(migrated);
-      final restored = (await DriftInstallmentRepository(
-        target,
-      ).findContract('loan'))!;
-      expect(
-        restored.repricingConfigurations.single.rule.referenceRateType,
-        InterestRateType.lprFiveYearPlus,
-      );
-      expect(
-        restored.repricingConfigurations.single.lastGeneratedDate,
-        DateTime.utc(2025, 12, 20),
-      );
-      expect(restored.repricings.single.change.rate.ppm, 36000);
-      expect(
-        (await target.select(target.installmentRepricingRecords).getSingle())
-            .status,
-        'applied',
-      );
-    },
-  );
 
   test(
     'saving a repricing snapshot does not write shared reference rates',

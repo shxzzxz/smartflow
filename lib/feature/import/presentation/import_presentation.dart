@@ -525,7 +525,7 @@ String _mappingLabel(
   if (targetId != null) {
     for (final target in review.targets) {
       if (target.id == targetId) {
-        return target.effectiveDescriptor == ImportTargetDescriptor.ghostAccount
+        return target.descriptor == ImportTargetDescriptor.ghostAccount
             ? '无账户'
             : target.displayPath;
       }

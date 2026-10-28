@@ -1,4 +1,3 @@
-import '../../helper/legacy_installment_snapshot.dart';
 import 'dart:io';
 
 import 'package:drift/native.dart';
@@ -10,7 +9,6 @@ import 'package:smartflow/application/credit/installment/command/installment_sta
 import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
-import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
@@ -336,40 +334,6 @@ void main() {
         (await f.installments.findContract('loan'))!.stageTerms.stages,
         hasLength(2),
       );
-    },
-  );
-
-  test(
-    'v40 backups restore stage ownership while retaining generation progress',
-    () async {
-      await f.seed();
-      await f.configure();
-      await f.repricing.runDue(day(8, 20));
-      final snapshot = await DriftBackupGateway(f.db).readSnapshot();
-      final tables = legacyInstallmentSnapshot(snapshot);
-      for (final table in [
-        'installment_repricing_configs',
-        'installment_repricing_records',
-      ]) {
-        tables[table] = [
-          for (final row in snapshot.rows(table)) {...row}..remove('stageId'),
-        ];
-      }
-      migrateInstallmentBackup(tables, schemaVersion: 40, formatVersion: 2);
-      final restored = snapshot.copyWith(tables: tables);
-      BackupService.validateSnapshot(restored);
-      await DriftBackupGateway(f.db).replaceSnapshot(restored);
-      final contract = (await f.installments.findContract('loan'))!;
-      expect(contract.repricingConfigurations.single.stageId, 'stage');
-      expect(contract.repricings.single.stageId, 'stage');
-      expect(
-        contract.repricingConfigurations.single.lastGeneratedDate,
-        DateTime.utc(2026, 8, 20),
-      );
-      expect(await f.repricing.runDue(day(8, 20)), (
-        changed: false,
-        needsRetry: false,
-      ));
     },
   );
 

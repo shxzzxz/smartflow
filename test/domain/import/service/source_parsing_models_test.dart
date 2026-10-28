@@ -87,7 +87,7 @@ void main() {
     final group = ImportTransactionGroupDraft(
       topLevel: ImportOpeningBalanceDraft(
         amount: Money.parse('1'),
-        liabilityAccount: const ImportAccountReference.source(
+        account: const ImportAccountReference.source(
           sourceEntityKey: 'account:loan',
           displayName: 'Loan',
         ),
@@ -124,7 +124,7 @@ void main() {
     final group = ImportTransactionGroupDraft(
       topLevel: ImportOpeningBalanceDraft(
         amount: Money.parse('1'),
-        liabilityAccount: const ImportAccountReference.source(
+        account: const ImportAccountReference.source(
           sourceEntityKey: 'account:loan',
           displayName: 'Loan',
         ),
@@ -133,20 +133,21 @@ void main() {
       sourceOperationFingerprint: 'file-issue-fingerprint',
       fingerprintVersion: 1,
     );
-    final executions = ParseUnitPlan([
-      _ParseUnit(
-        key: 'b',
-        requiredFileTypes: {b},
-        result: ParseUnitResult(groups: [group]),
-      ),
-    ]).execute({
-      b: SourceFileFact(
-        fileIndex: 0,
-        fileName: 'B.xls',
-        fileType: b,
-        issues: const [issue],
-      ),
-    });
+    final executions =
+        ParseUnitPlan([
+          _ParseUnit(
+            key: 'b',
+            requiredFileTypes: {b},
+            result: ParseUnitResult(groups: [group]),
+          ),
+        ]).execute({
+          b: SourceFileFact(
+            fileIndex: 0,
+            fileName: 'B.xls',
+            fileType: b,
+            issues: const [issue],
+          ),
+        });
 
     final result = const ImportPlanAssembler().assemble(
       source: source,
@@ -213,7 +214,7 @@ void main() {
         ImportTransactionGroupDraft(
           topLevel: ImportOpeningBalanceDraft(
             amount: Money.parse('1'),
-            liabilityAccount: const ImportAccountReference.source(
+            account: const ImportAccountReference.source(
               sourceEntityKey: 'account:loan',
               displayName: 'Loan',
             ),

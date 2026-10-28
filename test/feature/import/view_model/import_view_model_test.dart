@@ -76,50 +76,51 @@ void main() {
           sourceEntityKey: 'category:expense:new-food',
         );
         final workflow = _FakeImportWorkflowAppService(
-          reviewBuilder: (
-            reviewPlan,
-            temporaryMappings,
-            plannedCreations,
-            groupMappingOverrides,
-          ) {
-            final effectiveMappings = <ImportMappingKey, String>{
-              ...temporaryMappings,
-              if (!temporaryMappings.containsKey(_mappingKey))
-                _mappingKey: 'cash',
-            };
-            final resolvedCreations = <ImportMappingKey, ImportMappingCreation>{
-              ...plannedCreations,
-              if (!plannedCreations.containsKey(categoryKey))
-                categoryKey: const ImportMappingCreation(
-                  name: '新餐饮',
-                  kind: ImportMappingTargetKind.expenseCategory,
-                ),
-            };
-            return _review(
-              reviewPlan,
-              temporaryMappings: temporaryMappings,
-              effectiveMappings: effectiveMappings,
-              plannedCreations: resolvedCreations,
-              suggestions:
-                  temporaryMappings.containsKey(_mappingKey)
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) {
+                final effectiveMappings = <ImportMappingKey, String>{
+                  ...temporaryMappings,
+                  if (!temporaryMappings.containsKey(_mappingKey))
+                    _mappingKey: 'cash',
+                };
+                final resolvedCreations =
+                    <ImportMappingKey, ImportMappingCreation>{
+                      ...plannedCreations,
+                      if (!plannedCreations.containsKey(categoryKey))
+                        categoryKey: const ImportMappingCreation(
+                          name: '新餐饮',
+                          descriptor: ImportTargetDescriptor.expenseCategory,
+                        ),
+                    };
+                return _review(
+                  reviewPlan,
+                  temporaryMappings: temporaryMappings,
+                  effectiveMappings: effectiveMappings,
+                  plannedCreations: resolvedCreations,
+                  suggestions: temporaryMappings.containsKey(_mappingKey)
                       ? const []
                       : const [
-                        ImportMappingSuggestion(
-                          key: _mappingKey,
-                          targetAccountId: 'cash',
-                        ),
-                      ],
-              groups: [
-                ImportGroupReview(
-                  index: 0,
-                  group: reviewPlan.groups.single,
-                  issues: const [],
-                  isExactDuplicate: false,
-                  isSuspectedDuplicate: false,
-                ),
-              ],
-            );
-          },
+                          ImportMappingSuggestion(
+                            key: _mappingKey,
+                            targetAccountId: 'cash',
+                          ),
+                        ],
+                  groups: [
+                    ImportGroupReview(
+                      index: 0,
+                      group: reviewPlan.groups.single,
+                      issues: const [],
+                      isExactDuplicate: false,
+                      isSuspectedDuplicate: false,
+                    ),
+                  ],
+                );
+              },
         );
         final container = _container(
           planService: _FakeImportPlanAppService(plan),
@@ -134,8 +135,8 @@ void main() {
         final state = container.read(importViewModelProvider);
         expect(state.review?.effectiveMappings[_mappingKey], 'cash');
         expect(
-          state.plannedCreations[categoryKey]?.kind,
-          ImportMappingTargetKind.expenseCategory,
+          state.plannedCreations[categoryKey]?.descriptor,
+          ImportTargetDescriptor.expenseCategory,
         );
         expect(workflow.reviewCalls, 1);
       },
@@ -155,15 +156,14 @@ void main() {
               ) => _review(
                 reviewPlan,
                 temporaryMappings: temporaryMappings,
-                plannedCreations:
-                    plannedCreations.isEmpty
-                        ? {
-                          _mappingKey: ImportMappingCreation(
-                            name: '现金',
-                            kind: ImportMappingTargetKind.asset,
-                          ),
-                        }
-                        : plannedCreations,
+                plannedCreations: plannedCreations.isEmpty
+                    ? {
+                        _mappingKey: ImportMappingCreation(
+                          name: '现金',
+                          descriptor: ImportTargetDescriptor.fundAccount,
+                        ),
+                      }
+                    : plannedCreations,
                 groups: [
                   ImportGroupReview(
                     index: 0,
@@ -234,13 +234,13 @@ void main() {
                 },
                 plannedCreations:
                     plannedCreations.isEmpty && temporaryMappings.isEmpty
-                        ? {
-                          _mappingKey: ImportMappingCreation(
-                            name: '现金',
-                            kind: ImportMappingTargetKind.asset,
-                          ),
-                        }
-                        : plannedCreations,
+                    ? {
+                        _mappingKey: ImportMappingCreation(
+                          name: '现金',
+                          descriptor: ImportTargetDescriptor.fundAccount,
+                        ),
+                      }
+                    : plannedCreations,
                 groups: [
                   ImportGroupReview(
                     index: 0,
@@ -334,7 +334,6 @@ void main() {
         await viewModel.parseSelectedFiles();
         const creation = ImportMappingCreation(
           name: '现金借款',
-          kind: ImportMappingTargetKind.liability,
           descriptor: ImportTargetDescriptor.loanAccount,
         );
 
@@ -347,7 +346,7 @@ void main() {
         final state = container.read(importViewModelProvider);
         expect(state.temporaryMappings, isNot(contains(_mappingKey)));
         expect(
-          state.plannedCreations[_mappingKey]?.effectiveDescriptor,
+          state.plannedCreations[_mappingKey]?.descriptor,
           ImportTargetDescriptor.loanAccount,
         );
         expect(state.mappingConfirmed, isFalse);
@@ -447,8 +446,9 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
 
-        final pickOutcome =
-            await container.read(importViewModelProvider.notifier).pickFiles();
+        final pickOutcome = await container
+            .read(importViewModelProvider.notifier)
+            .pickFiles();
 
         expect(pickOutcome, isA<ImportActionSuccess<void>>());
         expect(
@@ -465,10 +465,9 @@ void main() {
         );
         expect(planService.parseCalls, 0);
 
-        final parseOutcome =
-            await container
-                .read(importViewModelProvider.notifier)
-                .parseSelectedFiles();
+        final parseOutcome = await container
+            .read(importViewModelProvider.notifier)
+            .parseSelectedFiles();
 
         expect(parseOutcome, isA<ImportActionSuccess<void>>());
         final state = container.read(importViewModelProvider);
@@ -490,8 +489,8 @@ void main() {
           throwOnParse: true,
         ),
         workflow: _FakeImportWorkflowAppService(
-          reviewBuilder:
-              (_, _, _, _) => throw StateError('review should not be called'),
+          reviewBuilder: (_, _, _, _) =>
+              throw StateError('review should not be called'),
         ),
         picker: _FakeImportFilePicker(_bundle()),
       );
@@ -526,15 +525,14 @@ void main() {
                 temporaryMappings: temporaryMappings,
                 effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
                 plannedCreations: plannedCreations,
-                suggestions:
-                    temporaryMappings.isEmpty
-                        ? [
-                          const ImportMappingSuggestion(
-                            key: _mappingKey,
-                            targetAccountId: 'cash',
-                          ),
-                        ]
-                        : const [],
+                suggestions: temporaryMappings.isEmpty
+                    ? [
+                        const ImportMappingSuggestion(
+                          key: _mappingKey,
+                          targetAccountId: 'cash',
+                        ),
+                      ]
+                    : const [],
                 groups: [
                   ImportGroupReview(
                     index: 0,
@@ -592,22 +590,26 @@ void main() {
         final plan = _plan(groupCount: 1);
         final workflow = _FakeImportWorkflowAppService(
           reviewBuilder:
-              (reviewPlan, temporaryMappings, plannedCreations, groupOverrides) =>
-                  _review(
-                    reviewPlan,
-                    temporaryMappings: temporaryMappings,
-                    effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
-                    plannedCreations: plannedCreations,
-                    groups: [
-                      ImportGroupReview(
-                        index: 0,
-                        group: reviewPlan.groups.single,
-                        issues: const [],
-                        isExactDuplicate: true,
-                        isSuspectedDuplicate: false,
-                      ),
-                    ],
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: temporaryMappings,
+                effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
+                plannedCreations: plannedCreations,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: true,
+                    isSuspectedDuplicate: false,
                   ),
+                ],
+              ),
           commitResult: ImportCommitResult(
             batch: ImportBatch(
               id: 'batch-exact',
@@ -635,10 +637,9 @@ void main() {
           isEmpty,
         );
         viewModel.setExactDuplicateConfirmed(0, true);
-        expect(
-          container.read(importViewModelProvider).selectedGroupIndexes,
-          {0},
-        );
+        expect(container.read(importViewModelProvider).selectedGroupIndexes, {
+          0,
+        });
         expect(
           viewModel.confirmMappingConfiguration(),
           isA<ImportActionSuccess<void>>(),
@@ -670,35 +671,31 @@ void main() {
       final plan = _plan(groupCount: 1);
       final originalGroup = plan.groups.single;
       final workflow = _FakeImportWorkflowAppService(
-        reviewBuilder: (
-          reviewPlan,
-          temporaryMappings,
-          plannedCreations,
-          groupOverrides,
-        ) {
-          final effective = <ImportMappingKey, String>{
-            ...temporaryMappings,
-            ...?groupOverrides[0],
-          };
-          return ImportPlanReview(
-            plan: reviewPlan,
-            defaultMappings: const {},
-            effectiveMappings: effective,
-            suggestions: const [],
-            plannedCreations: plannedCreations,
-            groupMappingOverrides: groupOverrides,
-            groups: [
-              ImportGroupReview(
-                index: 0,
-                group: reviewPlan.groups.single,
-                issues: const [],
-                isExactDuplicate: false,
-                isSuspectedDuplicate: false,
+        reviewBuilder:
+            (reviewPlan, temporaryMappings, plannedCreations, groupOverrides) {
+              final effective = <ImportMappingKey, String>{
+                ...temporaryMappings,
+                ...?groupOverrides[0],
+              };
+              return ImportPlanReview(
+                plan: reviewPlan,
+                defaultMappings: const {},
                 effectiveMappings: effective,
-              ),
-            ],
-          );
-        },
+                suggestions: const [],
+                plannedCreations: plannedCreations,
+                groupMappingOverrides: groupOverrides,
+                groups: [
+                  ImportGroupReview(
+                    index: 0,
+                    group: reviewPlan.groups.single,
+                    issues: const [],
+                    isExactDuplicate: false,
+                    isSuspectedDuplicate: false,
+                    effectiveMappings: effective,
+                  ),
+                ],
+              );
+            },
       );
       final container = _container(
         planService: _FakeImportPlanAppService(plan),
@@ -729,8 +726,12 @@ void main() {
       );
       await viewModel.commitSelectedGroups();
 
-      final edited =
-          container.read(importViewModelProvider).review!.plan.groups.single;
+      final edited = container
+          .read(importViewModelProvider)
+          .review!
+          .plan
+          .groups
+          .single;
       final draft = edited.topLevel as ImportTransferDraft;
       expect(draft.amount, Money.parse('25'));
       expect(draft.occurredAt, DateTime(2026, 7, 21, 9));
@@ -895,7 +896,7 @@ ImportPlanReview _review(
         id: 'cash',
         name: '现金',
         displayPath: '现金',
-        kind: ImportMappingTargetKind.asset,
+        descriptor: ImportTargetDescriptor.fundAccount,
         isArchived: false,
       ),
     ],
@@ -956,10 +957,9 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
   }) {
     final group = plan.groups[groupIndex];
     final children = [...group.children];
-    final topLevel =
-        childIndex == null
-            ? applyImportDraftEdit(group.topLevel, edit)
-            : group.topLevel;
+    final topLevel = childIndex == null
+        ? applyImportDraftEdit(group.topLevel, edit)
+        : group.topLevel;
     if (childIndex != null) {
       children[childIndex] = applyImportDraftEdit(children[childIndex], edit);
     }

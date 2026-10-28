@@ -76,7 +76,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         ): mapping.targetAccountId,
     };
     final compatibleTargetDescriptors = _compatibleTargetDescriptors(plan);
-    final compatibleTargetKinds = _compatibleTargetKinds(plan);
     final ghostMappingKeys = _ghostMappingKeys(plan);
     final activeTargets = await _ledger.listTargets();
     final targets = [...activeTargets];
@@ -97,7 +96,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       plan: plan,
       effectiveMappings: effective,
       targets: targets,
-      compatibleTargetKinds: compatibleTargetKinds,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     await _applyGhostPlaceholderMappings(
@@ -105,14 +103,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       effectiveMappings: effective,
       targets: targets,
       loadedTargetIds: loadedTargetIds,
-      compatibleTargetKinds: compatibleTargetKinds,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     final suggestions = _suggestMappings(
       plan: plan,
       effectiveMappings: effective,
       targets: targets,
-      compatibleTargetKinds: compatibleTargetKinds,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
       excludedKeys: plannedCreations.keys.toSet(),
     );
@@ -120,7 +116,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       plan: plan,
       requestedCreations: plannedCreations,
       effectiveMappings: effective,
-      compatibleTargetKinds: compatibleTargetKinds,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
     );
     effective.removeWhere((key, _) => resolvedCreations.containsKey(key));
@@ -225,10 +220,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               !exact &&
               (duplicates.hasFingerprintMatch || inPlanFingerprintDuplicate),
           effectiveMappings: groupMappings,
-          compatibleTargetKinds: _compatibleTargetKindsForGroup(
-            group,
-            source: plan.source,
-          ),
           compatibleTargetDescriptors: _compatibleTargetDescriptorsForGroup(
             group,
             source: plan.source,
@@ -243,7 +234,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       suggestions: suggestions,
       plannedCreations: resolvedCreations,
       targets: targets.map(_mapTarget).toList(growable: false),
-      compatibleTargetKinds: compatibleTargetKinds,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
       groupMappingOverrides: groupMappingOverrides,
       groups: reviews,
@@ -262,20 +252,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       id: target.id,
       name: target.name,
       displayPath: target.displayPath,
-      kind: switch (target.kind) {
-        ImportLedgerTargetKind.asset => ImportMappingTargetKind.asset,
-        ImportLedgerTargetKind.liability => ImportMappingTargetKind.liability,
-        ImportLedgerTargetKind.advance => ImportMappingTargetKind.advance,
-        ImportLedgerTargetKind.incomeCategory =>
-          ImportMappingTargetKind.incomeCategory,
-        ImportLedgerTargetKind.expenseCategory =>
-          ImportMappingTargetKind.expenseCategory,
-        ImportLedgerTargetKind.ghost => ImportMappingTargetKind.ghost,
-        ImportLedgerTargetKind.unsupported =>
-          ImportMappingTargetKind.unsupported,
-      },
+      descriptor: target.descriptor,
       isArchived: target.isArchived,
-      descriptor: target.effectiveDescriptor,
     );
   }
 
@@ -591,8 +569,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportParseResult plan,
     required Map<ImportMappingKey, String> effectiveMappings,
     required List<ImportLedgerTarget> targets,
-    required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-    compatibleTargetKinds,
     required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
     compatibleTargetDescriptors,
     Set<ImportMappingKey> excludedKeys = const {},
@@ -609,14 +585,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         if (target.isArchived || !_targetSupportsEntity(target, entity)) {
           return false;
         }
-        final allowedKinds = compatibleTargetKinds[key];
-        if (allowedKinds != null &&
-            !allowedKinds.contains(_mapTarget(target).kind)) {
-          return false;
-        }
         final allowedDescriptors = compatibleTargetDescriptors[key];
         if (allowedDescriptors != null &&
-            !allowedDescriptors.contains(target.effectiveDescriptor)) {
+            !allowedDescriptors.contains(target.descriptor)) {
           return false;
         }
         return _normalizeName(target.displayPath) == normalized ||
@@ -637,8 +608,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportParseResult plan,
     required Map<ImportMappingKey, String> effectiveMappings,
     required List<ImportLedgerTarget> targets,
-    required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-    compatibleTargetKinds,
     required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
     compatibleTargetDescriptors,
   }) {
@@ -653,14 +622,9 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (entity == null || target == null || target.isArchived) return true;
       if (entity.hasTargetDescriptorConflict) return true;
       if (!_targetSupportsEntity(target, entity)) return true;
-      final allowedKinds = compatibleTargetKinds[key];
-      if (allowedKinds != null &&
-          !allowedKinds.contains(_mapTarget(target).kind)) {
-        return true;
-      }
       final allowedDescriptors = compatibleTargetDescriptors[key];
       return allowedDescriptors != null &&
-          !allowedDescriptors.contains(target.effectiveDescriptor);
+          !allowedDescriptors.contains(target.descriptor);
     });
   }
 
@@ -668,8 +632,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportParseResult plan,
     required Map<ImportMappingKey, ImportMappingCreation> requestedCreations,
     required Map<ImportMappingKey, String> effectiveMappings,
-    required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-    compatibleTargetKinds,
     required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
     compatibleTargetDescriptors,
   }) {
@@ -685,7 +647,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (entity == null || entity.hasTargetDescriptorConflict) return true;
       final allowedDescriptors = compatibleTargetDescriptors[key];
       if (allowedDescriptors != null &&
-          !allowedDescriptors.contains(creation.effectiveDescriptor)) {
+          !allowedDescriptors.contains(creation.descriptor)) {
         return true;
       }
       return !_creationSupportsEntity(creation, entity);
@@ -697,16 +659,12 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (effectiveMappings.containsKey(key) || result.containsKey(key)) {
         continue;
       }
-      final allowedKinds = compatibleTargetKinds[key];
-      if (allowedKinds != null && allowedKinds.isEmpty) continue;
-      final descriptor = _defaultCreationDescriptor(
-        entity,
-        compatibleTargetDescriptors[key],
-      );
+      final allowedDescriptors = compatibleTargetDescriptors[key];
+      if (allowedDescriptors != null && allowedDescriptors.isEmpty) continue;
+      final descriptor = _defaultCreationDescriptor(entity, allowedDescriptors);
       if (descriptor == null) continue;
       result[key] = ImportMappingCreation(
         name: entity.displayName,
-        kind: _legacyKindForDescriptor(descriptor),
         descriptor: descriptor,
         pathSegments: entity.kind == ImportEntityKind.category
             ? entity.displayName
@@ -730,7 +688,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   ) {
     return ImportTargetCompatibilityPolicy.supportsEntity(
       entity,
-      creation.effectiveDescriptor,
+      creation.descriptor,
     );
   }
 
@@ -750,8 +708,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         final key = ImportMappingKey.fromEntity(entity);
         final mappedId = effectiveMappings[key];
         final target = mappedId == null ? null : targetById[mappedId];
-        if (target?.effectiveDescriptor ==
-            ImportTargetDescriptor.ghostAccount) {
+        if (target?.descriptor == ImportTargetDescriptor.ghostAccount) {
           if (missingAccountItemAdded) continue;
           missingAccountItemAdded = true;
           result.add(
@@ -786,8 +743,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             (candidate) =>
                 !candidate.isArchived &&
                 _targetSupportsEntity(candidate, entity) &&
-                (allowed == null ||
-                    allowed.contains(candidate.effectiveDescriptor)),
+                (allowed == null || allowed.contains(candidate.descriptor)),
           )
           .map(_mapTarget)
           .toList(growable: false);
@@ -814,8 +770,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           targetDescription: target == null
               ? creation == null
                     ? null
-                    : importTargetDescription(creation.effectiveDescriptor)
-              : importTargetDescription(target.effectiveDescriptor),
+                    : importTargetDescription(creation.descriptor)
+              : importTargetDescription(target.descriptor),
           existingTargetOptions: options,
           creationOptions: creationOptions,
           issues: entity.hasTargetDescriptorConflict || hasCompatibilityConflict
@@ -871,7 +827,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             (allowed == null || allowed.contains(descriptor)))
           ImportMappingCreation(
             name: entity.displayName,
-            kind: _legacyKindForDescriptor(descriptor),
             descriptor: descriptor,
             pathSegments: entity.kind == ImportEntityKind.category
                 ? entity.displayName
@@ -924,10 +879,22 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     return null;
   }
 
-  ImportMappingTargetKind _legacyKindForDescriptor(
-    ImportTargetDescriptor descriptor,
-  ) {
-    return descriptor.legacyMappingKind;
+  bool _isAssetTargetDescriptor(ImportTargetDescriptor descriptor) {
+    return switch (descriptor) {
+      ImportTargetDescriptor.fundAccount ||
+      ImportTargetDescriptor.advanceAccount ||
+      ImportTargetDescriptor.receivableAccount => true,
+      _ => false,
+    };
+  }
+
+  bool _isLiabilityTargetDescriptor(ImportTargetDescriptor descriptor) {
+    return switch (descriptor) {
+      ImportTargetDescriptor.payableAccount ||
+      ImportTargetDescriptor.creditAccount ||
+      ImportTargetDescriptor.loanAccount => true,
+      _ => false,
+    };
   }
 
   Future<void> _applyGhostPlaceholderMappings({
@@ -935,8 +902,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required Map<ImportMappingKey, String> effectiveMappings,
     required List<ImportLedgerTarget> targets,
     required Set<String> loadedTargetIds,
-    required Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-    compatibleTargetKinds,
     required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
     compatibleTargetDescriptors,
   }) async {
@@ -948,11 +913,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (entity.hasTargetDescriptorConflict) continue;
       final key = ImportMappingKey.fromEntity(entity);
       if (effectiveMappings.containsKey(key)) continue;
-      final allowedKinds = compatibleTargetKinds[key];
+      final allowedDescriptors = compatibleTargetDescriptors[key];
       final supportsGhost =
-          allowedKinds != null &&
-          allowedKinds.contains(ImportMappingTargetKind.asset) &&
-          allowedKinds.contains(ImportMappingTargetKind.liability);
+          allowedDescriptors != null &&
+          allowedDescriptors.any(_isAssetTargetDescriptor) &&
+          allowedDescriptors.any(_isLiabilityTargetDescriptor);
       if (!supportsGhost) continue;
       ghostId ??= await _ledger.resolveGhostAccountId();
       effectiveMappings[key] = ghostId;
@@ -1022,7 +987,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (groupMappingOverrides[index]?.containsKey(key) ?? false) {
         return false;
       }
-      return _compatibleTargetKindsForGroup(
+      return _compatibleTargetDescriptorsForGroup(
         plan.groups[index],
         source: plan.source,
       ).containsKey(key);
@@ -1030,22 +995,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   }
 
   ImportLedgerTargetCreation _mapCreation(ImportMappingCreation creation) {
-    final descriptor = creation.effectiveDescriptor;
+    final descriptor = creation.descriptor;
     final isCredit = descriptor == ImportTargetDescriptor.creditAccount;
     return ImportLedgerTargetCreation(
       name: creation.name,
-      kind: switch (creation.kind) {
-        ImportMappingTargetKind.asset => ImportLedgerTargetKind.asset,
-        ImportMappingTargetKind.liability => ImportLedgerTargetKind.liability,
-        ImportMappingTargetKind.advance => ImportLedgerTargetKind.advance,
-        ImportMappingTargetKind.incomeCategory =>
-          ImportLedgerTargetKind.incomeCategory,
-        ImportMappingTargetKind.expenseCategory =>
-          ImportLedgerTargetKind.expenseCategory,
-        ImportMappingTargetKind.ghost => ImportLedgerTargetKind.ghost,
-        ImportMappingTargetKind.unsupported =>
-          ImportLedgerTargetKind.unsupported,
-      },
       descriptor: descriptor,
       pathSegments: creation.pathSegments,
       billingDay: isCredit ? _accountCreationDefaults.creditBillingDay : null,
@@ -1062,7 +1015,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     ImportMappingCreation creation,
     Map<String, String> targetPathIndex,
   ) async {
-    final descriptor = creation.effectiveDescriptor;
+    final descriptor = creation.descriptor;
     final isCategory =
         descriptor == ImportTargetDescriptor.incomeCategory ||
         descriptor == ImportTargetDescriptor.expenseCategory;
@@ -1092,9 +1045,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       final id = await _ledger.createTarget(
         ImportLedgerTargetCreation(
           name: segment,
-          kind: descriptor == ImportTargetDescriptor.incomeCategory
-              ? ImportLedgerTargetKind.incomeCategory
-              : ImportLedgerTargetKind.expenseCategory,
           descriptor: descriptor,
           pathSegments: path,
           parentTargetId: parentId,
@@ -1108,7 +1058,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
 
   String _targetPathKey(ImportLedgerTarget target) {
     return _targetPathKeyFromParts(
-      target.effectiveDescriptor,
+      target.descriptor,
       target.displayPath.split('/'),
     );
   }
@@ -1118,15 +1068,6 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     Iterable<String> parts,
   ) {
     return '${descriptor.name}:${parts.map(_normalizeName).join('/')}';
-  }
-
-  Map<ImportMappingKey, Set<ImportMappingTargetKind>> _compatibleTargetKinds(
-    ImportParseResult plan,
-  ) {
-    return {
-      for (final entry in _compatibleTargetDescriptors(plan).entries)
-        entry.key: _legacyKinds(entry.value),
-    };
   }
 
   Map<ImportMappingKey, Set<ImportTargetDescriptor>>
@@ -1196,33 +1137,13 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     return result;
   }
 
-  Set<ImportMappingTargetKind> _legacyKinds(
-    Set<ImportTargetDescriptor> descriptors,
-  ) {
-    return {for (final descriptor in descriptors) descriptor.legacyMappingKind};
-  }
-
-  Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-  _compatibleTargetKindsForGroup(
-    ImportTransactionGroupDraft group, {
-    required ImportSource source,
-  }) {
-    return {
-      for (final entry in _compatibleTargetDescriptorsForGroup(
-        group,
-        source: source,
-      ).entries)
-        entry.key: _legacyKinds(entry.value),
-    };
-  }
-
   bool _targetSupportsEntity(
     ImportLedgerTarget target,
     ImportSourceEntity entity,
   ) {
     return ImportTargetCompatibilityPolicy.supportsEntity(
       entity,
-      target.effectiveDescriptor,
+      target.descriptor,
     );
   }
 
@@ -1841,7 +1762,7 @@ class _ResolutionContext {
         if (entity != null &&
             !ImportTargetCompatibilityPolicy.supportsEntity(
               entity,
-              creation.effectiveDescriptor,
+              creation.descriptor,
             )) {
           throw ImportWorkflowException(
             ImportErrorCode.mappingTargetRoleInvalid,
@@ -1875,7 +1796,7 @@ class _ResolutionContext {
 
   bool _creationSupports(ImportMappingCreation creation, _TargetUsage usage) {
     return ImportTargetCompatibilityPolicy.supportsUsage(
-      creation.effectiveDescriptor,
+      creation.descriptor,
       usage,
     );
   }
@@ -1893,7 +1814,7 @@ class _ResolutionContext {
     ImportMappingKey key,
   ) {
     final entity = sourceEntities[key];
-    final descriptor = target.effectiveDescriptor;
+    final descriptor = target.descriptor;
     if (descriptor == ImportTargetDescriptor.ghostAccount) {
       return usage == _TargetUsage.settlement && ghostMappingKeys.contains(key);
     }

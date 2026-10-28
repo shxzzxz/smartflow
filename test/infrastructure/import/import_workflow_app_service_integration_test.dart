@@ -136,7 +136,7 @@ void main() {
           ImportTransactionGroupDraft(
             topLevel: ImportOpeningBalanceDraft(
               amount: Money.parse('500'),
-              liabilityAccount: const ImportAccountReference.source(
+              account: const ImportAccountReference.source(
                 sourceEntityKey: 'account:来源信用卡',
                 displayName: '来源信用卡',
               ),
@@ -194,7 +194,7 @@ void main() {
           ImportTransactionGroupDraft(
             topLevel: ImportOpeningBalanceDraft(
               amount: Money.parse('1000'),
-              liabilityAccount: const ImportAccountReference.source(
+              account: const ImportAccountReference.source(
                 sourceEntityKey: 'account:来源贷款',
                 displayName: '来源贷款',
               ),
@@ -207,20 +207,19 @@ void main() {
       );
       final review = await fixture.service.review(plan);
       final creation = review.plannedCreations.values.single;
-      expect(creation.effectiveDescriptor, ImportTargetDescriptor.loanAccount);
+      expect(creation.descriptor, ImportTargetDescriptor.loanAccount);
       final mappingItem = review.mappingItems.single;
       expect(mappingItem.sourceDescription, '账户');
       expect(mappingItem.action, ImportMappingAction.create);
       expect(mappingItem.targetDescription, '贷款账户');
-      expect(
-        mappingItem.creationOptions.map((option) => option.effectiveDescriptor),
-        [ImportTargetDescriptor.loanAccount],
-      );
+      expect(mappingItem.creationOptions.map((option) => option.descriptor), [
+        ImportTargetDescriptor.loanAccount,
+      ]);
       expect(
         mappingItem.existingTargetOptions,
         everyElement(
           isA<ImportMappingTarget>().having(
-            (target) => target.effectiveDescriptor,
+            (target) => target.descriptor,
             'descriptor',
             ImportTargetDescriptor.loanAccount,
           ),
@@ -369,11 +368,11 @@ void main() {
       final creations = {
         accountKey: const ImportMappingCreation(
           name: '新钱包',
-          kind: ImportMappingTargetKind.asset,
+          descriptor: ImportTargetDescriptor.fundAccount,
         ),
         categoryKey: const ImportMappingCreation(
           name: '新餐饮',
-          kind: ImportMappingTargetKind.expenseCategory,
+          descriptor: ImportTargetDescriptor.expenseCategory,
         ),
       };
 
@@ -464,11 +463,11 @@ void main() {
       final creations = {
         accountKey: const ImportMappingCreation(
           name: '新结算账户',
-          kind: ImportMappingTargetKind.asset,
+          descriptor: ImportTargetDescriptor.fundAccount,
         ),
         categoryKey: const ImportMappingCreation(
           name: '未使用分类',
-          kind: ImportMappingTargetKind.expenseCategory,
+          descriptor: ImportTargetDescriptor.expenseCategory,
         ),
       };
       final review = await fixture.service.review(
@@ -555,7 +554,7 @@ void main() {
     final target = review.targets.singleWhere(
       (candidate) => candidate.id == review.effectiveMappings[key],
     );
-    expect(target.kind, ImportMappingTargetKind.ghost);
+    expect(target.descriptor, ImportTargetDescriptor.ghostAccount);
     expect(review.groups.single.canSelect, isTrue);
     expect(review.defaultMappings, isNot(contains(key)));
   });
@@ -650,7 +649,7 @@ void main() {
         ImportTransactionGroupDraft(
           topLevel: ImportOpeningBalanceDraft(
             amount: Money.parse('100.00'),
-            liabilityAccount: const ImportAccountReference.unresolved(
+            account: const ImportAccountReference.unresolved(
               sourceEntityKey: missingKey,
               displayName: '缺失债务账户（债务文件第 2 行）',
             ),

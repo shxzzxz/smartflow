@@ -1,10 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
 
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
-import 'package:smartflow/application/data_management/backup/counterparty_backup_migration.dart';
 import 'package:smartflow/infrastructure/data_management/backup/file_backup_package_store.dart';
 
 void main() {
@@ -41,6 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
+      expect(inspected.manifest.backupSchemaVersion, 1);
+      expect(inspected.manifest.schemaVersion, 49);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -52,6 +54,69 @@ void main() {
       expect(
         () => service.inspect(tempDirectory),
         throwsA(isA<BackupValidationException>()),
+      );
+    });
+
+    test(
+      'accepts an unchanged backup contract from an older database',
+      () async {
+        final oldDirectory = Directory('${tempDirectory.path}/v49-backup')
+          ..createSync();
+        final v49Service = BackupService(
+          gateway: FakeBackupGateway(_emptySnapshot(), schemaVersion: 49),
+          packageStore: const FileBackupPackageStore(),
+        );
+        await v49Service.createBackup(oldDirectory);
+        final v50Gateway = FakeBackupGateway(
+          BackupSnapshot(),
+          schemaVersion: 50,
+        );
+        final v50Service = BackupService(
+          gateway: v50Gateway,
+          packageStore: const FileBackupPackageStore(),
+        );
+
+        final inspection = await v50Service.inspect(oldDirectory);
+        final diff = await v50Service.restore(oldDirectory);
+
+        expect(inspection.manifest.backupSchemaVersion, 1);
+        expect(inspection.manifest.schemaVersion, 49);
+        expect(diff.itemFor('preferences').added, 1);
+        expect(v50Gateway.replaceCount, 1);
+      },
+    );
+
+    test('rejects obsolete backup format versions', () async {
+      await service.createBackup(tempDirectory);
+      final manifestFile = File('${tempDirectory.path}/manifest.json');
+      final manifest =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
+      manifest['formatVersion'] = 2;
+      await manifestFile.writeAsString(jsonEncode(manifest));
+
+      expect(
+        () => service.inspect(tempDirectory),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects unsupported backup schema versions', () async {
+      await service.createBackup(tempDirectory);
+      final manifestFile = File('${tempDirectory.path}/manifest.json');
+      final manifest =
+          jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
+      manifest['backupSchemaVersion'] = 2;
+      await manifestFile.writeAsString(jsonEncode(manifest));
+
+      expect(
+        () => service.inspect(tempDirectory),
+        throwsA(
+          isA<BackupValidationException>().having(
+            (error) => error.message,
+            'message',
+            contains('backupSchemaVersion 2'),
+          ),
+        ),
       );
     });
 
@@ -101,32 +166,8 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
+        expect(manifest.backupSchemaVersion, 1);
       },
-    );
-  });
-
-  test('migrates legacy counterparty names in old backups', () {
-    final tables = <String, Iterable<BackupJson>>{
-      'counterparties': const [],
-      'transactions': [
-        {'id': 'tx-1', 'counterpartyName': ' 自如 '},
-        {'id': 'tx-2', 'counterpartyName': '自如'},
-        {'id': 'tx-3', 'counterpartyName': '   '},
-      ],
-    };
-
-    migrateCounterpartyBackup(tables);
-
-    final counterparties = tables['counterparties']!.toList();
-    final transactions = tables['transactions']!.toList();
-    expect(counterparties, hasLength(1));
-    expect(counterparties.single['name'], '自如');
-    expect(transactions[0]['counterpartyId'], counterparties.single['id']);
-    expect(transactions[1]['counterpartyId'], counterparties.single['id']);
-    expect(transactions[2]['counterpartyId'], isNull);
-    expect(
-      transactions.every((row) => !row.containsKey('counterpartyName')),
-      isTrue,
     );
   });
 
@@ -275,13 +316,13 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot);
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 49});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;
 
   @override
-  int get schemaVersion => 29;
+  final int schemaVersion;
 
   @override
   Future<BackupSnapshot> readSnapshot() async => snapshot;

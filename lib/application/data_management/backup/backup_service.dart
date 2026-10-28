@@ -6,10 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../domain/credit/valobj/reference_rate.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 
-import 'advance_backup_migration.dart';
 import 'backup_models.dart';
-import 'counterparty_backup_migration.dart';
-import 'installment_backup_migration.dart';
 
 abstract interface class BackupSnapshotGateway {
   int get schemaVersion;
@@ -107,6 +104,7 @@ class BackupService {
 
     final manifest = BackupManifest(
       formatVersion: BackupManifest.currentFormatVersion,
+      backupSchemaVersion: BackupManifest.currentBackupSchemaVersion,
       appVersion: appVersion,
       schemaVersion: _gateway.schemaVersion,
       createdAt: (createdAt ?? DateTime.now()).toUtc(),
@@ -125,9 +123,22 @@ class BackupService {
   Future<BackupInspection> inspect(Object source) async {
     final package = await _packageStore.read(source);
     final manifest = package.manifest;
-    if (manifest.schemaVersion > _gateway.schemaVersion) {
+    if (manifest.backupSchemaVersion <
+            BackupManifest.minimumSupportedBackupSchemaVersion ||
+        manifest.backupSchemaVersion >
+            BackupManifest.currentBackupSchemaVersion) {
       throw BackupValidationException(
-        '备份 schema ${manifest.schemaVersion} 高于当前数据库 schema ${_gateway.schemaVersion}。',
+        '备份 backupSchemaVersion ${manifest.backupSchemaVersion} 不受支持；'
+        '当前支持范围是 '
+        '${BackupManifest.minimumSupportedBackupSchemaVersion}'
+        '..${BackupManifest.currentBackupSchemaVersion}。',
+      );
+    }
+    if (manifest.backupSchemaVersion !=
+        BackupManifest.currentBackupSchemaVersion) {
+      throw BackupValidationException(
+        '备份 backupSchemaVersion ${manifest.backupSchemaVersion} 到当前 '
+        '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
       );
     }
     final tables = <String, Iterable<BackupJson>>{};
@@ -178,13 +189,6 @@ class BackupService {
     if (!hasPreferences) {
       throw const BackupValidationException('备份缺少 preferences.json。');
     }
-    migrateInstallmentBackup(
-      tables,
-      schemaVersion: manifest.schemaVersion,
-      formatVersion: manifest.formatVersion,
-    );
-    migrateCounterpartyBackup(tables);
-    migrateAdvanceBackup(tables);
     for (final table in BackupTables.all) {
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');

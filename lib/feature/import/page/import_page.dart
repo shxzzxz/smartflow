@@ -1878,14 +1878,10 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                       ),
                       title: Text(target.displayPath),
                       subtitle: target.displayPath == target.name
-                          ? Text(
-                              importTargetDescription(
-                                target.effectiveDescriptor,
-                              ),
-                            )
+                          ? Text(importTargetDescription(target.descriptor))
                           : Text(
                               '${target.name} · '
-                              '${importTargetDescription(target.effectiveDescriptor)}',
+                              '${importTargetDescription(target.descriptor)}',
                             ),
                       onTap: () => Navigator.of(context).pop(
                         _MappingSelection(
@@ -1914,7 +1910,7 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                             : RemixIcons.checkbox_blank_circle_line,
                       ),
                       title: Text(
-                        '新增${importTargetDescription(creation.effectiveDescriptor)}',
+                        '新增${importTargetDescription(creation.descriptor)}',
                       ),
                       subtitle: Text(
                         [
@@ -1959,7 +1955,7 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
     final decision = widget.selectedDecision;
     return decision is PlannedCreationDecision &&
         decision.creation.name == creation.name &&
-        decision.creation.effectiveDescriptor == creation.effectiveDescriptor &&
+        decision.creation.descriptor == creation.descriptor &&
         decision.creation.pathSegments.join('/') ==
             creation.pathSegments.join('/');
   }

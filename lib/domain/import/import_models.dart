@@ -580,22 +580,15 @@ enum ImportOpeningBalanceAccountKind { receivable, liability }
 class ImportOpeningBalanceDraft extends ImportTransactionDraft {
   ImportOpeningBalanceDraft({
     required super.amount,
-    ImportAccountReference? account,
-    @Deprecated('Use account instead.')
-    ImportAccountReference? liabilityAccount,
+    required this.account,
     this.accountKind = ImportOpeningBalanceAccountKind.liability,
     required super.occurredAt,
     super.postedAt,
     super.note,
-  }) : assert(account != null || liabilityAccount != null),
-       account = account ?? liabilityAccount!;
+  });
 
   final ImportAccountReference account;
   final ImportOpeningBalanceAccountKind accountKind;
-
-  /// Kept as a compatibility alias for code which predates ordinary
-  /// receivable opening balances.
-  ImportAccountReference get liabilityAccount => account;
 
   @override
   ImportOperationKind get operationKind => ImportOperationKind.openingBalance;

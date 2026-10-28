@@ -136,72 +136,20 @@ class ImportMappingReviewItem {
 
 const Object _mappingItemSentinel = Object();
 
-/// Mapping targets exposed to the feature layer.
-///
-/// The import workflow deliberately does not expose its ledger port.  This
-/// small read model keeps target role information available to the UI without
-/// leaking an infrastructure/domain adapter across the application seam.
-enum ImportMappingTargetKind {
-  asset,
-  liability,
-  advance,
-  incomeCategory,
-  expenseCategory,
-  ghost,
-  unsupported,
-}
-
-extension ImportMappingTargetKindDescriptor on ImportMappingTargetKind {
-  ImportTargetDescriptor get defaultDescriptor => switch (this) {
-    ImportMappingTargetKind.asset => ImportTargetDescriptor.fundAccount,
-    // A legacy liability kind does not identify a credit card versus a loan.
-    ImportMappingTargetKind.liability => ImportTargetDescriptor.unsupported,
-    ImportMappingTargetKind.advance => ImportTargetDescriptor.advanceAccount,
-    ImportMappingTargetKind.incomeCategory =>
-      ImportTargetDescriptor.incomeCategory,
-    ImportMappingTargetKind.expenseCategory =>
-      ImportTargetDescriptor.expenseCategory,
-    ImportMappingTargetKind.ghost => ImportTargetDescriptor.ghostAccount,
-    ImportMappingTargetKind.unsupported => ImportTargetDescriptor.unsupported,
-  };
-}
-
-extension ImportTargetDescriptorMappingProjection on ImportTargetDescriptor {
-  ImportMappingTargetKind get legacyMappingKind => switch (this) {
-    ImportTargetDescriptor.fundAccount => ImportMappingTargetKind.asset,
-    ImportTargetDescriptor.advanceAccount => ImportMappingTargetKind.advance,
-    ImportTargetDescriptor.receivableAccount => ImportMappingTargetKind.asset,
-    ImportTargetDescriptor.payableAccount => ImportMappingTargetKind.liability,
-    ImportTargetDescriptor.creditAccount ||
-    ImportTargetDescriptor.loanAccount => ImportMappingTargetKind.liability,
-    ImportTargetDescriptor.incomeCategory =>
-      ImportMappingTargetKind.incomeCategory,
-    ImportTargetDescriptor.expenseCategory =>
-      ImportMappingTargetKind.expenseCategory,
-    ImportTargetDescriptor.ghostAccount => ImportMappingTargetKind.ghost,
-    ImportTargetDescriptor.unsupported => ImportMappingTargetKind.unsupported,
-  };
-}
-
 class ImportMappingTarget {
   const ImportMappingTarget({
     required this.id,
     required this.name,
     required this.displayPath,
-    required this.kind,
+    required this.descriptor,
     required this.isArchived,
-    this.descriptor,
   });
 
   final String id;
   final String name;
   final String displayPath;
-  final ImportMappingTargetKind kind;
+  final ImportTargetDescriptor descriptor;
   final bool isArchived;
-  final ImportTargetDescriptor? descriptor;
-
-  ImportTargetDescriptor get effectiveDescriptor =>
-      descriptor ?? kind.defaultDescriptor;
 }
 
 class ImportMappingKey {
@@ -252,20 +200,15 @@ class ImportMappingSuggestion {
 class ImportMappingCreation {
   const ImportMappingCreation({
     required this.name,
-    required this.kind,
-    this.descriptor,
+    required this.descriptor,
     this.pathSegments = const [],
     this.defaultParametersHint,
   });
 
   final String name;
-  final ImportMappingTargetKind kind;
-  final ImportTargetDescriptor? descriptor;
+  final ImportTargetDescriptor descriptor;
   final List<String> pathSegments;
   final String? defaultParametersHint;
-
-  ImportTargetDescriptor get effectiveDescriptor =>
-      descriptor ?? kind.defaultDescriptor;
 }
 
 class ImportGroupReview {
@@ -276,17 +219,11 @@ class ImportGroupReview {
     required this.isExactDuplicate,
     required this.isSuspectedDuplicate,
     Map<ImportMappingKey, String> effectiveMappings = const {},
-    Map<ImportMappingKey, Set<ImportMappingTargetKind>> compatibleTargetKinds =
-        const {},
     Map<ImportMappingKey, Set<ImportTargetDescriptor>>
         compatibleTargetDescriptors =
         const {},
   }) : issues = List.unmodifiable(issues),
        effectiveMappings = Map.unmodifiable(effectiveMappings),
-       compatibleTargetKinds = Map.unmodifiable({
-         for (final entry in compatibleTargetKinds.entries)
-           entry.key: Set.unmodifiable(entry.value),
-       }),
        compatibleTargetDescriptors = Map.unmodifiable({
          for (final entry in compatibleTargetDescriptors.entries)
            entry.key: Set.unmodifiable(entry.value),
@@ -298,8 +235,6 @@ class ImportGroupReview {
   final bool isExactDuplicate;
   final bool isSuspectedDuplicate;
   final Map<ImportMappingKey, String> effectiveMappings;
-  final Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-  compatibleTargetKinds;
   final Map<ImportMappingKey, Set<ImportTargetDescriptor>>
   compatibleTargetDescriptors;
 
@@ -319,8 +254,6 @@ class ImportPlanReview {
     required List<ImportMappingSuggestion> suggestions,
     Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     List<ImportMappingTarget> targets = const [],
-    Map<ImportMappingKey, Set<ImportMappingTargetKind>> compatibleTargetKinds =
-        const {},
     Map<ImportMappingKey, Set<ImportTargetDescriptor>>
         compatibleTargetDescriptors =
         const {},
@@ -332,10 +265,6 @@ class ImportPlanReview {
        suggestions = List.unmodifiable(suggestions),
        plannedCreations = Map.unmodifiable(plannedCreations),
        targets = List.unmodifiable(targets),
-       compatibleTargetKinds = Map.unmodifiable({
-         for (final entry in compatibleTargetKinds.entries)
-           entry.key: Set.unmodifiable(entry.value),
-       }),
        compatibleTargetDescriptors = Map.unmodifiable({
          for (final entry in compatibleTargetDescriptors.entries)
            entry.key: Set.unmodifiable(entry.value),
@@ -356,8 +285,6 @@ class ImportPlanReview {
   final List<ImportMappingSuggestion> suggestions;
   final Map<ImportMappingKey, ImportMappingCreation> plannedCreations;
   final List<ImportMappingTarget> targets;
-  final Map<ImportMappingKey, Set<ImportMappingTargetKind>>
-  compatibleTargetKinds;
   final Map<ImportMappingKey, Set<ImportTargetDescriptor>>
   compatibleTargetDescriptors;
   final Map<int, Map<ImportMappingKey, String>> groupMappingOverrides;

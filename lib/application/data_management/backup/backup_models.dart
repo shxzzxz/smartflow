@@ -159,9 +159,7 @@ class BackupFileDescriptor {
     final map = _stringMap(value, 'Invalid backup file entry.');
     final path = _requiredString(map, 'path');
     final table = _requiredString(map, 'table');
-    if (table != 'preferences' &&
-            table != 'lpr_quotes' &&
-            !BackupTables.all.contains(table) ||
+    if (table != 'preferences' && !BackupTables.all.contains(table) ||
         path.contains('..') ||
         path.contains('\u0000') ||
         path.startsWith('/') ||
@@ -190,6 +188,7 @@ class BackupFileDescriptor {
 class BackupManifest {
   const BackupManifest({
     required this.formatVersion,
+    required this.backupSchemaVersion,
     required this.appVersion,
     required this.schemaVersion,
     required this.createdAt,
@@ -200,10 +199,22 @@ class BackupManifest {
     this.encryption,
   });
 
+  /// First supported logical-backup contract. Older formats are rejected.
   static const currentFormatVersion = 3;
 
+  /// First supported logical data contract.
+  ///
+  /// This is independent from the database schema version and only changes
+  /// when exported tables, fields or wire codes change.
+  static const currentBackupSchemaVersion = 1;
+  static const minimumSupportedBackupSchemaVersion = 1;
+
   final int formatVersion;
+  final int backupSchemaVersion;
   final String appVersion;
+
+  /// Database schema that produced this backup. This is diagnostic metadata;
+  /// restore compatibility is determined by [backupSchemaVersion].
   final int schemaVersion;
   final DateTime createdAt;
   final String baseCurrency;
@@ -214,6 +225,7 @@ class BackupManifest {
 
   BackupJson toJson() => {
     'formatVersion': formatVersion,
+    'backupSchemaVersion': backupSchemaVersion,
     'appVersion': appVersion,
     'schemaVersion': schemaVersion,
     'createdAt': createdAt.toUtc().toIso8601String(),
@@ -236,10 +248,15 @@ class BackupManifest {
       throw const FormatException('Backup manifest is missing requiredFiles.');
     }
     final formatVersion = _requiredInt(map, 'formatVersion');
-    if (formatVersion < 1 || formatVersion > currentFormatVersion) {
+    if (formatVersion != currentFormatVersion) {
       throw FormatException(
-        'Backup format $formatVersion is not supported; current format is $currentFormatVersion.',
+        'Backup format $formatVersion is not supported; '
+        'this build requires format $currentFormatVersion.',
       );
+    }
+    final backupSchemaVersion = _requiredInt(map, 'backupSchemaVersion');
+    if (backupSchemaVersion < 1) {
+      throw const FormatException('Invalid backup schema version.');
     }
     final createdAt = DateTime.tryParse(_requiredString(map, 'createdAt'));
     if (createdAt == null) {
@@ -262,10 +279,15 @@ class BackupManifest {
     if (files.map((file) => file.path).toSet().length != files.length) {
       throw const FormatException('Backup manifest contains duplicate files.');
     }
+    final schemaVersion = _requiredInt(map, 'schemaVersion');
+    if (schemaVersion < 1) {
+      throw const FormatException('Invalid source database schema version.');
+    }
     return BackupManifest(
       formatVersion: formatVersion,
+      backupSchemaVersion: backupSchemaVersion,
       appVersion: _requiredString(map, 'appVersion'),
-      schemaVersion: _requiredInt(map, 'schemaVersion'),
+      schemaVersion: schemaVersion,
       createdAt: createdAt,
       baseCurrency: baseCurrency,
       minorUnit: minorUnit,

@@ -11,8 +11,6 @@ import 'package:smartflow/infrastructure/credit/repository/drift_reference_rate_
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
-import 'package:smartflow/application/data_management/backup/installment_backup_migration.dart';
-import 'package:smartflow/application/data_management/backup/backup_models.dart';
 
 import '../../helper/test_app_database.dart';
 
@@ -671,32 +669,6 @@ void main() {
             .get(),
         isEmpty,
       );
-    },
-  );
-
-  test(
-    'schema 36 logical backups migrate quote identity and preserve rate evidence',
-    () {
-      final tables = <String, Iterable<BackupJson>>{
-        'lpr_quotes': [
-          {
-            'quoteDate': 123000,
-            'tenor': 'fiveYearPlus',
-            'ratePpm': 42000,
-            'source': 'legacy',
-            'createdAt': 124000,
-          },
-        ],
-      };
-      migrateInstallmentBackup(tables, schemaVersion: 36, formatVersion: 2);
-      expect(tables.containsKey('lpr_quotes'), isFalse);
-      expect(tables['reference_rates']!.single, {
-        'rateDate': 123000,
-        'type': 'lprFiveYearPlus',
-        'ratePpm': 42000,
-        'source': 'legacy',
-        'createdAt': 124000,
-      });
     },
   );
 }

@@ -176,7 +176,7 @@ class _Ledger implements ImportLedgerPort {
       id: targetId,
       name: targetId,
       displayPath: targetId,
-      kind: ImportLedgerTargetKind.asset,
+      descriptor: ImportTargetDescriptor.fundAccount,
       isArchived: false,
     );
   }

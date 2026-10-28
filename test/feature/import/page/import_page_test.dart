@@ -453,7 +453,7 @@ void main() {
       plannedCreations: {
         categoryKey: const ImportMappingCreation(
           name: '缺失收入分类（账单文件第 2 行）',
-          kind: ImportMappingTargetKind.incomeCategory,
+          descriptor: ImportTargetDescriptor.incomeCategory,
         ),
       },
       targets: const [
@@ -461,7 +461,7 @@ void main() {
           id: 'ghost',
           name: '幽灵账户',
           displayPath: '幽灵账户',
-          kind: ImportMappingTargetKind.ghost,
+          descriptor: ImportTargetDescriptor.ghostAccount,
           isArchived: false,
         ),
       ],
@@ -488,13 +488,13 @@ void main() {
           creationOptions: [
             const ImportMappingCreation(
               name: '缺失收入分类（账单文件第 2 行）',
-              kind: ImportMappingTargetKind.incomeCategory,
+              descriptor: ImportTargetDescriptor.incomeCategory,
             ),
           ],
           decision: const PlannedCreationDecision(
             ImportMappingCreation(
               name: '缺失收入分类（账单文件第 2 行）',
-              kind: ImportMappingTargetKind.incomeCategory,
+              descriptor: ImportTargetDescriptor.incomeCategory,
             ),
           ),
         ),
@@ -639,7 +639,7 @@ ImportPlanReview _mappingReview(ImportParseResult plan) {
           sourceEntityKey: 'account:source-$index',
         ): ImportMappingCreation(
           name: '来源账户$index',
-          kind: ImportMappingTargetKind.asset,
+          descriptor: ImportTargetDescriptor.fundAccount,
         ),
     },
     targets: const [
@@ -647,7 +647,7 @@ ImportPlanReview _mappingReview(ImportParseResult plan) {
         id: 'cash',
         name: '现金',
         displayPath: '现金',
-        kind: ImportMappingTargetKind.asset,
+        descriptor: ImportTargetDescriptor.fundAccount,
         isArchived: false,
       ),
     ],
@@ -679,13 +679,13 @@ ImportPlanReview _mappingReview(ImportParseResult plan) {
           creationOptions: [
             ImportMappingCreation(
               name: '来源账户$index',
-              kind: ImportMappingTargetKind.asset,
+              descriptor: ImportTargetDescriptor.fundAccount,
             ),
           ],
           decision: PlannedCreationDecision(
             ImportMappingCreation(
               name: '来源账户$index',
-              kind: ImportMappingTargetKind.asset,
+              descriptor: ImportTargetDescriptor.fundAccount,
             ),
           ),
         ),
@@ -784,14 +784,14 @@ ImportPlanReview _review(ImportParseResult plan) {
         id: 'cash',
         name: '现金',
         displayPath: '现金',
-        kind: ImportMappingTargetKind.asset,
+        descriptor: ImportTargetDescriptor.fundAccount,
         isArchived: false,
       ),
       ImportMappingTarget(
         id: 'food',
         name: '餐饮',
         displayPath: '餐饮',
-        kind: ImportMappingTargetKind.expenseCategory,
+        descriptor: ImportTargetDescriptor.expenseCategory,
         isArchived: false,
       ),
     ],
@@ -956,7 +956,6 @@ class _FakeWorkflow implements ImportWorkflowAppService {
       suggestions: planReview.suggestions,
       plannedCreations: resolvedCreations,
       targets: planReview.targets,
-      compatibleTargetKinds: planReview.compatibleTargetKinds,
       groupMappingOverrides: groupMappingOverrides,
       mappingItems: planReview.mappingItems,
       groups: [
@@ -968,7 +967,6 @@ class _FakeWorkflow implements ImportWorkflowAppService {
             isExactDuplicate: group.isExactDuplicate,
             isSuspectedDuplicate: group.isSuspectedDuplicate,
             effectiveMappings: effectiveMappings,
-            compatibleTargetKinds: group.compatibleTargetKinds,
           ),
       ],
     );

@@ -74,7 +74,7 @@ class LedgerImportPort implements ImportLedgerPort {
 
   @override
   Future<String> createTarget(ImportLedgerTargetCreation creation) async {
-    return switch (creation.effectiveDescriptor) {
+    return switch (creation.descriptor) {
       ImportTargetDescriptor.fundAccount =>
         (await _accountCommands.createAccount(
           CreateAccountCommand(
@@ -137,9 +137,9 @@ class LedgerImportPort implements ImportLedgerPort {
         )).id,
       ImportTargetDescriptor.ghostAccount ||
       ImportTargetDescriptor.unsupported => throw ArgumentError.value(
-        creation.kind,
-        'creation.kind',
-        'The requested mapping target kind cannot be created.',
+        creation.descriptor,
+        'creation.descriptor',
+        'The requested mapping target cannot be created.',
       ),
     };
   }
@@ -571,23 +571,12 @@ class LedgerImportPort implements ImportLedgerPort {
   }
 
   ImportLedgerTarget _target(Account account, {String? parentName}) {
-    final kind = switch ((account.type, account.subtype, account.systemKey)) {
-      (_, _, SystemKey.ghostAccount) => ImportLedgerTargetKind.ghost,
-      (AccountType.asset, AccountSubtype.receivable, _) =>
-        ImportLedgerTargetKind.advance,
-      (AccountType.asset, _, _) => ImportLedgerTargetKind.asset,
-      (AccountType.liability, _, _) => ImportLedgerTargetKind.liability,
-      (AccountType.income, _, _) => ImportLedgerTargetKind.incomeCategory,
-      (AccountType.expense, _, _) => ImportLedgerTargetKind.expenseCategory,
-      _ => ImportLedgerTargetKind.unsupported,
-    };
     return ImportLedgerTarget(
       id: account.id,
       name: account.name,
       displayPath: parentName == null
           ? account.name
           : '$parentName / ${account.name}',
-      kind: kind,
       isArchived: account.isArchived,
       descriptor: _descriptorForAccount(account),
     );
