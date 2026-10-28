@@ -16,8 +16,11 @@ import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
+import 'package:smartflow/shared/account_profile/account_selection_policy.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 import '../../../helper/fake_advance_case_repository.dart';
 
@@ -48,18 +51,6 @@ void main() {
         'food': _account('food', type: AccountType.expense),
       };
       final commonOverrides = [
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.fund,
-        ).overrideWithValue(const AsyncData(<Account>[])),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.borrowingLiability,
-        ).overrideWithValue(const AsyncData(<Account>[])),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.advanceReceivable,
-        ).overrideWithValue(const AsyncData(<Account>[])),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.ordinaryReceivable,
-        ).overrideWithValue(const AsyncData(<Account>[])),
         categoryTreeProvider(AccountType.expense).overrideWithValue(
           AsyncData([CategoryNode(account: accounts['food']!)]),
         ),
@@ -82,9 +73,9 @@ void main() {
           transactionDetailProvider(
             'tx-1',
           ).overrideWithValue(AsyncData(detail)),
-          accountsForSelectionPurposeProvider(
-            AccountSelectionPurpose.settlement,
-          ).overrideWithValue(const AsyncLoading()),
+          transactionAccountOptionsProvider.overrideWithValue(
+            const AsyncLoading(),
+          ),
         ],
       );
       addTearDown(loading.dispose);
@@ -101,9 +92,13 @@ void main() {
           transactionDetailProvider(
             'tx-1',
           ).overrideWithValue(AsyncData(detail)),
-          accountsForSelectionPurposeProvider(
-            AccountSelectionPurpose.settlement,
-          ).overrideWithValue(AsyncData([accounts['cash']!])),
+          transactionAccountOptionsProvider.overrideWithValue(
+            AsyncData(
+              TransactionAccountOptions(
+                settlementAccounts: [accounts['cash']!],
+              ),
+            ),
+          ),
         ],
       );
       addTearDown(loaded.dispose);
@@ -119,9 +114,13 @@ void main() {
       final missing = ProviderContainer(
         overrides: [
           ...commonOverrides,
-          accountsForSelectionPurposeProvider(
-            AccountSelectionPurpose.settlement,
-          ).overrideWithValue(AsyncData([accounts['cash']!])),
+          transactionAccountOptionsProvider.overrideWithValue(
+            AsyncData(
+              TransactionAccountOptions(
+                settlementAccounts: [accounts['cash']!],
+              ),
+            ),
+          ),
           transactionDetailProvider(
             'tx-1',
           ).overrideWithValue(const AsyncData(null)),
@@ -1043,7 +1042,7 @@ void main() {
         postingService: posting,
         advanceOrchestrationService: orchestration,
         settlementAccounts: [_account('cash')],
-        ordinaryReceivableAccounts: [_account('deposit')],
+        ordinaryReceivableAccounts: [_receivableAccount('deposit')],
       );
       final viewModel = container.read(_provider().notifier);
 
@@ -1390,21 +1389,24 @@ ProviderContainer _container({
       transactionQueryServiceProvider.overrideWithValue(
         transactionQueryService ?? _FakeTransactionQueryService(),
       ),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.settlement,
-      ).overrideWithValue(AsyncData(settlementAccounts)),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.fund,
-      ).overrideWithValue(AsyncData(fundAccounts)),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.borrowingLiability,
-      ).overrideWithValue(AsyncData(liabilityAccounts)),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.advanceReceivable,
-      ).overrideWithValue(AsyncData(advanceReceivableAccounts)),
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.ordinaryReceivable,
-      ).overrideWithValue(AsyncData(ordinaryReceivableAccounts)),
+      transactionAccountOptionsProvider.overrideWithValue(
+        AsyncData(
+          TransactionAccountOptions(
+            settlementAccounts: settlementAccounts,
+            fundAccounts: fundAccounts,
+            liabilityAccounts: liabilityAccounts,
+            advanceReceivableAccounts: advanceReceivableAccounts,
+            ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+            expenseSettlementAccounts: [
+              ...settlementAccounts,
+              ...accountsMatchingSelectionPurpose(
+                ordinaryReceivableAccounts,
+                AccountSelectionPurpose.expenseSettlement,
+              ),
+            ],
+          ),
+        ),
+      ),
       categoryTreeProvider(
         AccountType.expense,
       ).overrideWithValue(const AsyncData(<CategoryNode>[])),
@@ -1439,6 +1441,17 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
     id: id,
     name: id,
     type: type,
+    balance: const Money(minorUnits: 0),
+  );
+}
+
+Account _receivableAccount(String id) {
+  return Account(
+    id: id,
+    name: id,
+    type: AccountType.asset,
+    subtype: AccountSubtype.receivable,
+    profileKey: AccountProfileKind.receivable.key,
     balance: const Money(minorUnits: 0),
   );
 }

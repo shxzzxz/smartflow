@@ -12,9 +12,13 @@ bool accountMatchesSelectionPurpose(
     AccountSelectionPurpose.settlement =>
       accountMatchesUsage(account, AccountUsage.settlement) &&
           account.profileKey != AccountProfileKind.loan.key,
+    // Ledger accepts every receivable subtype as an expense settlement role.
+    // The product form exposes only the ordinary receivable profile.
     AccountSelectionPurpose.expenseSettlement =>
-      accountMatchesUsage(account, AccountUsage.expenseSettlement) &&
-          account.profileKey != AccountProfileKind.loan.key,
+      (accountMatchesUsage(account, AccountUsage.settlement) &&
+              account.profileKey != AccountProfileKind.loan.key) ||
+          (accountMatchesUsage(account, AccountUsage.receivable) &&
+              account.profileKey == AccountProfileKind.receivable.key),
     AccountSelectionPurpose.fund => accountMatchesUsage(
       account,
       AccountUsage.fund,
@@ -37,4 +41,15 @@ bool accountMatchesSelectionPurpose(
       AccountUsage.receivable,
     ),
   };
+}
+
+List<Account> accountsMatchingSelectionPurpose(
+  Iterable<Account> accounts,
+  AccountSelectionPurpose purpose,
+) {
+  return List.unmodifiable(
+    accounts.where(
+      (account) => accountMatchesSelectionPurpose(account, purpose),
+    ),
+  );
 }

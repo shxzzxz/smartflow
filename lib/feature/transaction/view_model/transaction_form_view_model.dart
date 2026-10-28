@@ -10,13 +10,13 @@ import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_form_presentation.dart';
+import 'transaction_account_options.dart';
 
 part 'transaction_form_view_model.g.dart';
 
@@ -44,27 +44,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     String? initialLiabilityAccountId,
   }) {
     _editTransactionId = editTransactionId;
-    final settlementAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.settlement),
-    );
-    final fundAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(AccountSelectionPurpose.fund),
-    );
-    final liabilityAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.borrowingLiability,
-      ),
-    );
-    final advanceReceivableAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.advanceReceivable,
-      ),
-    );
-    final ordinaryReceivableAccountsAsync = ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.ordinaryReceivable,
-      ),
-    );
+    final accountOptionsAsync = ref.watch(transactionAccountOptionsProvider);
     final expenseTreeAsync = ref.watch(
       categoryTreeProvider(AccountType.expense),
     );
@@ -85,11 +65,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (initializedState != null) {
       final next = _refreshReferenceData(
         initializedState,
-        settlementAccounts: settlementAccountsAsync.value,
-        fundAccounts: fundAccountsAsync.value,
-        liabilityAccounts: liabilityAccountsAsync.value,
-        advanceReceivableAccounts: advanceReceivableAccountsAsync.value,
-        ordinaryReceivableAccounts: ordinaryReceivableAccountsAsync.value,
+        accountOptions: accountOptionsAsync.value,
         expenseTree: expenseTreeAsync.value,
         incomeTree: incomeTreeAsync.value,
         tags: tagsAsync.value,
@@ -106,14 +82,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           fromAccountId: initialFromAccountId,
           toAccountId: initialToAccountId,
           liabilityAccountId: initialLiabilityAccountId,
-          settlementAccounts:
-              settlementAccountsAsync.value ?? const <Account>[],
-          fundAccounts: fundAccountsAsync.value ?? const <Account>[],
-          liabilityAccounts: liabilityAccountsAsync.value ?? const <Account>[],
-          advanceReceivableAccounts:
-              advanceReceivableAccountsAsync.value ?? const <Account>[],
-          ordinaryReceivableAccounts:
-              ordinaryReceivableAccountsAsync.value ?? const <Account>[],
+          accountOptions:
+              accountOptionsAsync.value ?? TransactionAccountOptions.empty(),
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
           incomeTree: incomeTreeAsync.value ?? const <CategoryNode>[],
           tags: tagsAsync.value ?? const <TagView>[],
@@ -124,11 +94,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     }
 
     final queries = <AsyncValue<dynamic>>[
-      settlementAccountsAsync,
-      fundAccountsAsync,
-      liabilityAccountsAsync,
-      advanceReceivableAccountsAsync,
-      ordinaryReceivableAccountsAsync,
+      accountOptionsAsync,
       expenseTreeAsync,
       incomeTreeAsync,
       tagsAsync,
@@ -146,13 +112,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return const AsyncValue.loading();
     }
 
-    final settlementAccounts = settlementAccountsAsync.requireValue;
-    final fundAccounts = fundAccountsAsync.requireValue;
-    final liabilityAccounts = liabilityAccountsAsync.requireValue;
-    final advanceReceivableAccounts =
-        advanceReceivableAccountsAsync.requireValue;
-    final ordinaryReceivableAccounts =
-        ordinaryReceivableAccountsAsync.requireValue;
+    final accountOptions = accountOptionsAsync.requireValue;
     final expenseTree = expenseTreeAsync.requireValue;
     final incomeTree = incomeTreeAsync.requireValue;
 
@@ -183,11 +143,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     return AsyncValue.data(
       _initializedState ??= TransactionFormState.fromEditSnapshot(
         snapshot: snapshot,
-        settlementAccounts: settlementAccounts,
-        fundAccounts: fundAccounts,
-        liabilityAccounts: liabilityAccounts,
-        advanceReceivableAccounts: advanceReceivableAccounts,
-        ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+        accountOptions: accountOptions,
         expenseTree: expenseTree,
         incomeTree: incomeTree,
         tags: tagsAsync.value ?? const <TagView>[],
@@ -850,22 +806,14 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   TransactionFormState _refreshReferenceData(
     TransactionFormState current, {
-    required List<Account>? settlementAccounts,
-    required List<Account>? fundAccounts,
-    required List<Account>? liabilityAccounts,
-    required List<Account>? advanceReceivableAccounts,
-    required List<Account>? ordinaryReceivableAccounts,
+    required TransactionAccountOptions? accountOptions,
     required List<CategoryNode>? expenseTree,
     required List<CategoryNode>? incomeTree,
     required List<TagView>? tags,
     required List<CounterpartyView>? counterparties,
   }) {
     return current.copyWith(
-      settlementAccounts: settlementAccounts,
-      fundAccounts: fundAccounts,
-      liabilityAccounts: liabilityAccounts,
-      advanceReceivableAccounts: advanceReceivableAccounts,
-      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+      accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -1039,11 +987,7 @@ class TransactionFormState {
     required this.excludeStats,
     required this.excludeBudget,
     required this.submitting,
-    required List<Account> settlementAccounts,
-    required List<Account> fundAccounts,
-    required List<Account> liabilityAccounts,
-    required List<Account> advanceReceivableAccounts,
-    required List<Account> ordinaryReceivableAccounts,
+    required this.accountOptions,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -1065,14 +1009,7 @@ class TransactionFormState {
     this.liabilityAccountId,
     List<AccountAmountAllocation> categoryAllocations = const [],
     List<AccountAmountAllocation> settlementAllocations = const [],
-  }) : settlementAccounts = List.unmodifiable(settlementAccounts),
-       fundAccounts = List.unmodifiable(fundAccounts),
-       liabilityAccounts = List.unmodifiable(liabilityAccounts),
-       advanceReceivableAccounts = List.unmodifiable(advanceReceivableAccounts),
-       ordinaryReceivableAccounts = List.unmodifiable(
-         ordinaryReceivableAccounts,
-       ),
-       expenseTree = List.unmodifiable(expenseTree),
+  }) : expenseTree = List.unmodifiable(expenseTree),
        incomeTree = List.unmodifiable(incomeTree),
        tags = List.unmodifiable(tags),
        counterparties = List.unmodifiable(counterparties),
@@ -1084,11 +1021,7 @@ class TransactionFormState {
     String? fromAccountId,
     String? toAccountId,
     String? liabilityAccountId,
-    required List<Account> settlementAccounts,
-    required List<Account> fundAccounts,
-    required List<Account> liabilityAccounts,
-    required List<Account> advanceReceivableAccounts,
-    required List<Account> ordinaryReceivableAccounts,
+    required TransactionAccountOptions accountOptions,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -1115,11 +1048,7 @@ class TransactionFormState {
       liabilityAccountId: mode == TransactionFormMode.borrowing
           ? liabilityAccountId
           : null,
-      settlementAccounts: settlementAccounts,
-      fundAccounts: fundAccounts,
-      liabilityAccounts: liabilityAccounts,
-      advanceReceivableAccounts: advanceReceivableAccounts,
-      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+      accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -1129,11 +1058,7 @@ class TransactionFormState {
 
   factory TransactionFormState.fromEditSnapshot({
     required TransactionFormEditSnapshot snapshot,
-    required List<Account> settlementAccounts,
-    required List<Account> fundAccounts,
-    required List<Account> liabilityAccounts,
-    required List<Account> advanceReceivableAccounts,
-    required List<Account> ordinaryReceivableAccounts,
+    required TransactionAccountOptions accountOptions,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
@@ -1180,11 +1105,7 @@ class TransactionFormState {
       excludeStats: snapshot.excludeStats,
       excludeBudget: snapshot.excludeBudget,
       submitting: false,
-      settlementAccounts: settlementAccounts,
-      fundAccounts: fundAccounts,
-      liabilityAccounts: liabilityAccounts,
-      advanceReceivableAccounts: advanceReceivableAccounts,
-      ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+      accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
@@ -1216,20 +1137,21 @@ class TransactionFormState {
   final bool submitting;
   final Set<String> selectedTagIds;
   final String? counterpartyId;
-  final List<Account> settlementAccounts;
-  final List<Account> fundAccounts;
-  final List<Account> liabilityAccounts;
-  final List<Account> advanceReceivableAccounts;
-  final List<Account> ordinaryReceivableAccounts;
+  final TransactionAccountOptions accountOptions;
   final List<CategoryNode> expenseTree;
   final List<CategoryNode> incomeTree;
   final List<TagView> tags;
   final List<CounterpartyView> counterparties;
 
-  /// 日常支出可以把资金、负债或应收账户作为支出账户。
-  /// 应收账户仅在支出原语中进入结算角色，不扩大其它原语的账户范围。
+  List<Account> get settlementAccounts => accountOptions.settlementAccounts;
+  List<Account> get fundAccounts => accountOptions.fundAccounts;
+  List<Account> get liabilityAccounts => accountOptions.liabilityAccounts;
+  List<Account> get advanceReceivableAccounts =>
+      accountOptions.advanceReceivableAccounts;
+  List<Account> get ordinaryReceivableAccounts =>
+      accountOptions.ordinaryReceivableAccounts;
   List<Account> get expenseSettlementAccounts =>
-      List.unmodifiable([...settlementAccounts, ...ordinaryReceivableAccounts]);
+      accountOptions.expenseSettlementAccounts;
 
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
@@ -1254,11 +1176,7 @@ class TransactionFormState {
     bool? excludeStats,
     bool? excludeBudget,
     bool? submitting,
-    List<Account>? settlementAccounts,
-    List<Account>? fundAccounts,
-    List<Account>? liabilityAccounts,
-    List<Account>? advanceReceivableAccounts,
-    List<Account>? ordinaryReceivableAccounts,
+    TransactionAccountOptions? accountOptions,
     List<CategoryNode>? expenseTree,
     List<CategoryNode>? incomeTree,
     List<TagView>? tags,
@@ -1308,13 +1226,7 @@ class TransactionFormState {
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,
-      settlementAccounts: settlementAccounts ?? this.settlementAccounts,
-      fundAccounts: fundAccounts ?? this.fundAccounts,
-      liabilityAccounts: liabilityAccounts ?? this.liabilityAccounts,
-      advanceReceivableAccounts:
-          advanceReceivableAccounts ?? this.advanceReceivableAccounts,
-      ordinaryReceivableAccounts:
-          ordinaryReceivableAccounts ?? this.ordinaryReceivableAccounts,
+      accountOptions: accountOptions ?? this.accountOptions,
       expenseTree: expenseTree ?? this.expenseTree,
       incomeTree: incomeTree ?? this.incomeTree,
       tags: tags ?? this.tags,

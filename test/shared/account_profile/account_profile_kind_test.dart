@@ -92,7 +92,6 @@ void main() {
       AccountSelectionPurpose.advanceReceivable,
       AccountSelectionPurpose.ordinaryReceivable,
       AccountSelectionPurpose.receivable,
-      AccountSelectionPurpose.expenseSettlement,
     ];
 
     for (final account in accounts) {
@@ -112,6 +111,29 @@ void main() {
       );
     }
   });
+
+  test(
+    'only the receivable profile joins daily expense settlement options',
+    () {
+      final reimbursement = _receivable(AccountProfileKind.reimbursement);
+      final receivable = _receivable(AccountProfileKind.receivable);
+
+      expect(
+        accountMatchesSelectionPurpose(
+          reimbursement,
+          AccountSelectionPurpose.expenseSettlement,
+        ),
+        isFalse,
+      );
+      expect(
+        accountMatchesSelectionPurpose(
+          receivable,
+          AccountSelectionPurpose.expenseSettlement,
+        ),
+        isTrue,
+      );
+    },
+  );
 }
 
 Account _receivable(AccountProfileKind kind) => Account(

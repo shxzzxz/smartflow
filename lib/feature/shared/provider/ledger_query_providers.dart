@@ -60,13 +60,7 @@ Stream<List<Account>> accountsForSelectionPurpose(
   return ref
       .watch(accountQueryServiceProvider)
       .watchAccounts({AccountType.asset, AccountType.liability})
-      .map((accounts) {
-        return accounts
-            .where(
-              (account) => accountMatchesSelectionPurpose(account, purpose),
-            )
-            .toList();
-      });
+      .map((accounts) => accountsMatchingSelectionPurpose(accounts, purpose));
 }
 
 @riverpod

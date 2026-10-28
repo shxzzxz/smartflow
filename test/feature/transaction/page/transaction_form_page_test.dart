@@ -16,8 +16,8 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
-import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
@@ -56,7 +56,10 @@ void main() {
       tester,
       _FakeTransactionPostingAppService(),
       fundAccounts: [_account('cash')],
-      ordinaryReceivableAccounts: [_account('receivable'), _account('deposit')],
+      ordinaryReceivableAccounts: [
+        _account('receivable', profileKey: AccountProfileKind.receivable.key),
+        _account('deposit', profileKey: AccountProfileKind.receivable.key),
+      ],
     );
 
     await tester.tap(find.text('场景'));
@@ -82,14 +85,20 @@ void main() {
     expect(find.text('押金账户'), findsNothing);
   });
 
-  testWidgets('offers receivable accounts as daily expense accounts', (
+  testWidgets('offers only receivable-profile accounts as expense accounts', (
     tester,
   ) async {
     await _pumpTransactionForm(
       tester,
       _FakeTransactionPostingAppService(),
       settlementAccounts: [_account('cash')],
-      ordinaryReceivableAccounts: [_account('deposit')],
+      ordinaryReceivableAccounts: [
+        _account('deposit', profileKey: AccountProfileKind.receivable.key),
+        _account(
+          'reimbursement',
+          profileKey: AccountProfileKind.reimbursement.key,
+        ),
+      ],
     );
 
     await tester.tap(
@@ -100,6 +109,7 @@ void main() {
     expect(find.text('选择支出账户'), findsOneWidget);
     expect(find.text('cash'), findsWidgets);
     expect(find.text('deposit'), findsOneWidget);
+    expect(find.text('reimbursement'), findsNothing);
   });
 
   testWidgets('renders on a common Android phone with accessibility text', (
@@ -812,21 +822,9 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.settlement,
-        ).overrideWithValue(const AsyncLoading<List<Account>>()),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.fund,
-        ).overrideWithValue(const AsyncLoading<List<Account>>()),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.borrowingLiability,
-        ).overrideWithValue(const AsyncLoading<List<Account>>()),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.advanceReceivable,
-        ).overrideWithValue(const AsyncLoading<List<Account>>()),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.ordinaryReceivable,
-        ).overrideWithValue(const AsyncLoading<List<Account>>()),
+        transactionAccountOptionsProvider.overrideWithValue(
+          const AsyncLoading(),
+        ),
         categoryTreeProvider(
           AccountType.expense,
         ).overrideWithValue(const AsyncLoading<List<CategoryNode>>()),
@@ -963,22 +961,17 @@ void main() {
 }
 
 List<dynamic> _editQueryOverrides(Map<String, Account> accounts) {
+  final accountOptions = TransactionAccountOptions.fromAccounts(
+    accounts.values.where(
+      (account) =>
+          account.type == AccountType.asset ||
+          account.type == AccountType.liability,
+    ),
+  );
   return [
-    accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.settlement,
-    ).overrideWithValue(AsyncData([accounts['cash']!])),
-    accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.fund,
-    ).overrideWithValue(const AsyncData(<Account>[])),
-    accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.borrowingLiability,
-    ).overrideWithValue(const AsyncData(<Account>[])),
-    accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.advanceReceivable,
-    ).overrideWithValue(const AsyncData(<Account>[])),
-    accountsForSelectionPurposeProvider(
-      AccountSelectionPurpose.ordinaryReceivable,
-    ).overrideWithValue(const AsyncData(<Account>[])),
+    transactionAccountOptionsProvider.overrideWithValue(
+      AsyncData(accountOptions),
+    ),
     categoryTreeProvider(
       AccountType.expense,
     ).overrideWithValue(AsyncData([CategoryNode(account: accounts['food']!)])),
@@ -1016,6 +1009,14 @@ Future<void> _pumpTransactionForm(
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
 }) async {
+  final accountOptions = TransactionAccountOptions.fromAccounts(
+    _uniqueAccounts([
+      ...(settlementAccounts ?? [_account('cash')]),
+      ...fundAccounts,
+      ...advanceReceivableAccounts,
+      ...ordinaryReceivableAccounts,
+    ]),
+  );
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -1042,23 +1043,9 @@ Future<void> _pumpTransactionForm(
         advanceOrchestrationAppServiceProvider.overrideWithValue(
           _FakeExpenseSceneOrchestrationAppService(fakeService),
         ),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.settlement,
-        ).overrideWith(
-          (ref) => Stream.value(settlementAccounts ?? [_account('cash')]),
+        transactionAccountOptionsProvider.overrideWithValue(
+          AsyncData(accountOptions),
         ),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.fund,
-        ).overrideWith((ref) => Stream.value(fundAccounts)),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.borrowingLiability,
-        ).overrideWith((ref) => Stream.value(const <Account>[])),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.advanceReceivable,
-        ).overrideWith((ref) => Stream.value(advanceReceivableAccounts)),
-        accountsForSelectionPurposeProvider(
-          AccountSelectionPurpose.ordinaryReceivable,
-        ).overrideWith((ref) => Stream.value(ordinaryReceivableAccounts)),
         categoryTreeProvider(AccountType.expense).overrideWith(
           (ref) => Stream.value(
             expenseTree ?? [CategoryNode(account: _category('food'))],
@@ -1104,14 +1091,22 @@ class _DirectTransactionRunner implements TransactionRunner {
 }
 
 Account _account(String id, {String? profileKey}) {
+  final profile =
+      AccountProfileKind.fromKey(profileKey) ?? AccountProfileKind.fund;
   return Account(
     id: id,
     name: id,
-    type: AccountType.asset,
-    subtype: profileKey == null ? null : AccountSubtype.receivable,
-    profileKey: profileKey,
+    type: profile.accountType,
+    subtype: profile.accountSubtype,
+    profileKey: profile.key,
     balance: const Money(minorUnits: 0),
   );
+}
+
+List<Account> _uniqueAccounts(Iterable<Account> accounts) {
+  return {
+    for (final account in accounts) account.id: account,
+  }.values.toList(growable: false);
 }
 
 Account _category(String id, {AccountType type = AccountType.expense}) {

@@ -284,7 +284,7 @@ final class AccountsForSelectionPurposeProvider
 }
 
 String _$accountsForSelectionPurposeHash() =>
-    r'6bbcecaf03c300be8338b39ff20eee9d5b837558';
+    r'05faf1a5c641ed6b91be7a64e373f1f962eeb94d';
 
 final class AccountsForSelectionPurposeFamily extends $Family
     with
