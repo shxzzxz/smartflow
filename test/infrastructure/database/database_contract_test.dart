@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
-  test('fresh databases start at the v49 contract baseline', () async {
+  test('fresh databases create the current v50 schema', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.read<int>('user_version'), 49);
+    expect(version.read<int>('user_version'), 50);
     expect(
       await db
           .customSelect(
@@ -21,6 +21,16 @@ void main() {
           .get(),
       isNotEmpty,
     );
+
+    final accountColumns = await db
+        .customSelect('PRAGMA table_info(accounts)')
+        .get();
+    final columnNames = accountColumns
+        .map((row) => row.read<String>('name'))
+        .toSet();
+    expect(columnNames, isNot(contains('credit_limit_minor')));
+    expect(columnNames, isNot(contains('billing_day')));
+    expect(columnNames, isNot(contains('repayment_day')));
   });
 
   test('pre-baseline databases are rejected instead of migrated', () async {

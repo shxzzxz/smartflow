@@ -115,39 +115,6 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _creditLimitMinorMeta = const VerificationMeta(
-    'creditLimitMinor',
-  );
-  @override
-  late final GeneratedColumn<int> creditLimitMinor = GeneratedColumn<int>(
-    'credit_limit_minor',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _billingDayMeta = const VerificationMeta(
-    'billingDay',
-  );
-  @override
-  late final GeneratedColumn<int> billingDay = GeneratedColumn<int>(
-    'billing_day',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _repaymentDayMeta = const VerificationMeta(
-    'repaymentDay',
-  );
-  @override
-  late final GeneratedColumn<int> repaymentDay = GeneratedColumn<int>(
-    'repayment_day',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -253,9 +220,6 @@ class $AccountsTable extends Accounts
     balanceMinor,
     iconKey,
     note,
-    creditLimitMinor,
-    billingDay,
-    repaymentDay,
     sortOrder,
     isHidden,
     archivedAt,
@@ -330,30 +294,6 @@ class $AccountsTable extends Accounts
       context.handle(
         _noteMeta,
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
-      );
-    }
-    if (data.containsKey('credit_limit_minor')) {
-      context.handle(
-        _creditLimitMinorMeta,
-        creditLimitMinor.isAcceptableOrUnknown(
-          data['credit_limit_minor']!,
-          _creditLimitMinorMeta,
-        ),
-      );
-    }
-    if (data.containsKey('billing_day')) {
-      context.handle(
-        _billingDayMeta,
-        billingDay.isAcceptableOrUnknown(data['billing_day']!, _billingDayMeta),
-      );
-    }
-    if (data.containsKey('repayment_day')) {
-      context.handle(
-        _repaymentDayMeta,
-        repaymentDay.isAcceptableOrUnknown(
-          data['repayment_day']!,
-          _repaymentDayMeta,
-        ),
       );
     }
     if (data.containsKey('sort_order')) {
@@ -445,18 +385,6 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
-      creditLimitMinor: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}credit_limit_minor'],
-      ),
-      billingDay: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}billing_day'],
-      ),
-      repaymentDay: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}repayment_day'],
-      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -530,9 +458,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final int balanceMinor;
   final String? iconKey;
   final String? note;
-  final int? creditLimitMinor;
-  final int? billingDay;
-  final int? repaymentDay;
   final int sortOrder;
   final bool isHidden;
   final DateTime? archivedAt;
@@ -552,9 +477,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.balanceMinor,
     this.iconKey,
     this.note,
-    this.creditLimitMinor,
-    this.billingDay,
-    this.repaymentDay,
     required this.sortOrder,
     required this.isHidden,
     this.archivedAt,
@@ -594,15 +516,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
-    }
-    if (!nullToAbsent || creditLimitMinor != null) {
-      map['credit_limit_minor'] = Variable<int>(creditLimitMinor);
-    }
-    if (!nullToAbsent || billingDay != null) {
-      map['billing_day'] = Variable<int>(billingDay);
-    }
-    if (!nullToAbsent || repaymentDay != null) {
-      map['repayment_day'] = Variable<int>(repaymentDay);
     }
     map['sort_order'] = Variable<int>(sortOrder);
     map['is_hidden'] = Variable<bool>(isHidden);
@@ -647,15 +560,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ? const Value.absent()
           : Value(iconKey),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
-      creditLimitMinor: creditLimitMinor == null && nullToAbsent
-          ? const Value.absent()
-          : Value(creditLimitMinor),
-      billingDay: billingDay == null && nullToAbsent
-          ? const Value.absent()
-          : Value(billingDay),
-      repaymentDay: repaymentDay == null && nullToAbsent
-          ? const Value.absent()
-          : Value(repaymentDay),
       sortOrder: Value(sortOrder),
       isHidden: Value(isHidden),
       archivedAt: archivedAt == null && nullToAbsent
@@ -693,9 +597,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       balanceMinor: serializer.fromJson<int>(json['balanceMinor']),
       iconKey: serializer.fromJson<String?>(json['iconKey']),
       note: serializer.fromJson<String?>(json['note']),
-      creditLimitMinor: serializer.fromJson<int?>(json['creditLimitMinor']),
-      billingDay: serializer.fromJson<int?>(json['billingDay']),
-      repaymentDay: serializer.fromJson<int?>(json['repaymentDay']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isHidden: serializer.fromJson<bool>(json['isHidden']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
@@ -728,9 +629,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'balanceMinor': serializer.toJson<int>(balanceMinor),
       'iconKey': serializer.toJson<String?>(iconKey),
       'note': serializer.toJson<String?>(note),
-      'creditLimitMinor': serializer.toJson<int?>(creditLimitMinor),
-      'billingDay': serializer.toJson<int?>(billingDay),
-      'repaymentDay': serializer.toJson<int?>(repaymentDay),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isHidden': serializer.toJson<bool>(isHidden),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
@@ -757,9 +655,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     int? balanceMinor,
     Value<String?> iconKey = const Value.absent(),
     Value<String?> note = const Value.absent(),
-    Value<int?> creditLimitMinor = const Value.absent(),
-    Value<int?> billingDay = const Value.absent(),
-    Value<int?> repaymentDay = const Value.absent(),
     int? sortOrder,
     bool? isHidden,
     Value<DateTime?> archivedAt = const Value.absent(),
@@ -783,11 +678,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     balanceMinor: balanceMinor ?? this.balanceMinor,
     iconKey: iconKey.present ? iconKey.value : this.iconKey,
     note: note.present ? note.value : this.note,
-    creditLimitMinor: creditLimitMinor.present
-        ? creditLimitMinor.value
-        : this.creditLimitMinor,
-    billingDay: billingDay.present ? billingDay.value : this.billingDay,
-    repaymentDay: repaymentDay.present ? repaymentDay.value : this.repaymentDay,
     sortOrder: sortOrder ?? this.sortOrder,
     isHidden: isHidden ?? this.isHidden,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
@@ -817,15 +707,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           : this.balanceMinor,
       iconKey: data.iconKey.present ? data.iconKey.value : this.iconKey,
       note: data.note.present ? data.note.value : this.note,
-      creditLimitMinor: data.creditLimitMinor.present
-          ? data.creditLimitMinor.value
-          : this.creditLimitMinor,
-      billingDay: data.billingDay.present
-          ? data.billingDay.value
-          : this.billingDay,
-      repaymentDay: data.repaymentDay.present
-          ? data.repaymentDay.value
-          : this.repaymentDay,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       isHidden: data.isHidden.present ? data.isHidden.value : this.isHidden,
       archivedAt: data.archivedAt.present
@@ -852,9 +733,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
           ..write('note: $note, ')
-          ..write('creditLimitMinor: $creditLimitMinor, ')
-          ..write('billingDay: $billingDay, ')
-          ..write('repaymentDay: $repaymentDay, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isHidden: $isHidden, ')
           ..write('archivedAt: $archivedAt, ')
@@ -868,7 +746,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   }
 
   @override
-  int get hashCode => Object.hashAll([
+  int get hashCode => Object.hash(
     id,
     name,
     accountType,
@@ -879,9 +757,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     balanceMinor,
     iconKey,
     note,
-    creditLimitMinor,
-    billingDay,
-    repaymentDay,
     sortOrder,
     isHidden,
     archivedAt,
@@ -890,7 +765,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     version,
     createdAt,
     updatedAt,
-  ]);
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -905,9 +780,6 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.balanceMinor == this.balanceMinor &&
           other.iconKey == this.iconKey &&
           other.note == this.note &&
-          other.creditLimitMinor == this.creditLimitMinor &&
-          other.billingDay == this.billingDay &&
-          other.repaymentDay == this.repaymentDay &&
           other.sortOrder == this.sortOrder &&
           other.isHidden == this.isHidden &&
           other.archivedAt == this.archivedAt &&
@@ -929,9 +801,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<int> balanceMinor;
   final Value<String?> iconKey;
   final Value<String?> note;
-  final Value<int?> creditLimitMinor;
-  final Value<int?> billingDay;
-  final Value<int?> repaymentDay;
   final Value<int> sortOrder;
   final Value<bool> isHidden;
   final Value<DateTime?> archivedAt;
@@ -952,9 +821,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
     this.note = const Value.absent(),
-    this.creditLimitMinor = const Value.absent(),
-    this.billingDay = const Value.absent(),
-    this.repaymentDay = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isHidden = const Value.absent(),
     this.archivedAt = const Value.absent(),
@@ -976,9 +842,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.balanceMinor = const Value.absent(),
     this.iconKey = const Value.absent(),
     this.note = const Value.absent(),
-    this.creditLimitMinor = const Value.absent(),
-    this.billingDay = const Value.absent(),
-    this.repaymentDay = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isHidden = const Value.absent(),
     this.archivedAt = const Value.absent(),
@@ -1002,9 +865,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<int>? balanceMinor,
     Expression<String>? iconKey,
     Expression<String>? note,
-    Expression<int>? creditLimitMinor,
-    Expression<int>? billingDay,
-    Expression<int>? repaymentDay,
     Expression<int>? sortOrder,
     Expression<bool>? isHidden,
     Expression<DateTime>? archivedAt,
@@ -1026,9 +886,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (balanceMinor != null) 'balance_minor': balanceMinor,
       if (iconKey != null) 'icon_key': iconKey,
       if (note != null) 'note': note,
-      if (creditLimitMinor != null) 'credit_limit_minor': creditLimitMinor,
-      if (billingDay != null) 'billing_day': billingDay,
-      if (repaymentDay != null) 'repayment_day': repaymentDay,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isHidden != null) 'is_hidden': isHidden,
       if (archivedAt != null) 'archived_at': archivedAt,
@@ -1052,9 +909,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<int>? balanceMinor,
     Value<String?>? iconKey,
     Value<String?>? note,
-    Value<int?>? creditLimitMinor,
-    Value<int?>? billingDay,
-    Value<int?>? repaymentDay,
     Value<int>? sortOrder,
     Value<bool>? isHidden,
     Value<DateTime?>? archivedAt,
@@ -1076,9 +930,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       balanceMinor: balanceMinor ?? this.balanceMinor,
       iconKey: iconKey ?? this.iconKey,
       note: note ?? this.note,
-      creditLimitMinor: creditLimitMinor ?? this.creditLimitMinor,
-      billingDay: billingDay ?? this.billingDay,
-      repaymentDay: repaymentDay ?? this.repaymentDay,
       sortOrder: sortOrder ?? this.sortOrder,
       isHidden: isHidden ?? this.isHidden,
       archivedAt: archivedAt ?? this.archivedAt,
@@ -1128,15 +979,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
-    if (creditLimitMinor.present) {
-      map['credit_limit_minor'] = Variable<int>(creditLimitMinor.value);
-    }
-    if (billingDay.present) {
-      map['billing_day'] = Variable<int>(billingDay.value);
-    }
-    if (repaymentDay.present) {
-      map['repayment_day'] = Variable<int>(repaymentDay.value);
-    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -1184,9 +1026,6 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('balanceMinor: $balanceMinor, ')
           ..write('iconKey: $iconKey, ')
           ..write('note: $note, ')
-          ..write('creditLimitMinor: $creditLimitMinor, ')
-          ..write('billingDay: $billingDay, ')
-          ..write('repaymentDay: $repaymentDay, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isHidden: $isHidden, ')
           ..write('archivedAt: $archivedAt, ')
@@ -17567,9 +17406,6 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
-      Value<int?> creditLimitMinor,
-      Value<int?> billingDay,
-      Value<int?> repaymentDay,
       Value<int> sortOrder,
       Value<bool> isHidden,
       Value<DateTime?> archivedAt,
@@ -17592,9 +17428,6 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<int> balanceMinor,
       Value<String?> iconKey,
       Value<String?> note,
-      Value<int?> creditLimitMinor,
-      Value<int?> billingDay,
-      Value<int?> repaymentDay,
       Value<int> sortOrder,
       Value<bool> isHidden,
       Value<DateTime?> archivedAt,
@@ -17664,21 +17497,6 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get creditLimitMinor => $composableBuilder(
-    column: $table.creditLimitMinor,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get billingDay => $composableBuilder(
-    column: $table.billingDay,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get repaymentDay => $composableBuilder(
-    column: $table.repaymentDay,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17784,21 +17602,6 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get creditLimitMinor => $composableBuilder(
-    column: $table.creditLimitMinor,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get billingDay => $composableBuilder(
-    column: $table.billingDay,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get repaymentDay => $composableBuilder(
-    column: $table.repaymentDay,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -17889,21 +17692,6 @@ class $$AccountsTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
-  GeneratedColumn<int> get creditLimitMinor => $composableBuilder(
-    column: $table.creditLimitMinor,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get billingDay => $composableBuilder(
-    column: $table.billingDay,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get repaymentDay => $composableBuilder(
-    column: $table.repaymentDay,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
@@ -17972,9 +17760,6 @@ class $$AccountsTableTableManager
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
-                Value<int?> creditLimitMinor = const Value.absent(),
-                Value<int?> billingDay = const Value.absent(),
-                Value<int?> repaymentDay = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isHidden = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -17995,9 +17780,6 @@ class $$AccountsTableTableManager
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,
                 note: note,
-                creditLimitMinor: creditLimitMinor,
-                billingDay: billingDay,
-                repaymentDay: repaymentDay,
                 sortOrder: sortOrder,
                 isHidden: isHidden,
                 archivedAt: archivedAt,
@@ -18020,9 +17802,6 @@ class $$AccountsTableTableManager
                 Value<int> balanceMinor = const Value.absent(),
                 Value<String?> iconKey = const Value.absent(),
                 Value<String?> note = const Value.absent(),
-                Value<int?> creditLimitMinor = const Value.absent(),
-                Value<int?> billingDay = const Value.absent(),
-                Value<int?> repaymentDay = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isHidden = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -18043,9 +17822,6 @@ class $$AccountsTableTableManager
                 balanceMinor: balanceMinor,
                 iconKey: iconKey,
                 note: note,
-                creditLimitMinor: creditLimitMinor,
-                billingDay: billingDay,
-                repaymentDay: repaymentDay,
                 sortOrder: sortOrder,
                 isHidden: isHidden,
                 archivedAt: archivedAt,

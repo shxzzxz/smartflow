@@ -134,13 +134,6 @@ class BackupService {
         '..${BackupManifest.currentBackupSchemaVersion}。',
       );
     }
-    if (manifest.backupSchemaVersion !=
-        BackupManifest.currentBackupSchemaVersion) {
-      throw BackupValidationException(
-        '备份 backupSchemaVersion ${manifest.backupSchemaVersion} 到当前 '
-        '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
-      );
-    }
     final tables = <String, Iterable<BackupJson>>{};
     var hasPreferences = false;
     for (final descriptor in manifest.files) {
@@ -195,9 +188,47 @@ class BackupService {
       }
     }
     final preferences = (tables.remove('preferences')!.single);
-    final snapshot = BackupSnapshot(tables: tables, preferences: preferences);
+    final decoded = BackupSnapshot(tables: tables, preferences: preferences);
+    final snapshot = _upgradeSnapshot(
+      decoded,
+      fromVersion: manifest.backupSchemaVersion,
+    );
     validateSnapshot(snapshot);
     return BackupInspection(manifest: manifest, snapshot: snapshot);
+  }
+
+  static BackupSnapshot _upgradeSnapshot(
+    BackupSnapshot snapshot, {
+    required int fromVersion,
+  }) {
+    var upgraded = snapshot;
+    for (
+      var version = fromVersion;
+      version < BackupManifest.currentBackupSchemaVersion;
+      version++
+    ) {
+      upgraded = switch (version) {
+        1 => _upgradeBackupV1ToV2(upgraded),
+        _ => throw BackupValidationException(
+          '备份 backupSchemaVersion $version 到当前 '
+          '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
+        ),
+      };
+    }
+    return upgraded;
+  }
+
+  static BackupSnapshot _upgradeBackupV1ToV2(BackupSnapshot snapshot) {
+    final accounts = [
+      for (final row in snapshot.rows('accounts'))
+        Map<String, Object?>.from(row)
+          ..remove('creditLimitMinor')
+          ..remove('billingDay')
+          ..remove('repaymentDay'),
+    ];
+    return snapshot.copyWith(
+      tables: {...snapshot.tables, 'accounts': accounts},
+    );
   }
 
   Future<BackupDiff> compare(Object source) async {

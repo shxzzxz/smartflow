@@ -41,8 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 1);
-      expect(inspected.manifest.schemaVersion, 49);
+      expect(inspected.manifest.backupSchemaVersion, 2);
+      expect(inspected.manifest.schemaVersion, 50);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -58,7 +58,7 @@ void main() {
     });
 
     test(
-      'accepts an unchanged backup contract from an older database',
+      'uses the backup contract instead of the source database version',
       () async {
         final oldDirectory = Directory('${tempDirectory.path}/v49-backup')
           ..createSync();
@@ -79,12 +79,59 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 1);
+        expect(inspection.manifest.backupSchemaVersion, 2);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
       },
     );
+
+    test('migrates v1 backups without legacy account credit columns', () async {
+      final legacyDirectory = Directory('${tempDirectory.path}/v1-backup')
+        ..createSync();
+      final legacySnapshot = _emptySnapshot(
+        accounts: [
+          {
+            'id': 'credit',
+            'name': '信用卡',
+            'accountType': 'liability',
+            'accountSubtype': 'payable',
+            'accountProfileKey': 'credit.credit',
+            'groupId': null,
+            'parentId': null,
+            'balanceMinor': 0,
+            'iconKey': null,
+            'note': null,
+            'creditLimitMinor': 100000,
+            'billingDay': 5,
+            'repaymentDay': 25,
+            'sortOrder': 0,
+            'isHidden': false,
+            'archivedAt': null,
+            'systemKey': null,
+            'source': 'user',
+            'version': 0,
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      );
+      final legacyService = BackupService(
+        gateway: FakeBackupGateway(legacySnapshot, schemaVersion: 49),
+        packageStore: const FileBackupPackageStore(),
+      );
+      await legacyService.createBackup(legacyDirectory);
+      await _rewriteBackupSchemaVersion(legacyDirectory, 1);
+
+      final inspection = await service.inspect(legacyDirectory);
+      final account = inspection.snapshot.rows('accounts').single;
+
+      expect(inspection.manifest.backupSchemaVersion, 1);
+      expect(account.containsKey('creditLimitMinor'), isFalse);
+      expect(account.containsKey('billingDay'), isFalse);
+      expect(account.containsKey('repaymentDay'), isFalse);
+      expect(account['accountProfileKey'], 'credit.credit');
+    });
 
     test('rejects obsolete backup format versions', () async {
       await service.createBackup(tempDirectory);
@@ -105,7 +152,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 2;
+      manifest['backupSchemaVersion'] = 3;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -114,7 +161,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 2'),
+            contains('backupSchemaVersion 3'),
           ),
         ),
       );
@@ -139,9 +186,6 @@ void main() {
               'balanceMinor': 0,
               'iconKey': null,
               'note': null,
-              'creditLimitMinor': null,
-              'billingDay': null,
-              'repaymentDay': null,
               'sortOrder': 0,
               'isHidden': false,
               'archivedAt': null,
@@ -166,7 +210,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 1);
+        expect(manifest.backupSchemaVersion, 2);
       },
     );
   });
@@ -316,7 +360,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 49});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 50});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;
@@ -332,4 +376,15 @@ class FakeBackupGateway implements BackupSnapshotGateway {
     replaceCount++;
     this.snapshot = snapshot;
   }
+}
+
+Future<void> _rewriteBackupSchemaVersion(
+  Directory directory,
+  int version,
+) async {
+  final file = File('${directory.path}/manifest.json');
+  final manifest =
+      jsonDecode(await file.readAsString()) as Map<String, Object?>;
+  manifest['backupSchemaVersion'] = version;
+  await file.writeAsString(jsonEncode(manifest));
 }

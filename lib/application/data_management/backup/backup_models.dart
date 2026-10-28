@@ -202,11 +202,11 @@ class BackupManifest {
   /// First supported logical-backup contract. Older formats are rejected.
   static const currentFormatVersion = 3;
 
-  /// First supported logical data contract.
+  /// Current logical data contract.
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 1;
+  static const currentBackupSchemaVersion = 2;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
