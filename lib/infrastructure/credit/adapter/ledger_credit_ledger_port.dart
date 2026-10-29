@@ -33,7 +33,113 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
       id: account.id,
       balance: account.balance,
       isArchived: account.isArchived,
+      kind: switch (account.type) {
+        ledger_query.AccountType.asset => CreditLedgerAccountKind.asset,
+        ledger_query.AccountType.liability => CreditLedgerAccountKind.liability,
+        ledger_query.AccountType.equity ||
+        ledger_query.AccountType.income ||
+        ledger_query.AccountType.expense => CreditLedgerAccountKind.other,
+      },
     );
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postExpense(
+    CreditLedgerPostExpenseCommand command,
+  ) async {
+    final result = await _postingService.createExpense(
+      ledger_command.CreateExpenseCommand(
+        amount: command.amount,
+        categoryAllocations: [
+          for (final allocation in command.categoryAllocations)
+            ledger_command.AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        settlementAllocations: [
+          for (final allocation in command.settlementAllocations)
+            ledger_command.AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyId: command.counterpartyId,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        ownership: _ownership(command.ownership),
+        tagIds: command.tagIds,
+      ),
+    );
+    return _posted(result);
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRefund(
+    CreditLedgerPostRefundCommand command,
+  ) async {
+    final result = await _postingService.createRefund(
+      ledger_command.CreateRefundCommand(
+        parentTransactionId: command.parentTransactionId,
+        amount: command.amount,
+        categoryAllocations: [
+          for (final allocation in command.categoryAllocations)
+            ledger_command.AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        settlementAllocations: [
+          for (final allocation in command.settlementAllocations)
+            ledger_command.AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyId: command.counterpartyId,
+        note: command.note,
+      ),
+    );
+    return _posted(result);
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> editRefund(
+    CreditLedgerEditRefundCommand command,
+  ) async {
+    final result = await _editService.editRefund(
+      ledger_command.EditRefundCommand(
+        transactionId: command.transactionId,
+        amount: command.amount,
+        categoryAllocations: command.categoryAllocations == null
+            ? null
+            : [
+                for (final allocation in command.categoryAllocations!)
+                  ledger_command.AccountAmountAllocation(
+                    accountId: allocation.accountId,
+                    amount: allocation.amount,
+                  ),
+              ],
+        settlementAllocations: command.settlementAllocations == null
+            ? null
+            : [
+                for (final allocation in command.settlementAllocations!)
+                  ledger_command.AccountAmountAllocation(
+                    accountId: allocation.accountId,
+                    amount: allocation.amount,
+                  ),
+              ],
+        occurredAt: command.occurredAt,
+        counterpartyId: command.counterpartyId,
+        note: command.note,
+      ),
+    );
+    return _posted(result);
   }
 
   @override
@@ -159,6 +265,9 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
       occurredAt: detail.occurredAt,
       paidFromAccountId: detail.accountOf(
         ledger_query.TransactionRole.settlementOut,
+      ),
+      hasRefundChildren: detail.children.any(
+        (child) => child.businessPurpose == ledger_query.BusinessPurpose.refund,
       ),
     );
   }

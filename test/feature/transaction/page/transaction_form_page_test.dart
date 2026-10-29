@@ -12,12 +12,14 @@ import 'package:smartflow/application/orchestration/orchestration_command_api.da
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
+import 'package:smartflow/feature/transaction/widget/transaction_allocation_fields.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
@@ -300,6 +302,143 @@ void main() {
       ).pop();
       await tester.pumpAndSettle();
     }
+  });
+
+  testWidgets(
+    'keeps consumption installment in the expense form with credit accounts only',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: [
+          _account('cash'),
+          _account('credit', profileKey: AccountProfileKind.credit.key),
+          _account('loan', profileKey: AccountProfileKind.loan.key),
+        ],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final scene = _sceneItem('expense', '消费分期');
+      await tester.ensureVisible(scene);
+      await tester.tap(scene);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TransactionFormPage), findsOneWidget);
+      final account = find.byKey(
+        const ValueKey('consumption-installment-account-option'),
+      );
+      expect(account, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('consumption-installment-configuration')),
+        findsOneWidget,
+      );
+
+      await tester.tap(account);
+      await tester.pumpAndSettle();
+      expect(find.text('credit'), findsWidgets);
+      expect(find.text('cash'), findsNothing);
+      expect(find.text('loan'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'uses ordinary split accounts and keeps installment controls visible',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: [
+          _account('credit', profileKey: AccountProfileKind.credit.key),
+        ],
+        fundAccounts: [_account('cash')],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final scene = _sceneItem('expense', '消费分期');
+      await tester.ensureVisible(scene);
+      await tester.tap(scene);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('分项'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('组合支付'), findsOneWidget);
+      final configuration = find.byKey(
+        const ValueKey('consumption-installment-configuration'),
+      );
+      final installmentAccount = find.byKey(
+        const ValueKey('consumption-installment-account-option'),
+      );
+      final excludeStats = find.text('不计收支');
+      expect(installmentAccount, findsOneWidget);
+      expect(configuration, findsOneWidget);
+      expect(excludeStats, findsOneWidget);
+      expect(
+        tester.getTopLeft(installmentAccount).dx,
+        lessThan(tester.getTopLeft(configuration).dx),
+      );
+      expect(
+        tester.getTopLeft(configuration).dx,
+        lessThan(tester.getTopLeft(excludeStats).dx),
+      );
+
+      final settlements = tester.widget<TransactionInlineAllocationColumn>(
+        find.byKey(const ValueKey('expense-settlement-allocations')),
+      );
+      expect(settlements.options.map((option) => option.accountId), [
+        'credit',
+        'cash',
+      ]);
+    },
+  );
+
+  testWidgets('opens the shared loan configuration page for consumption', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      settlementAccounts: [
+        _account('credit', profileKey: AccountProfileKind.credit.key),
+      ],
+    );
+
+    await tester.tap(find.text('场景'));
+    await tester.pumpAndSettle();
+    final scene = _sceneItem('expense', '消费分期');
+    await tester.ensureVisible(scene);
+    await tester.tap(scene);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1'));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('consumption-installment-configuration')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('贷款配置'), findsOneWidget);
+    expect(find.text('贷款'), findsOneWidget);
+    expect(find.text('使用此配置'), findsOneWidget);
+
+    final principalRow = find.ancestor(
+      of: find.text('本金'),
+      matching: find.byType(AppPlainTextFormRow),
+    );
+    expect(principalRow, findsOneWidget);
+    await tester.enterText(
+      find.descendant(of: principalRow, matching: find.byType(TextField)),
+      '20.00',
+    );
+    expect(
+      tester
+          .widget<TextField>(
+            find.descendant(of: principalRow, matching: find.byType(TextField)),
+          )
+          .controller
+          ?.text,
+      '20.00',
+    );
   });
 
   testWidgets(

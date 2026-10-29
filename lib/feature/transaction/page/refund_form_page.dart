@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_submit_button.dart';
+import '../../../design_system/widget/app_surface.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
@@ -157,6 +158,19 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space14),
+                if (state.installmentContractId != null) ...[
+                  AppSurface(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.space12),
+                      child: Text(
+                        '退回到分期负债的部分会作为退款还本重算后续计划；'
+                        '超过剩余本金的金额会退回到所选资产账户。',
+                        style: context.appTextStyles.listSupporting,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space14),
+                ],
                 _buildCategoryAllocations(provider, state),
                 const SizedBox(height: AppSpacing.space14),
                 _buildSettlementAllocations(provider, state),

@@ -377,6 +377,9 @@ DetailBehaviorConfig _behaviorConfigFor(
   if (transaction.businessPurpose == BusinessPurpose.refund ||
       transaction.businessPurpose == BusinessPurpose.advanceCollection ||
       transaction.businessPurpose == BusinessPurpose.advanceSettlement) {
+    final installmentRefund =
+        transaction.businessPurpose == BusinessPurpose.refund &&
+        transaction.ownership?.ownerType == installmentOwnerType;
     return DetailBehaviorConfig(
       editRoute: switch (transaction.businessPurpose) {
         BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
@@ -385,10 +388,18 @@ DetailBehaviorConfig _behaviorConfigFor(
           '/transaction/${transaction.id}/advance/edit',
         _ => null,
       },
-      canEditOccurredAt: const DetailEditPermission.allowed(),
-      canEditPostedAt: const DetailEditPermission.allowed(),
-      canEditNote: const DetailEditPermission.allowed(),
-      canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditOccurredAt: installmentRefund
+          ? const DetailEditPermission.denied(reason: '请在退款编辑页修改退款时间')
+          : const DetailEditPermission.allowed(),
+      canEditPostedAt: installmentRefund
+          ? const DetailEditPermission.denied(reason: '请在退款编辑页修改退款时间')
+          : const DetailEditPermission.allowed(),
+      canEditNote: installmentRefund
+          ? const DetailEditPermission.denied(reason: '请在退款编辑页修改备注')
+          : const DetailEditPermission.allowed(),
+      canEditSettlementAccount: installmentRefund
+          ? const DetailEditPermission.denied(reason: '请在退款编辑页修改到账分配')
+          : const DetailEditPermission.allowed(),
       canEditTags: _tagEditPermissionFor(transaction),
     );
   }
@@ -437,12 +448,18 @@ DetailBehaviorConfig _behaviorConfigFor(
   }
 
   if (ownership.ownerType == installmentOwnerType) {
+    final purchase =
+        transaction.businessPurpose == BusinessPurpose.dailyExpense;
     return DetailBehaviorConfig(
       editRoute: '/installments/${ownership.ownerId}',
-      canEditOccurredAt: const DetailEditPermission.allowed(),
+      canEditOccurredAt: purchase
+          ? const DetailEditPermission.denied(reason: '请从合同编辑页修改借款日并预览计划')
+          : const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
-      canEditSettlementAccount: const DetailEditPermission.allowed(),
+      canEditSettlementAccount: purchase
+          ? const DetailEditPermission.denied(reason: '消费分期的成交价和结算分配不能直接修改')
+          : const DetailEditPermission.allowed(),
       canEditTags: _tagEditPermissionFor(transaction),
     );
   }
@@ -496,6 +513,10 @@ const String _advanceSettledEditReason = '垫付已结清，请先删除垫付�
 
 String _transactionDetailDeleteMessage(TransactionReadModel detail) {
   final owner = detail.ownership;
+  if (detail.businessPurpose == BusinessPurpose.refund &&
+      owner?.ownerType == installmentOwnerType) {
+    return '此操作将删除退款交易、撤销退款还本并重新计算分期计划，无法恢复。';
+  }
   if (owner?.ownerType == installmentOwnerType) {
     return '此操作将删除关联分期合同、还款计划及其关联账务记录，无法恢复。';
   }

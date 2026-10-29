@@ -355,6 +355,27 @@ class _BillItemSeed {
 }
 
 class _FakeCreditLedgerPort implements CreditLedgerPort {
+  @override
+  Future<CreditLedgerPostedTransaction> postExpense(
+    CreditLedgerPostExpenseCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRefund(
+    CreditLedgerPostRefundCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> editRefund(
+    CreditLedgerEditRefundCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
   final accounts = <String, CreditLedgerAccountSnapshot>{};
 
   @override

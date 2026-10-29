@@ -5,14 +5,17 @@ import '../../../core/money/money.dart';
 import '../../../domain/credit/entity/installment_contract.dart';
 import '../../../domain/credit/entity/installment_schedule.dart';
 import '../../../domain/credit/entity/installment_repricing.dart';
+import '../../../domain/credit/entity/installment_refund_reduction.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/credit/valobj/installment_plan_terms.dart';
 import '../../../domain/credit/valobj/credit_error_code.dart';
 import '../../../domain/credit/port/installment_repository.dart';
+import '../../../domain/credit/port/installment_refund_reduction_repository.dart';
 import '../../database/app_database.dart';
 import '../mapper/installment_stage_mapper.dart';
 
-class DriftInstallmentRepository implements InstallmentRepository {
+class DriftInstallmentRepository
+    implements InstallmentRepository, InstallmentRefundReductionRepository {
   DriftInstallmentRepository(this._database);
 
   final AppDatabase _database;
@@ -132,6 +135,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
               contract.disbursementTransactionId,
             ),
             sourceRepaymentId: Value(contract.sourceRepaymentId),
+            purchaseTransactionId: Value(contract.purchaseTransactionId),
             principalMinor: contract.principal.minorUnits,
 
             borrowingDate: contract.borrowingDate,
@@ -249,6 +253,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
   @override
   Future<void> deleteContract(String contractId) async {
     await (_database.delete(
+      _database.installmentRefundReductions,
+    )..where((row) => row.contractId.equals(contractId))).go();
+    await (_database.delete(
       _database.installmentRepricingConfigs,
     )..where((row) => row.contractId.equals(contractId))).go();
     await (_database.delete(
@@ -266,6 +273,107 @@ class DriftInstallmentRepository implements InstallmentRepository {
     await (_database.delete(
       _database.installmentContracts,
     )..where((c) => c.id.equals(contractId))).go();
+  }
+
+  @override
+  Future<List<InstallmentRefundReduction>> listByContract(
+    String contractId,
+  ) async {
+    final rows =
+        await (_database.select(_database.installmentRefundReductions).join([
+                innerJoin(
+                  _database.transactions,
+                  _database.transactions.id.equalsExp(
+                    _database.installmentRefundReductions.refundTransactionId,
+                  ),
+                ),
+              ])
+              ..where(
+                _database.installmentRefundReductions.contractId.equals(
+                  contractId,
+                ),
+              )
+              ..orderBy([
+                OrderingTerm.asc(_database.transactions.occurredAt),
+                OrderingTerm.asc(_database.installmentRefundReductions.id),
+              ]))
+            .get();
+    return [
+      for (final row in rows)
+        _mapRefundReduction(
+          row.readTable(_database.installmentRefundReductions),
+          row.readTable(_database.transactions).occurredAt,
+        ),
+    ];
+  }
+
+  @override
+  Future<InstallmentRefundReduction?> findByRefundTransaction(
+    String refundTransactionId,
+  ) async {
+    final row =
+        await (_database.select(_database.installmentRefundReductions).join([
+              innerJoin(
+                _database.transactions,
+                _database.transactions.id.equalsExp(
+                  _database.installmentRefundReductions.refundTransactionId,
+                ),
+              ),
+            ])..where(
+              _database.installmentRefundReductions.refundTransactionId.equals(
+                refundTransactionId,
+              ),
+            ))
+            .getSingleOrNull();
+    if (row == null) return null;
+    return _mapRefundReduction(
+      row.readTable(_database.installmentRefundReductions),
+      row.readTable(_database.transactions).occurredAt,
+    );
+  }
+
+  @override
+  Future<void> save(InstallmentRefundReduction reduction) async {
+    await _database
+        .into(_database.installmentRefundReductions)
+        .insertOnConflictUpdate(
+          InstallmentRefundReductionsCompanion.insert(
+            id: reduction.id,
+            contractId: reduction.contractId,
+            refundTransactionId: reduction.refundTransactionId,
+            principalMinor: reduction.principal.minorUnits,
+            createdAt: Value(reduction.createdAt),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+  }
+
+  @override
+  Future<void> deleteByRefundTransaction(String refundTransactionId) async {
+    await (_database.delete(_database.installmentRefundReductions)
+          ..where((row) => row.refundTransactionId.equals(refundTransactionId)))
+        .go();
+  }
+
+  @override
+  Future<void> deleteByContract(String contractId) async {
+    await (_database.delete(
+      _database.installmentRefundReductions,
+    )..where((row) => row.contractId.equals(contractId))).go();
+  }
+
+  InstallmentRefundReduction _mapRefundReduction(
+    InstallmentRefundReductionRow row,
+    DateTime occurredAt,
+  ) {
+    return InstallmentRefundReduction(
+      id: row.id,
+      contractId: row.contractId,
+      refundTransactionId: row.refundTransactionId,
+      principal: Money(minorUnits: row.principalMinor),
+      occurredAt: occurredAt,
+      createdAt: row.createdAt,
+    );
   }
 
   InstallmentSchedulesCompanion _scheduleInsert(InstallmentSchedule schedule) {
@@ -305,6 +413,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       disbursementAccountId: row.disbursementAccountId,
       disbursementTransactionId: row.disbursementTransactionId,
       sourceRepaymentId: row.sourceRepaymentId,
+      purchaseTransactionId: row.purchaseTransactionId,
       principal: Money(minorUnits: row.principalMinor),
       name: row.name,
       borrowingDate: row.borrowingDate,

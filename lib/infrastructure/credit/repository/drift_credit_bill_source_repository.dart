@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../domain/credit/port/credit_bill_source_repository.dart';
+import '../../../domain/credit/valobj/installment_enums.dart';
 import '../../../domain/ledger/valobj/ledger_enum.dart';
 import '../../database/app_database.dart';
 
@@ -58,6 +59,12 @@ class DriftCreditBillSourceRepository implements CreditBillSourceRepository {
           ..where(_database.entries.accountId.equals(accountId))
           ..where(_database.entries.direction.equalsValue(direction))
           ..where(_database.transactions.businessPurpose.isInValues(purposes))
+          ..where(
+            _database.transactions.ownerType.isNull() |
+                _database.transactions.ownerType
+                    .equals(installmentOwnerType)
+                    .not(),
+          )
           ..where(
             _database.transactions.postedAt.isBiggerOrEqualValue(
               startInclusive,

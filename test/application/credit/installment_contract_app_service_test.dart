@@ -11,11 +11,229 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
+import 'package:smartflow/domain/credit/port/installment_refund_reduction_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
+import 'package:smartflow/domain/credit/entity/installment_refund_reduction.dart';
 import '../../helper/sequential_id_generator.dart';
 
 void main() {
   group('InstallmentContractAppServiceImpl', () {
+    test(
+      'creates a purchase transaction and PURCHASE contract in one use case',
+      () async {
+        final fixture = _Fixture();
+        fixture.creditAccounts.accounts['credit-liability'] =
+            CreditLiabilityAccount(
+              id: 'credit-ext',
+              accountId: 'credit-liability',
+              kind: CreditLiabilityAccountKind.credit,
+              billingDay: 5,
+              repaymentDay: 25,
+              billingDayToNext: true,
+            );
+
+        final result = await fixture.service.createConsumptionInstallment(
+          CreateConsumptionInstallmentCommand(
+            liabilityAccountId: 'credit-liability',
+            amount: const Money(minorUnits: 140000),
+            categoryAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'expense-phone',
+                amount: Money(minorUnits: 140000),
+              ),
+            ],
+            settlementAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'asset-cash',
+                amount: Money(minorUnits: 20000),
+              ),
+              ConsumptionInstallmentAllocation(
+                accountId: 'credit-liability',
+                amount: Money(minorUnits: 120000),
+              ),
+            ],
+            borrowingDate: DateTime(2026, 6, 1),
+            occurredAt: DateTime(2026, 6, 1, 12),
+            name: '手机分期',
+            isExcludedFromStats: true,
+            isExcludedFromBudget: true,
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: 'stage-1',
+              totalPeriods: 2,
+              firstDate: DateTime(2026, 7, 10),
+              lastDate: DateTime(2026, 8, 10),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.monthly,
+              feeMinor: 1200,
+            ),
+          ),
+        );
+
+        final contract = fixture.installments.contracts[result.contractId]!;
+        expect(result.purchaseTransactionId, 'tx-expense-1');
+        expect(contract.sourceType, InstallmentSourceType.purchase);
+        expect(contract.purchaseTransactionId, result.purchaseTransactionId);
+        expect(contract.principal, const Money(minorUnits: 120000));
+        expect(
+          fixture.posting.expenseCommands.single.ownership?.ownerId,
+          result.contractId,
+        );
+        expect(
+          fixture.posting.expenseCommands.single.settlementAllocations.map(
+            (allocation) =>
+                (allocation.accountId, allocation.amount.minorUnits),
+          ),
+          [('asset-cash', 20000), ('credit-liability', 120000)],
+        );
+        expect(
+          fixture.posting.expenseCommands.single.isExcludedFromStats,
+          isTrue,
+        );
+        expect(
+          fixture.posting.expenseCommands.single.isExcludedFromBudget,
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'caps refund principal and sends overflow to the asset account',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _purchaseContract(id: 'purchase-contract'),
+        );
+        fixture.installments.putSchedules('purchase-contract', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'purchase-contract',
+            periodNo: 1,
+            principal: const Money(minorUnits: 60000),
+          ),
+          _schedule(
+            id: 'schedule-2',
+            contractId: 'purchase-contract',
+            periodNo: 2,
+            principal: const Money(minorUnits: 60000),
+          ),
+        ]);
+        fixture.refundReductions.reductions['previous'] =
+            InstallmentRefundReduction(
+              id: 'previous',
+              contractId: 'purchase-contract',
+              refundTransactionId: 'refund-previous',
+              principal: const Money(minorUnits: 40000),
+              occurredAt: DateTime(2026, 6, 20),
+              createdAt: DateTime(2026, 6, 20),
+            );
+
+        final result = await fixture.refunds.create(
+          CreateConsumptionInstallmentRefundCommand(
+            contractId: 'purchase-contract',
+            parentTransactionId: 'purchase-tx',
+            amount: const Money(minorUnits: 100000),
+            categoryAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'expense-phone',
+                amount: Money(minorUnits: 100000),
+              ),
+            ],
+            settlementAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'credit-liability',
+                amount: Money(minorUnits: 100000),
+              ),
+            ],
+            overflowAccountId: 'asset-cash',
+            occurredAt: DateTime(2026, 7, 1),
+          ),
+        );
+
+        expect(result.principalReduction, const Money(minorUnits: 80000));
+        expect(
+          {
+            for (final allocation
+                in fixture.ledger.refundCommands.single.settlementAllocations)
+              allocation.accountId: allocation.amount.minorUnits,
+          },
+          {'credit-liability': 80000, 'asset-cash': 20000},
+        );
+        expect(
+          fixture.refundReductions.byTransaction('tx-refund-1')!.principal,
+          const Money(minorUnits: 80000),
+        );
+        expect(
+          fixture.installments.contracts['purchase-contract']!.status,
+          InstallmentContractStatus.settled,
+        );
+
+        await fixture.refunds.edit(
+          EditConsumptionInstallmentRefundCommand(
+            transactionId: 'tx-refund-1',
+            contractId: 'purchase-contract',
+            parentTransactionId: 'purchase-tx',
+            amount: const Money(minorUnits: 60000),
+            categoryAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'expense-phone',
+                amount: Money(minorUnits: 60000),
+              ),
+            ],
+            settlementAllocations: const [
+              ConsumptionInstallmentAllocation(
+                accountId: 'credit-liability',
+                amount: Money(minorUnits: 60000),
+              ),
+            ],
+            occurredAt: DateTime(2026, 7, 2),
+          ),
+        );
+        expect(
+          fixture.refundReductions.byTransaction('tx-refund-1')!.principal,
+          const Money(minorUnits: 60000),
+        );
+        expect(
+          fixture.installments.contracts['purchase-contract']!.status,
+          InstallmentContractStatus.active,
+        );
+
+        await fixture.refunds.delete(
+          const DeleteConsumptionInstallmentRefundCommand(
+            transactionId: 'tx-refund-1',
+          ),
+        );
+        expect(fixture.refundReductions.byTransaction('tx-refund-1'), isNull);
+        expect(
+          fixture.installments.contracts['purchase-contract']!.status,
+          InstallmentContractStatus.active,
+        );
+      },
+    );
+
+    test(
+      'deleting a purchase contract deletes its purchase transaction',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _purchaseContract(id: 'purchase-contract'),
+        );
+        fixture.installments.putSchedules('purchase-contract', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'purchase-contract',
+            periodNo: 1,
+          ),
+        ]);
+
+        await fixture.service.deleteContract(
+          const DeleteContractCommand(contractId: 'purchase-contract'),
+        );
+
+        expect(fixture.ledger.deletedTransactionIds, ['purchase-tx']);
+        expect(fixture.installments.contracts, isEmpty);
+      },
+    );
+
     test(
       'creates disbursement contract without borrowing transaction',
       () async {
@@ -583,6 +801,27 @@ InstallmentContract _contract({
   );
 }
 
+InstallmentContract _purchaseContract({required String id}) {
+  return InstallmentContract(
+    id: id,
+    liabilityAccountId: 'credit-liability',
+    sourceType: InstallmentSourceType.purchase,
+    purchaseTransactionId: 'purchase-tx',
+    principal: const Money(minorUnits: 120000),
+    borrowingDate: DateTime(2026, 6, 1),
+    status: InstallmentContractStatus.active,
+    createdAt: DateTime(2026, 6, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: '$id:stage:1',
+      totalPeriods: 2,
+      firstDate: DateTime(2026, 7, 10),
+      lastDate: DateTime(2026, 8, 10),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.daily,
+    ),
+  );
+}
+
 InstallmentSchedule _schedule({
   required String id,
   required String contractId,
@@ -611,6 +850,7 @@ class _Fixture {
   final repayments = _FakeRepaymentRepository();
   final bills = _FakeBillRepository();
   final creditAccounts = _FakeCreditAccountRepository();
+  final refundReductions = _FakeRefundReductionRepository();
   final posting = _FakePostingService();
   final edit = _FakeEditService();
   final update = _FakeUpdateService();
@@ -624,6 +864,8 @@ class _Fixture {
   late final InstallmentContractAppService service =
       InstallmentContractAppServiceImpl(
         repository: installments,
+        creditAccounts: creditAccounts,
+        refundReductions: refundReductions,
         bills: bills,
         ledger: ledger,
         repayments: repayments,
@@ -635,9 +877,21 @@ class _Fixture {
     installments: installments,
     repayments: repayments,
     bills: bills,
+    refundReductions: refundReductions,
     runner: const _ImmediateRunner(),
     idGenerator: SequentialIdGenerator(prefix: 'plan-test'),
   );
+  late final ConsumptionInstallmentRefundAppService refunds =
+      ConsumptionInstallmentRefundAppServiceImpl(
+        installments: installments,
+        refundReductions: refundReductions,
+        bills: bills,
+        repayments: repayments,
+        ledger: ledger,
+        plans: planService,
+        runner: const _ImmediateRunner(),
+        idGenerator: SequentialIdGenerator(prefix: 'refund-test'),
+      );
   late final InstallmentContractEditAppService editing =
       InstallmentContractEditAppServiceImpl(
         contracts: service,
@@ -936,8 +1190,62 @@ class _FakeRepaymentRepository implements RepaymentRepository {
   }
 }
 
+class _FakeRefundReductionRepository
+    implements InstallmentRefundReductionRepository {
+  final reductions = <String, InstallmentRefundReduction>{};
+
+  InstallmentRefundReduction? byTransaction(String transactionId) {
+    for (final reduction in reductions.values) {
+      if (reduction.refundTransactionId == transactionId) return reduction;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<InstallmentRefundReduction>> listByContract(
+    String contractId,
+  ) async => reductions.values
+      .where((reduction) => reduction.contractId == contractId)
+      .toList();
+
+  @override
+  Future<InstallmentRefundReduction?> findByRefundTransaction(
+    String refundTransactionId,
+  ) async => byTransaction(refundTransactionId);
+
+  @override
+  Future<void> save(InstallmentRefundReduction reduction) async {
+    reductions[reduction.id] = reduction;
+  }
+
+  @override
+  Future<void> deleteByRefundTransaction(String refundTransactionId) async {
+    reductions.removeWhere(
+      (_, reduction) => reduction.refundTransactionId == refundTransactionId,
+    );
+  }
+
+  @override
+  Future<void> deleteByContract(String contractId) async {
+    reductions.removeWhere(
+      (_, reduction) => reduction.contractId == contractId,
+    );
+  }
+}
+
 class _FakePostingService implements TransactionPostingAppService {
   final borrowingCommands = <CreateBorrowingCommand>[];
+  final expenseCommands = <CreateExpenseCommand>[];
+
+  @override
+  Future<PostedTransactionResult> createExpense(
+    CreateExpenseCommand command,
+  ) async {
+    expenseCommands.add(command);
+    return PostedTransactionResult(
+      transactionId: 'tx-expense-${expenseCommands.length}',
+    );
+  }
 
   @override
   Future<PostedTransactionResult> createBorrowing(
@@ -972,6 +1280,65 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   final _FakeEditService _edit;
   final _FakeUpdateService _update;
   final deletedTransactionIds = <String>[];
+  final refundCommands = <CreditLedgerPostRefundCommand>[];
+  final editRefundCommands = <CreditLedgerEditRefundCommand>[];
+
+  @override
+  Future<CreditLedgerPostedTransaction> postExpense(
+    CreditLedgerPostExpenseCommand command,
+  ) async {
+    final result = await _posting.createExpense(
+      CreateExpenseCommand(
+        amount: command.amount,
+        categoryAllocations: [
+          for (final allocation in command.categoryAllocations)
+            AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        settlementAllocations: [
+          for (final allocation in command.settlementAllocations)
+            AccountAmountAllocation(
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+        ],
+        occurredAt: command.occurredAt,
+        postedAt: command.postedAt,
+        counterpartyId: command.counterpartyId,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        tagIds: command.tagIds,
+        ownership: command.ownership == null
+            ? null
+            : TransactionOwnership(
+                ownerType: command.ownership!.ownerType,
+                ownerId: command.ownership!.ownerId,
+              ),
+      ),
+    );
+    return CreditLedgerPostedTransaction(transactionId: result.transactionId);
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRefund(
+    CreditLedgerPostRefundCommand command,
+  ) async {
+    refundCommands.add(command);
+    return CreditLedgerPostedTransaction(
+      transactionId: 'tx-refund-${refundCommands.length}',
+    );
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> editRefund(
+    CreditLedgerEditRefundCommand command,
+  ) async {
+    editRefundCommands.add(command);
+    return CreditLedgerPostedTransaction(transactionId: command.transactionId);
+  }
 
   @override
   Future<CreditLedgerPostedTransaction> postBorrowing(
@@ -1043,15 +1410,25 @@ class _FakeCreditLedgerPort implements CreditLedgerPort {
   }
 
   @override
-  Future<CreditLedgerAccountSnapshot?> findAccount(String accountId) {
-    throw UnimplementedError();
+  Future<CreditLedgerAccountSnapshot?> findAccount(String accountId) async {
+    return CreditLedgerAccountSnapshot(
+      id: accountId,
+      balance: Money.zero(),
+      isArchived: false,
+      kind: accountId == 'credit-liability'
+          ? CreditLedgerAccountKind.liability
+          : CreditLedgerAccountKind.asset,
+    );
   }
 
   @override
   Future<CreditLedgerTransactionSnapshot?> findParentTransaction(
     String transactionId,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    return CreditLedgerTransactionSnapshot(
+      transactionId: transactionId,
+      occurredAt: DateTime(2026, 6, 1),
+    );
   }
 
   @override

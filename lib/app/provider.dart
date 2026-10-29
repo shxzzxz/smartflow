@@ -79,6 +79,7 @@ import '../domain/credit/port/bill_generation_suppression_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
 import '../domain/credit/port/credit_bill_source_repository.dart';
 import '../domain/credit/port/installment_repository.dart';
+import '../domain/credit/port/installment_refund_reduction_repository.dart';
 import '../domain/credit/port/repayment_repository.dart';
 import '../domain/credit/port/credit_ledger_port.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
@@ -579,6 +580,13 @@ InstallmentRepository installmentRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+InstallmentRefundReductionRepository installmentRefundReductionRepository(
+  Ref ref,
+) {
+  return DriftInstallmentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 InstallmentProductRepository installmentProductRepository(Ref ref) =>
     DriftInstallmentProductRepository(ref.watch(appDatabaseProvider));
 
@@ -638,10 +646,28 @@ RepaymentAppService repaymentAppService(Ref ref) {
 InstallmentContractAppService installmentContractAppService(Ref ref) {
   return InstallmentContractAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
+    refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+ConsumptionInstallmentRefundAppService consumptionInstallmentRefundAppService(
+  Ref ref,
+) {
+  return ConsumptionInstallmentRefundAppServiceImpl(
+    installments: ref.watch(installmentRepositoryProvider),
+    refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    plans: ref.watch(installmentPlanAppServiceProvider),
+    runner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }
@@ -765,6 +791,7 @@ InstallmentPlanAppService installmentPlanAppService(Ref ref) =>
       installments: ref.watch(installmentRepositoryProvider),
       repayments: ref.watch(repaymentRepositoryProvider),
       bills: ref.watch(billRepositoryProvider),
+      refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
       runner: ref.watch(transactionRunnerProvider),
       idGenerator: ref.watch(idGeneratorProvider),
     );

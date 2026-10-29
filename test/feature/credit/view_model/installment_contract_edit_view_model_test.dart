@@ -406,7 +406,9 @@ InstallmentScheduleReadModel _schedule(
 }
 
 class _FakeInstallmentContractAppService
-    implements InstallmentContractAppService, InstallmentContractEditAppService {
+    implements
+        InstallmentContractAppService,
+        InstallmentContractEditAppService {
   _FakeInstallmentContractAppService({
     required this.contract,
     required this.schedules,
@@ -436,6 +438,13 @@ class _FakeInstallmentContractAppService
   @override
   Future<CreateContractResult> createDisbursementContract(
     CreateDisbursementContractCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreateContractResult> createConsumptionInstallment(
+    CreateConsumptionInstallmentCommand command,
   ) {
     throw UnimplementedError();
   }

@@ -638,7 +638,12 @@ class CreditBillGenerationService {
       accountId,
     )) {
       for (final schedule in await _installments.listSchedules(contract.id)) {
+        final expectedTotal =
+            schedule.expectedPrincipal.minorUnits +
+            schedule.expectedInterest.minorUnits +
+            schedule.expectedFee.minorUnits;
         if (schedule.status == InstallmentScheduleStatus.skipped ||
+            expectedTotal == 0 ||
             BillPeriod.fromDate(schedule.expectedRepaymentDate) != period) {
           continue;
         }

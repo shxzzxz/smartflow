@@ -44,6 +44,7 @@ class InstallmentContract {
     this.disbursementAccountId,
     this.disbursementTransactionId,
     this.sourceRepaymentId,
+    this.purchaseTransactionId,
     this.note,
     required InstallmentContractTerms stageTerms,
     List<InstallmentRepricingConfiguration> repricingConfigurations = const [],
@@ -62,6 +63,7 @@ class InstallmentContract {
   String? disbursementAccountId;
   final String? disbursementTransactionId;
   final String? sourceRepaymentId;
+  final String? purchaseTransactionId;
   final Money principal;
 
   /// 本笔贷款起算日，可通过合同编辑同步更正放款交易日期。
@@ -219,6 +221,12 @@ class InstallmentContract {
       current: _status,
       scheduleStatuses: schedules.map((schedule) => schedule.status),
     );
+  }
+
+  void refreshStatusFromPrincipal({required bool hasRemainingPrincipal}) {
+    _status = hasRemainingPrincipal
+        ? InstallmentContractStatus.active
+        : InstallmentContractStatus.settled;
   }
 
   /// 自动计算与人工编辑分别应用，避免自动重算被标记为人工调整。

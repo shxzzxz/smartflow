@@ -4,6 +4,7 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 
 import '../../generated_migrations/schema.dart';
 import '../../generated_migrations/schema_v49.dart' as v49;
+import '../../generated_migrations/schema_v50.dart' as v50;
 
 void main() {
   late SchemaVerifier verifier;
@@ -83,7 +84,47 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 50,
+      newVersion: 51,
     );
   });
+
+  test(
+    'migrates v50 to v51 with purchase contracts and refund reductions',
+    () async {
+      await verifier.testWithDataIntegrity<v50.DatabaseAtV50, AppDatabase>(
+        createOld: v50.DatabaseAtV50.new,
+        createNew: AppDatabase.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, _) {},
+        validateItems: (db) async {
+          final contractColumns =
+              (await db
+                      .customSelect('PRAGMA table_info(installment_contracts)')
+                      .get())
+                  .map((row) => row.read<String>('name'))
+                  .toSet();
+          expect(contractColumns, contains('purchase_transaction_id'));
+
+          final refundTables = await db
+              .customSelect(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'table' "
+                "AND name = 'installment_refund_reductions'",
+              )
+              .get();
+          expect(refundTables, hasLength(1));
+          final refundIndexes = await db
+              .customSelect(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'index' "
+                "AND name = 'installment_refund_reductions_contract_idx'",
+              )
+              .get();
+          expect(refundIndexes, hasLength(1));
+        },
+        oldVersion: 50,
+        newVersion: 51,
+      );
+    },
+  );
 }

@@ -17,6 +17,7 @@ class CreateExpenseCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
+    this.ownership,
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -30,6 +31,7 @@ class CreateExpenseCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final TransactionOwnership? ownership;
 
   /// 交易携带的标签 ID；标签挂在顶层交易上，随入账一并写入。
   final Set<String> tagIds;

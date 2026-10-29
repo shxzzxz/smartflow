@@ -174,6 +174,7 @@ class TransactionPostingAppServiceImpl
           isExcludedFromStats: command.isExcludedFromStats,
           isExcludedFromBudget: command.isExcludedFromBudget,
           sourceKind: command.sourceKind,
+          ownership: command.ownership,
         ),
       ),
       tagIds: command.tagIds,

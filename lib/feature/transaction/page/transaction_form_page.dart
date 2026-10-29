@@ -31,6 +31,9 @@ import 'package:smartflow/widget/business/tag/tag_badge.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../credit/page/loan_configuration_page.dart';
+import '../../credit/view_model/installment_terms_draft.dart';
+import '../../credit/view_model/loan_configuration_view_model.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
 import '../widget/transaction_allocation_fields.dart';
@@ -168,6 +171,7 @@ class _TransactionFormContentState
   late final TextEditingController _amountController;
   late final TextEditingController _feeController;
   late final TextEditingController _noteController;
+  InstallmentConfigurationDraft? _installmentConfiguration;
 
   @override
   void initState() {
@@ -195,6 +199,23 @@ class _TransactionFormContentState
     final liabilityAccounts = formState.liabilityAccounts;
     final advanceReceivableAccounts = formState.advanceReceivableAccounts;
     final ordinaryReceivableAccounts = formState.ordinaryReceivableAccounts;
+    final consumptionInstallment =
+        formState.mode == TransactionFormMode.expense &&
+        formState.expenseScene ==
+            TransactionExpenseScene.consumptionInstallment;
+    final installmentAccounts =
+        consumptionInstallment &&
+            formState.entryMode == TransactionEntryMode.allocated
+        ? [
+            for (final account in formState.creditAccounts)
+              if (formState.settlementAllocations.any(
+                (allocation) =>
+                    allocation.accountId == account.id &&
+                    allocation.amount.minorUnits > 0,
+              ))
+                account,
+          ]
+        : formState.creditAccounts;
     final selectableAdvanceAccounts = advanceAccountsForExpenseScene(
       formState.expenseScene,
       advanceReceivableAccounts,
@@ -408,12 +429,14 @@ class _TransactionFormContentState
                           formState.mode == TransactionFormMode.expense
                           ? expenseSettlementAccounts
                           : settlementAccounts,
+                      installmentAccounts: installmentAccounts,
                       advanceAccounts: selectableAdvanceAccounts,
                       fromAccountId: formState.fromAccountId,
                       toAccountId: formState.toAccountId,
                       advanceReceivableAccountId:
                           formState.advanceReceivableAccountId,
                       expenseScene: formState.expenseScene,
+                      consumptionInstallment: consumptionInstallment,
                       aaPeopleCount: formState.aaPeopleCount,
                       allocatedEntry:
                           formState.entryMode == TransactionEntryMode.allocated,
@@ -423,6 +446,8 @@ class _TransactionFormContentState
                       onFromAccountChanged: (value) => ref
                           .read(_formProvider.notifier)
                           .setFromAccountId(value),
+                      onInstallmentConfiguration: () =>
+                          _openInstallmentConfiguration(formState),
                       onToAccountChanged: (value) => ref
                           .read(_formProvider.notifier)
                           .setToAccountId(value),
@@ -633,19 +658,23 @@ class _TransactionFormContentState
       return TransactionExpenseScene.values;
     }
     final trackingMode = formState.expenseScene.advanceTrackingMode;
+    final candidates = [
+      for (final scene in TransactionExpenseScene.values)
+        if (scene != TransactionExpenseScene.consumptionInstallment) scene,
+    ];
     return switch (trackingMode) {
       null => [
-        for (final scene in TransactionExpenseScene.values)
+        for (final scene in candidates)
           if (scene.advanceTrackingMode != AdvanceTrackingMode.account) scene,
       ],
       AdvanceTrackingMode.itemized => [
-        for (final scene in TransactionExpenseScene.values)
+        for (final scene in candidates)
           if (scene == TransactionExpenseScene.ordinary ||
               scene.advanceTrackingMode == AdvanceTrackingMode.itemized)
             scene,
       ],
       AdvanceTrackingMode.account => [
-        for (final scene in TransactionExpenseScene.values)
+        for (final scene in candidates)
           if (scene.advanceTrackingMode == AdvanceTrackingMode.account) scene,
       ],
     };
@@ -695,9 +724,101 @@ class _TransactionFormContentState
     notifier.useNormalEntry();
   }
 
+  Future<void> _openInstallmentConfiguration(
+    TransactionFormState formState,
+  ) async {
+    final amount = Money.tryParse(_amountController.text);
+    if (amount == null || amount.minorUnits <= 0) {
+      _showError('请先输入有效成交价');
+      return;
+    }
+    final loanAmount = _loanAmount(formState, amount);
+    if (loanAmount.minorUnits <= 0) {
+      _showError('请先选择包含在支付分配中的信用账户并填写金额');
+      return;
+    }
+    final existing = _installmentConfiguration;
+    final borrowingDate =
+        existing?.borrowingDate ?? _dateOnly(formState.occurredAt);
+    final configuration = await Navigator.of(context)
+        .push<InstallmentConfigurationDraft>(
+          MaterialPageRoute(
+            builder: (_) => LoanConfigurationPage(
+              installment: InstallmentConfigurationDraft(
+                principal: loanAmount,
+                borrowingDate: borrowingDate,
+                terms:
+                    existing?.terms ??
+                    InstallmentTermsDraft.loan(borrowingDate),
+                productId: existing?.productId,
+                productName: existing?.productName,
+              ),
+            ),
+          ),
+        );
+    if (!mounted || configuration == null) return;
+    final principal = configuration.principal;
+    if (principal == null || principal.minorUnits <= 0) {
+      _showError('请输入有效贷款金额');
+      return;
+    }
+    try {
+      final nextAmount = ref
+          .read(_formProvider.notifier)
+          .applyConsumptionInstallmentAmount(principal);
+      syncTextControllerText(
+        _amountController,
+        formatMoney(nextAmount, style: MoneyFormatStyle.plain),
+      );
+      setState(() => _installmentConfiguration = configuration);
+    } on Exception catch (error) {
+      _showError(error.toString());
+    }
+  }
+
+  ConsumptionInstallmentConfiguration _consumptionConfiguration(
+    TransactionFormState formState,
+  ) {
+    final configured = _installmentConfiguration;
+    final borrowingDate =
+        configured?.borrowingDate ?? _dateOnly(formState.occurredAt);
+    final terms =
+        configured?.terms ?? InstallmentTermsDraft.loan(borrowingDate);
+    return ConsumptionInstallmentConfiguration(
+      borrowingDate: borrowingDate,
+      stageTerms: terms.contractTerms(),
+    );
+  }
+
+  Money _loanAmount(TransactionFormState formState, Money amount) {
+    if (formState.entryMode == TransactionEntryMode.normal) return amount;
+    final selectedId = formState.creditAccounts
+        .where((account) => account.id == formState.fromAccountId)
+        .firstOrNull
+        ?.id;
+    if (selectedId == null) return Money.zero();
+    for (final allocation in formState.settlementAllocations) {
+      if (allocation.accountId == selectedId) return allocation.amount;
+    }
+    return Money.zero();
+  }
+
   Future<void> _submit() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
+
+    final formState = ref.read(_formProvider).requireValue!;
+    ConsumptionInstallmentConfiguration? consumptionConfiguration;
+    if (formState.mode == TransactionFormMode.expense &&
+        formState.expenseScene ==
+            TransactionExpenseScene.consumptionInstallment) {
+      try {
+        consumptionConfiguration = _consumptionConfiguration(formState);
+      } on Exception catch (error) {
+        _showError(error.toString());
+        return;
+      }
+    }
 
     final outcome = await ref
         .read(_formProvider.notifier)
@@ -705,6 +826,7 @@ class _TransactionFormContentState
           amountText: _amountController.text,
           feeText: _feeController.text,
           noteText: _noteController.text,
+          consumptionInstallment: consumptionConfiguration,
         );
     if (!mounted) return;
 
@@ -1236,6 +1358,10 @@ final _expenseSceneItems = <AppChoiceGridItem<_TransactionSceneChoice>>[
   ),
   _sceneGridItem(
     TransactionFormMode.expense,
+    expenseScene: TransactionExpenseScene.consumptionInstallment,
+  ),
+  _sceneGridItem(
+    TransactionFormMode.expense,
     expenseScene: TransactionExpenseScene.aa,
   ),
   _sceneGridItem(
@@ -1423,6 +1549,8 @@ IconData _sceneChoiceIcon(_TransactionSceneChoice choice) {
   if (scene != null) {
     return switch (scene) {
       TransactionExpenseScene.ordinary => RemixIcons.wallet_line,
+      TransactionExpenseScene.consumptionInstallment =>
+        RemixIcons.shopping_bag_3_line,
       TransactionExpenseScene.reimbursement ||
       TransactionExpenseScene.reimbursementAccount =>
         RemixIcons.file_list_3_line,
@@ -1865,17 +1993,20 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.mode,
     required this.occurredAt,
     required this.moneyAccounts,
+    required this.installmentAccounts,
     required this.advanceAccounts,
     required this.fromAccountId,
     required this.toAccountId,
     required this.advanceReceivableAccountId,
     required this.expenseScene,
+    required this.consumptionInstallment,
     required this.aaPeopleCount,
     required this.allocatedEntry,
     required this.excludeStats,
     required this.excludeBudget,
     required this.onPickDate,
     required this.onFromAccountChanged,
+    required this.onInstallmentConfiguration,
     required this.onToAccountChanged,
     required this.onAdvanceAccountChanged,
     required this.onAaPeopleTap,
@@ -1886,17 +2017,20 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final TransactionFormMode mode;
   final DateTime occurredAt;
   final List<Account> moneyAccounts;
+  final List<Account> installmentAccounts;
   final List<Account> advanceAccounts;
   final String? fromAccountId;
   final String? toAccountId;
   final String? advanceReceivableAccountId;
   final TransactionExpenseScene expenseScene;
+  final bool consumptionInstallment;
   final int aaPeopleCount;
   final bool allocatedEntry;
   final bool excludeStats;
   final bool excludeBudget;
   final VoidCallback onPickDate;
   final ValueChanged<String?> onFromAccountChanged;
+  final VoidCallback onInstallmentConfiguration;
   final ValueChanged<String?> onToAccountChanged;
   final ValueChanged<String?> onAdvanceAccountChanged;
   final VoidCallback onAaPeopleTap;
@@ -1908,11 +2042,18 @@ class _TransactionOptionsPanel extends StatelessWidget {
     final showPrimaryAccount =
         (mode == TransactionFormMode.expense ||
             mode == TransactionFormMode.income) &&
-        !allocatedEntry;
+        (!allocatedEntry || consumptionInstallment);
     final showExcludeStats =
         mode == TransactionFormMode.expense ||
         mode == TransactionFormMode.income;
-    final accountLabel = mode == TransactionFormMode.income ? '收入账户' : '支出账户';
+    final accountLabel = consumptionInstallment
+        ? '分期账户'
+        : mode == TransactionFormMode.income
+        ? '收入账户'
+        : '支出账户';
+    final primaryAccounts = consumptionInstallment
+        ? installmentAccounts
+        : moneyAccounts;
     final primaryAccountId = mode == TransactionFormMode.income
         ? toAccountId
         : fromAccountId;
@@ -1938,13 +2079,27 @@ class _TransactionOptionsPanel extends StatelessWidget {
                   ),
                   if (showPrimaryAccount)
                     _AccountSelectorChip(
-                      key: mode == TransactionFormMode.expense
+                      key: consumptionInstallment
+                          ? const ValueKey(
+                              'consumption-installment-account-option',
+                            )
+                          : mode == TransactionFormMode.expense
                           ? const ValueKey('expense-primary-account-option')
                           : null,
                       label: accountLabel,
-                      accounts: moneyAccounts,
+                      accounts: primaryAccounts,
                       selectedId: primaryAccountId,
                       onChanged: accountChanged,
+                    ),
+                  if (consumptionInstallment)
+                    _QuickActionChip(
+                      key: const ValueKey(
+                        'consumption-installment-configuration',
+                      ),
+                      icon: RemixIcons.settings_3_line,
+                      label: '分期配置',
+                      selected: false,
+                      onTap: onInstallmentConfiguration,
                     ),
                   if (mode == TransactionFormMode.expense &&
                       expenseScene.isAdvance)
@@ -1991,7 +2146,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
     if (!showPrimaryAccount) return buildPanel(primaryChanged, null);
 
     return AppControlledFormField<String>(
-      value: effectiveAccountId(primaryAccountId, moneyAccounts),
+      value: effectiveAccountId(primaryAccountId, primaryAccounts),
       onChanged: primaryChanged,
       validator: (value) => value == null ? '请选择$accountLabel' : null,
       builder: (context, _, errorText, changeValue) =>
@@ -2344,6 +2499,9 @@ TransactionFormMode _toFormMode(TransactionFormInitialMode mode) {
     TransactionFormInitialMode.lending => TransactionFormMode.lending,
   };
 }
+
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
 
 String _formatDateTime(DateTime date) {
   final now = DateTime.now();

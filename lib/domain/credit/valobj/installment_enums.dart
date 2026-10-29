@@ -1,4 +1,4 @@
-enum InstallmentSourceType { disbursement, billConversion }
+enum InstallmentSourceType { disbursement, billConversion, purchase }
 
 enum InstallmentRepaymentMethod {
   equalInstallment,

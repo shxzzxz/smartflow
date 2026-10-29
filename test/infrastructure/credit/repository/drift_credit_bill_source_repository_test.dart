@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -24,16 +25,48 @@ void main() {
       amountMinor: 3000,
     );
 
-    final result = await DriftCreditBillSourceRepository(
-      database,
-    ).netConsumptionMinor(
-      accountId: 'credit-card',
-      startInclusive: DateTime(2026, 4, 1),
-      endExclusive: DateTime(2026, 5, 1),
-    );
+    final result = await DriftCreditBillSourceRepository(database)
+        .netConsumptionMinor(
+          accountId: 'credit-card',
+          startInclusive: DateTime(2026, 4, 1),
+          endExclusive: DateTime(2026, 5, 1),
+        );
 
     expect(result, 10000);
   });
+
+  test(
+    'excludes purchase transactions owned by an installment contract',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await _insertExpense(
+        database,
+        id: 'ordinary',
+        occurredAt: DateTime(2026, 4, 2),
+        postedAt: DateTime(2026, 4, 2),
+        amountMinor: 10000,
+      );
+      await _insertExpense(
+        database,
+        id: 'purchase-installment',
+        occurredAt: DateTime(2026, 4, 3),
+        postedAt: DateTime(2026, 4, 3),
+        amountMinor: 50000,
+        ownerType: 'credit.installment_contract',
+        ownerId: 'contract-1',
+      );
+
+      final result = await DriftCreditBillSourceRepository(database)
+          .netConsumptionMinor(
+            accountId: 'credit-card',
+            startInclusive: DateTime(2026, 4, 1),
+            endExclusive: DateTime(2026, 5, 1),
+          );
+
+      expect(result, 10000);
+    },
+  );
 }
 
 Future<void> _insertExpense(
@@ -42,6 +75,8 @@ Future<void> _insertExpense(
   required DateTime occurredAt,
   required DateTime postedAt,
   required int amountMinor,
+  String? ownerType,
+  String? ownerId,
 }) async {
   await database
       .into(database.transactions)
@@ -53,6 +88,8 @@ Future<void> _insertExpense(
           postedAt: postedAt,
           primaryAmountMinor: amountMinor,
           sourceKind: SourceKind.manual,
+          ownerType: Value(ownerType),
+          ownerId: Value(ownerId),
         ),
       );
   await database.batch((batch) {

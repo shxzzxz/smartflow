@@ -29,6 +29,7 @@ import 'table/credit/reference_rates.dart';
 import 'table/credit/installment_repricing_records.dart';
 import 'table/credit/installment_repricing_configs.dart';
 import 'table/credit/installment_interest_adjustments.dart';
+import 'table/credit/installment_refund_reductions.dart';
 import 'table/credit/repayment_items.dart';
 import 'table/credit/repayments.dart';
 import 'table/ledger/transaction_lines.dart';
@@ -67,6 +68,7 @@ part 'app_database.g.dart';
     InstallmentRepricingRecords,
     InstallmentRepricingConfigs,
     InstallmentInterestAdjustments,
+    InstallmentRefundReductions,
     Repayments,
     RepaymentItems,
     ImportEntityMappings,
@@ -80,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 50;
+  int get schemaVersion => 51;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

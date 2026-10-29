@@ -2,6 +2,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
@@ -14,6 +15,8 @@ import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../credit/provider/credit_account_query_providers.dart';
+import '../../credit/provider/installment_query_providers.dart';
 import '../presentation/transaction_form_presentation.dart';
 
 part 'refund_form_view_model.g.dart';
@@ -65,6 +68,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     );
     final refundSummary = detail.refundSummary;
     final refunded = refundSummary?.refundedTotal ?? Money.zero();
+    final installmentContractId = await _purchaseContractId(detail);
     final availableCategories =
         refundSummary?.remainingCategoryAllocations ?? const [];
     final categoryAllocations =
@@ -74,6 +78,8 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       parentTransactionId: transactionId,
       editing: false,
       advanceParent: detail.businessPurpose == BusinessPurpose.advance,
+      installmentContractId: installmentContractId,
+      overflowAccountId: _firstAssetAccountId(detail, accountsById),
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(
         categoryAllocations,
@@ -145,6 +151,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           );
     final parentCategories =
         parentSummary?.originalCategoryAllocations ?? const [];
+    final installmentContractId = await _purchaseContractId(parentDetail);
     final categoryAllocations = _refundCategoryAllocations(transaction);
     final settlementAllocations = _allocationsOf(
       transaction,
@@ -155,6 +162,8 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       parentTransactionId: parentTransactionId,
       editing: true,
       advanceParent: parentDetail.businessPurpose == BusinessPurpose.advance,
+      installmentContractId: installmentContractId,
+      overflowAccountId: _firstAssetAccountId(parentDetail, accountsById),
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(parentCategories, accountsById),
       availableCategoryAllocations: availableCategories,
@@ -240,7 +249,55 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Refund form submit', () async {
-        if (current.advanceParent) {
+        final installmentContractId = current.installmentContractId;
+        if (installmentContractId != null) {
+          final service = ref.read(
+            consumptionInstallmentRefundAppServiceProvider,
+          );
+          final creditCategoryAllocations = [
+            for (final allocation in categoryAllocations)
+              ConsumptionInstallmentAllocation(
+                accountId: allocation.accountId,
+                amount: allocation.amount,
+              ),
+          ];
+          final creditSettlementAllocations = [
+            for (final allocation in settlementAllocations)
+              ConsumptionInstallmentAllocation(
+                accountId: allocation.accountId,
+                amount: allocation.amount,
+              ),
+          ];
+          if (current.editing) {
+            await service.edit(
+              EditConsumptionInstallmentRefundCommand(
+                transactionId: current.transactionId,
+                contractId: installmentContractId,
+                parentTransactionId: current.parentTransactionId,
+                amount: amount,
+                categoryAllocations: creditCategoryAllocations,
+                settlementAllocations: creditSettlementAllocations,
+                overflowAccountId: current.overflowAccountId,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+          } else {
+            await service.create(
+              CreateConsumptionInstallmentRefundCommand(
+                contractId: installmentContractId,
+                parentTransactionId: current.parentTransactionId,
+                amount: amount,
+                categoryAllocations: creditCategoryAllocations,
+                settlementAllocations: creditSettlementAllocations,
+                overflowAccountId: current.overflowAccountId,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+          }
+          await _invalidateInstallmentPlan(installmentContractId);
+        } else if (current.advanceParent) {
           final orchestration = ref.read(
             advanceOrchestrationAppServiceProvider,
           );
@@ -314,6 +371,33 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     state = AsyncData(update(current));
   }
 
+  Future<String?> _purchaseContractId(TransactionReadModel detail) async {
+    final ownership = detail.ownership;
+    if (ownership?.ownerType != installmentOwnerType) return null;
+    final contract = await ref
+        .read(installmentQueryServiceProvider)
+        .findContract(ownership!.ownerId);
+    return contract?.sourceType == InstallmentSourceType.purchase
+        ? contract!.id
+        : null;
+  }
+
+  Future<void> _invalidateInstallmentPlan(String contractId) async {
+    ref
+      ..invalidate(installmentContractProvider(contractId))
+      ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentMetricsProvider(contractId));
+    final contract = await ref
+        .read(installmentQueryServiceProvider)
+        .findContract(contractId);
+    if (contract == null) return;
+    ref
+      ..invalidate(
+        installmentContractsByAccountProvider(contract.liabilityAccountId),
+      )
+      ..invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
+  }
+
   SubmitOutcome _invalidCommand(String message) {
     return SubmitOutcome.failure(
       UiError(
@@ -344,6 +428,8 @@ class RefundFormState {
     this.categoryAllocations,
     this.settlementAllocations,
     this.advanceParent = false,
+    this.installmentContractId,
+    this.overflowAccountId,
   }) : accounts = List.unmodifiable(accounts),
        categoryAccounts = List.unmodifiable(categoryAccounts),
        availableCategoryAllocations = List.unmodifiable(
@@ -355,6 +441,8 @@ class RefundFormState {
     required String parentTransactionId,
     required bool editing,
     bool advanceParent = false,
+    String? installmentContractId,
+    String? overflowAccountId,
     required List<Account> accounts,
     required List<Account> categoryAccounts,
     required List<AccountAmountAllocation> availableCategoryAllocations,
@@ -372,6 +460,8 @@ class RefundFormState {
       parentTransactionId: parentTransactionId,
       editing: editing,
       advanceParent: advanceParent,
+      installmentContractId: installmentContractId,
+      overflowAccountId: overflowAccountId,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,
@@ -431,6 +521,8 @@ class RefundFormState {
   final String parentTransactionId;
   final bool editing;
   final bool advanceParent;
+  final String? installmentContractId;
+  final String? overflowAccountId;
   final List<Account> accounts;
   final List<Account> categoryAccounts;
   final List<AccountAmountAllocation> availableCategoryAllocations;
@@ -458,6 +550,8 @@ class RefundFormState {
       parentTransactionId: parentTransactionId,
       editing: editing,
       advanceParent: advanceParent,
+      installmentContractId: installmentContractId,
+      overflowAccountId: overflowAccountId,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,
@@ -481,6 +575,19 @@ class RefundFormState {
 
 Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
   return detail.primaryAmount - refunded;
+}
+
+String? _firstAssetAccountId(
+  TransactionReadModel detail,
+  Map<String, Account> accountsById,
+) {
+  for (final line in detail.linesOf(TransactionRole.settlementOut)) {
+    final accountId = line.accountId;
+    if (accountId == null) continue;
+    final account = accountsById[accountId];
+    if (account?.type == AccountType.asset) return accountId;
+  }
+  return null;
 }
 
 Money _remainingForEditedRefund(

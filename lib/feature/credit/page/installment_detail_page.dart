@@ -100,7 +100,7 @@ class InstallmentDetailPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除分期合同'),
-        content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
+        content: const Text('将撤回还款记录与合同来源交易，并清除合同和还款计划。此操作不可撤销。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

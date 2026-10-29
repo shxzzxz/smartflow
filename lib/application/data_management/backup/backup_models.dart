@@ -24,6 +24,7 @@ class BackupTables {
     'installment_stage_configs',
     'installment_contracts',
     'installment_schedules',
+    'installment_refund_reductions',
     'reference_rates',
     'installment_repricing_records',
     'installment_repricing_configs',
@@ -60,6 +61,7 @@ class BackupTables {
       'installment_stage_configs',
       'installment_contracts',
       'installment_schedules',
+      'installment_refund_reductions',
       'reference_rates',
       'installment_repricing_records',
       'installment_repricing_configs',
@@ -206,7 +208,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 2;
+  static const currentBackupSchemaVersion = 3;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
@@ -369,6 +371,7 @@ class BackupDiff {
       if (table == 'installment_interest_adjustments') return '合同利息调整';
       if (table == 'installment_contracts' ||
           table == 'installment_schedules' ||
+          table == 'installment_refund_reductions' ||
           table == 'repayments' ||
           table == 'repayment_items' ||
           table == 'credit_liability_accounts' ||

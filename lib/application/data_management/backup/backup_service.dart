@@ -184,6 +184,10 @@ class BackupService {
     }
     for (final table in BackupTables.all) {
       if (!tables.containsKey(table)) {
+        if (manifest.backupSchemaVersion < 3 &&
+            table == 'installment_refund_reductions') {
+          continue;
+        }
         throw BackupValidationException('备份缺少业务表文件: $table');
       }
     }
@@ -209,6 +213,7 @@ class BackupService {
     ) {
       upgraded = switch (version) {
         1 => _upgradeBackupV1ToV2(upgraded),
+        2 => _upgradeBackupV2ToV3(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -228,6 +233,22 @@ class BackupService {
     ];
     return snapshot.copyWith(
       tables: {...snapshot.tables, 'accounts': accounts},
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV2ToV3(BackupSnapshot snapshot) {
+    final contracts = [
+      for (final row in snapshot.rows('installment_contracts'))
+        {...row, 'purchaseTransactionId': row['purchaseTransactionId']},
+    ];
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'installment_contracts': contracts,
+        'installment_refund_reductions': snapshot.rows(
+          'installment_refund_reductions',
+        ),
+      },
     );
   }
 
@@ -483,6 +504,17 @@ class BackupService {
         repayments,
         'installment_contracts.sourceRepaymentId',
       );
+      _optionalReference(
+        row,
+        'purchaseTransactionId',
+        transactions,
+        'installment_contracts.purchaseTransactionId',
+      );
+      final sourceType = row['sourceType'];
+      final purchaseTransactionId = row['purchaseTransactionId'];
+      if ((sourceType == 'purchase') != (purchaseTransactionId != null)) {
+        throw const BackupValidationException('PURCHASE 合同与购买交易引用必须同时存在。');
+      }
     }
     for (final row in snapshot.rows('installment_schedules')) {
       _requiredReference(
@@ -512,6 +544,28 @@ class BackupService {
         );
       }
       _requiredReference(row, 'targetId', target, 'repayments.targetId');
+    }
+    for (final row in snapshot.rows('installment_refund_reductions')) {
+      _requiredReference(
+        row,
+        'contractId',
+        contracts,
+        'installment_refund_reductions.contractId',
+      );
+      _requiredReference(
+        row,
+        'refundTransactionId',
+        transactions,
+        'installment_refund_reductions.refundTransactionId',
+      );
+      final contract = contracts[row['contractId']];
+      final transaction = transactions[row['refundTransactionId']];
+      if (contract?['sourceType'] != 'purchase' ||
+          transaction?['businessPurpose'] != 'refund' ||
+          transaction?['ownerType'] != 'credit.installment_contract' ||
+          transaction?['ownerId'] != contract?['id']) {
+        throw const BackupValidationException('退款还本引用关系无效。');
+      }
     }
     for (final row in snapshot.rows('repayment_items')) {
       _requiredReference(
@@ -1009,7 +1063,7 @@ class BackupService {
       'billStatus': {'open', 'billed', 'settled'},
       'billItemType': {'consumption', 'installment'},
       'billItemStatus': {'pending', 'partiallyPaid', 'paid', 'skipped'},
-      'installmentSourceType': {'disbursement', 'billConversion'},
+      'installmentSourceType': {'disbursement', 'billConversion', 'purchase'},
       'repaymentMethod': {
         'equalInstallment',
         'equalPrincipal',

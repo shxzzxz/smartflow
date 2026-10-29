@@ -19,6 +19,7 @@ import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repricing_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
@@ -45,6 +46,8 @@ void main() {
     products = DriftInstallmentProductRepository(db);
     service = InstallmentContractAppServiceImpl(
       repository: repository,
+      creditAccounts: DriftCreditAccountRepository(db),
+      refundReductions: repository,
       bills: DriftBillRepository(db),
       repayments: DriftRepaymentRepository(db),
       ledger: _Ledger(),

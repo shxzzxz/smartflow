@@ -41,8 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 2);
-      expect(inspected.manifest.schemaVersion, 50);
+      expect(inspected.manifest.backupSchemaVersion, 3);
+      expect(inspected.manifest.schemaVersion, 51);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -79,7 +79,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 2);
+        expect(inspection.manifest.backupSchemaVersion, 3);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -133,6 +133,26 @@ void main() {
       expect(account['accountProfileKey'], 'credit.credit');
     });
 
+    test(
+      'migrates v2 backups before requiring refund reduction data',
+      () async {
+        await service.createBackup(tempDirectory);
+        await _removeBackupTable(
+          tempDirectory,
+          'installment_refund_reductions',
+        );
+        await _rewriteBackupSchemaVersion(tempDirectory, 2);
+
+        final inspection = await service.inspect(tempDirectory);
+
+        expect(inspection.manifest.backupSchemaVersion, 2);
+        expect(
+          inspection.snapshot.rows('installment_refund_reductions'),
+          isEmpty,
+        );
+      },
+    );
+
     test('rejects obsolete backup format versions', () async {
       await service.createBackup(tempDirectory);
       final manifestFile = File('${tempDirectory.path}/manifest.json');
@@ -152,7 +172,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 3;
+      manifest['backupSchemaVersion'] = 4;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -161,7 +181,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 3'),
+            contains('backupSchemaVersion 4'),
           ),
         ),
       );
@@ -210,7 +230,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 2);
+        expect(manifest.backupSchemaVersion, 3);
       },
     );
   });
@@ -360,7 +380,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 50});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 51});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;
@@ -386,5 +406,24 @@ Future<void> _rewriteBackupSchemaVersion(
   final manifest =
       jsonDecode(await file.readAsString()) as Map<String, Object?>;
   manifest['backupSchemaVersion'] = version;
+  await file.writeAsString(jsonEncode(manifest));
+}
+
+Future<void> _removeBackupTable(Directory directory, String table) async {
+  final file = File('${directory.path}/manifest.json');
+  final manifest =
+      jsonDecode(await file.readAsString()) as Map<String, Object?>;
+  final files = (manifest['requiredFiles'] as List).cast<Map>();
+  Map? removed;
+  files.removeWhere((entry) {
+    if (entry['table'] != table) return false;
+    removed = entry;
+    return true;
+  });
+  if (removed == null) {
+    throw StateError('Backup table $table was not found.');
+  }
+  final path = removed!['path'] as String;
+  await File('${directory.path}/$path').delete();
   await file.writeAsString(jsonEncode(manifest));
 }

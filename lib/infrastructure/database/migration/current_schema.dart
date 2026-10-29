@@ -44,6 +44,10 @@ Future<void> createCurrentSchema(
     'WHERE disbursement_transaction_id IS NOT NULL',
   );
   await _createInstallmentSourceRepaymentIndex(database);
+  await database.customStatement(
+    'CREATE INDEX installment_refund_reductions_contract_idx '
+    'ON installment_refund_reductions (contract_id)',
+  );
   await _createBillIndexes(database);
   await _createRepaymentIndexes(database);
   await _createImportIndexes(database);

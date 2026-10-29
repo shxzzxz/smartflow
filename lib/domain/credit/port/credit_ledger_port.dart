@@ -9,16 +9,105 @@ class CreditLedgerPostedTransaction {
   final String transactionId;
 }
 
+class CreditLedgerExpenseAllocation {
+  const CreditLedgerExpenseAllocation({
+    required this.accountId,
+    required this.amount,
+  });
+
+  final String accountId;
+  final Money amount;
+}
+
+class CreditLedgerPostExpenseCommand {
+  CreditLedgerPostExpenseCommand({
+    required this.amount,
+    required List<CreditLedgerExpenseAllocation> categoryAllocations,
+    required List<CreditLedgerExpenseAllocation> settlementAllocations,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyId,
+    this.note,
+    this.tagIds = const {},
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+    this.ownership,
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  final Money amount;
+  final List<CreditLedgerExpenseAllocation> categoryAllocations;
+  final List<CreditLedgerExpenseAllocation> settlementAllocations;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyId;
+  final String? note;
+  final Set<String> tagIds;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
+  final CreditLedgerOwnership? ownership;
+}
+
+class CreditLedgerPostRefundCommand {
+  CreditLedgerPostRefundCommand({
+    required this.parentTransactionId,
+    required this.amount,
+    required List<CreditLedgerExpenseAllocation> categoryAllocations,
+    required List<CreditLedgerExpenseAllocation> settlementAllocations,
+    required this.occurredAt,
+    this.postedAt,
+    this.counterpartyId,
+    this.note,
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  final String parentTransactionId;
+  final Money amount;
+  final List<CreditLedgerExpenseAllocation> categoryAllocations;
+  final List<CreditLedgerExpenseAllocation> settlementAllocations;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+  final String? counterpartyId;
+  final String? note;
+}
+
+class CreditLedgerEditRefundCommand {
+  CreditLedgerEditRefundCommand({
+    required this.transactionId,
+    this.amount,
+    List<CreditLedgerExpenseAllocation>? categoryAllocations,
+    List<CreditLedgerExpenseAllocation>? settlementAllocations,
+    this.occurredAt,
+    this.counterpartyId,
+    this.note,
+  }) : categoryAllocations = categoryAllocations == null
+           ? null
+           : List.unmodifiable(categoryAllocations),
+       settlementAllocations = settlementAllocations == null
+           ? null
+           : List.unmodifiable(settlementAllocations);
+
+  final String transactionId;
+  final Money? amount;
+  final List<CreditLedgerExpenseAllocation>? categoryAllocations;
+  final List<CreditLedgerExpenseAllocation>? settlementAllocations;
+  final DateTime? occurredAt;
+  final Patch<String?>? counterpartyId;
+  final Patch<String?>? note;
+}
+
 class CreditLedgerAccountSnapshot {
   const CreditLedgerAccountSnapshot({
     required this.id,
     required this.balance,
     required this.isArchived,
+    this.kind = CreditLedgerAccountKind.other,
   });
 
   final String id;
   final Money balance;
   final bool isArchived;
+  final CreditLedgerAccountKind kind;
 }
 
 class CreditLedgerTransactionSnapshot {
@@ -26,11 +115,13 @@ class CreditLedgerTransactionSnapshot {
     required this.transactionId,
     required this.occurredAt,
     this.paidFromAccountId,
+    this.hasRefundChildren = false,
   });
 
   final String transactionId;
   final DateTime occurredAt;
   final String? paidFromAccountId;
+  final bool hasRefundChildren;
 }
 
 enum CreditLedgerAccountKind { asset, liability, other }
@@ -229,6 +320,18 @@ abstract interface class CreditAccountLedgerPort {
 
 abstract interface class CreditLedgerPort {
   Future<CreditLedgerAccountSnapshot?> findAccount(String accountId);
+
+  Future<CreditLedgerPostedTransaction> postExpense(
+    CreditLedgerPostExpenseCommand command,
+  );
+
+  Future<CreditLedgerPostedTransaction> postRefund(
+    CreditLedgerPostRefundCommand command,
+  );
+
+  Future<CreditLedgerPostedTransaction> editRefund(
+    CreditLedgerEditRefundCommand command,
+  );
 
   Future<CreditLedgerPostedTransaction> postRepayment(
     CreditLedgerPostRepaymentCommand command,

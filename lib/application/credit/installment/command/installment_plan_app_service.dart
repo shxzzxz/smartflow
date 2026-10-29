@@ -6,8 +6,10 @@ import '../../../../core/error/app_exception.dart';
 import '../../../../core/id/id_generator.dart';
 import '../../../../domain/credit/entity/installment_contract.dart';
 import '../../../../domain/credit/entity/installment_schedule.dart';
+import '../../../../domain/credit/entity/installment_refund_reduction.dart';
 import '../../../../domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/repayment_repository.dart';
+import '../../../../domain/credit/port/installment_refund_reduction_repository.dart';
 import '../../../../domain/credit/entity/bill.dart';
 import '../../../../domain/credit/port/bill_repository.dart';
 import '../../../../domain/credit/valobj/installment_enums.dart';
@@ -37,12 +39,14 @@ class InstallmentPlanAppService {
     required BillRepository bills,
     required TransactionRunner runner,
     required IdGenerator idGenerator,
+    InstallmentRefundReductionRepository? refundReductions,
     InstallmentPlanEngine engine = const InstallmentPlanEngine(),
   }) : _installments = installments,
        _repayments = repayments,
        _bills = bills,
        _runner = runner,
        _ids = idGenerator,
+       _refundReductions = refundReductions,
        _engine = engine;
 
   final InstallmentRepository _installments;
@@ -50,6 +54,7 @@ class InstallmentPlanAppService {
   final BillRepository _bills;
   final TransactionRunner _runner;
   final IdGenerator _ids;
+  final InstallmentRefundReductionRepository? _refundReductions;
   final InstallmentPlanEngine _engine;
 
   Future<ContractRecalculationPreview> previewContractRecalculation(
@@ -236,6 +241,9 @@ class InstallmentPlanAppService {
       RepaymentTargetType.contract,
       id,
     );
+    final refundReductions =
+        await _refundReductions?.listByContract(contract.id) ??
+        const <InstallmentRefundReduction>[];
     final terms = request is RecalculateFromTerms
         ? request.terms
         : contract.stageTerms;
@@ -249,6 +257,11 @@ class InstallmentPlanAppService {
               date: repayment.repaymentDate,
               principal: repayment.totalAllocated().principal,
             ),
+        for (final reduction in refundReductions)
+          PrincipalReduction(
+            date: reduction.occurredAt,
+            principal: reduction.principal,
+          ),
       ],
       rateChangesByStage: {
         for (var index = 0; index < terms.stages.length; index++)

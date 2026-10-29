@@ -181,6 +181,27 @@ ledger.TransactionReadModel _transactionDetail() {
 }
 
 class _FakeCreditLedgerPort implements CreditLedgerPort {
+  @override
+  Future<CreditLedgerPostedTransaction> postExpense(
+    CreditLedgerPostExpenseCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> postRefund(
+    CreditLedgerPostRefundCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<CreditLedgerPostedTransaction> editRefund(
+    CreditLedgerEditRefundCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
   const _FakeCreditLedgerPort(this.details);
 
   final Map<String, ledger.TransactionReadModel> details;

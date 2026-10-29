@@ -90,6 +90,7 @@ String _installmentSourceLabel(
 }) {
   return switch (sourceType) {
     InstallmentSourceType.billConversion => '账单分期',
+    InstallmentSourceType.purchase => '消费分期',
     InstallmentSourceType.disbursement => switch (accountKind) {
       AccountProfileKind.credit => '现金分期',
       AccountProfileKind.loan => '贷款分期',

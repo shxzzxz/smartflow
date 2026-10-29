@@ -1186,6 +1186,13 @@ class _FakeInstallmentContractAppService
   ) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<CreateContractResult> createConsumptionInstallment(
+    CreateConsumptionInstallmentCommand command,
+  ) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeRepaymentAppService implements RepaymentAppService {

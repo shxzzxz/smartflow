@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
@@ -64,6 +68,75 @@ void main() {
           ?.map((allocation) => allocation.amount.minorUnits)
           .toList(),
       [0, 0],
+    );
+  });
+
+  test(
+    'routes a purchase refund through consumption installment refunds',
+    () async {
+      final refunds = _FakeConsumptionRefundService();
+      final container = _container(
+        purchaseParent: true,
+        consumptionRefunds: refunds,
+      );
+      final provider = refundFormViewModelProvider('parent');
+      final state = await container.read(provider.future);
+
+      expect(state.installmentContractId, 'purchase-contract');
+      expect(state.overflowAccountId, 'cash');
+
+      container.read(provider.notifier).setSettlementAllocations(const [
+        AccountAmountAllocation(
+          accountId: 'credit',
+          amount: Money(minorUnits: 10000),
+        ),
+      ]);
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '100', noteText: 'return');
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = refunds.createCommands.single;
+      expect(command.contractId, 'purchase-contract');
+      expect(command.parentTransactionId, 'parent');
+      expect(command.overflowAccountId, 'cash');
+      expect(command.settlementAllocations.single.accountId, 'credit');
+    },
+  );
+
+  test('refreshes the installment plan after a covering refund', () async {
+    final refunds = _FakeConsumptionRefundService();
+    final container = _container(
+      purchaseParent: true,
+      consumptionRefunds: refunds,
+      scheduleLoader: (_) async => [
+        _schedule(principal: refunds.createCommands.isEmpty ? 10000 : 0),
+      ],
+    );
+    final provider = installmentSchedulesProvider('purchase-contract');
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    expect(
+      (await container.read(provider.future)).single.expectedPrincipal,
+      const Money(minorUnits: 10000),
+    );
+
+    final refundProvider = refundFormViewModelProvider('parent');
+    await container.read(refundProvider.future);
+    container.read(refundProvider.notifier).setSettlementAllocations(const [
+      AccountAmountAllocation(
+        accountId: 'credit',
+        amount: Money(minorUnits: 10000),
+      ),
+    ]);
+    final outcome = await container
+        .read(refundProvider.notifier)
+        .submit(amountText: '100', noteText: 'return');
+
+    expect(outcome, isA<SubmitSuccess>());
+    expect(
+      (await container.read(provider.future)).single.expectedPrincipal,
+      Money.zero(),
     );
   });
 
@@ -215,23 +288,29 @@ ProviderContainer _container({
   bool closed = false,
   bool includeReceipt = false,
   bool combinedPayment = false,
+  bool purchaseParent = false,
   _FakeAdvanceOrchestrationService? orchestration,
+  _FakeConsumptionRefundService? consumptionRefunds,
+  Future<List<InstallmentScheduleReadModel>> Function(String contractId)?
+  scheduleLoader,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
   final receivable = _account('receivable');
+  final credit = _account('credit', type: AccountType.liability);
   final expense = _account('expense', type: AccountType.expense);
   final accounts = {
     'cash': cash,
     'bank': bank,
     'receivable': receivable,
+    'credit': credit,
     'expense': expense,
   };
   final container = ProviderContainer(
     overrides: [
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
-      ).overrideWithValue(AsyncData([cash, bank])),
+      ).overrideWithValue(AsyncData([cash, bank, credit])),
       accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
       accountLookupProvider.overrideWithValue(
         AsyncData(AccountLookup(accounts)),
@@ -241,13 +320,27 @@ ProviderContainer _container({
       ).overrideWithValue(AsyncData(_refundDetail())),
       transactionDetailProvider('parent').overrideWithValue(
         AsyncData(
-          _parentDetail(
-            closed: closed,
-            includeReceipt: includeReceipt,
-            combinedPayment: combinedPayment,
-          ),
+          purchaseParent
+              ? _purchaseParentDetail()
+              : _parentDetail(
+                  closed: closed,
+                  includeReceipt: includeReceipt,
+                  combinedPayment: combinedPayment,
+                ),
         ),
       ),
+      if (purchaseParent)
+        installmentQueryServiceProvider.overrideWithValue(
+          _FakeInstallmentQueryService(),
+        ),
+      if (purchaseParent)
+        consumptionInstallmentRefundAppServiceProvider.overrideWithValue(
+          consumptionRefunds ?? _FakeConsumptionRefundService(),
+        ),
+      if (scheduleLoader != null)
+        installmentSchedulesProvider.overrideWith(
+          (ref, contractId) => scheduleLoader(contractId),
+        ),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         orchestration ?? _FakeAdvanceOrchestrationService(),
       ),
@@ -284,6 +377,124 @@ class _FakeAdvanceOrchestrationService
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeConsumptionRefundService
+    implements ConsumptionInstallmentRefundAppService {
+  final createCommands = <CreateConsumptionInstallmentRefundCommand>[];
+  final editCommands = <EditConsumptionInstallmentRefundCommand>[];
+  final deleteCommands = <DeleteConsumptionInstallmentRefundCommand>[];
+
+  @override
+  Future<ConsumptionInstallmentRefundResult> create(
+    CreateConsumptionInstallmentRefundCommand command,
+  ) async {
+    createCommands.add(command);
+    return ConsumptionInstallmentRefundResult(
+      refundTransactionId: 'refund-new',
+      principalReduction: Money.zero(),
+    );
+  }
+
+  @override
+  Future<ConsumptionInstallmentRefundResult> edit(
+    EditConsumptionInstallmentRefundCommand command,
+  ) async {
+    editCommands.add(command);
+    return ConsumptionInstallmentRefundResult(
+      refundTransactionId: command.transactionId,
+      principalReduction: Money.zero(),
+    );
+  }
+
+  @override
+  Future<void> delete(DeleteConsumptionInstallmentRefundCommand command) async {
+    deleteCommands.add(command);
+  }
+}
+
+class _FakeInstallmentQueryService implements InstallmentQueryService {
+  @override
+  Future<InstallmentContractReadModel?> findContract(String contractId) async {
+    if (contractId != 'purchase-contract') return null;
+    return InstallmentContractReadModel(
+      id: 'purchase-contract',
+      liabilityAccountId: 'credit',
+      sourceType: InstallmentSourceType.purchase,
+      principal: const Money(minorUnits: 10000),
+      borrowingDate: DateTime(2026, 6, 1),
+      status: InstallmentContractStatus.active,
+      createdAt: DateTime(2026, 6, 1),
+      stageTerms: InstallmentContractTerms.singleStage(
+        id: 'stage',
+        totalPeriods: 12,
+        firstDate: DateTime(2026, 7, 1),
+        method: InstallmentRepaymentMethod.equalPrincipal,
+        accrual: InterestAccrualMethod.monthly,
+        feeMinor: 0,
+      ),
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+TransactionReadModel _purchaseParentDetail() {
+  const lines = [
+    TransactionLine(
+      id: 'purchase-category',
+      transactionId: 'parent',
+      lineNo: 1,
+      role: TransactionRole.category,
+      accountId: 'expense',
+      amount: Money(minorUnits: 10000),
+    ),
+    TransactionLine(
+      id: 'purchase-cash',
+      transactionId: 'parent',
+      lineNo: 2,
+      role: TransactionRole.settlementOut,
+      accountId: 'cash',
+      amount: Money(minorUnits: 6000),
+    ),
+    TransactionLine(
+      id: 'purchase-credit',
+      transactionId: 'parent',
+      lineNo: 3,
+      role: TransactionRole.settlementOut,
+      accountId: 'credit',
+      amount: Money(minorUnits: 4000),
+    ),
+  ];
+  return TransactionReadModel.fromTransaction(
+    transaction: Transaction(
+      id: 'parent',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 6, 1),
+      primaryAmount: const Money(minorUnits: 10000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      sourceKind: SourceKind.manual,
+      ownership: const TransactionOwnership(
+        ownerType: installmentOwnerType,
+        ownerId: 'purchase-contract',
+      ),
+    ),
+    createdAt: DateTime(2026, 6, 1),
+    lines: lines,
+    refundSummary: const RefundSummary(
+      refundedTotal: Money(minorUnits: 0),
+      originalCategoryAllocations: [
+        AccountAmountAllocation(
+          accountId: 'expense',
+          amount: Money(minorUnits: 10000),
+        ),
+      ],
+      refundedCategoryAllocations: [],
+    ),
+  );
 }
 
 TransactionReadModel _refundDetail() {
@@ -403,6 +614,20 @@ TransactionLine _line(
 
 Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
+}
+
+InstallmentScheduleReadModel _schedule({required int principal}) {
+  return InstallmentScheduleReadModel(
+    id: 'schedule-1',
+    contractId: 'purchase-contract',
+    periodNo: 1,
+    expectedRepaymentDate: DateTime(2026, 7, 1),
+    expectedPrincipal: Money(minorUnits: principal),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    status: InstallmentScheduleStatus.pending,
+    createdAt: DateTime(2026, 6, 1),
+  );
 }
 
 const _advanceLines = [

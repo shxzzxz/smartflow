@@ -99,6 +99,9 @@ class DriftBackupGateway
             (await database.select(database.installmentSchedules).get()).map(
               _json,
             ),
+        'installment_refund_reductions':
+            (await database.select(database.installmentRefundReductions).get())
+                .map(_json),
         'repayments': (await database.select(database.repayments).get()).map(
           _json,
         ),
@@ -154,6 +157,7 @@ class DriftBackupGateway
         'installment_interest_adjustments',
         'reference_rates',
         'repayment_items',
+        'installment_refund_reductions',
         'repayments',
         'installment_schedules',
         'installment_stage_configs',
@@ -364,6 +368,16 @@ class DriftBackupGateway
               .map((row) => RepaymentItemRow.fromJson(row).toCompanion(true)),
         );
         batch.insertAll(
+          database.installmentRefundReductions,
+          snapshot
+              .rows('installment_refund_reductions')
+              .map(
+                (row) => InstallmentRefundReductionRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
           database.importEntityMappings,
           snapshot
               .rows('import_entity_mappings')
@@ -462,6 +476,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is InstallmentScheduleRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InstallmentRefundReductionRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is ReferenceRateRow) {

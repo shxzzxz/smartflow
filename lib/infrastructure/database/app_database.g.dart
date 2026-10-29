@@ -7428,6 +7428,17 @@ class $InstallmentContractsTable extends InstallmentContracts
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _purchaseTransactionIdMeta =
+      const VerificationMeta('purchaseTransactionId');
+  @override
+  late final GeneratedColumn<String> purchaseTransactionId =
+      GeneratedColumn<String>(
+        'purchase_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _principalMinorMeta = const VerificationMeta(
     'principalMinor',
   );
@@ -7507,6 +7518,7 @@ class $InstallmentContractsTable extends InstallmentContracts
     disbursementAccountId,
     disbursementTransactionId,
     sourceRepaymentId,
+    purchaseTransactionId,
     principalMinor,
     borrowingDate,
     status,
@@ -7584,6 +7596,15 @@ class $InstallmentContractsTable extends InstallmentContracts
         sourceRepaymentId.isAcceptableOrUnknown(
           data['source_repayment_id']!,
           _sourceRepaymentIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('purchase_transaction_id')) {
+      context.handle(
+        _purchaseTransactionIdMeta,
+        purchaseTransactionId.isAcceptableOrUnknown(
+          data['purchase_transaction_id']!,
+          _purchaseTransactionIdMeta,
         ),
       );
     }
@@ -7674,6 +7695,10 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}source_repayment_id'],
       ),
+      purchaseTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}purchase_transaction_id'],
+      ),
       principalMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}principal_minor'],
@@ -7731,6 +7756,7 @@ class InstallmentContractRow extends DataClass
   final String? disbursementAccountId;
   final String? disbursementTransactionId;
   final String? sourceRepaymentId;
+  final String? purchaseTransactionId;
   final int principalMinor;
 
   /// 借款日期 / 合同起算日。
@@ -7749,6 +7775,7 @@ class InstallmentContractRow extends DataClass
     this.disbursementAccountId,
     this.disbursementTransactionId,
     this.sourceRepaymentId,
+    this.purchaseTransactionId,
     required this.principalMinor,
     required this.borrowingDate,
     required this.status,
@@ -7779,6 +7806,9 @@ class InstallmentContractRow extends DataClass
     }
     if (!nullToAbsent || sourceRepaymentId != null) {
       map['source_repayment_id'] = Variable<String>(sourceRepaymentId);
+    }
+    if (!nullToAbsent || purchaseTransactionId != null) {
+      map['purchase_transaction_id'] = Variable<String>(purchaseTransactionId);
     }
     map['principal_minor'] = Variable<int>(principalMinor);
     map['borrowing_date'] = Variable<DateTime>(borrowingDate);
@@ -7813,6 +7843,9 @@ class InstallmentContractRow extends DataClass
       sourceRepaymentId: sourceRepaymentId == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceRepaymentId),
+      purchaseTransactionId: purchaseTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purchaseTransactionId),
       principalMinor: Value(principalMinor),
       borrowingDate: Value(borrowingDate),
       status: Value(status),
@@ -7847,6 +7880,9 @@ class InstallmentContractRow extends DataClass
       sourceRepaymentId: serializer.fromJson<String?>(
         json['sourceRepaymentId'],
       ),
+      purchaseTransactionId: serializer.fromJson<String?>(
+        json['purchaseTransactionId'],
+      ),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
       borrowingDate: serializer.fromJson<DateTime>(json['borrowingDate']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
@@ -7876,6 +7912,9 @@ class InstallmentContractRow extends DataClass
         disbursementTransactionId,
       ),
       'sourceRepaymentId': serializer.toJson<String?>(sourceRepaymentId),
+      'purchaseTransactionId': serializer.toJson<String?>(
+        purchaseTransactionId,
+      ),
       'principalMinor': serializer.toJson<int>(principalMinor),
       'borrowingDate': serializer.toJson<DateTime>(borrowingDate),
       'status': serializer.toJson<String>(
@@ -7897,6 +7936,7 @@ class InstallmentContractRow extends DataClass
     Value<String?> disbursementAccountId = const Value.absent(),
     Value<String?> disbursementTransactionId = const Value.absent(),
     Value<String?> sourceRepaymentId = const Value.absent(),
+    Value<String?> purchaseTransactionId = const Value.absent(),
     int? principalMinor,
     DateTime? borrowingDate,
     InstallmentContractStatus? status,
@@ -7919,6 +7959,9 @@ class InstallmentContractRow extends DataClass
     sourceRepaymentId: sourceRepaymentId.present
         ? sourceRepaymentId.value
         : this.sourceRepaymentId,
+    purchaseTransactionId: purchaseTransactionId.present
+        ? purchaseTransactionId.value
+        : this.purchaseTransactionId,
     principalMinor: principalMinor ?? this.principalMinor,
     borrowingDate: borrowingDate ?? this.borrowingDate,
     status: status ?? this.status,
@@ -7947,6 +7990,9 @@ class InstallmentContractRow extends DataClass
       sourceRepaymentId: data.sourceRepaymentId.present
           ? data.sourceRepaymentId.value
           : this.sourceRepaymentId,
+      purchaseTransactionId: data.purchaseTransactionId.present
+          ? data.purchaseTransactionId.value
+          : this.purchaseTransactionId,
       principalMinor: data.principalMinor.present
           ? data.principalMinor.value
           : this.principalMinor,
@@ -7972,6 +8018,7 @@ class InstallmentContractRow extends DataClass
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('sourceRepaymentId: $sourceRepaymentId, ')
+          ..write('purchaseTransactionId: $purchaseTransactionId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('borrowingDate: $borrowingDate, ')
           ..write('status: $status, ')
@@ -7993,6 +8040,7 @@ class InstallmentContractRow extends DataClass
     disbursementAccountId,
     disbursementTransactionId,
     sourceRepaymentId,
+    purchaseTransactionId,
     principalMinor,
     borrowingDate,
     status,
@@ -8013,6 +8061,7 @@ class InstallmentContractRow extends DataClass
           other.disbursementAccountId == this.disbursementAccountId &&
           other.disbursementTransactionId == this.disbursementTransactionId &&
           other.sourceRepaymentId == this.sourceRepaymentId &&
+          other.purchaseTransactionId == this.purchaseTransactionId &&
           other.principalMinor == this.principalMinor &&
           other.borrowingDate == this.borrowingDate &&
           other.status == this.status &&
@@ -8032,6 +8081,7 @@ class InstallmentContractsCompanion
   final Value<String?> disbursementAccountId;
   final Value<String?> disbursementTransactionId;
   final Value<String?> sourceRepaymentId;
+  final Value<String?> purchaseTransactionId;
   final Value<int> principalMinor;
   final Value<DateTime> borrowingDate;
   final Value<InstallmentContractStatus> status;
@@ -8049,6 +8099,7 @@ class InstallmentContractsCompanion
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
     this.sourceRepaymentId = const Value.absent(),
+    this.purchaseTransactionId = const Value.absent(),
     this.principalMinor = const Value.absent(),
     this.borrowingDate = const Value.absent(),
     this.status = const Value.absent(),
@@ -8067,6 +8118,7 @@ class InstallmentContractsCompanion
     this.disbursementAccountId = const Value.absent(),
     this.disbursementTransactionId = const Value.absent(),
     this.sourceRepaymentId = const Value.absent(),
+    this.purchaseTransactionId = const Value.absent(),
     required int principalMinor,
     required DateTime borrowingDate,
     required InstallmentContractStatus status,
@@ -8090,6 +8142,7 @@ class InstallmentContractsCompanion
     Expression<String>? disbursementAccountId,
     Expression<String>? disbursementTransactionId,
     Expression<String>? sourceRepaymentId,
+    Expression<String>? purchaseTransactionId,
     Expression<int>? principalMinor,
     Expression<DateTime>? borrowingDate,
     Expression<String>? status,
@@ -8111,6 +8164,8 @@ class InstallmentContractsCompanion
       if (disbursementTransactionId != null)
         'disbursement_transaction_id': disbursementTransactionId,
       if (sourceRepaymentId != null) 'source_repayment_id': sourceRepaymentId,
+      if (purchaseTransactionId != null)
+        'purchase_transaction_id': purchaseTransactionId,
       if (principalMinor != null) 'principal_minor': principalMinor,
       if (borrowingDate != null) 'borrowing_date': borrowingDate,
       if (status != null) 'status': status,
@@ -8131,6 +8186,7 @@ class InstallmentContractsCompanion
     Value<String?>? disbursementAccountId,
     Value<String?>? disbursementTransactionId,
     Value<String?>? sourceRepaymentId,
+    Value<String?>? purchaseTransactionId,
     Value<int>? principalMinor,
     Value<DateTime>? borrowingDate,
     Value<InstallmentContractStatus>? status,
@@ -8151,6 +8207,8 @@ class InstallmentContractsCompanion
       disbursementTransactionId:
           disbursementTransactionId ?? this.disbursementTransactionId,
       sourceRepaymentId: sourceRepaymentId ?? this.sourceRepaymentId,
+      purchaseTransactionId:
+          purchaseTransactionId ?? this.purchaseTransactionId,
       principalMinor: principalMinor ?? this.principalMinor,
       borrowingDate: borrowingDate ?? this.borrowingDate,
       status: status ?? this.status,
@@ -8197,6 +8255,11 @@ class InstallmentContractsCompanion
     if (sourceRepaymentId.present) {
       map['source_repayment_id'] = Variable<String>(sourceRepaymentId.value);
     }
+    if (purchaseTransactionId.present) {
+      map['purchase_transaction_id'] = Variable<String>(
+        purchaseTransactionId.value,
+      );
+    }
     if (principalMinor.present) {
       map['principal_minor'] = Variable<int>(principalMinor.value);
     }
@@ -8235,6 +8298,7 @@ class InstallmentContractsCompanion
           ..write('disbursementAccountId: $disbursementAccountId, ')
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('sourceRepaymentId: $sourceRepaymentId, ')
+          ..write('purchaseTransactionId: $purchaseTransactionId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('borrowingDate: $borrowingDate, ')
           ..write('status: $status, ')
@@ -14150,6 +14214,446 @@ class InstallmentInterestAdjustmentsCompanion
   }
 }
 
+class $InstallmentRefundReductionsTable extends InstallmentRefundReductions
+    with
+        TableInfo<
+          $InstallmentRefundReductionsTable,
+          InstallmentRefundReductionRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentRefundReductionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<String> contractId = GeneratedColumn<String>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _refundTransactionIdMeta =
+      const VerificationMeta('refundTransactionId');
+  @override
+  late final GeneratedColumn<String> refundTransactionId =
+      GeneratedColumn<String>(
+        'refund_transaction_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _principalMinorMeta = const VerificationMeta(
+    'principalMinor',
+  );
+  @override
+  late final GeneratedColumn<int> principalMinor = GeneratedColumn<int>(
+    'principal_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    refundTransactionId,
+    principalMinor,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_refund_reductions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentRefundReductionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('refund_transaction_id')) {
+      context.handle(
+        _refundTransactionIdMeta,
+        refundTransactionId.isAcceptableOrUnknown(
+          data['refund_transaction_id']!,
+          _refundTransactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_refundTransactionIdMeta);
+    }
+    if (data.containsKey('principal_minor')) {
+      context.handle(
+        _principalMinorMeta,
+        principalMinor.isAcceptableOrUnknown(
+          data['principal_minor']!,
+          _principalMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_principalMinorMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentRefundReductionRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentRefundReductionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      contractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_id'],
+      )!,
+      refundTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}refund_transaction_id'],
+      )!,
+      principalMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}principal_minor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $InstallmentRefundReductionsTable createAlias(String alias) {
+    return $InstallmentRefundReductionsTable(attachedDatabase, alias);
+  }
+}
+
+class InstallmentRefundReductionRow extends DataClass
+    implements Insertable<InstallmentRefundReductionRow> {
+  final String id;
+  final String contractId;
+  final String refundTransactionId;
+  final int principalMinor;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentRefundReductionRow({
+    required this.id,
+    required this.contractId,
+    required this.refundTransactionId,
+    required this.principalMinor,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['contract_id'] = Variable<String>(contractId);
+    map['refund_transaction_id'] = Variable<String>(refundTransactionId);
+    map['principal_minor'] = Variable<int>(principalMinor);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentRefundReductionsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentRefundReductionsCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      refundTransactionId: Value(refundTransactionId),
+      principalMinor: Value(principalMinor),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentRefundReductionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentRefundReductionRow(
+      id: serializer.fromJson<String>(json['id']),
+      contractId: serializer.fromJson<String>(json['contractId']),
+      refundTransactionId: serializer.fromJson<String>(
+        json['refundTransactionId'],
+      ),
+      principalMinor: serializer.fromJson<int>(json['principalMinor']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'contractId': serializer.toJson<String>(contractId),
+      'refundTransactionId': serializer.toJson<String>(refundTransactionId),
+      'principalMinor': serializer.toJson<int>(principalMinor),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentRefundReductionRow copyWith({
+    String? id,
+    String? contractId,
+    String? refundTransactionId,
+    int? principalMinor,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentRefundReductionRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    refundTransactionId: refundTransactionId ?? this.refundTransactionId,
+    principalMinor: principalMinor ?? this.principalMinor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentRefundReductionRow copyWithCompanion(
+    InstallmentRefundReductionsCompanion data,
+  ) {
+    return InstallmentRefundReductionRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId: data.contractId.present
+          ? data.contractId.value
+          : this.contractId,
+      refundTransactionId: data.refundTransactionId.present
+          ? data.refundTransactionId.value
+          : this.refundTransactionId,
+      principalMinor: data.principalMinor.present
+          ? data.principalMinor.value
+          : this.principalMinor,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRefundReductionRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('refundTransactionId: $refundTransactionId, ')
+          ..write('principalMinor: $principalMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    refundTransactionId,
+    principalMinor,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentRefundReductionRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.refundTransactionId == this.refundTransactionId &&
+          other.principalMinor == this.principalMinor &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentRefundReductionsCompanion
+    extends UpdateCompanion<InstallmentRefundReductionRow> {
+  final Value<String> id;
+  final Value<String> contractId;
+  final Value<String> refundTransactionId;
+  final Value<int> principalMinor;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const InstallmentRefundReductionsCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.refundTransactionId = const Value.absent(),
+    this.principalMinor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  InstallmentRefundReductionsCompanion.insert({
+    required String id,
+    required String contractId,
+    required String refundTransactionId,
+    required int principalMinor,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       contractId = Value(contractId),
+       refundTransactionId = Value(refundTransactionId),
+       principalMinor = Value(principalMinor);
+  static Insertable<InstallmentRefundReductionRow> custom({
+    Expression<String>? id,
+    Expression<String>? contractId,
+    Expression<String>? refundTransactionId,
+    Expression<int>? principalMinor,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (refundTransactionId != null)
+        'refund_transaction_id': refundTransactionId,
+      if (principalMinor != null) 'principal_minor': principalMinor,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  InstallmentRefundReductionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? contractId,
+    Value<String>? refundTransactionId,
+    Value<int>? principalMinor,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return InstallmentRefundReductionsCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      refundTransactionId: refundTransactionId ?? this.refundTransactionId,
+      principalMinor: principalMinor ?? this.principalMinor,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<String>(contractId.value);
+    }
+    if (refundTransactionId.present) {
+      map['refund_transaction_id'] = Variable<String>(
+        refundTransactionId.value,
+      );
+    }
+    if (principalMinor.present) {
+      map['principal_minor'] = Variable<int>(principalMinor.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRefundReductionsCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('refundTransactionId: $refundTransactionId, ')
+          ..write('principalMinor: $principalMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $RepaymentsTable extends Repayments
     with TableInfo<$RepaymentsTable, RepaymentRow> {
   @override
@@ -17338,6 +17842,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $InstallmentRepricingConfigsTable(this);
   late final $InstallmentInterestAdjustmentsTable
   installmentInterestAdjustments = $InstallmentInterestAdjustmentsTable(this);
+  late final $InstallmentRefundReductionsTable installmentRefundReductions =
+      $InstallmentRefundReductionsTable(this);
   late final $RepaymentsTable repayments = $RepaymentsTable(this);
   late final $RepaymentItemsTable repaymentItems = $RepaymentItemsTable(this);
   late final $ImportEntityMappingsTable importEntityMappings =
@@ -17383,6 +17889,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     installmentRepricingRecords,
     installmentRepricingConfigs,
     installmentInterestAdjustments,
+    installmentRefundReductions,
     repayments,
     repaymentItems,
     importEntityMappings,
@@ -21109,6 +21616,7 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
       Value<String?> sourceRepaymentId,
+      Value<String?> purchaseTransactionId,
       required int principalMinor,
       required DateTime borrowingDate,
       required InstallmentContractStatus status,
@@ -21128,6 +21636,7 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<String?> disbursementAccountId,
       Value<String?> disbursementTransactionId,
       Value<String?> sourceRepaymentId,
+      Value<String?> purchaseTransactionId,
       Value<int> principalMinor,
       Value<DateTime> borrowingDate,
       Value<InstallmentContractStatus> status,
@@ -21193,6 +21702,11 @@ class $$InstallmentContractsTableFilterComposer
 
   ColumnFilters<String> get sourceRepaymentId => $composableBuilder(
     column: $table.sourceRepaymentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get purchaseTransactionId => $composableBuilder(
+    column: $table.purchaseTransactionId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21286,6 +21800,11 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get purchaseTransactionId => $composableBuilder(
+    column: $table.purchaseTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get principalMinor => $composableBuilder(
     column: $table.principalMinor,
     builder: (column) => ColumnOrderings(column),
@@ -21361,6 +21880,11 @@ class $$InstallmentContractsTableAnnotationComposer
 
   GeneratedColumn<String> get sourceRepaymentId => $composableBuilder(
     column: $table.sourceRepaymentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get purchaseTransactionId => $composableBuilder(
+    column: $table.purchaseTransactionId,
     builder: (column) => column,
   );
 
@@ -21440,6 +21964,7 @@ class $$InstallmentContractsTableTableManager
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
                 Value<String?> sourceRepaymentId = const Value.absent(),
+                Value<String?> purchaseTransactionId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
                 Value<DateTime> borrowingDate = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
@@ -21457,6 +21982,7 @@ class $$InstallmentContractsTableTableManager
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
                 sourceRepaymentId: sourceRepaymentId,
+                purchaseTransactionId: purchaseTransactionId,
                 principalMinor: principalMinor,
                 borrowingDate: borrowingDate,
                 status: status,
@@ -21476,6 +22002,7 @@ class $$InstallmentContractsTableTableManager
                 Value<String?> disbursementAccountId = const Value.absent(),
                 Value<String?> disbursementTransactionId = const Value.absent(),
                 Value<String?> sourceRepaymentId = const Value.absent(),
+                Value<String?> purchaseTransactionId = const Value.absent(),
                 required int principalMinor,
                 required DateTime borrowingDate,
                 required InstallmentContractStatus status,
@@ -21493,6 +22020,7 @@ class $$InstallmentContractsTableTableManager
                 disbursementAccountId: disbursementAccountId,
                 disbursementTransactionId: disbursementTransactionId,
                 sourceRepaymentId: sourceRepaymentId,
+                purchaseTransactionId: purchaseTransactionId,
                 principalMinor: principalMinor,
                 borrowingDate: borrowingDate,
                 status: status,
@@ -24394,6 +24922,250 @@ typedef $$InstallmentInterestAdjustmentsTableProcessedTableManager =
       InstallmentInterestAdjustmentRow,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentRefundReductionsTableCreateCompanionBuilder =
+    InstallmentRefundReductionsCompanion Function({
+      required String id,
+      required String contractId,
+      required String refundTransactionId,
+      required int principalMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$InstallmentRefundReductionsTableUpdateCompanionBuilder =
+    InstallmentRefundReductionsCompanion Function({
+      Value<String> id,
+      Value<String> contractId,
+      Value<String> refundTransactionId,
+      Value<int> principalMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$InstallmentRefundReductionsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentRefundReductionsTable> {
+  $$InstallmentRefundReductionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentRefundReductionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentRefundReductionsTable> {
+  $$InstallmentRefundReductionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentRefundReductionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentRefundReductionsTable> {
+  $$InstallmentRefundReductionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentRefundReductionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentRefundReductionsTable,
+          InstallmentRefundReductionRow,
+          $$InstallmentRefundReductionsTableFilterComposer,
+          $$InstallmentRefundReductionsTableOrderingComposer,
+          $$InstallmentRefundReductionsTableAnnotationComposer,
+          $$InstallmentRefundReductionsTableCreateCompanionBuilder,
+          $$InstallmentRefundReductionsTableUpdateCompanionBuilder,
+          (
+            InstallmentRefundReductionRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentRefundReductionsTable,
+              InstallmentRefundReductionRow
+            >,
+          ),
+          InstallmentRefundReductionRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentRefundReductionsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentRefundReductionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InstallmentRefundReductionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$InstallmentRefundReductionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InstallmentRefundReductionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> contractId = const Value.absent(),
+                Value<String> refundTransactionId = const Value.absent(),
+                Value<int> principalMinor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRefundReductionsCompanion(
+                id: id,
+                contractId: contractId,
+                refundTransactionId: refundTransactionId,
+                principalMinor: principalMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String contractId,
+                required String refundTransactionId,
+                required int principalMinor,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => InstallmentRefundReductionsCompanion.insert(
+                id: id,
+                contractId: contractId,
+                refundTransactionId: refundTransactionId,
+                principalMinor: principalMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentRefundReductionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentRefundReductionsTable,
+      InstallmentRefundReductionRow,
+      $$InstallmentRefundReductionsTableFilterComposer,
+      $$InstallmentRefundReductionsTableOrderingComposer,
+      $$InstallmentRefundReductionsTableAnnotationComposer,
+      $$InstallmentRefundReductionsTableCreateCompanionBuilder,
+      $$InstallmentRefundReductionsTableUpdateCompanionBuilder,
+      (
+        InstallmentRefundReductionRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentRefundReductionsTable,
+          InstallmentRefundReductionRow
+        >,
+      ),
+      InstallmentRefundReductionRow,
+      PrefetchHooks Function()
+    >;
 typedef $$RepaymentsTableCreateCompanionBuilder =
     RepaymentsCompanion Function({
       required String id,
@@ -26047,6 +26819,12 @@ class $AppDatabaseManager {
       $$InstallmentInterestAdjustmentsTableTableManager(
         _db,
         _db.installmentInterestAdjustments,
+      );
+  $$InstallmentRefundReductionsTableTableManager
+  get installmentRefundReductions =>
+      $$InstallmentRefundReductionsTableTableManager(
+        _db,
+        _db.installmentRefundReductions,
       );
   $$RepaymentsTableTableManager get repayments =>
       $$RepaymentsTableTableManager(_db, _db.repayments);

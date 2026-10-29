@@ -2868,6 +2868,57 @@ final class InstallmentRepositoryProvider
 String _$installmentRepositoryHash() =>
     r'a17d0d3d58072d354187bd162ed9185ff15f88bb';
 
+@ProviderFor(installmentRefundReductionRepository)
+final installmentRefundReductionRepositoryProvider =
+    InstallmentRefundReductionRepositoryProvider._();
+
+final class InstallmentRefundReductionRepositoryProvider
+    extends
+        $FunctionalProvider<
+          InstallmentRefundReductionRepository,
+          InstallmentRefundReductionRepository,
+          InstallmentRefundReductionRepository
+        >
+    with $Provider<InstallmentRefundReductionRepository> {
+  InstallmentRefundReductionRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'installmentRefundReductionRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$installmentRefundReductionRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstallmentRefundReductionRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InstallmentRefundReductionRepository create(Ref ref) {
+    return installmentRefundReductionRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstallmentRefundReductionRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<InstallmentRefundReductionRepository>(value),
+    );
+  }
+}
+
+String _$installmentRefundReductionRepositoryHash() =>
+    r'd8f7c7388aff78cb905df76952cbffefe1152bf1';
+
 @ProviderFor(installmentProductRepository)
 final installmentProductRepositoryProvider =
     InstallmentProductRepositoryProvider._();
@@ -3253,7 +3304,58 @@ final class InstallmentContractAppServiceProvider
 }
 
 String _$installmentContractAppServiceHash() =>
-    r'78b6a534af7e3e3fdb6294cafc469fabc00089e2';
+    r'6a21bf4e3ae6df3be225873265f8ce1521d5f721';
+
+@ProviderFor(consumptionInstallmentRefundAppService)
+final consumptionInstallmentRefundAppServiceProvider =
+    ConsumptionInstallmentRefundAppServiceProvider._();
+
+final class ConsumptionInstallmentRefundAppServiceProvider
+    extends
+        $FunctionalProvider<
+          ConsumptionInstallmentRefundAppService,
+          ConsumptionInstallmentRefundAppService,
+          ConsumptionInstallmentRefundAppService
+        >
+    with $Provider<ConsumptionInstallmentRefundAppService> {
+  ConsumptionInstallmentRefundAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'consumptionInstallmentRefundAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$consumptionInstallmentRefundAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ConsumptionInstallmentRefundAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ConsumptionInstallmentRefundAppService create(Ref ref) {
+    return consumptionInstallmentRefundAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ConsumptionInstallmentRefundAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<ConsumptionInstallmentRefundAppService>(value),
+    );
+  }
+}
+
+String _$consumptionInstallmentRefundAppServiceHash() =>
+    r'eec82331e92f5d27e87d4ac72f712023df33fd44';
 
 @ProviderFor(installmentContractEditAppService)
 final installmentContractEditAppServiceProvider =
@@ -3892,7 +3994,7 @@ final class InstallmentPlanAppServiceProvider
 }
 
 String _$installmentPlanAppServiceHash() =>
-    r'45ad2643fb7ad3a8a6fa09fb25d003422a3ae910';
+    r'969ecba553e55d723e161a2cc09e5e29bca347fd';
 
 @ProviderFor(installmentPlanChangePort)
 final installmentPlanChangePortProvider = InstallmentPlanChangePortProvider._();

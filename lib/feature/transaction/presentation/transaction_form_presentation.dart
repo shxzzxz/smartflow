@@ -44,6 +44,7 @@ TransactionRelationScene transactionRelationSceneForMode(
 /// 最终交给交易编排域创建垫付编排实例。
 enum TransactionExpenseScene {
   ordinary,
+  consumptionInstallment,
   reimbursement,
   onBehalf,
   aa,
@@ -55,6 +56,7 @@ enum TransactionExpenseScene {
 extension TransactionExpenseScenePresentation on TransactionExpenseScene {
   String get label => switch (this) {
     TransactionExpenseScene.ordinary => '普通支出',
+    TransactionExpenseScene.consumptionInstallment => '消费分期',
     TransactionExpenseScene.reimbursement => '报销',
     TransactionExpenseScene.onBehalf => '代付',
     TransactionExpenseScene.aa => 'AA',
@@ -63,7 +65,16 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.onBehalfAccount => '代付（账户）',
   };
 
-  bool get isAdvance => this != TransactionExpenseScene.ordinary;
+  bool get isAdvance => switch (this) {
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => false,
+    TransactionExpenseScene.reimbursement ||
+    TransactionExpenseScene.onBehalf ||
+    TransactionExpenseScene.aa ||
+    TransactionExpenseScene.reimbursementAccount ||
+    TransactionExpenseScene.aaAccount ||
+    TransactionExpenseScene.onBehalfAccount => true,
+  };
 
   bool get isAa =>
       this == TransactionExpenseScene.aa ||
@@ -76,7 +87,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.onBehalfAccount ||
     TransactionExpenseScene.aa ||
     TransactionExpenseScene.aaAccount => '垫付账户',
-    TransactionExpenseScene.ordinary => '垫付账户',
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => '垫付账户',
   };
 
   String get noneLabel => switch (this) {
@@ -85,11 +97,13 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.onBehalf ||
     TransactionExpenseScene.onBehalfAccount => '不代付',
     TransactionExpenseScene.aa || TransactionExpenseScene.aaAccount => '不AA',
-    TransactionExpenseScene.ordinary => '不垫付',
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => '不垫付',
   };
 
   AdvanceScenario? get advanceScenario => switch (this) {
-    TransactionExpenseScene.ordinary => null,
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => null,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount =>
       AdvanceScenario.reimbursement,
@@ -100,7 +114,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
   };
 
   AdvanceTrackingMode? get advanceTrackingMode => switch (this) {
-    TransactionExpenseScene.ordinary => null,
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => null,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.onBehalf ||
     TransactionExpenseScene.aa => AdvanceTrackingMode.itemized,
@@ -135,7 +150,8 @@ List<Account> advanceAccountsForExpenseScene(
   Iterable<Account> accounts,
 ) {
   final acceptedProfiles = switch (scene) {
-    TransactionExpenseScene.ordinary => const <String>{},
+    TransactionExpenseScene.ordinary ||
+    TransactionExpenseScene.consumptionInstallment => const <String>{},
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount => {
       AccountProfileKind.reimbursement.key,

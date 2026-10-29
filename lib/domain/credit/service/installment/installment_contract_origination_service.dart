@@ -93,6 +93,23 @@ class InstallmentContractOriginationService {
     newScheduleId: newScheduleId,
   );
 
+  InstallmentOriginationResult originatePurchase({
+    required String contractId,
+    required String liabilityAccountId,
+    required String purchaseTransactionId,
+    required InstallmentOriginationTerms terms,
+    required DateTime createdAt,
+    required String Function() newScheduleId,
+  }) => _originate(
+    contractId: contractId,
+    liabilityAccountId: liabilityAccountId,
+    sourceType: InstallmentSourceType.purchase,
+    purchaseTransactionId: purchaseTransactionId,
+    terms: terms,
+    createdAt: createdAt,
+    newScheduleId: newScheduleId,
+  );
+
   InstallmentOriginationResult _originate({
     required String contractId,
     required String liabilityAccountId,
@@ -103,6 +120,7 @@ class InstallmentContractOriginationService {
     String? sourceRepaymentId,
     String? disbursementAccountId,
     String? disbursementTransactionId,
+    String? purchaseTransactionId,
   }) {
     if (terms.principal.minorUnits <= 0) {
       throw BusinessException(
@@ -127,6 +145,7 @@ class InstallmentContractOriginationService {
       sourceRepaymentId: sourceRepaymentId,
       disbursementAccountId: disbursementAccountId,
       disbursementTransactionId: disbursementTransactionId,
+      purchaseTransactionId: purchaseTransactionId,
       principal: terms.principal,
       borrowingDate: terms.borrowingDate,
       status: InstallmentContractStatus.active,

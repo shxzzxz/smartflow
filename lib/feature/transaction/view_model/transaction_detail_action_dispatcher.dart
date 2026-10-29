@@ -31,6 +31,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required TransactionUpdateAppService updateService,
   required InstallmentContractAppService installmentAppService,
   required RepaymentAppService repaymentAppService,
+  ConsumptionInstallmentRefundAppService? consumptionRefundAppService,
   AdvanceOrchestrationAppService? advanceAppService,
   AdvanceCaseQueryService? advanceCaseQuery,
 }) {
@@ -40,6 +41,15 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
       transaction: transaction,
       editService: editService,
       updateService: updateService,
+    );
+  }
+
+  if (transaction.businessPurpose == BusinessPurpose.refund &&
+      ownership.ownerType == installmentOwnerType &&
+      consumptionRefundAppService != null) {
+    return _InstallmentRefundActionDispatcher(
+      transaction: transaction,
+      refundAppService: consumptionRefundAppService,
     );
   }
 
@@ -81,6 +91,46 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     transaction: transaction,
     updateService: updateService,
   );
+}
+
+final class _InstallmentRefundActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _InstallmentRefundActionDispatcher({
+    required this.transaction,
+    required this.refundAppService,
+  });
+
+  final TransactionReadModel transaction;
+  final ConsumptionInstallmentRefundAppService refundAppService;
+
+  @override
+  Future<UiActionOutcome<void>> delete() {
+    return detailVoidOutcomeFromAction(
+      () => refundAppService.delete(
+        DeleteConsumptionInstallmentRefundCommand(
+          transactionId: transaction.id,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async =>
+      detailNotEditable('请在退款编辑页修改备注');
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async =>
+      detailNotEditable('请在退款编辑页修改退款时间');
+
+  @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async =>
+      detailNotEditable('请在退款编辑页修改入账时间');
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId, {
+    String? currentAccountId,
+  }) async => detailNotEditable('请在退款编辑页修改到账分配');
 }
 
 Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
@@ -264,6 +314,9 @@ final class _DefaultActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
+    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
+      return detailNotEditable('消费分期请从合同编辑页修改借款日并预览计划');
+    }
     return detailVoidOutcomeFromAction(() {
       return updateService.updateBasicInfo(
         UpdateTransactionBasicInfoCommand(
@@ -486,6 +539,9 @@ final class _InstallmentActionDispatcher
     String accountId, {
     String? currentAccountId,
   }) async {
+    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
+      return detailNotEditable('消费分期的成交价和结算分配不能直接修改');
+    }
     return detailVoidOutcomeFromAction(() {
       return installmentAppService.updateContractDetails(
         UpdateContractDetailsCommand(

@@ -19,6 +19,8 @@ class InstallmentContracts extends Table {
       text().named('disbursement_transaction_id').nullable()();
   TextColumn get sourceRepaymentId =>
       text().named('source_repayment_id').nullable()();
+  TextColumn get purchaseTransactionId =>
+      text().named('purchase_transaction_id').nullable()();
   IntColumn get principalMinor => integer().named('principal_minor')();
 
   /// 借款日期 / 合同起算日。
@@ -38,6 +40,7 @@ class InstallmentContracts extends Table {
   @override
   List<String> get customConstraints => [
     'CHECK (principal_minor > 0)',
+    'UNIQUE(purchase_transaction_id)',
     'CHECK ('
         '(source_type = \'disbursement\' '
         'AND ('
@@ -48,7 +51,13 @@ class InstallmentContracts extends Table {
         ')) '
         'OR (source_type = \'billConversion\' '
         'AND disbursement_account_id IS NULL '
-        'AND disbursement_transaction_id IS NULL)'
+        'AND disbursement_transaction_id IS NULL '
+        'AND purchase_transaction_id IS NULL) '
+        'OR (source_type = \'purchase\' '
+        'AND disbursement_account_id IS NULL '
+        'AND disbursement_transaction_id IS NULL '
+        'AND source_repayment_id IS NULL '
+        'AND purchase_transaction_id IS NOT NULL)'
         ')',
   ];
 }

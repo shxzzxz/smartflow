@@ -11,6 +11,7 @@ String billItemLabel(BillItemReadModel item) {
   return switch (item.installmentSourceType) {
     null => '分期',
     InstallmentSourceType.billConversion => '账单分期',
+    InstallmentSourceType.purchase => '消费分期',
     InstallmentSourceType.disbursement =>
       item.accountKind == CreditLiabilityAccountKind.credit ? '现金分期' : '贷款分期',
   };

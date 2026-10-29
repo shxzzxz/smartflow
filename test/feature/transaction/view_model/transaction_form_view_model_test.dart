@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
+import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/orchestration/port/advance_case_repository.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -271,6 +273,93 @@ void main() {
       expect(command.isExcludedFromStats, true);
       expect(command.isExcludedFromBudget, true);
     });
+
+    test(
+      'creates consumption installment from complete split payment allocations',
+      () async {
+        final installmentService = _FakeInstallmentContractAppService();
+        final container = _container(
+          settlementAccounts: [
+            _account('cash'),
+            _account(
+              'credit',
+              type: AccountType.liability,
+              profileKey: AccountProfileKind.credit.key,
+            ),
+          ],
+          fundAccounts: [_account('cash')],
+          liabilityAccounts: [
+            _account(
+              'credit',
+              type: AccountType.liability,
+              profileKey: AccountProfileKind.credit.key,
+            ),
+          ],
+          installmentService: installmentService,
+        );
+        final viewModel = container.read(_provider().notifier);
+        final terms = InstallmentContractTerms.singleStage(
+          id: 'stage-1',
+          totalPeriods: 12,
+          firstDate: DateTime(2026, 2, 1),
+          lastDate: DateTime(2027, 1, 1),
+          method: InstallmentRepaymentMethod.equalInstallment,
+          accrual: InterestAccrualMethod.monthly,
+        );
+
+        viewModel
+          ..setExpenseScene(TransactionExpenseScene.consumptionInstallment)
+          ..setExpenseCategory(rootId: 'food', categoryId: 'food')
+          ..useAllocatedEntry(const Money(minorUnits: 5000))
+          ..setSettlementAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 1000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'credit',
+              amount: Money(minorUnits: 4000),
+            ),
+          ])
+          ..setExcludeStats(true)
+          ..setExcludeBudget(true);
+
+        final linkedTotal = viewModel.applyConsumptionInstallmentAmount(
+          const Money(minorUnits: 4500),
+        );
+        expect(linkedTotal, const Money(minorUnits: 5500));
+
+        final outcome = await viewModel.submit(
+          amountText: '55.00',
+          noteText: '手机首付',
+          consumptionInstallment: ConsumptionInstallmentConfiguration(
+            borrowingDate: DateTime(2026, 1, 1),
+            stageTerms: terms,
+          ),
+        );
+
+        expect(outcome, isA<SubmitSuccess>());
+        final command = installmentService.consumptionCommands.single;
+        expect(command.liabilityAccountId, 'credit');
+        expect(command.amount, const Money(minorUnits: 5500));
+        expect(command.categoryAllocations.single.accountId, 'food');
+        expect(
+          command.settlementAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
+          ['cash', 'credit'],
+        );
+        expect(
+          command.settlementAllocations.map(
+            (allocation) => allocation.amount.minorUnits,
+          ),
+          [1000, 4500],
+        );
+        expect(command.stageTerms, same(terms));
+        expect(command.isExcludedFromStats, isTrue);
+        expect(command.isExcludedFromBudget, isTrue);
+      },
+    );
 
     test('creates a transaction with the selected counterparty id', () async {
       final posting = _FakeTransactionPostingAppService();
@@ -1367,6 +1456,7 @@ ProviderContainer _container({
   List<Account> advanceReceivableAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
   List<CounterpartyView> counterparties = const [],
+  InstallmentContractAppService? installmentService,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -1378,6 +1468,9 @@ ProviderContainer _container({
       ),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         advanceOrchestrationService ?? _FakeAdvanceOrchestrationAppService(),
+      ),
+      installmentContractAppServiceProvider.overrideWithValue(
+        installmentService ?? _FakeInstallmentContractAppService(),
       ),
       advanceCaseRepositoryProvider.overrideWithValue(
         advanceCaseRepository ?? FakeAdvanceCaseRepository(),
@@ -1436,11 +1529,18 @@ void _fillValidDailyExpense(TransactionFormViewModel viewModel) {
     ..setFromAccountId('cash');
 }
 
-Account _account(String id, {AccountType type = AccountType.asset}) {
+Account _account(
+  String id, {
+  AccountType type = AccountType.asset,
+  String? profileKey,
+}) {
+  final profile = AccountProfileKind.fromKey(profileKey);
   return Account(
     id: id,
     name: id,
     type: type,
+    subtype: profile?.accountSubtype,
+    profileKey: profileKey,
     balance: const Money(minorUnits: 0),
   );
 }
@@ -1688,6 +1788,39 @@ class _FakeAdvanceOrchestrationAppService
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
+  final consumptionCommands = <CreateConsumptionInstallmentCommand>[];
+
+  @override
+  Future<CreateContractResult> createConsumptionInstallment(
+    CreateConsumptionInstallmentCommand command,
+  ) async {
+    consumptionCommands.add(command);
+    return CreateContractResult(
+      contractId: 'contract-${consumptionCommands.length}',
+      purchaseTransactionId: 'purchase-${consumptionCommands.length}',
+    );
+  }
+
+  @override
+  Future<CreateContractResult> createDisbursementContract(
+    CreateDisbursementContractCommand command,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteContract(DeleteContractCommand command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateContractDetails(UpdateContractDetailsCommand command) {
+    throw UnimplementedError();
+  }
 }
 
 class _FakeTransactionPostingAppService

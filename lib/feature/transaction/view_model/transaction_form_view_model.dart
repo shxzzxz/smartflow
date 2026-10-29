@@ -2,6 +2,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
@@ -9,7 +10,9 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
+import '../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/provider/tag_providers.dart';
@@ -28,6 +31,16 @@ Future<AdvanceCase?> advanceCaseForForm(Ref ref, String advanceCaseId) {
 }
 
 enum TransactionEntryMode { normal, allocated }
+
+class ConsumptionInstallmentConfiguration {
+  const ConsumptionInstallmentConfiguration({
+    required this.borrowingDate,
+    required this.stageTerms,
+  });
+
+  final DateTime borrowingDate;
+  final InstallmentContractTerms stageTerms;
+}
 
 @riverpod
 class TransactionFormViewModel extends _$TransactionFormViewModel {
@@ -118,6 +131,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final detail = editDetailAsync!.requireValue;
     if (detail == null) return const AsyncValue.data(null);
+    if (detail.ownership?.ownerType == installmentOwnerType) {
+      return const AsyncValue.data(null);
+    }
     if (!supportsTransactionFormEdit(detail.businessPurpose)) {
       return const AsyncValue.data(null);
     }
@@ -240,6 +256,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       final current = state.asData?.value;
       if (accountId == null ||
           current == null ||
+          (current.mode == TransactionFormMode.expense &&
+              current.expenseScene ==
+                  TransactionExpenseScene.consumptionInstallment) ||
           requestRevision != _defaultAccountRequestRevision ||
           selectedCategoryId(current) != categoryId ||
           !(current.mode == TransactionFormMode.expense
@@ -303,12 +322,87 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 
   void setSettlementAllocations(List<AccountAmountAllocation> allocations) {
-    _update((current) => current.copyWith(settlementAllocations: allocations));
+    _update((current) {
+      final consumptionInstallment =
+          current.mode == TransactionFormMode.expense &&
+          current.expenseScene ==
+              TransactionExpenseScene.consumptionInstallment &&
+          current.entryMode == TransactionEntryMode.allocated;
+      if (!consumptionInstallment) {
+        return current.copyWith(settlementAllocations: allocations);
+      }
+      final creditAccountIds = {
+        for (final account in current.creditAccounts) account.id,
+      };
+      final allocatedCreditIds = [
+        for (final allocation in allocations)
+          if (allocation.amount.minorUnits > 0 &&
+              creditAccountIds.contains(allocation.accountId))
+            allocation.accountId,
+      ];
+      final selectedInstallmentAccountId =
+          allocatedCreditIds.contains(current.fromAccountId)
+          ? current.fromAccountId
+          : allocatedCreditIds.firstOrNull;
+      return current.copyWith(
+        settlementAllocations: allocations,
+        fromAccountId: selectedInstallmentAccountId,
+      );
+    });
+  }
+
+  Money applyConsumptionInstallmentAmount(Money loanAmount) {
+    if (loanAmount.minorUnits <= 0) {
+      throw _invalidCommandException('贷款金额必须大于零');
+    }
+    final current = state.asData?.value;
+    if (current == null ||
+        current.mode != TransactionFormMode.expense ||
+        current.expenseScene !=
+            TransactionExpenseScene.consumptionInstallment) {
+      throw _invalidCommandException('当前交易不是消费分期');
+    }
+    if (current.entryMode == TransactionEntryMode.normal) {
+      return loanAmount;
+    }
+    final liabilityAccountId = _selectedId(
+      current.fromAccountId,
+      current.creditAccounts,
+    );
+    if (liabilityAccountId == null) {
+      throw _invalidCommandException('请选择分期账户');
+    }
+    final settlements = [...current.settlementAllocations];
+    final installmentIndex = settlements.indexWhere(
+      (allocation) => allocation.accountId == liabilityAccountId,
+    );
+    if (installmentIndex < 0) {
+      throw _invalidCommandException('分期账户必须包含在支付分配中');
+    }
+    settlements[installmentIndex] = settlements[installmentIndex].copyWith(
+      amount: loanAmount,
+    );
+    final total = sumAllocations(settlements);
+    final categories = _fitAllocationsToTotal(
+      current.categoryAllocations,
+      total,
+    );
+    _update(
+      (latest) => latest.copyWith(
+        categoryAllocations: categories,
+        settlementAllocations: settlements,
+      ),
+    );
+    return total;
   }
 
   void useAllocatedEntry(Money amount) {
     _defaultAccountRequestRevision += 1;
     _update((current) {
+      final consumptionInstallment =
+          current.mode == TransactionFormMode.expense &&
+          current.expenseScene ==
+              TransactionExpenseScene.consumptionInstallment;
       final categoryId = switch (current.mode) {
         TransactionFormMode.expense => current.expenseCategoryId,
         TransactionFormMode.income => current.incomeCategoryId,
@@ -334,7 +428,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             : singleAllocation(accountId: settlementId, amount: amount),
         expenseCategoryId: null,
         expenseRootId: null,
-        fromAccountId: null,
+        fromAccountId: consumptionInstallment ? current.fromAccountId : null,
         incomeCategoryId: null,
         incomeRootId: null,
         toAccountId: null,
@@ -344,19 +438,23 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   void useNormalEntry() {
     _defaultAccountRequestRevision += 1;
-    _update(
-      (current) => current.copyWith(
+    _update((current) {
+      final consumptionInstallment =
+          current.mode == TransactionFormMode.expense &&
+          current.expenseScene ==
+              TransactionExpenseScene.consumptionInstallment;
+      return current.copyWith(
         entryMode: TransactionEntryMode.normal,
         categoryAllocations: const [],
         settlementAllocations: const [],
         expenseCategoryId: null,
         expenseRootId: null,
-        fromAccountId: null,
+        fromAccountId: consumptionInstallment ? current.fromAccountId : null,
         incomeCategoryId: null,
         incomeRootId: null,
         toAccountId: null,
-      ),
-    );
+      );
+    });
   }
 
   void setAdvanceAccountId(String? value) {
@@ -368,8 +466,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }
 
   void setExpenseScene(TransactionExpenseScene value) {
+    _defaultAccountRequestRevision += 1;
     _update((current) {
       final changingMode = current.mode != TransactionFormMode.expense;
+      final enteringConsumptionInstallment =
+          value == TransactionExpenseScene.consumptionInstallment &&
+          current.expenseScene != value;
+      final resetEntry = changingMode || enteringConsumptionInstallment;
       final selectedAccountId = current.advanceReceivableAccountId;
       final availableAccountIds = {
         for (final account in advanceAccountsForExpenseScene(
@@ -386,17 +489,23 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           selectedAccount != null &&
           (selectedAccount.profileKey == null ||
               availableAccountIds.contains(selectedAccountId));
+      final currentCreditAccount = current.creditAccounts
+          .where((account) => account.id == current.fromAccountId)
+          .firstOrNull;
+      final consumptionAccountId =
+          currentCreditAccount?.id ?? current.creditAccounts.firstOrNull?.id;
       return current.copyWith(
         mode: TransactionFormMode.expense,
-        entryMode: changingMode
-            ? TransactionEntryMode.normal
-            : current.entryMode,
-        categoryAllocations: changingMode
+        entryMode: resetEntry ? TransactionEntryMode.normal : current.entryMode,
+        categoryAllocations: resetEntry
             ? const []
             : current.categoryAllocations,
-        settlementAllocations: changingMode
+        settlementAllocations: resetEntry
             ? const []
             : current.settlementAllocations,
+        fromAccountId: value == TransactionExpenseScene.consumptionInstallment
+            ? consumptionAccountId
+            : current.fromAccountId,
         expenseScene: value,
         advanceScenario: value.advanceScenario ?? AdvanceScenario.reimbursement,
         advanceReceivableAccountId: canKeepSelectedAccount
@@ -479,6 +588,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required String amountText,
     required String noteText,
     String? feeText,
+    ConsumptionInstallmentConfiguration? consumptionInstallment,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('交易表单尚未加载');
@@ -505,7 +615,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return await guardSubmit(_logger, 'Transaction form submit', () async {
         final editTransactionId = _editTransactionId;
         if (editTransactionId == null) {
-          await _submitCreate(current, amount, feeAmount, noteText);
+          await _submitCreate(
+            current,
+            amount,
+            feeAmount,
+            noteText,
+            consumptionInstallment,
+          );
         } else {
           await _submitEdit(
             current,
@@ -541,12 +657,26 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     Money amount,
     Money? feeAmount,
     String noteText,
+    ConsumptionInstallmentConfiguration? consumptionInstallment,
   ) async {
     final postingService = ref.read(transactionPostingAppServiceProvider);
     final note = trimToNull(noteText);
 
     switch (formState.mode) {
       case TransactionFormMode.expense:
+        if (formState.expenseScene ==
+            TransactionExpenseScene.consumptionInstallment) {
+          if (consumptionInstallment == null) {
+            throw _invalidCommandException('请先完成分期配置');
+          }
+          await _submitConsumptionInstallment(
+            formState,
+            amount,
+            note,
+            consumptionInstallment,
+          );
+          return;
+        }
         final allocations = _expenseAllocations(formState, amount);
         final advanceReceivableAccountId = _selectedId(
           formState.advanceReceivableAccountId,
@@ -661,6 +791,93 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               ),
             );
     }
+  }
+
+  Future<void> _submitConsumptionInstallment(
+    TransactionFormState formState,
+    Money amount,
+    String? note,
+    ConsumptionInstallmentConfiguration configuration,
+  ) async {
+    final categoryAllocations = switch (formState.entryMode) {
+      TransactionEntryMode.normal => [
+        if (formState.expenseCategoryId case final categoryId?)
+          ConsumptionInstallmentAllocation(
+            accountId: categoryId,
+            amount: amount,
+          ),
+      ],
+      TransactionEntryMode.allocated => [
+        for (final allocation in formState.categoryAllocations)
+          ConsumptionInstallmentAllocation(
+            accountId: allocation.accountId,
+            amount: allocation.amount,
+          ),
+      ],
+    };
+    if (categoryAllocations.isEmpty) {
+      throw _invalidCommandException('请至少添加一个支出分类');
+    }
+    final categoryTotal = categoryAllocations.fold<Money>(
+      Money.zero(),
+      (total, allocation) => total + allocation.amount,
+    );
+    if (categoryTotal != amount) {
+      throw _invalidCommandException('分类分配合计必须等于成交价');
+    }
+
+    final liabilityAccountId = _effectiveId(
+      formState.fromAccountId,
+      formState.creditAccounts,
+    );
+    if (liabilityAccountId == null) {
+      throw _invalidCommandException('请选择分期账户');
+    }
+    final List<AccountAmountAllocation> settlementAllocations =
+        formState.entryMode == TransactionEntryMode.allocated
+        ? formState.settlementAllocations
+        : singleAllocation(accountId: liabilityAccountId, amount: amount);
+    if (settlementAllocations.isEmpty ||
+        settlementAllocations.any(
+          (allocation) => allocation.amount.minorUnits <= 0,
+        )) {
+      throw _invalidCommandException('请完成有效的支付分配');
+    }
+    if (sumAllocations(settlementAllocations) != amount) {
+      throw _invalidCommandException('支付分配合计必须等于成交价');
+    }
+    final installmentAllocation = settlementAllocations
+        .where((allocation) => allocation.accountId == liabilityAccountId)
+        .firstOrNull;
+    if (installmentAllocation == null ||
+        installmentAllocation.amount.minorUnits <= 0) {
+      throw _invalidCommandException('请选择包含在支付分配中的分期账户');
+    }
+
+    await ref
+        .read(installmentContractAppServiceProvider)
+        .createConsumptionInstallment(
+          CreateConsumptionInstallmentCommand(
+            liabilityAccountId: liabilityAccountId,
+            amount: amount,
+            categoryAllocations: categoryAllocations,
+            settlementAllocations: [
+              for (final allocation in settlementAllocations)
+                ConsumptionInstallmentAllocation(
+                  accountId: allocation.accountId,
+                  amount: allocation.amount,
+                ),
+            ],
+            borrowingDate: configuration.borrowingDate,
+            occurredAt: formState.occurredAt,
+            counterpartyId: formState.counterpartyId,
+            note: note,
+            tagIds: formState.selectedTagIds,
+            isExcludedFromStats: formState.excludeStats,
+            isExcludedFromBudget: formState.excludeBudget,
+            stageTerms: configuration.stageTerms,
+          ),
+        );
   }
 
   Future<void> _submitEdit(
@@ -858,6 +1075,45 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     return null;
   }
 
+  List<AccountAmountAllocation> _fitAllocationsToTotal(
+    List<AccountAmountAllocation> allocations,
+    Money total,
+  ) {
+    if (allocations.isEmpty) return const [];
+    if (allocations.length == 1) {
+      return [allocations.single.copyWith(amount: total)];
+    }
+    final currentTotal = sumAllocations(allocations);
+    final difference = total.minorUnits - currentTotal.minorUnits;
+    final adjusted = [...allocations];
+    if (difference >= 0) {
+      final last = adjusted.last;
+      adjusted[adjusted.length - 1] = last.copyWith(
+        amount: Money(minorUnits: last.amount.minorUnits + difference),
+      );
+      return adjusted;
+    }
+    var remaining = -difference;
+    for (
+      var index = adjusted.length - 1;
+      index >= 0 && remaining > 0;
+      index--
+    ) {
+      final allocation = adjusted[index];
+      final reduction = remaining < allocation.amount.minorUnits
+          ? remaining
+          : allocation.amount.minorUnits;
+      adjusted[index] = allocation.copyWith(
+        amount: Money(minorUnits: allocation.amount.minorUnits - reduction),
+      );
+      remaining -= reduction;
+    }
+    return [
+      for (final allocation in adjusted)
+        if (allocation.amount.minorUnits > 0) allocation,
+    ];
+  }
+
   Patch<String?> _stringPatch(String? value) {
     return value == null ? const Patch<String?>.clear() : Patch.set(value);
   }
@@ -872,6 +1128,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     TransactionFormState formState,
     String? advanceReceivableAccountId,
   ) {
+    if (formState.expenseScene ==
+        TransactionExpenseScene.consumptionInstallment) {
+      throw _invalidCommandException('消费分期请完成分期配置后提交');
+    }
     if (formState.expenseScene == TransactionExpenseScene.ordinary &&
         advanceReceivableAccountId == null) {
       return const OrdinaryExpenseSceneTarget();
@@ -1146,6 +1406,10 @@ class TransactionFormState {
   List<Account> get settlementAccounts => accountOptions.settlementAccounts;
   List<Account> get fundAccounts => accountOptions.fundAccounts;
   List<Account> get liabilityAccounts => accountOptions.liabilityAccounts;
+  List<Account> get creditAccounts => [
+    for (final account in liabilityAccounts)
+      if (account.profileKey == AccountProfileKind.credit.key) account,
+  ];
   List<Account> get advanceReceivableAccounts =>
       accountOptions.advanceReceivableAccounts;
   List<Account> get ordinaryReceivableAccounts =>
