@@ -367,7 +367,7 @@ class _AccountPickerGroupItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: context.appTextStyles
-                      .quickActionLabel(selected: selected)
+                      .sideNavigationLabel(selected: selected)
                       .copyWith(color: foreground),
                 ),
               ),

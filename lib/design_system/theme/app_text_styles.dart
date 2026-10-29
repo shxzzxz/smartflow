@@ -238,6 +238,14 @@ class AppTextStyles {
     fontWeight: AppTypography.emphasisWeight,
   );
 
+  TextStyle sideNavigationLabel({required bool selected}) =>
+      _labelSmall.copyWith(
+        fontSize: AppTypography.fontSizeXs,
+        fontWeight: selected
+            ? AppTypography.titleWeight
+            : AppTypography.emphasisWeight,
+      );
+
   TextStyle quickActionLabel({required bool selected}) => _labelSmall.copyWith(
     fontSize: AppTypography.fontSizeCompact,
     fontWeight: selected
