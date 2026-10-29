@@ -66,8 +66,8 @@ class InstallmentContract {
   final String? purchaseTransactionId;
   final Money principal;
 
-  /// 本笔贷款起算日，可通过合同编辑同步更正放款交易日期。
-  DateTime borrowingDate;
+  /// 本笔贷款起算日；仅在合同创建时确定。
+  final DateTime borrowingDate;
 
   InstallmentContractStatus _status;
   String? note;
@@ -111,7 +111,6 @@ class InstallmentContract {
 
   void reviseDetails({
     String? name,
-    DateTime? borrowingDate,
     Patch<String>? note,
     String? disbursementAccountId,
   }) {
@@ -133,7 +132,6 @@ class InstallmentContract {
             'A contract without a disbursement transaction cannot carry a disbursement account.',
       );
     }
-    if (borrowingDate != null) this.borrowingDate = borrowingDate;
     if (disbursementAccountId != null) {
       this.disbursementAccountId = disbursementAccountId;
     }

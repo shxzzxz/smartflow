@@ -97,7 +97,7 @@ void main() {
     );
 
     test(
-      'caps refund principal and sends overflow to the asset account',
+      'limits refund principal to unpaid schedules after the refund date',
       () async {
         final fixture = _Fixture();
         fixture.installments.putContract(
@@ -141,10 +141,13 @@ void main() {
             settlementAllocations: const [
               ConsumptionInstallmentAllocation(
                 accountId: 'credit-liability',
-                amount: Money(minorUnits: 100000),
+                amount: Money(minorUnits: 80000),
+              ),
+              ConsumptionInstallmentAllocation(
+                accountId: 'asset-cash',
+                amount: Money(minorUnits: 20000),
               ),
             ],
-            overflowAccountId: 'asset-cash',
             occurredAt: DateTime(2026, 7, 1),
           ),
         );
@@ -231,6 +234,142 @@ void main() {
 
         expect(fixture.ledger.deletedTransactionIds, ['purchase-tx']);
         expect(fixture.installments.contracts, isEmpty);
+      },
+    );
+
+    test('uses only unpaid schedules after the refund date', () async {
+      final fixture = _Fixture();
+      fixture.installments.putContract(
+        _purchaseContract(id: 'purchase-contract'),
+      );
+      fixture.installments.putSchedules('purchase-contract', [
+        _schedule(
+          id: 'schedule-1',
+          contractId: 'purchase-contract',
+          periodNo: 1,
+          principal: const Money(minorUnits: 60000),
+          date: DateTime(2026, 7, 10),
+        ),
+        _schedule(
+          id: 'schedule-2',
+          contractId: 'purchase-contract',
+          periodNo: 2,
+          principal: const Money(minorUnits: 60000),
+          date: DateTime(2026, 8, 10),
+        ),
+      ]);
+
+      expect(
+        await fixture.refunds.refundablePrincipal(
+          contractId: 'purchase-contract',
+          refundDate: DateTime(2026, 7, 9),
+        ),
+        const Money(minorUnits: 120000),
+      );
+      expect(
+        await fixture.refunds.refundablePrincipal(
+          contractId: 'purchase-contract',
+          refundDate: DateTime(2026, 7, 10),
+        ),
+        const Money(minorUnits: 60000),
+      );
+      expect(
+        await fixture.refunds.refundablePrincipal(
+          contractId: 'purchase-contract',
+          refundDate: DateTime(2026, 8, 10),
+        ),
+        Money.zero(),
+      );
+    });
+
+    test(
+      'rejects a liability allocation above the dated future principal',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _purchaseContract(id: 'purchase-contract'),
+        );
+        fixture.installments.putSchedules('purchase-contract', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'purchase-contract',
+            periodNo: 1,
+            principal: const Money(minorUnits: 60000),
+            date: DateTime(2026, 7, 10),
+          ),
+          _schedule(
+            id: 'schedule-2',
+            contractId: 'purchase-contract',
+            periodNo: 2,
+            principal: const Money(minorUnits: 60000),
+            date: DateTime(2026, 8, 10),
+          ),
+        ]);
+
+        await expectLater(
+          () => fixture.refunds.create(
+            CreateConsumptionInstallmentRefundCommand(
+              contractId: 'purchase-contract',
+              parentTransactionId: 'purchase-tx',
+              amount: const Money(minorUnits: 130000),
+              categoryAllocations: const [
+                ConsumptionInstallmentAllocation(
+                  accountId: 'expense-phone',
+                  amount: Money(minorUnits: 130000),
+                ),
+              ],
+              settlementAllocations: const [
+                ConsumptionInstallmentAllocation(
+                  accountId: 'credit-liability',
+                  amount: Money(minorUnits: 130000),
+                ),
+              ],
+              occurredAt: DateTime(2026, 7, 1),
+            ),
+          ),
+          throwsA(isA<BusinessException>()),
+        );
+      },
+    );
+
+    test(
+      'updates posted time through the existing refund edit command',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _purchaseContract(id: 'purchase-contract'),
+        );
+        fixture.installments.putSchedules('purchase-contract', [
+          _schedule(
+            id: 'schedule-1',
+            contractId: 'purchase-contract',
+            periodNo: 1,
+          ),
+        ]);
+        final before = fixture.installments
+            .schedulesFor('purchase-contract')
+            .map((schedule) => schedule.expectedPrincipal)
+            .toList();
+
+        await fixture.refunds.edit(
+          EditConsumptionInstallmentRefundCommand(
+            transactionId: 'refund-1',
+            contractId: 'purchase-contract',
+            parentTransactionId: 'purchase-tx',
+            postedAt: DateTime(2026, 7, 3),
+          ),
+        );
+
+        expect(
+          fixture.ledger.editRefundCommands.single.postedAt,
+          DateTime(2026, 7, 3),
+        );
+        expect(
+          fixture.installments
+              .schedulesFor('purchase-contract')
+              .map((schedule) => schedule.expectedPrincipal),
+          before,
+        );
       },
     );
 

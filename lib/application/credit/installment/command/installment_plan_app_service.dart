@@ -143,6 +143,22 @@ class InstallmentPlanAppService {
     );
   });
 
+  /// Calculates the current operational plan without saving it.
+  ///
+  /// The UI uses this to derive refund limits with exactly the same reduction
+  /// and repricing inputs as the plan recalculation use case.
+  Future<List<InstallmentPlanRow>> calculateCurrentRows(
+    String contractId, {
+    String? excludedRefundTransactionId,
+  }) async {
+    final prepared = await _prepare(
+      contractId,
+      const RecalculateFromOperations(),
+      excludedRefundTransactionId: excludedRefundTransactionId,
+    );
+    return List.unmodifiable(prepared.change.rows);
+  }
+
   Future<void> confirmChange(
     String contractId,
     RecalculateFromTerms request, {
@@ -230,8 +246,9 @@ class InstallmentPlanAppService {
 
   Future<_PreparedPlan> _prepare(
     String id,
-    InstallmentPlanChangeRequest request,
-  ) async {
+    InstallmentPlanChangeRequest request, {
+    String? excludedRefundTransactionId,
+  }) async {
     final contract = await _installments.findContract(id);
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
@@ -258,10 +275,11 @@ class InstallmentPlanAppService {
               principal: repayment.totalAllocated().principal,
             ),
         for (final reduction in refundReductions)
-          PrincipalReduction(
-            date: reduction.occurredAt,
-            principal: reduction.principal,
-          ),
+          if (reduction.refundTransactionId != excludedRefundTransactionId)
+            PrincipalReduction(
+              date: reduction.occurredAt,
+              principal: reduction.principal,
+            ),
       ],
       rateChangesByStage: {
         for (var index = 0; index < terms.stages.length; index++)

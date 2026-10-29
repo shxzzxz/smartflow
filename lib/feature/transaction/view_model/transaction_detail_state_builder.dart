@@ -391,9 +391,7 @@ DetailBehaviorConfig _behaviorConfigFor(
       canEditOccurredAt: installmentRefund
           ? const DetailEditPermission.denied(reason: '请在退款编辑页修改退款时间')
           : const DetailEditPermission.allowed(),
-      canEditPostedAt: installmentRefund
-          ? const DetailEditPermission.denied(reason: '请在退款编辑页修改退款时间')
-          : const DetailEditPermission.allowed(),
+      canEditPostedAt: const DetailEditPermission.allowed(),
       canEditNote: installmentRefund
           ? const DetailEditPermission.denied(reason: '请在退款编辑页修改备注')
           : const DetailEditPermission.allowed(),
@@ -453,7 +451,7 @@ DetailBehaviorConfig _behaviorConfigFor(
     return DetailBehaviorConfig(
       editRoute: '/installments/${ownership.ownerId}',
       canEditOccurredAt: purchase
-          ? const DetailEditPermission.denied(reason: '请从合同编辑页修改借款日并预览计划')
+          ? const DetailEditPermission.denied(reason: '消费分期购买交易时间暂不支持修改')
           : const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),

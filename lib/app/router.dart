@@ -30,7 +30,6 @@ import '../feature/credit/page/bill_edit_page.dart';
 import '../feature/credit/page/bill_repayment_form_page.dart';
 import '../feature/credit/page/installment_detail_page.dart';
 import '../feature/credit/page/installment_form_page.dart';
-import '../feature/credit/page/consumption_installment_form_page.dart';
 import '../feature/credit/page/installment_repayment_form_page.dart';
 import '../feature/credit/page/loan_calculator_page.dart';
 import '../feature/credit/page/repayment_form_page.dart';
@@ -242,10 +241,6 @@ final appRouter = GoRouter(
               state.uri.queryParameters['liabilityAccountId'],
         );
       },
-    ),
-    GoRoute(
-      path: '/transaction/consumption-installment/new',
-      builder: (context, state) => const ConsumptionInstallmentFormPage(),
     ),
     GoRoute(
       path: '/transaction/:id',

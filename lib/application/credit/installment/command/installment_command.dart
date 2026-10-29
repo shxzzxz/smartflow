@@ -85,7 +85,6 @@ class CreateConsumptionInstallmentRefundCommand {
     this.postedAt,
     this.counterpartyId,
     this.note,
-    this.overflowAccountId,
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -98,7 +97,6 @@ class CreateConsumptionInstallmentRefundCommand {
   final DateTime? postedAt;
   final String? counterpartyId;
   final String? note;
-  final String? overflowAccountId;
 }
 
 class EditConsumptionInstallmentRefundCommand {
@@ -106,28 +104,36 @@ class EditConsumptionInstallmentRefundCommand {
     required this.transactionId,
     required this.contractId,
     required this.parentTransactionId,
-    required this.amount,
-    required List<ConsumptionInstallmentAllocation> categoryAllocations,
-    required List<ConsumptionInstallmentAllocation> settlementAllocations,
-    required this.occurredAt,
+    this.amount,
+    List<ConsumptionInstallmentAllocation>? categoryAllocations,
+    List<ConsumptionInstallmentAllocation>? settlementAllocations,
+    this.occurredAt,
     this.postedAt,
     this.counterpartyId,
     this.note,
-    this.overflowAccountId,
-  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
-       settlementAllocations = List.unmodifiable(settlementAllocations);
+  }) : categoryAllocations = categoryAllocations == null
+           ? null
+           : List.unmodifiable(categoryAllocations),
+       settlementAllocations = settlementAllocations == null
+           ? null
+           : List.unmodifiable(settlementAllocations);
 
   final String transactionId;
   final String contractId;
   final String parentTransactionId;
-  final Money amount;
-  final List<ConsumptionInstallmentAllocation> categoryAllocations;
-  final List<ConsumptionInstallmentAllocation> settlementAllocations;
-  final DateTime occurredAt;
+  final Money? amount;
+  final List<ConsumptionInstallmentAllocation>? categoryAllocations;
+  final List<ConsumptionInstallmentAllocation>? settlementAllocations;
+  final DateTime? occurredAt;
   final DateTime? postedAt;
   final String? counterpartyId;
   final String? note;
-  final String? overflowAccountId;
+
+  bool get hasFinancialEdit =>
+      amount != null ||
+      categoryAllocations != null ||
+      settlementAllocations != null ||
+      occurredAt != null;
 }
 
 class DeleteConsumptionInstallmentRefundCommand {
@@ -231,7 +237,7 @@ class SchedulePendingPatch {
 /// 合同编辑命令。
 ///
 /// 编辑范围由 service 校验：
-/// - 借款日期可以改；若有放款交易，会联动 disbursement 交易的 occurredAt。
+/// - 借款日期在创建后不可修改。
 /// - 默认只更新参数快照；[regeneratePlan] 为 true 时用 [planPreviewToken] 确认重算。
 /// - [schedulePatches] 只覆盖对应 pending 行；paid / skipped 行不可编辑。
 ///
@@ -243,14 +249,12 @@ class UpdateContractDetailsCommand {
   const UpdateContractDetailsCommand({
     required this.contractId,
     this.name,
-    this.borrowingDate,
     this.disbursementAccountId,
     this.note,
   });
 
   final String contractId;
   final String? name;
-  final DateTime? borrowingDate;
   final String? disbursementAccountId;
   final Patch<String>? note;
 }
@@ -282,7 +286,6 @@ class UpdateContractCommand {
   const UpdateContractCommand({
     required this.contractId,
     this.name,
-    this.borrowingDate,
     this.disbursementAccountId,
     this.note,
     this.schedulePatches = const [],
@@ -293,7 +296,6 @@ class UpdateContractCommand {
 
   final String contractId;
   final String? name;
-  final DateTime? borrowingDate;
 
   /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。
   /// 业务上禁止清除（账单分期合同永远 null，放款合同永远有值）。

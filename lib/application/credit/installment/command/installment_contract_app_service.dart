@@ -295,7 +295,6 @@ class InstallmentContractAppServiceImpl
             (throw BusinessException(CreditErrorCode.contractNotFound));
         contract.reviseDetails(
           name: command.name,
-          borrowingDate: command.borrowingDate,
           note: command.note,
           disbursementAccountId: command.disbursementAccountId,
         );
@@ -311,13 +310,11 @@ class InstallmentContractAppServiceImpl
     if (contract.sourceType != InstallmentSourceType.disbursement) return;
     final txId = contract.disbursementTransactionId;
     if (txId == null) return;
-    if (command.disbursementAccountId != null ||
-        command.borrowingDate != null) {
+    if (command.disbursementAccountId != null) {
       await _ledger.editBorrowing(
         CreditLedgerEditBorrowingCommand(
           transactionId: txId,
           receiveAccountId: command.disbursementAccountId,
-          occurredAt: command.borrowingDate,
         ),
       );
     }

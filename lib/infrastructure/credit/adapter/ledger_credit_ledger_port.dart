@@ -139,6 +139,14 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
         note: command.note,
       ),
     );
+    if (command.postedAt case final postedAt?) {
+      await _updateService.updateBasicInfo(
+        ledger_command.UpdateTransactionBasicInfoCommand(
+          transactionId: command.transactionId,
+          postedAt: postedAt,
+        ),
+      );
+    }
     return _posted(result);
   }
 

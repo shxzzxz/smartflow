@@ -123,8 +123,24 @@ final class _InstallmentRefundActionDispatcher
       detailNotEditable('请在退款编辑页修改退款时间');
 
   @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async =>
-      detailNotEditable('请在退款编辑页修改入账时间');
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
+    final ownership = transaction.ownership;
+    final parentTransactionId = transaction.parentTransactionId;
+    if (ownership?.ownerType != installmentOwnerType ||
+        parentTransactionId == null) {
+      return Future.value(detailInvalidCommand('无法定位消费分期退款'));
+    }
+    return detailVoidOutcomeFromAction(() async {
+      await refundAppService.edit(
+        EditConsumptionInstallmentRefundCommand(
+          transactionId: transaction.id,
+          contractId: ownership!.ownerId,
+          parentTransactionId: parentTransactionId,
+          postedAt: value,
+        ),
+      );
+    });
+  }
 
   @override
   Future<UiActionOutcome<void>> changeSettlementAccount(
@@ -314,9 +330,6 @@ final class _DefaultActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
-      return detailNotEditable('消费分期请从合同编辑页修改借款日并预览计划');
-    }
     return detailVoidOutcomeFromAction(() {
       return updateService.updateBasicInfo(
         UpdateTransactionBasicInfoCommand(
@@ -501,6 +514,16 @@ final class _InstallmentActionDispatcher
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
+    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
+      return detailVoidOutcomeFromAction(() {
+        return updateService.updateBasicInfo(
+          UpdateTransactionBasicInfoCommand(
+            transactionId: transaction.id,
+            note: _nullableStringPatch(value),
+          ),
+        );
+      });
+    }
     return detailVoidOutcomeFromAction(() {
       return installmentAppService.updateContractDetails(
         UpdateContractDetailsCommand(
@@ -516,10 +539,10 @@ final class _InstallmentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContractDetails(
-        UpdateContractDetailsCommand(
-          contractId: contractId,
-          borrowingDate: value,
+      return updateService.updateBasicInfo(
+        UpdateTransactionBasicInfoCommand(
+          transactionId: transaction.id,
+          occurredAt: value,
         ),
       );
     });

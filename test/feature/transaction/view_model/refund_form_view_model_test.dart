@@ -83,7 +83,8 @@ void main() {
       final state = await container.read(provider.future);
 
       expect(state.installmentContractId, 'purchase-contract');
-      expect(state.overflowAccountId, 'cash');
+      expect(state.installmentLiabilityAccountId, 'credit');
+      expect(state.refundablePrincipal, const Money(minorUnits: 10000));
 
       container.read(provider.notifier).setSettlementAllocations(const [
         AccountAmountAllocation(
@@ -99,10 +100,59 @@ void main() {
       final command = refunds.createCommands.single;
       expect(command.contractId, 'purchase-contract');
       expect(command.parentTransactionId, 'parent');
-      expect(command.overflowAccountId, 'cash');
       expect(command.settlementAllocations.single.accountId, 'credit');
     },
   );
+
+  test(
+    'refreshes the liability refund limit when the business date changes',
+    () async {
+      final refunds = _FakeConsumptionRefundService(
+        limitForDate: (date) => date.day == 1
+            ? const Money(minorUnits: 6000)
+            : const Money(minorUnits: 10000),
+      );
+      final container = _container(
+        purchaseParent: true,
+        consumptionRefunds: refunds,
+      );
+      final provider = refundFormViewModelProvider('parent');
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+      await container.read(provider.future);
+
+      container.read(provider.notifier).setOccurredAt(DateTime(2026, 7, 1));
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(provider).requireValue;
+      expect(state.refundablePrincipal, const Money(minorUnits: 6000));
+      expect(state.refundLimitLoading, isFalse);
+    },
+  );
+
+  test('blocks liability allocation above the refundable principal', () async {
+    final refunds = _FakeConsumptionRefundService();
+    final container = _container(
+      purchaseParent: true,
+      consumptionRefunds: refunds,
+    );
+    final provider = refundFormViewModelProvider('parent');
+    await container.read(provider.future);
+    container.read(provider.notifier).setSettlementAllocations(const [
+      AccountAmountAllocation(
+        accountId: 'credit',
+        amount: Money(minorUnits: 10001),
+      ),
+    ]);
+
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '100.01', noteText: '');
+
+    expect(outcome, isA<SubmitFailure>());
+    expect(refunds.createCommands, isEmpty);
+  });
 
   test('refreshes the installment plan after a covering refund', () async {
     final refunds = _FakeConsumptionRefundService();
@@ -381,9 +431,19 @@ class _FakeAdvanceOrchestrationService
 
 class _FakeConsumptionRefundService
     implements ConsumptionInstallmentRefundAppService {
+  _FakeConsumptionRefundService({this.limitForDate});
+
+  final Money Function(DateTime)? limitForDate;
   final createCommands = <CreateConsumptionInstallmentRefundCommand>[];
   final editCommands = <EditConsumptionInstallmentRefundCommand>[];
   final deleteCommands = <DeleteConsumptionInstallmentRefundCommand>[];
+
+  @override
+  Future<Money> refundablePrincipal({
+    required String contractId,
+    required DateTime refundDate,
+    String? excludedRefundTransactionId,
+  }) async => limitForDate?.call(refundDate) ?? const Money(minorUnits: 10000);
 
   @override
   Future<ConsumptionInstallmentRefundResult> create(

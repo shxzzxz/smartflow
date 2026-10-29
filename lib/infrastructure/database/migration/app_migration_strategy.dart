@@ -51,27 +51,29 @@ Future<void> _upgrade(
     );
   }
 
-  await stepByStep(
-    from49To50: (migration, schema) async {
-      await migration.alterTable(TableMigration(schema.accounts));
-    },
-    from50To51: (migration, schema) async {
-      await migration.alterTable(
-        TableMigration(
-          schema.installmentContracts,
-          newColumns: [schema.installmentContracts.purchaseTransactionId],
-          columnTransformer: {
-            schema.installmentContracts.purchaseTransactionId: const Constant(
-              null,
-            ),
-          },
-        ),
-      );
-      await migration.createTable(schema.installmentRefundReductions);
-      await migration.database.customStatement(
-        'CREATE INDEX installment_refund_reductions_contract_idx '
-        'ON installment_refund_reductions (contract_id)',
-      );
-    },
-  )(migrator, from, to);
+  await migrator.database.transaction(() async {
+    await stepByStep(
+      from49To50: (migration, schema) async {
+        await migration.alterTable(TableMigration(schema.accounts));
+      },
+      from50To51: (migration, schema) async {
+        await migration.alterTable(
+          TableMigration(
+            schema.installmentContracts,
+            newColumns: [schema.installmentContracts.purchaseTransactionId],
+            columnTransformer: {
+              schema.installmentContracts.purchaseTransactionId: const Constant(
+                null,
+              ),
+            },
+          ),
+        );
+        await migration.createTable(schema.installmentRefundReductions);
+        await migration.database.customStatement(
+          'CREATE INDEX installment_refund_reductions_contract_idx '
+          'ON installment_refund_reductions (contract_id)',
+        );
+      },
+    )(migrator, from, to);
+  });
 }

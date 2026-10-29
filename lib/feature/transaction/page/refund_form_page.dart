@@ -164,10 +164,24 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                       padding: const EdgeInsets.all(AppSpacing.space12),
                       child: Text(
                         '退回到分期负债的部分会作为退款还本重算后续计划；'
-                        '超过剩余本金的金额会退回到所选资产账户。',
+                        '分期账户金额不能超过退款日之后的待还本金，'
+                        '超出部分请直接分配到资产账户。',
                         style: context.appTextStyles.listSupporting,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
+                  AppPlainValueRow(
+                    label: '可退款还本',
+                    child: state.refundLimitLoading
+                        ? Text(
+                            '计算中',
+                            style: context.appTextStyles.listSupporting,
+                          )
+                        : MoneyText(
+                            money: state.refundablePrincipal ?? Money.zero(),
+                            style: context.appTextStyles.formValue,
+                          ),
                   ),
                   const SizedBox(height: AppSpacing.space14),
                 ],
@@ -243,6 +257,10 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
           options: transactionAllocationOptionsForAccounts(state.accounts),
           addLabel: '添加账户',
           expectedTotal: amount,
+          maximumByAccountId: {
+            ?state.installmentLiabilityAccountId:
+                state.refundablePrincipal ?? Money.zero(),
+          },
           onSelectOption: (context, selectedId, options) =>
               selectTransactionAllocationAccount(
                 context,

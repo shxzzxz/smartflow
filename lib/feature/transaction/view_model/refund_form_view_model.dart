@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
@@ -25,6 +26,8 @@ final _logger = Logger('feature.transaction.refund_form');
 
 @riverpod
 class RefundFormViewModel extends _$RefundFormViewModel {
+  int _refundLimitRevision = 0;
+
   @override
   Future<RefundFormState> build(
     String transactionId, {
@@ -68,7 +71,15 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     );
     final refundSummary = detail.refundSummary;
     final refunded = refundSummary?.refundedTotal ?? Money.zero();
-    final installmentContractId = await _purchaseContractId(detail);
+    final purchaseContract = await _purchaseContract(detail);
+    final occurredAt = DateTime.now();
+    final refundablePrincipal = purchaseContract == null
+        ? null
+        : await _refundablePrincipal(
+            purchaseContract.id,
+            occurredAt,
+            excludedRefundTransactionId: null,
+          );
     final availableCategories =
         refundSummary?.remainingCategoryAllocations ?? const [];
     final categoryAllocations =
@@ -78,8 +89,9 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       parentTransactionId: transactionId,
       editing: false,
       advanceParent: detail.businessPurpose == BusinessPurpose.advance,
-      installmentContractId: installmentContractId,
-      overflowAccountId: _firstAssetAccountId(detail, accountsById),
+      installmentContractId: purchaseContract?.id,
+      installmentLiabilityAccountId: purchaseContract?.liabilityAccountId,
+      refundablePrincipal: refundablePrincipal,
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(
         categoryAllocations,
@@ -89,7 +101,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       remaining: _remainingForNewRefund(detail, refunded),
       refundToAccountId: defaultAccountId,
       settlementAllocations: defaultSettlementAllocations,
-      occurredAt: DateTime.now(),
+      occurredAt: occurredAt,
       amountText: '',
       noteText: '',
     );
@@ -151,7 +163,14 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           );
     final parentCategories =
         parentSummary?.originalCategoryAllocations ?? const [];
-    final installmentContractId = await _purchaseContractId(parentDetail);
+    final purchaseContract = await _purchaseContract(parentDetail);
+    final refundablePrincipal = purchaseContract == null
+        ? null
+        : await _refundablePrincipal(
+            purchaseContract.id,
+            transaction.occurredAt,
+            excludedRefundTransactionId: transaction.id,
+          );
     final categoryAllocations = _refundCategoryAllocations(transaction);
     final settlementAllocations = _allocationsOf(
       transaction,
@@ -162,8 +181,9 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       parentTransactionId: parentTransactionId,
       editing: true,
       advanceParent: parentDetail.businessPurpose == BusinessPurpose.advance,
-      installmentContractId: installmentContractId,
-      overflowAccountId: _firstAssetAccountId(parentDetail, accountsById),
+      installmentContractId: purchaseContract?.id,
+      installmentLiabilityAccountId: purchaseContract?.liabilityAccountId,
+      refundablePrincipal: refundablePrincipal,
       accounts: accounts,
       categoryAccounts: _accountsForAllocations(parentCategories, accountsById),
       availableCategoryAllocations: availableCategories,
@@ -180,8 +200,26 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     );
   }
 
-  void setOccurredAt(DateTime value) =>
-      _update((state) => state.copyWith(occurredAt: value));
+  void setOccurredAt(DateTime value) {
+    final current = state.asData?.value;
+    if (current == null) return;
+    _update(
+      (state) => state.copyWith(
+        occurredAt: value,
+        refundablePrincipal: null,
+        refundLimitLoading: current.installmentContractId != null,
+      ),
+    );
+    if (current.installmentContractId case final contractId?) {
+      _loadRefundablePrincipal(
+        contractId,
+        value,
+        excludedRefundTransactionId: current.editing
+            ? current.transactionId
+            : null,
+      );
+    }
+  }
 
   void setRefundToAccountId(String? value) => _update(
     (state) =>
@@ -245,6 +283,22 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     if (sumAllocations(settlementAllocations) != amount) {
       return _invalidCommand('请完成退款到账分配');
     }
+    final liabilityAccountId = current.installmentLiabilityAccountId;
+    final refundablePrincipal = current.refundablePrincipal;
+    if (liabilityAccountId != null) {
+      if (refundablePrincipal == null) {
+        return _invalidCommand('正在计算可退款还本金额，请稍后重试');
+      }
+      final liabilityRefund = settlementAllocations
+          .where((allocation) => allocation.accountId == liabilityAccountId)
+          .fold<Money>(
+            Money.zero(),
+            (total, allocation) => total + allocation.amount,
+          );
+      if (liabilityRefund.minorUnits > refundablePrincipal.minorUnits) {
+        return _invalidCommand('分期账户退款金额不能超过退款日之后的待还本金');
+      }
+    }
 
     _update((state) => state.copyWith(submitting: true));
     try {
@@ -277,7 +331,6 @@ class RefundFormViewModel extends _$RefundFormViewModel {
                 amount: amount,
                 categoryAllocations: creditCategoryAllocations,
                 settlementAllocations: creditSettlementAllocations,
-                overflowAccountId: current.overflowAccountId,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -290,7 +343,6 @@ class RefundFormViewModel extends _$RefundFormViewModel {
                 amount: amount,
                 categoryAllocations: creditCategoryAllocations,
                 settlementAllocations: creditSettlementAllocations,
-                overflowAccountId: current.overflowAccountId,
                 occurredAt: current.occurredAt,
                 note: trimToNull(noteText),
               ),
@@ -371,15 +423,64 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     state = AsyncData(update(current));
   }
 
-  Future<String?> _purchaseContractId(TransactionReadModel detail) async {
+  Future<InstallmentContractReadModel?> _purchaseContract(
+    TransactionReadModel detail,
+  ) async {
     final ownership = detail.ownership;
     if (ownership?.ownerType != installmentOwnerType) return null;
     final contract = await ref
         .read(installmentQueryServiceProvider)
         .findContract(ownership!.ownerId);
     return contract?.sourceType == InstallmentSourceType.purchase
-        ? contract!.id
+        ? contract
         : null;
+  }
+
+  Future<Money> _refundablePrincipal(
+    String contractId,
+    DateTime refundDate, {
+    required String? excludedRefundTransactionId,
+  }) {
+    return ref
+        .read(consumptionInstallmentRefundAppServiceProvider)
+        .refundablePrincipal(
+          contractId: contractId,
+          refundDate: refundDate,
+          excludedRefundTransactionId: excludedRefundTransactionId,
+        );
+  }
+
+  Future<void> _loadRefundablePrincipal(
+    String contractId,
+    DateTime refundDate, {
+    required String? excludedRefundTransactionId,
+  }) async {
+    final revision = ++_refundLimitRevision;
+    try {
+      final amount = await _refundablePrincipal(
+        contractId,
+        refundDate,
+        excludedRefundTransactionId: excludedRefundTransactionId,
+      );
+      if (revision != _refundLimitRevision) return;
+      _update(
+        (state) => state.occurredAt == refundDate
+            ? state.copyWith(
+                refundablePrincipal: amount,
+                refundLimitLoading: false,
+              )
+            : state,
+      );
+    } on Exception catch (error, stackTrace) {
+      if (revision != _refundLimitRevision) return;
+      _logger.warning('Load consumption refund limit', error, stackTrace);
+      _update(
+        (state) => state.copyWith(
+          refundablePrincipal: null,
+          refundLimitLoading: false,
+        ),
+      );
+    }
   }
 
   Future<void> _invalidateInstallmentPlan(String contractId) async {
@@ -429,7 +530,9 @@ class RefundFormState {
     this.settlementAllocations,
     this.advanceParent = false,
     this.installmentContractId,
-    this.overflowAccountId,
+    this.installmentLiabilityAccountId,
+    this.refundablePrincipal,
+    this.refundLimitLoading = false,
   }) : accounts = List.unmodifiable(accounts),
        categoryAccounts = List.unmodifiable(categoryAccounts),
        availableCategoryAllocations = List.unmodifiable(
@@ -442,7 +545,8 @@ class RefundFormState {
     required bool editing,
     bool advanceParent = false,
     String? installmentContractId,
-    String? overflowAccountId,
+    String? installmentLiabilityAccountId,
+    Money? refundablePrincipal,
     required List<Account> accounts,
     required List<Account> categoryAccounts,
     required List<AccountAmountAllocation> availableCategoryAllocations,
@@ -461,7 +565,9 @@ class RefundFormState {
       editing: editing,
       advanceParent: advanceParent,
       installmentContractId: installmentContractId,
-      overflowAccountId: overflowAccountId,
+      installmentLiabilityAccountId: installmentLiabilityAccountId,
+      refundablePrincipal: refundablePrincipal,
+      refundLimitLoading: false,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,
@@ -522,7 +628,9 @@ class RefundFormState {
   final bool editing;
   final bool advanceParent;
   final String? installmentContractId;
-  final String? overflowAccountId;
+  final String? installmentLiabilityAccountId;
+  final Money? refundablePrincipal;
+  final bool refundLimitLoading;
   final List<Account> accounts;
   final List<Account> categoryAccounts;
   final List<AccountAmountAllocation> availableCategoryAllocations;
@@ -542,6 +650,8 @@ class RefundFormState {
     Object? refundToAccountId = _sentinel,
     Object? categoryAllocations = _sentinel,
     Object? settlementAllocations = _sentinel,
+    Object? refundablePrincipal = _sentinel,
+    bool? refundLimitLoading,
     bool? submitting,
   }) {
     return RefundFormState(
@@ -551,7 +661,11 @@ class RefundFormState {
       editing: editing,
       advanceParent: advanceParent,
       installmentContractId: installmentContractId,
-      overflowAccountId: overflowAccountId,
+      installmentLiabilityAccountId: installmentLiabilityAccountId,
+      refundablePrincipal: refundablePrincipal == _sentinel
+          ? this.refundablePrincipal
+          : refundablePrincipal as Money?,
+      refundLimitLoading: refundLimitLoading ?? this.refundLimitLoading,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,
@@ -575,19 +689,6 @@ class RefundFormState {
 
 Money _remainingForNewRefund(TransactionReadModel detail, Money refunded) {
   return detail.primaryAmount - refunded;
-}
-
-String? _firstAssetAccountId(
-  TransactionReadModel detail,
-  Map<String, Account> accountsById,
-) {
-  for (final line in detail.linesOf(TransactionRole.settlementOut)) {
-    final accountId = line.accountId;
-    if (accountId == null) continue;
-    final account = accountsById[accountId];
-    if (account?.type == AccountType.asset) return accountId;
-  }
-  return null;
 }
 
 Money _remainingForEditedRefund(

@@ -194,6 +194,7 @@ class TransactionInlineAllocationColumn extends StatelessWidget {
     super.key,
     this.expectedTotal,
     this.statusInHeader = true,
+    this.maximumByAccountId = const {},
   });
 
   final String title;
@@ -202,6 +203,7 @@ class TransactionInlineAllocationColumn extends StatelessWidget {
   final String addLabel;
   final Money? expectedTotal;
   final bool statusInHeader;
+  final Map<String, Money> maximumByAccountId;
   final TransactionAllocationOptionSelector onSelectOption;
   final ValueChanged<List<AccountAmountAllocation>> onChanged;
 
@@ -246,6 +248,7 @@ class TransactionInlineAllocationColumn extends StatelessWidget {
                     ),
                     option: _optionOf(allocations[index].accountId),
                     amount: allocations[index].amount,
+                    maximum: maximumByAccountId[allocations[index].accountId],
                     amountRequired: true,
                     onOptionTap: () => _changeOption(context, index),
                     onAmountChanged: (amount) {

@@ -500,6 +500,116 @@ void main() {
       },
     );
 
+    test(
+      'updates plain expense occurred time through the ledger service',
+      () async {
+        final update = _FakeTransactionUpdateAppService();
+        final container = _container(
+          detail: _detail(purpose: BusinessPurpose.dailyExpense),
+          update: update,
+        );
+        await _readState(container);
+
+        final occurredAt = DateTime(2026, 2, 2, 9);
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeOccurredAt(occurredAt);
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(update.basicInfoCommands.single.occurredAt, occurredAt);
+      },
+    );
+
+    test(
+      'installment transaction time never updates the contract date',
+      () async {
+        final update = _FakeTransactionUpdateAppService();
+        final installment = _FakeInstallmentContractAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.borrowing,
+            ownership: const TransactionOwnership(
+              ownerType: installmentOwnerType,
+              ownerId: 'contract-1',
+            ),
+          ),
+          update: update,
+          installment: installment,
+        );
+        await _readState(container);
+
+        final occurredAt = DateTime(2026, 2, 4, 10);
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeOccurredAt(occurredAt);
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(update.basicInfoCommands.single.occurredAt, occurredAt);
+        expect(installment.updateContractCommands, isEmpty);
+      },
+    );
+
+    test(
+      'purchase note updates the transaction instead of the contract',
+      () async {
+        final update = _FakeTransactionUpdateAppService();
+        final installment = _FakeInstallmentContractAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.dailyExpense,
+            ownership: const TransactionOwnership(
+              ownerType: installmentOwnerType,
+              ownerId: 'purchase-contract',
+            ),
+          ),
+          update: update,
+          installment: installment,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changeNote(' purchase note ');
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(
+          (update.basicInfoCommands.single.note as PatchSet<String?>).value,
+          'purchase note',
+        );
+        expect(installment.updateContractCommands, isEmpty);
+      },
+    );
+
+    test(
+      'updates installment refund posted time through refund edit',
+      () async {
+        final refunds = _FakeConsumptionRefundAppService();
+        final detail = _detail(
+          purpose: BusinessPurpose.refund,
+          parentTransactionId: 'parent',
+          ownership: const TransactionOwnership(
+            ownerType: installmentOwnerType,
+            ownerId: 'purchase-contract',
+          ),
+        );
+        final container = _container(
+          detail: detail,
+          consumptionRefund: refunds,
+        );
+        final loaded = await _readState(container) as TransactionDetailLoaded;
+
+        expect(loaded.behavior.canEditPostedAt, isA<DetailEditAllowed>());
+        final postedAt = DateTime(2026, 2, 5, 11);
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .changePostedAt(postedAt);
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(refunds.editCommands.single.postedAt, postedAt);
+        expect(refunds.editCommands.single.amount, isNull);
+      },
+    );
+
     test('updates posted time through the ledger basic info service', () async {
       final update = _FakeTransactionUpdateAppService();
       final container = _container(
@@ -663,6 +773,7 @@ ProviderContainer _container({
   _FakeAdvanceOrchestrationService? orchestration,
   _FakeInstallmentContractAppService? installment,
   _FakeRepaymentAppService? repayment,
+  _FakeConsumptionRefundAppService? consumptionRefund,
 }) {
   final accounts = <String, Account>{
     'cash': _account('cash', '现金', iconKey: 'cash'),
@@ -712,6 +823,9 @@ ProviderContainer _container({
       ),
       repaymentAppServiceProvider.overrideWithValue(
         repayment ?? _FakeRepaymentAppService(),
+      ),
+      consumptionInstallmentRefundAppServiceProvider.overrideWithValue(
+        consumptionRefund ?? _FakeConsumptionRefundAppService(),
       ),
     ],
   );
@@ -1152,7 +1266,6 @@ class _FakeInstallmentContractAppService
       UpdateContractCommand(
         contractId: command.contractId,
         name: command.name,
-        borrowingDate: command.borrowingDate,
         disbursementAccountId: command.disbursementAccountId,
         note: command.note,
       ),
@@ -1213,6 +1326,47 @@ class _FakeRepaymentAppService implements RepaymentAppService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeConsumptionRefundAppService
+    implements ConsumptionInstallmentRefundAppService {
+  final createCommands = <CreateConsumptionInstallmentRefundCommand>[];
+  final editCommands = <EditConsumptionInstallmentRefundCommand>[];
+  final deleteCommands = <DeleteConsumptionInstallmentRefundCommand>[];
+
+  @override
+  Future<ConsumptionInstallmentRefundResult> create(
+    CreateConsumptionInstallmentRefundCommand command,
+  ) async {
+    createCommands.add(command);
+    return ConsumptionInstallmentRefundResult(
+      refundTransactionId: 'refund-1',
+      principalReduction: Money.zero(),
+    );
+  }
+
+  @override
+  Future<ConsumptionInstallmentRefundResult> edit(
+    EditConsumptionInstallmentRefundCommand command,
+  ) async {
+    editCommands.add(command);
+    return ConsumptionInstallmentRefundResult(
+      refundTransactionId: command.transactionId,
+      principalReduction: Money.zero(),
+    );
+  }
+
+  @override
+  Future<Money> refundablePrincipal({
+    required String contractId,
+    required DateTime refundDate,
+    String? excludedRefundTransactionId,
+  }) async => Money.zero();
+
+  @override
+  Future<void> delete(DeleteConsumptionInstallmentRefundCommand command) async {
+    deleteCommands.add(command);
+  }
 }
 
 const _advanceLines = [

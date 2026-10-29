@@ -33,10 +33,10 @@ class InstallmentContractEditAppServiceImpl
         if (command.regeneratePlan) {
           final token = command.planPreviewToken;
           final terms = command.stageTerms;
-          if (token == null || terms == null || command.borrowingDate != null) {
+          if (token == null || terms == null) {
             throw BusinessException(
               CreditErrorCode.contractPersistenceConflict,
-              message: '请按当前借款日期重新预览计划后保存',
+              message: '请重新预览计划后保存',
             );
           }
           await _plans.recalculateContractPlan(
@@ -66,7 +66,6 @@ class InstallmentContractEditAppServiceImpl
           UpdateContractDetailsCommand(
             contractId: command.contractId,
             name: command.name,
-            borrowingDate: command.borrowingDate,
             disbursementAccountId: command.disbursementAccountId,
             note: command.note,
           ),

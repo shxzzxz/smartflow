@@ -78,6 +78,7 @@ class CreditLedgerEditRefundCommand {
     List<CreditLedgerExpenseAllocation>? categoryAllocations,
     List<CreditLedgerExpenseAllocation>? settlementAllocations,
     this.occurredAt,
+    this.postedAt,
     this.counterpartyId,
     this.note,
   }) : categoryAllocations = categoryAllocations == null
@@ -92,6 +93,7 @@ class CreditLedgerEditRefundCommand {
   final List<CreditLedgerExpenseAllocation>? categoryAllocations;
   final List<CreditLedgerExpenseAllocation>? settlementAllocations;
   final DateTime? occurredAt;
+  final DateTime? postedAt;
   final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
 }

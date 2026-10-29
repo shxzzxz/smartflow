@@ -356,6 +356,8 @@ void main() {
           [1000, 4500],
         );
         expect(command.stageTerms, same(terms));
+        expect(command.borrowingDate, DateTime(2026, 1, 1));
+        expect(command.borrowingDate, isNot(command.occurredAt));
         expect(command.isExcludedFromStats, isTrue);
         expect(command.isExcludedFromBudget, isTrue);
       },

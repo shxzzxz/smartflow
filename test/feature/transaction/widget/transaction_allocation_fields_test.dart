@@ -116,6 +116,41 @@ void main() {
 
     expect(find.text('不能超过可分配金额'), findsOneWidget);
   });
+
+  testWidgets('validates an inline allocation maximum', (tester) async {
+    final formKey = GlobalKey<FormState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Form(
+            key: formKey,
+            child: TransactionInlineAllocationColumn(
+              title: '到账账户',
+              allocations: [_allocation('credit', 80)],
+              options: const [
+                TransactionAllocationOption(accountId: 'credit', label: '花呗'),
+              ],
+              addLabel: '添加账户',
+              expectedTotal: _money(80),
+              maximumByAccountId: {'credit': _money(80)},
+              onSelectOption: (_, _, _) async => null,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final amount = find.descendant(
+      of: find.byKey(const ValueKey('allocation-amount-credit')),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(amount, '81');
+
+    expect(formKey.currentState!.validate(), isFalse);
+    await tester.pump();
+    expect(find.text('不能超过可分配金额'), findsOneWidget);
+  });
 }
 
 AccountAmountAllocation _allocation(String accountId, int amount) {

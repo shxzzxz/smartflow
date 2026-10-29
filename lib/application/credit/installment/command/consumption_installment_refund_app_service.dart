@@ -9,6 +9,7 @@ import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_refund_reduction_repository.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
+import 'package:smartflow/domain/credit/service/installment/consumption_installment_refund_policy.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
@@ -27,6 +28,12 @@ abstract interface class ConsumptionInstallmentRefundAppService {
     EditConsumptionInstallmentRefundCommand command,
   );
 
+  Future<Money> refundablePrincipal({
+    required String contractId,
+    required DateTime refundDate,
+    String? excludedRefundTransactionId,
+  });
+
   Future<void> delete(DeleteConsumptionInstallmentRefundCommand command);
 }
 
@@ -41,6 +48,8 @@ class ConsumptionInstallmentRefundAppServiceImpl
     required InstallmentPlanAppService plans,
     required TransactionRunner runner,
     required IdGenerator idGenerator,
+    ConsumptionInstallmentRefundPolicy policy =
+        const ConsumptionInstallmentRefundPolicy(),
   }) : _installments = installments,
        _refundReductions = refundReductions,
        _bills = bills,
@@ -48,7 +57,8 @@ class ConsumptionInstallmentRefundAppServiceImpl
        _ledger = ledger,
        _plans = plans,
        _runner = runner,
-       _ids = idGenerator;
+       _ids = idGenerator,
+       _policy = policy;
 
   final InstallmentRepository _installments;
   final InstallmentRefundReductionRepository _refundReductions;
@@ -58,6 +68,7 @@ class ConsumptionInstallmentRefundAppServiceImpl
   final InstallmentPlanAppService _plans;
   final TransactionRunner _runner;
   final IdGenerator _ids;
+  final ConsumptionInstallmentRefundPolicy _policy;
 
   @override
   Future<ConsumptionInstallmentRefundResult> create(
@@ -81,32 +92,34 @@ class ConsumptionInstallmentRefundAppServiceImpl
       '退款到账分配合计必须等于退款金额',
     );
     final remaining = await _remainingPrincipal(contract.id);
-    final adjusted = await _capLiabilityAllocation(
-      contract: contract,
-      amount: command.amount,
-      allocations: command.settlementAllocations,
-      remaining: remaining,
-      overflowAccountId: command.overflowAccountId,
+    final refundable = await refundablePrincipal(
+      contractId: contract.id,
+      refundDate: command.occurredAt,
     );
+    final principal = _liabilityPrincipal(
+      contract,
+      command.settlementAllocations,
+    );
+    _validateRefundablePrincipal(principal, refundable);
     final refund = await _ledger.postRefund(
       CreditLedgerPostRefundCommand(
         parentTransactionId: command.parentTransactionId,
         amount: command.amount,
         categoryAllocations: _toLedger(command.categoryAllocations),
-        settlementAllocations: _toLedger(adjusted.allocations),
+        settlementAllocations: _toLedger(command.settlementAllocations),
         occurredAt: command.occurredAt,
         postedAt: command.postedAt,
         counterpartyId: command.counterpartyId,
         note: command.note,
       ),
     );
-    if (adjusted.principal.minorUnits > 0) {
+    if (principal.minorUnits > 0) {
       await _refundReductions.save(
         InstallmentRefundReduction(
           id: _ids.newId(),
           contractId: contract.id,
           refundTransactionId: refund.transactionId,
-          principal: adjusted.principal,
+          principal: principal,
           occurredAt: command.occurredAt,
           createdAt: DateTime.now(),
         ),
@@ -117,13 +130,12 @@ class ConsumptionInstallmentRefundAppServiceImpl
       );
       await _refreshContractStatus(
         contract.id,
-        hasRemainingPrincipal:
-            remaining.minorUnits > adjusted.principal.minorUnits,
+        hasRemainingPrincipal: remaining.minorUnits > principal.minorUnits,
       );
     }
     return ConsumptionInstallmentRefundResult(
       refundTransactionId: refund.transactionId,
-      principalReduction: adjusted.principal,
+      principalReduction: principal,
     );
   });
 
@@ -141,34 +153,66 @@ class ConsumptionInstallmentRefundAppServiceImpl
         message: '退款必须指向消费分期对应的购买交易',
       );
     }
-    _validateAllocationTotal(
-      command.categoryAllocations,
-      command.amount,
-      '退款分类分配合计必须等于退款金额',
-    );
-    _validateAllocationTotal(
-      command.settlementAllocations,
-      command.amount,
-      '退款到账分配合计必须等于退款金额',
-    );
+
+    if (!command.hasFinancialEdit) {
+      if (command.postedAt == null &&
+          command.counterpartyId == null &&
+          command.note == null) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '请提供需要修改的退款信息',
+        );
+      }
+      await _ledger.editRefund(
+        CreditLedgerEditRefundCommand(
+          transactionId: command.transactionId,
+          postedAt: command.postedAt,
+          counterpartyId: command.counterpartyId == null
+              ? null
+              : Patch<String?>.set(command.counterpartyId),
+          note: command.note == null ? null : Patch<String?>.set(command.note),
+        ),
+      );
+      return ConsumptionInstallmentRefundResult(
+        refundTransactionId: command.transactionId,
+        principalReduction: existing?.principal ?? Money.zero(),
+      );
+    }
+
+    final amount = command.amount;
+    final categoryAllocations = command.categoryAllocations;
+    final settlementAllocations = command.settlementAllocations;
+    final occurredAt = command.occurredAt;
+    if (amount == null ||
+        categoryAllocations == null ||
+        settlementAllocations == null ||
+        occurredAt == null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '退款财务字段必须完整提供',
+      );
+    }
+    _validateAllocationTotal(categoryAllocations, amount, '退款分类分配合计必须等于退款金额');
+    _validateAllocationTotal(settlementAllocations, amount, '退款到账分配合计必须等于退款金额');
     final remaining = await _remainingPrincipal(
       contract.id,
       excludedRefundTransactionId: command.transactionId,
     );
-    final adjusted = await _capLiabilityAllocation(
-      contract: contract,
-      amount: command.amount,
-      allocations: command.settlementAllocations,
-      remaining: remaining,
-      overflowAccountId: command.overflowAccountId,
+    final refundable = await refundablePrincipal(
+      contractId: contract.id,
+      refundDate: occurredAt,
+      excludedRefundTransactionId: command.transactionId,
     );
+    final principal = _liabilityPrincipal(contract, settlementAllocations);
+    _validateRefundablePrincipal(principal, refundable);
     await _ledger.editRefund(
       CreditLedgerEditRefundCommand(
         transactionId: command.transactionId,
-        amount: command.amount,
-        categoryAllocations: _toLedger(command.categoryAllocations),
-        settlementAllocations: _toLedger(adjusted.allocations),
-        occurredAt: command.occurredAt,
+        amount: amount,
+        categoryAllocations: _toLedger(categoryAllocations),
+        settlementAllocations: _toLedger(settlementAllocations),
+        occurredAt: occurredAt,
+        postedAt: command.postedAt,
         counterpartyId: command.counterpartyId == null
             ? null
             : Patch<String?>.set(command.counterpartyId),
@@ -177,17 +221,16 @@ class ConsumptionInstallmentRefundAppServiceImpl
     );
     final previousPrincipal = existing?.principal ?? Money.zero();
     final changesPlan =
-        previousPrincipal != adjusted.principal ||
-        existing?.occurredAt != null &&
-            existing!.occurredAt != command.occurredAt;
-    if (adjusted.principal.minorUnits > 0) {
+        previousPrincipal != principal ||
+        existing?.occurredAt != null && existing!.occurredAt != occurredAt;
+    if (principal.minorUnits > 0) {
       await _refundReductions.save(
         InstallmentRefundReduction(
           id: existing?.id ?? _ids.newId(),
           contractId: contract.id,
           refundTransactionId: command.transactionId,
-          principal: adjusted.principal,
-          occurredAt: command.occurredAt,
+          principal: principal,
+          occurredAt: occurredAt,
           createdAt: existing?.createdAt ?? DateTime.now(),
         ),
       );
@@ -201,13 +244,12 @@ class ConsumptionInstallmentRefundAppServiceImpl
       );
       await _refreshContractStatus(
         contract.id,
-        hasRemainingPrincipal:
-            remaining.minorUnits > adjusted.principal.minorUnits,
+        hasRemainingPrincipal: remaining.minorUnits > principal.minorUnits,
       );
     }
     return ConsumptionInstallmentRefundResult(
       refundTransactionId: command.transactionId,
-      principalReduction: adjusted.principal,
+      principalReduction: principal,
     );
   });
 
@@ -248,6 +290,54 @@ class ConsumptionInstallmentRefundAppServiceImpl
       );
     }
     return contract;
+  }
+
+  @override
+  Future<Money> refundablePrincipal({
+    required String contractId,
+    required DateTime refundDate,
+    String? excludedRefundTransactionId,
+  }) async {
+    final contract = await _requirePurchaseContract(contractId);
+    final rows = await _plans.calculateCurrentRows(
+      contract.id,
+      excludedRefundTransactionId: excludedRefundTransactionId,
+    );
+    final paidBySchedule = await _paidPrincipalByScheduleId(contract);
+    return _policy.refundablePrincipal(
+      refundDate: refundDate,
+      rows: rows,
+      paidPrincipalByScheduleId: paidBySchedule,
+    );
+  }
+
+  Future<Map<String, Money>> _paidPrincipalByScheduleId(
+    InstallmentContract contract,
+  ) async {
+    final bills = await _bills.listBillsByAccount(contract.liabilityAccountId);
+    final scheduleByItemId = <String, String>{};
+    for (final bill in bills) {
+      for (final item in bill.items) {
+        final scheduleId = item.scheduleId;
+        if (item.contractId == contract.id && scheduleId != null) {
+          scheduleByItemId[item.id] = scheduleId;
+        }
+      }
+    }
+    final allocated = await _repayments.aggregateItemsByBillItemIds(
+      scheduleByItemId.keys.toSet(),
+    );
+    final paidBySchedule = <String, Money>{};
+    for (final entry in allocated.entries) {
+      final scheduleId = scheduleByItemId[entry.key];
+      if (scheduleId == null) continue;
+      paidBySchedule.update(
+        scheduleId,
+        (current) => current + entry.value.principal,
+        ifAbsent: () => entry.value.principal,
+      );
+    }
+    return paidBySchedule;
   }
 
   Future<Money> _remainingPrincipal(
@@ -299,100 +389,29 @@ class ConsumptionInstallmentRefundAppServiceImpl
     return remaining.minorUnits < 0 ? Money.zero() : remaining;
   }
 
-  Future<_AdjustedRefundAllocations> _capLiabilityAllocation({
-    required InstallmentContract contract,
-    required Money amount,
-    required List<ConsumptionInstallmentAllocation> allocations,
-    required Money remaining,
-    required String? overflowAccountId,
-  }) async {
-    if (allocations.any((allocation) => allocation.amount.minorUnits <= 0)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '退款分配金额必须大于零',
-      );
-    }
-    final liabilityMinor = allocations
-        .where(
-          (allocation) => allocation.accountId == contract.liabilityAccountId,
-        )
-        .fold<int>(0, (sum, allocation) => sum + allocation.amount.minorUnits);
-    final principalMinor = liabilityMinor < remaining.minorUnits
-        ? liabilityMinor
-        : remaining.minorUnits;
-    final overflowMinor = liabilityMinor - principalMinor;
-    final overflowDestination =
-        allocations
-            .where(
-              (allocation) =>
-                  allocation.accountId != contract.liabilityAccountId,
-            )
-            .map((allocation) => allocation.accountId)
-            .firstOrNull ??
-        overflowAccountId;
-    if (overflowMinor > 0 &&
-        (overflowDestination == null ||
-            overflowDestination == contract.liabilityAccountId)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '退款超过剩余本金，请选择资产到账账户',
-      );
-    }
-    if (overflowMinor > 0) {
-      final account = await _ledger.findAccount(overflowDestination!);
-      if (account == null ||
-          account.isArchived ||
-          account.kind != CreditLedgerAccountKind.asset) {
-        throw BusinessException(
-          CreditErrorCode.contractInvalidCommand,
-          message: '退款溢出只能退回到资产账户',
-        );
-      }
-    }
-    final amounts = <String, int>{};
-    for (final allocation in allocations) {
-      if (allocation.accountId == contract.liabilityAccountId) continue;
-      amounts.update(
-        allocation.accountId,
-        (current) => current + allocation.amount.minorUnits,
-        ifAbsent: () => allocation.amount.minorUnits,
-      );
-    }
-    if (principalMinor > 0) {
-      amounts.update(
-        contract.liabilityAccountId,
-        (current) => current + principalMinor,
-        ifAbsent: () => principalMinor,
-      );
-    }
-    if (overflowMinor > 0) {
-      amounts.update(
-        overflowDestination!,
-        (current) => current + overflowMinor,
-        ifAbsent: () => overflowMinor,
-      );
-    }
-    final adjusted = [
-      for (final entry in amounts.entries)
-        ConsumptionInstallmentAllocation(
-          accountId: entry.key,
-          amount: Money(minorUnits: entry.value),
-        ),
-    ];
-    final total = adjusted.fold<int>(
-      0,
-      (sum, allocation) => sum + allocation.amount.minorUnits,
+  Money _liabilityPrincipal(
+    InstallmentContract contract,
+    List<ConsumptionInstallmentAllocation> allocations,
+  ) {
+    return Money(
+      minorUnits: allocations
+          .where(
+            (allocation) => allocation.accountId == contract.liabilityAccountId,
+          )
+          .fold<int>(
+            0,
+            (sum, allocation) => sum + allocation.amount.minorUnits,
+          ),
     );
-    if (total != amount.minorUnits) {
+  }
+
+  void _validateRefundablePrincipal(Money principal, Money refundable) {
+    if (principal.minorUnits > refundable.minorUnits) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
-        message: '退款到账分配合计必须等于退款金额',
+        message: '分期账户退款金额不能超过退款日之后的待还本金',
       );
     }
-    return _AdjustedRefundAllocations(
-      allocations: adjusted,
-      principal: Money(minorUnits: principalMinor),
-    );
   }
 
   void _validateAllocationTotal(
@@ -440,14 +459,4 @@ class ConsumptionInstallmentRefundAppServiceImpl
     );
     await _installments.saveAggregate(contract, schedules);
   }
-}
-
-class _AdjustedRefundAllocations {
-  const _AdjustedRefundAllocations({
-    required this.allocations,
-    required this.principal,
-  });
-
-  final List<ConsumptionInstallmentAllocation> allocations;
-  final Money principal;
 }

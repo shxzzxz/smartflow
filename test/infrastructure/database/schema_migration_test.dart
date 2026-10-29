@@ -1,4 +1,8 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart' show Migrator;
 import 'package:drift_dev/api/migrations_native.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
@@ -127,4 +131,51 @@ void main() {
       );
     },
   );
+
+  test('failed v50 to v51 migration keeps version and data intact', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow_migration_rollback_',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/schema.sqlite');
+
+    final oldDatabase = v50.DatabaseAtV50(NativeDatabase(file));
+    final oldMigrator = Migrator(oldDatabase);
+    for (final table in oldDatabase.allTables) {
+      await oldMigrator.createTable(table);
+    }
+    await oldDatabase.customStatement(
+      'INSERT INTO app_metadata (key, value, updated_at) VALUES (?, ?, ?)',
+      ['sentinel', 'kept', DateTime(2026, 1, 1).millisecondsSinceEpoch],
+    );
+    await oldDatabase.customStatement('PRAGMA user_version = 50');
+    await oldDatabase.customStatement(
+      'CREATE INDEX installment_refund_reductions_contract_idx '
+      'ON app_metadata (key)',
+    );
+    await oldDatabase.close();
+
+    final target = AppDatabase(NativeDatabase(file));
+    await expectLater(
+      () => target.customSelect('SELECT 1').get(),
+      throwsA(anything),
+    );
+    await target.close();
+
+    final inspection = v50.DatabaseAtV50(NativeDatabase(file));
+    final version = await inspection.customSelect('PRAGMA user_version').get();
+    expect(version.single.read<int>('user_version'), 50);
+    final contractColumns =
+        (await inspection
+                .customSelect('PRAGMA table_info(installment_contracts)')
+                .get())
+            .map((row) => row.read<String>('name'))
+            .toSet();
+    expect(contractColumns, isNot(contains('purchase_transaction_id')));
+    final sentinel = await inspection
+        .customSelect("SELECT value FROM app_metadata WHERE key = 'sentinel'")
+        .getSingle();
+    expect(sentinel.read<String>('value'), 'kept');
+    await inspection.close();
+  });
 }
