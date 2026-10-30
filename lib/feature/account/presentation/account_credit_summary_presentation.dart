@@ -46,7 +46,10 @@ FinanceSummaryRowPresentation installmentAccountCreditSummary(
     amount: contract.principal,
     supportingTexts: [
       AppSupportingText(
-        _installmentSourceLabel(contract.sourceType, accountKind: accountKind),
+        _installmentSourceLabel(
+          contract.installmentType,
+          accountKind: accountKind,
+        ),
       ),
       AppSupportingText('${contract.totalPeriods} 期'),
       AppSupportingText(
@@ -85,13 +88,13 @@ String _billTitle(BillPeriod period) {
 }
 
 String _installmentSourceLabel(
-  InstallmentSourceType sourceType, {
+  InstallmentType installmentType, {
   required AccountProfileKind accountKind,
 }) {
-  return switch (sourceType) {
-    InstallmentSourceType.billConversion => '账单分期',
-    InstallmentSourceType.purchase => '消费分期',
-    InstallmentSourceType.disbursement => switch (accountKind) {
+  return switch (installmentType) {
+    InstallmentType.billConversion => '账单分期',
+    InstallmentType.purchase => '消费分期',
+    InstallmentType.disbursement => switch (accountKind) {
       AccountProfileKind.credit => '现金分期',
       AccountProfileKind.loan => '贷款分期',
       AccountProfileKind.fund ||

@@ -110,10 +110,10 @@ class _InstallmentContractEditPageState
               ),
               AppPlainValueRow(
                 label: '分期类型',
-                value: switch (contract.sourceType) {
-                  InstallmentSourceType.billConversion => '账单分期',
-                  InstallmentSourceType.purchase => '消费分期',
-                  InstallmentSourceType.disbursement => '放款分期',
+                value: switch (contract.installmentType) {
+                  InstallmentType.billConversion => '账单分期',
+                  InstallmentType.purchase => '消费分期',
+                  InstallmentType.disbursement => '放款分期',
                 },
                 valueAlignment: AppPlainRowValueAlignment.start,
               ),

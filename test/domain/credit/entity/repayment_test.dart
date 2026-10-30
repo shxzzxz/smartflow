@@ -75,6 +75,27 @@ void main() {
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
           transactionId: 'tx-1',
+          generatedContractId: 'contract-1',
+          repaymentDate: DateTime(2026, 1, 1),
+          items: [
+            _item(
+              id: 'item-1',
+              repaymentId: 'repayment-1',
+              billItemId: 'bill-item-1',
+            ),
+          ],
+        ),
+        throwsA(_creditInvalidCommand()),
+      );
+    });
+
+    test('bill conversion repayment requires its generated contract', () {
+      expect(
+        () => Repayment(
+          id: 'repayment-1',
+          repaymentType: RepaymentType.installment,
+          targetType: RepaymentTargetType.bill,
+          targetId: 'bill-1',
           repaymentDate: DateTime(2026, 1, 1),
           items: [
             _item(

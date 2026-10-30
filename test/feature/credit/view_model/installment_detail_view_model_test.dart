@@ -268,7 +268,7 @@ InstallmentContractReadModel _contract() {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     disbursementAccountId: 'cash',
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),

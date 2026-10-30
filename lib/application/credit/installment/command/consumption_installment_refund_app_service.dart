@@ -75,7 +75,7 @@ class ConsumptionInstallmentRefundAppServiceImpl
     CreateConsumptionInstallmentRefundCommand command,
   ) => _runner.run(() async {
     final contract = await _requirePurchaseContract(command.contractId);
-    if (contract.purchaseTransactionId != command.parentTransactionId) {
+    if (contract.sourceRefId != command.parentTransactionId) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
         message: '退款必须指向消费分期对应的购买交易',
@@ -147,7 +147,7 @@ class ConsumptionInstallmentRefundAppServiceImpl
       command.transactionId,
     );
     final contract = await _requirePurchaseContract(command.contractId);
-    if (contract.purchaseTransactionId != command.parentTransactionId) {
+    if (contract.sourceRefId != command.parentTransactionId) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
         message: '退款必须指向消费分期对应的购买交易',
@@ -283,7 +283,7 @@ class ConsumptionInstallmentRefundAppServiceImpl
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
-    if (contract.sourceType != InstallmentSourceType.purchase) {
+    if (contract.installmentType != InstallmentType.purchase) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
         message: '只有消费分期支持退款还本',

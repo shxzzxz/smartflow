@@ -9,25 +9,26 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
   test('cash installments accept a product and retain configured dates', () {
-    final result = const InstallmentContractOriginationService().originateDisbursement(
-      contractId: 'cash-contract',
-      liabilityAccountId: 'credit',
-      terms: InstallmentOriginationTerms(
-        principal: const Money(minorUnits: 10000),
-        borrowingDate: DateTime(2026, 1, 1),
-        stageTerms: InstallmentContractTerms.singleStage(
-          id: 'stage',
-          totalPeriods: 2,
-          firstDate: DateTime(2026, 2, 1),
-          lastDate: DateTime(2026, 3, 1),
-          method: InstallmentRepaymentMethod.equalPrincipal,
-          accrual: InterestAccrualMethod.monthly,
-          feeMinor: 0,
-        ),
-      ),
-      createdAt: DateTime(2026),
-      newScheduleId: () => 'schedule',
-    );
+    final result = const InstallmentContractOriginationService()
+        .originateDisbursement(
+          contractId: 'cash-contract',
+          liabilityAccountId: 'credit',
+          terms: InstallmentOriginationTerms(
+            principal: const Money(minorUnits: 10000),
+            borrowingDate: DateTime(2026, 1, 1),
+            stageTerms: InstallmentContractTerms.singleStage(
+              id: 'stage',
+              totalPeriods: 2,
+              firstDate: DateTime(2026, 2, 1),
+              lastDate: DateTime(2026, 3, 1),
+              method: InstallmentRepaymentMethod.equalPrincipal,
+              accrual: InterestAccrualMethod.monthly,
+              feeMinor: 0,
+            ),
+          ),
+          createdAt: DateTime(2026),
+          newScheduleId: () => 'schedule',
+        );
     expect(result.schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
     expect(result.schedules.last.expectedRepaymentDate, DateTime(2026, 3, 1));
   });
@@ -55,7 +56,6 @@ void main() {
       final disbursement = service.originateDisbursement(
         contractId: 'disbursement',
         liabilityAccountId: 'loan',
-        disbursementAccountId: 'cash',
         disbursementTransactionId: 'borrowing',
         terms: terms,
         createdAt: _createdAt,
@@ -92,14 +92,14 @@ void main() {
         );
       }
       expect(
-        disbursement.contract.sourceType,
-        InstallmentSourceType.disbursement,
+        disbursement.contract.installmentType,
+        InstallmentType.disbursement,
       );
       expect(
-        conversion.contract.sourceType,
-        InstallmentSourceType.billConversion,
+        conversion.contract.installmentType,
+        InstallmentType.billConversion,
       );
-      expect(conversion.contract.sourceRepaymentId, 'repayment');
+      expect(conversion.contract.sourceRefId, 'repayment');
       expect(disbursement.contract.name, '家庭贷款');
       expect(conversion.contract.name, '账单分期');
     },

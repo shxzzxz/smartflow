@@ -126,7 +126,7 @@ class _StatisticsFixture {
         id: 'contract',
         name: '消费贷',
         liabilityAccountId: 'loan-account',
-        sourceType: InstallmentSourceType.disbursement,
+        installmentType: InstallmentType.disbursement,
         principal: const Money(minorUnits: 220000),
         borrowingDate: DateTime(2026, 1, 1),
         status: InstallmentContractStatus.active,

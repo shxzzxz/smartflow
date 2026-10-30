@@ -8,11 +8,11 @@ import '../../../widget/business/finance/bill_item_row.dart';
 
 String billItemLabel(BillItemReadModel item) {
   if (item.itemType == BillItemType.consumption) return '消费';
-  return switch (item.installmentSourceType) {
+  return switch (item.installmentType) {
     null => '分期',
-    InstallmentSourceType.billConversion => '账单分期',
-    InstallmentSourceType.purchase => '消费分期',
-    InstallmentSourceType.disbursement =>
+    InstallmentType.billConversion => '账单分期',
+    InstallmentType.purchase => '消费分期',
+    InstallmentType.disbursement =>
       item.accountKind == CreditLiabilityAccountKind.credit ? '现金分期' : '贷款分期',
   };
 }

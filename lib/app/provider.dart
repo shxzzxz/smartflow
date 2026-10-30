@@ -698,6 +698,7 @@ InstallmentQueryService installmentQueryService(Ref ref) {
     repricings: DriftInstallmentRepricingRepository(
       ref.watch(appDatabaseProvider),
     ),
+    ledger: ref.watch(creditLedgerPortProvider),
   );
 }
 

@@ -418,7 +418,7 @@ InstallmentContractReadModel _contract() {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'card',
-    sourceType: InstallmentSourceType.billConversion,
+    installmentType: InstallmentType.billConversion,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,

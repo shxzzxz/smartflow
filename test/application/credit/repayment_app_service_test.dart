@@ -838,10 +838,11 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           result.contractId!,
         );
         expect(
-          contract!.sourceType,
-          credit.InstallmentSourceType.billConversion,
+          contract!.installmentType,
+          credit.InstallmentType.billConversion,
         );
-        expect(contract.sourceRepaymentId, result.repaymentId);
+        expect(contract.sourceRefId, result.repaymentId);
+        expect(repayment.generatedContractId, result.contractId);
         expect(contract.principal, const Money(minorUnits: 6000));
         // 分期还款无交易，以合同起算日作为它的还款日期。
         expect(repayment.repaymentDate, contract.borrowingDate);
@@ -1880,9 +1881,8 @@ class _Fixture {
       credit.InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
-        sourceType: credit.InstallmentSourceType.disbursement,
-        disbursementAccountId: 'cash-1',
-        disbursementTransactionId: 'borrow-tx',
+        installmentType: credit.InstallmentType.disbursement,
+        sourceRefId: 'borrow-tx',
         principal: Money(minorUnits: expectedPrincipal),
         borrowingDate: DateTime(2026, 6, 1),
         status: credit.InstallmentContractStatus.active,
@@ -1926,9 +1926,8 @@ class _Fixture {
       credit.InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
-        sourceType: credit.InstallmentSourceType.disbursement,
-        disbursementAccountId: 'cash-1',
-        disbursementTransactionId: 'borrow-tx',
+        installmentType: credit.InstallmentType.disbursement,
+        sourceRefId: 'borrow-tx',
         principal: Money(minorUnits: principal),
         borrowingDate: DateTime(2026, 6, 25),
         status: credit.InstallmentContractStatus.active,

@@ -182,7 +182,7 @@ void main() {
       await repository.saveRepayment(
         Repayment(
           id: 'repayment-1',
-          repaymentType: RepaymentType.installment,
+          repaymentType: RepaymentType.bill,
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
           repaymentDate: DateTime(2026, 2, 5),
@@ -222,6 +222,28 @@ void main() {
       expect(result.single.items.map((item) => item.billItemId), [
         'bill-item-1',
       ]);
+    });
+
+    test('allows only one repayment to generate a contract', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      Future<void> insert(String id) {
+        return database
+            .into(database.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: id,
+                repaymentType: 'INSTALLMENT',
+                targetType: 'BILL',
+                targetId: 'bill-1',
+                generatedContractId: const Value('contract-1'),
+                repaymentDate: DateTime(2026, 1, 1),
+              ),
+            );
+      }
+
+      await insert('repayment-1');
+      await expectLater(insert('repayment-2'), throwsA(anything));
     });
   });
 }

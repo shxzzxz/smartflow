@@ -221,9 +221,8 @@ class _Fixture {
       InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
-        sourceType: credit.InstallmentSourceType.disbursement,
-        disbursementAccountId: 'cash-1',
-        disbursementTransactionId: 'borrow-tx',
+        installmentType: credit.InstallmentType.disbursement,
+        sourceRefId: 'borrow-tx',
         principal: Money(minorUnits: principal),
         borrowingDate: DateTime(2026, 6, 25),
         status: credit.InstallmentContractStatus.active,

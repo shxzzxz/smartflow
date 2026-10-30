@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:crypto/crypto.dart';
 
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
@@ -9,7 +10,14 @@ import 'package:smartflow/domain/import/import_models.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/entity/installment_contract.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'dart:io';
+import 'dart:convert';
 import '../../../helper/test_app_database.dart';
 
 void main() {
@@ -233,4 +241,161 @@ void main() {
     expect(snapshot.rows('import_entity_mappings'), hasLength(1));
     expect(snapshot.rows('budgets'), hasLength(1));
   });
+
+  test(
+    'round-trips installment sources and generated contract links',
+    () async {
+      await database
+          .into(database.accounts)
+          .insert(
+            AccountsCompanion.insert(
+              id: 'credit',
+              name: '信用卡',
+              accountType: AccountType.liability,
+              accountSubtype: const Value(AccountSubtype.payable),
+              accountProfileKey: const Value('credit.credit'),
+            ),
+          );
+      await database
+          .into(database.bills)
+          .insert(
+            BillsCompanion.insert(
+              id: 'bill',
+              accountId: 'credit',
+              period: 202607,
+              status: BillStatus.billed,
+            ),
+          );
+      await DriftInstallmentRepository(database).insertAggregate(
+        InstallmentContract(
+          id: 'contract',
+          liabilityAccountId: 'credit',
+          installmentType: InstallmentType.billConversion,
+          sourceRefId: 'repayment',
+          principal: const Money(minorUnits: 10000),
+          borrowingDate: DateTime(2026, 7, 1),
+          status: InstallmentContractStatus.active,
+          createdAt: DateTime(2026, 7, 1),
+          stageTerms: InstallmentContractTerms.singleStage(
+            id: 'contract:stage:1',
+            totalPeriods: 1,
+            firstDate: DateTime(2026, 8, 1),
+            lastDate: DateTime(2026, 8, 1),
+            method: InstallmentRepaymentMethod.equalPrincipal,
+            feeMinor: 0,
+            accrual: InterestAccrualMethod.monthly,
+          ),
+        ),
+        const [],
+      );
+      await database
+          .into(database.repayments)
+          .insert(
+            RepaymentsCompanion.insert(
+              id: 'repayment',
+              repaymentType: 'INSTALLMENT',
+              targetType: 'BILL',
+              targetId: 'bill',
+              generatedContractId: const Value('contract'),
+              repaymentDate: DateTime(2026, 7, 1),
+            ),
+          );
+      await database
+          .into(database.repaymentItems)
+          .insert(
+            RepaymentItemsCompanion.insert(
+              id: 'repayment-item',
+              repaymentId: 'repayment',
+              allocatedPrincipalMinor: 10000,
+              allocatedInterestMinor: 0,
+              allocatedFeeMinor: 0,
+              allocatedDiscountMinor: 0,
+            ),
+          );
+
+      final directory = await Directory.systemTemp.createTemp(
+        'smartflow-installment-source-backup-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final service = BackupService(
+        gateway: gateway,
+        packageStore: const FileBackupPackageStore(),
+      );
+      await service.createBackup(directory);
+      await _rewriteTableAsV3(directory, 'installment_contracts', (row) {
+        final installmentType = row['installmentType'];
+        final sourceRefId = row['sourceRefId'];
+        return Map<String, Object?>.from(row)
+          ..remove('installmentType')
+          ..remove('sourceRefId')
+          ..['sourceType'] = installmentType
+          ..['disbursementAccountId'] =
+              installmentType == 'disbursement' && sourceRefId != null
+              ? 'unused-asset'
+              : null
+          ..['disbursementTransactionId'] = installmentType == 'disbursement'
+              ? sourceRefId
+              : null
+          ..['sourceRepaymentId'] = installmentType == 'billConversion'
+              ? sourceRefId
+              : null
+          ..['purchaseTransactionId'] = installmentType == 'purchase'
+              ? sourceRefId
+              : null;
+      });
+      await _rewriteTableAsV3(
+        directory,
+        'repayments',
+        (row) => Map<String, Object?>.from(row)..remove('generatedContractId'),
+      );
+      await database.delete(database.repaymentItems).go();
+      await database.delete(database.repayments).go();
+      await DriftInstallmentRepository(database).deleteContract('contract');
+      await service.restore(directory);
+
+      final contract = await DriftInstallmentRepository(
+        database,
+      ).findContract('contract');
+      final repayment = await DriftRepaymentRepository(
+        database,
+      ).findRepayment('repayment');
+      expect(contract?.installmentType, InstallmentType.billConversion);
+      expect(contract?.sourceRefId, 'repayment');
+      expect(repayment?.generatedContractId, 'contract');
+    },
+  );
+}
+
+Future<void> _rewriteTableAsV3(
+  Directory directory,
+  String table,
+  BackupJson Function(BackupJson row) transform,
+) async {
+  final manifestFile = File('${directory.path}/manifest.json');
+  final manifest =
+      jsonDecode(await manifestFile.readAsString()) as Map<String, dynamic>;
+  final descriptors = (manifest['requiredFiles'] as List)
+      .cast<Map<String, dynamic>>()
+      .where((descriptor) => descriptor['table'] == table);
+  for (final descriptor in descriptors) {
+    final file = File('${directory.path}/${descriptor['path']}');
+    final rows = const LineSplitter()
+        .convert(await file.readAsString())
+        .where((line) => line.trim().isNotEmpty)
+        .map((line) => (jsonDecode(line) as Map).cast<String, Object?>())
+        .map(transform)
+        .toList();
+    final buffer = StringBuffer();
+    for (final row in rows) {
+      buffer.writeln(jsonEncode(row));
+    }
+    final bytes = utf8.encode(buffer.toString());
+    await file.writeAsBytes(bytes);
+    descriptor['rowCount'] = rows.length;
+    descriptor['byteCount'] = bytes.length;
+    descriptor['sha256'] = sha256.convert(bytes).toString();
+  }
+  manifest['backupSchemaVersion'] = 3;
+  manifest['schemaVersion'] = 51;
+  await manifestFile.writeAsString(jsonEncode(manifest));
 }

@@ -41,8 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 3);
-      expect(inspected.manifest.schemaVersion, 51);
+      expect(inspected.manifest.backupSchemaVersion, 4);
+      expect(inspected.manifest.schemaVersion, 52);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -79,7 +79,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 3);
+        expect(inspection.manifest.backupSchemaVersion, 4);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -172,7 +172,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 4;
+      manifest['backupSchemaVersion'] = 5;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -181,7 +181,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 4'),
+            contains('backupSchemaVersion 5'),
           ),
         ),
       );
@@ -230,7 +230,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 3);
+        expect(manifest.backupSchemaVersion, 4);
       },
     );
   });
@@ -380,7 +380,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 51});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 52});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;

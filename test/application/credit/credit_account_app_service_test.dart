@@ -480,7 +480,7 @@ InstallmentContract _contract(String accountId) {
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: accountId,
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 1000),
     borrowingDate: DateTime(2026, 7, 1),
     status: InstallmentContractStatus.active,

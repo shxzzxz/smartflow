@@ -191,9 +191,9 @@ InstallmentContractReadModel _contract({bool floating = false}) {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     disbursementAccountId: 'bank',
-    disbursementTransactionId: 'tx-disbursement',
+    sourceRefId: 'tx-disbursement',
     principal: const Money(minorUnits: 5000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
@@ -246,7 +246,9 @@ InstallmentScheduleReadModel _schedule({
 }
 
 class _FailingInstallmentContractAppService
-    implements InstallmentContractAppService, InstallmentContractEditAppService {
+    implements
+        InstallmentContractAppService,
+        InstallmentContractEditAppService {
   final updateCommands = <UpdateContractCommand>[];
 
   @override

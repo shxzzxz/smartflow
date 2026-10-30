@@ -27,12 +27,12 @@ const _installmentSectionPadding = EdgeInsets.symmetric(
 class InstallmentFormPage extends ConsumerStatefulWidget {
   const InstallmentFormPage({
     required this.liabilityAccountId,
-    this.lockedSourceType,
+    this.lockedInstallmentType,
     super.key,
   });
 
   final String liabilityAccountId;
-  final InstallmentSourceType? lockedSourceType;
+  final InstallmentType? lockedInstallmentType;
 
   @override
   ConsumerState<InstallmentFormPage> createState() =>
@@ -48,7 +48,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   InstallmentFormArgs get _args {
     return InstallmentFormArgs(
       liabilityAccountId: widget.liabilityAccountId,
-      lockedSourceType: widget.lockedSourceType,
+      lockedInstallmentType: widget.lockedInstallmentType,
     );
   }
 

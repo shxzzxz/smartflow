@@ -39,12 +39,6 @@ Future<void> createCurrentSchema(
     'ON installment_schedules (contract_id, period_no)',
   );
   await database.customStatement(
-    'CREATE INDEX installment_contracts_disbursement_tx_idx '
-    'ON installment_contracts (disbursement_transaction_id) '
-    'WHERE disbursement_transaction_id IS NOT NULL',
-  );
-  await _createInstallmentSourceRepaymentIndex(database);
-  await database.customStatement(
     'CREATE INDEX installment_refund_reductions_contract_idx '
     'ON installment_refund_reductions (contract_id)',
   );
@@ -87,16 +81,6 @@ Future<void> _createTagIndexes(AppDatabase database) async {
   );
 }
 
-Future<void> _createInstallmentSourceRepaymentIndex(
-  AppDatabase database,
-) async {
-  await database.customStatement(
-    'CREATE INDEX installment_contracts_source_repayment_idx '
-    'ON installment_contracts (source_repayment_id) '
-    'WHERE source_repayment_id IS NOT NULL',
-  );
-}
-
 Future<void> _createBillIndexes(AppDatabase database) async {
   await database.customStatement(
     'CREATE INDEX bills_account_period_idx ON bills (account_id, period)',
@@ -123,6 +107,11 @@ Future<void> _createRepaymentIndexes(AppDatabase database) async {
     'CREATE UNIQUE INDEX IF NOT EXISTS repayments_transaction_unique '
     'ON repayments (transaction_id) '
     'WHERE transaction_id IS NOT NULL',
+  );
+  await database.customStatement(
+    'CREATE UNIQUE INDEX IF NOT EXISTS repayments_generated_contract_unique '
+    'ON repayments (generated_contract_id) '
+    'WHERE generated_contract_id IS NOT NULL',
   );
   await database.customStatement(
     'CREATE INDEX IF NOT EXISTS repayment_items_repayment_idx '

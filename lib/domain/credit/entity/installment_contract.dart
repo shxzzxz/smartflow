@@ -36,15 +36,12 @@ class InstallmentContract {
     required this.id,
     String? name,
     required this.liabilityAccountId,
-    required this.sourceType,
+    required this.installmentType,
+    this.sourceRefId,
     required this.principal,
     required this.borrowingDate,
     required InstallmentContractStatus status,
     required this.createdAt,
-    this.disbursementAccountId,
-    this.disbursementTransactionId,
-    this.sourceRepaymentId,
-    this.purchaseTransactionId,
     this.note,
     required InstallmentContractTerms stageTerms,
     List<InstallmentRepricingConfiguration> repricingConfigurations = const [],
@@ -54,16 +51,26 @@ class InstallmentContract {
        _status = status,
        _stageTerms = stageTerms,
        _repricingConfigurations = List.unmodifiable(repricingConfigurations),
-       _repricings = List.unmodifiable(repricings);
+       _repricings = List.unmodifiable(repricings) {
+    final reference = sourceRefId;
+    final normalizedSource = reference == null || reference.trim().isEmpty
+        ? null
+        : reference;
+    if (sourceRefId != null && normalizedSource == null ||
+        installmentType != InstallmentType.disbursement &&
+            normalizedSource == null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '账单分期和消费分期必须关联来源事实',
+      );
+    }
+  }
 
   final String id;
   String name;
   final String liabilityAccountId;
-  final InstallmentSourceType sourceType;
-  String? disbursementAccountId;
-  final String? disbursementTransactionId;
-  final String? sourceRepaymentId;
-  final String? purchaseTransactionId;
+  final InstallmentType installmentType;
+  final String? sourceRefId;
   final Money principal;
 
   /// 本笔贷款起算日；仅在合同创建时确定。
@@ -109,11 +116,7 @@ class InstallmentContract {
 
   InstallmentContractStatus get status => _status;
 
-  void reviseDetails({
-    String? name,
-    Patch<String>? note,
-    String? disbursementAccountId,
-  }) {
+  void reviseDetails({String? name, Patch<String>? note}) {
     if (name != null) {
       if (name.trim().isEmpty) {
         throw BusinessException(
@@ -122,18 +125,6 @@ class InstallmentContract {
         );
       }
       this.name = name.trim();
-    }
-    if (disbursementAccountId != null &&
-        (sourceType != InstallmentSourceType.disbursement ||
-            disbursementTransactionId == null)) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message:
-            'A contract without a disbursement transaction cannot carry a disbursement account.',
-      );
-    }
-    if (disbursementAccountId != null) {
-      this.disbursementAccountId = disbursementAccountId;
     }
     if (note != null) {
       this.note = switch (note) {

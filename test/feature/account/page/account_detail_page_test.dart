@@ -38,7 +38,7 @@ void main() {
             id: 'contract-$i',
             name: '合同 $i',
             liabilityAccountId: account.id,
-            sourceType: InstallmentSourceType.disbursement,
+            installmentType: InstallmentType.disbursement,
             principal: const Money(minorUnits: 100000),
             borrowingDate: DateTime(2026, 1, 1),
             createdAt: DateTime(2026, 1, i),

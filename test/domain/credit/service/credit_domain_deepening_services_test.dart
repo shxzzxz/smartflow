@@ -187,7 +187,7 @@ void main() {
           schedules: [_schedule(id: 'pending', principal: 100)],
         );
 
-        final migrationContract = _contract(disbursementTransactionId: null);
+        final migrationContract = _contract(sourceRefId: null);
         final repayment = Repayment(
           id: 'repayment',
           repaymentType: RepaymentType.prepayment,
@@ -264,13 +264,12 @@ BillItem _billItem({
   );
 }
 
-InstallmentContract _contract({String? disbursementTransactionId}) {
+InstallmentContract _contract({String? sourceRefId}) {
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: 'account',
-    sourceType: InstallmentSourceType.disbursement,
-    disbursementAccountId: disbursementTransactionId == null ? null : 'asset',
-    disbursementTransactionId: disbursementTransactionId,
+    installmentType: InstallmentType.disbursement,
+    sourceRefId: sourceRefId,
     principal: const Money(minorUnits: 5000),
     borrowingDate: DateTime(2026, 6, 1),
     status: InstallmentContractStatus.active,

@@ -502,7 +502,7 @@ class _FakeInstallmentQueryService implements InstallmentQueryService {
     return InstallmentContractReadModel(
       id: 'purchase-contract',
       liabilityAccountId: 'credit',
-      sourceType: InstallmentSourceType.purchase,
+      installmentType: InstallmentType.purchase,
       principal: const Money(minorUnits: 10000),
       borrowingDate: DateTime(2026, 6, 1),
       status: InstallmentContractStatus.active,

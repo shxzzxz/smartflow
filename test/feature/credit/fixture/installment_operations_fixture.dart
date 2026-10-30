@@ -14,7 +14,7 @@ InstallmentContractReadModel operationsContract({
 }) => InstallmentContractReadModel(
   id: 'loan',
   liabilityAccountId: 'account',
-  sourceType: InstallmentSourceType.disbursement,
+  installmentType: InstallmentType.disbursement,
   principal: const Money(minorUnits: 10000000),
   borrowingDate: DateTime(2026, 8, 8),
   createdAt: DateTime(2026, 8, 8),

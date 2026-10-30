@@ -12,6 +12,7 @@ class Repayment {
     required List<RepaymentItem> items,
     required DateTime repaymentDate,
     this.transactionId,
+    this.generatedContractId,
     this.createdAt,
   }) : _items = List.unmodifiable(items),
        _repaymentDate = repaymentDate {
@@ -24,6 +25,7 @@ class Repayment {
   final String targetId;
   final DateTime? createdAt;
   String? transactionId;
+  final String? generatedContractId;
   DateTime _repaymentDate;
   List<RepaymentItem> _items;
 
@@ -109,6 +111,20 @@ class Repayment {
 
   void _ensureValid() {
     validateTarget();
+    if (repaymentType == RepaymentType.installment &&
+        (generatedContractId == null || generatedContractId!.trim().isEmpty)) {
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: 'Bill conversion repayment must reference its contract.',
+      );
+    }
+    if (repaymentType != RepaymentType.installment &&
+        generatedContractId != null) {
+      throw BusinessException(
+        CreditErrorCode.repaymentInvalidCommand,
+        message: 'Only bill conversion repayment can generate a contract.',
+      );
+    }
     if (repaymentType == RepaymentType.installment && transactionId != null) {
       throw BusinessException(
         CreditErrorCode.repaymentInvalidCommand,

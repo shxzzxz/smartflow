@@ -74,6 +74,80 @@ Future<void> _upgrade(
           'ON installment_refund_reductions (contract_id)',
         );
       },
+      from51To52: (migration, schema) async {
+        for (final indexName in const [
+          'installment_contracts_liability_status_idx',
+          'installment_contracts_disbursement_tx_idx',
+          'installment_contracts_source_repayment_idx',
+          'repayments_target_idx',
+          'repayments_transaction_unique',
+        ]) {
+          await migration.database.customStatement(
+            'DROP INDEX IF EXISTS $indexName',
+          );
+        }
+        await migration.alterTable(
+          TableMigration(
+            schema.installmentContracts,
+            columnTransformer: {
+              schema.installmentContracts.installmentType:
+                  const CustomExpression<String>(
+                    "CASE source_type "
+                    "WHEN 'billConversion' THEN 'billConversion' "
+                    "WHEN 'purchase' THEN 'purchase' "
+                    "ELSE 'disbursement' END",
+                  ),
+              schema.installmentContracts.sourceRefId:
+                  const CustomExpression<String>(
+                    "CASE source_type "
+                    "WHEN 'billConversion' THEN source_repayment_id "
+                    "WHEN 'purchase' THEN purchase_transaction_id "
+                    "ELSE disbursement_transaction_id END",
+                  ),
+            },
+          ),
+        );
+        await migration.database.customStatement(
+          'CREATE INDEX installment_contracts_liability_status_idx '
+          'ON installment_contracts (liability_account_id, status)',
+        );
+        await migration.alterTable(
+          TableMigration(
+            schema.repayments,
+            columnTransformer: {
+              schema.repayments.generatedContractId: const Constant(null),
+            },
+          ),
+        );
+        await migration.database.customStatement(
+          'UPDATE repayments '
+          'SET generated_contract_id = ('
+          'SELECT installment_contracts.id '
+          'FROM installment_contracts '
+          "WHERE installment_contracts.installment_type = 'billConversion' "
+          'AND installment_contracts.source_ref_id = repayments.id'
+          ') '
+          'WHERE EXISTS ('
+          'SELECT 1 FROM installment_contracts '
+          "WHERE installment_contracts.installment_type = 'billConversion' "
+          'AND installment_contracts.source_ref_id = repayments.id'
+          ')',
+        );
+        await migration.database.customStatement(
+          'CREATE INDEX repayments_target_idx '
+          'ON repayments (target_type, target_id, created_at)',
+        );
+        await migration.database.customStatement(
+          'CREATE UNIQUE INDEX repayments_transaction_unique '
+          'ON repayments (transaction_id) '
+          'WHERE transaction_id IS NOT NULL',
+        );
+        await migration.database.customStatement(
+          'CREATE UNIQUE INDEX repayments_generated_contract_unique '
+          'ON repayments (generated_contract_id) '
+          'WHERE generated_contract_id IS NOT NULL',
+        );
+      },
     )(migrator, from, to);
   });
 }

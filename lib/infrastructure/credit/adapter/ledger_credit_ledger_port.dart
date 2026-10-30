@@ -271,6 +271,9 @@ class LedgerCreditLedgerPort implements CreditLedgerPort {
     return CreditLedgerTransactionSnapshot(
       transactionId: detail.id,
       occurredAt: detail.occurredAt,
+      settlementInAccountId: detail.accountOf(
+        ledger_query.TransactionRole.settlementIn,
+      ),
       paidFromAccountId: detail.accountOf(
         ledger_query.TransactionRole.settlementOut,
       ),

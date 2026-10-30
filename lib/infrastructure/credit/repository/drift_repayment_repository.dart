@@ -198,6 +198,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
         )..where((row) => row.id.equals(repayment.id))).write(
           RepaymentsCompanion(
             transactionId: Value(repayment.transactionId),
+            generatedContractId: Value(repayment.generatedContractId),
             repaymentDate: Value(repayment.repaymentDate),
             updatedAt: Value(now),
           ),
@@ -258,6 +259,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       targetType: repayment.targetType.code,
       targetId: repayment.targetId,
       transactionId: Value(repayment.transactionId),
+      generatedContractId: Value(repayment.generatedContractId),
       repaymentDate: repayment.repaymentDate,
       createdAt: Value(repayment.createdAt ?? now),
       updatedAt: Value(now),
@@ -285,6 +287,7 @@ class DriftRepaymentRepository implements RepaymentRepository {
       targetType: RepaymentTargetType.fromCode(row.targetType),
       targetId: row.targetId,
       transactionId: row.transactionId,
+      generatedContractId: row.generatedContractId,
       repaymentDate: row.repaymentDate,
       items: items,
       createdAt: row.createdAt,

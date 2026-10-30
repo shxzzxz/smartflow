@@ -55,8 +55,8 @@ void main() {
       final contract = InstallmentContract(
         id: 'purchase-contract',
         liabilityAccountId: 'credit-card',
-        sourceType: InstallmentSourceType.purchase,
-        purchaseTransactionId: 'purchase-transaction',
+        installmentType: InstallmentType.purchase,
+        sourceRefId: 'purchase-transaction',
         principal: const Money(minorUnits: 120000),
         borrowingDate: DateTime(2026, 1, 1),
         status: InstallmentContractStatus.active,
@@ -74,8 +74,26 @@ void main() {
       await repository.insertAggregate(contract, const []);
       final loaded = (await repository.findContract(contract.id))!;
 
-      expect(loaded.sourceType, InstallmentSourceType.purchase);
-      expect(loaded.purchaseTransactionId, 'purchase-transaction');
+      expect(loaded.installmentType, InstallmentType.purchase);
+      expect(loaded.sourceRefId, 'purchase-transaction');
+    });
+
+    test('rejects a second contract for the same typed source fact', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftInstallmentRepository(database);
+
+      await repository.insertAggregate(
+        _purchaseContract('first', 'shared-source'),
+        const [],
+      );
+      await expectLater(
+        repository.insertAggregate(
+          _purchaseContract('second', 'shared-source'),
+          const [],
+        ),
+        throwsA(anything),
+      );
     });
 
     test('reads refund reductions with the refund business time', () async {
@@ -85,8 +103,8 @@ void main() {
       final contract = InstallmentContract(
         id: 'purchase-contract',
         liabilityAccountId: 'credit-card',
-        sourceType: InstallmentSourceType.purchase,
-        purchaseTransactionId: 'purchase-transaction',
+        installmentType: InstallmentType.purchase,
+        sourceRefId: 'purchase-transaction',
         principal: const Money(minorUnits: 120000),
         borrowingDate: DateTime(2026, 1, 1),
         status: InstallmentContractStatus.active,
@@ -136,7 +154,7 @@ InstallmentContract _contract() {
   return InstallmentContract(
     id: 'missing-contract',
     liabilityAccountId: 'liability',
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 1000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
@@ -146,6 +164,27 @@ InstallmentContract _contract() {
       totalPeriods: 2,
       firstDate: DateTime(2026, 2, 1),
       lastDate: DateTime(2026, 3, 1),
+      method: InstallmentRepaymentMethod.equalPrincipal,
+      accrual: InterestAccrualMethod.monthly,
+      feeMinor: 0,
+    ),
+  );
+}
+
+InstallmentContract _purchaseContract(String id, String sourceRefId) {
+  return InstallmentContract(
+    id: id,
+    liabilityAccountId: 'credit-card',
+    installmentType: InstallmentType.purchase,
+    sourceRefId: sourceRefId,
+    principal: const Money(minorUnits: 120000),
+    borrowingDate: DateTime(2026, 1, 1),
+    status: InstallmentContractStatus.active,
+    createdAt: DateTime(2026, 1, 1),
+    stageTerms: InstallmentContractTerms.singleStage(
+      id: '$id:stage:1',
+      totalPeriods: 1,
+      firstDate: DateTime(2026, 2, 1),
       method: InstallmentRepaymentMethod.equalPrincipal,
       accrual: InterestAccrualMethod.monthly,
       feeMinor: 0,

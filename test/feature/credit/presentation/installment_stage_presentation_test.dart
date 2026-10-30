@@ -38,7 +38,7 @@ void main() {
         final contract = InstallmentContractReadModel(
           id: 'contract',
           liabilityAccountId: 'loan',
-          sourceType: InstallmentSourceType.disbursement,
+          installmentType: InstallmentType.disbursement,
           principal: const Money(minorUnits: 100000),
           borrowingDate: DateTime(2026, 1, 1),
           status: InstallmentContractStatus.active,

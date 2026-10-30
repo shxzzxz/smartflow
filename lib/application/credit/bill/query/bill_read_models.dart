@@ -80,7 +80,7 @@ class BillItemReadModel {
     required this.allocated,
     required this.isOverdue,
     this.accountKind,
-    this.installmentSourceType,
+    this.installmentType,
     this.contractId,
     this.scheduleId,
   });
@@ -98,7 +98,7 @@ class BillItemReadModel {
   final RepaymentAmountDto allocated;
   final bool isOverdue;
   final CreditLiabilityAccountKind? accountKind;
-  final InstallmentSourceType? installmentSourceType;
+  final InstallmentType? installmentType;
   final String? contractId;
   final String? scheduleId;
 

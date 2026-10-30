@@ -739,9 +739,8 @@ class _Fixture {
     return InstallmentContract(
       id: ids.newId(),
       liabilityAccountId: accountId,
-      sourceType: InstallmentSourceType.disbursement,
-      disbursementAccountId: 'asset-account',
-      disbursementTransactionId: 'tx-borrowing',
+      installmentType: InstallmentType.disbursement,
+      sourceRefId: 'tx-borrowing',
       principal: const Money(minorUnits: 60000),
       borrowingDate: DateTime(2026, 6, 1),
       status: status,
@@ -957,9 +956,7 @@ class _FakeInstallmentRepository implements InstallmentRepository {
     String transactionId,
   ) async {
     return _contracts.values
-        .where(
-          (contract) => contract.disbursementTransactionId == transactionId,
-        )
+        .where((contract) => contract.sourceRefId == transactionId)
         .firstOrNull;
   }
 

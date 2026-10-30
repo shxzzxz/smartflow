@@ -11,14 +11,13 @@ class InstallmentContractReadModel {
     required this.id,
     String? name,
     required this.liabilityAccountId,
-    required this.sourceType,
+    required this.installmentType,
+    this.sourceRefId,
     required this.principal,
     required this.borrowingDate,
     required this.status,
     required this.createdAt,
     this.disbursementAccountId,
-    this.disbursementTransactionId,
-    this.sourceRepaymentId,
     this.note,
     required this.stageTerms,
     this.unconfirmedRepricingIds = const [],
@@ -31,10 +30,12 @@ class InstallmentContractReadModel {
   final String? _name;
   String get name => _name ?? formatCompactDate(borrowingDate);
   final String liabilityAccountId;
-  final InstallmentSourceType sourceType;
+  final InstallmentType installmentType;
+  final String? sourceRefId;
+
+  /// Derived from the source borrowing transaction; never persisted on the
+  /// installment contract.
   final String? disbursementAccountId;
-  final String? disbursementTransactionId;
-  final String? sourceRepaymentId;
   final Money principal;
   final DateTime borrowingDate;
   final InstallmentContractStatus status;

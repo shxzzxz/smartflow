@@ -745,7 +745,7 @@ InstallmentContract _contract({
   return InstallmentContract(
     id: id,
     liabilityAccountId: 'loan-liability',
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 120000),
     borrowingDate: DateTime(2026, 6, 1),
     status: status,

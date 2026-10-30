@@ -71,8 +71,8 @@ void main() {
 
         final contract = fixture.installments.contracts[result.contractId]!;
         expect(result.purchaseTransactionId, 'tx-expense-1');
-        expect(contract.sourceType, InstallmentSourceType.purchase);
-        expect(contract.purchaseTransactionId, result.purchaseTransactionId);
+        expect(contract.installmentType, InstallmentType.purchase);
+        expect(contract.sourceRefId, result.purchaseTransactionId);
         expect(contract.principal, const Money(minorUnits: 120000));
         expect(
           fixture.posting.expenseCommands.single.ownership?.ownerId,
@@ -385,8 +385,7 @@ void main() {
         expect(result.disbursementTransactionId, isNull);
         expect(fixture.posting.borrowingCommands, isEmpty);
         final contract = fixture.installments.contracts[result.contractId]!;
-        expect(contract.disbursementAccountId, isNull);
-        expect(contract.disbursementTransactionId, isNull);
+        expect(contract.sourceRefId, isNull);
         expect(
           fixture.installments.schedulesFor(result.contractId),
           hasLength(2),
@@ -827,9 +826,7 @@ void main() {
       () async {
         final fixture = _Fixture();
         fixture.installments
-          ..putContract(
-            _contract(id: 'with-tx', disbursementTransactionId: 'tx-borrowing'),
-          )
+          ..putContract(_contract(id: 'with-tx', sourceRefId: 'tx-borrowing'))
           ..putContract(_contract(id: 'with-repayment'))
           ..putContract(_contract(id: 'deletable'));
         fixture.repayments.putRepayment(
@@ -914,16 +911,13 @@ InstallmentContract _contract({
   InstallmentRepaymentMethod repaymentMethod =
       InstallmentRepaymentMethod.equalPrincipal,
   InstallmentContractStatus status = InstallmentContractStatus.active,
-  String? disbursementTransactionId,
+  String? sourceRefId,
 }) {
   return InstallmentContract(
     id: id,
     liabilityAccountId: 'loan-liability',
-    sourceType: InstallmentSourceType.disbursement,
-    disbursementAccountId: disbursementTransactionId == null
-        ? null
-        : 'asset-cash',
-    disbursementTransactionId: disbursementTransactionId,
+    installmentType: InstallmentType.disbursement,
+    sourceRefId: sourceRefId,
     principal: principal,
     borrowingDate: DateTime(2026, 6, 1),
     status: status,
@@ -944,8 +938,8 @@ InstallmentContract _purchaseContract({required String id}) {
   return InstallmentContract(
     id: id,
     liabilityAccountId: 'credit-liability',
-    sourceType: InstallmentSourceType.purchase,
-    purchaseTransactionId: 'purchase-tx',
+    installmentType: InstallmentType.purchase,
+    sourceRefId: 'purchase-tx',
     principal: const Money(minorUnits: 120000),
     borrowingDate: DateTime(2026, 6, 1),
     status: InstallmentContractStatus.active,
@@ -1202,7 +1196,7 @@ class _FakeInstallmentRepository implements InstallmentRepository {
     String transactionId,
   ) async {
     for (final contract in contracts.values) {
-      if (contract.disbursementTransactionId == transactionId) return contract;
+      if (contract.sourceRefId == transactionId) return contract;
     }
     return null;
   }

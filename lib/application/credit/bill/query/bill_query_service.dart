@@ -181,7 +181,7 @@ class BillQueryServiceImpl implements BillQueryService {
       expectedFee: item.expectedFee,
       allocated: _amountDto(allocated),
       accountKind: accountKind,
-      installmentSourceType: contract?.sourceType,
+      installmentType: contract?.installmentType,
       contractId: item.contractId,
       scheduleId: item.scheduleId,
       isOverdue:

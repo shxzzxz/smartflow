@@ -214,6 +214,7 @@ class BackupService {
       upgraded = switch (version) {
         1 => _upgradeBackupV1ToV2(upgraded),
         2 => _upgradeBackupV2ToV3(upgraded),
+        3 => _upgradeBackupV3ToV4(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -248,6 +249,54 @@ class BackupService {
         'installment_refund_reductions': snapshot.rows(
           'installment_refund_reductions',
         ),
+      },
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV3ToV4(BackupSnapshot snapshot) {
+    final billContractByRepaymentId = <String, String>{};
+    final contracts = [
+      for (final row in snapshot.rows('installment_contracts'))
+        () {
+          final installmentType = row['sourceType'];
+          if (installmentType is! String) {
+            throw const BackupValidationException(
+              'installment_contracts.sourceType 缺失。',
+            );
+          }
+          final sourceRefId = switch (installmentType) {
+            'disbursement' => row['disbursementTransactionId'],
+            'billConversion' => row['sourceRepaymentId'],
+            'purchase' => row['purchaseTransactionId'],
+            _ => null,
+          };
+          if (installmentType == 'billConversion' && sourceRefId is String) {
+            billContractByRepaymentId[sourceRefId] = '${row['id']}';
+          }
+          return Map<String, Object?>.from(row)
+            ..remove('sourceType')
+            ..remove('disbursementAccountId')
+            ..remove('disbursementTransactionId')
+            ..remove('sourceRepaymentId')
+            ..remove('purchaseTransactionId')
+            ..['installmentType'] = installmentType
+            ..['sourceRefId'] = sourceRefId;
+        }(),
+    ];
+    final repayments = [
+      for (final row in snapshot.rows('repayments'))
+        {
+          ...row,
+          'generatedContractId': row['repaymentType'] == 'INSTALLMENT'
+              ? billContractByRepaymentId[row['id']]
+              : null,
+        },
+    ];
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'installment_contracts': contracts,
+        'repayments': repayments,
       },
     );
   }
@@ -479,6 +528,7 @@ class BackupService {
         'bill_generation_suppressions.accountId',
       );
     }
+    final contractSources = <String>{};
     for (final row in snapshot.rows('installment_contracts')) {
       _requiredReference(
         row,
@@ -486,34 +536,52 @@ class BackupService {
         accounts,
         'installment_contracts.liabilityAccountId',
       );
-      _optionalReference(
-        row,
-        'disbursementAccountId',
-        accounts,
-        'installment_contracts.disbursementAccountId',
-      );
-      _optionalReference(
-        row,
-        'disbursementTransactionId',
-        transactions,
-        'installment_contracts.disbursementTransactionId',
-      );
-      _optionalReference(
-        row,
-        'sourceRepaymentId',
-        repayments,
-        'installment_contracts.sourceRepaymentId',
-      );
-      _optionalReference(
-        row,
-        'purchaseTransactionId',
-        transactions,
-        'installment_contracts.purchaseTransactionId',
-      );
-      final sourceType = row['sourceType'];
-      final purchaseTransactionId = row['purchaseTransactionId'];
-      if ((sourceType == 'purchase') != (purchaseTransactionId != null)) {
-        throw const BackupValidationException('PURCHASE 合同与购买交易引用必须同时存在。');
+      final installmentType = row['installmentType'];
+      final sourceRefId = row['sourceRefId'];
+      switch (installmentType) {
+        case 'disbursement':
+          _optionalReference(
+            row,
+            'sourceRefId',
+            transactions,
+            'installment_contracts.sourceRefId',
+          );
+          break;
+        case 'billConversion':
+          _requiredReference(
+            row,
+            'sourceRefId',
+            repayments,
+            'installment_contracts.sourceRefId',
+          );
+          final repayment = repayments[sourceRefId];
+          if (repayment?['generatedContractId'] != row['id']) {
+            throw const BackupValidationException('账单分期来源还款未回指对应合同。');
+          }
+          break;
+        case 'purchase':
+          _requiredReference(
+            row,
+            'sourceRefId',
+            transactions,
+            'installment_contracts.sourceRefId',
+          );
+          break;
+        default:
+          throw const BackupValidationException(
+            'installment_contracts.installmentType 不是稳定 wire code。',
+          );
+      }
+      if (sourceRefId != null &&
+          !contractSources.add('$installmentType\u0000$sourceRefId')) {
+        throw const BackupValidationException('一项来源事实关联了多份分期合同。');
+      }
+      if (installmentType != 'billConversion' && sourceRefId is String) {
+        final transaction = transactions[sourceRefId];
+        if (transaction?['ownerType'] != 'credit.installment_contract' ||
+            transaction?['ownerId'] != row['id']) {
+          throw const BackupValidationException('分期来源交易未回指对应合同。');
+        }
       }
     }
     for (final row in snapshot.rows('installment_schedules')) {
@@ -524,6 +592,7 @@ class BackupService {
         'installment_schedules.contractId',
       );
     }
+    final generatedContractIds = <String>{};
     for (final row in snapshot.rows('repayments')) {
       _optionalReference(
         row,
@@ -531,6 +600,28 @@ class BackupService {
         transactions,
         'repayments.transactionId',
       );
+      _optionalReference(
+        row,
+        'generatedContractId',
+        contracts,
+        'repayments.generatedContractId',
+      );
+      final generatedContractId = row['generatedContractId'];
+      if (row['repaymentType'] == 'INSTALLMENT') {
+        if (generatedContractId is! String) {
+          throw const BackupValidationException('账单分期还款缺少生成合同引用。');
+        }
+        if (!generatedContractIds.add(generatedContractId)) {
+          throw const BackupValidationException('同一合同被多笔账单分期还款生成。');
+        }
+        final contract = contracts[generatedContractId];
+        if (contract?['installmentType'] != 'billConversion' ||
+            contract?['sourceRefId'] != row['id']) {
+          throw const BackupValidationException('账单分期还款与合同来源关系无效。');
+        }
+      } else if (generatedContractId != null) {
+        throw const BackupValidationException('非账单分期还款不能生成合同。');
+      }
       final targetType = row['targetType'];
       final target = switch (targetType) {
         'BILL' => bills,
@@ -560,7 +651,7 @@ class BackupService {
       );
       final contract = contracts[row['contractId']];
       final transaction = transactions[row['refundTransactionId']];
-      if (contract?['sourceType'] != 'purchase' ||
+      if (contract?['installmentType'] != 'purchase' ||
           transaction?['businessPurpose'] != 'refund' ||
           transaction?['ownerType'] != 'credit.installment_contract' ||
           transaction?['ownerId'] != contract?['id']) {
@@ -1063,7 +1154,7 @@ class BackupService {
       'billStatus': {'open', 'billed', 'settled'},
       'billItemType': {'consumption', 'installment'},
       'billItemStatus': {'pending', 'partiallyPaid', 'paid', 'skipped'},
-      'installmentSourceType': {'disbursement', 'billConversion', 'purchase'},
+      'installmentType': {'disbursement', 'billConversion', 'purchase'},
       'repaymentMethod': {
         'equalInstallment',
         'equalPrincipal',
@@ -1138,7 +1229,7 @@ class BackupService {
       check(row, 'status', 'billItemStatus');
     }
     for (final row in snapshot.rows('installment_contracts')) {
-      check(row, 'sourceType', 'installmentSourceType');
+      check(row, 'installmentType', 'installmentType');
       check(row, 'status', 'contractStatus');
     }
     for (final row in snapshot.rows('installment_schedules')) {

@@ -89,14 +89,18 @@ void main() {
       expect(contract.status, InstallmentContractStatus.settled);
     });
 
-    test('bill conversion contract rejects disbursement account revision', () {
+    test('bill conversion contract retains its source reference', () {
       final contract = _contract(
-        sourceType: InstallmentSourceType.billConversion,
-        sourceRepaymentId: 'repayment',
+        installmentType: InstallmentType.billConversion,
+        sourceRefId: 'repayment',
       );
 
+      expect(contract.sourceRefId, 'repayment');
+    });
+
+    test('non-disbursement installment requires a source reference', () {
       expect(
-        () => contract.reviseDetails(disbursementAccountId: 'cash'),
+        () => _contract(installmentType: InstallmentType.purchase),
         throwsA(
           isA<BusinessException>().having(
             (exception) => exception.code,
@@ -278,8 +282,8 @@ BillItem _billItem({
 
 InstallmentContract _contract({
   InstallmentContractStatus status = InstallmentContractStatus.active,
-  InstallmentSourceType sourceType = InstallmentSourceType.disbursement,
-  String? sourceRepaymentId,
+  InstallmentType installmentType = InstallmentType.disbursement,
+  String? sourceRefId,
   InterestRatePeriod? interestRatePeriod,
   int? interestRatePpm,
   String? note,
@@ -287,8 +291,8 @@ InstallmentContract _contract({
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: 'credit',
-    sourceType: sourceType,
-    sourceRepaymentId: sourceRepaymentId,
+    installmentType: installmentType,
+    sourceRefId: sourceRefId,
     principal: const Money(minorUnits: 1000),
     borrowingDate: DateTime(2026, 1, 1),
     status: status,

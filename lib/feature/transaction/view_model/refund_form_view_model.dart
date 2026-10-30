@@ -431,7 +431,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     final contract = await ref
         .read(installmentQueryServiceProvider)
         .findContract(ownership!.ownerId);
-    return contract?.sourceType == InstallmentSourceType.purchase
+    return contract?.installmentType == InstallmentType.purchase
         ? contract
         : null;
   }

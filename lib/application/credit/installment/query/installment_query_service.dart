@@ -3,6 +3,7 @@ import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import '../../../../domain/credit/port/installment_repricing_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import '../../../../domain/credit/port/credit_ledger_port.dart';
 
 import 'installment_read_models.dart';
 
@@ -23,11 +24,14 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
   const InstallmentQueryServiceImpl({
     required InstallmentRepository repository,
     required InstallmentRepricingRepository repricings,
+    CreditLedgerPort? ledger,
   }) : _repository = repository,
-       _repricings = repricings;
+       _repricings = repricings,
+       _ledger = ledger;
 
   final InstallmentRepository _repository;
   final InstallmentRepricingRepository _repricings;
+  final CreditLedgerPort? _ledger;
 
   @override
   Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
@@ -80,14 +84,18 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     InstallmentContract value,
   ) async {
     final repricings = await _repricings.list(value.id);
+    final sourceTransaction =
+        value.installmentType == InstallmentType.disbursement &&
+            value.sourceRefId != null
+        ? await _ledger?.findParentTransaction(value.sourceRefId!)
+        : null;
     return InstallmentContractReadModel(
       id: value.id,
       name: value.name,
       liabilityAccountId: value.liabilityAccountId,
-      sourceType: value.sourceType,
-      disbursementAccountId: value.disbursementAccountId,
-      disbursementTransactionId: value.disbursementTransactionId,
-      sourceRepaymentId: value.sourceRepaymentId,
+      installmentType: value.installmentType,
+      sourceRefId: value.sourceRefId,
+      disbursementAccountId: sourceTransaction?.settlementInAccountId,
       principal: value.principal,
       borrowingDate: value.borrowingDate,
       status: value.status,

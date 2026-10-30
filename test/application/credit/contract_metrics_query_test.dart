@@ -59,7 +59,7 @@ InstallmentContract _contract() {
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: 'liability',
-    sourceType: InstallmentSourceType.disbursement,
+    installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,

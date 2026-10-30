@@ -297,7 +297,7 @@ class UpdateContractCommand {
   final String contractId;
   final String? name;
 
-  /// 放款合同的放款账户。仅对 sourceType=disbursement 的合同有效。
+  /// 放款合同的放款账户。仅对 installmentType=disbursement 的合同有效。
   /// 业务上禁止清除（账单分期合同永远 null，放款合同永远有值）。
   final String? disbursementAccountId;
 

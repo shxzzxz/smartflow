@@ -181,21 +181,21 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
 class InstallmentFormArgs {
   const InstallmentFormArgs({
     required this.liabilityAccountId,
-    this.lockedSourceType,
+    this.lockedInstallmentType,
   });
 
   final String liabilityAccountId;
-  final InstallmentSourceType? lockedSourceType;
+  final InstallmentType? lockedInstallmentType;
 
   @override
   bool operator ==(Object other) {
     return other is InstallmentFormArgs &&
         other.liabilityAccountId == liabilityAccountId &&
-        other.lockedSourceType == lockedSourceType;
+        other.lockedInstallmentType == lockedInstallmentType;
   }
 
   @override
-  int get hashCode => Object.hash(liabilityAccountId, lockedSourceType);
+  int get hashCode => Object.hash(liabilityAccountId, lockedInstallmentType);
 }
 
 sealed class InstallmentFormState {

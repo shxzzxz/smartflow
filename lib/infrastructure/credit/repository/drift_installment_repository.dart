@@ -97,8 +97,11 @@ class DriftInstallmentRepository
     String transactionId,
   ) async {
     final row =
-        await (_database.select(_database.installmentContracts)
-              ..where((c) => c.disbursementTransactionId.equals(transactionId)))
+        await (_database.select(_database.installmentContracts)..where(
+              (c) =>
+                  c.installmentType.equalsValue(InstallmentType.disbursement) &
+                  c.sourceRefId.equals(transactionId),
+            ))
             .getSingleOrNull();
     return row == null ? null : _mapContract(row);
   }
@@ -129,13 +132,8 @@ class DriftInstallmentRepository
             liabilityAccountId: contract.liabilityAccountId,
             dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
             rounding: Value(contract.stageTerms.rounding.name),
-            sourceType: contract.sourceType,
-            disbursementAccountId: Value(contract.disbursementAccountId),
-            disbursementTransactionId: Value(
-              contract.disbursementTransactionId,
-            ),
-            sourceRepaymentId: Value(contract.sourceRepaymentId),
-            purchaseTransactionId: Value(contract.purchaseTransactionId),
+            installmentType: contract.installmentType,
+            sourceRefId: Value(contract.sourceRefId),
             principalMinor: contract.principal.minorUnits,
 
             borrowingDate: contract.borrowingDate,
@@ -217,7 +215,6 @@ class DriftInstallmentRepository
           )..where((row) => row.id.equals(contract.id))).write(
             InstallmentContractsCompanion(
               name: Value(contract.name),
-              disbursementAccountId: Value(contract.disbursementAccountId),
               dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
               rounding: Value(contract.stageTerms.rounding.name),
 
@@ -409,11 +406,8 @@ class DriftInstallmentRepository
     return InstallmentContract(
       id: row.id,
       liabilityAccountId: row.liabilityAccountId,
-      sourceType: row.sourceType,
-      disbursementAccountId: row.disbursementAccountId,
-      disbursementTransactionId: row.disbursementTransactionId,
-      sourceRepaymentId: row.sourceRepaymentId,
-      purchaseTransactionId: row.purchaseTransactionId,
+      installmentType: row.installmentType,
+      sourceRefId: row.sourceRefId,
       principal: Money(minorUnits: row.principalMinor),
       name: row.name,
       borrowingDate: row.borrowingDate,

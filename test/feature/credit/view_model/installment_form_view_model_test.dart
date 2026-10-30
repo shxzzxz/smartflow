@@ -181,7 +181,7 @@ void main() {
         final service = _FakeInstallmentContractAppService();
         final args = _args(
           'card',
-          lockedSourceType: InstallmentSourceType.billConversion,
+          lockedInstallmentType: InstallmentType.billConversion,
         );
         final container = _container(service: service);
         await _readState(container, args);
@@ -333,11 +333,11 @@ Future<InstallmentFormState> _readState(
 
 InstallmentFormArgs _args(
   String liabilityAccountId, {
-  InstallmentSourceType? lockedSourceType,
+  InstallmentType? lockedInstallmentType,
 }) {
   return InstallmentFormArgs(
     liabilityAccountId: liabilityAccountId,
-    lockedSourceType: lockedSourceType,
+    lockedInstallmentType: lockedInstallmentType,
   );
 }
 
@@ -412,7 +412,8 @@ Account _account(
   );
 }
 
-class _FakeInstallmentContractAppService implements InstallmentContractAppService {
+class _FakeInstallmentContractAppService
+    implements InstallmentContractAppService {
   _FakeInstallmentContractAppService({this.createException});
 
   final Object? createException;

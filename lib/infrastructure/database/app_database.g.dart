@@ -7383,62 +7383,28 @@ class $InstallmentContractsTable extends InstallmentContracts
         requiredDuringInsert: true,
       );
   @override
-  late final GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
-  sourceType =
+  late final GeneratedColumnWithTypeConverter<InstallmentType, String>
+  installmentType =
       GeneratedColumn<String>(
-        'source_type',
+        'installment_type',
         aliasedName,
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: true,
-      ).withConverter<InstallmentSourceType>(
-        $InstallmentContractsTable.$convertersourceType,
+      ).withConverter<InstallmentType>(
+        $InstallmentContractsTable.$converterinstallmentType,
       );
-  static const VerificationMeta _disbursementAccountIdMeta =
-      const VerificationMeta('disbursementAccountId');
-  @override
-  late final GeneratedColumn<String> disbursementAccountId =
-      GeneratedColumn<String>(
-        'disbursement_account_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _disbursementTransactionIdMeta =
-      const VerificationMeta('disbursementTransactionId');
-  @override
-  late final GeneratedColumn<String> disbursementTransactionId =
-      GeneratedColumn<String>(
-        'disbursement_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _sourceRepaymentIdMeta = const VerificationMeta(
-    'sourceRepaymentId',
+  static const VerificationMeta _sourceRefIdMeta = const VerificationMeta(
+    'sourceRefId',
   );
   @override
-  late final GeneratedColumn<String> sourceRepaymentId =
-      GeneratedColumn<String>(
-        'source_repayment_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _purchaseTransactionIdMeta =
-      const VerificationMeta('purchaseTransactionId');
-  @override
-  late final GeneratedColumn<String> purchaseTransactionId =
-      GeneratedColumn<String>(
-        'purchase_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
+  late final GeneratedColumn<String> sourceRefId = GeneratedColumn<String>(
+    'source_ref_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _principalMinorMeta = const VerificationMeta(
     'principalMinor',
   );
@@ -7514,11 +7480,8 @@ class $InstallmentContractsTable extends InstallmentContracts
     dayCount,
     rounding,
     liabilityAccountId,
-    sourceType,
-    disbursementAccountId,
-    disbursementTransactionId,
-    sourceRepaymentId,
-    purchaseTransactionId,
+    installmentType,
+    sourceRefId,
     principalMinor,
     borrowingDate,
     status,
@@ -7572,39 +7535,12 @@ class $InstallmentContractsTable extends InstallmentContracts
     } else if (isInserting) {
       context.missing(_liabilityAccountIdMeta);
     }
-    if (data.containsKey('disbursement_account_id')) {
+    if (data.containsKey('source_ref_id')) {
       context.handle(
-        _disbursementAccountIdMeta,
-        disbursementAccountId.isAcceptableOrUnknown(
-          data['disbursement_account_id']!,
-          _disbursementAccountIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('disbursement_transaction_id')) {
-      context.handle(
-        _disbursementTransactionIdMeta,
-        disbursementTransactionId.isAcceptableOrUnknown(
-          data['disbursement_transaction_id']!,
-          _disbursementTransactionIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('source_repayment_id')) {
-      context.handle(
-        _sourceRepaymentIdMeta,
-        sourceRepaymentId.isAcceptableOrUnknown(
-          data['source_repayment_id']!,
-          _sourceRepaymentIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('purchase_transaction_id')) {
-      context.handle(
-        _purchaseTransactionIdMeta,
-        purchaseTransactionId.isAcceptableOrUnknown(
-          data['purchase_transaction_id']!,
-          _purchaseTransactionIdMeta,
+        _sourceRefIdMeta,
+        sourceRefId.isAcceptableOrUnknown(
+          data['source_ref_id']!,
+          _sourceRefIdMeta,
         ),
       );
     }
@@ -7677,27 +7613,16 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.string,
         data['${effectivePrefix}liability_account_id'],
       )!,
-      sourceType: $InstallmentContractsTable.$convertersourceType.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}source_type'],
-        )!,
-      ),
-      disbursementAccountId: attachedDatabase.typeMapping.read(
+      installmentType: $InstallmentContractsTable.$converterinstallmentType
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}installment_type'],
+            )!,
+          ),
+      sourceRefId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}disbursement_account_id'],
-      ),
-      disbursementTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}disbursement_transaction_id'],
-      ),
-      sourceRepaymentId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}source_repayment_id'],
-      ),
-      purchaseTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}purchase_transaction_id'],
+        data['${effectivePrefix}source_ref_id'],
       ),
       principalMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -7733,9 +7658,9 @@ class $InstallmentContractsTable extends InstallmentContracts
     return $InstallmentContractsTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<InstallmentSourceType, String, String>
-  $convertersourceType = const EnumNameConverter<InstallmentSourceType>(
-    InstallmentSourceType.values,
+  static JsonTypeConverter2<InstallmentType, String, String>
+  $converterinstallmentType = const EnumNameConverter<InstallmentType>(
+    InstallmentType.values,
   );
   static JsonTypeConverter2<InstallmentContractStatus, String, String>
   $converterstatus = const EnumNameConverter<InstallmentContractStatus>(
@@ -7752,11 +7677,8 @@ class InstallmentContractRow extends DataClass
   final String dayCount;
   final String rounding;
   final String liabilityAccountId;
-  final InstallmentSourceType sourceType;
-  final String? disbursementAccountId;
-  final String? disbursementTransactionId;
-  final String? sourceRepaymentId;
-  final String? purchaseTransactionId;
+  final InstallmentType installmentType;
+  final String? sourceRefId;
   final int principalMinor;
 
   /// 借款日期 / 合同起算日。
@@ -7771,11 +7693,8 @@ class InstallmentContractRow extends DataClass
     required this.dayCount,
     required this.rounding,
     required this.liabilityAccountId,
-    required this.sourceType,
-    this.disbursementAccountId,
-    this.disbursementTransactionId,
-    this.sourceRepaymentId,
-    this.purchaseTransactionId,
+    required this.installmentType,
+    this.sourceRefId,
     required this.principalMinor,
     required this.borrowingDate,
     required this.status,
@@ -7792,23 +7711,14 @@ class InstallmentContractRow extends DataClass
     map['rounding'] = Variable<String>(rounding);
     map['liability_account_id'] = Variable<String>(liabilityAccountId);
     {
-      map['source_type'] = Variable<String>(
-        $InstallmentContractsTable.$convertersourceType.toSql(sourceType),
+      map['installment_type'] = Variable<String>(
+        $InstallmentContractsTable.$converterinstallmentType.toSql(
+          installmentType,
+        ),
       );
     }
-    if (!nullToAbsent || disbursementAccountId != null) {
-      map['disbursement_account_id'] = Variable<String>(disbursementAccountId);
-    }
-    if (!nullToAbsent || disbursementTransactionId != null) {
-      map['disbursement_transaction_id'] = Variable<String>(
-        disbursementTransactionId,
-      );
-    }
-    if (!nullToAbsent || sourceRepaymentId != null) {
-      map['source_repayment_id'] = Variable<String>(sourceRepaymentId);
-    }
-    if (!nullToAbsent || purchaseTransactionId != null) {
-      map['purchase_transaction_id'] = Variable<String>(purchaseTransactionId);
+    if (!nullToAbsent || sourceRefId != null) {
+      map['source_ref_id'] = Variable<String>(sourceRefId);
     }
     map['principal_minor'] = Variable<int>(principalMinor);
     map['borrowing_date'] = Variable<DateTime>(borrowingDate);
@@ -7832,20 +7742,10 @@ class InstallmentContractRow extends DataClass
       dayCount: Value(dayCount),
       rounding: Value(rounding),
       liabilityAccountId: Value(liabilityAccountId),
-      sourceType: Value(sourceType),
-      disbursementAccountId: disbursementAccountId == null && nullToAbsent
+      installmentType: Value(installmentType),
+      sourceRefId: sourceRefId == null && nullToAbsent
           ? const Value.absent()
-          : Value(disbursementAccountId),
-      disbursementTransactionId:
-          disbursementTransactionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(disbursementTransactionId),
-      sourceRepaymentId: sourceRepaymentId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sourceRepaymentId),
-      purchaseTransactionId: purchaseTransactionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(purchaseTransactionId),
+          : Value(sourceRefId),
       principalMinor: Value(principalMinor),
       borrowingDate: Value(borrowingDate),
       status: Value(status),
@@ -7868,21 +7768,9 @@ class InstallmentContractRow extends DataClass
       liabilityAccountId: serializer.fromJson<String>(
         json['liabilityAccountId'],
       ),
-      sourceType: $InstallmentContractsTable.$convertersourceType.fromJson(
-        serializer.fromJson<String>(json['sourceType']),
-      ),
-      disbursementAccountId: serializer.fromJson<String?>(
-        json['disbursementAccountId'],
-      ),
-      disbursementTransactionId: serializer.fromJson<String?>(
-        json['disbursementTransactionId'],
-      ),
-      sourceRepaymentId: serializer.fromJson<String?>(
-        json['sourceRepaymentId'],
-      ),
-      purchaseTransactionId: serializer.fromJson<String?>(
-        json['purchaseTransactionId'],
-      ),
+      installmentType: $InstallmentContractsTable.$converterinstallmentType
+          .fromJson(serializer.fromJson<String>(json['installmentType'])),
+      sourceRefId: serializer.fromJson<String?>(json['sourceRefId']),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
       borrowingDate: serializer.fromJson<DateTime>(json['borrowingDate']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
@@ -7902,19 +7790,12 @@ class InstallmentContractRow extends DataClass
       'dayCount': serializer.toJson<String>(dayCount),
       'rounding': serializer.toJson<String>(rounding),
       'liabilityAccountId': serializer.toJson<String>(liabilityAccountId),
-      'sourceType': serializer.toJson<String>(
-        $InstallmentContractsTable.$convertersourceType.toJson(sourceType),
+      'installmentType': serializer.toJson<String>(
+        $InstallmentContractsTable.$converterinstallmentType.toJson(
+          installmentType,
+        ),
       ),
-      'disbursementAccountId': serializer.toJson<String?>(
-        disbursementAccountId,
-      ),
-      'disbursementTransactionId': serializer.toJson<String?>(
-        disbursementTransactionId,
-      ),
-      'sourceRepaymentId': serializer.toJson<String?>(sourceRepaymentId),
-      'purchaseTransactionId': serializer.toJson<String?>(
-        purchaseTransactionId,
-      ),
+      'sourceRefId': serializer.toJson<String?>(sourceRefId),
       'principalMinor': serializer.toJson<int>(principalMinor),
       'borrowingDate': serializer.toJson<DateTime>(borrowingDate),
       'status': serializer.toJson<String>(
@@ -7932,11 +7813,8 @@ class InstallmentContractRow extends DataClass
     String? dayCount,
     String? rounding,
     String? liabilityAccountId,
-    InstallmentSourceType? sourceType,
-    Value<String?> disbursementAccountId = const Value.absent(),
-    Value<String?> disbursementTransactionId = const Value.absent(),
-    Value<String?> sourceRepaymentId = const Value.absent(),
-    Value<String?> purchaseTransactionId = const Value.absent(),
+    InstallmentType? installmentType,
+    Value<String?> sourceRefId = const Value.absent(),
     int? principalMinor,
     DateTime? borrowingDate,
     InstallmentContractStatus? status,
@@ -7949,19 +7827,8 @@ class InstallmentContractRow extends DataClass
     dayCount: dayCount ?? this.dayCount,
     rounding: rounding ?? this.rounding,
     liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
-    sourceType: sourceType ?? this.sourceType,
-    disbursementAccountId: disbursementAccountId.present
-        ? disbursementAccountId.value
-        : this.disbursementAccountId,
-    disbursementTransactionId: disbursementTransactionId.present
-        ? disbursementTransactionId.value
-        : this.disbursementTransactionId,
-    sourceRepaymentId: sourceRepaymentId.present
-        ? sourceRepaymentId.value
-        : this.sourceRepaymentId,
-    purchaseTransactionId: purchaseTransactionId.present
-        ? purchaseTransactionId.value
-        : this.purchaseTransactionId,
+    installmentType: installmentType ?? this.installmentType,
+    sourceRefId: sourceRefId.present ? sourceRefId.value : this.sourceRefId,
     principalMinor: principalMinor ?? this.principalMinor,
     borrowingDate: borrowingDate ?? this.borrowingDate,
     status: status ?? this.status,
@@ -7978,21 +7845,12 @@ class InstallmentContractRow extends DataClass
       liabilityAccountId: data.liabilityAccountId.present
           ? data.liabilityAccountId.value
           : this.liabilityAccountId,
-      sourceType: data.sourceType.present
-          ? data.sourceType.value
-          : this.sourceType,
-      disbursementAccountId: data.disbursementAccountId.present
-          ? data.disbursementAccountId.value
-          : this.disbursementAccountId,
-      disbursementTransactionId: data.disbursementTransactionId.present
-          ? data.disbursementTransactionId.value
-          : this.disbursementTransactionId,
-      sourceRepaymentId: data.sourceRepaymentId.present
-          ? data.sourceRepaymentId.value
-          : this.sourceRepaymentId,
-      purchaseTransactionId: data.purchaseTransactionId.present
-          ? data.purchaseTransactionId.value
-          : this.purchaseTransactionId,
+      installmentType: data.installmentType.present
+          ? data.installmentType.value
+          : this.installmentType,
+      sourceRefId: data.sourceRefId.present
+          ? data.sourceRefId.value
+          : this.sourceRefId,
       principalMinor: data.principalMinor.present
           ? data.principalMinor.value
           : this.principalMinor,
@@ -8014,11 +7872,8 @@ class InstallmentContractRow extends DataClass
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
-          ..write('sourceType: $sourceType, ')
-          ..write('disbursementAccountId: $disbursementAccountId, ')
-          ..write('disbursementTransactionId: $disbursementTransactionId, ')
-          ..write('sourceRepaymentId: $sourceRepaymentId, ')
-          ..write('purchaseTransactionId: $purchaseTransactionId, ')
+          ..write('installmentType: $installmentType, ')
+          ..write('sourceRefId: $sourceRefId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('borrowingDate: $borrowingDate, ')
           ..write('status: $status, ')
@@ -8036,11 +7891,8 @@ class InstallmentContractRow extends DataClass
     dayCount,
     rounding,
     liabilityAccountId,
-    sourceType,
-    disbursementAccountId,
-    disbursementTransactionId,
-    sourceRepaymentId,
-    purchaseTransactionId,
+    installmentType,
+    sourceRefId,
     principalMinor,
     borrowingDate,
     status,
@@ -8057,11 +7909,8 @@ class InstallmentContractRow extends DataClass
           other.dayCount == this.dayCount &&
           other.rounding == this.rounding &&
           other.liabilityAccountId == this.liabilityAccountId &&
-          other.sourceType == this.sourceType &&
-          other.disbursementAccountId == this.disbursementAccountId &&
-          other.disbursementTransactionId == this.disbursementTransactionId &&
-          other.sourceRepaymentId == this.sourceRepaymentId &&
-          other.purchaseTransactionId == this.purchaseTransactionId &&
+          other.installmentType == this.installmentType &&
+          other.sourceRefId == this.sourceRefId &&
           other.principalMinor == this.principalMinor &&
           other.borrowingDate == this.borrowingDate &&
           other.status == this.status &&
@@ -8077,11 +7926,8 @@ class InstallmentContractsCompanion
   final Value<String> dayCount;
   final Value<String> rounding;
   final Value<String> liabilityAccountId;
-  final Value<InstallmentSourceType> sourceType;
-  final Value<String?> disbursementAccountId;
-  final Value<String?> disbursementTransactionId;
-  final Value<String?> sourceRepaymentId;
-  final Value<String?> purchaseTransactionId;
+  final Value<InstallmentType> installmentType;
+  final Value<String?> sourceRefId;
   final Value<int> principalMinor;
   final Value<DateTime> borrowingDate;
   final Value<InstallmentContractStatus> status;
@@ -8095,11 +7941,8 @@ class InstallmentContractsCompanion
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
     this.liabilityAccountId = const Value.absent(),
-    this.sourceType = const Value.absent(),
-    this.disbursementAccountId = const Value.absent(),
-    this.disbursementTransactionId = const Value.absent(),
-    this.sourceRepaymentId = const Value.absent(),
-    this.purchaseTransactionId = const Value.absent(),
+    this.installmentType = const Value.absent(),
+    this.sourceRefId = const Value.absent(),
     this.principalMinor = const Value.absent(),
     this.borrowingDate = const Value.absent(),
     this.status = const Value.absent(),
@@ -8114,11 +7957,8 @@ class InstallmentContractsCompanion
     this.dayCount = const Value.absent(),
     this.rounding = const Value.absent(),
     required String liabilityAccountId,
-    required InstallmentSourceType sourceType,
-    this.disbursementAccountId = const Value.absent(),
-    this.disbursementTransactionId = const Value.absent(),
-    this.sourceRepaymentId = const Value.absent(),
-    this.purchaseTransactionId = const Value.absent(),
+    required InstallmentType installmentType,
+    this.sourceRefId = const Value.absent(),
     required int principalMinor,
     required DateTime borrowingDate,
     required InstallmentContractStatus status,
@@ -8128,7 +7968,7 @@ class InstallmentContractsCompanion
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        liabilityAccountId = Value(liabilityAccountId),
-       sourceType = Value(sourceType),
+       installmentType = Value(installmentType),
        principalMinor = Value(principalMinor),
        borrowingDate = Value(borrowingDate),
        status = Value(status);
@@ -8138,11 +7978,8 @@ class InstallmentContractsCompanion
     Expression<String>? dayCount,
     Expression<String>? rounding,
     Expression<String>? liabilityAccountId,
-    Expression<String>? sourceType,
-    Expression<String>? disbursementAccountId,
-    Expression<String>? disbursementTransactionId,
-    Expression<String>? sourceRepaymentId,
-    Expression<String>? purchaseTransactionId,
+    Expression<String>? installmentType,
+    Expression<String>? sourceRefId,
     Expression<int>? principalMinor,
     Expression<DateTime>? borrowingDate,
     Expression<String>? status,
@@ -8158,14 +7995,8 @@ class InstallmentContractsCompanion
       if (rounding != null) 'rounding': rounding,
       if (liabilityAccountId != null)
         'liability_account_id': liabilityAccountId,
-      if (sourceType != null) 'source_type': sourceType,
-      if (disbursementAccountId != null)
-        'disbursement_account_id': disbursementAccountId,
-      if (disbursementTransactionId != null)
-        'disbursement_transaction_id': disbursementTransactionId,
-      if (sourceRepaymentId != null) 'source_repayment_id': sourceRepaymentId,
-      if (purchaseTransactionId != null)
-        'purchase_transaction_id': purchaseTransactionId,
+      if (installmentType != null) 'installment_type': installmentType,
+      if (sourceRefId != null) 'source_ref_id': sourceRefId,
       if (principalMinor != null) 'principal_minor': principalMinor,
       if (borrowingDate != null) 'borrowing_date': borrowingDate,
       if (status != null) 'status': status,
@@ -8182,11 +8013,8 @@ class InstallmentContractsCompanion
     Value<String>? dayCount,
     Value<String>? rounding,
     Value<String>? liabilityAccountId,
-    Value<InstallmentSourceType>? sourceType,
-    Value<String?>? disbursementAccountId,
-    Value<String?>? disbursementTransactionId,
-    Value<String?>? sourceRepaymentId,
-    Value<String?>? purchaseTransactionId,
+    Value<InstallmentType>? installmentType,
+    Value<String?>? sourceRefId,
     Value<int>? principalMinor,
     Value<DateTime>? borrowingDate,
     Value<InstallmentContractStatus>? status,
@@ -8201,14 +8029,8 @@ class InstallmentContractsCompanion
       dayCount: dayCount ?? this.dayCount,
       rounding: rounding ?? this.rounding,
       liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
-      sourceType: sourceType ?? this.sourceType,
-      disbursementAccountId:
-          disbursementAccountId ?? this.disbursementAccountId,
-      disbursementTransactionId:
-          disbursementTransactionId ?? this.disbursementTransactionId,
-      sourceRepaymentId: sourceRepaymentId ?? this.sourceRepaymentId,
-      purchaseTransactionId:
-          purchaseTransactionId ?? this.purchaseTransactionId,
+      installmentType: installmentType ?? this.installmentType,
+      sourceRefId: sourceRefId ?? this.sourceRefId,
       principalMinor: principalMinor ?? this.principalMinor,
       borrowingDate: borrowingDate ?? this.borrowingDate,
       status: status ?? this.status,
@@ -8237,28 +8059,15 @@ class InstallmentContractsCompanion
     if (liabilityAccountId.present) {
       map['liability_account_id'] = Variable<String>(liabilityAccountId.value);
     }
-    if (sourceType.present) {
-      map['source_type'] = Variable<String>(
-        $InstallmentContractsTable.$convertersourceType.toSql(sourceType.value),
+    if (installmentType.present) {
+      map['installment_type'] = Variable<String>(
+        $InstallmentContractsTable.$converterinstallmentType.toSql(
+          installmentType.value,
+        ),
       );
     }
-    if (disbursementAccountId.present) {
-      map['disbursement_account_id'] = Variable<String>(
-        disbursementAccountId.value,
-      );
-    }
-    if (disbursementTransactionId.present) {
-      map['disbursement_transaction_id'] = Variable<String>(
-        disbursementTransactionId.value,
-      );
-    }
-    if (sourceRepaymentId.present) {
-      map['source_repayment_id'] = Variable<String>(sourceRepaymentId.value);
-    }
-    if (purchaseTransactionId.present) {
-      map['purchase_transaction_id'] = Variable<String>(
-        purchaseTransactionId.value,
-      );
+    if (sourceRefId.present) {
+      map['source_ref_id'] = Variable<String>(sourceRefId.value);
     }
     if (principalMinor.present) {
       map['principal_minor'] = Variable<int>(principalMinor.value);
@@ -8294,11 +8103,8 @@ class InstallmentContractsCompanion
           ..write('dayCount: $dayCount, ')
           ..write('rounding: $rounding, ')
           ..write('liabilityAccountId: $liabilityAccountId, ')
-          ..write('sourceType: $sourceType, ')
-          ..write('disbursementAccountId: $disbursementAccountId, ')
-          ..write('disbursementTransactionId: $disbursementTransactionId, ')
-          ..write('sourceRepaymentId: $sourceRepaymentId, ')
-          ..write('purchaseTransactionId: $purchaseTransactionId, ')
+          ..write('installmentType: $installmentType, ')
+          ..write('sourceRefId: $sourceRefId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('borrowingDate: $borrowingDate, ')
           ..write('status: $status, ')
@@ -14713,6 +14519,17 @@ class $RepaymentsTable extends Repayments
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _generatedContractIdMeta =
+      const VerificationMeta('generatedContractId');
+  @override
+  late final GeneratedColumn<String> generatedContractId =
+      GeneratedColumn<String>(
+        'generated_contract_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _repaymentDateMeta = const VerificationMeta(
     'repaymentDate',
   );
@@ -14756,6 +14573,7 @@ class $RepaymentsTable extends Repayments
     targetType,
     targetId,
     transactionId,
+    generatedContractId,
     repaymentDate,
     createdAt,
     updatedAt,
@@ -14813,6 +14631,15 @@ class $RepaymentsTable extends Repayments
         ),
       );
     }
+    if (data.containsKey('generated_contract_id')) {
+      context.handle(
+        _generatedContractIdMeta,
+        generatedContractId.isAcceptableOrUnknown(
+          data['generated_contract_id']!,
+          _generatedContractIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('repayment_date')) {
       context.handle(
         _repaymentDateMeta,
@@ -14865,6 +14692,10 @@ class $RepaymentsTable extends Repayments
         DriftSqlType.string,
         data['${effectivePrefix}transaction_id'],
       ),
+      generatedContractId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}generated_contract_id'],
+      ),
       repaymentDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}repayment_date'],
@@ -14892,6 +14723,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
   final String targetType;
   final String targetId;
   final String? transactionId;
+  final String? generatedContractId;
 
   /// 每笔还款自持的业务时间；关联交易的交易时间由信贷用例同步维护。
   final DateTime repaymentDate;
@@ -14903,6 +14735,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     required this.targetType,
     required this.targetId,
     this.transactionId,
+    this.generatedContractId,
     required this.repaymentDate,
     required this.createdAt,
     required this.updatedAt,
@@ -14916,6 +14749,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     map['target_id'] = Variable<String>(targetId);
     if (!nullToAbsent || transactionId != null) {
       map['transaction_id'] = Variable<String>(transactionId);
+    }
+    if (!nullToAbsent || generatedContractId != null) {
+      map['generated_contract_id'] = Variable<String>(generatedContractId);
     }
     map['repayment_date'] = Variable<DateTime>(repaymentDate);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -14932,6 +14768,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       transactionId: transactionId == null && nullToAbsent
           ? const Value.absent()
           : Value(transactionId),
+      generatedContractId: generatedContractId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(generatedContractId),
       repaymentDate: Value(repaymentDate),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -14949,6 +14788,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       targetType: serializer.fromJson<String>(json['targetType']),
       targetId: serializer.fromJson<String>(json['targetId']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
+      generatedContractId: serializer.fromJson<String?>(
+        json['generatedContractId'],
+      ),
       repaymentDate: serializer.fromJson<DateTime>(json['repaymentDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -14963,6 +14805,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       'targetType': serializer.toJson<String>(targetType),
       'targetId': serializer.toJson<String>(targetId),
       'transactionId': serializer.toJson<String?>(transactionId),
+      'generatedContractId': serializer.toJson<String?>(generatedContractId),
       'repaymentDate': serializer.toJson<DateTime>(repaymentDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -14975,6 +14818,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     String? targetType,
     String? targetId,
     Value<String?> transactionId = const Value.absent(),
+    Value<String?> generatedContractId = const Value.absent(),
     DateTime? repaymentDate,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -14986,6 +14830,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     transactionId: transactionId.present
         ? transactionId.value
         : this.transactionId,
+    generatedContractId: generatedContractId.present
+        ? generatedContractId.value
+        : this.generatedContractId,
     repaymentDate: repaymentDate ?? this.repaymentDate,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -15003,6 +14850,9 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
       transactionId: data.transactionId.present
           ? data.transactionId.value
           : this.transactionId,
+      generatedContractId: data.generatedContractId.present
+          ? data.generatedContractId.value
+          : this.generatedContractId,
       repaymentDate: data.repaymentDate.present
           ? data.repaymentDate.value
           : this.repaymentDate,
@@ -15019,6 +14869,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
           ..write('transactionId: $transactionId, ')
+          ..write('generatedContractId: $generatedContractId, ')
           ..write('repaymentDate: $repaymentDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -15033,6 +14884,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
     targetType,
     targetId,
     transactionId,
+    generatedContractId,
     repaymentDate,
     createdAt,
     updatedAt,
@@ -15046,6 +14898,7 @@ class RepaymentRow extends DataClass implements Insertable<RepaymentRow> {
           other.targetType == this.targetType &&
           other.targetId == this.targetId &&
           other.transactionId == this.transactionId &&
+          other.generatedContractId == this.generatedContractId &&
           other.repaymentDate == this.repaymentDate &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -15057,6 +14910,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
   final Value<String> targetType;
   final Value<String> targetId;
   final Value<String?> transactionId;
+  final Value<String?> generatedContractId;
   final Value<DateTime> repaymentDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -15067,6 +14921,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     this.targetType = const Value.absent(),
     this.targetId = const Value.absent(),
     this.transactionId = const Value.absent(),
+    this.generatedContractId = const Value.absent(),
     this.repaymentDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -15078,6 +14933,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     required String targetType,
     required String targetId,
     this.transactionId = const Value.absent(),
+    this.generatedContractId = const Value.absent(),
     required DateTime repaymentDate,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -15093,6 +14949,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     Expression<String>? targetType,
     Expression<String>? targetId,
     Expression<String>? transactionId,
+    Expression<String>? generatedContractId,
     Expression<DateTime>? repaymentDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -15104,6 +14961,8 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       if (targetType != null) 'target_type': targetType,
       if (targetId != null) 'target_id': targetId,
       if (transactionId != null) 'transaction_id': transactionId,
+      if (generatedContractId != null)
+        'generated_contract_id': generatedContractId,
       if (repaymentDate != null) 'repayment_date': repaymentDate,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -15117,6 +14976,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     Value<String>? targetType,
     Value<String>? targetId,
     Value<String?>? transactionId,
+    Value<String?>? generatedContractId,
     Value<DateTime>? repaymentDate,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -15128,6 +14988,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
       targetType: targetType ?? this.targetType,
       targetId: targetId ?? this.targetId,
       transactionId: transactionId ?? this.transactionId,
+      generatedContractId: generatedContractId ?? this.generatedContractId,
       repaymentDate: repaymentDate ?? this.repaymentDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -15153,6 +15014,11 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
     if (transactionId.present) {
       map['transaction_id'] = Variable<String>(transactionId.value);
     }
+    if (generatedContractId.present) {
+      map['generated_contract_id'] = Variable<String>(
+        generatedContractId.value,
+      );
+    }
     if (repaymentDate.present) {
       map['repayment_date'] = Variable<DateTime>(repaymentDate.value);
     }
@@ -15176,6 +15042,7 @@ class RepaymentsCompanion extends UpdateCompanion<RepaymentRow> {
           ..write('targetType: $targetType, ')
           ..write('targetId: $targetId, ')
           ..write('transactionId: $transactionId, ')
+          ..write('generatedContractId: $generatedContractId, ')
           ..write('repaymentDate: $repaymentDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -21612,11 +21479,8 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       Value<String> dayCount,
       Value<String> rounding,
       required String liabilityAccountId,
-      required InstallmentSourceType sourceType,
-      Value<String?> disbursementAccountId,
-      Value<String?> disbursementTransactionId,
-      Value<String?> sourceRepaymentId,
-      Value<String?> purchaseTransactionId,
+      required InstallmentType installmentType,
+      Value<String?> sourceRefId,
       required int principalMinor,
       required DateTime borrowingDate,
       required InstallmentContractStatus status,
@@ -21632,11 +21496,8 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<String> dayCount,
       Value<String> rounding,
       Value<String> liabilityAccountId,
-      Value<InstallmentSourceType> sourceType,
-      Value<String?> disbursementAccountId,
-      Value<String?> disbursementTransactionId,
-      Value<String?> sourceRepaymentId,
-      Value<String?> purchaseTransactionId,
+      Value<InstallmentType> installmentType,
+      Value<String?> sourceRefId,
       Value<int> principalMinor,
       Value<DateTime> borrowingDate,
       Value<InstallmentContractStatus> status,
@@ -21680,33 +21541,14 @@ class $$InstallmentContractsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<
-    InstallmentSourceType,
-    InstallmentSourceType,
-    String
-  >
-  get sourceType => $composableBuilder(
-    column: $table.sourceType,
+  ColumnWithTypeConverterFilters<InstallmentType, InstallmentType, String>
+  get installmentType => $composableBuilder(
+    column: $table.installmentType,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<String> get disbursementAccountId => $composableBuilder(
-    column: $table.disbursementAccountId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get disbursementTransactionId => $composableBuilder(
-    column: $table.disbursementTransactionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get sourceRepaymentId => $composableBuilder(
-    column: $table.sourceRepaymentId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get purchaseTransactionId => $composableBuilder(
-    column: $table.purchaseTransactionId,
+  ColumnFilters<String> get sourceRefId => $composableBuilder(
+    column: $table.sourceRefId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21780,28 +21622,13 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get sourceType => $composableBuilder(
-    column: $table.sourceType,
+  ColumnOrderings<String> get installmentType => $composableBuilder(
+    column: $table.installmentType,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get disbursementAccountId => $composableBuilder(
-    column: $table.disbursementAccountId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get disbursementTransactionId => $composableBuilder(
-    column: $table.disbursementTransactionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get sourceRepaymentId => $composableBuilder(
-    column: $table.sourceRepaymentId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get purchaseTransactionId => $composableBuilder(
-    column: $table.purchaseTransactionId,
+  ColumnOrderings<String> get sourceRefId => $composableBuilder(
+    column: $table.sourceRefId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -21862,29 +21689,14 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
-  get sourceType => $composableBuilder(
-    column: $table.sourceType,
+  GeneratedColumnWithTypeConverter<InstallmentType, String>
+  get installmentType => $composableBuilder(
+    column: $table.installmentType,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get disbursementAccountId => $composableBuilder(
-    column: $table.disbursementAccountId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get disbursementTransactionId => $composableBuilder(
-    column: $table.disbursementTransactionId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get sourceRepaymentId => $composableBuilder(
-    column: $table.sourceRepaymentId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get purchaseTransactionId => $composableBuilder(
-    column: $table.purchaseTransactionId,
+  GeneratedColumn<String> get sourceRefId => $composableBuilder(
+    column: $table.sourceRefId,
     builder: (column) => column,
   );
 
@@ -21960,11 +21772,8 @@ class $$InstallmentContractsTableTableManager
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
                 Value<String> liabilityAccountId = const Value.absent(),
-                Value<InstallmentSourceType> sourceType = const Value.absent(),
-                Value<String?> disbursementAccountId = const Value.absent(),
-                Value<String?> disbursementTransactionId = const Value.absent(),
-                Value<String?> sourceRepaymentId = const Value.absent(),
-                Value<String?> purchaseTransactionId = const Value.absent(),
+                Value<InstallmentType> installmentType = const Value.absent(),
+                Value<String?> sourceRefId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
                 Value<DateTime> borrowingDate = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
@@ -21978,11 +21787,8 @@ class $$InstallmentContractsTableTableManager
                 dayCount: dayCount,
                 rounding: rounding,
                 liabilityAccountId: liabilityAccountId,
-                sourceType: sourceType,
-                disbursementAccountId: disbursementAccountId,
-                disbursementTransactionId: disbursementTransactionId,
-                sourceRepaymentId: sourceRepaymentId,
-                purchaseTransactionId: purchaseTransactionId,
+                installmentType: installmentType,
+                sourceRefId: sourceRefId,
                 principalMinor: principalMinor,
                 borrowingDate: borrowingDate,
                 status: status,
@@ -21998,11 +21804,8 @@ class $$InstallmentContractsTableTableManager
                 Value<String> dayCount = const Value.absent(),
                 Value<String> rounding = const Value.absent(),
                 required String liabilityAccountId,
-                required InstallmentSourceType sourceType,
-                Value<String?> disbursementAccountId = const Value.absent(),
-                Value<String?> disbursementTransactionId = const Value.absent(),
-                Value<String?> sourceRepaymentId = const Value.absent(),
-                Value<String?> purchaseTransactionId = const Value.absent(),
+                required InstallmentType installmentType,
+                Value<String?> sourceRefId = const Value.absent(),
                 required int principalMinor,
                 required DateTime borrowingDate,
                 required InstallmentContractStatus status,
@@ -22016,11 +21819,8 @@ class $$InstallmentContractsTableTableManager
                 dayCount: dayCount,
                 rounding: rounding,
                 liabilityAccountId: liabilityAccountId,
-                sourceType: sourceType,
-                disbursementAccountId: disbursementAccountId,
-                disbursementTransactionId: disbursementTransactionId,
-                sourceRepaymentId: sourceRepaymentId,
-                purchaseTransactionId: purchaseTransactionId,
+                installmentType: installmentType,
+                sourceRefId: sourceRefId,
                 principalMinor: principalMinor,
                 borrowingDate: borrowingDate,
                 status: status,
@@ -25173,6 +24973,7 @@ typedef $$RepaymentsTableCreateCompanionBuilder =
       required String targetType,
       required String targetId,
       Value<String?> transactionId,
+      Value<String?> generatedContractId,
       required DateTime repaymentDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -25185,6 +24986,7 @@ typedef $$RepaymentsTableUpdateCompanionBuilder =
       Value<String> targetType,
       Value<String> targetId,
       Value<String?> transactionId,
+      Value<String?> generatedContractId,
       Value<DateTime> repaymentDate,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -25222,6 +25024,11 @@ class $$RepaymentsTableFilterComposer
 
   ColumnFilters<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get generatedContractId => $composableBuilder(
+    column: $table.generatedContractId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25275,6 +25082,11 @@ class $$RepaymentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get generatedContractId => $composableBuilder(
+    column: $table.generatedContractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get repaymentDate => $composableBuilder(
     column: $table.repaymentDate,
     builder: (column) => ColumnOrderings(column),
@@ -25318,6 +25130,11 @@ class $$RepaymentsTableAnnotationComposer
 
   GeneratedColumn<String> get transactionId => $composableBuilder(
     column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get generatedContractId => $composableBuilder(
+    column: $table.generatedContractId,
     builder: (column) => column,
   );
 
@@ -25369,6 +25186,7 @@ class $$RepaymentsTableTableManager
                 Value<String> targetType = const Value.absent(),
                 Value<String> targetId = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
+                Value<String?> generatedContractId = const Value.absent(),
                 Value<DateTime> repaymentDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -25379,6 +25197,7 @@ class $$RepaymentsTableTableManager
                 targetType: targetType,
                 targetId: targetId,
                 transactionId: transactionId,
+                generatedContractId: generatedContractId,
                 repaymentDate: repaymentDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -25391,6 +25210,7 @@ class $$RepaymentsTableTableManager
                 required String targetType,
                 required String targetId,
                 Value<String?> transactionId = const Value.absent(),
+                Value<String?> generatedContractId = const Value.absent(),
                 required DateTime repaymentDate,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -25401,6 +25221,7 @@ class $$RepaymentsTableTableManager
                 targetType: targetType,
                 targetId: targetId,
                 transactionId: transactionId,
+                generatedContractId: generatedContractId,
                 repaymentDate: repaymentDate,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -258,7 +258,6 @@ class InstallmentContractAppServiceImpl
       final aggregate = _origination.originateDisbursement(
         contractId: contractId,
         liabilityAccountId: command.liabilityAccountId,
-        disbursementAccountId: disbursementAccountId,
         disbursementTransactionId: borrowing?.transactionId,
         terms: InstallmentOriginationTerms(
           name: command.name,
@@ -293,11 +292,7 @@ class InstallmentContractAppServiceImpl
         final contract =
             await _repository.findContract(command.contractId) ??
             (throw BusinessException(CreditErrorCode.contractNotFound));
-        contract.reviseDetails(
-          name: command.name,
-          note: command.note,
-          disbursementAccountId: command.disbursementAccountId,
-        );
+        contract.reviseDetails(name: command.name, note: command.note);
         await _synchronizeBorrowing(contract, command);
         final schedules = await _repository.listSchedules(command.contractId);
         await _repository.saveAggregate(contract, schedules);
@@ -307,8 +302,8 @@ class InstallmentContractAppServiceImpl
     InstallmentContract contract,
     UpdateContractDetailsCommand command,
   ) async {
-    if (contract.sourceType != InstallmentSourceType.disbursement) return;
-    final txId = contract.disbursementTransactionId;
+    if (contract.installmentType != InstallmentType.disbursement) return;
+    final txId = contract.sourceRefId;
     if (txId == null) return;
     if (command.disbursementAccountId != null) {
       await _ledger.editBorrowing(
@@ -351,8 +346,8 @@ class InstallmentContractAppServiceImpl
       command.contractId,
     );
     final schedules = await _repository.listSchedules(command.contractId);
-    if (contract.sourceType == InstallmentSourceType.purchase) {
-      final sourceTransactionId = contract.purchaseTransactionId;
+    if (contract.installmentType == InstallmentType.purchase) {
+      final sourceTransactionId = contract.sourceRefId;
       final source = sourceTransactionId == null
           ? null
           : await _ledger.findParentTransaction(sourceTransactionId);
@@ -367,7 +362,10 @@ class InstallmentContractAppServiceImpl
     _lifecycle.validateDelete(repayments: repayments, schedules: schedules);
 
     return _runner.run<void>(() async {
-      final sourceRepaymentId = contract.sourceRepaymentId;
+      final sourceRepaymentId =
+          contract.installmentType == InstallmentType.billConversion
+          ? contract.sourceRefId
+          : null;
       if (sourceRepaymentId != null) {
         final sourceRepayment = await _repayments.findRepayment(
           sourceRepaymentId,
@@ -388,9 +386,9 @@ class InstallmentContractAppServiceImpl
         }
       }
       final sourceTransactionId =
-          contract.sourceType == InstallmentSourceType.purchase
-          ? contract.purchaseTransactionId
-          : contract.disbursementTransactionId;
+          contract.installmentType == InstallmentType.billConversion
+          ? null
+          : contract.sourceRefId;
       if (sourceTransactionId != null) {
         await _ledger.deleteTransaction(sourceTransactionId);
       }

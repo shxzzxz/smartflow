@@ -208,7 +208,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 3;
+  static const currentBackupSchemaVersion = 4;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;

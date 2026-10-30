@@ -53,14 +53,12 @@ class InstallmentContractOriginationService {
     required InstallmentOriginationTerms terms,
     required DateTime createdAt,
     required String Function() newScheduleId,
-    String? disbursementAccountId,
     String? disbursementTransactionId,
   }) => _originate(
     contractId: contractId,
     liabilityAccountId: liabilityAccountId,
-    sourceType: InstallmentSourceType.disbursement,
-    disbursementAccountId: disbursementAccountId,
-    disbursementTransactionId: disbursementTransactionId,
+    installmentType: InstallmentType.disbursement,
+    sourceRefId: disbursementTransactionId,
     terms: terms,
     createdAt: createdAt,
     newScheduleId: newScheduleId,
@@ -80,8 +78,8 @@ class InstallmentContractOriginationService {
   }) => _originate(
     contractId: contractId,
     liabilityAccountId: bill.accountId,
-    sourceType: InstallmentSourceType.billConversion,
-    sourceRepaymentId: sourceRepaymentId,
+    installmentType: InstallmentType.billConversion,
+    sourceRefId: sourceRepaymentId,
     terms: InstallmentOriginationTerms(
       name: name,
       principal: principal,
@@ -103,8 +101,8 @@ class InstallmentContractOriginationService {
   }) => _originate(
     contractId: contractId,
     liabilityAccountId: liabilityAccountId,
-    sourceType: InstallmentSourceType.purchase,
-    purchaseTransactionId: purchaseTransactionId,
+    installmentType: InstallmentType.purchase,
+    sourceRefId: purchaseTransactionId,
     terms: terms,
     createdAt: createdAt,
     newScheduleId: newScheduleId,
@@ -113,19 +111,23 @@ class InstallmentContractOriginationService {
   InstallmentOriginationResult _originate({
     required String contractId,
     required String liabilityAccountId,
-    required InstallmentSourceType sourceType,
+    required InstallmentType installmentType,
+    required String? sourceRefId,
     required InstallmentOriginationTerms terms,
     required DateTime createdAt,
     required String Function() newScheduleId,
-    String? sourceRepaymentId,
-    String? disbursementAccountId,
-    String? disbursementTransactionId,
-    String? purchaseTransactionId,
   }) {
     if (terms.principal.minorUnits <= 0) {
       throw BusinessException(
         CreditErrorCode.contractInvalidCommand,
         message: '本金必须大于零',
+      );
+    }
+    if (installmentType != InstallmentType.disbursement &&
+        (sourceRefId == null || sourceRefId.trim().isEmpty)) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '账单分期和消费分期必须关联来源事实',
       );
     }
     final stageTerms = terms.stageTerms;
@@ -141,11 +143,8 @@ class InstallmentContractOriginationService {
       id: contractId,
       name: trimToNull(terms.name),
       liabilityAccountId: liabilityAccountId,
-      sourceType: sourceType,
-      sourceRepaymentId: sourceRepaymentId,
-      disbursementAccountId: disbursementAccountId,
-      disbursementTransactionId: disbursementTransactionId,
-      purchaseTransactionId: purchaseTransactionId,
+      installmentType: installmentType,
+      sourceRefId: sourceRefId,
       principal: terms.principal,
       borrowingDate: terms.borrowingDate,
       status: InstallmentContractStatus.active,

@@ -16,8 +16,7 @@ abstract interface class InstallmentRepository {
 
   Future<InstallmentSchedule?> findSchedule(String scheduleId);
 
-  /// 反查：transaction 是否为某合同的放款交易；若是返回该合同，否则返回 null。
-  /// 仅 `sourceType == disbursement` 的合同会命中。
+  /// 反查：transaction 是否为某笔放款分期的来源交易。
   Future<InstallmentContract?> findContractByDisbursementTransaction(
     String transactionId,
   );

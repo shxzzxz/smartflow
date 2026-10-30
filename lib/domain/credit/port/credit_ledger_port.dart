@@ -116,12 +116,14 @@ class CreditLedgerTransactionSnapshot {
   const CreditLedgerTransactionSnapshot({
     required this.transactionId,
     required this.occurredAt,
+    this.settlementInAccountId,
     this.paidFromAccountId,
     this.hasRefundChildren = false,
   });
 
   final String transactionId;
   final DateTime occurredAt;
+  final String? settlementInAccountId;
   final String? paidFromAccountId;
   final bool hasRefundChildren;
 }

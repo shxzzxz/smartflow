@@ -468,6 +468,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
         repaymentType: RepaymentType.installment,
         targetType: RepaymentTargetType.bill,
         targetId: bill.id,
+        generatedContractId: contractId,
         repaymentDate: aggregate.contract.borrowingDate,
         items: items,
       );
@@ -715,7 +716,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     if (bill == null) {
       throw BusinessException(CreditErrorCode.billNotFound);
     }
-    final contract = await _findBillConversionContract(repayment.id, bill);
+    final contract = await _findBillConversionContract(repayment, bill);
     if (contract != null) {
       final contractRepayments = await _repayments.listByTarget(
         RepaymentTargetType.contract,
@@ -755,15 +756,25 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
   }
 
   Future<InstallmentContract?> _findBillConversionContract(
-    String sourceRepaymentId,
+    Repayment repayment,
     Bill bill,
   ) async {
+    final sourceRepaymentId = repayment.id;
+    final generatedContractId = repayment.generatedContractId;
+    if (generatedContractId != null) {
+      final contract = await _installments.findContract(generatedContractId);
+      if (contract?.installmentType == InstallmentType.billConversion &&
+          contract?.sourceRefId == sourceRepaymentId) {
+        return contract;
+      }
+      return null;
+    }
     final contracts = await _installments.listContractsByLiabilityAccount(
       bill.accountId,
     );
     for (final contract in contracts) {
-      if (contract.sourceType == InstallmentSourceType.billConversion &&
-          contract.sourceRepaymentId == sourceRepaymentId) {
+      if (contract.installmentType == InstallmentType.billConversion &&
+          contract.sourceRefId == sourceRepaymentId) {
         return contract;
       }
     }

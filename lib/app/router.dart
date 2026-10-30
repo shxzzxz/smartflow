@@ -368,13 +368,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/account/:id/installments/new',
       builder: (context, state) {
-        final lockedSourceType = switch (state.uri.queryParameters['source']) {
-          'disbursement' => InstallmentSourceType.disbursement,
-          _ => null,
-        };
+        final lockedInstallmentType =
+            switch (state.uri.queryParameters['source']) {
+              'disbursement' => InstallmentType.disbursement,
+              _ => null,
+            };
         return InstallmentFormPage(
           liabilityAccountId: state.pathParameters['id']!,
-          lockedSourceType: lockedSourceType,
+          lockedInstallmentType: lockedInstallmentType,
         );
       },
     ),
