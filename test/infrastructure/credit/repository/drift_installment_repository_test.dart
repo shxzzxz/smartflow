@@ -4,8 +4,10 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_refund_reduction.dart';
+import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -21,11 +23,11 @@ void main() {
         addTearDown(database.close);
         final repository = DriftInstallmentRepository(database);
         final contract = _contract();
-        await repository.insertAggregate(contract, []);
+        await repository.insertAggregate(contract);
         var loaded = (await repository.findContract(contract.id))!;
         expect(loaded.name, '20260101');
         loaded.reviseDetails(name: '家庭贷款');
-        await repository.saveAggregate(loaded, []);
+        await repository.saveAggregate(loaded);
         loaded = (await repository.findContract(contract.id))!;
         expect(loaded.name, '家庭贷款');
         expect(loaded.borrowingDate, DateTime(2026, 1, 1));
@@ -37,7 +39,7 @@ void main() {
       final repository = DriftInstallmentRepository(database);
 
       await expectLater(
-        () => repository.saveAggregate(_contract(), const []),
+        () => repository.saveAggregate(_contract()),
         throwsA(
           isA<BusinessException>().having(
             (exception) => exception.code,
@@ -47,6 +49,87 @@ void main() {
         ),
       );
     });
+
+    test('loads schedules with the contract aggregate', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftInstallmentRepository(database);
+      final contract = _contract(
+        id: 'aggregate-contract',
+        schedules: [_schedule('aggregate-contract', 'schedule-1')],
+      );
+
+      await repository.insertAggregate(contract);
+      final loaded = (await repository.findContract(contract.id))!;
+
+      expect(loaded.schedules, hasLength(1));
+      expect(loaded.schedules.single.id, 'schedule-1');
+      expect(loaded.schedules.single.contractId, loaded.id);
+    });
+
+    test(
+      'rolls back contract and schedules when aggregate save fails',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final repository = DriftInstallmentRepository(database);
+        final target = _contract(
+          id: 'target',
+          schedules: [_schedule('target', 'original-schedule')],
+        );
+        final other = _contract(
+          id: 'other',
+          schedules: [_schedule('other', 'colliding-schedule')],
+        );
+        await repository.insertAggregate(target);
+        await repository.insertAggregate(other);
+        final loaded = (await repository.findContract(target.id))!;
+        loaded.reviseDetails(name: 'changed');
+        final changedTerms = InstallmentContractTerms.singleStage(
+          id: 'target:stage:1',
+          totalPeriods: 2,
+          firstDate: DateTime(2026, 2, 1),
+          lastDate: DateTime(2026, 3, 1),
+          method: InstallmentRepaymentMethod.equalPrincipal,
+          accrual: InterestAccrualMethod.monthly,
+          feeMinor: 100,
+        );
+        loaded.applyPlanChange(
+          InstallmentPlanChangeSet(
+            context: InstallmentPlanContext.fromContract(contract: loaded),
+            terms: changedTerms,
+            rows: [
+              InstallmentPlanRow(
+                id: null,
+                stageId: 'target:stage:1',
+                periodNo: 1,
+                date: DateTime(2026, 2, 1),
+                principal: const Money(minorUnits: 1000),
+                interest: Money.zero(),
+                fee: Money.zero(),
+                status: InstallmentScheduleStatus.pending,
+              ),
+            ],
+          ),
+          newId: () => 'colliding-schedule',
+          createdAt: DateTime(2026, 1, 2),
+        );
+
+        await expectLater(
+          repository.saveAggregate(loaded),
+          throwsA(isA<Exception>()),
+        );
+
+        final restored = (await repository.findContract(target.id))!;
+        expect(restored.name, '20260101');
+        expect(restored.stageTerms.totalFeeMinor, 0);
+        expect(restored.schedules.single.id, 'original-schedule');
+        expect(
+          restored.schedules.single.expectedPrincipal,
+          const Money(minorUnits: 1000),
+        );
+      },
+    );
 
     test('persists purchase source and transaction reference', () async {
       final database = createTestDatabase();
@@ -71,7 +154,7 @@ void main() {
         ),
       );
 
-      await repository.insertAggregate(contract, const []);
+      await repository.insertAggregate(contract);
       final loaded = (await repository.findContract(contract.id))!;
 
       expect(loaded.installmentType, InstallmentType.purchase);
@@ -85,12 +168,10 @@ void main() {
 
       await repository.insertAggregate(
         _purchaseContract('first', 'shared-source'),
-        const [],
       );
       await expectLater(
         repository.insertAggregate(
           _purchaseContract('second', 'shared-source'),
-          const [],
         ),
         throwsA(anything),
       );
@@ -118,7 +199,7 @@ void main() {
           feeMinor: 0,
         ),
       );
-      await repository.insertAggregate(contract, const []);
+      await repository.insertAggregate(contract);
       await database
           .into(database.transactions)
           .insert(
@@ -150,17 +231,21 @@ void main() {
   });
 }
 
-InstallmentContract _contract() {
+InstallmentContract _contract({
+  String id = 'missing-contract',
+  List<InstallmentSchedule> schedules = const [],
+}) {
   return InstallmentContract(
-    id: 'missing-contract',
+    id: id,
     liabilityAccountId: 'liability',
     installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 1000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    schedules: schedules,
     stageTerms: InstallmentContractTerms.singleStage(
-      id: 'missing-contract:stage:1',
+      id: '$id:stage:1',
       totalPeriods: 2,
       firstDate: DateTime(2026, 2, 1),
       lastDate: DateTime(2026, 3, 1),
@@ -168,6 +253,20 @@ InstallmentContract _contract() {
       accrual: InterestAccrualMethod.monthly,
       feeMinor: 0,
     ),
+  );
+}
+
+InstallmentSchedule _schedule(String contractId, String id) {
+  return InstallmentSchedule(
+    id: id,
+    contractId: contractId,
+    periodNo: 1,
+    expectedRepaymentDate: DateTime(2026, 2, 1),
+    expectedPrincipal: const Money(minorUnits: 1000),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    status: InstallmentScheduleStatus.pending,
+    createdAt: DateTime(2026, 1, 1),
   );
 }
 

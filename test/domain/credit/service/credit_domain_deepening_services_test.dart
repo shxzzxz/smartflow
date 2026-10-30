@@ -182,9 +182,10 @@ void main() {
     test(
       'allows source cleanup but rejects prepayments and paid schedules',
       () {
+        final pending = _schedule(id: 'pending', principal: 100);
         service.validateDelete(
           repayments: const [],
-          schedules: [_schedule(id: 'pending', principal: 100)],
+          contract: _contract(schedules: [pending]),
         );
 
         final migrationContract = _contract(sourceRefId: null);
@@ -206,14 +207,17 @@ void main() {
         expect(
           () => service.validateDelete(
             repayments: [repayment],
-            schedules: const [],
+            contract: migrationContract,
           ),
           throwsA(isA<BusinessException>()),
         );
 
         final paid = _schedule(id: 'paid', principal: 100)..markPaid();
         expect(
-          () => service.validateDelete(repayments: const [], schedules: [paid]),
+          () => service.validateDelete(
+            repayments: const [],
+            contract: _contract(schedules: [paid]),
+          ),
           throwsA(isA<BusinessException>()),
         );
       },
@@ -264,7 +268,10 @@ BillItem _billItem({
   );
 }
 
-InstallmentContract _contract({String? sourceRefId}) {
+InstallmentContract _contract({
+  String? sourceRefId,
+  List<InstallmentSchedule> schedules = const [],
+}) {
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: 'account',
@@ -274,6 +281,7 @@ InstallmentContract _contract({String? sourceRefId}) {
     borrowingDate: DateTime(2026, 6, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 6, 1),
+    schedules: schedules,
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract:stage:1',
       totalPeriods: 1,
@@ -376,19 +384,10 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> saveContract(InstallmentContract contract) async {}
+  Future<void> insertAggregate(InstallmentContract contract) async {}
 
   @override
-  Future<void> insertAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {}
-
-  @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {}
+  Future<void> saveAggregate(InstallmentContract contract) async {}
 }
 
 class _FakeRepaymentRepository implements RepaymentRepository {

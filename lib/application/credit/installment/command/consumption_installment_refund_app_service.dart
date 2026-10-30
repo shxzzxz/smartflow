@@ -453,10 +453,9 @@ class ConsumptionInstallmentRefundAppServiceImpl
   }) async {
     final contract = await _installments.findContract(contractId);
     if (contract == null) return;
-    final schedules = await _installments.listSchedules(contractId);
     contract.refreshStatusFromPrincipal(
       hasRemainingPrincipal: hasRemainingPrincipal,
     );
-    await _installments.saveAggregate(contract, schedules);
+    await _installments.saveAggregate(contract);
   }
 }

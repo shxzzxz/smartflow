@@ -9,6 +9,7 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
   test('cash installments accept a product and retain configured dates', () {
+    var scheduleId = 0;
     final result = const InstallmentContractOriginationService()
         .originateDisbursement(
           contractId: 'cash-contract',
@@ -27,7 +28,7 @@ void main() {
             ),
           ),
           createdAt: DateTime(2026),
-          newScheduleId: () => 'schedule',
+          newScheduleId: () => 'schedule-${++scheduleId}',
         );
     expect(result.schedules.first.expectedRepaymentDate, DateTime(2026, 2, 1));
     expect(result.schedules.last.expectedRepaymentDate, DateTime(2026, 3, 1));

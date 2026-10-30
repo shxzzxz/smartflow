@@ -217,7 +217,27 @@ class _Fixture {
   }) async {
     final firstDate = DateTime(2026, 7, 25);
     final contractId = ids.newId();
-    await installments.saveContract(
+    final schedules = [
+      for (var index = 0; index < schedulePrincipals.length; index++)
+        InstallmentSchedule(
+          id: ids.newId(),
+          contractId: contractId,
+          periodNo: index + 1,
+          expectedRepaymentDate: DateTime(
+            firstDate.year,
+            firstDate.month + index,
+            firstDate.day,
+          ),
+          expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
+          expectedInterest: index == 0
+              ? const Money(minorUnits: 100)
+              : Money.zero(),
+          expectedFee: Money.zero(),
+          status: credit.InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
+        ),
+    ];
+    await installments.insertAggregate(
       InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
@@ -240,30 +260,9 @@ class _Fixture {
           accrual: credit.InterestAccrualMethod.monthly,
           feeMinor: 0,
         ),
+        schedules: schedules,
       ),
     );
-    await installments
-        .saveAggregate((await installments.findContract(contractId))!, [
-          for (var index = 0; index < schedulePrincipals.length; index++)
-            InstallmentSchedule(
-              id: ids.newId(),
-              contractId: contractId,
-              periodNo: index + 1,
-              expectedRepaymentDate: DateTime(
-                firstDate.year,
-                firstDate.month + index,
-                firstDate.day,
-              ),
-              expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
-              expectedInterest: index == 0
-                  ? const Money(minorUnits: 100)
-                  : Money.zero(),
-              expectedFee: Money.zero(),
-              status: credit.InstallmentScheduleStatus.pending,
-              createdAt: DateTime(2026, 6, 1),
-            ),
-        ]);
-    final schedules = await installments.listSchedules(contractId);
     return (
       contractId: contractId,
       scheduleIds: [for (final schedule in schedules) schedule.id],

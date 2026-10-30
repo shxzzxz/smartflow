@@ -11,13 +11,13 @@ void main() {
   test(
     'contract metrics query loads only contract and planned cashflows',
     () async {
+      final schedules = [
+        _schedule(id: 'one', periodNo: 1, principal: 4000, interest: 100),
+        _schedule(id: 'two', periodNo: 2, principal: 3000, interest: 100),
+        _schedule(id: 'three', periodNo: 3, principal: 3000, interest: 100),
+      ];
       final installments = _FakeInstallmentRepository(
-        contract: _contract(),
-        schedules: [
-          _schedule(id: 'one', periodNo: 1, principal: 4000, interest: 100),
-          _schedule(id: 'two', periodNo: 2, principal: 3000, interest: 100),
-          _schedule(id: 'three', periodNo: 3, principal: 3000, interest: 100),
-        ],
+        contract: _contract(schedules: schedules),
       );
       final query = ContractMetricsQueryImpl(installments: installments);
 
@@ -26,16 +26,15 @@ void main() {
       expect(result.isAvailable, isTrue);
       expect(result.totalRepayment, const Money(minorUnits: 10300));
       expect(installments.requestedContractId, 'contract');
-      expect(installments.requestedSchedulesContractId, 'contract');
+      expect(installments.requestedSchedulesContractId, isNull);
     },
   );
 }
 
 class _FakeInstallmentRepository implements InstallmentRepository {
-  _FakeInstallmentRepository({required this.contract, required this.schedules});
+  _FakeInstallmentRepository({required this.contract});
 
   final InstallmentContract contract;
-  final List<InstallmentSchedule> schedules;
   String? requestedContractId;
   String? requestedSchedulesContractId;
 
@@ -48,14 +47,16 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   @override
   Future<List<InstallmentSchedule>> listSchedules(String contractId) async {
     requestedSchedulesContractId = contractId;
-    return schedules;
+    return contract.schedules;
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-InstallmentContract _contract() {
+InstallmentContract _contract({
+  List<InstallmentSchedule> schedules = const [],
+}) {
   return InstallmentContract(
     id: 'contract',
     liabilityAccountId: 'liability',
@@ -64,6 +65,7 @@ InstallmentContract _contract() {
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    schedules: schedules,
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract:stage:1',
       totalPeriods: 3,

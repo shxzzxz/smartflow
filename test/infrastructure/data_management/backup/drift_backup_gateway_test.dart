@@ -286,7 +286,6 @@ void main() {
             accrual: InterestAccrualMethod.monthly,
           ),
         ),
-        const [],
       );
       await database
           .into(database.repayments)

@@ -2,6 +2,7 @@ import '../../../core/money/money.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/time/date_label.dart';
+import '../valobj/bill_enums.dart';
 import '../valobj/credit_error_code.dart';
 import '../valobj/installment_enums.dart';
 import '../valobj/installment_contract_terms.dart';
@@ -44,12 +45,14 @@ class InstallmentContract {
     required this.createdAt,
     this.note,
     required InstallmentContractTerms stageTerms,
+    List<InstallmentSchedule> schedules = const [],
     List<InstallmentRepricingConfiguration> repricingConfigurations = const [],
     List<InstallmentRepricing> repricings = const [],
     this.interestAdjustments = const [],
   }) : name = name ?? formatCompactDate(borrowingDate),
        _status = status,
        _stageTerms = stageTerms,
+       _schedules = List.unmodifiable(schedules),
        _repricingConfigurations = List.unmodifiable(repricingConfigurations),
        _repricings = List.unmodifiable(repricings) {
     final reference = sourceRefId;
@@ -64,6 +67,7 @@ class InstallmentContract {
         message: '账单分期和消费分期必须关联来源事实',
       );
     }
+    _validateSchedules(_schedules);
   }
 
   final String id;
@@ -87,6 +91,10 @@ class InstallmentContract {
   final List<InstallmentInterestAdjustment> interestAdjustments;
   InstallmentContractTerms _stageTerms;
   InstallmentContractTerms get stageTerms => _stageTerms;
+  List<InstallmentSchedule> _schedules;
+
+  /// This contract's complete repayment plan.
+  List<InstallmentSchedule> get schedules => _schedules;
 
   void reviseStageTerms(InstallmentContractTerms terms) {
     terms.validate();
@@ -134,43 +142,28 @@ class InstallmentContract {
     }
   }
 
-  void markSchedulePaid(
-    InstallmentSchedule schedule, {
-    required List<InstallmentSchedule> schedules,
-  }) {
-    _ensureScheduleBelongsToContract(schedule);
+  void markSchedulePaid(String scheduleId) {
+    final schedule = _requireSchedule(scheduleId);
     schedule.markPaid();
-    refreshStatusFromSchedules(schedules);
+    refreshStatusFromSchedules();
   }
 
-  void skipSchedule(
-    InstallmentSchedule schedule, {
-    required List<InstallmentSchedule> schedules,
-  }) {
+  void skipSchedule(String scheduleId) {
     ensureEditable();
-    _ensureScheduleBelongsToContract(schedule);
+    final schedule = _requireSchedule(scheduleId);
     schedule.skip();
-    refreshStatusFromSchedules(schedules);
+    refreshStatusFromSchedules();
   }
 
-  void restoreSchedule(
-    InstallmentSchedule schedule, {
-    required List<InstallmentSchedule> schedules,
-  }) {
-    _ensureScheduleBelongsToContract(schedule);
+  void restoreSchedule(String scheduleId) {
+    final schedule = _requireSchedule(scheduleId);
     schedule.restore();
-    refreshStatusFromSchedules(schedules);
+    refreshStatusFromSchedules();
   }
 
-  void reviseSchedules({
-    required List<InstallmentSchedule> schedules,
-    required List<InstallmentScheduleRevision> revisions,
-  }) {
-    for (final schedule in schedules) {
-      _ensureScheduleBelongsToContract(schedule);
-    }
+  void reviseSchedules({required List<InstallmentScheduleRevision> revisions}) {
     final byPeriod = {
-      for (final schedule in schedules) schedule.periodNo: schedule,
+      for (final schedule in _schedules) schedule.periodNo: schedule,
     };
     for (final revision in revisions) {
       final target = byPeriod[revision.periodNo];
@@ -202,13 +195,34 @@ class InstallmentContract {
     }
   }
 
-  void refreshStatusFromSchedules(List<InstallmentSchedule> schedules) {
-    for (final schedule in schedules) {
-      _ensureScheduleBelongsToContract(schedule);
+  /// Applies schedule status projections supplied by bill facts.
+  ///
+  /// Schedules outside this aggregate are ignored; callers cannot replace or
+  /// mutate plans that belong to another contract.
+  void applyBillItemStatuses(Map<String, BillItemStatus> statuses) {
+    final scheduleIds = _schedules.map((schedule) => schedule.id).toSet();
+    for (final entry in statuses.entries) {
+      if (!scheduleIds.contains(entry.key)) continue;
+      _requireSchedule(entry.key).applyBillItemStatus(entry.value);
     }
+    refreshStatusFromSchedules();
+  }
+
+  bool reconcileScheduleRepaymentStatus(
+    String scheduleId, {
+    required int allocatedPrincipalMinor,
+    required bool hasAllocation,
+  }) {
+    return _requireSchedule(scheduleId).reconcileRepaymentStatus(
+      allocatedPrincipalMinor: allocatedPrincipalMinor,
+      hasAllocation: hasAllocation,
+    );
+  }
+
+  void refreshStatusFromSchedules() {
     _status = _settlement.projectContractStatus(
       current: _status,
-      scheduleStatuses: schedules.map((schedule) => schedule.status),
+      scheduleStatuses: _schedules.map((schedule) => schedule.status),
     );
   }
 
@@ -219,16 +233,12 @@ class InstallmentContract {
   }
 
   /// 自动计算与人工编辑分别应用，避免自动重算被标记为人工调整。
-  List<InstallmentSchedule> applyPlanChange(
+  void applyPlanChange(
     InstallmentPlanChangeSet change, {
-    required List<InstallmentSchedule> schedules,
     required String Function() newId,
     required DateTime createdAt,
   }) {
-    for (final schedule in schedules) {
-      _ensureScheduleBelongsToContract(schedule);
-    }
-    final current = {for (final row in schedules) row.id: row};
+    final current = {for (final row in _schedules) row.id: row};
     final result = <InstallmentSchedule>[];
     final ownedStages = _stageTerms.stages.map((s) => s.id).toSet();
     final stageIds = {
@@ -264,6 +274,7 @@ class InstallmentContract {
         ),
       );
     }
+    _validateSchedules(result);
     reviseStageTerms(
       InstallmentContractTerms(
         dayCount: change.terms.dayCount,
@@ -277,15 +288,36 @@ class InstallmentContract {
         ],
       ),
     );
-    return result;
+    _schedules = List.unmodifiable(result);
+    refreshStatusFromSchedules();
   }
 
-  void _ensureScheduleBelongsToContract(InstallmentSchedule schedule) {
-    if (schedule.contractId != id) {
-      throw BusinessException(
-        CreditErrorCode.scheduleNotFound,
-        message: 'Schedule does not belong to the contract.',
-      );
+  InstallmentSchedule _requireSchedule(String scheduleId) {
+    for (final schedule in _schedules) {
+      if (schedule.id == scheduleId) return schedule;
+    }
+    throw BusinessException(
+      CreditErrorCode.scheduleNotFound,
+      message: 'Schedule does not belong to the contract.',
+    );
+  }
+
+  void _validateSchedules(List<InstallmentSchedule> schedules) {
+    final ids = <String>{};
+    final periods = <int>{};
+    for (final schedule in schedules) {
+      if (schedule.contractId != id) {
+        throw BusinessException(
+          CreditErrorCode.scheduleNotFound,
+          message: 'Schedule does not belong to the contract.',
+        );
+      }
+      if (!ids.add(schedule.id) || !periods.add(schedule.periodNo)) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '合同还款计划包含重复身份或期次',
+        );
+      }
     }
   }
 

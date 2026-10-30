@@ -637,7 +637,7 @@ class CreditBillGenerationService {
     for (final contract in await _installments.listContractsByLiabilityAccount(
       accountId,
     )) {
-      for (final schedule in await _installments.listSchedules(contract.id)) {
+      for (final schedule in contract.schedules) {
         final expectedTotal =
             schedule.expectedPrincipal.minorUnits +
             schedule.expectedInterest.minorUnits +

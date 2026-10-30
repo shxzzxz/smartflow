@@ -873,11 +873,11 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           principal: 120000,
           schedulePrincipals: [40000, 40000, 40000],
         );
-        final schedules = await fixture.installments.listSchedules(contractId);
+        final contract = (await fixture.installments.findContract(contractId))!;
+        final schedules = contract.schedules;
         schedules[0].markPaid();
-        final contract = await fixture.installments.findContract(contractId);
-        contract!.refreshStatusFromSchedules(schedules);
-        await fixture.installments.saveAggregate(contract, schedules);
+        contract.refreshStatusFromSchedules();
+        await fixture.installments.saveAggregate(contract);
         await fixture.seedBillItems(
           status: credit.BillStatus.billed,
           items: [
@@ -951,8 +951,8 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           principal: 120000,
           schedulePrincipals: [40000, 40000, 40000],
         );
-        final contract = await fixture.installments.findContract(contractId);
-        final schedules = await fixture.installments.listSchedules(contractId);
+        final contract = (await fixture.installments.findContract(contractId))!;
+        final schedules = contract.schedules;
         schedules[0].reviseExpectation(
           expectedPrincipal: const Money(minorUnits: 50000),
           expectedInterest: const Money(minorUnits: 111),
@@ -965,7 +965,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           expectedPrincipal: const Money(minorUnits: 40000),
           expectedInterest: const Money(minorUnits: 333),
         );
-        await fixture.installments.saveAggregate(contract!, schedules);
+        await fixture.installments.saveAggregate(contract);
 
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
@@ -1351,10 +1351,10 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
             ],
           ),
         );
-        schedules[0].markPaid();
-        final contract = await fixture.installments.findContract(contractId);
-        contract!.refreshStatusFromSchedules(schedules);
-        await fixture.installments.saveAggregate(contract, schedules);
+        final contract = (await fixture.installments.findContract(contractId))!;
+        contract.schedules[0].markPaid();
+        contract.refreshStatusFromSchedules();
+        await fixture.installments.saveAggregate(contract);
         final result = await fixture.service.createContractPrepaymentRepayment(
           credit.CreateContractPrepaymentRepaymentCommand(
             contractId: contractId,
@@ -1877,7 +1877,18 @@ class _Fixture {
     required int expectedPrincipal,
   }) async {
     final contractId = ids.newId();
-    await installments.saveContract(
+    final schedule = credit.InstallmentSchedule(
+      id: ids.newId(),
+      contractId: contractId,
+      periodNo: 1,
+      expectedRepaymentDate: DateTime(2026, 6, 25),
+      expectedPrincipal: Money(minorUnits: expectedPrincipal),
+      expectedInterest: Money.zero(),
+      expectedFee: Money.zero(),
+      status: credit.InstallmentScheduleStatus.pending,
+      createdAt: DateTime(2026, 6, 1),
+    );
+    await installments.insertAggregate(
       credit.InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
@@ -1896,23 +1907,9 @@ class _Fixture {
           accrual: credit.InterestAccrualMethod.monthly,
           feeMinor: 0,
         ),
+        schedules: [schedule],
       ),
     );
-    await installments
-        .saveAggregate((await installments.findContract(contractId))!, [
-          credit.InstallmentSchedule(
-            id: ids.newId(),
-            contractId: contractId,
-            periodNo: 1,
-            expectedRepaymentDate: DateTime(2026, 6, 25),
-            expectedPrincipal: Money(minorUnits: expectedPrincipal),
-            expectedInterest: Money.zero(),
-            expectedFee: Money.zero(),
-            status: credit.InstallmentScheduleStatus.pending,
-            createdAt: DateTime(2026, 6, 1),
-          ),
-        ]);
-    final schedule = (await installments.listSchedules(contractId)).single;
     return (contractId: contractId, scheduleId: schedule.id);
   }
 
@@ -1922,7 +1919,25 @@ class _Fixture {
   }) async {
     final firstDate = DateTime(2026, 7, 25);
     final contractId = ids.newId();
-    await installments.saveContract(
+    final schedules = [
+      for (var index = 0; index < schedulePrincipals.length; index++)
+        credit.InstallmentSchedule(
+          id: ids.newId(),
+          contractId: contractId,
+          periodNo: index + 1,
+          expectedRepaymentDate: DateTime(
+            firstDate.year,
+            firstDate.month + index,
+            firstDate.day,
+          ),
+          expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          status: credit.InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 6, 1),
+        ),
+    ];
+    await installments.insertAggregate(
       credit.InstallmentContract(
         id: contractId,
         liabilityAccountId: 'credit-1',
@@ -1945,27 +1960,9 @@ class _Fixture {
           accrual: credit.InterestAccrualMethod.monthly,
           feeMinor: 0,
         ),
+        schedules: schedules,
       ),
     );
-    await installments
-        .saveAggregate((await installments.findContract(contractId))!, [
-          for (var index = 0; index < schedulePrincipals.length; index++)
-            credit.InstallmentSchedule(
-              id: ids.newId(),
-              contractId: contractId,
-              periodNo: index + 1,
-              expectedRepaymentDate: DateTime(
-                firstDate.year,
-                firstDate.month + index,
-                firstDate.day,
-              ),
-              expectedPrincipal: Money(minorUnits: schedulePrincipals[index]),
-              expectedInterest: Money.zero(),
-              expectedFee: Money.zero(),
-              status: credit.InstallmentScheduleStatus.pending,
-              createdAt: DateTime(2026, 6, 1),
-            ),
-        ]);
     return contractId;
   }
 

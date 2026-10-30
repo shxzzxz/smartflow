@@ -53,7 +53,8 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
   Future<List<InstallmentScheduleReadModel>> listSchedules(
     String contractId,
   ) async {
-    final values = await _repository.listSchedules(contractId);
+    final contract = await _repository.findContract(contractId);
+    final values = contract?.schedules ?? const <InstallmentSchedule>[];
     return values.map(_scheduleReadModel).toList();
   }
 
@@ -65,8 +66,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     var sum = 0;
     for (final contract in contracts) {
       if (contract.status != InstallmentContractStatus.active) continue;
-      final schedules = await _repository.listSchedules(contract.id);
-      sum += schedules
+      sum += contract.schedules
           .where(
             (schedule) =>
                 schedule.status == InstallmentScheduleStatus.pending ||

@@ -106,10 +106,6 @@ class DriftInstallmentRepository
     return row == null ? null : _mapContract(row);
   }
 
-  @override
-  Future<void> saveContract(InstallmentContract contract) =>
-      _database.transaction(() => _insertContract(contract));
-
   Future<void> _insertContract(InstallmentContract contract) async {
     final stageIds = {
       for (final stage in contract.stageTerms.stages)
@@ -193,21 +189,15 @@ class DriftInstallmentRepository
   }
 
   @override
-  Future<void> insertAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) {
+  Future<void> insertAggregate(InstallmentContract contract) {
     return _database.transaction(() async {
-      await saveContract(contract);
-      await _replaceSchedules(contract.id, schedules);
+      await _insertContract(contract);
+      await _replaceSchedules(contract.id, contract.schedules);
     });
   }
 
   @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) {
+  Future<void> saveAggregate(InstallmentContract contract) {
     return _database.transaction(() async {
       final updated =
           await (_database.update(
@@ -229,7 +219,7 @@ class DriftInstallmentRepository
         throw BusinessException(CreditErrorCode.contractPersistenceConflict);
       }
       await _saveStages(contract);
-      await _replaceSchedules(contract.id, schedules);
+      await _replaceSchedules(contract.id, contract.schedules);
     });
   }
 
@@ -403,6 +393,11 @@ class DriftInstallmentRepository
         message: '合同缺少阶段配置，请检查迁移数据',
       );
     }
+    final schedules =
+        await (_database.select(_database.installmentSchedules)
+              ..where((schedule) => schedule.contractId.equals(row.id))
+              ..orderBy([(schedule) => OrderingTerm.asc(schedule.periodNo)]))
+            .get();
     return InstallmentContract(
       id: row.id,
       liabilityAccountId: row.liabilityAccountId,
@@ -455,6 +450,7 @@ class DriftInstallmentRepository
         dayCount: row.dayCount,
         rounding: row.rounding,
       ),
+      schedules: schedules.map(_mapSchedule).toList(),
     );
   }
 

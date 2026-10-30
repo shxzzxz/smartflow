@@ -21,17 +21,11 @@ abstract interface class InstallmentRepository {
     String transactionId,
   );
 
-  Future<void> saveContract(InstallmentContract contract);
+  /// 持久化新建的一笔分期及其完整还款计划。
+  Future<void> insertAggregate(InstallmentContract contract);
 
-  Future<void> insertAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  );
-
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  );
+  /// 持久化合同、阶段配置和合同拥有的完整还款计划。
+  Future<void> saveAggregate(InstallmentContract contract);
 
   /// 物理删除合同及 schedules。来源还款、账单投影和交易由 application 清理。
   Future<void> deleteContract(String contractId);

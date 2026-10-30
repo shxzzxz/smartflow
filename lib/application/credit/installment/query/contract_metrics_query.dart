@@ -27,12 +27,11 @@ class ContractMetricsQueryImpl implements ContractMetricsQuery {
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
-    final schedules = await _installments.listSchedules(contractId);
     final result = _calculator.compute(
       principal: contract.principal,
       borrowingDate: contract.borrowingDate,
       plan: [
-        for (final schedule in schedules)
+        for (final schedule in contract.schedules)
           InstallmentSchedulePlanEntry(
             periodNo: schedule.periodNo,
             expectedRepaymentDate: schedule.expectedRepaymentDate,

@@ -345,7 +345,42 @@ void main() {
         addTearDown(fixture.close);
         final account = await fixture.createLoanAccount();
         final contractId = fixture.ids.newId();
-        await fixture.installmentRepository.saveContract(
+        final schedules = [
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 1,
+            expectedRepaymentDate: DateTime(2026, 7, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: const Money(minorUnits: 1000),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 2,
+            expectedRepaymentDate: DateTime(2026, 8, 1),
+            expectedPrincipal: const Money(minorUnits: 0),
+            expectedInterest: const Money(minorUnits: 0),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+          InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 3,
+            expectedRepaymentDate: DateTime(2026, 9, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: const Money(minorUnits: 500),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          ),
+        ];
+        await fixture.installmentRepository.insertAggregate(
           InstallmentContract(
             id: contractId,
             liabilityAccountId: account.id,
@@ -364,55 +399,16 @@ void main() {
               accrual: InterestAccrualMethod.daily,
               feeMinor: 0,
             ),
+            schedules: schedules,
           ),
         );
-        await fixture.installmentRepository.saveAggregate(
-          (await fixture.installmentRepository.findContract(contractId))!,
-          [
-            InstallmentSchedule(
-              id: fixture.ids.newId(),
-              contractId: contractId,
-              periodNo: 1,
-              expectedRepaymentDate: DateTime(2026, 7, 1),
-              expectedPrincipal: const Money(minorUnits: 60000),
-              expectedInterest: const Money(minorUnits: 1000),
-              expectedFee: Money.zero(),
-              status: InstallmentScheduleStatus.pending,
-              createdAt: DateTime(2026, 6, 1),
-            ),
-            InstallmentSchedule(
-              id: fixture.ids.newId(),
-              contractId: contractId,
-              periodNo: 2,
-              expectedRepaymentDate: DateTime(2026, 8, 1),
-              expectedPrincipal: const Money(minorUnits: 0),
-              expectedInterest: const Money(minorUnits: 0),
-              expectedFee: Money.zero(),
-              status: InstallmentScheduleStatus.pending,
-              createdAt: DateTime(2026, 6, 1),
-            ),
-            InstallmentSchedule(
-              id: fixture.ids.newId(),
-              contractId: contractId,
-              periodNo: 3,
-              expectedRepaymentDate: DateTime(2026, 9, 1),
-              expectedPrincipal: const Money(minorUnits: 60000),
-              expectedInterest: const Money(minorUnits: 500),
-              expectedFee: Money.zero(),
-              status: InstallmentScheduleStatus.pending,
-              createdAt: DateTime(2026, 6, 1),
-            ),
-          ],
+        final aggregate = (await fixture.installmentRepository.findContract(
+          contractId,
+        ))!;
+        aggregate.skipSchedule(
+          schedules.singleWhere((schedule) => schedule.periodNo == 2).id,
         );
-        final aggregateSchedules = await fixture.installmentRepository
-            .listSchedules(contractId);
-        aggregateSchedules
-            .singleWhere((schedule) => schedule.periodNo == 2)
-            .skip();
-        await fixture.installmentRepository.saveAggregate(
-          (await fixture.installmentRepository.findContract(contractId))!,
-          aggregateSchedules,
-        );
+        await fixture.installmentRepository.saveAggregate(aggregate);
 
         await fixture.generation.generateDueBills(now: DateTime(2026, 8, 15));
 
@@ -479,14 +475,9 @@ void main() {
           repaymentDate: DateTime(2026, 7, 1),
         );
         await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
-        final schedules = await fixture.installmentRepository.listSchedules(
-          aggregate.contract.id,
-        );
-        schedules.first.markPending();
-        await fixture.installmentRepository.saveAggregate(
-          aggregate.contract,
-          schedules,
-        );
+        aggregate.contract.schedules.first.markPending();
+        aggregate.contract.refreshStatusFromSchedules();
+        await fixture.installmentRepository.saveAggregate(aggregate.contract);
 
         await fixture.generation.refreshDisplayedBillsForAccount(
           accountId: aggregate.account.id,
@@ -516,7 +507,18 @@ void main() {
           addTearDown(fixture.close);
           final account = await fixture.createLoanAccount();
           final contractId = fixture.ids.newId();
-          await fixture.installmentRepository.saveContract(
+          final schedule = InstallmentSchedule(
+            id: fixture.ids.newId(),
+            contractId: contractId,
+            periodNo: 1,
+            expectedRepaymentDate: DateTime(2026, 7, 1),
+            expectedPrincipal: const Money(minorUnits: 60000),
+            expectedInterest: Money.zero(),
+            expectedFee: Money.zero(),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: DateTime(2026, 6, 1),
+          );
+          await fixture.installmentRepository.insertAggregate(
             InstallmentContract(
               id: contractId,
               liabilityAccountId: account.id,
@@ -535,27 +537,9 @@ void main() {
                 accrual: InterestAccrualMethod.daily,
                 feeMinor: 0,
               ),
+              schedules: [schedule],
             ),
           );
-          await fixture.installmentRepository.saveAggregate(
-            (await fixture.installmentRepository.findContract(contractId))!,
-            [
-              InstallmentSchedule(
-                id: fixture.ids.newId(),
-                contractId: contractId,
-                periodNo: 1,
-                expectedRepaymentDate: DateTime(2026, 7, 1),
-                expectedPrincipal: const Money(minorUnits: 60000),
-                expectedInterest: Money.zero(),
-                expectedFee: Money.zero(),
-                status: InstallmentScheduleStatus.pending,
-                createdAt: DateTime(2026, 6, 1),
-              ),
-            ],
-          );
-          final schedule = (await fixture.installmentRepository.listSchedules(
-            contractId,
-          )).single;
 
           await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
           final july = (await fixture.billRepository.listBillsByAccount(
@@ -585,16 +569,10 @@ void main() {
           final contract = await fixture.installmentRepository.findContract(
             schedule.contractId,
           );
-          final schedules = await fixture.installmentRepository.listSchedules(
-            schedule.contractId,
-          );
-          schedules
+          contract!.schedules
               .singleWhere((candidate) => candidate.id == schedule.id)
               .reviseExpectation(expectedRepaymentDate: DateTime(2026, 8, 1));
-          await fixture.installmentRepository.saveAggregate(
-            contract!,
-            schedules,
-          );
+          await fixture.installmentRepository.saveAggregate(contract);
 
           if (scenario.refreshFirst) {
             final before = await fixture.database
@@ -690,8 +668,20 @@ BEGIN SELECT RAISE(ABORT, 'bill refresh failed'); END
       final fixture = _Fixture();
       addTearDown(fixture.close);
       final account = await fixture.createLoanAccount();
-      final contract = InstallmentContract(
+      final contractId = fixture.ids.newId();
+      final schedule = InstallmentSchedule(
         id: fixture.ids.newId(),
+        contractId: contractId,
+        periodNo: 1,
+        expectedRepaymentDate: DateTime(2026, 7, 1),
+        expectedPrincipal: const Money(minorUnits: 60000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        status: InstallmentScheduleStatus.pending,
+        createdAt: DateTime(2026, 6, 1),
+      );
+      final contract = InstallmentContract(
+        id: contractId,
         liabilityAccountId: account.id,
         installmentType: InstallmentType.disbursement,
         sourceRefId: 'tx-borrowing',
@@ -708,19 +698,9 @@ BEGIN SELECT RAISE(ABORT, 'bill refresh failed'); END
           accrual: InterestAccrualMethod.daily,
           feeMinor: 0,
         ),
+        schedules: [schedule],
       );
-      final schedule = InstallmentSchedule(
-        id: fixture.ids.newId(),
-        contractId: contract.id,
-        periodNo: 1,
-        expectedRepaymentDate: DateTime(2026, 7, 1),
-        expectedPrincipal: const Money(minorUnits: 60000),
-        expectedInterest: Money.zero(),
-        expectedFee: Money.zero(),
-        status: InstallmentScheduleStatus.pending,
-        createdAt: DateTime(2026, 6, 1),
-      );
-      await fixture.installmentRepository.insertAggregate(contract, [schedule]);
+      await fixture.installmentRepository.insertAggregate(contract);
       await fixture.generation.generateDueBills(now: DateTime(2026, 7, 15));
       final bill = (await fixture.billRepository.listBillsByAccount(
         account.id,
@@ -760,17 +740,10 @@ BEGIN SELECT RAISE(ABORT, 'bill refresh failed'); END
         InstallmentContractStatus.active,
       );
 
-      final schedules = await fixture.installmentRepository.listSchedules(
-        contract.id,
-      );
-      schedules.single.markPaid();
       final persistedContract = (await fixture.installmentRepository
           .findContract(contract.id))!;
-      persistedContract.refreshStatusFromSchedules(schedules);
-      await fixture.installmentRepository.saveAggregate(
-        persistedContract,
-        schedules,
-      );
+      persistedContract.markSchedulePaid(schedule.id);
+      await fixture.installmentRepository.saveAggregate(persistedContract);
       await fixture.repaymentRepository.deleteRepayment(repayment.id);
       await fixture.generation.refreshBill(bill.id);
 
@@ -1008,8 +981,20 @@ class _Fixture {
   >
   createInterestOnlyInstallment({required DateTime repaymentDate}) async {
     final account = await createLoanAccount();
-    final contract = InstallmentContract(
+    final contractId = ids.newId();
+    final schedule = InstallmentSchedule(
       id: ids.newId(),
+      contractId: contractId,
+      periodNo: 1,
+      expectedRepaymentDate: repaymentDate,
+      expectedPrincipal: Money.zero(),
+      expectedInterest: const Money(minorUnits: 1000),
+      expectedFee: Money.zero(),
+      status: InstallmentScheduleStatus.pending,
+      createdAt: DateTime(2026, 5, 1),
+    );
+    final contract = InstallmentContract(
+      id: contractId,
       liabilityAccountId: account.id,
       installmentType: InstallmentType.disbursement,
       sourceRefId: 'tx-borrowing',
@@ -1030,32 +1015,26 @@ class _Fixture {
         accrual: InterestAccrualMethod.daily,
         feeMinor: 0,
       ),
+      schedules: [
+        schedule,
+        InstallmentSchedule(
+          id: ids.newId(),
+          contractId: contractId,
+          periodNo: 2,
+          expectedRepaymentDate: DateTime(
+            repaymentDate.year,
+            repaymentDate.month + 1,
+            repaymentDate.day,
+          ),
+          expectedPrincipal: const Money(minorUnits: 60000),
+          expectedInterest: const Money(minorUnits: 1000),
+          expectedFee: Money.zero(),
+          status: InstallmentScheduleStatus.pending,
+          createdAt: DateTime(2026, 5, 1),
+        ),
+      ],
     );
-    final schedule = InstallmentSchedule(
-      id: ids.newId(),
-      contractId: contract.id,
-      periodNo: 1,
-      expectedRepaymentDate: repaymentDate,
-      expectedPrincipal: Money.zero(),
-      expectedInterest: const Money(minorUnits: 1000),
-      expectedFee: Money.zero(),
-      status: InstallmentScheduleStatus.pending,
-      createdAt: DateTime(2026, 5, 1),
-    );
-    await installmentRepository.insertAggregate(contract, [
-      schedule,
-      InstallmentSchedule(
-        id: ids.newId(),
-        contractId: contract.id,
-        periodNo: 2,
-        expectedRepaymentDate: contract.stageTerms.lastDate,
-        expectedPrincipal: contract.principal,
-        expectedInterest: const Money(minorUnits: 1000),
-        expectedFee: Money.zero(),
-        status: InstallmentScheduleStatus.pending,
-        createdAt: DateTime(2026, 5, 1),
-      ),
-    ]);
+    await installmentRepository.insertAggregate(contract);
     return (account: account, contract: contract, schedule: schedule);
   }
 

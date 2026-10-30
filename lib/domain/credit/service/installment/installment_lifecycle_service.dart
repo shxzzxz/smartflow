@@ -76,18 +76,9 @@ class InstallmentLifecycleService {
         );
   }
 
-  InstallmentContractStatus projectContractStatus({
-    required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
-  }) {
-    final current = contract.status;
-    contract.refreshStatusFromSchedules(schedules);
-    return contract.status == current ? current : contract.status;
-  }
-
   void validateDelete({
     required List<Repayment> repayments,
-    required List<InstallmentSchedule> schedules,
+    required InstallmentContract contract,
   }) {
     if (repayments.isNotEmpty) {
       throw BusinessException(
@@ -95,7 +86,7 @@ class InstallmentLifecycleService {
         message: 'Contracts with prepayments cannot be deleted directly.',
       );
     }
-    final hasSettledSchedule = schedules.any(
+    final hasSettledSchedule = contract.schedules.any(
       (schedule) =>
           schedule.status == InstallmentScheduleStatus.partiallyPaid ||
           schedule.status == InstallmentScheduleStatus.paid,
@@ -107,5 +98,4 @@ class InstallmentLifecycleService {
       );
     }
   }
-
 }

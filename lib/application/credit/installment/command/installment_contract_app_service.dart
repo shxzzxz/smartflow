@@ -212,10 +212,7 @@ class InstallmentContractAppServiceImpl
         createdAt: DateTime.now(),
         newScheduleId: _idGenerator.newId,
       );
-      await _repository.insertAggregate(
-        aggregate.contract,
-        aggregate.schedules,
-      );
+      await _repository.insertAggregate(aggregate.contract);
       return CreateContractResult(
         contractId: contractId,
         purchaseTransactionId: purchase.transactionId,
@@ -269,10 +266,7 @@ class InstallmentContractAppServiceImpl
         createdAt: now,
         newScheduleId: _idGenerator.newId,
       );
-      await _repository.insertAggregate(
-        aggregate.contract,
-        aggregate.schedules,
-      );
+      await _repository.insertAggregate(aggregate.contract);
       if (borrowing != null) {
         await _ledger.updateOwnership(
           transactionId: borrowing.transactionId,
@@ -294,8 +288,7 @@ class InstallmentContractAppServiceImpl
             (throw BusinessException(CreditErrorCode.contractNotFound));
         contract.reviseDetails(name: command.name, note: command.note);
         await _synchronizeBorrowing(contract, command);
-        final schedules = await _repository.listSchedules(command.contractId);
-        await _repository.saveAggregate(contract, schedules);
+        await _repository.saveAggregate(contract);
       });
 
   Future<void> _synchronizeBorrowing(
@@ -345,7 +338,6 @@ class InstallmentContractAppServiceImpl
       RepaymentTargetType.contract,
       command.contractId,
     );
-    final schedules = await _repository.listSchedules(command.contractId);
     if (contract.installmentType == InstallmentType.purchase) {
       final sourceTransactionId = contract.sourceRefId;
       final source = sourceTransactionId == null
@@ -359,7 +351,7 @@ class InstallmentContractAppServiceImpl
         );
       }
     }
-    _lifecycle.validateDelete(repayments: repayments, schedules: schedules);
+    _lifecycle.validateDelete(repayments: repayments, contract: contract);
 
     return _runner.run<void>(() async {
       final sourceRepaymentId =

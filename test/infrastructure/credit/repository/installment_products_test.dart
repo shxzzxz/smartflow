@@ -108,7 +108,7 @@ void main() {
         isEmpty,
       );
       final loan = _loan();
-      await contracts.insertAggregate(loan.contract, loan.schedules);
+      await contracts.insertAggregate(loan.contract);
       await db.customStatement("DELETE FROM installment_stage_configs");
       await expectLater(
         contracts.findContract('loan'),
@@ -183,7 +183,7 @@ void main() {
       await products.save(_product());
       final loan = _loan();
       loan.contract.reviseDetails(name: '保留的合同名称');
-      await contracts.insertAggregate(loan.contract, loan.schedules);
+      await contracts.insertAggregate(loan.contract);
       await products.save(
         _product(
           name: '新版产品',
@@ -255,7 +255,7 @@ void main() {
     () async {
       await products.save(_product());
       final loan = _loan();
-      await contracts.insertAggregate(loan.contract, loan.schedules);
+      await contracts.insertAggregate(loan.contract);
       final service = InstallmentProductAppServiceImpl(
         repository: products,
         runner: DriftTransactionRunner(db),

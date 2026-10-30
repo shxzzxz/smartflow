@@ -319,7 +319,6 @@ void main() {
       );
       await fixture.installmentRepository.insertAggregate(
         _contract(account.id),
-        const [],
       );
       await fixture.accountAppService.archiveAccount(
         ArchiveAccountCommand(id: account.id),

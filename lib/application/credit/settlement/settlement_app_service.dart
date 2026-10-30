@@ -51,15 +51,8 @@ class SettlementAppService {
     for (final contractId in touchedContractIds) {
       final contract = await _installments.findContract(contractId);
       if (contract == null) continue;
-      final schedules = await _installments.listSchedules(contractId);
-      for (final schedule in schedules) {
-        final billItemStatus = scheduleStatuses[schedule.id];
-        if (billItemStatus != null) {
-          schedule.applyBillItemStatus(billItemStatus);
-        }
-      }
-      contract.refreshStatusFromSchedules(schedules);
-      await _installments.saveAggregate(contract, schedules);
+      contract.applyBillItemStatuses(scheduleStatuses);
+      await _installments.saveAggregate(contract);
     }
   }
 }

@@ -186,7 +186,7 @@ void main() {
             createdAt: day(8, 8),
             newScheduleId: f.ids.newId,
           );
-      await f.installments.insertAggregate(other.contract, other.schedules);
+      await f.installments.insertAggregate(other.contract);
       for (final stageId in ['missing', 'stage']) {
         await expectLater(
           f.repricing.addConfiguration(
@@ -918,14 +918,14 @@ void main() {
     () async {
       await f.seed(method: InstallmentRepaymentMethod.custom);
       final contract = (await f.installments.findContract('loan'))!;
-      final rows = await f.installments.listSchedules('loan');
+      final rows = contract.schedules;
       for (final row in rows) {
         row.reviseExpectation(
           expectedPrincipal: const Money(minorUnits: 12345),
           expectedInterest: const Money(minorUnits: 789),
         );
       }
-      await f.installments.saveAggregate(contract, rows);
+      await f.installments.saveAggregate(contract);
       await f.prepay(day(8, 20), 2000000);
       await f.plans.applyAutomaticChange(
         'loan',
@@ -1019,14 +1019,14 @@ void main() {
     () async {
       await f.seed(method: InstallmentRepaymentMethod.custom);
       final contract = (await f.installments.findContract('loan'))!;
-      final rows = await f.installments.listSchedules('loan');
+      final rows = contract.schedules;
       for (final row in rows) {
         row.reviseExpectation(
           expectedPrincipal: Money(minorUnits: row.periodNo * 100000),
           expectedInterest: Money(minorUnits: row.periodNo * 123),
         );
       }
-      await f.installments.saveAggregate(contract, rows);
+      await f.installments.saveAggregate(contract);
       final request = RecalculateFromTerms(
         InstallmentContractTerms(
           stages: [
@@ -1299,7 +1299,7 @@ class _Fixture {
           createdAt: day(8, 8),
           newScheduleId: ids.newId,
         );
-    await installments.insertAggregate(aggregate.contract, aggregate.schedules);
+    await installments.insertAggregate(aggregate.contract);
   }
 
   Future<void> prepay(DateTime date, int amount) => repayments.saveRepayment(

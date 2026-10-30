@@ -1144,6 +1144,10 @@ class _FakeInstallmentRepository implements InstallmentRepository {
 
   void putSchedules(String contractId, List<InstallmentSchedule> schedules) {
     _schedules[contractId] = [...schedules];
+    final contract = contracts[contractId];
+    if (contract != null) {
+      contracts[contractId] = _copyWithSchedules(contract, schedules);
+    }
   }
 
   List<InstallmentSchedule> schedulesFor(String contractId) {
@@ -1202,32 +1206,44 @@ class _FakeInstallmentRepository implements InstallmentRepository {
   }
 
   @override
-  Future<void> saveContract(InstallmentContract contract) async {
+  Future<void> insertAggregate(InstallmentContract contract) async {
     contracts[contract.id] = contract;
+    _schedules[contract.id] = [...contract.schedules];
   }
 
   @override
-  Future<void> insertAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
+  Future<void> saveAggregate(InstallmentContract contract) async {
     contracts[contract.id] = contract;
-    _schedules[contract.id] = [...schedules];
-  }
-
-  @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
-    contracts[contract.id] = contract;
-    _schedules[contract.id] = [...schedules];
+    _schedules[contract.id] = [...contract.schedules];
   }
 
   @override
   Future<void> deleteContract(String contractId) async {
     contracts.remove(contractId);
     _schedules.remove(contractId);
+  }
+
+  InstallmentContract _copyWithSchedules(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
+  ) {
+    return InstallmentContract(
+      id: contract.id,
+      name: contract.name,
+      liabilityAccountId: contract.liabilityAccountId,
+      installmentType: contract.installmentType,
+      sourceRefId: contract.sourceRefId,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      status: contract.status,
+      note: contract.note,
+      createdAt: contract.createdAt,
+      stageTerms: contract.stageTerms,
+      schedules: schedules,
+      repricingConfigurations: contract.repricingConfigurations,
+      repricings: contract.repricings,
+      interestAdjustments: contract.interestAdjustments,
+    );
   }
 }
 

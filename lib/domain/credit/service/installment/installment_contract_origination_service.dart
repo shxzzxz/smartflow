@@ -28,13 +28,10 @@ class InstallmentOriginationTerms {
 }
 
 class InstallmentOriginationResult {
-  const InstallmentOriginationResult({
-    required this.contract,
-    required this.schedules,
-  });
+  const InstallmentOriginationResult({required this.contract});
 
   final InstallmentContract contract;
-  final List<InstallmentSchedule> schedules;
+  List<InstallmentSchedule> get schedules => contract.schedules;
 }
 
 class InstallmentContractOriginationService {
@@ -139,6 +136,13 @@ class InstallmentContractOriginationService {
       for (final entry in plan.entries)
         entry.periodNo: stageTerms.stages[entry.stageIndex].id,
     };
+    final schedules = _lifecycle.schedulesFromEntries(
+      contractId: contractId,
+      entries: plan.entries,
+      createdAt: createdAt,
+      newId: newScheduleId,
+      stageIdsByPeriod: stageIdsByPeriod,
+    );
     final contract = InstallmentContract(
       id: contractId,
       name: trimToNull(terms.name),
@@ -151,16 +155,8 @@ class InstallmentContractOriginationService {
       note: terms.note,
       createdAt: createdAt,
       stageTerms: stageTerms,
+      schedules: schedules,
     );
-    return InstallmentOriginationResult(
-      contract: contract,
-      schedules: _lifecycle.schedulesFromEntries(
-        contractId: contractId,
-        entries: plan.entries,
-        createdAt: createdAt,
-        newId: newScheduleId,
-        stageIdsByPeriod: stageIdsByPeriod,
-      ),
-    );
+    return InstallmentOriginationResult(contract: contract);
   }
 }

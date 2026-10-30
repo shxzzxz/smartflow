@@ -353,9 +353,9 @@ void main() {
         _command(10000, 12000),
       );
       final original = (await repository.findContract(created.contractId))!;
-      final rows = await repository.listSchedules(original.id);
-      rows.first.markPaid();
-      await repository.saveAggregate(original, rows);
+      original.schedules.first.markPaid();
+      original.refreshStatusFromSchedules();
+      await repository.saveAggregate(original);
       final changed = InstallmentContractTerms(
         stages: [
           InstallmentContractStage(
@@ -386,7 +386,7 @@ void main() {
         throwsA(isA<Exception>()),
       );
       final after = await repository.listSchedules(original.id);
-      expect(after.first.id, rows.first.id);
+      expect(after.first.id, original.schedules.first.id);
       expect(after.first.status, InstallmentScheduleStatus.paid);
       expect(
         (await repository.findContract(
@@ -409,7 +409,10 @@ void main() {
       ))!.stageTerms.stages.single.id;
       expect(savedStageId, isNot(original.stageTerms.stages.single.id));
       expect(rebuilt.map((row) => row.stageId), everyElement(savedStageId));
-      expect(rebuilt.first.expectedPrincipal, rows.first.expectedPrincipal);
+      expect(
+        rebuilt.first.expectedPrincipal,
+        original.schedules.first.expectedPrincipal,
+      );
       expect(rebuilt.first.status, InstallmentScheduleStatus.pending);
     },
   );

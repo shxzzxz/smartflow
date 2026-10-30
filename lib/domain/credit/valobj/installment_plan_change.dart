@@ -17,13 +17,15 @@ class InstallmentPlanContext {
 
   factory InstallmentPlanContext.fromContract({
     required InstallmentContract contract,
-    required List<InstallmentSchedule> schedules,
     InstallmentPlanOperations operations = const InstallmentPlanOperations(),
   }) => InstallmentPlanContext(
     terms: contract.stageTerms,
     principal: contract.principal,
     borrowingDate: contract.borrowingDate,
-    rows: [for (final row in schedules) InstallmentPlanRow.fromSchedule(row)],
+    rows: [
+      for (final row in contract.schedules)
+        InstallmentPlanRow.fromSchedule(row),
+    ],
     operations: operations,
   );
 

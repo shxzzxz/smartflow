@@ -111,6 +111,25 @@ void main() {
       );
     });
 
+    test('contract rejects schedules owned by another contract', () {
+      final foreign = _schedule(
+        id: 'foreign',
+        contractId: 'another-contract',
+        status: InstallmentScheduleStatus.pending,
+      );
+
+      expect(
+        () => _contract(schedules: [foreign]),
+        throwsA(
+          isA<BusinessException>().having(
+            (exception) => exception.code,
+            'code',
+            CreditErrorCode.scheduleNotFound.code,
+          ),
+        ),
+      );
+    });
+
     test('invalid term revision is rejected without partial mutation', () {
       final contract = _contract();
 
@@ -206,15 +225,14 @@ void main() {
     test(
       'schedule revisions reject the whole batch when a period is missing',
       () {
-        final contract = _contract();
         final schedules = [
           _schedule(id: 's1', status: InstallmentScheduleStatus.pending),
           _schedule(id: 's2', status: InstallmentScheduleStatus.skipped),
         ];
+        final contract = _contract(schedules: schedules);
 
         expect(
           () => contract.reviseSchedules(
-            schedules: schedules,
             revisions: const [
               InstallmentScheduleRevision(
                 periodNo: 1,
@@ -239,23 +257,38 @@ void main() {
     );
 
     test('schedule status changes project contract status', () {
-      final contract = _contract();
       final schedules = [
         _schedule(id: 's1', status: InstallmentScheduleStatus.pending),
         _schedule(id: 's2', status: InstallmentScheduleStatus.skipped),
       ];
+      final contract = _contract(schedules: schedules);
 
-      contract.markSchedulePaid(schedules.first, schedules: schedules);
+      contract.markSchedulePaid(schedules.first.id);
 
       expect(schedules.first.status, InstallmentScheduleStatus.paid);
       expect(contract.status, InstallmentContractStatus.settled);
 
-      schedules.last.restore();
-      contract.refreshStatusFromSchedules(schedules);
+      contract.restoreSchedule(schedules.last.id);
 
       expect(schedules.last.status, InstallmentScheduleStatus.pending);
       expect(contract.status, InstallmentContractStatus.active);
     });
+
+    test(
+      'bill item statuses project through the owned schedule collection',
+      () {
+        final schedules = [
+          _schedule(id: 's1', status: InstallmentScheduleStatus.pending),
+          _schedule(id: 's2', status: InstallmentScheduleStatus.skipped),
+        ];
+        final contract = _contract(schedules: schedules);
+
+        contract.applyBillItemStatuses({'s1': BillItemStatus.paid});
+
+        expect(contract.status, InstallmentContractStatus.settled);
+        expect(contract.schedules.first.status, InstallmentScheduleStatus.paid);
+      },
+    );
   });
 }
 
@@ -287,6 +320,7 @@ InstallmentContract _contract({
   InterestRatePeriod? interestRatePeriod,
   int? interestRatePpm,
   String? note,
+  List<InstallmentSchedule> schedules = const [],
 }) {
   return InstallmentContract(
     id: 'contract',
@@ -298,6 +332,7 @@ InstallmentContract _contract({
     status: status,
     note: note,
     createdAt: DateTime(2026, 1, 1),
+    schedules: schedules,
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract:stage:1',
       totalPeriods: 2,
@@ -315,11 +350,13 @@ InstallmentContract _contract({
 InstallmentSchedule _schedule({
   required String id,
   required InstallmentScheduleStatus status,
+  String contractId = 'contract',
+  int? periodNo,
 }) {
   return InstallmentSchedule(
     id: id,
-    contractId: 'contract',
-    periodNo: id == 's1' ? 1 : 2,
+    contractId: contractId,
+    periodNo: periodNo ?? (id == 's1' ? 1 : 2),
     expectedRepaymentDate: DateTime(2026, id == 's1' ? 2 : 3, 1),
     expectedPrincipal: const Money(minorUnits: 500),
     expectedInterest: Money.zero(),

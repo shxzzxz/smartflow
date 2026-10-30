@@ -474,10 +474,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
       );
       await _repayments.saveRepayment(repayment);
       await _repaymentSettlement.refreshBillStatuses(bill, allocations);
-      await _installments.insertAggregate(
-        aggregate.contract,
-        aggregate.schedules,
-      );
+      await _installments.insertAggregate(aggregate.contract);
       return CreateRepaymentResult(
         repaymentId: repaymentId,
         contractId: contractId,
@@ -943,8 +940,7 @@ class RepaymentAppServiceImpl implements RepaymentAppService {
     var sum = 0;
     for (final contract in contracts) {
       if (contract.status != InstallmentContractStatus.active) continue;
-      final schedules = await _installments.listSchedules(contract.id);
-      sum += schedules
+      sum += contract.schedules
           .where(
             (schedule) => schedule.status == InstallmentScheduleStatus.pending,
           )

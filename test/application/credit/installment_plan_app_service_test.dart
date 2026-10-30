@@ -47,7 +47,7 @@ void main() {
             stageTerms: _terms(),
           ),
         );
-    await installments.insertAggregate(aggregate.contract, aggregate.schedules);
+    await installments.insertAggregate(aggregate.contract);
   });
   tearDown(() => db.close());
 
@@ -86,7 +86,7 @@ void main() {
         final request = RecalculateFromTerms(_terms());
         final preview = await service.previewChange('loan', request);
         final contract = (await installments.findContract('loan'))!;
-        final rows = await installments.listSchedules('loan');
+        final rows = contract.schedules;
         switch (mutation) {
           case 'amount':
             rows.first.reviseExpectation(
@@ -101,7 +101,7 @@ void main() {
           case 'request':
             break;
         }
-        await installments.saveAggregate(contract, rows);
+        await installments.saveAggregate(contract);
         await expectLater(
           service.confirmChange(
             'loan',
@@ -144,7 +144,7 @@ void main() {
       expect(await installments.listSchedules('loan'), hasLength(3));
       final contract = (await installments.findContract('loan'))!
         ..reviseDetails(name: '新名称');
-      await installments.saveAggregate(contract, before);
+      await installments.saveAggregate(contract);
       await service.confirmChange('loan', request, token: preview.token);
       final saved = await installments.listSchedules('loan');
       expect(saved.take(3).map((r) => r.id), before.map((r) => r.id));
@@ -225,14 +225,14 @@ void main() {
     'terms rebuild replaces manual expectations across all statuses and repairs states',
     () async {
       final contract = (await installments.findContract('loan'))!;
-      final rows = await installments.listSchedules('loan');
+      final rows = contract.schedules;
       rows.first.manuallyAdjusted = true;
       rows.first.markPaid();
       rows.last.manuallyAdjusted = true;
       rows.last.reviseExpectation(
         expectedInterest: const Money(minorUnits: 99),
       );
-      await installments.saveAggregate(contract, rows);
+      await installments.saveAggregate(contract);
       final request = RecalculateFromTerms(_terms());
       await expectLater(
         service.applyAutomaticChange('loan', request),

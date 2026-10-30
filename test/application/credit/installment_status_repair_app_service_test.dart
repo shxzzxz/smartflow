@@ -23,20 +23,21 @@ void main() {
           final db = createTestDatabase();
           addTearDown(db.close);
           final installments = DriftInstallmentRepository(db);
-          final contract = _contract(
-            id: 'repair-transaction',
-            status: InstallmentContractStatus.settled,
-          );
           final schedules = [
             for (var period = 1; period <= 2; period++)
               _schedule(
                 id: 'repair-schedule-$period',
-                contractId: contract.id,
+                contractId: 'repair-transaction',
                 periodNo: period,
                 status: InstallmentScheduleStatus.paid,
               ),
           ];
-          await installments.insertAggregate(contract, schedules);
+          final contract = _contract(
+            id: 'repair-transaction',
+            status: InstallmentContractStatus.settled,
+            schedules: schedules,
+          );
+          await installments.insertAggregate(contract);
           final service = InstallmentStatusRepairAppService(
             installments: failAfterSave
                 ? _FailAfterSavingInstallments(db)
@@ -741,6 +742,7 @@ void main() {
 InstallmentContract _contract({
   required String id,
   InstallmentContractStatus status = InstallmentContractStatus.active,
+  List<InstallmentSchedule> schedules = const [],
 }) {
   return InstallmentContract(
     id: id,
@@ -750,6 +752,7 @@ InstallmentContract _contract({
     borrowingDate: DateTime(2026, 6, 1),
     status: status,
     createdAt: DateTime(2026, 6, 1),
+    schedules: schedules,
     stageTerms: InstallmentContractTerms.singleStage(
       id: '$id:stage:1',
       totalPeriods: 2,
@@ -787,11 +790,8 @@ class _FailAfterSavingInstallments extends DriftInstallmentRepository {
   _FailAfterSavingInstallments(super.database);
 
   @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
-    await super.saveAggregate(contract, schedules);
+  Future<void> saveAggregate(InstallmentContract contract) async {
+    await super.saveAggregate(contract);
     expect(
       (await findContract(contract.id))!.status,
       InstallmentContractStatus.active,
@@ -832,6 +832,10 @@ class _FakeInstallmentRepository implements InstallmentRepository {
 
   void putSchedules(String contractId, List<InstallmentSchedule> schedules) {
     _schedules[contractId] = [...schedules];
+    final contract = contracts[contractId];
+    if (contract != null) {
+      contracts[contractId] = _copyWithSchedules(contract, schedules);
+    }
   }
 
   List<InstallmentSchedule> schedulesFor(String contractId) => [
@@ -846,16 +850,36 @@ class _FakeInstallmentRepository implements InstallmentRepository {
       schedulesFor(contractId);
 
   @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
+  Future<void> saveAggregate(InstallmentContract contract) async {
     putContract(contract);
-    putSchedules(contract.id, schedules);
+    putSchedules(contract.id, contract.schedules);
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  InstallmentContract _copyWithSchedules(
+    InstallmentContract contract,
+    List<InstallmentSchedule> schedules,
+  ) {
+    return InstallmentContract(
+      id: contract.id,
+      name: contract.name,
+      liabilityAccountId: contract.liabilityAccountId,
+      installmentType: contract.installmentType,
+      sourceRefId: contract.sourceRefId,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      status: contract.status,
+      note: contract.note,
+      createdAt: contract.createdAt,
+      stageTerms: contract.stageTerms,
+      schedules: schedules,
+      repricingConfigurations: contract.repricingConfigurations,
+      repricings: contract.repricings,
+      interestAdjustments: contract.interestAdjustments,
+    );
+  }
 }
 
 class _FakeBillRepository implements BillRepository {

@@ -997,29 +997,45 @@ class _FakeInstallmentRepository implements InstallmentRepository {
     List<InstallmentSchedule> schedules,
   ) async {
     _schedules[contractId] = List.of(schedules);
+    final contract = _contracts[contractId];
+    if (contract != null) {
+      _contracts[contractId] = _copyWithSchedules(contract, schedules);
+    }
   }
 
   @override
-  Future<void> saveContract(InstallmentContract contract) async {
+  Future<void> insertAggregate(InstallmentContract contract) async {
     _contracts[contract.id] = contract;
+    _schedules[contract.id] = List.of(contract.schedules);
   }
 
   @override
-  Future<void> insertAggregate(
+  Future<void> saveAggregate(InstallmentContract contract) async {
+    _contracts[contract.id] = contract;
+    _schedules[contract.id] = List.of(contract.schedules);
+  }
+
+  InstallmentContract _copyWithSchedules(
     InstallmentContract contract,
     List<InstallmentSchedule> schedules,
-  ) async {
-    _contracts[contract.id] = contract;
-    _schedules[contract.id] = List.of(schedules);
-  }
-
-  @override
-  Future<void> saveAggregate(
-    InstallmentContract contract,
-    List<InstallmentSchedule> schedules,
-  ) async {
-    _contracts[contract.id] = contract;
-    _schedules[contract.id] = List.of(schedules);
+  ) {
+    return InstallmentContract(
+      id: contract.id,
+      name: contract.name,
+      liabilityAccountId: contract.liabilityAccountId,
+      installmentType: contract.installmentType,
+      sourceRefId: contract.sourceRefId,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      status: contract.status,
+      note: contract.note,
+      createdAt: contract.createdAt,
+      stageTerms: contract.stageTerms,
+      schedules: schedules,
+      repricingConfigurations: contract.repricingConfigurations,
+      repricings: contract.repricings,
+      interestAdjustments: contract.interestAdjustments,
+    );
   }
 }
 

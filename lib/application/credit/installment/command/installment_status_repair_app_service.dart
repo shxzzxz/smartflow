@@ -39,7 +39,7 @@ class InstallmentStatusRepairAppService {
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
-    final schedules = await _installments.listSchedules(contractId);
+    final schedules = contract.schedules;
     if (schedules.isEmpty) {
       return const ContractStatusValidationResult(
         repairedScheduleCount: 0,
@@ -221,7 +221,8 @@ class InstallmentStatusRepairAppService {
       if (blockedScheduleIds.contains(schedule.id)) {
         continue;
       }
-      if (schedule.reconcileRepaymentStatus(
+      if (contract.reconcileScheduleRepaymentStatus(
+        schedule.id,
         allocatedPrincipalMinor: allocated.principal.minorUnits,
         hasAllocation: hasAllocation,
       )) {
@@ -230,10 +231,10 @@ class InstallmentStatusRepairAppService {
     }
 
     final previousContractStatus = contract.status;
-    if (!hasBlockingIssues) contract.refreshStatusFromSchedules(schedules);
+    if (!hasBlockingIssues) contract.refreshStatusFromSchedules();
     final contractStatusChanged = contract.status != previousContractStatus;
     if (repairedScheduleCount > 0 || contractStatusChanged) {
-      await _installments.saveAggregate(contract, schedules);
+      await _installments.saveAggregate(contract);
     }
     return ContractStatusValidationResult(
       repairedScheduleCount: repairedScheduleCount,

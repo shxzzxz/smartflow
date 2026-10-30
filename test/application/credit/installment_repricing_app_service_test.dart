@@ -279,10 +279,7 @@ void main() {
           ratePpm: 48000,
         ),
       );
-      await f.installments.saveAggregate(
-        contract,
-        await f.installments.listSchedules('loan'),
-      );
+      await f.installments.saveAggregate(contract);
       expect(await f.records.contractIdsForRepricing(), contains('loan'));
       contract = (await f.installments.findContract('loan'))!;
       expect(
@@ -635,10 +632,10 @@ void main() {
         'contract calculation range ignores manually edited plan end $end ($prepareOnly)',
         () async {
           final contract = (await f.installments.findContract('loan'))!;
-          final rows = await f.installments.listSchedules('loan');
+          final rows = contract.schedules;
           rows.last.reviseExpectation(expectedRepaymentDate: end);
           rows.last.manuallyAdjusted = true;
-          await f.installments.saveAggregate(contract, rows);
+          await f.installments.saveAggregate(contract);
           f.currentDate = DateTime.utc(2026, 12, 20);
           if (prepareOnly) {
             expect(await f.service.prepare('loan', f.currentDate), isTrue);
@@ -671,13 +668,11 @@ void main() {
   test(
     'repricing automatically replaces manual amounts and requests acknowledgement',
     () async {
-      final before = await f.installments.listSchedules('loan');
+      final contract = (await f.installments.findContract('loan'))!;
+      final before = contract.schedules;
       before.last.manuallyAdjusted = true;
       before.last.expectedInterest = const Money(minorUnits: 99);
-      await f.installments.saveAggregate(
-        (await f.installments.findContract('loan'))!,
-        before,
-      );
+      await f.installments.saveAggregate(contract);
 
       expect(await f.service.runDue(DateTime(2026, 1, 5)), (
         changed: true,
@@ -755,12 +750,10 @@ void main() {
             ],
           ),
         );
-        final rows = await f.installments.listSchedules('multi');
+        final contract = (await f.installments.findContract('multi'))!;
+        final rows = contract.schedules;
         rows[5].reviseExpectation(expectedRepaymentDate: DateTime(2026, 7, 20));
-        await f.installments.saveAggregate(
-          (await f.installments.findContract('multi'))!,
-          rows,
-        );
+        await f.installments.saveAggregate(contract);
         f.currentDate = DateTime(2026, 12, 20);
         if (prepareOnly) {
           expect(await f.service.prepare('multi', f.currentDate), isTrue);
@@ -818,12 +811,10 @@ void main() {
             ],
           ),
         );
-        final rows = await f.installments.listSchedules('short');
+        final contract = (await f.installments.findContract('short'))!;
+        final rows = contract.schedules;
         rows.single.reviseExpectation(expectedRepaymentDate: end);
-        await f.installments.saveAggregate(
-          (await f.installments.findContract('short'))!,
-          rows,
-        );
+        await f.installments.saveAggregate(contract);
         f.currentDate = DateTime(2026, 9, 20);
         expect(await f.service.prepare('short', f.currentDate), isTrue);
         await f.service.runDue(f.currentDate);
@@ -972,13 +963,11 @@ void main() {
       await f.service.runDue(f.currentDate);
       final all = await f.records.list('loan');
       expect(all, hasLength(2));
-      final rows = await f.installments.listSchedules('loan');
+      final contract = (await f.installments.findContract('loan'))!;
+      final rows = contract.schedules;
       rows.last.expectedInterest = const Money(minorUnits: 99);
       rows.last.manuallyAdjusted = true;
-      await f.installments.saveAggregate(
-        (await f.installments.findContract('loan'))!,
-        rows,
-      );
+      await f.installments.saveAggregate(contract);
       final before = await DriftBackupGateway(f.db).readSnapshot();
 
       await f.service.confirm('loan', {first.id});
@@ -1229,11 +1218,11 @@ void main() {
     'repricing rebuilds fees from terms and clears manual adjustments',
     () async {
       final contract = (await f.installments.findContract('loan'))!;
-      final rows = await f.installments.listSchedules('loan');
+      final rows = contract.schedules;
       rows.first.reviseExpectation(expectedFee: const Money(minorUnits: 99));
       rows.last.reviseExpectation(expectedFee: const Money(minorUnits: 3));
       rows.first.manuallyAdjusted = true;
-      await f.installments.saveAggregate(contract, rows);
+      await f.installments.saveAggregate(contract);
       await f.service.runDue(DateTime(2026, 1, 5));
       expect(
         (await f.installments.listSchedules('loan')).map((r) => r.expectedFee),
@@ -1336,14 +1325,14 @@ void main() {
     'repricing replaces manual transition principal with the current projection',
     () async {
       final contract = (await f.installments.findContract('loan'))!;
-      final rows = await f.installments.listSchedules('loan');
+      final rows = contract.schedules;
       // 手工调整本金并在末期补回，保证计划本金守恒。
       final projectedPrincipal = rows.first.expectedPrincipal.minorUnits;
       rows.last.expectedPrincipal +=
           rows.first.expectedPrincipal - const Money(minorUnits: 600000);
       rows.first.expectedPrincipal = const Money(minorUnits: 600000);
       rows.first.manuallyAdjusted = true;
-      await f.installments.saveAggregate(contract, rows);
+      await f.installments.saveAggregate(contract);
       await f.service.runDue(DateTime(2026, 1, 5));
       expect(
         (await f.installments.listSchedules(
@@ -1525,22 +1514,18 @@ void main() {
   test(
     'automatic repricing rebuilds all amounts and repairs stale status from repayment facts',
     () async {
-      final rows = await f.installments.listSchedules('loan');
+      final contract = (await f.installments.findContract('loan'))!;
+      final rows = contract.schedules;
       rows.last.manuallyAdjusted = true;
       rows.last.expectedInterest = const Money(minorUnits: 99);
-      await f.installments.saveAggregate(
-        (await f.installments.findContract('loan'))!,
-        rows,
-      );
+      await f.installments.saveAggregate(contract);
       await f.service.prepare('loan', DateTime(2026, 1, 5));
       expect((await f.records.list('loan')).single.applied, isFalse);
-      final changed = await f.installments.listSchedules('loan');
+      final changedContract = (await f.installments.findContract('loan'))!;
+      final changed = changedContract.schedules;
       changed.first.expectedInterest = const Money(minorUnits: 500);
       changed.first.markPaid();
-      await f.installments.saveAggregate(
-        (await f.installments.findContract('loan'))!,
-        changed,
-      );
+      await f.installments.saveAggregate(changedContract);
       expect(await f.service.runDue(DateTime(2026, 1, 5)), (
         changed: true,
         needsRetry: false,
@@ -1556,13 +1541,11 @@ void main() {
   test(
     'late repricing recalculates paid periods while preserving actual repayment references',
     () async {
-      final rows = await f.installments.listSchedules('loan');
+      final contract = (await f.installments.findContract('loan'))!;
+      final rows = contract.schedules;
       await f.pay(rows.first, 'loan');
       rows.first.markPaid();
-      await f.installments.saveAggregate(
-        (await f.installments.findContract('loan'))!,
-        rows,
-      );
+      await f.installments.saveAggregate(contract);
       await f.service.runDue(DateTime(2026, 2, 1));
       expect((await f.records.list('loan')).single.applied, isTrue);
       final saved = await f.installments.listSchedules('loan');
@@ -1837,7 +1820,7 @@ class _Fixture {
           newScheduleId: () =>
               id == 'loan' ? 'period-${++period}' : '$id-period-${++period}',
         );
-    await installments.insertAggregate(aggregate.contract, aggregate.schedules);
+    await installments.insertAggregate(aggregate.contract);
     var start = aggregate.contract.borrowingDate;
     for (final configuration in terms.stages) {
       switch (configuration.terms) {
@@ -1896,15 +1879,13 @@ class _Fixture {
         source: source.key,
       ),
     );
-    final rows = await installments.listSchedules('example');
+    final contract = (await installments.findContract('example'))!;
+    final rows = contract.schedules;
     for (final row in rows.take(3)) {
       await pay(row, 'example');
       row.markPaid();
     }
-    await installments.saveAggregate(
-      (await installments.findContract('example'))!,
-      rows,
-    );
+    await installments.saveAggregate(contract);
   }
 
   Future<void> pay(InstallmentSchedule row, String contractId) async {
