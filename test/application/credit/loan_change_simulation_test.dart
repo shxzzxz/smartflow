@@ -96,6 +96,8 @@ void main() {
         expect(result.totalFee.minorUnits, 900);
         expect(result.prepaymentPrincipal.minorUnits, 300000);
         expect(result.totalRepayment.minorUnits, 1009090);
+        expect(result.changedMetrics.isAvailable, isTrue);
+        expect(result.changedMetrics.totalRepayment, result.totalRepayment);
         expect(
           result.periods.fold(Money.zero(), (sum, p) => sum + p.total) +
               result.prepaymentPrincipal,
@@ -110,6 +112,7 @@ void main() {
     expect(result.totalRepayment, result.original.totalRepayment);
     expect(result.chargesChange, Money.zero());
     expect(result.prepaymentPrincipal, Money.zero());
+    expect(result.changedMetrics.xirr, result.original.metrics.xirr);
   });
 
   test(
@@ -153,6 +156,11 @@ void main() {
     expect(result.totalInterest.minorUnits, 18000);
     expect(result.interestChange.minorUnits, 9000);
     expect(result.chargesChange.minorUnits, 9000);
+    expect(result.changedMetrics.xirr, isNotNull);
+    expect(
+      result.changedMetrics.xirr!,
+      greaterThan(result.original.metrics.xirr!),
+    );
   });
 
   test('rejects conflicting or inapplicable operations', () {

@@ -109,6 +109,14 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
       plan.entries,
       reductions: operations.principalReductions,
     );
+    final changedMetrics = ContractMetrics.fromDomain(
+      _metrics.compute(
+        principal: terms.principal,
+        borrowingDate: terms.borrowingDate,
+        plan: plan.entries,
+        principalReductions: operations.principalReductions,
+      ),
+    );
     return LoanChangeSimulation(
       original: original,
       operations: operations,
@@ -116,6 +124,7 @@ class LoanCalculatorQueryImpl implements LoanCalculatorQuery {
       stages: _stages(terms, plan),
       totalInterest: _sum(periods, (period) => period.interest),
       totalFee: _sum(periods, (period) => period.fee),
+      changedMetrics: changedMetrics,
     );
   }
 

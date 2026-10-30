@@ -49,6 +49,16 @@ String formatRatePercent(double? value, {int fractionDigits = 2}) {
   return '${(value * 100).toStringAsFixed(fractionDigits)}%';
 }
 
+/// 带符号的利率差额，用于操作后相对原计划的变化。
+String formatSignedRatePercent(double? value, {int fractionDigits = 2}) {
+  if (value == null || !value.isFinite) return '—';
+  final rounded = double.parse((value * 100).toStringAsFixed(fractionDigits));
+  final magnitude = rounded.abs().toStringAsFixed(fractionDigits);
+  if (rounded > 0) return '+$magnitude%';
+  if (rounded < 0) return '-$magnitude%';
+  return '$magnitude%';
+}
+
 /// 带符号的金额差额：正数加 +，零显示 0.00。
 String formatSignedMoney(Money value) {
   if (value.minorUnits > 0) return '+${value.format()}';

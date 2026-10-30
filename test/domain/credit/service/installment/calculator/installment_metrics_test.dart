@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/service/installment/calculator/installment_metrics.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_plan_engine.dart';
+import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 
 void main() {
   const calculator = InstallmentMetricsCalculator();
@@ -20,6 +21,32 @@ void main() {
       ],
     );
     expect(result.xirr, closeTo(0.1, 1e-9));
+  });
+
+  test('XIRR includes dated principal reductions in cashflows', () {
+    final result = calculator.compute(
+      principal: const Money(minorUnits: 100000),
+      borrowingDate: DateTime(2026, 1, 1),
+      plan: [
+        InstallmentSchedulePlanEntry(
+          periodNo: 1,
+          expectedRepaymentDate: DateTime(2027, 1, 1),
+          expectedPrincipal: const Money(minorUnits: 60000),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+        ),
+      ],
+      principalReductions: [
+        PrincipalReduction(
+          date: DateTime(2026, 7, 1),
+          principal: const Money(minorUnits: 40000),
+        ),
+      ],
+    );
+
+    expect(result.isAvailable, isTrue);
+    expect(result.xirr, closeTo(0, 1e-9));
+    expect(result.totalRepayment, const Money(minorUnits: 100000));
   });
   final principal = const Money(minorUnits: 10000);
   final borrowingDate = DateTime(2026, 1, 1);

@@ -28,6 +28,10 @@ void main() {
     expect(formatRatePercent(null), '—');
     expect(formatRatePercent(double.nan), '—');
     expect(formatRatePercent(double.infinity), '—');
+    expect(formatSignedRatePercent(0.0123), '+1.23%');
+    expect(formatSignedRatePercent(-0.0123), '-1.23%');
+    expect(formatSignedRatePercent(0), '0.00%');
+    expect(formatSignedRatePercent(double.nan), '—');
     expect(formatSignedMoney(const Money(minorUnits: 52)), '+0.52');
     expect(formatSignedMoney(const Money(minorUnits: -5)), '-0.05');
     expect(formatSignedMoney(Money.zero()), '0.00');

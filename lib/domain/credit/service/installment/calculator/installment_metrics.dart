@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../../../../../core/money/money.dart';
+import '../../../valobj/installment_plan_operation.dart';
 import '../installment_plan_engine.dart';
 
 enum ContractMetricsUnavailableReason {
@@ -59,11 +60,12 @@ class InstallmentMetricsCalculator {
     required Money principal,
     required DateTime borrowingDate,
     required List<InstallmentSchedulePlanEntry> plan,
+    List<PrincipalReduction> principalReductions = const [],
   }) {
     var totalRepayMinor = 0;
     var totalInterestMinor = 0;
     var totalFeeMinor = 0;
-    var scheduledPrincipalMinor = 0;
+    var repaidPrincipalMinor = 0;
     for (final entry in plan) {
       totalRepayMinor +=
           entry.expectedPrincipal.minorUnits +
@@ -71,10 +73,14 @@ class InstallmentMetricsCalculator {
           entry.expectedFee.minorUnits;
       totalInterestMinor += entry.expectedInterest.minorUnits;
       totalFeeMinor += entry.expectedFee.minorUnits;
-      scheduledPrincipalMinor += entry.expectedPrincipal.minorUnits;
+      repaidPrincipalMinor += entry.expectedPrincipal.minorUnits;
+    }
+    for (final reduction in principalReductions) {
+      totalRepayMinor += reduction.principal.minorUnits;
+      repaidPrincipalMinor += reduction.principal.minorUnits;
     }
 
-    if (scheduledPrincipalMinor != principal.minorUnits) {
+    if (repaidPrincipalMinor != principal.minorUnits) {
       return ContractMetrics.unavailable(
         unavailableReason:
             ContractMetricsUnavailableReason.principalNotConserved,
@@ -88,6 +94,7 @@ class InstallmentMetricsCalculator {
       principal: principal,
       borrowingDate: borrowingDate,
       plan: plan,
+      principalReductions: principalReductions,
     );
     final hasPositive = flows.any((flow) => flow.amount > 0);
     final hasNegative = flows.any((flow) => flow.amount < 0);
@@ -131,6 +138,7 @@ class InstallmentMetricsCalculator {
     required Money principal,
     required DateTime borrowingDate,
     required List<InstallmentSchedulePlanEntry> plan,
+    required List<PrincipalReduction> principalReductions,
   }) {
     final flows = <_DatedCashflow>[];
     // t0: 借款流入
@@ -150,6 +158,11 @@ class InstallmentMetricsCalculator {
       flows.add(
         _DatedCashflow(date: entry.expectedRepaymentDate, amount: outflow),
       );
+    }
+    for (final reduction in principalReductions) {
+      final outflow = -reduction.principal.minorUnits.toDouble();
+      if (outflow == 0) continue;
+      flows.add(_DatedCashflow(date: reduction.date, amount: outflow));
     }
     flows.sort((a, b) => a.date.compareTo(b.date));
     return flows;

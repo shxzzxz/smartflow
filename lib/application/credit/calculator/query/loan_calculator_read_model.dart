@@ -75,6 +75,7 @@ class LoanChangeSimulation {
     required this.stages,
     required this.totalInterest,
     required this.totalFee,
+    required this.changedMetrics,
   });
 
   final LoanCalculation original;
@@ -85,6 +86,9 @@ class LoanChangeSimulation {
   final List<LoanCalculationStage> stages;
   final Money totalInterest;
   final Money totalFee;
+
+  /// 包含试算操作现金流的完整计划成本指标。
+  final ContractMetrics changedMetrics;
 
   Money get prepaymentPrincipal => operations.principalReductions.fold(
     Money.zero(),

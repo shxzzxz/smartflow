@@ -18,6 +18,7 @@ import 'package:smartflow/feature/credit/view_model/loan_configuration_view_mode
 import 'package:smartflow/feature/credit/view_model/loan_change_view_model.dart';
 import 'package:smartflow/feature/credit/view_model/loan_comparison_view_model.dart';
 import 'package:smartflow/feature/credit/widget/installment_stage_card.dart';
+import 'package:smartflow/feature/credit/widget/loan_comparison_table.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 class _Products extends Mock implements InstallmentProductAppService {}
@@ -304,6 +305,14 @@ void main() {
       expect(find.text('原计划'), findsOneWidget);
       expect(find.text('操作后'), findsOneWidget);
       expect(find.text('变化'), findsOneWidget);
+      expect(find.text('实际年化 XIRR'), findsOneWidget);
+      final comparison = tester.widget<LoanComparisonTable>(
+        find.byType(LoanComparisonTable),
+      );
+      expect(comparison.rows.last.label, '实际年化 XIRR');
+      expect(comparison.rows.last.firstValue, isNot('—'));
+      expect(comparison.rows.last.secondValue, isNot('—'));
+      expect(comparison.rows.last.difference, isNot('—'));
       expect(find.text('阶段 2'), findsOneWidget);
       expect(find.text('阶段 3'), findsOneWidget);
       expect(find.textContaining('手续费 20.00'), findsNWidgets(2));

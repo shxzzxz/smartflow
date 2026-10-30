@@ -51,6 +51,8 @@ String loanChangeOperationDescription(
 List<LoanComparisonRowPresentation> presentLoanChangeComparison(
   LoanChangeSimulation simulation,
 ) {
+  final originalXirr = simulation.original.metrics.xirr;
+  final changedXirr = simulation.changedMetrics.xirr;
   LoanComparisonRowPresentation row(String label, Money before, Money after) =>
       LoanComparisonRowPresentation(
         label: label,
@@ -63,6 +65,16 @@ List<LoanComparisonRowPresentation> presentLoanChangeComparison(
     row('总利息', simulation.original.totalInterest, simulation.totalInterest),
     row('总手续费', simulation.original.totalFee, simulation.totalFee),
     row('息费合计', simulation.beforeCharges, simulation.afterCharges),
+    LoanComparisonRowPresentation(
+      label: '实际年化 XIRR',
+      firstValue: formatRatePercent(originalXirr),
+      secondValue: formatRatePercent(changedXirr),
+      difference: formatSignedRatePercent(
+        originalXirr == null || changedXirr == null
+            ? null
+            : changedXirr - originalXirr,
+      ),
+    ),
   ];
 }
 
