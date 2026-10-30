@@ -842,7 +842,7 @@ ProviderContainer _container({
       installmentSchedulesProvider.overrideWith(
         (ref, id) async => [_schedule()],
       ),
-      installmentRepaymentsProvider.overrideWith((ref, id) async => const []),
+      installmentActivitiesProvider.overrideWith((ref, id) async => const []),
       installmentContractsByAccountProvider.overrideWith(
         (ref, id) async => const [],
       ),

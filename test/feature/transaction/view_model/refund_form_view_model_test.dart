@@ -156,12 +156,17 @@ void main() {
 
   test('refreshes the installment plan after a covering refund', () async {
     final refunds = _FakeConsumptionRefundService();
+    var activityLoads = 0;
     final container = _container(
       purchaseParent: true,
       consumptionRefunds: refunds,
       scheduleLoader: (_) async => [
         _schedule(principal: refunds.createCommands.isEmpty ? 10000 : 0),
       ],
+      activityLoader: (_) async {
+        activityLoads++;
+        return const [];
+      },
     );
     final provider = installmentSchedulesProvider('purchase-contract');
     final subscription = container.listen(provider, (_, _) {});
@@ -170,6 +175,16 @@ void main() {
       (await container.read(provider.future)).single.expectedPrincipal,
       const Money(minorUnits: 10000),
     );
+    final activitiesProvider = installmentActivitiesProvider(
+      'purchase-contract',
+    );
+    final activitiesSubscription = container.listen(
+      activitiesProvider,
+      (_, _) {},
+    );
+    addTearDown(activitiesSubscription.close);
+    await container.read(activitiesProvider.future);
+    expect(activityLoads, 1);
 
     final refundProvider = refundFormViewModelProvider('parent');
     await container.read(refundProvider.future);
@@ -188,6 +203,8 @@ void main() {
       (await container.read(provider.future)).single.expectedPrincipal,
       Money.zero(),
     );
+    await container.read(activitiesProvider.future);
+    expect(activityLoads, 2);
   });
 
   test(
@@ -343,6 +360,7 @@ ProviderContainer _container({
   _FakeConsumptionRefundService? consumptionRefunds,
   Future<List<InstallmentScheduleReadModel>> Function(String contractId)?
   scheduleLoader,
+  Future<List<ContractActivity>> Function(String contractId)? activityLoader,
 }) {
   final cash = _account('cash');
   final bank = _account('bank');
@@ -390,6 +408,10 @@ ProviderContainer _container({
       if (scheduleLoader != null)
         installmentSchedulesProvider.overrideWith(
           (ref, contractId) => scheduleLoader(contractId),
+        ),
+      if (activityLoader != null)
+        installmentActivitiesProvider.overrideWith(
+          (ref, contractId) => activityLoader(contractId),
         ),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         orchestration ?? _FakeAdvanceOrchestrationService(),

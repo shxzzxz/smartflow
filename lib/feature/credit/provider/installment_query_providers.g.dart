@@ -257,55 +257,55 @@ final class InstallmentSchedulesFamily extends $Family
   String toString() => r'installmentSchedulesProvider';
 }
 
-@ProviderFor(installmentRepayments)
-final installmentRepaymentsProvider = InstallmentRepaymentsFamily._();
+@ProviderFor(installmentActivities)
+final installmentActivitiesProvider = InstallmentActivitiesFamily._();
 
-final class InstallmentRepaymentsProvider
+final class InstallmentActivitiesProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<ContractRepayment>>,
-          List<ContractRepayment>,
-          FutureOr<List<ContractRepayment>>
+          AsyncValue<List<ContractActivity>>,
+          List<ContractActivity>,
+          FutureOr<List<ContractActivity>>
         >
     with
-        $FutureModifier<List<ContractRepayment>>,
-        $FutureProvider<List<ContractRepayment>> {
-  InstallmentRepaymentsProvider._({
-    required InstallmentRepaymentsFamily super.from,
+        $FutureModifier<List<ContractActivity>>,
+        $FutureProvider<List<ContractActivity>> {
+  InstallmentActivitiesProvider._({
+    required InstallmentActivitiesFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
-         name: r'installmentRepaymentsProvider',
+         name: r'installmentActivitiesProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$installmentRepaymentsHash();
+  String debugGetCreateSourceHash() => _$installmentActivitiesHash();
 
   @override
   String toString() {
-    return r'installmentRepaymentsProvider'
+    return r'installmentActivitiesProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $FutureProviderElement<List<ContractRepayment>> $createElement(
+  $FutureProviderElement<List<ContractActivity>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<ContractRepayment>> create(Ref ref) {
+  FutureOr<List<ContractActivity>> create(Ref ref) {
     final argument = this.argument as String;
-    return installmentRepayments(ref, argument);
+    return installmentActivities(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is InstallmentRepaymentsProvider && other.argument == argument;
+    return other is InstallmentActivitiesProvider && other.argument == argument;
   }
 
   @override
@@ -314,25 +314,25 @@ final class InstallmentRepaymentsProvider
   }
 }
 
-String _$installmentRepaymentsHash() =>
-    r'b25d0143eb2aeb9bcca611110b1bdbf79aa9272e';
+String _$installmentActivitiesHash() =>
+    r'b3c74cce4de67503ba3900a197bd1c5bedbe7fa8';
 
-final class InstallmentRepaymentsFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<List<ContractRepayment>>, String> {
-  InstallmentRepaymentsFamily._()
+final class InstallmentActivitiesFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<ContractActivity>>, String> {
+  InstallmentActivitiesFamily._()
     : super(
         retry: null,
-        name: r'installmentRepaymentsProvider',
+        name: r'installmentActivitiesProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  InstallmentRepaymentsProvider call(String contractId) =>
-      InstallmentRepaymentsProvider._(argument: contractId, from: this);
+  InstallmentActivitiesProvider call(String contractId) =>
+      InstallmentActivitiesProvider._(argument: contractId, from: this);
 
   @override
-  String toString() => r'installmentRepaymentsProvider';
+  String toString() => r'installmentActivitiesProvider';
 }
 
 /// 按合同与全部还款计划计算合同指标。

@@ -19,7 +19,7 @@ void main() {
           _schedule(1, status: InstallmentScheduleStatus.paid),
           _schedule(2, principal: const Money(minorUnits: 6000)),
         ],
-        cashflows: [_cashflow()],
+        activities: [_repaymentActivity(), _refundReductionActivity()],
       );
 
       final state = await container.read(
@@ -231,7 +231,7 @@ void main() {
 ProviderContainer _container({
   required InstallmentContractReadModel? contract,
   List<InstallmentScheduleReadModel> schedules = const [],
-  List<ContractRepayment> cashflows = const [],
+  List<ContractActivity> activities = const [],
   _FakeInstallmentContractAppService? service,
   _FakeRepaymentAppService? repaymentAppService,
   _FakeStatusRepairAppService? statusRepair,
@@ -248,8 +248,8 @@ ProviderContainer _container({
       installmentSchedulesProvider.overrideWith(
         (ref, contractId) async => schedules,
       ),
-      installmentRepaymentsProvider.overrideWith(
-        (ref, contractId) async => cashflows,
+      installmentActivitiesProvider.overrideWith(
+        (ref, contractId) async => activities,
       ),
       installmentContractAppServiceProvider.overrideWithValue(
         service ?? _FakeInstallmentContractAppService(),
@@ -304,8 +304,8 @@ InstallmentScheduleReadModel _schedule(
   );
 }
 
-ContractRepayment _cashflow() {
-  return ContractRepayment(
+ContractRepaymentActivity _repaymentActivity() {
+  return ContractRepaymentActivity(
     id: 'repayment-1',
     transactionId: 'tx-repay',
     repaymentType: RepaymentType.prepayment,
@@ -313,6 +313,15 @@ ContractRepayment _cashflow() {
     principal: const Money(minorUnits: 4000),
     interest: const Money(minorUnits: 200),
     fee: const Money(minorUnits: 30),
+  );
+}
+
+ContractRefundReductionActivity _refundReductionActivity() {
+  return ContractRefundReductionActivity(
+    id: 'refund-reduction-1',
+    occurredAt: DateTime(2026, 3, 1),
+    principal: const Money(minorUnits: 3000),
+    refundTransactionId: 'tx-refund',
   );
 }
 

@@ -196,7 +196,7 @@ class _Body extends StatelessWidget {
     final scheduleItems = {
       for (final item in loaded.scheduleItems) item.schedule.id: item,
     };
-    final cashflows = loaded.repayments;
+    final activities = loaded.activities;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -237,21 +237,24 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-        Text('还款记录', style: context.appTextStyles.dateSectionTitle),
+        Text('合同动态', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
-        if (cashflows.isEmpty)
+        if (activities.isEmpty)
           AppSurface(
             child: const Padding(
               padding: EdgeInsets.all(AppSpacing.space20),
-              child: Text('暂无还款记录'),
+              child: Text('暂无合同动态'),
             ),
           )
         else
           AppSurface(
             child: Column(
               children: [
-                for (var i = 0; i < cashflows.length; i++) ...[
-                  _RepaymentRow(cashflow: cashflows[i], contract: contract),
+                for (var i = 0; i < activities.length; i++) ...[
+                  _ContractActivityRow(
+                    activity: activities[i],
+                    contract: contract,
+                  ),
                 ],
               ],
             ),
@@ -481,21 +484,42 @@ class _ScheduleActions extends ConsumerWidget {
   }
 }
 
-class _RepaymentRow extends ConsumerWidget {
-  const _RepaymentRow({required this.cashflow, required this.contract});
+class _ContractActivityRow extends ConsumerWidget {
+  const _ContractActivityRow({required this.activity, required this.contract});
 
-  final ContractRepayment cashflow;
+  final ContractActivity activity;
   final InstallmentContractReadModel contract;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final total = cashflow.principal + cashflow.interest + cashflow.fee;
+    final (label, supportingText, amount, icon) = switch (activity) {
+      ContractRepaymentActivity(
+        :final repaymentType,
+        :final principal,
+        :final interest,
+        :final fee,
+      ) =>
+        (
+          _repaymentTypeLabel(repaymentType),
+          '本金 ${principal.format()}'
+              '${interest.minorUnits > 0 ? '  利息 ${interest.format()}' : ''}'
+              '${fee.minorUnits > 0 ? '  手续费 ${fee.format()}' : ''}',
+          (principal + interest + fee).format(),
+          _repaymentTypeIcon(repaymentType),
+        ),
+      ContractRefundReductionActivity(:final principal) => (
+        '退款还本',
+        '本金 ${principal.format()}',
+        principal.format(),
+        RemixIcons.refund_2_line,
+      ),
+    };
     final row = InkWell(
-      onTap: cashflow.transactionId == null
+      onTap: activity.transactionId == null
           ? null
-          : () => context.push('/transaction/${cashflow.transactionId}'),
+          : () => context.push('/transaction/${activity.transactionId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -506,13 +530,7 @@ class _RepaymentRow extends ConsumerWidget {
             SizedBox(
               width: 48,
               height: 48,
-              child: Center(
-                child: Icon(
-                  _repaymentTypeIcon(cashflow.repaymentType),
-                  color: colors.primary,
-                  size: 24,
-                ),
-              ),
+              child: Center(child: Icon(icon, color: colors.primary, size: 24)),
             ),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
@@ -520,14 +538,11 @@ class _RepaymentRow extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${_repaymentTypeLabel(cashflow.repaymentType)} · '
-                    '${formatDateLabel(cashflow.occurredAt)}',
+                    '$label · ${formatDateLabel(activity.occurredAt)}',
                     style: styles.formLabel,
                   ),
                   Text(
-                    '本金 ${cashflow.principal.format()}'
-                    '${cashflow.interest.minorUnits > 0 ? '  利息 ${cashflow.interest.format()}' : ''}'
-                    '${cashflow.fee.minorUnits > 0 ? '  手续费 ${cashflow.fee.format()}' : ''}',
+                    supportingText,
                     style: styles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -539,7 +554,7 @@ class _RepaymentRow extends ConsumerWidget {
             SizedBox(
               width: 96,
               child: Text(
-                total.format(),
+                amount,
                 style: styles.formLabel,
                 textAlign: TextAlign.right,
               ),
@@ -548,18 +563,25 @@ class _RepaymentRow extends ConsumerWidget {
         ),
       ),
     );
-    return AppSwipeAction(
-      dismissibleKey: ValueKey('installment-repayment-${cashflow.id}'),
-      label: '撤销',
-      icon: RemixIcons.arrow_go_back_line,
-      tone: AppSwipeActionTone.danger,
-      onTriggered: () => _confirmRevert(context, ref),
-      child: row,
-    );
+    if (activity case final ContractRepaymentActivity repayment) {
+      return AppSwipeAction(
+        dismissibleKey: ValueKey('installment-repayment-${activity.id}'),
+        label: '撤销',
+        icon: RemixIcons.arrow_go_back_line,
+        tone: AppSwipeActionTone.danger,
+        onTriggered: () => _confirmRevert(context, ref, repayment),
+        child: row,
+      );
+    }
+    return row;
   }
 
-  Future<void> _confirmRevert(BuildContext context, WidgetRef ref) async {
-    final typeLabel = _repaymentTypeLabel(cashflow.repaymentType);
+  Future<void> _confirmRevert(
+    BuildContext context,
+    WidgetRef ref,
+    ContractRepaymentActivity repayment,
+  ) async {
+    final typeLabel = _repaymentTypeLabel(repayment.repaymentType);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -580,7 +602,7 @@ class _RepaymentRow extends ConsumerWidget {
     if (confirmed != true) return;
     final outcome = await ref
         .read(installmentDetailViewModelProvider(contract.id).notifier)
-        .revertRepayment(cashflow.id);
+        .revertRepayment(repayment.id);
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():

@@ -724,9 +724,10 @@ ContractMetricsQuery contractMetricsQuery(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-ContractRepaymentQuery contractRepaymentQuery(Ref ref) {
-  return ContractRepaymentQueryImpl(
+ContractActivityQuery contractActivityQuery(Ref ref) {
+  return ContractActivityQueryImpl(
     repayments: ref.watch(repaymentRepositoryProvider),
+    refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
   );
 }
 

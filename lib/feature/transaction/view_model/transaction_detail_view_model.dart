@@ -15,6 +15,7 @@ import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../credit/provider/installment_query_providers.dart';
 import 'transaction_detail_action_dispatcher.dart';
 import 'transaction_detail_state.dart';
 import 'transaction_detail_state_builder.dart';
@@ -283,7 +284,11 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     }
     _setSubmitting(true);
     try {
-      return await body(loaded);
+      final outcome = await body(loaded);
+      if (outcome is UiActionSuccess<void>) {
+        _invalidateInstallmentAfterRefundChange(loaded.detail);
+      }
+      return outcome;
     } on AppException catch (exception, stackTrace) {
       logUiActionException(
         _logger,
@@ -309,6 +314,21 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     if (loaded is TransactionDetailLoaded) {
       state = AsyncData(loaded.copyWith(submitting: submitting));
     }
+  }
+
+  void _invalidateInstallmentAfterRefundChange(TransactionReadModel detail) {
+    final ownerType = detail.ownership?.ownerType;
+    final contractId = detail.ownership?.ownerId;
+    if (detail.businessPurpose != BusinessPurpose.refund ||
+        ownerType != installmentOwnerType ||
+        contractId == null) {
+      return;
+    }
+    ref
+      ..invalidate(installmentContractProvider(contractId))
+      ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentActivitiesProvider(contractId))
+      ..invalidate(installmentMetricsProvider(contractId));
   }
 }
 

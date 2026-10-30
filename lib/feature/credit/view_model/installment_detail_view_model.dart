@@ -25,13 +25,13 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     final schedules = await ref.watch(
       installmentSchedulesProvider(contractId).future,
     );
-    final repayments = await ref.watch(
-      installmentRepaymentsProvider(contractId).future,
+    final activities = await ref.watch(
+      installmentActivitiesProvider(contractId).future,
     );
     return InstallmentDetailLoaded(
       contract: contract,
       schedules: schedules,
-      repayments: repayments,
+      activities: activities,
     );
   }
 
@@ -83,7 +83,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       InstallmentDetailLoaded(
         contract: loaded.contract,
         schedules: loaded.schedules,
-        repayments: loaded.repayments,
+        activities: loaded.activities,
         confirmingRepricing: value,
       ),
     );
@@ -163,7 +163,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     ref
       ..invalidate(installmentContractProvider(contract.id))
       ..invalidate(installmentSchedulesProvider(contract.id))
-      ..invalidate(installmentRepaymentsProvider(contract.id))
+      ..invalidate(installmentActivitiesProvider(contract.id))
       ..invalidate(installmentMetricsProvider(contract.id))
       ..invalidate(
         installmentContractsByAccountProvider(contract.liabilityAccountId),
@@ -193,13 +193,13 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   const InstallmentDetailLoaded({
     required this.contract,
     required this.schedules,
-    required this.repayments,
+    required this.activities,
     this.confirmingRepricing = false,
   });
 
   final InstallmentContractReadModel contract;
   final List<InstallmentScheduleReadModel> schedules;
-  final List<ContractRepayment> repayments;
+  final List<ContractActivity> activities;
   final bool confirmingRepricing;
 
   List<InstallmentScheduleItemState> get scheduleItems => [
@@ -230,13 +230,19 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   }
 
   int get paidInterestMinor {
-    return repayments.fold<int>(0, (sum, repayment) {
+    return activities.whereType<ContractRepaymentActivity>().fold<int>(0, (
+      sum,
+      repayment,
+    ) {
       return sum + repayment.interest.minorUnits;
     });
   }
 
   int get paidFeeMinor {
-    return repayments.fold<int>(0, (sum, repayment) {
+    return activities.whereType<ContractRepaymentActivity>().fold<int>(0, (
+      sum,
+      repayment,
+    ) {
       return sum + repayment.fee.minorUnits;
     });
   }

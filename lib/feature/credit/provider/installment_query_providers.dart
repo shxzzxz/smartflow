@@ -32,13 +32,13 @@ Future<List<InstallmentScheduleReadModel>> installmentSchedules(
 }
 
 @riverpod
-Future<List<ContractRepayment>> installmentRepayments(
+Future<List<ContractActivity>> installmentActivities(
   Ref ref,
   String contractId,
 ) {
   return ref
-      .watch(contractRepaymentQueryProvider)
-      .listContractRepayments(contractId);
+      .watch(contractActivityQueryProvider)
+      .listContractActivities(contractId);
 }
 
 /// 按合同与全部还款计划计算合同指标。

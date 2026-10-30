@@ -487,6 +487,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     ref
       ..invalidate(installmentContractProvider(contractId))
       ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentActivitiesProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId));
     final contract = await ref
         .read(installmentQueryServiceProvider)

@@ -3658,53 +3658,53 @@ final class ContractMetricsQueryProvider
 String _$contractMetricsQueryHash() =>
     r'33a550c96fd010223ffa625e361201022626a8f6';
 
-@ProviderFor(contractRepaymentQuery)
-final contractRepaymentQueryProvider = ContractRepaymentQueryProvider._();
+@ProviderFor(contractActivityQuery)
+final contractActivityQueryProvider = ContractActivityQueryProvider._();
 
-final class ContractRepaymentQueryProvider
+final class ContractActivityQueryProvider
     extends
         $FunctionalProvider<
-          ContractRepaymentQuery,
-          ContractRepaymentQuery,
-          ContractRepaymentQuery
+          ContractActivityQuery,
+          ContractActivityQuery,
+          ContractActivityQuery
         >
-    with $Provider<ContractRepaymentQuery> {
-  ContractRepaymentQueryProvider._()
+    with $Provider<ContractActivityQuery> {
+  ContractActivityQueryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'contractRepaymentQueryProvider',
+        name: r'contractActivityQueryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$contractRepaymentQueryHash();
+  String debugGetCreateSourceHash() => _$contractActivityQueryHash();
 
   @$internal
   @override
-  $ProviderElement<ContractRepaymentQuery> $createElement(
+  $ProviderElement<ContractActivityQuery> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  ContractRepaymentQuery create(Ref ref) {
-    return contractRepaymentQuery(ref);
+  ContractActivityQuery create(Ref ref) {
+    return contractActivityQuery(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ContractRepaymentQuery value) {
+  Override overrideWithValue(ContractActivityQuery value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<ContractRepaymentQuery>(value),
+      providerOverride: $SyncValueProvider<ContractActivityQuery>(value),
     );
   }
 }
 
-String _$contractRepaymentQueryHash() =>
-    r'3c7ac8925c59f6bdab9769e992f90c97420a2cbc';
+String _$contractActivityQueryHash() =>
+    r'901c3aac7fa50eece15bd5417ab6f08d02f85951';
 
 @ProviderFor(loanCalculatorQuery)
 final loanCalculatorQueryProvider = LoanCalculatorQueryProvider._();

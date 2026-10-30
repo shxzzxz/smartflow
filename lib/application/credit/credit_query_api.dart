@@ -30,5 +30,5 @@ export 'installment/query/installment_statistics_query.dart';
 export 'installment/query/installment_statistics_read_models.dart';
 export 'installment/query/contract_metrics_query.dart';
 export 'installment/query/contract_metrics_read_model.dart';
-export 'installment/query/contract_repayment_query.dart';
+export 'installment/query/contract_activity_query.dart';
 export 'repayment/repayment_amount_dto.dart';

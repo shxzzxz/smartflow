@@ -181,7 +181,7 @@ void main() {
         service: _FakeInstallmentContractAppService(),
         repaymentService: repaymentService,
         scheduleStatus: InstallmentScheduleStatus.paid,
-        repayments: [_repayment('repayment-1')],
+        activities: [_repayment('repayment-1')],
       ),
     );
     await tester.pumpAndSettle();
@@ -246,7 +246,7 @@ void main() {
         service: _FakeInstallmentContractAppService(),
         scheduleStatus: InstallmentScheduleStatus.pending,
         scheduleCount: 2,
-        repayments: [_repayment('repayment-1'), _repayment('repayment-2')],
+        activities: [_repayment('repayment-1'), _repayment('repayment-2')],
       ),
     );
     await tester.pumpAndSettle();
@@ -254,6 +254,27 @@ void main() {
     expect(find.byType(Divider), findsNothing);
     expect(find.text('01'), findsOneWidget);
     expect(find.text('02'), findsOneWidget);
+  });
+
+  testWidgets('contract timeline shows refund principal reduction', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        service: _FakeInstallmentContractAppService(),
+        scheduleStatus: InstallmentScheduleStatus.pending,
+        activities: [_refundReduction()],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('合同动态'), 200);
+
+    expect(find.text('合同动态'), findsOneWidget);
+    expect(find.textContaining('退款还本'), findsOneWidget);
+    expect(find.text('本金 800.00'), findsOneWidget);
+    expect(find.text('800.00'), findsOneWidget);
+    expect(find.textContaining('已重算后续还款计划'), findsNothing);
+    expect(find.text('暂无合同动态'), findsNothing);
   });
 }
 
@@ -267,7 +288,7 @@ Widget _app({
   _FakeRepaymentAppService? repaymentService,
   _FakeStatusRepairAppService? statusRepair,
   int scheduleCount = 1,
-  List<ContractRepayment> repayments = const [],
+  List<ContractActivity> activities = const [],
   InstallmentRepricingAppService? repricingService,
   List<String> Function()? unconfirmedRepricingIds,
 }) {
@@ -289,8 +310,8 @@ Widget _app({
             _schedule(scheduleStatus, period: period),
         ],
       ),
-      installmentRepaymentsProvider.overrideWith(
-        (ref, contractId) async => repayments,
+      installmentActivitiesProvider.overrideWith(
+        (ref, contractId) async => activities,
       ),
       installmentContractAppServiceProvider.overrideWithValue(service),
       installmentPlanAppServiceProvider.overrideWithValue(planService),
@@ -355,14 +376,23 @@ InstallmentScheduleReadModel _schedule(
   );
 }
 
-ContractRepayment _repayment(String id) {
-  return ContractRepayment(
+ContractRepaymentActivity _repayment(String id) {
+  return ContractRepaymentActivity(
     id: id,
     repaymentType: RepaymentType.installment,
     occurredAt: DateTime(2026, 2, 1),
     principal: const Money(minorUnits: 10000),
     interest: Money.zero(),
     fee: Money.zero(),
+  );
+}
+
+ContractRefundReductionActivity _refundReduction() {
+  return ContractRefundReductionActivity(
+    id: 'refund-reduction-1',
+    occurredAt: DateTime(2026, 3, 1),
+    principal: const Money(minorUnits: 80000),
+    refundTransactionId: 'refund-transaction-1',
   );
 }
 

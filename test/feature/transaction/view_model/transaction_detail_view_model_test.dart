@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/credit/repayment/query/repayment_owner_query.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -14,6 +15,7 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_view_model.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
@@ -610,6 +612,50 @@ void main() {
       },
     );
 
+    test(
+      'refreshes contract activity after deleting installment refund',
+      () async {
+        final refunds = _FakeConsumptionRefundAppService();
+        var activityLoads = 0;
+        final detail = _detail(
+          purpose: BusinessPurpose.refund,
+          parentTransactionId: 'parent',
+          ownership: const TransactionOwnership(
+            ownerType: installmentOwnerType,
+            ownerId: 'purchase-contract',
+          ),
+        );
+        final container = _container(
+          detail: detail,
+          consumptionRefund: refunds,
+          activityLoader: (_) async {
+            activityLoads++;
+            return const [];
+          },
+        );
+        await _readState(container);
+        final activityProvider = installmentActivitiesProvider(
+          'purchase-contract',
+        );
+        final activitySubscription = container.listen(
+          activityProvider,
+          (_, _) {},
+        );
+        addTearDown(activitySubscription.close);
+        await container.read(activityProvider.future);
+        expect(activityLoads, 1);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .delete();
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(refunds.deleteCommands.single.transactionId, 'tx-1');
+        await container.read(activityProvider.future);
+        expect(activityLoads, 2);
+      },
+    );
+
     test('updates posted time through the ledger basic info service', () async {
       final update = _FakeTransactionUpdateAppService();
       final container = _container(
@@ -774,6 +820,7 @@ ProviderContainer _container({
   _FakeInstallmentContractAppService? installment,
   _FakeRepaymentAppService? repayment,
   _FakeConsumptionRefundAppService? consumptionRefund,
+  Future<List<ContractActivity>> Function(String contractId)? activityLoader,
 }) {
   final accounts = <String, Account>{
     'cash': _account('cash', '现金', iconKey: 'cash'),
@@ -827,6 +874,10 @@ ProviderContainer _container({
       consumptionInstallmentRefundAppServiceProvider.overrideWithValue(
         consumptionRefund ?? _FakeConsumptionRefundAppService(),
       ),
+      if (activityLoader != null)
+        installmentActivitiesProvider.overrideWith(
+          (ref, contractId) => activityLoader(contractId),
+        ),
     ],
   );
   addTearDown(container.dispose);
