@@ -450,9 +450,7 @@ DetailBehaviorConfig _behaviorConfigFor(
         transaction.businessPurpose == BusinessPurpose.dailyExpense;
     return DetailBehaviorConfig(
       editRoute: '/installments/${ownership.ownerId}',
-      canEditOccurredAt: purchase
-          ? const DetailEditPermission.denied(reason: '消费分期购买交易时间暂不支持修改')
-          : const DetailEditPermission.allowed(),
+      canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: postedAtPermission,
       canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: purchase

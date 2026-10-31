@@ -522,13 +522,13 @@ void main() {
     );
 
     test(
-      'installment transaction time never updates the contract date',
+      'purchase transaction time is editable without updating the contract date',
       () async {
         final update = _FakeTransactionUpdateAppService();
         final installment = _FakeInstallmentContractAppService();
         final container = _container(
           detail: _detail(
-            purpose: BusinessPurpose.borrowing,
+            purpose: BusinessPurpose.dailyExpense,
             ownership: const TransactionOwnership(
               ownerType: installmentOwnerType,
               ownerId: 'contract-1',
@@ -537,7 +537,8 @@ void main() {
           update: update,
           installment: installment,
         );
-        await _readState(container);
+        final loaded = await _readState(container) as TransactionDetailLoaded;
+        expect(loaded.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
 
         final occurredAt = DateTime(2026, 2, 4, 10);
         final outcome = await container
