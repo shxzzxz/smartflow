@@ -46,7 +46,7 @@ class InstallmentDetailPage extends ConsumerWidget {
         child: Column(
           children: [
             AppPageHeader(
-              title: '分期合同',
+              title: '分期详情',
               actions: [
                 if (loaded != null)
                   AppPopupMenuButton(
@@ -67,7 +67,7 @@ class InstallmentDetailPage extends ConsumerWidget {
                         ),
                       ),
                       AppPopupMenuAction(
-                        label: '删除合同',
+                        label: '删除分期',
                         icon: RemixIcons.delete_bin_line,
                         onPressed: () => _confirmDelete(context, ref),
                       ),
@@ -83,7 +83,7 @@ class InstallmentDetailPage extends ConsumerWidget {
                   onConfirmRepricing: () => _confirmRepricing(context, ref),
                 ),
                 AsyncData(value: InstallmentDetailNotFound()) => const Center(
-                  child: Text('合同不存在'),
+                  child: Text('分期不存在'),
                 ),
                 AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
                 _ => const Center(child: CircularProgressIndicator()),
@@ -99,8 +99,8 @@ class InstallmentDetailPage extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除分期合同'),
-        content: const Text('将撤回还款记录与合同来源交易，并清除合同和还款计划。此操作不可撤销。'),
+        title: const Text('删除分期'),
+        content: const Text('将撤回还款记录与分期来源交易，并清除分期和还款计划。此操作不可撤销。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -116,7 +116,7 @@ class InstallmentDetailPage extends ConsumerWidget {
     if (confirmed != true) return;
     final outcome = await ref
         .read(installmentDetailViewModelProvider(contractId).notifier)
-        .deleteContract();
+        .deleteInstallment();
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<void>():
@@ -147,8 +147,8 @@ class InstallmentDetailPage extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('校验合同状态'),
-        content: const Text('将根据实际还款记录重新计算还款计划和合同状态。不会修改金额、日期、账单或交易。'),
+        title: const Text('校验分期状态'),
+        content: const Text('将根据实际还款记录重新计算还款计划和分期状态。不会修改金额、日期、账单或交易。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -217,7 +217,7 @@ class _Body extends StatelessWidget {
         if (contract.unconfirmedRepricingIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.space12),
           AppStatusBanner(
-            message: '分期合同已执行重定价，请查看后确认',
+            message: '分期已执行重定价，请查看后确认',
             tone: AppStatusBannerTone.info,
             action: TextButton(
               onPressed: loaded.confirmingRepricing ? null : onConfirmRepricing,
@@ -237,13 +237,13 @@ class _Body extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-        Text('合同动态', style: context.appTextStyles.dateSectionTitle),
+        Text('分期动态', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
         if (activities.isEmpty)
           AppSurface(
             child: const Padding(
               padding: EdgeInsets.all(AppSpacing.space20),
-              child: Text('暂无合同动态'),
+              child: Text('暂无分期动态'),
             ),
           )
         else
@@ -374,7 +374,7 @@ class _ActionBar extends StatelessWidget {
             Expanded(
               child: AppInlineActionButton(
                 icon: RemixIcons.edit_line,
-                label: '编辑合同',
+                label: '编辑分期',
                 onPressed: () =>
                     context.push('/installments/${contract.id}/edit'),
               ),

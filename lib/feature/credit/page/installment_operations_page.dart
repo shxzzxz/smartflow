@@ -52,7 +52,7 @@ class _InstallmentOperationsPage extends ConsumerWidget {
               child: switch (value) {
                 AsyncData(:final value) =>
                   value.contract == null
-                      ? const Center(child: Text('合同不存在'))
+                      ? const Center(child: Text('分期不存在'))
                       : _body(context, ref, value),
                 AsyncError() => Center(
                   child: TextButton(
@@ -84,7 +84,7 @@ class _InstallmentOperationsPage extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.space16),
       children: [
         if (contract.stageTerms.isCustom) ...[
-          const Text('自定义合同的还款计划由你手动维护，以下记录不会自动修改计划。'),
+          const Text('自定义分期的还款计划由你手动维护，以下记录不会自动修改计划。'),
           const SizedBox(height: AppSpacing.space12),
         ],
         if (!interestAdjustments) ...[

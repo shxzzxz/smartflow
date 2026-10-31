@@ -3304,26 +3304,26 @@ final class InstallmentContractAppServiceProvider
 }
 
 String _$installmentContractAppServiceHash() =>
-    r'6a21bf4e3ae6df3be225873265f8ce1521d5f721';
+    r'193ff784fc803c27f2f1233c021c29d130696972';
 
-@ProviderFor(consumptionInstallmentRefundAppService)
-final consumptionInstallmentRefundAppServiceProvider =
-    ConsumptionInstallmentRefundAppServiceProvider._();
+@ProviderFor(disbursementInstallmentAppService)
+final disbursementInstallmentAppServiceProvider =
+    DisbursementInstallmentAppServiceProvider._();
 
-final class ConsumptionInstallmentRefundAppServiceProvider
+final class DisbursementInstallmentAppServiceProvider
     extends
         $FunctionalProvider<
-          ConsumptionInstallmentRefundAppService,
-          ConsumptionInstallmentRefundAppService,
-          ConsumptionInstallmentRefundAppService
+          DisbursementInstallmentAppService,
+          DisbursementInstallmentAppService,
+          DisbursementInstallmentAppService
         >
-    with $Provider<ConsumptionInstallmentRefundAppService> {
-  ConsumptionInstallmentRefundAppServiceProvider._()
+    with $Provider<DisbursementInstallmentAppService> {
+  DisbursementInstallmentAppServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'consumptionInstallmentRefundAppServiceProvider',
+        name: r'disbursementInstallmentAppServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
@@ -3331,31 +3331,83 @@ final class ConsumptionInstallmentRefundAppServiceProvider
 
   @override
   String debugGetCreateSourceHash() =>
-      _$consumptionInstallmentRefundAppServiceHash();
+      _$disbursementInstallmentAppServiceHash();
 
   @$internal
   @override
-  $ProviderElement<ConsumptionInstallmentRefundAppService> $createElement(
+  $ProviderElement<DisbursementInstallmentAppService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  ConsumptionInstallmentRefundAppService create(Ref ref) {
-    return consumptionInstallmentRefundAppService(ref);
+  DisbursementInstallmentAppService create(Ref ref) {
+    return disbursementInstallmentAppService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ConsumptionInstallmentRefundAppService value) {
+  Override overrideWithValue(DisbursementInstallmentAppService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride:
-          $SyncValueProvider<ConsumptionInstallmentRefundAppService>(value),
+      providerOverride: $SyncValueProvider<DisbursementInstallmentAppService>(
+        value,
+      ),
     );
   }
 }
 
-String _$consumptionInstallmentRefundAppServiceHash() =>
-    r'eec82331e92f5d27e87d4ac72f712023df33fd44';
+String _$disbursementInstallmentAppServiceHash() =>
+    r'614238309a24fc8e95105b34da4baf6b895a2235';
+
+@ProviderFor(consumptionInstallmentAppService)
+final consumptionInstallmentAppServiceProvider =
+    ConsumptionInstallmentAppServiceProvider._();
+
+final class ConsumptionInstallmentAppServiceProvider
+    extends
+        $FunctionalProvider<
+          ConsumptionInstallmentAppService,
+          ConsumptionInstallmentAppService,
+          ConsumptionInstallmentAppService
+        >
+    with $Provider<ConsumptionInstallmentAppService> {
+  ConsumptionInstallmentAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'consumptionInstallmentAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$consumptionInstallmentAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<ConsumptionInstallmentAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ConsumptionInstallmentAppService create(Ref ref) {
+    return consumptionInstallmentAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ConsumptionInstallmentAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ConsumptionInstallmentAppService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$consumptionInstallmentAppServiceHash() =>
+    r'df9f7c444de9c1f4938eb848fcecfb140721b0f7';
 
 @ProviderFor(installmentContractEditAppService)
 final installmentContractEditAppServiceProvider =
@@ -3507,7 +3559,7 @@ final class InstallmentQueryServiceProvider
 }
 
 String _$installmentQueryServiceHash() =>
-    r'd7f177151dc820c5904727f231a95f7690ae4472';
+    r'a3516ac72deacd52c3a5fa98089f82a3600476a6';
 
 @ProviderFor(installmentStatisticsChangeSource)
 final installmentStatisticsChangeSourceProvider =

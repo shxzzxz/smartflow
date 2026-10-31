@@ -136,9 +136,9 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
         'Create staged installment',
         () async {
           final result = await ref
-              .read(installmentContractAppServiceProvider)
-              .createDisbursementContract(
-                CreateDisbursementContractCommand(
+              .read(disbursementInstallmentAppServiceProvider)
+              .create(
+                CreateDisbursementInstallmentCommand(
                   liabilityAccountId: current.liability.id,
                   name: trimToNull(nameText),
                   disbursementAccountId: current.createDisbursementTransaction

@@ -20,15 +20,14 @@ void main() {
           contractStatusChanged: true,
           issues: [
             ContractStatusValidationIssue(
-              type:
-                  ContractStatusValidationIssueType
-                      .skippedScheduleHasAllocation,
+              type: ContractStatusValidationIssueType
+                  .skippedScheduleHasAllocation,
               message: '已跳过的还款计划存在还款分摊。',
             ),
           ],
         ),
       ),
-      '校验完成，已修复 2 个还款计划及合同状态，另有 1 项数据冲突未处理',
+      '校验完成，已修复 2 个还款计划及分期状态，另有 1 项数据冲突未处理',
     );
   });
 }

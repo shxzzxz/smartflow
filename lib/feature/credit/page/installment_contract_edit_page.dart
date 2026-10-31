@@ -52,13 +52,13 @@ class _InstallmentContractEditPageState
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '编辑合同'),
+            const AppPageHeader(title: '编辑分期'),
             Expanded(
               child: switch (editAsync) {
                 AsyncData(value: InstallmentContractEditLoaded loaded) =>
                   _buildBody(loaded),
                 AsyncData(value: InstallmentContractEditNotFound()) =>
-                  const Center(child: Text('合同不存在')),
+                  const Center(child: Text('分期不存在')),
                 AsyncError() => const Center(child: Text('加载失败，请稍后重试')),
                 _ => const Center(child: CircularProgressIndicator()),
               },
@@ -92,16 +92,16 @@ class _InstallmentContractEditPageState
               contractStatus: contract.status,
             )
           else
-            const Text('已保存合同指标加载失败，请稍后重试'),
+            const Text('已保存分期指标加载失败，请稍后重试'),
           const SizedBox(height: AppSpacing.space12),
           AppFormSection(
-            title: '合同配置',
+            title: '分期基本信息',
             children: [
               AppPlainTextFormRow(
-                label: '合同名称',
+                label: '分期名称',
                 controller: nameController,
                 validator: (value) =>
-                    value == null || value.trim().isEmpty ? '请输入合同名称' : null,
+                    value == null || value.trim().isEmpty ? '请输入分期名称' : null,
               ),
               AppPlainValueRow(
                 label: '借款日期',

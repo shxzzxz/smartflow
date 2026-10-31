@@ -32,7 +32,7 @@ void main() {
               billingDayToNext: true,
             );
 
-        final result = await fixture.service.createConsumptionInstallment(
+        final result = await fixture.consumption.create(
           CreateConsumptionInstallmentCommand(
             liabilityAccountId: 'credit-liability',
             amount: const Money(minorUnits: 140000),
@@ -127,7 +127,7 @@ void main() {
               createdAt: DateTime(2026, 6, 20),
             );
 
-        final result = await fixture.refunds.create(
+        final result = await fixture.consumption.createRefund(
           CreateConsumptionInstallmentRefundCommand(
             contractId: 'purchase-contract',
             parentTransactionId: 'purchase-tx',
@@ -170,7 +170,7 @@ void main() {
           InstallmentContractStatus.settled,
         );
 
-        await fixture.refunds.edit(
+        await fixture.consumption.editRefund(
           EditConsumptionInstallmentRefundCommand(
             transactionId: 'tx-refund-1',
             contractId: 'purchase-contract',
@@ -200,7 +200,7 @@ void main() {
           InstallmentContractStatus.active,
         );
 
-        await fixture.refunds.delete(
+        await fixture.consumption.deleteRefund(
           const DeleteConsumptionInstallmentRefundCommand(
             transactionId: 'tx-refund-1',
           ),
@@ -228,8 +228,8 @@ void main() {
           ),
         ]);
 
-        await fixture.service.deleteContract(
-          const DeleteContractCommand(contractId: 'purchase-contract'),
+        await fixture.consumption.delete(
+          const DeleteInstallmentCommand(contractId: 'purchase-contract'),
         );
 
         expect(fixture.ledger.deletedTransactionIds, ['purchase-tx']);
@@ -260,21 +260,21 @@ void main() {
       ]);
 
       expect(
-        await fixture.refunds.refundablePrincipal(
+        await fixture.consumption.refundablePrincipal(
           contractId: 'purchase-contract',
           refundDate: DateTime(2026, 7, 9),
         ),
         const Money(minorUnits: 120000),
       );
       expect(
-        await fixture.refunds.refundablePrincipal(
+        await fixture.consumption.refundablePrincipal(
           contractId: 'purchase-contract',
           refundDate: DateTime(2026, 7, 10),
         ),
         const Money(minorUnits: 60000),
       );
       expect(
-        await fixture.refunds.refundablePrincipal(
+        await fixture.consumption.refundablePrincipal(
           contractId: 'purchase-contract',
           refundDate: DateTime(2026, 8, 10),
         ),
@@ -307,7 +307,7 @@ void main() {
         ]);
 
         await expectLater(
-          () => fixture.refunds.create(
+          () => fixture.consumption.createRefund(
             CreateConsumptionInstallmentRefundCommand(
               contractId: 'purchase-contract',
               parentTransactionId: 'purchase-tx',
@@ -351,7 +351,7 @@ void main() {
             .map((schedule) => schedule.expectedPrincipal)
             .toList();
 
-        await fixture.refunds.edit(
+        await fixture.consumption.editRefund(
           EditConsumptionInstallmentRefundCommand(
             transactionId: 'refund-1',
             contractId: 'purchase-contract',
@@ -378,7 +378,7 @@ void main() {
       () async {
         final fixture = _Fixture();
 
-        final result = await fixture.service.createDisbursementContract(
+        final result = await fixture.disbursement.create(
           _createDisbursementCommand(disbursementAccountId: null),
         );
 
@@ -398,7 +398,7 @@ void main() {
       () async {
         final fixture = _Fixture();
 
-        final result = await fixture.service.createDisbursementContract(
+        final result = await fixture.disbursement.create(
           _createDisbursementCommand(disbursementAccountId: 'asset-cash'),
         );
 
@@ -417,7 +417,7 @@ void main() {
       'updates contract details through the dedicated details command',
       () async {
         final fixture = _Fixture();
-        final created = await fixture.service.createDisbursementContract(
+        final created = await fixture.disbursement.create(
           _createDisbursementCommand(disbursementAccountId: null),
         );
 
@@ -447,7 +447,7 @@ void main() {
             billingDayToNext: true,
           );
 
-      final result = await fixture.service.createDisbursementContract(
+      final result = await fixture.disbursement.create(
         _createDisbursementCommand(
           liabilityAccountId: 'credit-liability',
           disbursementAccountId: null,
@@ -646,8 +646,8 @@ void main() {
       'explicit recalculation regenerates pending dates from edited terms',
       () async {
         final fixture = _Fixture();
-        final result = await fixture.service.createDisbursementContract(
-          CreateDisbursementContractCommand(
+        final result = await fixture.disbursement.create(
+          CreateDisbursementInstallmentCommand(
             liabilityAccountId: 'loan-liability',
             principal: const Money(minorUnits: 120000),
             borrowingDate: DateTime(2026, 6, 14),
@@ -854,17 +854,17 @@ void main() {
           ),
         );
 
-        await fixture.service.deleteContract(
-          const DeleteContractCommand(contractId: 'with-tx'),
+        await fixture.disbursement.delete(
+          const DeleteInstallmentCommand(contractId: 'with-tx'),
         );
         await expectLater(
-          fixture.service.deleteContract(
-            const DeleteContractCommand(contractId: 'with-repayment'),
+          fixture.disbursement.delete(
+            const DeleteInstallmentCommand(contractId: 'with-repayment'),
           ),
           throwsA(isA<BusinessException>()),
         );
-        await fixture.service.deleteContract(
-          const DeleteContractCommand(contractId: 'deletable'),
+        await fixture.disbursement.delete(
+          const DeleteInstallmentCommand(contractId: 'deletable'),
         );
 
         expect(fixture.installments.contracts.containsKey('with-tx'), false);
@@ -879,14 +879,14 @@ void main() {
   });
 }
 
-CreateDisbursementContractCommand _createDisbursementCommand({
+CreateDisbursementInstallmentCommand _createDisbursementCommand({
   String liabilityAccountId = 'loan-liability',
   String? disbursementAccountId,
   DateTime? borrowingDate,
   DateTime? firstRepaymentDate,
   DateTime? lastRepaymentDate,
 }) {
-  return CreateDisbursementContractCommand(
+  return CreateDisbursementInstallmentCommand(
     liabilityAccountId: liabilityAccountId,
     disbursementAccountId: disbursementAccountId,
     principal: const Money(minorUnits: 120000),
@@ -997,13 +997,20 @@ class _Fixture {
   late final InstallmentContractAppService service =
       InstallmentContractAppServiceImpl(
         repository: installments,
-        creditAccounts: creditAccounts,
-        refundReductions: refundReductions,
         bills: bills,
         ledger: ledger,
         repayments: repayments,
         transactionRunner: const _ImmediateRunner(),
-        idGenerator: SequentialIdGenerator(prefix: 'contract-test'),
+      );
+
+  late final DisbursementInstallmentAppService disbursement =
+      DisbursementInstallmentAppServiceImpl(
+        installments: installments,
+        bills: bills,
+        repayments: repayments,
+        ledger: ledger,
+        runner: const _ImmediateRunner(),
+        idGenerator: SequentialIdGenerator(prefix: 'disbursement-test'),
       );
 
   late final InstallmentPlanAppService planService = InstallmentPlanAppService(
@@ -1014,9 +1021,10 @@ class _Fixture {
     runner: const _ImmediateRunner(),
     idGenerator: SequentialIdGenerator(prefix: 'plan-test'),
   );
-  late final ConsumptionInstallmentRefundAppService refunds =
-      ConsumptionInstallmentRefundAppServiceImpl(
+  late final ConsumptionInstallmentAppService consumption =
+      ConsumptionInstallmentAppServiceImpl(
         installments: installments,
+        creditAccounts: creditAccounts,
         refundReductions: refundReductions,
         bills: bills,
         repayments: repayments,

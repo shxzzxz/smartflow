@@ -73,7 +73,7 @@ class _InstallmentRepaymentFormPageState
   ) {
     switch (state.status) {
       case InstallmentRepaymentFormStatus.notFound:
-        return const Center(child: Text('合同不存在'));
+        return const Center(child: Text('分期不存在'));
       case InstallmentRepaymentFormStatus.loaded:
         break;
     }

@@ -516,10 +516,10 @@ String _transactionDetailDeleteMessage(TransactionReadModel detail) {
     return '此操作将删除退款交易、撤销退款还本并重新计算分期计划，无法恢复。';
   }
   if (owner?.ownerType == installmentOwnerType) {
-    return '此操作将删除关联分期合同、还款计划及其关联账务记录，无法恢复。';
+    return '此操作将删除关联分期、还款计划及其关联账务记录，无法恢复。';
   }
   if (owner?.ownerType == creditRepaymentOwnerType) {
-    return '此操作将删除还款记录及其关联交易，并重新计算相关账单与合同的还款状态，无法恢复。';
+    return '此操作将删除还款记录及其关联交易，并重新计算相关账单与分期的还款状态，无法恢复。';
   }
   return detail.parentTransactionId == null
       ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'

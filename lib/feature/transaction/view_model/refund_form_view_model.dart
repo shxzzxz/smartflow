@@ -305,9 +305,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       return await guardSubmit(_logger, 'Refund form submit', () async {
         final installmentContractId = current.installmentContractId;
         if (installmentContractId != null) {
-          final service = ref.read(
-            consumptionInstallmentRefundAppServiceProvider,
-          );
+          final service = ref.read(consumptionInstallmentAppServiceProvider);
           final creditCategoryAllocations = [
             for (final allocation in categoryAllocations)
               ConsumptionInstallmentAllocation(
@@ -323,7 +321,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
               ),
           ];
           if (current.editing) {
-            await service.edit(
+            await service.editRefund(
               EditConsumptionInstallmentRefundCommand(
                 transactionId: current.transactionId,
                 contractId: installmentContractId,
@@ -336,7 +334,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
               ),
             );
           } else {
-            await service.create(
+            await service.createRefund(
               CreateConsumptionInstallmentRefundCommand(
                 contractId: installmentContractId,
                 parentTransactionId: current.parentTransactionId,
@@ -442,7 +440,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     required String? excludedRefundTransactionId,
   }) {
     return ref
-        .read(consumptionInstallmentRefundAppServiceProvider)
+        .read(consumptionInstallmentAppServiceProvider)
         .refundablePrincipal(
           contractId: contractId,
           refundDate: refundDate,

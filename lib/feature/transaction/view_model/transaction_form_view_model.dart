@@ -855,8 +855,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     }
 
     await ref
-        .read(installmentContractAppServiceProvider)
-        .createConsumptionInstallment(
+        .read(consumptionInstallmentAppServiceProvider)
+        .create(
           CreateConsumptionInstallmentCommand(
             liabilityAccountId: liabilityAccountId,
             amount: amount,

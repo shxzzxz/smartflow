@@ -277,7 +277,7 @@ void main() {
     test(
       'creates consumption installment from complete split payment allocations',
       () async {
-        final installmentService = _FakeInstallmentContractAppService();
+        final installmentService = _FakeConsumptionInstallmentAppService();
         final container = _container(
           settlementAccounts: [
             _account('cash'),
@@ -1458,7 +1458,7 @@ ProviderContainer _container({
   List<Account> advanceReceivableAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
   List<CounterpartyView> counterparties = const [],
-  InstallmentContractAppService? installmentService,
+  ConsumptionInstallmentAppService? installmentService,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -1471,8 +1471,8 @@ ProviderContainer _container({
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         advanceOrchestrationService ?? _FakeAdvanceOrchestrationAppService(),
       ),
-      installmentContractAppServiceProvider.overrideWithValue(
-        installmentService ?? _FakeInstallmentContractAppService(),
+      consumptionInstallmentAppServiceProvider.overrideWithValue(
+        installmentService ?? _FakeConsumptionInstallmentAppService(),
       ),
       advanceCaseRepositoryProvider.overrideWithValue(
         advanceCaseRepository ?? FakeAdvanceCaseRepository(),
@@ -1792,37 +1792,24 @@ class _FakeAdvanceOrchestrationAppService
       throw UnimplementedError('${invocation.memberName}');
 }
 
-class _FakeInstallmentContractAppService
-    implements InstallmentContractAppService {
+class _FakeConsumptionInstallmentAppService
+    implements ConsumptionInstallmentAppService {
   final consumptionCommands = <CreateConsumptionInstallmentCommand>[];
 
   @override
-  Future<CreateContractResult> createConsumptionInstallment(
+  Future<ConsumptionInstallmentResult> create(
     CreateConsumptionInstallmentCommand command,
   ) async {
     consumptionCommands.add(command);
-    return CreateContractResult(
+    return ConsumptionInstallmentResult(
       contractId: 'contract-${consumptionCommands.length}',
       purchaseTransactionId: 'purchase-${consumptionCommands.length}',
     );
   }
 
   @override
-  Future<CreateContractResult> createDisbursementContract(
-    CreateDisbursementContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteContract(DeleteContractCommand command) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> updateContractDetails(UpdateContractDetailsCommand command) {
-    throw UnimplementedError();
-  }
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeTransactionPostingAppService

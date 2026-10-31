@@ -30,8 +30,9 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
   required InstallmentContractAppService installmentAppService,
+  required DisbursementInstallmentAppService disbursementInstallmentAppService,
+  required ConsumptionInstallmentAppService consumptionInstallmentAppService,
   required RepaymentAppService repaymentAppService,
-  ConsumptionInstallmentRefundAppService? consumptionRefundAppService,
   AdvanceOrchestrationAppService? advanceAppService,
   AdvanceCaseQueryService? advanceCaseQuery,
 }) {
@@ -45,11 +46,10 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   }
 
   if (transaction.businessPurpose == BusinessPurpose.refund &&
-      ownership.ownerType == installmentOwnerType &&
-      consumptionRefundAppService != null) {
+      ownership.ownerType == installmentOwnerType) {
     return _InstallmentRefundActionDispatcher(
       transaction: transaction,
-      refundAppService: consumptionRefundAppService,
+      consumptionInstallmentAppService: consumptionInstallmentAppService,
     );
   }
 
@@ -73,6 +73,8 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     return _InstallmentActionDispatcher(
       transaction: transaction,
       installmentAppService: installmentAppService,
+      disbursementInstallmentAppService: disbursementInstallmentAppService,
+      consumptionInstallmentAppService: consumptionInstallmentAppService,
       updateService: updateService,
       contractId: ownership.ownerId,
     );
@@ -97,16 +99,16 @@ final class _InstallmentRefundActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _InstallmentRefundActionDispatcher({
     required this.transaction,
-    required this.refundAppService,
+    required this.consumptionInstallmentAppService,
   });
 
   final TransactionReadModel transaction;
-  final ConsumptionInstallmentRefundAppService refundAppService;
+  final ConsumptionInstallmentAppService consumptionInstallmentAppService;
 
   @override
   Future<UiActionOutcome<void>> delete() {
     return detailVoidOutcomeFromAction(
-      () => refundAppService.delete(
+      () => consumptionInstallmentAppService.deleteRefund(
         DeleteConsumptionInstallmentRefundCommand(
           transactionId: transaction.id,
         ),
@@ -131,7 +133,7 @@ final class _InstallmentRefundActionDispatcher
       return Future.value(detailInvalidCommand('无法定位消费分期退款'));
     }
     return detailVoidOutcomeFromAction(() async {
-      await refundAppService.edit(
+      await consumptionInstallmentAppService.editRefund(
         EditConsumptionInstallmentRefundCommand(
           transactionId: transaction.id,
           contractId: ownership!.ownerId,
@@ -494,18 +496,32 @@ final class _InstallmentActionDispatcher
   const _InstallmentActionDispatcher({
     required this.transaction,
     required this.installmentAppService,
+    required this.disbursementInstallmentAppService,
+    required this.consumptionInstallmentAppService,
     required this.updateService,
     required this.contractId,
   });
 
   final TransactionReadModel transaction;
   final InstallmentContractAppService installmentAppService;
+  final DisbursementInstallmentAppService disbursementInstallmentAppService;
+  final ConsumptionInstallmentAppService consumptionInstallmentAppService;
   final TransactionUpdateAppService updateService;
   final String contractId;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
+      if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
+        return consumptionInstallmentAppService.delete(
+          DeleteInstallmentCommand(contractId: contractId),
+        );
+      }
+      if (transaction.businessPurpose == BusinessPurpose.borrowing) {
+        return disbursementInstallmentAppService.delete(
+          DeleteInstallmentCommand(contractId: contractId),
+        );
+      }
       return installmentAppService.deleteContract(
         DeleteContractCommand(contractId: contractId),
       );

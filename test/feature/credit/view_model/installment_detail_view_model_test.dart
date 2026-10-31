@@ -66,18 +66,63 @@ void main() {
     });
 
     test('delete delegates to command service', () async {
-      final service = _FakeInstallmentContractAppService();
-      final container = _container(contract: _contract(), service: service);
+      final disbursement = _FakeDisbursementInstallmentAppService();
+      final container = _container(
+        contract: _contract(),
+        disbursement: disbursement,
+      );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
       );
 
       final outcome = await container
           .read(installmentDetailViewModelProvider('contract-1').notifier)
-          .deleteContract();
+          .deleteInstallment();
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      expect(service.deleteCommands.single.contractId, 'contract-1');
+      expect(disbursement.deleteCommands.single.contractId, 'contract-1');
+    });
+
+    test('purchase installment deletion uses the consumption module', () async {
+      final consumption = _FakeConsumptionInstallmentAppService();
+      final container = _container(
+        contract: _contract(
+          type: InstallmentType.purchase,
+          sourceRefId: 'purchase-tx',
+        ),
+        consumption: consumption,
+      );
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .deleteInstallment();
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(consumption.deleteCommands.single.contractId, 'contract-1');
+    });
+
+    test('bill installment deletion keeps the repayment bridge', () async {
+      final contracts = _FakeInstallmentContractAppService();
+      final container = _container(
+        contract: _contract(
+          type: InstallmentType.billConversion,
+          sourceRefId: 'repayment-1',
+        ),
+        service: contracts,
+      );
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .deleteInstallment();
+
+      expect(outcome, isA<UiActionSuccess<void>>());
+      expect(contracts.deleteCommands.single.contractId, 'contract-1');
     });
 
     test('revert delegates to command service', () async {
@@ -182,20 +227,23 @@ void main() {
     });
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentContractAppService(
+      final disbursement = _FakeDisbursementInstallmentAppService(
         deleteException: BusinessException(
           CreditErrorCode.contractPersistenceConflict,
           message: '合同数据已变化，请刷新后重试。',
         ),
       );
-      final container = _container(contract: _contract(), service: service);
+      final container = _container(
+        contract: _contract(),
+        disbursement: disbursement,
+      );
       await container.read(
         installmentDetailViewModelProvider('contract-1').future,
       );
 
       final outcome = await container
           .read(installmentDetailViewModelProvider('contract-1').notifier)
-          .deleteContract();
+          .deleteInstallment();
 
       expect(outcome, isA<UiActionFailure<void>>());
       final failure = outcome as UiActionFailure<void>;
@@ -233,6 +281,8 @@ ProviderContainer _container({
   List<InstallmentScheduleReadModel> schedules = const [],
   List<ContractActivity> activities = const [],
   _FakeInstallmentContractAppService? service,
+  _FakeDisbursementInstallmentAppService? disbursement,
+  _FakeConsumptionInstallmentAppService? consumption,
   _FakeRepaymentAppService? repaymentAppService,
   _FakeStatusRepairAppService? statusRepair,
 }) {
@@ -254,6 +304,12 @@ ProviderContainer _container({
       installmentContractAppServiceProvider.overrideWithValue(
         service ?? _FakeInstallmentContractAppService(),
       ),
+      disbursementInstallmentAppServiceProvider.overrideWithValue(
+        disbursement ?? _FakeDisbursementInstallmentAppService(),
+      ),
+      consumptionInstallmentAppServiceProvider.overrideWithValue(
+        consumption ?? _FakeConsumptionInstallmentAppService(),
+      ),
       installmentPlanAppServiceProvider.overrideWithValue(planService),
       repaymentAppServiceProvider.overrideWithValue(
         repaymentAppService ?? _FakeRepaymentAppService(),
@@ -264,12 +320,16 @@ ProviderContainer _container({
   return container;
 }
 
-InstallmentContractReadModel _contract() {
+InstallmentContractReadModel _contract({
+  InstallmentType type = InstallmentType.disbursement,
+  String? sourceRefId,
+}) {
   return InstallmentContractReadModel(
     id: 'contract-1',
     liabilityAccountId: 'loan',
-    installmentType: InstallmentType.disbursement,
-    disbursementAccountId: 'cash',
+    installmentType: type,
+    sourceRefId: sourceRefId,
+    disbursementAccountId: type == InstallmentType.disbursement ? 'cash' : null,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
@@ -327,21 +387,17 @@ ContractRefundReductionActivity _refundReductionActivity() {
 
 class _FakeInstallmentContractAppService
     implements InstallmentContractAppService {
-  _FakeInstallmentContractAppService({this.deleteException});
+  _FakeInstallmentContractAppService();
   final planService = _FakeInstallmentPlanAppService();
   List<SkipInstallmentScheduleCommand> get skipCommands =>
       planService.skipCommands;
   List<RestoreInstallmentScheduleCommand> get restoreCommands =>
       planService.restoreCommands;
-
-  final Object? deleteException;
   final deleteCommands = <DeleteContractCommand>[];
 
   @override
   Future<void> deleteContract(DeleteContractCommand command) async {
     deleteCommands.add(command);
-    final exception = deleteException;
-    if (exception != null) throw exception;
   }
 
   Future<void> skipSchedule(SkipInstallmentScheduleCommand command) async {
@@ -356,6 +412,39 @@ class _FakeInstallmentContractAppService
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDisbursementInstallmentAppService
+    implements DisbursementInstallmentAppService {
+  _FakeDisbursementInstallmentAppService({this.deleteException});
+
+  final Object? deleteException;
+  final deleteCommands = <DeleteInstallmentCommand>[];
+
+  @override
+  Future<void> delete(DeleteInstallmentCommand command) async {
+    deleteCommands.add(command);
+    final exception = deleteException;
+    if (exception != null) throw exception;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeConsumptionInstallmentAppService
+    implements ConsumptionInstallmentAppService {
+  final deleteCommands = <DeleteInstallmentCommand>[];
+
+  @override
+  Future<void> delete(DeleteInstallmentCommand command) async {
+    deleteCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {

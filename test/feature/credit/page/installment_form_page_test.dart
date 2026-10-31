@@ -168,7 +168,7 @@ void main() {
         matching: find.byType(AppFormSection),
       );
       expect(
-        find.descendant(of: configurationCard, matching: find.text('合同名称')),
+        find.descendant(of: configurationCard, matching: find.text('分期名称')),
         findsOneWidget,
       );
       await tester.tap(find.text('分期配置'));
@@ -265,7 +265,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('创建交易'), findsOneWidget);
-      expect(find.text('关闭则仅创建合同和计划'), findsOneWidget);
+      expect(find.text('关闭则仅记录分期和计划'), findsOneWidget);
       expect(find.text('到账账户'), findsOneWidget);
       expect(find.text('末期还款日'), findsNothing);
 

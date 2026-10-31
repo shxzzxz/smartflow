@@ -135,7 +135,7 @@ class _BillConversionInstallmentFormPageState
                 onTap: (_) => _configure(state),
               ),
               AppPlainTextFormRow(
-                label: '合同名称',
+                label: '分期名称',
                 controller: _nameController,
                 hintText: '选填，默认使用借款日期',
               ),

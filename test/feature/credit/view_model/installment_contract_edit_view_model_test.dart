@@ -436,20 +436,6 @@ class _FakeInstallmentContractAppService
       throw UnimplementedError();
 
   @override
-  Future<CreateContractResult> createDisbursementContract(
-    CreateDisbursementContractCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<CreateContractResult> createConsumptionInstallment(
-    CreateConsumptionInstallmentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
-
-  @override
   Future<void> deleteContract(DeleteContractCommand command) {
     throw UnimplementedError();
   }

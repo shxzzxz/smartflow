@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:smartflow/application/credit/disbursement_installment/command/disbursement_installment_app_service.dart';
+import 'package:smartflow/application/credit/disbursement_installment/command/disbursement_installment_command.dart';
 import 'package:smartflow/application/credit/installment/command/installment_contract_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_contract_edit_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';
@@ -19,7 +21,6 @@ import 'package:smartflow/domain/credit/valobj/interest_rate.dart';
 import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_dates_strategy.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
-import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_product_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repricing_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
@@ -35,7 +36,8 @@ void main() {
   late AppDatabase db;
   late DriftInstallmentRepository repository;
   late DriftInstallmentProductRepository products;
-  late InstallmentContractAppService service;
+  late InstallmentContractAppService contracts;
+  late DisbursementInstallmentAppService disbursement;
   late InstallmentPlanAppService plans;
   late InstallmentContractEditAppService editing;
   late SequentialIdGenerator ids;
@@ -44,14 +46,19 @@ void main() {
     ids = SequentialIdGenerator();
     repository = DriftInstallmentRepository(db);
     products = DriftInstallmentProductRepository(db);
-    service = InstallmentContractAppServiceImpl(
+    contracts = InstallmentContractAppServiceImpl(
       repository: repository,
-      creditAccounts: DriftCreditAccountRepository(db),
-      refundReductions: repository,
       bills: DriftBillRepository(db),
       repayments: DriftRepaymentRepository(db),
       ledger: _Ledger(),
       transactionRunner: DriftTransactionRunner(db),
+    );
+    disbursement = DisbursementInstallmentAppServiceImpl(
+      installments: repository,
+      bills: DriftBillRepository(db),
+      repayments: DriftRepaymentRepository(db),
+      ledger: _Ledger(),
+      runner: DriftTransactionRunner(db),
       idGenerator: ids,
     );
     plans = InstallmentPlanAppService(
@@ -62,7 +69,7 @@ void main() {
       idGenerator: ids,
     );
     editing = InstallmentContractEditAppServiceImpl(
-      contracts: service,
+      contracts: contracts,
       plans: plans,
       runner: DriftTransactionRunner(db),
     );
@@ -88,7 +95,7 @@ void main() {
   test(
     'creation saves the entered name and initial rate without generating repricing configuration',
     () async {
-      final result = await service.createDisbursementContract(
+      final result = await disbursement.create(
         _command(
           10000,
           32000,
@@ -121,7 +128,7 @@ void main() {
           firstResetDate: DateTime(2026, 1, 10),
           firstEffectiveDate: DateTime(2026, 1, 15),
         );
-        final created = await service.createDisbursementContract(
+        final created = await disbursement.create(
           _command(10000, 12000, floatingRate: rule),
         );
         final original = (await repository.findContract(created.contractId))!;
@@ -215,9 +222,7 @@ void main() {
   }
 
   test('contract name persists independently of schedule edits', () async {
-    final created = await service.createDisbursementContract(
-      _command(10000, 12000),
-    );
+    final created = await disbursement.create(_command(10000, 12000));
     final contract = (await repository.findContract(created.contractId))!;
     expect(contract.name, '20260101');
     final before = await repository.listSchedules(contract.id);
@@ -248,12 +253,8 @@ void main() {
   test(
     'two loans from a product own separate rows and different actual terms',
     () async {
-      final first = await service.createDisbursementContract(
-        _command(10000, 12000),
-      );
-      final second = await service.createDisbursementContract(
-        _command(20000, 24000),
-      );
+      final first = await disbursement.create(_command(10000, 12000));
+      final second = await disbursement.create(_command(20000, 24000));
       final a = (await repository.findContract(first.contractId))!;
       final b = (await repository.findContract(second.contractId))!;
       expect(
@@ -276,9 +277,7 @@ void main() {
   test(
     'preview is read only and explicit stage rebuild preserves existing identities',
     () async {
-      final created = await service.createDisbursementContract(
-        _command(10000, 12000),
-      );
+      final created = await disbursement.create(_command(10000, 12000));
       final original = (await repository.findContract(created.contractId))!;
       final existing = await repository.listSchedules(original.id);
       final changed = InstallmentContractTerms(
@@ -349,9 +348,7 @@ void main() {
   test(
     'stage edits rebuild paid schedules and persistence failure rolls back the complete change',
     () async {
-      final created = await service.createDisbursementContract(
-        _command(10000, 12000),
-      );
+      final created = await disbursement.create(_command(10000, 12000));
       final original = (await repository.findContract(created.contractId))!;
       original.schedules.first.markPaid();
       original.refreshStatusFromSchedules();
@@ -418,12 +415,12 @@ void main() {
   );
 }
 
-CreateDisbursementContractCommand _command(
+CreateDisbursementInstallmentCommand _command(
   int principal,
   int rate, {
   FloatingRateRule? floatingRate,
   String? name,
-}) => CreateDisbursementContractCommand(
+}) => CreateDisbursementInstallmentCommand(
   name: name,
   liabilityAccountId: 'loan-account',
   principal: Money(minorUnits: principal),

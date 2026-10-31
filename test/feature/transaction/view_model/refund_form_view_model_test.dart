@@ -74,7 +74,7 @@ void main() {
   test(
     'routes a purchase refund through consumption installment refunds',
     () async {
-      final refunds = _FakeConsumptionRefundService();
+      final refunds = _FakeConsumptionInstallmentService();
       final container = _container(
         purchaseParent: true,
         consumptionRefunds: refunds,
@@ -107,7 +107,7 @@ void main() {
   test(
     'refreshes the liability refund limit when the business date changes',
     () async {
-      final refunds = _FakeConsumptionRefundService(
+      final refunds = _FakeConsumptionInstallmentService(
         limitForDate: (date) => date.day == 1
             ? const Money(minorUnits: 6000)
             : const Money(minorUnits: 10000),
@@ -132,7 +132,7 @@ void main() {
   );
 
   test('blocks liability allocation above the refundable principal', () async {
-    final refunds = _FakeConsumptionRefundService();
+    final refunds = _FakeConsumptionInstallmentService();
     final container = _container(
       purchaseParent: true,
       consumptionRefunds: refunds,
@@ -155,7 +155,7 @@ void main() {
   });
 
   test('refreshes the installment plan after a covering refund', () async {
-    final refunds = _FakeConsumptionRefundService();
+    final refunds = _FakeConsumptionInstallmentService();
     var activityLoads = 0;
     final container = _container(
       purchaseParent: true,
@@ -357,7 +357,7 @@ ProviderContainer _container({
   bool combinedPayment = false,
   bool purchaseParent = false,
   _FakeAdvanceOrchestrationService? orchestration,
-  _FakeConsumptionRefundService? consumptionRefunds,
+  _FakeConsumptionInstallmentService? consumptionRefunds,
   Future<List<InstallmentScheduleReadModel>> Function(String contractId)?
   scheduleLoader,
   Future<List<ContractActivity>> Function(String contractId)? activityLoader,
@@ -402,8 +402,8 @@ ProviderContainer _container({
           _FakeInstallmentQueryService(),
         ),
       if (purchaseParent)
-        consumptionInstallmentRefundAppServiceProvider.overrideWithValue(
-          consumptionRefunds ?? _FakeConsumptionRefundService(),
+        consumptionInstallmentAppServiceProvider.overrideWithValue(
+          consumptionRefunds ?? _FakeConsumptionInstallmentService(),
         ),
       if (scheduleLoader != null)
         installmentSchedulesProvider.overrideWith(
@@ -451,9 +451,9 @@ class _FakeAdvanceOrchestrationService
       throw UnimplementedError('${invocation.memberName}');
 }
 
-class _FakeConsumptionRefundService
-    implements ConsumptionInstallmentRefundAppService {
-  _FakeConsumptionRefundService({this.limitForDate});
+class _FakeConsumptionInstallmentService
+    implements ConsumptionInstallmentAppService {
+  _FakeConsumptionInstallmentService({this.limitForDate});
 
   final Money Function(DateTime)? limitForDate;
   final createCommands = <CreateConsumptionInstallmentRefundCommand>[];
@@ -468,7 +468,7 @@ class _FakeConsumptionRefundService
   }) async => limitForDate?.call(refundDate) ?? const Money(minorUnits: 10000);
 
   @override
-  Future<ConsumptionInstallmentRefundResult> create(
+  Future<ConsumptionInstallmentRefundResult> createRefund(
     CreateConsumptionInstallmentRefundCommand command,
   ) async {
     createCommands.add(command);
@@ -479,7 +479,7 @@ class _FakeConsumptionRefundService
   }
 
   @override
-  Future<ConsumptionInstallmentRefundResult> edit(
+  Future<ConsumptionInstallmentRefundResult> editRefund(
     EditConsumptionInstallmentRefundCommand command,
   ) async {
     editCommands.add(command);
@@ -490,9 +490,15 @@ class _FakeConsumptionRefundService
   }
 
   @override
-  Future<void> delete(DeleteConsumptionInstallmentRefundCommand command) async {
+  Future<void> deleteRefund(
+    DeleteConsumptionInstallmentRefundCommand command,
+  ) async {
     deleteCommands.add(command);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeInstallmentQueryService implements InstallmentQueryService {

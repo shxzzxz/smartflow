@@ -18,6 +18,12 @@ class _MockTransactionUpdateAppService extends Mock
 class _MockInstallmentContractAppService extends Mock
     implements InstallmentContractAppService {}
 
+class _MockDisbursementInstallmentAppService extends Mock
+    implements DisbursementInstallmentAppService {}
+
+class _MockConsumptionInstallmentAppService extends Mock
+    implements ConsumptionInstallmentAppService {}
+
 class _MockRepaymentAppService extends Mock implements RepaymentAppService {}
 
 class _MockAdvanceOrchestrationAppService extends Mock
@@ -36,6 +42,8 @@ void main() {
   late _MockTransactionEditAppService editService;
   late _MockTransactionUpdateAppService updateService;
   late _MockInstallmentContractAppService installmentAppService;
+  late _MockDisbursementInstallmentAppService disbursementInstallmentAppService;
+  late _MockConsumptionInstallmentAppService consumptionInstallmentAppService;
   late _MockRepaymentAppService repaymentAppService;
   late _MockAdvanceOrchestrationAppService advanceAppService;
   late _MockAdvanceCaseQueryService advanceCaseQuery;
@@ -49,6 +57,9 @@ void main() {
     editService = _MockTransactionEditAppService();
     updateService = _MockTransactionUpdateAppService();
     installmentAppService = _MockInstallmentContractAppService();
+    disbursementInstallmentAppService =
+        _MockDisbursementInstallmentAppService();
+    consumptionInstallmentAppService = _MockConsumptionInstallmentAppService();
     repaymentAppService = _MockRepaymentAppService();
     advanceAppService = _MockAdvanceOrchestrationAppService();
     advanceCaseQuery = _MockAdvanceCaseQueryService();
@@ -87,6 +98,8 @@ void main() {
         editService: editService,
         updateService: updateService,
         installmentAppService: installmentAppService,
+        disbursementInstallmentAppService: disbursementInstallmentAppService,
+        consumptionInstallmentAppService: consumptionInstallmentAppService,
         repaymentAppService: repaymentAppService,
         advanceAppService: advanceAppService,
         advanceCaseQuery: advanceCaseQuery,
@@ -124,6 +137,8 @@ void main() {
         editService: editService,
         updateService: updateService,
         installmentAppService: installmentAppService,
+        disbursementInstallmentAppService: disbursementInstallmentAppService,
+        consumptionInstallmentAppService: consumptionInstallmentAppService,
         repaymentAppService: repaymentAppService,
         advanceAppService: advanceAppService,
         advanceCaseQuery: advanceCaseQuery,

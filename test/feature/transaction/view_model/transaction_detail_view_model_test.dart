@@ -583,9 +583,62 @@ void main() {
     );
 
     test(
+      'purchase transaction deletion uses the consumption installment module',
+      () async {
+        final consumption = _FakeConsumptionInstallmentAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.dailyExpense,
+            ownership: const TransactionOwnership(
+              ownerType: installmentOwnerType,
+              ownerId: 'purchase-contract',
+            ),
+          ),
+          consumption: consumption,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .delete();
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(
+          consumption.installmentDeleteCommands.single.contractId,
+          'purchase-contract',
+        );
+      },
+    );
+
+    test(
+      'borrowing transaction deletion uses the disbursement installment module',
+      () async {
+        final disbursement = _FakeDisbursementInstallmentAppService();
+        final container = _container(
+          detail: _detail(
+            purpose: BusinessPurpose.borrowing,
+            ownership: const TransactionOwnership(
+              ownerType: installmentOwnerType,
+              ownerId: 'loan-contract',
+            ),
+          ),
+          disbursement: disbursement,
+        );
+        await _readState(container);
+
+        final outcome = await container
+            .read(transactionDetailViewModelProvider('tx-1').notifier)
+            .delete();
+
+        expect(outcome, isA<UiActionSuccess<void>>());
+        expect(disbursement.deleteCommands.single.contractId, 'loan-contract');
+      },
+    );
+
+    test(
       'updates installment refund posted time through refund edit',
       () async {
-        final refunds = _FakeConsumptionRefundAppService();
+        final refunds = _FakeConsumptionInstallmentAppService();
         final detail = _detail(
           purpose: BusinessPurpose.refund,
           parentTransactionId: 'parent',
@@ -594,10 +647,7 @@ void main() {
             ownerId: 'purchase-contract',
           ),
         );
-        final container = _container(
-          detail: detail,
-          consumptionRefund: refunds,
-        );
+        final container = _container(detail: detail, consumption: refunds);
         final loaded = await _readState(container) as TransactionDetailLoaded;
 
         expect(loaded.behavior.canEditPostedAt, isA<DetailEditAllowed>());
@@ -615,7 +665,7 @@ void main() {
     test(
       'refreshes contract activity after deleting installment refund',
       () async {
-        final refunds = _FakeConsumptionRefundAppService();
+        final refunds = _FakeConsumptionInstallmentAppService();
         var activityLoads = 0;
         final detail = _detail(
           purpose: BusinessPurpose.refund,
@@ -627,7 +677,7 @@ void main() {
         );
         final container = _container(
           detail: detail,
-          consumptionRefund: refunds,
+          consumption: refunds,
           activityLoader: (_) async {
             activityLoads++;
             return const [];
@@ -818,8 +868,9 @@ ProviderContainer _container({
   _FakeTransactionPostingAppService? posting,
   _FakeAdvanceOrchestrationService? orchestration,
   _FakeInstallmentContractAppService? installment,
+  _FakeDisbursementInstallmentAppService? disbursement,
   _FakeRepaymentAppService? repayment,
-  _FakeConsumptionRefundAppService? consumptionRefund,
+  _FakeConsumptionInstallmentAppService? consumption,
   Future<List<ContractActivity>> Function(String contractId)? activityLoader,
 }) {
   final accounts = <String, Account>{
@@ -868,11 +919,14 @@ ProviderContainer _container({
       installmentContractAppServiceProvider.overrideWithValue(
         installment ?? _FakeInstallmentContractAppService(),
       ),
+      disbursementInstallmentAppServiceProvider.overrideWithValue(
+        disbursement ?? _FakeDisbursementInstallmentAppService(),
+      ),
       repaymentAppServiceProvider.overrideWithValue(
         repayment ?? _FakeRepaymentAppService(),
       ),
-      consumptionInstallmentRefundAppServiceProvider.overrideWithValue(
-        consumptionRefund ?? _FakeConsumptionRefundAppService(),
+      consumptionInstallmentAppServiceProvider.overrideWithValue(
+        consumption ?? _FakeConsumptionInstallmentAppService(),
       ),
       if (activityLoader != null)
         installmentActivitiesProvider.overrideWith(
@@ -1343,20 +1397,20 @@ class _FakeInstallmentContractAppService
   Future<void> deleteContract(DeleteContractCommand command) async {
     deleteContractCommands.add(command);
   }
+}
+
+class _FakeDisbursementInstallmentAppService
+    implements DisbursementInstallmentAppService {
+  final deleteCommands = <DeleteInstallmentCommand>[];
 
   @override
-  Future<CreateContractResult> createDisbursementContract(
-    CreateDisbursementContractCommand command,
-  ) {
-    throw UnimplementedError();
+  Future<void> delete(DeleteInstallmentCommand command) async {
+    deleteCommands.add(command);
   }
 
   @override
-  Future<CreateContractResult> createConsumptionInstallment(
-    CreateConsumptionInstallmentCommand command,
-  ) {
-    throw UnimplementedError();
-  }
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeRepaymentAppService implements RepaymentAppService {
@@ -1379,14 +1433,15 @@ class _FakeRepaymentAppService implements RepaymentAppService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeConsumptionRefundAppService
-    implements ConsumptionInstallmentRefundAppService {
+class _FakeConsumptionInstallmentAppService
+    implements ConsumptionInstallmentAppService {
   final createCommands = <CreateConsumptionInstallmentRefundCommand>[];
   final editCommands = <EditConsumptionInstallmentRefundCommand>[];
   final deleteCommands = <DeleteConsumptionInstallmentRefundCommand>[];
+  final installmentDeleteCommands = <DeleteInstallmentCommand>[];
 
   @override
-  Future<ConsumptionInstallmentRefundResult> create(
+  Future<ConsumptionInstallmentRefundResult> createRefund(
     CreateConsumptionInstallmentRefundCommand command,
   ) async {
     createCommands.add(command);
@@ -1397,7 +1452,7 @@ class _FakeConsumptionRefundAppService
   }
 
   @override
-  Future<ConsumptionInstallmentRefundResult> edit(
+  Future<ConsumptionInstallmentRefundResult> editRefund(
     EditConsumptionInstallmentRefundCommand command,
   ) async {
     editCommands.add(command);
@@ -1415,9 +1470,20 @@ class _FakeConsumptionRefundAppService
   }) async => Money.zero();
 
   @override
-  Future<void> delete(DeleteConsumptionInstallmentRefundCommand command) async {
+  Future<void> deleteRefund(
+    DeleteConsumptionInstallmentRefundCommand command,
+  ) async {
     deleteCommands.add(command);
   }
+
+  @override
+  Future<void> delete(DeleteInstallmentCommand command) async {
+    installmentDeleteCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 const _advanceLines = [

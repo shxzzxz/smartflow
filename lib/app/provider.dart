@@ -646,22 +646,30 @@ RepaymentAppService repaymentAppService(Ref ref) {
 InstallmentContractAppService installmentContractAppService(Ref ref) {
   return InstallmentContractAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    creditAccounts: ref.watch(creditAccountRepositoryProvider),
-    refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+DisbursementInstallmentAppService disbursementInstallmentAppService(Ref ref) {
+  return DisbursementInstallmentAppServiceImpl(
+    installments: ref.watch(installmentRepositoryProvider),
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    runner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
 }
 
 @Riverpod(keepAlive: true)
-ConsumptionInstallmentRefundAppService consumptionInstallmentRefundAppService(
-  Ref ref,
-) {
-  return ConsumptionInstallmentRefundAppServiceImpl(
+ConsumptionInstallmentAppService consumptionInstallmentAppService(Ref ref) {
+  return ConsumptionInstallmentAppServiceImpl(
     installments: ref.watch(installmentRepositoryProvider),
+    creditAccounts: ref.watch(creditAccountRepositoryProvider),
     refundReductions: ref.watch(installmentRefundReductionRepositoryProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),

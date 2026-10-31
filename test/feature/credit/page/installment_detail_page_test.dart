@@ -29,14 +29,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('利率与利息调整'), findsNothing);
-      expect(find.byTooltip('删除合同'), findsNothing);
+      expect(find.byTooltip('删除分期'), findsNothing);
       await tester.tap(find.byTooltip('更多'));
       await tester.pumpAndSettle();
       expect(find.text('重定价'), findsOneWidget);
       expect(find.text('利息调整'), findsOneWidget);
-      await tester.tap(find.text('删除合同'));
+      await tester.tap(find.text('删除分期'));
       await tester.pumpAndSettle();
-      expect(find.text('删除分期合同'), findsOneWidget);
+      expect(find.text('删除分期'), findsWidgets);
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
@@ -63,7 +63,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('分期合同已执行重定价，请查看后确认'), findsOneWidget);
+      expect(find.text('分期已执行重定价，请查看后确认'), findsOneWidget);
       expect(find.byTooltip('重定价预览'), findsNothing);
       expect(find.textContaining('浮动利率计划：'), findsNothing);
       expect(
@@ -139,7 +139,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppDetailSummaryCard), findsOneWidget);
-    expect(find.text('分期合同'), findsOneWidget);
+    expect(find.text('分期详情'), findsOneWidget);
     expect(find.text('20260101'), findsOneWidget);
     expect(find.text('待还本金'), findsOneWidget);
     expect(find.text('已还利息'), findsOneWidget);
@@ -229,12 +229,12 @@ void main() {
 
       await tester.tap(find.text('校验状态'));
       await tester.pumpAndSettle();
-      expect(find.text('校验合同状态'), findsOneWidget);
+      expect(find.text('校验分期状态'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, '校验'));
       await tester.pumpAndSettle();
 
       expect(repair.contractIds.single, 'contract-1');
-      expect(find.text('校验完成，已修复 2 个还款计划及合同状态，另有 1 项数据冲突未处理'), findsOneWidget);
+      expect(find.text('校验完成，已修复 2 个还款计划及分期状态，另有 1 项数据冲突未处理'), findsOneWidget);
     },
   );
 
@@ -267,14 +267,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('合同动态'), 200);
+    await tester.scrollUntilVisible(find.text('分期动态'), 200);
 
-    expect(find.text('合同动态'), findsOneWidget);
+    expect(find.text('分期动态'), findsOneWidget);
     expect(find.textContaining('退款还本'), findsOneWidget);
     expect(find.text('本金 800.00'), findsOneWidget);
     expect(find.text('800.00'), findsOneWidget);
     expect(find.textContaining('已重算后续还款计划'), findsNothing);
-    expect(find.text('暂无合同动态'), findsNothing);
+    expect(find.text('暂无分期动态'), findsNothing);
   });
 }
 

@@ -116,7 +116,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               AppPlainSwitchRow(
                 label: '创建交易',
-                description: '关闭则仅创建合同和计划',
+                description: '关闭则仅记录分期和计划',
                 value: state.createDisbursementTransaction,
                 onChanged: notifier.setCreateDisbursementTransaction,
               ),
@@ -152,7 +152,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 onTap: (_) => _configure(state),
               ),
               AppPlainTextFormRow(
-                label: '合同名称',
+                label: '分期名称',
                 controller: _nameController,
                 hintText: '选填，默认使用借款日期',
               ),

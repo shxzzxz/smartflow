@@ -35,15 +35,30 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     );
   }
 
-  Future<UiActionOutcome<void>> deleteContract() async {
+  Future<UiActionOutcome<void>> deleteInstallment() async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
-    return guardUiAction(_logger, 'Contract delete', () async {
-      await ref
-          .read(installmentContractAppServiceProvider)
-          .deleteContract(
-            DeleteContractCommand(contractId: loaded.contract.id),
-          );
+    if (loaded == null) return _invalidAction('分期尚未加载');
+    return guardUiAction(_logger, 'Installment delete', () async {
+      final command = DeleteInstallmentCommand(contractId: loaded.contract.id);
+      switch (loaded.contract.installmentType) {
+        case InstallmentType.disbursement:
+          await ref
+              .read(disbursementInstallmentAppServiceProvider)
+              .delete(command);
+          break;
+        case InstallmentType.purchase:
+          await ref
+              .read(consumptionInstallmentAppServiceProvider)
+              .delete(command);
+          break;
+        case InstallmentType.billConversion:
+          await ref
+              .read(installmentContractAppServiceProvider)
+              .deleteContract(
+                DeleteContractCommand(contractId: loaded.contract.id),
+              );
+          break;
+      }
       ref.invalidate(
         installmentContractsByAccountProvider(
           loaded.contract.liabilityAccountId,
@@ -57,7 +72,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
 
   Future<UiActionOutcome<void>> confirmRepricing() async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded == null) return _invalidAction('分期尚未加载');
     if (loaded.confirmingRepricing) return _invalidAction('正在确认，请稍候');
     _setConfirmingRepricing(true);
     try {
@@ -91,7 +106,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
 
   Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded == null) return _invalidAction('分期尚未加载');
     return guardUiAction(_logger, 'Contract repayment revert', () async {
       await ref
           .read(repaymentAppServiceProvider)
@@ -104,7 +119,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
 
   Future<UiActionOutcome<void>> skipSchedule(String scheduleId) async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded == null) return _invalidAction('分期尚未加载');
     return guardUiAction(_logger, 'Schedule skip', () async {
       await ref
           .read(installmentPlanAppServiceProvider)
@@ -120,7 +135,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
 
   Future<UiActionOutcome<void>> restoreSchedule(String scheduleId) async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded == null) return _invalidAction('分期尚未加载');
     return guardUiAction(_logger, 'Schedule restore', () async {
       await ref
           .read(installmentPlanAppServiceProvider)
@@ -141,7 +156,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       return UiActionOutcome.failure(
         UiError(
           code: CreditErrorCode.contractInvalidCommand.code,
-          message: '合同尚未加载',
+          message: '分期尚未加载',
         ),
       );
     }

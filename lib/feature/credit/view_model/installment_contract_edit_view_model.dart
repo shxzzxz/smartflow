@@ -152,7 +152,7 @@ class InstallmentContractEditViewModel
 
   Future<UiActionOutcome<void>> recalculate() async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidAction('合同尚未加载');
+    if (loaded == null) return _invalidAction('分期尚未加载');
     return _recalculateStages(loaded);
   }
 
@@ -202,7 +202,7 @@ class InstallmentContractEditViewModel
 
   Future<SubmitOutcome> submit({String? nameText}) async {
     final loaded = _loadedOrNull();
-    if (loaded == null) return _invalidSubmit('合同尚未加载');
+    if (loaded == null) return _invalidSubmit('分期尚未加载');
     return _submitStages(loaded, nameText);
   }
 

@@ -2,156 +2,11 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 
-class CreateDisbursementContractCommand {
-  const CreateDisbursementContractCommand({
-    this.name,
-    required this.liabilityAccountId,
-    required this.principal,
-    required this.borrowingDate,
-    this.disbursementAccountId,
-    this.note,
-    this.counterpartyId,
-    required this.stageTerms,
-  });
+class DeleteInstallmentCommand {
+  const DeleteInstallmentCommand({required this.contractId});
 
-  final String liabilityAccountId;
-  final String? name;
-
-  /// 放款入账账户。为空时用于迁移场景：只创建合同和计划，不创建放款交易。
-  final String? disbursementAccountId;
-  final Money principal;
-
-  /// 借款日期，同时作为放款交易的 occurredAt。
-  final DateTime borrowingDate;
-
-  final String? note;
-  final String? counterpartyId;
-  final InstallmentContractTerms stageTerms;
-}
-
-class ConsumptionInstallmentAllocation {
-  const ConsumptionInstallmentAllocation({
-    required this.accountId,
-    required this.amount,
-  });
-
-  final String accountId;
-  final Money amount;
-}
-
-class CreateConsumptionInstallmentCommand {
-  CreateConsumptionInstallmentCommand({
-    this.name,
-    required this.liabilityAccountId,
-    required this.amount,
-    required List<ConsumptionInstallmentAllocation> categoryAllocations,
-    required List<ConsumptionInstallmentAllocation> settlementAllocations,
-    required this.borrowingDate,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-    this.tagIds = const {},
-    this.isExcludedFromStats = false,
-    this.isExcludedFromBudget = false,
-    required this.stageTerms,
-  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
-       settlementAllocations = List.unmodifiable(settlementAllocations);
-
-  final String? name;
-  final String liabilityAccountId;
-  final Money amount;
-  final List<ConsumptionInstallmentAllocation> categoryAllocations;
-  final List<ConsumptionInstallmentAllocation> settlementAllocations;
-  final DateTime borrowingDate;
-  final DateTime occurredAt;
-  final DateTime? postedAt;
-  final String? counterpartyId;
-  final String? note;
-  final Set<String> tagIds;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-  final InstallmentContractTerms stageTerms;
-}
-
-class CreateConsumptionInstallmentRefundCommand {
-  CreateConsumptionInstallmentRefundCommand({
-    required this.contractId,
-    required this.parentTransactionId,
-    required this.amount,
-    required List<ConsumptionInstallmentAllocation> categoryAllocations,
-    required List<ConsumptionInstallmentAllocation> settlementAllocations,
-    required this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
-       settlementAllocations = List.unmodifiable(settlementAllocations);
-
+  /// 分期与合同共用的稳定身份。
   final String contractId;
-  final String parentTransactionId;
-  final Money amount;
-  final List<ConsumptionInstallmentAllocation> categoryAllocations;
-  final List<ConsumptionInstallmentAllocation> settlementAllocations;
-  final DateTime occurredAt;
-  final DateTime? postedAt;
-  final String? counterpartyId;
-  final String? note;
-}
-
-class EditConsumptionInstallmentRefundCommand {
-  EditConsumptionInstallmentRefundCommand({
-    required this.transactionId,
-    required this.contractId,
-    required this.parentTransactionId,
-    this.amount,
-    List<ConsumptionInstallmentAllocation>? categoryAllocations,
-    List<ConsumptionInstallmentAllocation>? settlementAllocations,
-    this.occurredAt,
-    this.postedAt,
-    this.counterpartyId,
-    this.note,
-  }) : categoryAllocations = categoryAllocations == null
-           ? null
-           : List.unmodifiable(categoryAllocations),
-       settlementAllocations = settlementAllocations == null
-           ? null
-           : List.unmodifiable(settlementAllocations);
-
-  final String transactionId;
-  final String contractId;
-  final String parentTransactionId;
-  final Money? amount;
-  final List<ConsumptionInstallmentAllocation>? categoryAllocations;
-  final List<ConsumptionInstallmentAllocation>? settlementAllocations;
-  final DateTime? occurredAt;
-  final DateTime? postedAt;
-  final String? counterpartyId;
-  final String? note;
-
-  bool get hasFinancialEdit =>
-      amount != null ||
-      categoryAllocations != null ||
-      settlementAllocations != null ||
-      occurredAt != null;
-}
-
-class DeleteConsumptionInstallmentRefundCommand {
-  const DeleteConsumptionInstallmentRefundCommand({
-    required this.transactionId,
-  });
-
-  final String transactionId;
-}
-
-class ConsumptionInstallmentRefundResult {
-  const ConsumptionInstallmentRefundResult({
-    required this.refundTransactionId,
-    required this.principalReduction,
-  });
-
-  final String refundTransactionId;
-  final Money principalReduction;
 }
 
 class DeleteContractCommand {
@@ -297,8 +152,7 @@ class UpdateContractCommand {
   final String contractId;
   final String? name;
 
-  /// 放款合同的放款账户。仅对 installmentType=disbursement 的合同有效。
-  /// 业务上禁止清除（账单分期合同永远 null，放款合同永远有值）。
+  /// 放款分期的放款账户。仅对已有放款交易的放款分期有效。
   final String? disbursementAccountId;
 
   final Patch<String>? note;
@@ -306,16 +160,4 @@ class UpdateContractCommand {
   final InstallmentContractTerms? stageTerms;
   final bool regeneratePlan;
   final String? planPreviewToken;
-}
-
-class CreateContractResult {
-  const CreateContractResult({
-    required this.contractId,
-    this.disbursementTransactionId,
-    this.purchaseTransactionId,
-  });
-
-  final String contractId;
-  final String? disbursementTransactionId;
-  final String? purchaseTransactionId;
 }

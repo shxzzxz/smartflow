@@ -49,10 +49,10 @@ void main() {
       expect(find.byType(InstallmentTermsEditor), findsNothing);
       expect(
         tester.getTopLeft(find.text('20260101').first).dy,
-        lessThan(tester.getTopLeft(find.text('合同配置')).dy),
+        lessThan(tester.getTopLeft(find.text('分期基本信息')).dy),
       );
       expect(
-        tester.getTopLeft(find.text('合同配置')).dy,
+        tester.getTopLeft(find.text('分期基本信息')).dy,
         lessThan(tester.getTopLeft(find.text('还款计划')).dy),
       );
       await tester.enterText(find.byType(TextField).first, '家庭贷款');

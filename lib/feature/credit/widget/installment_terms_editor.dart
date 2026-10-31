@@ -356,7 +356,7 @@ class _InstallmentTermsEditorState extends State<InstallmentTermsEditor> {
                       key: ValueKey('${s.id}:rate'),
                       value: s.text(StageInput.rate),
                       label: '初始利率',
-                      hint: '填写合同约定利率，留空即免息',
+                      hint: '填写分期约定利率，留空即免息',
                       enabled: true,
                       money: false,
                       ratePeriod: s.ratePeriod,

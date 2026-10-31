@@ -83,7 +83,7 @@ void main() {
     );
 
     test('submits disbursement contract command', () async {
-      final service = _FakeInstallmentContractAppService();
+      final service = _FakeDisbursementInstallmentAppService();
       final args = _args('loan');
       final container = _container(service: service);
       await _readState(container, args);
@@ -140,7 +140,7 @@ void main() {
     test(
       'submits migration contract without disbursement transaction',
       () async {
-        final service = _FakeInstallmentContractAppService();
+        final service = _FakeDisbursementInstallmentAppService();
         final queryService = _FakeCreditAccountQueryService();
         final args = _args('loan');
         final container = _container(
@@ -178,7 +178,7 @@ void main() {
     test(
       'submits credit account installment as disbursement command',
       () async {
-        final service = _FakeInstallmentContractAppService();
+        final service = _FakeDisbursementInstallmentAppService();
         final args = _args(
           'card',
           lockedInstallmentType: InstallmentType.billConversion,
@@ -223,7 +223,7 @@ void main() {
     test(
       'rejects a multi-period contract whose last date is not later',
       () async {
-        final service = _FakeInstallmentContractAppService();
+        final service = _FakeDisbursementInstallmentAppService();
         final args = _args('loan');
         final container = _container(service: service);
         await _readState(container, args);
@@ -263,7 +263,7 @@ void main() {
     );
 
     test('maps AppException to UI failure', () async {
-      final service = _FakeInstallmentContractAppService(
+      final service = _FakeDisbursementInstallmentAppService(
         createException: BusinessException(
           CreditErrorCode.contractInvalidCommand,
           message: '合同参数无效',
@@ -290,7 +290,7 @@ void main() {
       final records = <LogRecord>[];
       final subscription = Logger.root.onRecord.listen(records.add);
       addTearDown(subscription.cancel);
-      final service = _FakeInstallmentContractAppService(
+      final service = _FakeDisbursementInstallmentAppService(
         createException: Exception('database failed'),
       );
       final args = _args('loan');
@@ -342,7 +342,7 @@ InstallmentFormArgs _args(
 }
 
 ProviderContainer _container({
-  _FakeInstallmentContractAppService? service,
+  _FakeDisbursementInstallmentAppService? service,
   _FakeCreditAccountQueryService? creditQueryService,
   InstallmentProductAppService? products,
 }) {
@@ -370,8 +370,8 @@ ProviderContainer _container({
           _ => const <Account>[],
         }),
       ),
-      installmentContractAppServiceProvider.overrideWithValue(
-        service ?? _FakeInstallmentContractAppService(),
+      disbursementInstallmentAppServiceProvider.overrideWithValue(
+        service ?? _FakeDisbursementInstallmentAppService(),
       ),
       if (creditQueryService != null)
         creditAccountQueryServiceProvider.overrideWithValue(creditQueryService),
@@ -412,21 +412,21 @@ Account _account(
   );
 }
 
-class _FakeInstallmentContractAppService
-    implements InstallmentContractAppService {
-  _FakeInstallmentContractAppService({this.createException});
+class _FakeDisbursementInstallmentAppService
+    implements DisbursementInstallmentAppService {
+  _FakeDisbursementInstallmentAppService({this.createException});
 
   final Object? createException;
-  final disbursementCommands = <CreateDisbursementContractCommand>[];
+  final disbursementCommands = <CreateDisbursementInstallmentCommand>[];
 
   @override
-  Future<CreateContractResult> createDisbursementContract(
-    CreateDisbursementContractCommand command,
+  Future<DisbursementInstallmentResult> create(
+    CreateDisbursementInstallmentCommand command,
   ) async {
     disbursementCommands.add(command);
     final exception = createException;
     if (exception != null) throw exception;
-    return const CreateContractResult(contractId: 'contract-created');
+    return const DisbursementInstallmentResult(contractId: 'contract-created');
   }
 
   @override
