@@ -60,7 +60,7 @@ void main() {
                 _account('loan', AccountType.liability),
               ]),
             ),
-            repaymentAppServiceProvider.overrideWithValue(service),
+            billRepaymentAppServiceProvider.overrideWithValue(service),
           ],
           child: const MaterialApp(
             home: BillRepaymentFormPage.edit(repaymentId: 'repayment'),
@@ -178,7 +178,7 @@ void main() {
             _ => const <Account>[],
           }),
         ),
-        repaymentAppServiceProvider.overrideWithValue(service),
+        billRepaymentAppServiceProvider.overrideWithValue(service),
       ],
     );
     addTearDown(container.dispose);
@@ -276,7 +276,7 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
   );
 }
 
-class _FailingRepaymentAppService implements RepaymentAppService {
+class _FailingRepaymentAppService implements BillRepaymentAppService {
   final commands = <CreateBillRepaymentCommand>[];
   final editCommands = <EditBillRepaymentCommand>[];
   BillRepaymentEditView? editView;

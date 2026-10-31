@@ -107,12 +107,29 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
   Future<UiActionOutcome<void>> revertRepayment(String repaymentId) async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('分期尚未加载');
+    ContractRepaymentActivity? repayment;
+    for (final activity
+        in loaded.activities.whereType<ContractRepaymentActivity>()) {
+      if (activity.id == repaymentId) {
+        repayment = activity;
+        break;
+      }
+    }
+    if (repayment == null) return _invalidAction('还款记录不属于当前分期');
+    final command = DeleteCreditRepaymentCommand(repaymentId: repaymentId);
+    final delete = switch (repayment.repaymentType) {
+      RepaymentType.bill || RepaymentType.installment =>
+        () =>
+            ref.read(billRepaymentAppServiceProvider).deleteRepayment(command),
+      RepaymentType.prepayment =>
+        () => ref
+            .read(installmentPrepaymentAppServiceProvider)
+            .deleteRepayment(command),
+      RepaymentType.unattributed => null,
+    };
+    if (delete == null) return _invalidAction('账户还款不属于当前分期');
     return guardUiAction(_logger, 'Contract repayment revert', () async {
-      await ref
-          .read(repaymentAppServiceProvider)
-          .deleteRepayment(
-            DeleteCreditRepaymentCommand(repaymentId: repaymentId),
-          );
+      await delete();
       _invalidateContract(loaded.contract);
     });
   }

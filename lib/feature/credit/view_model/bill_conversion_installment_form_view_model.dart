@@ -132,7 +132,7 @@ class BillConversionInstallmentFormViewModel
         'Bill installment conversion submit',
         () async {
           final result = await ref
-              .read(repaymentAppServiceProvider)
+              .read(billRepaymentAppServiceProvider)
               .createBillConversionInstallmentRepayment(
                 credit.CreateBillConversionInstallmentRepaymentCommand(
                   billId: billId,

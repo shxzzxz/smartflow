@@ -32,7 +32,6 @@ import '../../helper/fake_counterparty_repository.dart';
 import '../../helper/fake_transaction_tag_repository.dart';
 import '../../helper/sequential_id_generator.dart';
 import '../../helper/test_app_database.dart';
-import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 void main() {
   group('CreditBillGenerationAppService', () {
@@ -871,16 +870,7 @@ class _Fixture {
       transactionRunner: runner,
       idGenerator: ids,
     );
-    repaymentAppService = RepaymentAppServiceImpl(
-      plans: InstallmentPlanChangeAdapter(
-        InstallmentPlanAppService(
-          installments: installmentRepository,
-          repayments: repaymentRepository,
-          bills: billRepository,
-          runner: runner,
-          idGenerator: ids,
-        ),
-      ),
+    repaymentAppService = BillRepaymentAppServiceImpl(
       bills: billRepository,
       repayments: repaymentRepository,
       installments: installmentRepository,
@@ -950,7 +940,7 @@ class _Fixture {
   late final CreditAccountAppService creditAccountAppService;
   late final TransactionPostingAppService postingAppService;
   late final CreditBillGenerationAppService generation;
-  late final RepaymentAppService repaymentAppService;
+  late final BillRepaymentAppService repaymentAppService;
 
   Future<CreditLedgerAccountSnapshot> createCreditAccount() {
     return creditAccountAppService.createAccount(

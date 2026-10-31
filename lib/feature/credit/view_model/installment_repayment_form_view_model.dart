@@ -106,7 +106,7 @@ class InstallmentRepaymentFormViewModel
         _logger,
         'Installment repayment form submit',
         () async {
-          final service = ref.read(repaymentAppServiceProvider);
+          final service = ref.read(installmentPrepaymentAppServiceProvider);
           await service.createContractPrepaymentRepayment(
             CreateContractPrepaymentRepaymentCommand(
               contractId: current.contract!.id,

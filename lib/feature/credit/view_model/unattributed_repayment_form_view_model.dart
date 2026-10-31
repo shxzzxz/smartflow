@@ -106,8 +106,8 @@ class UnattributedRepaymentFormViewModel
         'Unattributed repayment form submit',
         () async {
           await ref
-              .read(repaymentAppServiceProvider)
-              .createUnattributedRepayment(
+              .read(accountRepaymentAppServiceProvider)
+              .createAccountRepayment(
                 credit.CreateUnattributedRepaymentCommand(
                   accountId: accountId,
                   amount: credit.RepaymentAmountDto(
@@ -279,10 +279,9 @@ class UnattributedRepaymentFormState {
       discountText: discountText ?? this.discountText,
       noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
-      paidFromAccountId:
-          paidFromAccountId == _sentinel
-              ? this.paidFromAccountId
-              : paidFromAccountId as String?,
+      paidFromAccountId: paidFromAccountId == _sentinel
+          ? this.paidFromAccountId
+          : paidFromAccountId as String?,
       submitting: submitting ?? this.submitting,
     );
   }

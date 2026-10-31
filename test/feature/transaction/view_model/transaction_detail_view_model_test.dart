@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
-import 'package:smartflow/application/credit/repayment/query/repayment_owner_query.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
@@ -190,7 +189,7 @@ void main() {
     test(
       'routes credit repayment owner edits and delete to repayment app service',
       () async {
-        final repayment = _FakeRepaymentAppService();
+        final repayment = _FakeBillRepaymentAppService();
         final detail = _detail(
           purpose: BusinessPurpose.debtRepayment,
           ownership: const TransactionOwnership(
@@ -869,7 +868,7 @@ ProviderContainer _container({
   _FakeAdvanceOrchestrationService? orchestration,
   _FakeInstallmentContractAppService? installment,
   _FakeDisbursementInstallmentAppService? disbursement,
-  _FakeRepaymentAppService? repayment,
+  _FakeBillRepaymentAppService? repayment,
   _FakeConsumptionInstallmentAppService? consumption,
   Future<List<ContractActivity>> Function(String contractId)? activityLoader,
 }) {
@@ -922,8 +921,14 @@ ProviderContainer _container({
       disbursementInstallmentAppServiceProvider.overrideWithValue(
         disbursement ?? _FakeDisbursementInstallmentAppService(),
       ),
-      repaymentAppServiceProvider.overrideWithValue(
-        repayment ?? _FakeRepaymentAppService(),
+      billRepaymentAppServiceProvider.overrideWithValue(
+        repayment ?? _FakeBillRepaymentAppService(),
+      ),
+      installmentPrepaymentAppServiceProvider.overrideWithValue(
+        _FakeInstallmentPrepaymentAppService(),
+      ),
+      accountRepaymentAppServiceProvider.overrideWithValue(
+        _FakeAccountRepaymentAppService(),
       ),
       consumptionInstallmentAppServiceProvider.overrideWithValue(
         consumption ?? _FakeConsumptionInstallmentAppService(),
@@ -1413,7 +1418,7 @@ class _FakeDisbursementInstallmentAppService
       throw UnimplementedError('${invocation.memberName}');
 }
 
-class _FakeRepaymentAppService implements RepaymentAppService {
+class _FakeBillRepaymentAppService implements BillRepaymentAppService {
   final editCommands = <EditCreditRepaymentTransactionCommand>[];
   final deleteCommands = <DeleteCreditRepaymentCommand>[];
 
@@ -1429,6 +1434,17 @@ class _FakeRepaymentAppService implements RepaymentAppService {
     deleteCommands.add(command);
   }
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeInstallmentPrepaymentAppService
+    implements InstallmentPrepaymentAppService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAccountRepaymentAppService implements AccountRepaymentAppService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

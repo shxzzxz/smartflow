@@ -630,8 +630,20 @@ CreditLedgerPort creditLedgerPort(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-RepaymentAppService repaymentAppService(Ref ref) {
-  return RepaymentAppServiceImpl(
+BillRepaymentAppService billRepaymentAppService(Ref ref) {
+  return BillRepaymentAppServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InstallmentPrepaymentAppService installmentPrepaymentAppService(Ref ref) {
+  return InstallmentPrepaymentAppServiceImpl(
     plans: ref.watch(installmentPlanChangePortProvider),
     bills: ref.watch(billRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
@@ -639,6 +651,26 @@ RepaymentAppService repaymentAppService(Ref ref) {
     ledger: ref.watch(creditLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AccountRepaymentAppService accountRepaymentAppService(Ref ref) {
+  return AccountRepaymentAppServiceImpl(
+    bills: ref.watch(billRepositoryProvider),
+    repayments: ref.watch(repaymentRepositoryProvider),
+    installments: ref.watch(installmentRepositoryProvider),
+    ledger: ref.watch(creditLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+LiabilityRepaymentAppService liabilityRepaymentAppService(Ref ref) {
+  return LiabilityRepaymentAppServiceImpl(
+    ledger: ref.watch(creditLedgerPortProvider),
+    installments: ref.watch(installmentRepositoryProvider),
   );
 }
 

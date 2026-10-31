@@ -129,6 +129,7 @@ void main() {
       final repaymentAppService = _FakeRepaymentAppService();
       final container = _container(
         contract: _contract(),
+        activities: [_repaymentActivity()],
         repaymentAppService: repaymentAppService,
       );
       await container.read(
@@ -137,10 +138,13 @@ void main() {
 
       final outcome = await container
           .read(installmentDetailViewModelProvider('contract-1').notifier)
-          .revertRepayment('tx-repay');
+          .revertRepayment('repayment-1');
 
       expect(outcome, isA<UiActionSuccess<void>>());
-      expect(repaymentAppService.deleteCommands.single.repaymentId, 'tx-repay');
+      expect(
+        repaymentAppService.deleteCommands.single.repaymentId,
+        'repayment-1',
+      );
     });
 
     test('skip pending schedule delegates to command service', () async {
@@ -260,6 +264,7 @@ void main() {
       );
       final container = _container(
         contract: _contract(),
+        activities: [_repaymentActivity()],
         repaymentAppService: repaymentAppService,
       );
       await container.read(
@@ -268,7 +273,7 @@ void main() {
 
       final outcome = await container
           .read(installmentDetailViewModelProvider('contract-1').notifier)
-          .revertRepayment('tx-repay');
+          .revertRepayment('repayment-1');
 
       expect(outcome, isA<UiActionFailure<void>>());
       expect((outcome as UiActionFailure<void>).error.code, 'unknown');
@@ -311,7 +316,7 @@ ProviderContainer _container({
         consumption ?? _FakeConsumptionInstallmentAppService(),
       ),
       installmentPlanAppServiceProvider.overrideWithValue(planService),
-      repaymentAppServiceProvider.overrideWithValue(
+      installmentPrepaymentAppServiceProvider.overrideWithValue(
         repaymentAppService ?? _FakeRepaymentAppService(),
       ),
     ],
@@ -467,7 +472,7 @@ class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeRepaymentAppService implements RepaymentAppService {
+class _FakeRepaymentAppService implements InstallmentPrepaymentAppService {
   _FakeRepaymentAppService({this.deleteException});
 
   final Object? deleteException;

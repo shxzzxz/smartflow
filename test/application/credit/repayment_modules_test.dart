@@ -28,7 +28,7 @@ import '../../helper/test_app_database.dart';
 import 'package:smartflow/infrastructure/credit/adapter/installment_plan_change_adapter.dart';
 
 void main() {
-  group('RepaymentAppService', () {
+  group('Repayment modules', () {
     test(
       'detached historical items can be read but metadata edits require corrected allocations',
       () async {
@@ -1699,8 +1699,49 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
         ),
       );
     });
+
+    test(
+      'each repayment module rejects another target before writing',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        await fixture.seedBill(
+          status: credit.BillStatus.billed,
+          itemType: credit.BillItemType.consumption,
+          expectedPrincipal: 1000,
+        );
+        final billRepayment = await fixture.billService.createBillRepayment(
+          credit.CreateBillRepaymentCommand(
+            billId: 'bill-1',
+            allocations: [
+              _allocation(billItemId: 'bill-item-1', principal: 1000),
+            ],
+            transactionInfo: _transactionInfo(),
+          ),
+        );
+        final command = credit.DeleteCreditRepaymentCommand(
+          repaymentId: billRepayment.repaymentId,
+        );
+
+        await expectLater(
+          fixture.prepaymentService.deleteRepayment(command),
+          throwsA(_wrongRepaymentModule),
+        );
+        await expectLater(
+          fixture.accountService.deleteRepayment(command),
+          throwsA(_wrongRepaymentModule),
+        );
+        expect(fixture.edit.deletedTransactionIds, isEmpty);
+      },
+    );
   });
 }
+
+final _wrongRepaymentModule = isA<BusinessException>().having(
+  (exception) => exception.code,
+  'code',
+  CreditErrorCode.repaymentNotEditable.code,
+);
 
 credit.BillRepaymentAllocation _allocation({
   required String billItemId,
@@ -1764,28 +1805,57 @@ class _Fixture {
   _Fixture() {
     runner = DriftTransactionRunner(database);
     edit.onDeleteTransaction = _recordDeletedTransactionInDatabase;
-    service = credit.RepaymentAppServiceImpl(
-      plans: InstallmentPlanChangeAdapter(
-        credit.InstallmentPlanAppService(
-          installments: installments,
-          repayments: repayments,
-          bills: bills,
-          runner: runner,
-          idGenerator: ids,
-        ),
+    final plans = InstallmentPlanChangeAdapter(
+      credit.InstallmentPlanAppService(
+        installments: installments,
+        repayments: repayments,
+        bills: bills,
+        runner: runner,
+        idGenerator: ids,
       ),
+    );
+    final ledger = _FakeCreditLedgerPort(
+      accountQuery: accountQuery,
+      posting: posting,
+      edit: edit,
+      update: update,
+      transactionQuery: transactionQuery,
+    );
+    billService = credit.BillRepaymentAppServiceImpl(
       bills: bills,
       repayments: repayments,
       installments: installments,
-      ledger: _FakeCreditLedgerPort(
-        accountQuery: accountQuery,
-        posting: posting,
-        edit: edit,
-        update: update,
-        transactionQuery: transactionQuery,
-      ),
+      ledger: ledger,
       transactionRunner: runner,
       idGenerator: ids,
+    );
+    prepaymentService = credit.InstallmentPrepaymentAppServiceImpl(
+      plans: plans,
+      bills: bills,
+      repayments: repayments,
+      installments: installments,
+      ledger: ledger,
+      transactionRunner: runner,
+      idGenerator: ids,
+    );
+    accountService = credit.AccountRepaymentAppServiceImpl(
+      bills: bills,
+      repayments: repayments,
+      installments: installments,
+      ledger: ledger,
+      transactionRunner: runner,
+      idGenerator: ids,
+    );
+    liabilityService = credit.LiabilityRepaymentAppServiceImpl(
+      ledger: ledger,
+      installments: installments,
+    );
+    service = _RepaymentServiceRouter(
+      bills: billService,
+      prepayments: prepaymentService,
+      accounts: accountService,
+      liabilities: liabilityService,
+      repayments: repayments,
     );
   }
 
@@ -1803,7 +1873,11 @@ class _Fixture {
   late final DriftRepaymentRepository repayments = DriftRepaymentRepository(
     database,
   );
-  late final credit.RepaymentAppService service;
+  late final credit.BillRepaymentAppService billService;
+  late final credit.InstallmentPrepaymentAppService prepaymentService;
+  late final credit.AccountRepaymentAppService accountService;
+  late final credit.LiabilityRepaymentAppService liabilityService;
+  late final _RepaymentServiceRouter service;
 
   Future<void> _recordDeletedTransactionInDatabase(String transactionId) {
     return database.customStatement(
@@ -1967,6 +2041,112 @@ class _Fixture {
   }
 
   Future<void> close() => database.close();
+}
+
+class _RepaymentServiceRouter {
+  const _RepaymentServiceRouter({
+    required credit.BillRepaymentAppService bills,
+    required credit.InstallmentPrepaymentAppService prepayments,
+    required credit.AccountRepaymentAppService accounts,
+    required credit.LiabilityRepaymentAppService liabilities,
+    required DriftRepaymentRepository repayments,
+  }) : _bills = bills,
+       _prepayments = prepayments,
+       _accounts = accounts,
+       _liabilities = liabilities,
+       _repayments = repayments;
+
+  final credit.BillRepaymentAppService _bills;
+  final credit.InstallmentPrepaymentAppService _prepayments;
+  final credit.AccountRepaymentAppService _accounts;
+  final credit.LiabilityRepaymentAppService _liabilities;
+  final DriftRepaymentRepository _repayments;
+
+  Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
+    credit.CreateLiabilityRepaymentCommand command,
+  ) => _liabilities.createLiabilityRepayment(command);
+
+  Future<CreditLedgerPostedTransaction> editLiabilityRepayment(
+    credit.EditLiabilityRepaymentCommand command,
+  ) => _liabilities.editLiabilityRepayment(command);
+
+  Future<credit.LiabilityRepaymentEditViewLoadResult>
+  loadLiabilityRepaymentEditView(String transactionId) =>
+      _liabilities.loadLiabilityRepaymentEditView(transactionId);
+
+  Future<credit.CreateRepaymentResult> createBillRepayment(
+    credit.CreateBillRepaymentCommand command,
+  ) => _bills.createBillRepayment(command);
+
+  Future<credit.BillRepaymentEditView?> loadBillRepaymentEditView(
+    String repaymentId,
+  ) => _bills.loadBillRepaymentEditView(repaymentId);
+
+  Future<credit.CreateRepaymentResult> editBillRepayment(
+    credit.EditBillRepaymentCommand command,
+  ) => _bills.editBillRepayment(command);
+
+  Future<credit.CreateRepaymentResult> createBillConversionInstallmentRepayment(
+    credit.CreateBillConversionInstallmentRepaymentCommand command,
+  ) => _bills.createBillConversionInstallmentRepayment(command);
+
+  Future<credit.CreateRepaymentResult> createContractPrepaymentRepayment(
+    credit.CreateContractPrepaymentRepaymentCommand command,
+  ) => _prepayments.createContractPrepaymentRepayment(command);
+
+  Future<credit.CreateRepaymentResult> createUnattributedRepayment(
+    credit.CreateUnattributedRepaymentCommand command,
+  ) => _accounts.createAccountRepayment(command);
+
+  Future<void> editRepaymentTransaction(
+    credit.EditCreditRepaymentTransactionCommand command,
+  ) async {
+    final repayment = await _findRepayment(command);
+    switch (repayment.repaymentType) {
+      case credit.RepaymentType.bill:
+      case credit.RepaymentType.installment:
+        await _bills.editRepaymentTransaction(command);
+      case credit.RepaymentType.prepayment:
+        await _prepayments.editRepaymentTransaction(command);
+      case credit.RepaymentType.unattributed:
+        await _accounts.editRepaymentTransaction(command);
+    }
+  }
+
+  Future<void> deleteRepayment(
+    credit.DeleteCreditRepaymentCommand command,
+  ) async {
+    final repayment = await _findRepaymentForDelete(command);
+    switch (repayment.repaymentType) {
+      case credit.RepaymentType.bill:
+      case credit.RepaymentType.installment:
+        await _bills.deleteRepayment(command);
+      case credit.RepaymentType.prepayment:
+        await _prepayments.deleteRepayment(command);
+      case credit.RepaymentType.unattributed:
+        await _accounts.deleteRepayment(command);
+    }
+  }
+
+  Future<credit.Repayment> _findRepaymentForDelete(
+    credit.DeleteCreditRepaymentCommand command,
+  ) async {
+    final repayment = command.repaymentId != null
+        ? await _repayments.findRepayment(command.repaymentId!)
+        : await _repayments.findByTransaction(command.transactionId!);
+    if (repayment == null) throw StateError('Repayment fixture not found.');
+    return repayment;
+  }
+
+  Future<credit.Repayment> _findRepayment(
+    credit.EditCreditRepaymentTransactionCommand command,
+  ) async {
+    final repayment = command.repaymentId != null
+        ? await _repayments.findRepayment(command.repaymentId!)
+        : await _repayments.findByTransaction(command.transactionId!);
+    if (repayment == null) throw StateError('Repayment fixture not found.');
+    return repayment;
+  }
 }
 
 class _FakeCreditLedgerPort implements CreditLedgerPort {

@@ -31,7 +31,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     final editView = args.repaymentId == null
         ? null
         : await ref
-              .read(repaymentAppServiceProvider)
+              .read(billRepaymentAppServiceProvider)
               .loadBillRepaymentEditView(args.repaymentId!);
     final billId = args.billId ?? editView?.billId;
     final repaymentSourceAccounts = await ref.watch(
@@ -234,7 +234,7 @@ class BillRepaymentFormViewModel extends _$BillRepaymentFormViewModel {
     _update((state) => state.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Bill repayment form submit', () async {
-        final service = ref.read(repaymentAppServiceProvider);
+        final service = ref.read(billRepaymentAppServiceProvider);
         if (current.editingRepaymentId == null) {
           await service.createBillRepayment(
             credit.CreateBillRepaymentCommand(

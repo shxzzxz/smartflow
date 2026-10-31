@@ -811,6 +811,7 @@ ProviderContainer _container({
     _account('loan', AccountType.liability),
     _account('company', AccountType.asset),
   ];
+  final repaymentServices = repaymentAppService ?? _FakeRepaymentAppService();
   final container = ProviderContainer(
     overrides: [
       accountsForSelectionPurposeProvider.overrideWith(
@@ -849,8 +850,17 @@ ProviderContainer _container({
       installmentContractAppServiceProvider.overrideWithValue(
         installmentAppService ?? _FakeInstallmentContractAppService(),
       ),
-      repaymentAppServiceProvider.overrideWithValue(
-        repaymentAppService ?? _FakeRepaymentAppService(),
+      billRepaymentAppServiceProvider.overrideWithValue(
+        repaymentServices.bills,
+      ),
+      installmentPrepaymentAppServiceProvider.overrideWithValue(
+        repaymentServices.prepayments,
+      ),
+      accountRepaymentAppServiceProvider.overrideWithValue(
+        repaymentServices.accounts,
+      ),
+      liabilityRepaymentAppServiceProvider.overrideWithValue(
+        repaymentServices.liabilities,
       ),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         advanceOrchestration ?? _FakeAdvanceOrchestrationService(),
@@ -867,7 +877,7 @@ class _FakeInstallmentContractAppService
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeRepaymentAppService implements credit.RepaymentAppService {
+class _FakeRepaymentAppService {
   _FakeRepaymentAppService({this.exception, this.editView});
 
   final Object? exception;
@@ -882,23 +892,26 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   final unattributedCommands = <credit.CreateUnattributedRepaymentCommand>[];
   final deleteCommands = <credit.DeleteCreditRepaymentCommand>[];
 
-  @override
-  Future<credit_port.CreditLedgerPostedTransaction> createLiabilityRepayment(
-    credit.CreateLiabilityRepaymentCommand command,
-  ) async {
-    liabilityRepaymentCommands.add(command);
-    final exception = this.exception;
-    if (exception != null) throw exception;
-    return const credit_port.CreditLedgerPostedTransaction(
-      transactionId: 'transaction',
-    );
-  }
+  late final credit.BillRepaymentAppService bills =
+      _FakeBillRepaymentAppService(this);
+  late final credit.InstallmentPrepaymentAppService prepayments =
+      _FakeInstallmentPrepaymentAppService(this);
+  late final credit.AccountRepaymentAppService accounts =
+      _FakeAccountRepaymentAppService(this);
+  late final credit.LiabilityRepaymentAppService liabilities =
+      _FakeLiabilityRepaymentAppService(this);
+}
+
+class _FakeBillRepaymentAppService implements credit.BillRepaymentAppService {
+  const _FakeBillRepaymentAppService(this._test);
+
+  final _FakeRepaymentAppService _test;
 
   @override
   Future<credit.CreateRepaymentResult> createBillRepayment(
     credit.CreateBillRepaymentCommand command,
   ) async {
-    billRepaymentCommands.add(command);
+    _test.billRepaymentCommands.add(command);
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
@@ -908,13 +921,13 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   @override
   Future<credit.BillRepaymentEditView?> loadBillRepaymentEditView(
     String repaymentId,
-  ) async => editView;
+  ) async => _test.editView;
 
   @override
   Future<credit.CreateRepaymentResult> editBillRepayment(
     credit.EditBillRepaymentCommand command,
   ) async {
-    editBillCommands.add(command);
+    _test.editBillCommands.add(command);
     return credit.CreateRepaymentResult(repaymentId: command.repaymentId);
   }
 
@@ -922,7 +935,7 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   Future<credit.CreateRepaymentResult> createBillConversionInstallmentRepayment(
     credit.CreateBillConversionInstallmentRepaymentCommand command,
   ) async {
-    billConversionCommands.add(command);
+    _test.billConversionCommands.add(command);
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       contractId: 'contract',
@@ -930,10 +943,20 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   }
 
   @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeInstallmentPrepaymentAppService
+    implements credit.InstallmentPrepaymentAppService {
+  const _FakeInstallmentPrepaymentAppService(this._test);
+
+  final _FakeRepaymentAppService _test;
+
+  @override
   Future<credit.CreateRepaymentResult> createContractPrepaymentRepayment(
     credit.CreateContractPrepaymentRepaymentCommand command,
   ) async {
-    prepaymentCommands.add(command);
+    _test.prepaymentCommands.add(command);
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
@@ -941,10 +964,20 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   }
 
   @override
-  Future<credit.CreateRepaymentResult> createUnattributedRepayment(
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeAccountRepaymentAppService
+    implements credit.AccountRepaymentAppService {
+  const _FakeAccountRepaymentAppService(this._test);
+
+  final _FakeRepaymentAppService _test;
+
+  @override
+  Future<credit.CreateRepaymentResult> createAccountRepayment(
     credit.CreateUnattributedRepaymentCommand command,
   ) async {
-    unattributedCommands.add(command);
+    _test.unattributedCommands.add(command);
     return const credit.CreateRepaymentResult(
       repaymentId: 'repayment',
       transactionId: 'transaction',
@@ -952,10 +985,25 @@ class _FakeRepaymentAppService implements credit.RepaymentAppService {
   }
 
   @override
-  Future<void> deleteRepayment(
-    credit.DeleteCreditRepaymentCommand command,
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeLiabilityRepaymentAppService
+    implements credit.LiabilityRepaymentAppService {
+  const _FakeLiabilityRepaymentAppService(this._test);
+
+  final _FakeRepaymentAppService _test;
+
+  @override
+  Future<credit_port.CreditLedgerPostedTransaction> createLiabilityRepayment(
+    credit.CreateLiabilityRepaymentCommand command,
   ) async {
-    deleteCommands.add(command);
+    _test.liabilityRepaymentCommands.add(command);
+    final exception = _test.exception;
+    if (exception != null) throw exception;
+    return const credit_port.CreditLedgerPostedTransaction(
+      transactionId: 'transaction',
+    );
   }
 
   @override

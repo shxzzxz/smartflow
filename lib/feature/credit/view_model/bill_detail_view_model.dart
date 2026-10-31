@@ -49,7 +49,7 @@ class BillDetailViewModel extends _$BillDetailViewModel {
     if (detail == null) return _notLoaded();
     return guardUiAction(_logger, 'Bill repayment delete', () async {
       await ref
-          .read(repaymentAppServiceProvider)
+          .read(billRepaymentAppServiceProvider)
           .deleteRepayment(
             DeleteCreditRepaymentCommand(repaymentId: repaymentId),
           );

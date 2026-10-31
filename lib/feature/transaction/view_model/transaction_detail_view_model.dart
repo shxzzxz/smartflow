@@ -266,7 +266,12 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       consumptionInstallmentAppService: ref.read(
         consumptionInstallmentAppServiceProvider,
       ),
-      repaymentAppService: ref.read(repaymentAppServiceProvider),
+      billRepaymentAppService: ref.read(billRepaymentAppServiceProvider),
+      installmentPrepaymentAppService: ref.read(
+        installmentPrepaymentAppServiceProvider,
+      ),
+      accountRepaymentAppService: ref.read(accountRepaymentAppServiceProvider),
+      repaymentOwnerQuery: ref.read(repaymentOwnerQueryProvider),
       advanceAppService: isAdvance
           ? ref.read(advanceOrchestrationAppServiceProvider)
           : null,

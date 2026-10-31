@@ -320,7 +320,7 @@ Widget _app({
           repricingService,
         ),
       if (repaymentService != null)
-        repaymentAppServiceProvider.overrideWithValue(repaymentService),
+        billRepaymentAppServiceProvider.overrideWithValue(repaymentService),
     ],
   );
   addTearDown(container.dispose);
@@ -433,7 +433,7 @@ class _FakeInstallmentPlanAppService implements InstallmentPlanAppService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeRepaymentAppService implements RepaymentAppService {
+class _FakeRepaymentAppService implements BillRepaymentAppService {
   final deleteCommands = <DeleteCreditRepaymentCommand>[];
 
   @override

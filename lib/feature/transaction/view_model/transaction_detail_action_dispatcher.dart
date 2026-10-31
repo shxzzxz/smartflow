@@ -1,8 +1,11 @@
 import 'package:logging/logging.dart';
 import '../../../application/credit/credit_command_api.dart';
+import '../../../application/credit/credit_query_api.dart'
+    show RepaymentOwnerQuery;
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
+import '../../../core/error/app_exception.dart';
 import '../../../core/patch/patch.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../shared/view_model/action_guard.dart';
@@ -32,7 +35,10 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required InstallmentContractAppService installmentAppService,
   required DisbursementInstallmentAppService disbursementInstallmentAppService,
   required ConsumptionInstallmentAppService consumptionInstallmentAppService,
-  required RepaymentAppService repaymentAppService,
+  required BillRepaymentAppService billRepaymentAppService,
+  required InstallmentPrepaymentAppService installmentPrepaymentAppService,
+  required AccountRepaymentAppService accountRepaymentAppService,
+  required RepaymentOwnerQuery repaymentOwnerQuery,
   AdvanceOrchestrationAppService? advanceAppService,
   AdvanceCaseQueryService? advanceCaseQuery,
 }) {
@@ -83,7 +89,10 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   if (ownership.ownerType == creditRepaymentOwnerType) {
     return _CreditRepaymentActionDispatcher(
       transaction: transaction,
-      repaymentAppService: repaymentAppService,
+      billRepaymentAppService: billRepaymentAppService,
+      installmentPrepaymentAppService: installmentPrepaymentAppService,
+      accountRepaymentAppService: accountRepaymentAppService,
+      repaymentOwnerQuery: repaymentOwnerQuery,
       updateService: updateService,
       repaymentId: ownership.ownerId,
     );
@@ -596,21 +605,35 @@ final class _CreditRepaymentActionDispatcher
     implements TransactionDetailActionDispatcher {
   const _CreditRepaymentActionDispatcher({
     required this.transaction,
-    required this.repaymentAppService,
+    required this.billRepaymentAppService,
+    required this.installmentPrepaymentAppService,
+    required this.accountRepaymentAppService,
+    required this.repaymentOwnerQuery,
     required this.updateService,
     required this.repaymentId,
   });
 
   final TransactionReadModel transaction;
-  final RepaymentAppService repaymentAppService;
+  final BillRepaymentAppService billRepaymentAppService;
+  final InstallmentPrepaymentAppService installmentPrepaymentAppService;
+  final AccountRepaymentAppService accountRepaymentAppService;
+  final RepaymentOwnerQuery repaymentOwnerQuery;
   final TransactionUpdateAppService updateService;
   final String repaymentId;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentAppService.deleteRepayment(
-        DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+      return _dispatch(
+        bill: (service) => service.deleteRepayment(
+          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+        ),
+        prepayment: (service) => service.deleteRepayment(
+          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+        ),
+        account: (service) => service.deleteRepayment(
+          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
+        ),
       );
     });
   }
@@ -618,11 +641,14 @@ final class _CreditRepaymentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentAppService.editRepaymentTransaction(
-        EditCreditRepaymentTransactionCommand(
-          repaymentId: repaymentId,
-          note: _nullableStringPatch(value),
-        ),
+      final command = EditCreditRepaymentTransactionCommand(
+        repaymentId: repaymentId,
+        note: _nullableStringPatch(value),
+      );
+      return _dispatch(
+        bill: (service) => service.editRepaymentTransaction(command),
+        prepayment: (service) => service.editRepaymentTransaction(command),
+        account: (service) => service.editRepaymentTransaction(command),
       );
     });
   }
@@ -630,11 +656,14 @@ final class _CreditRepaymentActionDispatcher
   @override
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentAppService.editRepaymentTransaction(
-        EditCreditRepaymentTransactionCommand(
-          repaymentId: repaymentId,
-          occurredAt: value,
-        ),
+      final command = EditCreditRepaymentTransactionCommand(
+        repaymentId: repaymentId,
+        occurredAt: value,
+      );
+      return _dispatch(
+        bill: (service) => service.editRepaymentTransaction(command),
+        prepayment: (service) => service.editRepaymentTransaction(command),
+        account: (service) => service.editRepaymentTransaction(command),
       );
     });
   }
@@ -654,13 +683,36 @@ final class _CreditRepaymentActionDispatcher
     String? currentAccountId,
   }) async {
     return detailVoidOutcomeFromAction(() {
-      return repaymentAppService.editRepaymentTransaction(
-        EditCreditRepaymentTransactionCommand(
-          repaymentId: repaymentId,
-          paidFromAccountId: accountId,
-        ),
+      final command = EditCreditRepaymentTransactionCommand(
+        repaymentId: repaymentId,
+        paidFromAccountId: accountId,
+      );
+      return _dispatch(
+        bill: (service) => service.editRepaymentTransaction(command),
+        prepayment: (service) => service.editRepaymentTransaction(command),
+        account: (service) => service.editRepaymentTransaction(command),
       );
     });
+  }
+
+  Future<void> _dispatch({
+    required Future<void> Function(BillRepaymentAppService service) bill,
+    required Future<void> Function(InstallmentPrepaymentAppService service)
+    prepayment,
+    required Future<void> Function(AccountRepaymentAppService service) account,
+  }) async {
+    final type = await repaymentOwnerQuery.findType(repaymentId);
+    if (type == null) {
+      throw BusinessException(CreditErrorCode.repaymentNotFound);
+    }
+    switch (type) {
+      case RepaymentType.bill || RepaymentType.installment:
+        return bill(billRepaymentAppService);
+      case RepaymentType.prepayment:
+        return prepayment(installmentPrepaymentAppService);
+      case RepaymentType.unattributed:
+        return account(accountRepaymentAppService);
+    }
   }
 }
 

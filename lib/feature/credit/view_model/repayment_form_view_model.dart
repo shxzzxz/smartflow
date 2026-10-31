@@ -34,12 +34,11 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       ).future,
     );
     final tags = await ref.watch(tagListProvider.future);
-    final editTagIds =
-        args.editTransactionId == null
-            ? const <String>{}
-            : await ref.watch(
-              transactionTagIdsProvider(args.editTransactionId!).future,
-            );
+    final editTagIds = args.editTransactionId == null
+        ? const <String>{}
+        : await ref.watch(
+            transactionTagIdsProvider(args.editTransactionId!).future,
+          );
 
     final editTransactionId = args.editTransactionId;
     if (editTransactionId == null) {
@@ -61,7 +60,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
     }
 
     final editResult = await ref
-        .read(repaymentAppServiceProvider)
+        .read(liabilityRepaymentAppServiceProvider)
         .loadLiabilityRepaymentEditView(editTransactionId);
     switch (editResult.status) {
       case credit.LiabilityRepaymentEditViewLoadStatus.notFound:
@@ -129,10 +128,9 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       current.liabilityAccounts,
       current.liabilityAccountId,
     );
-    final originalPrincipal =
-        args.editTransactionId == null
-            ? Money.zero()
-            : Money.tryParse(current.principalText) ?? Money.zero();
+    final originalPrincipal = args.editTransactionId == null
+        ? Money.zero()
+        : Money.tryParse(current.principalText) ?? Money.zero();
     final reducibleBalance =
         (liabilityAccount?.balance ?? Money.zero()) + originalPrincipal;
     if (principal.minorUnits <= reducibleBalance.minorUnits) return null;
@@ -186,7 +184,7 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
         _logger,
         'Liability repayment form submit',
         () async {
-          final service = ref.read(repaymentAppServiceProvider);
+          final service = ref.read(liabilityRepaymentAppServiceProvider);
           final editTransactionId = args.editTransactionId;
           final note = trimToNull(noteText);
           final amount = credit.RepaymentAmountDto(
@@ -195,29 +193,28 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
             fee: fee,
             discount: discount,
           );
-          final result =
-              editTransactionId == null
-                  ? await service.createLiabilityRepayment(
-                    credit.CreateLiabilityRepaymentCommand(
-                      liabilityAccountId: liabilityAccountId,
-                      paidFromAccountId: paidFromAccountId,
-                      amount: amount,
-                      occurredAt: current.occurredAt,
-                      note: note,
-                      tagIds: current.selectedTagIds,
-                    ),
-                  )
-                  : await service.editLiabilityRepayment(
-                    credit.EditLiabilityRepaymentCommand(
-                      transactionId: editTransactionId,
-                      liabilityAccountId: liabilityAccountId,
-                      paidFromAccountId: paidFromAccountId,
-                      amount: amount,
-                      occurredAt: current.occurredAt,
-                      note: note,
-                      tagIds: current.selectedTagIds,
-                    ),
-                  );
+          final result = editTransactionId == null
+              ? await service.createLiabilityRepayment(
+                  credit.CreateLiabilityRepaymentCommand(
+                    liabilityAccountId: liabilityAccountId,
+                    paidFromAccountId: paidFromAccountId,
+                    amount: amount,
+                    occurredAt: current.occurredAt,
+                    note: note,
+                    tagIds: current.selectedTagIds,
+                  ),
+                )
+              : await service.editLiabilityRepayment(
+                  credit.EditLiabilityRepaymentCommand(
+                    transactionId: editTransactionId,
+                    liabilityAccountId: liabilityAccountId,
+                    paidFromAccountId: paidFromAccountId,
+                    amount: amount,
+                    occurredAt: current.occurredAt,
+                    note: note,
+                    tagIds: current.selectedTagIds,
+                  ),
+                );
           _invalidateAfterSubmit(
             liabilityAccountId: liabilityAccountId,
             transactionId: editTransactionId,
@@ -416,14 +413,12 @@ class RepaymentFormState {
       discountText: discountText ?? this.discountText,
       noteText: noteText ?? this.noteText,
       occurredAt: occurredAt ?? this.occurredAt,
-      liabilityAccountId:
-          liabilityAccountId == _sentinel
-              ? this.liabilityAccountId
-              : liabilityAccountId as String?,
-      paidFromAccountId:
-          paidFromAccountId == _sentinel
-              ? this.paidFromAccountId
-              : paidFromAccountId as String?,
+      liabilityAccountId: liabilityAccountId == _sentinel
+          ? this.liabilityAccountId
+          : liabilityAccountId as String?,
+      paidFromAccountId: paidFromAccountId == _sentinel
+          ? this.paidFromAccountId
+          : paidFromAccountId as String?,
       submitting: submitting ?? this.submitting,
       tags: tags ?? this.tags,
       selectedTagIds: selectedTagIds ?? this.selectedTagIds,
