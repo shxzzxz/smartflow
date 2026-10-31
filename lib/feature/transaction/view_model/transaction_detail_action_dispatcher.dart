@@ -75,6 +75,10 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     );
   }
 
+  if (ownership.ownerType == orchestrationAmortizationOwnerType) {
+    return _AmortizationActionDispatcher(transaction);
+  }
+
   if (ownership.ownerType == installmentOwnerType) {
     return _InstallmentActionDispatcher(
       transaction: transaction,
@@ -304,6 +308,35 @@ final class _AdvanceActionDispatcher
         );
     }
   }
+}
+
+final class _AmortizationActionDispatcher
+    implements TransactionDetailActionDispatcher {
+  const _AmortizationActionDispatcher(this.transaction);
+
+  final TransactionReadModel transaction;
+
+  @override
+  Future<UiActionOutcome<void>> delete() async =>
+      detailNotEditable('请在摊销计划中终止，不能单独删除计划交易');
+
+  @override
+  Future<UiActionOutcome<void>> changeNote(String? value) async =>
+      detailNotEditable('请在摊销计划中修改备注');
+
+  @override
+  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async =>
+      detailNotEditable('摊销计划交易时间由计划控制');
+
+  @override
+  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async =>
+      detailNotEditable('摊销计划入账时间由计划控制');
+
+  @override
+  Future<UiActionOutcome<void>> changeSettlementAccount(
+    String accountId, {
+    String? currentAccountId,
+  }) async => detailNotEditable('摊销计划账户由计划控制');
 }
 
 final class _DefaultActionDispatcher

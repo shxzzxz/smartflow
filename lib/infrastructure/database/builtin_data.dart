@@ -10,7 +10,7 @@ import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 13;
+const currentBuiltinDataVersion = 14;
 
 const _uuid = Uuid();
 
@@ -91,6 +91,11 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 13) {
       await _renameAdvanceCompensationIncome(database);
     }
+    if (version < 14) {
+      await _ensureInitialAccountGroups(database);
+      await _assignInitialAmortizationAccountGroups(database);
+      await _seedDefaultAmortizationAccounts(database);
+    }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
 }
@@ -149,20 +154,7 @@ Future<void> _seedReceivableAndPayableCategories(AppDatabase database) async {
 }
 
 Future<void> _seedInitialAccountGroups(AppDatabase database) async {
-  final now = DateTime.now();
-  for (final group in initialAccountGroups) {
-    await database
-        .into(database.accountGroups)
-        .insertOnConflictUpdate(
-          AccountGroupsCompanion.insert(
-            id: group.id,
-            name: group.name,
-            sortOrder: Value(group.sortOrder),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
-  }
+  await _ensureInitialAccountGroups(database);
 
   await database.customStatement(
     "UPDATE accounts SET group_id = '${initialAccountGroupIdForProfile(AccountProfileKind.credit)}' "
@@ -205,6 +197,91 @@ SET sort_order = (
 )
 WHERE id IN (SELECT id FROM ranked)
 ''');
+}
+
+Future<void> _ensureInitialAccountGroups(AppDatabase database) async {
+  final now = DateTime.now();
+  for (final group in initialAccountGroups) {
+    await database
+        .into(database.accountGroups)
+        .insert(
+          AccountGroupsCompanion.insert(
+            id: group.id,
+            name: group.name,
+            sortOrder: Value(group.sortOrder),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+}
+
+Future<void> _seedDefaultAmortizationAccounts(AppDatabase database) async {
+  const definitions = [
+    (
+      id: 'builtin-prepaid-expense-account',
+      name: '通用预付',
+      profile: AccountProfileKind.prepaidExpense,
+    ),
+    (
+      id: 'builtin-deferred-income-account',
+      name: '通用预收',
+      profile: AccountProfileKind.deferredIncome,
+    ),
+  ];
+  for (final definition in definitions) {
+    final profile = definition.profile;
+    final existing =
+        await (database.select(database.accounts)
+              ..where(
+                (account) => account.accountProfileKey.equals(profile.key),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing != null) continue;
+
+    final groupId = initialAccountGroupIdForProfile(profile);
+    if (groupId == null) {
+      throw StateError('Missing initial account group for ${profile.key}.');
+    }
+    final now = DateTime.now();
+    await database
+        .into(database.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: definition.id,
+            name: definition.name,
+            accountType: profile.accountType,
+            accountSubtype: Value(profile.accountSubtype),
+            accountProfileKey: Value(profile.key),
+            groupId: Value(groupId),
+            iconKey: Value(profile.iconKey),
+            source: const Value(AccountSource.builtin),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+}
+
+Future<void> _assignInitialAmortizationAccountGroups(
+  AppDatabase database,
+) async {
+  for (final profile in const [
+    AccountProfileKind.prepaidExpense,
+    AccountProfileKind.deferredIncome,
+  ]) {
+    final groupId = initialAccountGroupIdForProfile(profile);
+    if (groupId == null) continue;
+    await (database.update(database.accounts)..where(
+          (account) =>
+              account.accountProfileKey.equals(profile.key) &
+              account.groupId.isNull(),
+        ))
+        .write(AccountsCompanion(groupId: Value(groupId)));
+  }
 }
 
 Future<void> _renameInterestAndFeeSystemKeys(AppDatabase database) async {

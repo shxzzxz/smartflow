@@ -156,6 +156,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
           return const UiActionOutcome.success(null);
         case AccountSelectionPurpose.ordinaryReceivable:
         case AccountSelectionPurpose.receivable:
+        case AccountSelectionPurpose.prepaidExpense:
+        case AccountSelectionPurpose.deferredIncome:
           return detailInvalidCommand('当前账户用途不能在交易详情页编辑');
         case AccountSelectionPurpose.repaymentTarget:
         case AccountSelectionPurpose.borrowingLiability:
@@ -168,6 +170,20 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     return _runAction((loaded) async {
       if (loaded.detail.parentTransactionId != null) {
         return detailNotEditable('跟随所属交易组设置，请在顶层交易修改');
+      }
+      final ownership = loaded.detail.ownership;
+      if (ownership?.ownerType == orchestrationAmortizationOwnerType) {
+        await ref
+            .read(amortizationPlanAppServiceProvider)
+            .updateTransactionReporting(
+              UpdateAmortizationTransactionReportingCommand(
+                planId: ownership!.ownerId,
+                transactionId: loaded.detail.id,
+                isExcludedFromStats: value,
+                isExcludedFromBudget: loaded.detail.isExcludedFromBudget,
+              ),
+            );
+        return const UiActionOutcome.success(null);
       }
       await ref
           .read(transactionUpdateAppServiceProvider)
@@ -185,6 +201,20 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     return _runAction((loaded) async {
       if (loaded.detail.parentTransactionId != null) {
         return detailNotEditable('跟随所属交易组设置，请在顶层交易修改');
+      }
+      final ownership = loaded.detail.ownership;
+      if (ownership?.ownerType == orchestrationAmortizationOwnerType) {
+        await ref
+            .read(amortizationPlanAppServiceProvider)
+            .updateTransactionReporting(
+              UpdateAmortizationTransactionReportingCommand(
+                planId: ownership!.ownerId,
+                transactionId: loaded.detail.id,
+                isExcludedFromStats: loaded.detail.isExcludedFromStats,
+                isExcludedFromBudget: value,
+              ),
+            );
+        return const UiActionOutcome.success(null);
       }
       await ref
           .read(transactionUpdateAppServiceProvider)

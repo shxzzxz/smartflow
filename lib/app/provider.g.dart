@@ -1946,6 +1946,54 @@ final class AdvanceCaseRepositoryProvider
 String _$advanceCaseRepositoryHash() =>
     r'855f3905d19b30ac65e680c16f6d837940ef264d';
 
+@ProviderFor(amortizationRepository)
+final amortizationRepositoryProvider = AmortizationRepositoryProvider._();
+
+final class AmortizationRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AmortizationRepository,
+          AmortizationRepository,
+          AmortizationRepository
+        >
+    with $Provider<AmortizationRepository> {
+  AmortizationRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$amortizationRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationRepository create(Ref ref) {
+    return amortizationRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AmortizationRepository>(value),
+    );
+  }
+}
+
+String _$amortizationRepositoryHash() =>
+    r'e7b2872bbd03a5f1fada59b339ad4a11c16acdd5';
+
 @ProviderFor(advanceLedgerPort)
 final advanceLedgerPortProvider = AdvanceLedgerPortProvider._();
 
@@ -1992,6 +2040,54 @@ final class AdvanceLedgerPortProvider
 }
 
 String _$advanceLedgerPortHash() => r'cba52b506f4fdb2899d74c0807844054a9962de1';
+
+@ProviderFor(amortizationLedgerPort)
+final amortizationLedgerPortProvider = AmortizationLedgerPortProvider._();
+
+final class AmortizationLedgerPortProvider
+    extends
+        $FunctionalProvider<
+          AmortizationLedgerPort,
+          AmortizationLedgerPort,
+          AmortizationLedgerPort
+        >
+    with $Provider<AmortizationLedgerPort> {
+  AmortizationLedgerPortProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationLedgerPortProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$amortizationLedgerPortHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationLedgerPort> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationLedgerPort create(Ref ref) {
+    return amortizationLedgerPort(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationLedgerPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AmortizationLedgerPort>(value),
+    );
+  }
+}
+
+String _$amortizationLedgerPortHash() =>
+    r'ffc7f195571f88591af6df181eda70e132e4136d';
 
 @ProviderFor(advanceOrchestrationAppService)
 final advanceOrchestrationAppServiceProvider =
@@ -2043,6 +2139,104 @@ final class AdvanceOrchestrationAppServiceProvider
 
 String _$advanceOrchestrationAppServiceHash() =>
     r'66123d4493db298d132ec68962a33dc782569643';
+
+@ProviderFor(amortizationPlanAppService)
+final amortizationPlanAppServiceProvider =
+    AmortizationPlanAppServiceProvider._();
+
+final class AmortizationPlanAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AmortizationPlanAppService,
+          AmortizationPlanAppService,
+          AmortizationPlanAppService
+        >
+    with $Provider<AmortizationPlanAppService> {
+  AmortizationPlanAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationPlanAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$amortizationPlanAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationPlanAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationPlanAppService create(Ref ref) {
+    return amortizationPlanAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationPlanAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AmortizationPlanAppService>(value),
+    );
+  }
+}
+
+String _$amortizationPlanAppServiceHash() =>
+    r'71712ec17dda37f3525924573ee5a6a93e0e4397';
+
+@ProviderFor(amortizationPlanQueryService)
+final amortizationPlanQueryServiceProvider =
+    AmortizationPlanQueryServiceProvider._();
+
+final class AmortizationPlanQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AmortizationPlanQueryService,
+          AmortizationPlanQueryService,
+          AmortizationPlanQueryService
+        >
+    with $Provider<AmortizationPlanQueryService> {
+  AmortizationPlanQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationPlanQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$amortizationPlanQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationPlanQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationPlanQueryService create(Ref ref) {
+    return amortizationPlanQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationPlanQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AmortizationPlanQueryService>(value),
+    );
+  }
+}
+
+String _$amortizationPlanQueryServiceHash() =>
+    r'417cdd17f99ea3344b1b0cc5db3013324a005f07';
 
 @ProviderFor(advanceCaseQueryService)
 final advanceCaseQueryServiceProvider = AdvanceCaseQueryServiceProvider._();
@@ -4005,6 +4199,55 @@ final class CreditBillGenerationTaskProvider
 String _$creditBillGenerationTaskHash() =>
     r'b55411597e562e5cea6926c7246195514b20f046';
 
+@ProviderFor(amortizationGenerationTask)
+final amortizationGenerationTaskProvider =
+    AmortizationGenerationTaskProvider._();
+
+final class AmortizationGenerationTaskProvider
+    extends
+        $FunctionalProvider<
+          AmortizationGenerationTask,
+          AmortizationGenerationTask,
+          AmortizationGenerationTask
+        >
+    with $Provider<AmortizationGenerationTask> {
+  AmortizationGenerationTaskProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationGenerationTaskProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$amortizationGenerationTaskHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationGenerationTask> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationGenerationTask create(Ref ref) {
+    return amortizationGenerationTask(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationGenerationTask value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AmortizationGenerationTask>(value),
+    );
+  }
+}
+
+String _$amortizationGenerationTaskHash() =>
+    r'15ce46d94a197ee8ffb904f7338b8964d507e6d9';
+
 @ProviderFor(pullTaskScheduler)
 final pullTaskSchedulerProvider = PullTaskSchedulerProvider._();
 
@@ -4050,7 +4293,7 @@ final class PullTaskSchedulerProvider
   }
 }
 
-String _$pullTaskSchedulerHash() => r'6d149a06271808670a55012e29e2a5e896ea0d06';
+String _$pullTaskSchedulerHash() => r'38e8d074fdafb203d224dc8fecf0455d4eca9642';
 
 @ProviderFor(referenceRateAppService)
 final referenceRateAppServiceProvider = ReferenceRateAppServiceProvider._();

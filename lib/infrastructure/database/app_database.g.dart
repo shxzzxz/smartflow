@@ -17669,6 +17669,1821 @@ class AdvanceCasesCompanion extends UpdateCompanion<AdvanceCaseRow> {
   }
 }
 
+class $AmortizationPlansTable extends AmortizationPlans
+    with TableInfo<$AmortizationPlansTable, AmortizationPlanRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AmortizationPlansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AmortizationKind, String> kind =
+      GeneratedColumn<String>(
+        'kind',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AmortizationKind>($AmortizationPlansTable.$converterkind);
+  static const VerificationMeta _deferralAccountIdMeta = const VerificationMeta(
+    'deferralAccountId',
+  );
+  @override
+  late final GeneratedColumn<String> deferralAccountId =
+      GeneratedColumn<String>(
+        'deferral_account_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _categoryAccountIdMeta = const VerificationMeta(
+    'categoryAccountId',
+  );
+  @override
+  late final GeneratedColumn<String> categoryAccountId =
+      GeneratedColumn<String>(
+        'category_account_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _totalAmountMinorMeta = const VerificationMeta(
+    'totalAmountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> totalAmountMinor = GeneratedColumn<int>(
+    'total_amount_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AmortizationCadenceUnit, String>
+  cadenceUnit =
+      GeneratedColumn<String>(
+        'cadence_unit',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AmortizationCadenceUnit>(
+        $AmortizationPlansTable.$convertercadenceUnit,
+      );
+  static const VerificationMeta _cadenceIntervalMeta = const VerificationMeta(
+    'cadenceInterval',
+  );
+  @override
+  late final GeneratedColumn<int> cadenceInterval = GeneratedColumn<int>(
+    'cadence_interval',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstRecognitionAtMeta =
+      const VerificationMeta('firstRecognitionAt');
+  @override
+  late final GeneratedColumn<DateTime> firstRecognitionAt =
+      GeneratedColumn<DateTime>(
+        'first_recognition_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _recognitionCountMeta = const VerificationMeta(
+    'recognitionCount',
+  );
+  @override
+  late final GeneratedColumn<int> recognitionCount = GeneratedColumn<int>(
+    'recognition_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _defaultIsExcludedFromStatsMeta =
+      const VerificationMeta('defaultIsExcludedFromStats');
+  @override
+  late final GeneratedColumn<bool> defaultIsExcludedFromStats =
+      GeneratedColumn<bool>(
+        'default_is_excluded_from_stats',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("default_is_excluded_from_stats" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _defaultIsExcludedFromBudgetMeta =
+      const VerificationMeta('defaultIsExcludedFromBudget');
+  @override
+  late final GeneratedColumn<bool> defaultIsExcludedFromBudget =
+      GeneratedColumn<bool>(
+        'default_is_excluded_from_budget',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("default_is_excluded_from_budget" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _initialTransactionIdMeta =
+      const VerificationMeta('initialTransactionId');
+  @override
+  late final GeneratedColumn<String> initialTransactionId =
+      GeneratedColumn<String>(
+        'initial_transaction_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _counterpartyIdMeta = const VerificationMeta(
+    'counterpartyId',
+  );
+  @override
+  late final GeneratedColumn<String> counterpartyId = GeneratedColumn<String>(
+    'counterparty_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _terminatedAtMeta = const VerificationMeta(
+    'terminatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> terminatedAt = GeneratedColumn<DateTime>(
+    'terminated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _terminationRecognitionTransactionIdMeta =
+      const VerificationMeta('terminationRecognitionTransactionId');
+  @override
+  late final GeneratedColumn<String> terminationRecognitionTransactionId =
+      GeneratedColumn<String>(
+        'termination_recognition_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _refundTransactionIdMeta =
+      const VerificationMeta('refundTransactionId');
+  @override
+  late final GeneratedColumn<String> refundTransactionId =
+      GeneratedColumn<String>(
+        'refund_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _refundAmountMinorMeta = const VerificationMeta(
+    'refundAmountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> refundAmountMinor = GeneratedColumn<int>(
+    'refund_amount_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    deferralAccountId,
+    categoryAccountId,
+    totalAmountMinor,
+    cadenceUnit,
+    cadenceInterval,
+    firstRecognitionAt,
+    recognitionCount,
+    defaultIsExcludedFromStats,
+    defaultIsExcludedFromBudget,
+    initialTransactionId,
+    counterpartyId,
+    note,
+    terminatedAt,
+    terminationRecognitionTransactionId,
+    refundTransactionId,
+    refundAmountMinor,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'amortization_plans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AmortizationPlanRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('deferral_account_id')) {
+      context.handle(
+        _deferralAccountIdMeta,
+        deferralAccountId.isAcceptableOrUnknown(
+          data['deferral_account_id']!,
+          _deferralAccountIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_deferralAccountIdMeta);
+    }
+    if (data.containsKey('category_account_id')) {
+      context.handle(
+        _categoryAccountIdMeta,
+        categoryAccountId.isAcceptableOrUnknown(
+          data['category_account_id']!,
+          _categoryAccountIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryAccountIdMeta);
+    }
+    if (data.containsKey('total_amount_minor')) {
+      context.handle(
+        _totalAmountMinorMeta,
+        totalAmountMinor.isAcceptableOrUnknown(
+          data['total_amount_minor']!,
+          _totalAmountMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalAmountMinorMeta);
+    }
+    if (data.containsKey('cadence_interval')) {
+      context.handle(
+        _cadenceIntervalMeta,
+        cadenceInterval.isAcceptableOrUnknown(
+          data['cadence_interval']!,
+          _cadenceIntervalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_cadenceIntervalMeta);
+    }
+    if (data.containsKey('first_recognition_at')) {
+      context.handle(
+        _firstRecognitionAtMeta,
+        firstRecognitionAt.isAcceptableOrUnknown(
+          data['first_recognition_at']!,
+          _firstRecognitionAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstRecognitionAtMeta);
+    }
+    if (data.containsKey('recognition_count')) {
+      context.handle(
+        _recognitionCountMeta,
+        recognitionCount.isAcceptableOrUnknown(
+          data['recognition_count']!,
+          _recognitionCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recognitionCountMeta);
+    }
+    if (data.containsKey('default_is_excluded_from_stats')) {
+      context.handle(
+        _defaultIsExcludedFromStatsMeta,
+        defaultIsExcludedFromStats.isAcceptableOrUnknown(
+          data['default_is_excluded_from_stats']!,
+          _defaultIsExcludedFromStatsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('default_is_excluded_from_budget')) {
+      context.handle(
+        _defaultIsExcludedFromBudgetMeta,
+        defaultIsExcludedFromBudget.isAcceptableOrUnknown(
+          data['default_is_excluded_from_budget']!,
+          _defaultIsExcludedFromBudgetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('initial_transaction_id')) {
+      context.handle(
+        _initialTransactionIdMeta,
+        initialTransactionId.isAcceptableOrUnknown(
+          data['initial_transaction_id']!,
+          _initialTransactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_initialTransactionIdMeta);
+    }
+    if (data.containsKey('counterparty_id')) {
+      context.handle(
+        _counterpartyIdMeta,
+        counterpartyId.isAcceptableOrUnknown(
+          data['counterparty_id']!,
+          _counterpartyIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('terminated_at')) {
+      context.handle(
+        _terminatedAtMeta,
+        terminatedAt.isAcceptableOrUnknown(
+          data['terminated_at']!,
+          _terminatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('termination_recognition_transaction_id')) {
+      context.handle(
+        _terminationRecognitionTransactionIdMeta,
+        terminationRecognitionTransactionId.isAcceptableOrUnknown(
+          data['termination_recognition_transaction_id']!,
+          _terminationRecognitionTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('refund_transaction_id')) {
+      context.handle(
+        _refundTransactionIdMeta,
+        refundTransactionId.isAcceptableOrUnknown(
+          data['refund_transaction_id']!,
+          _refundTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('refund_amount_minor')) {
+      context.handle(
+        _refundAmountMinorMeta,
+        refundAmountMinor.isAcceptableOrUnknown(
+          data['refund_amount_minor']!,
+          _refundAmountMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AmortizationPlanRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AmortizationPlanRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: $AmortizationPlansTable.$converterkind.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}kind'],
+        )!,
+      ),
+      deferralAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deferral_account_id'],
+      )!,
+      categoryAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_account_id'],
+      )!,
+      totalAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_amount_minor'],
+      )!,
+      cadenceUnit: $AmortizationPlansTable.$convertercadenceUnit.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}cadence_unit'],
+        )!,
+      ),
+      cadenceInterval: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cadence_interval'],
+      )!,
+      firstRecognitionAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_recognition_at'],
+      )!,
+      recognitionCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recognition_count'],
+      )!,
+      defaultIsExcludedFromStats: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}default_is_excluded_from_stats'],
+      )!,
+      defaultIsExcludedFromBudget: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}default_is_excluded_from_budget'],
+      )!,
+      initialTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}initial_transaction_id'],
+      )!,
+      counterpartyId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}counterparty_id'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      terminatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}terminated_at'],
+      ),
+      terminationRecognitionTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}termination_recognition_transaction_id'],
+      ),
+      refundTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}refund_transaction_id'],
+      ),
+      refundAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}refund_amount_minor'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AmortizationPlansTable createAlias(String alias) {
+    return $AmortizationPlansTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<AmortizationKind, String, String> $converterkind =
+      const EnumNameConverter<AmortizationKind>(AmortizationKind.values);
+  static JsonTypeConverter2<AmortizationCadenceUnit, String, String>
+  $convertercadenceUnit = const EnumNameConverter<AmortizationCadenceUnit>(
+    AmortizationCadenceUnit.values,
+  );
+}
+
+class AmortizationPlanRow extends DataClass
+    implements Insertable<AmortizationPlanRow> {
+  final String id;
+  final AmortizationKind kind;
+  final String deferralAccountId;
+  final String categoryAccountId;
+  final int totalAmountMinor;
+  final AmortizationCadenceUnit cadenceUnit;
+  final int cadenceInterval;
+  final DateTime firstRecognitionAt;
+  final int recognitionCount;
+  final bool defaultIsExcludedFromStats;
+  final bool defaultIsExcludedFromBudget;
+  final String initialTransactionId;
+  final String? counterpartyId;
+  final String? note;
+  final DateTime? terminatedAt;
+  final String? terminationRecognitionTransactionId;
+  final String? refundTransactionId;
+  final int? refundAmountMinor;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AmortizationPlanRow({
+    required this.id,
+    required this.kind,
+    required this.deferralAccountId,
+    required this.categoryAccountId,
+    required this.totalAmountMinor,
+    required this.cadenceUnit,
+    required this.cadenceInterval,
+    required this.firstRecognitionAt,
+    required this.recognitionCount,
+    required this.defaultIsExcludedFromStats,
+    required this.defaultIsExcludedFromBudget,
+    required this.initialTransactionId,
+    this.counterpartyId,
+    this.note,
+    this.terminatedAt,
+    this.terminationRecognitionTransactionId,
+    this.refundTransactionId,
+    this.refundAmountMinor,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    {
+      map['kind'] = Variable<String>(
+        $AmortizationPlansTable.$converterkind.toSql(kind),
+      );
+    }
+    map['deferral_account_id'] = Variable<String>(deferralAccountId);
+    map['category_account_id'] = Variable<String>(categoryAccountId);
+    map['total_amount_minor'] = Variable<int>(totalAmountMinor);
+    {
+      map['cadence_unit'] = Variable<String>(
+        $AmortizationPlansTable.$convertercadenceUnit.toSql(cadenceUnit),
+      );
+    }
+    map['cadence_interval'] = Variable<int>(cadenceInterval);
+    map['first_recognition_at'] = Variable<DateTime>(firstRecognitionAt);
+    map['recognition_count'] = Variable<int>(recognitionCount);
+    map['default_is_excluded_from_stats'] = Variable<bool>(
+      defaultIsExcludedFromStats,
+    );
+    map['default_is_excluded_from_budget'] = Variable<bool>(
+      defaultIsExcludedFromBudget,
+    );
+    map['initial_transaction_id'] = Variable<String>(initialTransactionId);
+    if (!nullToAbsent || counterpartyId != null) {
+      map['counterparty_id'] = Variable<String>(counterpartyId);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || terminatedAt != null) {
+      map['terminated_at'] = Variable<DateTime>(terminatedAt);
+    }
+    if (!nullToAbsent || terminationRecognitionTransactionId != null) {
+      map['termination_recognition_transaction_id'] = Variable<String>(
+        terminationRecognitionTransactionId,
+      );
+    }
+    if (!nullToAbsent || refundTransactionId != null) {
+      map['refund_transaction_id'] = Variable<String>(refundTransactionId);
+    }
+    if (!nullToAbsent || refundAmountMinor != null) {
+      map['refund_amount_minor'] = Variable<int>(refundAmountMinor);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AmortizationPlansCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationPlansCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      deferralAccountId: Value(deferralAccountId),
+      categoryAccountId: Value(categoryAccountId),
+      totalAmountMinor: Value(totalAmountMinor),
+      cadenceUnit: Value(cadenceUnit),
+      cadenceInterval: Value(cadenceInterval),
+      firstRecognitionAt: Value(firstRecognitionAt),
+      recognitionCount: Value(recognitionCount),
+      defaultIsExcludedFromStats: Value(defaultIsExcludedFromStats),
+      defaultIsExcludedFromBudget: Value(defaultIsExcludedFromBudget),
+      initialTransactionId: Value(initialTransactionId),
+      counterpartyId: counterpartyId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(counterpartyId),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      terminatedAt: terminatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(terminatedAt),
+      terminationRecognitionTransactionId:
+          terminationRecognitionTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(terminationRecognitionTransactionId),
+      refundTransactionId: refundTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(refundTransactionId),
+      refundAmountMinor: refundAmountMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(refundAmountMinor),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AmortizationPlanRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AmortizationPlanRow(
+      id: serializer.fromJson<String>(json['id']),
+      kind: $AmortizationPlansTable.$converterkind.fromJson(
+        serializer.fromJson<String>(json['kind']),
+      ),
+      deferralAccountId: serializer.fromJson<String>(json['deferralAccountId']),
+      categoryAccountId: serializer.fromJson<String>(json['categoryAccountId']),
+      totalAmountMinor: serializer.fromJson<int>(json['totalAmountMinor']),
+      cadenceUnit: $AmortizationPlansTable.$convertercadenceUnit.fromJson(
+        serializer.fromJson<String>(json['cadenceUnit']),
+      ),
+      cadenceInterval: serializer.fromJson<int>(json['cadenceInterval']),
+      firstRecognitionAt: serializer.fromJson<DateTime>(
+        json['firstRecognitionAt'],
+      ),
+      recognitionCount: serializer.fromJson<int>(json['recognitionCount']),
+      defaultIsExcludedFromStats: serializer.fromJson<bool>(
+        json['defaultIsExcludedFromStats'],
+      ),
+      defaultIsExcludedFromBudget: serializer.fromJson<bool>(
+        json['defaultIsExcludedFromBudget'],
+      ),
+      initialTransactionId: serializer.fromJson<String>(
+        json['initialTransactionId'],
+      ),
+      counterpartyId: serializer.fromJson<String?>(json['counterpartyId']),
+      note: serializer.fromJson<String?>(json['note']),
+      terminatedAt: serializer.fromJson<DateTime?>(json['terminatedAt']),
+      terminationRecognitionTransactionId: serializer.fromJson<String?>(
+        json['terminationRecognitionTransactionId'],
+      ),
+      refundTransactionId: serializer.fromJson<String?>(
+        json['refundTransactionId'],
+      ),
+      refundAmountMinor: serializer.fromJson<int?>(json['refundAmountMinor']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'kind': serializer.toJson<String>(
+        $AmortizationPlansTable.$converterkind.toJson(kind),
+      ),
+      'deferralAccountId': serializer.toJson<String>(deferralAccountId),
+      'categoryAccountId': serializer.toJson<String>(categoryAccountId),
+      'totalAmountMinor': serializer.toJson<int>(totalAmountMinor),
+      'cadenceUnit': serializer.toJson<String>(
+        $AmortizationPlansTable.$convertercadenceUnit.toJson(cadenceUnit),
+      ),
+      'cadenceInterval': serializer.toJson<int>(cadenceInterval),
+      'firstRecognitionAt': serializer.toJson<DateTime>(firstRecognitionAt),
+      'recognitionCount': serializer.toJson<int>(recognitionCount),
+      'defaultIsExcludedFromStats': serializer.toJson<bool>(
+        defaultIsExcludedFromStats,
+      ),
+      'defaultIsExcludedFromBudget': serializer.toJson<bool>(
+        defaultIsExcludedFromBudget,
+      ),
+      'initialTransactionId': serializer.toJson<String>(initialTransactionId),
+      'counterpartyId': serializer.toJson<String?>(counterpartyId),
+      'note': serializer.toJson<String?>(note),
+      'terminatedAt': serializer.toJson<DateTime?>(terminatedAt),
+      'terminationRecognitionTransactionId': serializer.toJson<String?>(
+        terminationRecognitionTransactionId,
+      ),
+      'refundTransactionId': serializer.toJson<String?>(refundTransactionId),
+      'refundAmountMinor': serializer.toJson<int?>(refundAmountMinor),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AmortizationPlanRow copyWith({
+    String? id,
+    AmortizationKind? kind,
+    String? deferralAccountId,
+    String? categoryAccountId,
+    int? totalAmountMinor,
+    AmortizationCadenceUnit? cadenceUnit,
+    int? cadenceInterval,
+    DateTime? firstRecognitionAt,
+    int? recognitionCount,
+    bool? defaultIsExcludedFromStats,
+    bool? defaultIsExcludedFromBudget,
+    String? initialTransactionId,
+    Value<String?> counterpartyId = const Value.absent(),
+    Value<String?> note = const Value.absent(),
+    Value<DateTime?> terminatedAt = const Value.absent(),
+    Value<String?> terminationRecognitionTransactionId = const Value.absent(),
+    Value<String?> refundTransactionId = const Value.absent(),
+    Value<int?> refundAmountMinor = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AmortizationPlanRow(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    deferralAccountId: deferralAccountId ?? this.deferralAccountId,
+    categoryAccountId: categoryAccountId ?? this.categoryAccountId,
+    totalAmountMinor: totalAmountMinor ?? this.totalAmountMinor,
+    cadenceUnit: cadenceUnit ?? this.cadenceUnit,
+    cadenceInterval: cadenceInterval ?? this.cadenceInterval,
+    firstRecognitionAt: firstRecognitionAt ?? this.firstRecognitionAt,
+    recognitionCount: recognitionCount ?? this.recognitionCount,
+    defaultIsExcludedFromStats:
+        defaultIsExcludedFromStats ?? this.defaultIsExcludedFromStats,
+    defaultIsExcludedFromBudget:
+        defaultIsExcludedFromBudget ?? this.defaultIsExcludedFromBudget,
+    initialTransactionId: initialTransactionId ?? this.initialTransactionId,
+    counterpartyId: counterpartyId.present
+        ? counterpartyId.value
+        : this.counterpartyId,
+    note: note.present ? note.value : this.note,
+    terminatedAt: terminatedAt.present ? terminatedAt.value : this.terminatedAt,
+    terminationRecognitionTransactionId:
+        terminationRecognitionTransactionId.present
+        ? terminationRecognitionTransactionId.value
+        : this.terminationRecognitionTransactionId,
+    refundTransactionId: refundTransactionId.present
+        ? refundTransactionId.value
+        : this.refundTransactionId,
+    refundAmountMinor: refundAmountMinor.present
+        ? refundAmountMinor.value
+        : this.refundAmountMinor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AmortizationPlanRow copyWithCompanion(AmortizationPlansCompanion data) {
+    return AmortizationPlanRow(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      deferralAccountId: data.deferralAccountId.present
+          ? data.deferralAccountId.value
+          : this.deferralAccountId,
+      categoryAccountId: data.categoryAccountId.present
+          ? data.categoryAccountId.value
+          : this.categoryAccountId,
+      totalAmountMinor: data.totalAmountMinor.present
+          ? data.totalAmountMinor.value
+          : this.totalAmountMinor,
+      cadenceUnit: data.cadenceUnit.present
+          ? data.cadenceUnit.value
+          : this.cadenceUnit,
+      cadenceInterval: data.cadenceInterval.present
+          ? data.cadenceInterval.value
+          : this.cadenceInterval,
+      firstRecognitionAt: data.firstRecognitionAt.present
+          ? data.firstRecognitionAt.value
+          : this.firstRecognitionAt,
+      recognitionCount: data.recognitionCount.present
+          ? data.recognitionCount.value
+          : this.recognitionCount,
+      defaultIsExcludedFromStats: data.defaultIsExcludedFromStats.present
+          ? data.defaultIsExcludedFromStats.value
+          : this.defaultIsExcludedFromStats,
+      defaultIsExcludedFromBudget: data.defaultIsExcludedFromBudget.present
+          ? data.defaultIsExcludedFromBudget.value
+          : this.defaultIsExcludedFromBudget,
+      initialTransactionId: data.initialTransactionId.present
+          ? data.initialTransactionId.value
+          : this.initialTransactionId,
+      counterpartyId: data.counterpartyId.present
+          ? data.counterpartyId.value
+          : this.counterpartyId,
+      note: data.note.present ? data.note.value : this.note,
+      terminatedAt: data.terminatedAt.present
+          ? data.terminatedAt.value
+          : this.terminatedAt,
+      terminationRecognitionTransactionId:
+          data.terminationRecognitionTransactionId.present
+          ? data.terminationRecognitionTransactionId.value
+          : this.terminationRecognitionTransactionId,
+      refundTransactionId: data.refundTransactionId.present
+          ? data.refundTransactionId.value
+          : this.refundTransactionId,
+      refundAmountMinor: data.refundAmountMinor.present
+          ? data.refundAmountMinor.value
+          : this.refundAmountMinor,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationPlanRow(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('deferralAccountId: $deferralAccountId, ')
+          ..write('categoryAccountId: $categoryAccountId, ')
+          ..write('totalAmountMinor: $totalAmountMinor, ')
+          ..write('cadenceUnit: $cadenceUnit, ')
+          ..write('cadenceInterval: $cadenceInterval, ')
+          ..write('firstRecognitionAt: $firstRecognitionAt, ')
+          ..write('recognitionCount: $recognitionCount, ')
+          ..write('defaultIsExcludedFromStats: $defaultIsExcludedFromStats, ')
+          ..write('defaultIsExcludedFromBudget: $defaultIsExcludedFromBudget, ')
+          ..write('initialTransactionId: $initialTransactionId, ')
+          ..write('counterpartyId: $counterpartyId, ')
+          ..write('note: $note, ')
+          ..write('terminatedAt: $terminatedAt, ')
+          ..write(
+            'terminationRecognitionTransactionId: $terminationRecognitionTransactionId, ',
+          )
+          ..write('refundTransactionId: $refundTransactionId, ')
+          ..write('refundAmountMinor: $refundAmountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    deferralAccountId,
+    categoryAccountId,
+    totalAmountMinor,
+    cadenceUnit,
+    cadenceInterval,
+    firstRecognitionAt,
+    recognitionCount,
+    defaultIsExcludedFromStats,
+    defaultIsExcludedFromBudget,
+    initialTransactionId,
+    counterpartyId,
+    note,
+    terminatedAt,
+    terminationRecognitionTransactionId,
+    refundTransactionId,
+    refundAmountMinor,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AmortizationPlanRow &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.deferralAccountId == this.deferralAccountId &&
+          other.categoryAccountId == this.categoryAccountId &&
+          other.totalAmountMinor == this.totalAmountMinor &&
+          other.cadenceUnit == this.cadenceUnit &&
+          other.cadenceInterval == this.cadenceInterval &&
+          other.firstRecognitionAt == this.firstRecognitionAt &&
+          other.recognitionCount == this.recognitionCount &&
+          other.defaultIsExcludedFromStats == this.defaultIsExcludedFromStats &&
+          other.defaultIsExcludedFromBudget ==
+              this.defaultIsExcludedFromBudget &&
+          other.initialTransactionId == this.initialTransactionId &&
+          other.counterpartyId == this.counterpartyId &&
+          other.note == this.note &&
+          other.terminatedAt == this.terminatedAt &&
+          other.terminationRecognitionTransactionId ==
+              this.terminationRecognitionTransactionId &&
+          other.refundTransactionId == this.refundTransactionId &&
+          other.refundAmountMinor == this.refundAmountMinor &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
+  final Value<String> id;
+  final Value<AmortizationKind> kind;
+  final Value<String> deferralAccountId;
+  final Value<String> categoryAccountId;
+  final Value<int> totalAmountMinor;
+  final Value<AmortizationCadenceUnit> cadenceUnit;
+  final Value<int> cadenceInterval;
+  final Value<DateTime> firstRecognitionAt;
+  final Value<int> recognitionCount;
+  final Value<bool> defaultIsExcludedFromStats;
+  final Value<bool> defaultIsExcludedFromBudget;
+  final Value<String> initialTransactionId;
+  final Value<String?> counterpartyId;
+  final Value<String?> note;
+  final Value<DateTime?> terminatedAt;
+  final Value<String?> terminationRecognitionTransactionId;
+  final Value<String?> refundTransactionId;
+  final Value<int?> refundAmountMinor;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AmortizationPlansCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.deferralAccountId = const Value.absent(),
+    this.categoryAccountId = const Value.absent(),
+    this.totalAmountMinor = const Value.absent(),
+    this.cadenceUnit = const Value.absent(),
+    this.cadenceInterval = const Value.absent(),
+    this.firstRecognitionAt = const Value.absent(),
+    this.recognitionCount = const Value.absent(),
+    this.defaultIsExcludedFromStats = const Value.absent(),
+    this.defaultIsExcludedFromBudget = const Value.absent(),
+    this.initialTransactionId = const Value.absent(),
+    this.counterpartyId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.terminatedAt = const Value.absent(),
+    this.terminationRecognitionTransactionId = const Value.absent(),
+    this.refundTransactionId = const Value.absent(),
+    this.refundAmountMinor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AmortizationPlansCompanion.insert({
+    required String id,
+    required AmortizationKind kind,
+    required String deferralAccountId,
+    required String categoryAccountId,
+    required int totalAmountMinor,
+    required AmortizationCadenceUnit cadenceUnit,
+    required int cadenceInterval,
+    required DateTime firstRecognitionAt,
+    required int recognitionCount,
+    this.defaultIsExcludedFromStats = const Value.absent(),
+    this.defaultIsExcludedFromBudget = const Value.absent(),
+    required String initialTransactionId,
+    this.counterpartyId = const Value.absent(),
+    this.note = const Value.absent(),
+    this.terminatedAt = const Value.absent(),
+    this.terminationRecognitionTransactionId = const Value.absent(),
+    this.refundTransactionId = const Value.absent(),
+    this.refundAmountMinor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       kind = Value(kind),
+       deferralAccountId = Value(deferralAccountId),
+       categoryAccountId = Value(categoryAccountId),
+       totalAmountMinor = Value(totalAmountMinor),
+       cadenceUnit = Value(cadenceUnit),
+       cadenceInterval = Value(cadenceInterval),
+       firstRecognitionAt = Value(firstRecognitionAt),
+       recognitionCount = Value(recognitionCount),
+       initialTransactionId = Value(initialTransactionId);
+  static Insertable<AmortizationPlanRow> custom({
+    Expression<String>? id,
+    Expression<String>? kind,
+    Expression<String>? deferralAccountId,
+    Expression<String>? categoryAccountId,
+    Expression<int>? totalAmountMinor,
+    Expression<String>? cadenceUnit,
+    Expression<int>? cadenceInterval,
+    Expression<DateTime>? firstRecognitionAt,
+    Expression<int>? recognitionCount,
+    Expression<bool>? defaultIsExcludedFromStats,
+    Expression<bool>? defaultIsExcludedFromBudget,
+    Expression<String>? initialTransactionId,
+    Expression<String>? counterpartyId,
+    Expression<String>? note,
+    Expression<DateTime>? terminatedAt,
+    Expression<String>? terminationRecognitionTransactionId,
+    Expression<String>? refundTransactionId,
+    Expression<int>? refundAmountMinor,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (deferralAccountId != null) 'deferral_account_id': deferralAccountId,
+      if (categoryAccountId != null) 'category_account_id': categoryAccountId,
+      if (totalAmountMinor != null) 'total_amount_minor': totalAmountMinor,
+      if (cadenceUnit != null) 'cadence_unit': cadenceUnit,
+      if (cadenceInterval != null) 'cadence_interval': cadenceInterval,
+      if (firstRecognitionAt != null)
+        'first_recognition_at': firstRecognitionAt,
+      if (recognitionCount != null) 'recognition_count': recognitionCount,
+      if (defaultIsExcludedFromStats != null)
+        'default_is_excluded_from_stats': defaultIsExcludedFromStats,
+      if (defaultIsExcludedFromBudget != null)
+        'default_is_excluded_from_budget': defaultIsExcludedFromBudget,
+      if (initialTransactionId != null)
+        'initial_transaction_id': initialTransactionId,
+      if (counterpartyId != null) 'counterparty_id': counterpartyId,
+      if (note != null) 'note': note,
+      if (terminatedAt != null) 'terminated_at': terminatedAt,
+      if (terminationRecognitionTransactionId != null)
+        'termination_recognition_transaction_id':
+            terminationRecognitionTransactionId,
+      if (refundTransactionId != null)
+        'refund_transaction_id': refundTransactionId,
+      if (refundAmountMinor != null) 'refund_amount_minor': refundAmountMinor,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AmortizationPlansCompanion copyWith({
+    Value<String>? id,
+    Value<AmortizationKind>? kind,
+    Value<String>? deferralAccountId,
+    Value<String>? categoryAccountId,
+    Value<int>? totalAmountMinor,
+    Value<AmortizationCadenceUnit>? cadenceUnit,
+    Value<int>? cadenceInterval,
+    Value<DateTime>? firstRecognitionAt,
+    Value<int>? recognitionCount,
+    Value<bool>? defaultIsExcludedFromStats,
+    Value<bool>? defaultIsExcludedFromBudget,
+    Value<String>? initialTransactionId,
+    Value<String?>? counterpartyId,
+    Value<String?>? note,
+    Value<DateTime?>? terminatedAt,
+    Value<String?>? terminationRecognitionTransactionId,
+    Value<String?>? refundTransactionId,
+    Value<int?>? refundAmountMinor,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AmortizationPlansCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      deferralAccountId: deferralAccountId ?? this.deferralAccountId,
+      categoryAccountId: categoryAccountId ?? this.categoryAccountId,
+      totalAmountMinor: totalAmountMinor ?? this.totalAmountMinor,
+      cadenceUnit: cadenceUnit ?? this.cadenceUnit,
+      cadenceInterval: cadenceInterval ?? this.cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt ?? this.firstRecognitionAt,
+      recognitionCount: recognitionCount ?? this.recognitionCount,
+      defaultIsExcludedFromStats:
+          defaultIsExcludedFromStats ?? this.defaultIsExcludedFromStats,
+      defaultIsExcludedFromBudget:
+          defaultIsExcludedFromBudget ?? this.defaultIsExcludedFromBudget,
+      initialTransactionId: initialTransactionId ?? this.initialTransactionId,
+      counterpartyId: counterpartyId ?? this.counterpartyId,
+      note: note ?? this.note,
+      terminatedAt: terminatedAt ?? this.terminatedAt,
+      terminationRecognitionTransactionId:
+          terminationRecognitionTransactionId ??
+          this.terminationRecognitionTransactionId,
+      refundTransactionId: refundTransactionId ?? this.refundTransactionId,
+      refundAmountMinor: refundAmountMinor ?? this.refundAmountMinor,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(
+        $AmortizationPlansTable.$converterkind.toSql(kind.value),
+      );
+    }
+    if (deferralAccountId.present) {
+      map['deferral_account_id'] = Variable<String>(deferralAccountId.value);
+    }
+    if (categoryAccountId.present) {
+      map['category_account_id'] = Variable<String>(categoryAccountId.value);
+    }
+    if (totalAmountMinor.present) {
+      map['total_amount_minor'] = Variable<int>(totalAmountMinor.value);
+    }
+    if (cadenceUnit.present) {
+      map['cadence_unit'] = Variable<String>(
+        $AmortizationPlansTable.$convertercadenceUnit.toSql(cadenceUnit.value),
+      );
+    }
+    if (cadenceInterval.present) {
+      map['cadence_interval'] = Variable<int>(cadenceInterval.value);
+    }
+    if (firstRecognitionAt.present) {
+      map['first_recognition_at'] = Variable<DateTime>(
+        firstRecognitionAt.value,
+      );
+    }
+    if (recognitionCount.present) {
+      map['recognition_count'] = Variable<int>(recognitionCount.value);
+    }
+    if (defaultIsExcludedFromStats.present) {
+      map['default_is_excluded_from_stats'] = Variable<bool>(
+        defaultIsExcludedFromStats.value,
+      );
+    }
+    if (defaultIsExcludedFromBudget.present) {
+      map['default_is_excluded_from_budget'] = Variable<bool>(
+        defaultIsExcludedFromBudget.value,
+      );
+    }
+    if (initialTransactionId.present) {
+      map['initial_transaction_id'] = Variable<String>(
+        initialTransactionId.value,
+      );
+    }
+    if (counterpartyId.present) {
+      map['counterparty_id'] = Variable<String>(counterpartyId.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (terminatedAt.present) {
+      map['terminated_at'] = Variable<DateTime>(terminatedAt.value);
+    }
+    if (terminationRecognitionTransactionId.present) {
+      map['termination_recognition_transaction_id'] = Variable<String>(
+        terminationRecognitionTransactionId.value,
+      );
+    }
+    if (refundTransactionId.present) {
+      map['refund_transaction_id'] = Variable<String>(
+        refundTransactionId.value,
+      );
+    }
+    if (refundAmountMinor.present) {
+      map['refund_amount_minor'] = Variable<int>(refundAmountMinor.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationPlansCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('deferralAccountId: $deferralAccountId, ')
+          ..write('categoryAccountId: $categoryAccountId, ')
+          ..write('totalAmountMinor: $totalAmountMinor, ')
+          ..write('cadenceUnit: $cadenceUnit, ')
+          ..write('cadenceInterval: $cadenceInterval, ')
+          ..write('firstRecognitionAt: $firstRecognitionAt, ')
+          ..write('recognitionCount: $recognitionCount, ')
+          ..write('defaultIsExcludedFromStats: $defaultIsExcludedFromStats, ')
+          ..write('defaultIsExcludedFromBudget: $defaultIsExcludedFromBudget, ')
+          ..write('initialTransactionId: $initialTransactionId, ')
+          ..write('counterpartyId: $counterpartyId, ')
+          ..write('note: $note, ')
+          ..write('terminatedAt: $terminatedAt, ')
+          ..write(
+            'terminationRecognitionTransactionId: $terminationRecognitionTransactionId, ',
+          )
+          ..write('refundTransactionId: $refundTransactionId, ')
+          ..write('refundAmountMinor: $refundAmountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AmortizationEntriesTable extends AmortizationEntries
+    with TableInfo<$AmortizationEntriesTable, AmortizationEntryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AmortizationEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _planIdMeta = const VerificationMeta('planId');
+  @override
+  late final GeneratedColumn<String> planId = GeneratedColumn<String>(
+    'plan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sequenceNoMeta = const VerificationMeta(
+    'sequenceNo',
+  );
+  @override
+  late final GeneratedColumn<int> sequenceNo = GeneratedColumn<int>(
+    'sequence_no',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
+  @override
+  late final GeneratedColumn<DateTime> dueAt = GeneratedColumn<DateTime>(
+    'due_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMinorMeta = const VerificationMeta(
+    'amountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> amountMinor = GeneratedColumn<int>(
+    'amount_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<String> transactionId = GeneratedColumn<String>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _canceledAtMeta = const VerificationMeta(
+    'canceledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> canceledAt = GeneratedColumn<DateTime>(
+    'canceled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    planId,
+    sequenceNo,
+    dueAt,
+    amountMinor,
+    transactionId,
+    canceledAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'amortization_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AmortizationEntryRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('plan_id')) {
+      context.handle(
+        _planIdMeta,
+        planId.isAcceptableOrUnknown(data['plan_id']!, _planIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_planIdMeta);
+    }
+    if (data.containsKey('sequence_no')) {
+      context.handle(
+        _sequenceNoMeta,
+        sequenceNo.isAcceptableOrUnknown(data['sequence_no']!, _sequenceNoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sequenceNoMeta);
+    }
+    if (data.containsKey('due_at')) {
+      context.handle(
+        _dueAtMeta,
+        dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dueAtMeta);
+    }
+    if (data.containsKey('amount_minor')) {
+      context.handle(
+        _amountMinorMeta,
+        amountMinor.isAcceptableOrUnknown(
+          data['amount_minor']!,
+          _amountMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMinorMeta);
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('canceled_at')) {
+      context.handle(
+        _canceledAtMeta,
+        canceledAt.isAcceptableOrUnknown(data['canceled_at']!, _canceledAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AmortizationEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AmortizationEntryRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      planId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_id'],
+      )!,
+      sequenceNo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sequence_no'],
+      )!,
+      dueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_at'],
+      )!,
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transaction_id'],
+      ),
+      canceledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}canceled_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AmortizationEntriesTable createAlias(String alias) {
+    return $AmortizationEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class AmortizationEntryRow extends DataClass
+    implements Insertable<AmortizationEntryRow> {
+  final String id;
+  final String planId;
+  final int sequenceNo;
+  final DateTime dueAt;
+  final int amountMinor;
+  final String? transactionId;
+  final DateTime? canceledAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AmortizationEntryRow({
+    required this.id,
+    required this.planId,
+    required this.sequenceNo,
+    required this.dueAt,
+    required this.amountMinor,
+    this.transactionId,
+    this.canceledAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['plan_id'] = Variable<String>(planId);
+    map['sequence_no'] = Variable<int>(sequenceNo);
+    map['due_at'] = Variable<DateTime>(dueAt);
+    map['amount_minor'] = Variable<int>(amountMinor);
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<String>(transactionId);
+    }
+    if (!nullToAbsent || canceledAt != null) {
+      map['canceled_at'] = Variable<DateTime>(canceledAt);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AmortizationEntriesCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationEntriesCompanion(
+      id: Value(id),
+      planId: Value(planId),
+      sequenceNo: Value(sequenceNo),
+      dueAt: Value(dueAt),
+      amountMinor: Value(amountMinor),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+      canceledAt: canceledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(canceledAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AmortizationEntryRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AmortizationEntryRow(
+      id: serializer.fromJson<String>(json['id']),
+      planId: serializer.fromJson<String>(json['planId']),
+      sequenceNo: serializer.fromJson<int>(json['sequenceNo']),
+      dueAt: serializer.fromJson<DateTime>(json['dueAt']),
+      amountMinor: serializer.fromJson<int>(json['amountMinor']),
+      transactionId: serializer.fromJson<String?>(json['transactionId']),
+      canceledAt: serializer.fromJson<DateTime?>(json['canceledAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'planId': serializer.toJson<String>(planId),
+      'sequenceNo': serializer.toJson<int>(sequenceNo),
+      'dueAt': serializer.toJson<DateTime>(dueAt),
+      'amountMinor': serializer.toJson<int>(amountMinor),
+      'transactionId': serializer.toJson<String?>(transactionId),
+      'canceledAt': serializer.toJson<DateTime?>(canceledAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AmortizationEntryRow copyWith({
+    String? id,
+    String? planId,
+    int? sequenceNo,
+    DateTime? dueAt,
+    int? amountMinor,
+    Value<String?> transactionId = const Value.absent(),
+    Value<DateTime?> canceledAt = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AmortizationEntryRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    sequenceNo: sequenceNo ?? this.sequenceNo,
+    dueAt: dueAt ?? this.dueAt,
+    amountMinor: amountMinor ?? this.amountMinor,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+    canceledAt: canceledAt.present ? canceledAt.value : this.canceledAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AmortizationEntryRow copyWithCompanion(AmortizationEntriesCompanion data) {
+    return AmortizationEntryRow(
+      id: data.id.present ? data.id.value : this.id,
+      planId: data.planId.present ? data.planId.value : this.planId,
+      sequenceNo: data.sequenceNo.present
+          ? data.sequenceNo.value
+          : this.sequenceNo,
+      dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      canceledAt: data.canceledAt.present
+          ? data.canceledAt.value
+          : this.canceledAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationEntryRow(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('sequenceNo: $sequenceNo, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('canceledAt: $canceledAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    planId,
+    sequenceNo,
+    dueAt,
+    amountMinor,
+    transactionId,
+    canceledAt,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AmortizationEntryRow &&
+          other.id == this.id &&
+          other.planId == this.planId &&
+          other.sequenceNo == this.sequenceNo &&
+          other.dueAt == this.dueAt &&
+          other.amountMinor == this.amountMinor &&
+          other.transactionId == this.transactionId &&
+          other.canceledAt == this.canceledAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AmortizationEntriesCompanion
+    extends UpdateCompanion<AmortizationEntryRow> {
+  final Value<String> id;
+  final Value<String> planId;
+  final Value<int> sequenceNo;
+  final Value<DateTime> dueAt;
+  final Value<int> amountMinor;
+  final Value<String?> transactionId;
+  final Value<DateTime?> canceledAt;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AmortizationEntriesCompanion({
+    this.id = const Value.absent(),
+    this.planId = const Value.absent(),
+    this.sequenceNo = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.amountMinor = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.canceledAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AmortizationEntriesCompanion.insert({
+    required String id,
+    required String planId,
+    required int sequenceNo,
+    required DateTime dueAt,
+    required int amountMinor,
+    this.transactionId = const Value.absent(),
+    this.canceledAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       planId = Value(planId),
+       sequenceNo = Value(sequenceNo),
+       dueAt = Value(dueAt),
+       amountMinor = Value(amountMinor);
+  static Insertable<AmortizationEntryRow> custom({
+    Expression<String>? id,
+    Expression<String>? planId,
+    Expression<int>? sequenceNo,
+    Expression<DateTime>? dueAt,
+    Expression<int>? amountMinor,
+    Expression<String>? transactionId,
+    Expression<DateTime>? canceledAt,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (planId != null) 'plan_id': planId,
+      if (sequenceNo != null) 'sequence_no': sequenceNo,
+      if (dueAt != null) 'due_at': dueAt,
+      if (amountMinor != null) 'amount_minor': amountMinor,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (canceledAt != null) 'canceled_at': canceledAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AmortizationEntriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? planId,
+    Value<int>? sequenceNo,
+    Value<DateTime>? dueAt,
+    Value<int>? amountMinor,
+    Value<String?>? transactionId,
+    Value<DateTime?>? canceledAt,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AmortizationEntriesCompanion(
+      id: id ?? this.id,
+      planId: planId ?? this.planId,
+      sequenceNo: sequenceNo ?? this.sequenceNo,
+      dueAt: dueAt ?? this.dueAt,
+      amountMinor: amountMinor ?? this.amountMinor,
+      transactionId: transactionId ?? this.transactionId,
+      canceledAt: canceledAt ?? this.canceledAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (planId.present) {
+      map['plan_id'] = Variable<String>(planId.value);
+    }
+    if (sequenceNo.present) {
+      map['sequence_no'] = Variable<int>(sequenceNo.value);
+    }
+    if (dueAt.present) {
+      map['due_at'] = Variable<DateTime>(dueAt.value);
+    }
+    if (amountMinor.present) {
+      map['amount_minor'] = Variable<int>(amountMinor.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<String>(transactionId.value);
+    }
+    if (canceledAt.present) {
+      map['canceled_at'] = Variable<DateTime>(canceledAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('sequenceNo: $sequenceNo, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('canceledAt: $canceledAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -17720,6 +19535,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $AdvanceCasesTable advanceCases = $AdvanceCasesTable(this);
+  late final $AmortizationPlansTable amortizationPlans =
+      $AmortizationPlansTable(this);
+  late final $AmortizationEntriesTable amortizationEntries =
+      $AmortizationEntriesTable(this);
   late final Index installmentRepricingRecordsPendingIdx = Index(
     'installment_repricing_records_pending_idx',
     'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
@@ -17763,6 +19582,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     importBatches,
     importBatchItems,
     advanceCases,
+    amortizationPlans,
+    amortizationEntries,
     installmentRepricingRecordsPendingIdx,
     installmentRepricingConfigsActiveIdx,
   ];
@@ -26566,6 +28387,849 @@ typedef $$AdvanceCasesTableProcessedTableManager =
       AdvanceCaseRow,
       PrefetchHooks Function()
     >;
+typedef $$AmortizationPlansTableCreateCompanionBuilder =
+    AmortizationPlansCompanion Function({
+      required String id,
+      required AmortizationKind kind,
+      required String deferralAccountId,
+      required String categoryAccountId,
+      required int totalAmountMinor,
+      required AmortizationCadenceUnit cadenceUnit,
+      required int cadenceInterval,
+      required DateTime firstRecognitionAt,
+      required int recognitionCount,
+      Value<bool> defaultIsExcludedFromStats,
+      Value<bool> defaultIsExcludedFromBudget,
+      required String initialTransactionId,
+      Value<String?> counterpartyId,
+      Value<String?> note,
+      Value<DateTime?> terminatedAt,
+      Value<String?> terminationRecognitionTransactionId,
+      Value<String?> refundTransactionId,
+      Value<int?> refundAmountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AmortizationPlansTableUpdateCompanionBuilder =
+    AmortizationPlansCompanion Function({
+      Value<String> id,
+      Value<AmortizationKind> kind,
+      Value<String> deferralAccountId,
+      Value<String> categoryAccountId,
+      Value<int> totalAmountMinor,
+      Value<AmortizationCadenceUnit> cadenceUnit,
+      Value<int> cadenceInterval,
+      Value<DateTime> firstRecognitionAt,
+      Value<int> recognitionCount,
+      Value<bool> defaultIsExcludedFromStats,
+      Value<bool> defaultIsExcludedFromBudget,
+      Value<String> initialTransactionId,
+      Value<String?> counterpartyId,
+      Value<String?> note,
+      Value<DateTime?> terminatedAt,
+      Value<String?> terminationRecognitionTransactionId,
+      Value<String?> refundTransactionId,
+      Value<int?> refundAmountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AmortizationPlansTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationPlansTable> {
+  $$AmortizationPlansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AmortizationKind, AmortizationKind, String>
+  get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get deferralAccountId => $composableBuilder(
+    column: $table.deferralAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryAccountId => $composableBuilder(
+    column: $table.categoryAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalAmountMinor => $composableBuilder(
+    column: $table.totalAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    AmortizationCadenceUnit,
+    AmortizationCadenceUnit,
+    String
+  >
+  get cadenceUnit => $composableBuilder(
+    column: $table.cadenceUnit,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get cadenceInterval => $composableBuilder(
+    column: $table.cadenceInterval,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstRecognitionAt => $composableBuilder(
+    column: $table.firstRecognitionAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get recognitionCount => $composableBuilder(
+    column: $table.recognitionCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get defaultIsExcludedFromStats => $composableBuilder(
+    column: $table.defaultIsExcludedFromStats,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get defaultIsExcludedFromBudget => $composableBuilder(
+    column: $table.defaultIsExcludedFromBudget,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get initialTransactionId => $composableBuilder(
+    column: $table.initialTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get terminationRecognitionTransactionId =>
+      $composableBuilder(
+        column: $table.terminationRecognitionTransactionId,
+        builder: (column) => ColumnFilters(column),
+      );
+
+  ColumnFilters<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get refundAmountMinor => $composableBuilder(
+    column: $table.refundAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AmortizationPlansTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationPlansTable> {
+  $$AmortizationPlansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deferralAccountId => $composableBuilder(
+    column: $table.deferralAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryAccountId => $composableBuilder(
+    column: $table.categoryAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalAmountMinor => $composableBuilder(
+    column: $table.totalAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cadenceUnit => $composableBuilder(
+    column: $table.cadenceUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cadenceInterval => $composableBuilder(
+    column: $table.cadenceInterval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstRecognitionAt => $composableBuilder(
+    column: $table.firstRecognitionAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get recognitionCount => $composableBuilder(
+    column: $table.recognitionCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get defaultIsExcludedFromStats => $composableBuilder(
+    column: $table.defaultIsExcludedFromStats,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get defaultIsExcludedFromBudget => $composableBuilder(
+    column: $table.defaultIsExcludedFromBudget,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get initialTransactionId => $composableBuilder(
+    column: $table.initialTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get terminationRecognitionTransactionId =>
+      $composableBuilder(
+        column: $table.terminationRecognitionTransactionId,
+        builder: (column) => ColumnOrderings(column),
+      );
+
+  ColumnOrderings<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get refundAmountMinor => $composableBuilder(
+    column: $table.refundAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AmortizationPlansTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationPlansTable> {
+  $$AmortizationPlansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AmortizationKind, String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get deferralAccountId => $composableBuilder(
+    column: $table.deferralAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoryAccountId => $composableBuilder(
+    column: $table.categoryAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalAmountMinor => $composableBuilder(
+    column: $table.totalAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<AmortizationCadenceUnit, String>
+  get cadenceUnit => $composableBuilder(
+    column: $table.cadenceUnit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cadenceInterval => $composableBuilder(
+    column: $table.cadenceInterval,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstRecognitionAt => $composableBuilder(
+    column: $table.firstRecognitionAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get recognitionCount => $composableBuilder(
+    column: $table.recognitionCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get defaultIsExcludedFromStats => $composableBuilder(
+    column: $table.defaultIsExcludedFromStats,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get defaultIsExcludedFromBudget => $composableBuilder(
+    column: $table.defaultIsExcludedFromBudget,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get initialTransactionId => $composableBuilder(
+    column: $table.initialTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get counterpartyId => $composableBuilder(
+    column: $table.counterpartyId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get terminationRecognitionTransactionId =>
+      $composableBuilder(
+        column: $table.terminationRecognitionTransactionId,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<String> get refundTransactionId => $composableBuilder(
+    column: $table.refundTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get refundAmountMinor => $composableBuilder(
+    column: $table.refundAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AmortizationPlansTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AmortizationPlansTable,
+          AmortizationPlanRow,
+          $$AmortizationPlansTableFilterComposer,
+          $$AmortizationPlansTableOrderingComposer,
+          $$AmortizationPlansTableAnnotationComposer,
+          $$AmortizationPlansTableCreateCompanionBuilder,
+          $$AmortizationPlansTableUpdateCompanionBuilder,
+          (
+            AmortizationPlanRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AmortizationPlansTable,
+              AmortizationPlanRow
+            >,
+          ),
+          AmortizationPlanRow,
+          PrefetchHooks Function()
+        > {
+  $$AmortizationPlansTableTableManager(
+    _$AppDatabase db,
+    $AmortizationPlansTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AmortizationPlansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AmortizationPlansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AmortizationPlansTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<AmortizationKind> kind = const Value.absent(),
+                Value<String> deferralAccountId = const Value.absent(),
+                Value<String> categoryAccountId = const Value.absent(),
+                Value<int> totalAmountMinor = const Value.absent(),
+                Value<AmortizationCadenceUnit> cadenceUnit =
+                    const Value.absent(),
+                Value<int> cadenceInterval = const Value.absent(),
+                Value<DateTime> firstRecognitionAt = const Value.absent(),
+                Value<int> recognitionCount = const Value.absent(),
+                Value<bool> defaultIsExcludedFromStats = const Value.absent(),
+                Value<bool> defaultIsExcludedFromBudget = const Value.absent(),
+                Value<String> initialTransactionId = const Value.absent(),
+                Value<String?> counterpartyId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime?> terminatedAt = const Value.absent(),
+                Value<String?> terminationRecognitionTransactionId =
+                    const Value.absent(),
+                Value<String?> refundTransactionId = const Value.absent(),
+                Value<int?> refundAmountMinor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationPlansCompanion(
+                id: id,
+                kind: kind,
+                deferralAccountId: deferralAccountId,
+                categoryAccountId: categoryAccountId,
+                totalAmountMinor: totalAmountMinor,
+                cadenceUnit: cadenceUnit,
+                cadenceInterval: cadenceInterval,
+                firstRecognitionAt: firstRecognitionAt,
+                recognitionCount: recognitionCount,
+                defaultIsExcludedFromStats: defaultIsExcludedFromStats,
+                defaultIsExcludedFromBudget: defaultIsExcludedFromBudget,
+                initialTransactionId: initialTransactionId,
+                counterpartyId: counterpartyId,
+                note: note,
+                terminatedAt: terminatedAt,
+                terminationRecognitionTransactionId:
+                    terminationRecognitionTransactionId,
+                refundTransactionId: refundTransactionId,
+                refundAmountMinor: refundAmountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required AmortizationKind kind,
+                required String deferralAccountId,
+                required String categoryAccountId,
+                required int totalAmountMinor,
+                required AmortizationCadenceUnit cadenceUnit,
+                required int cadenceInterval,
+                required DateTime firstRecognitionAt,
+                required int recognitionCount,
+                Value<bool> defaultIsExcludedFromStats = const Value.absent(),
+                Value<bool> defaultIsExcludedFromBudget = const Value.absent(),
+                required String initialTransactionId,
+                Value<String?> counterpartyId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime?> terminatedAt = const Value.absent(),
+                Value<String?> terminationRecognitionTransactionId =
+                    const Value.absent(),
+                Value<String?> refundTransactionId = const Value.absent(),
+                Value<int?> refundAmountMinor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationPlansCompanion.insert(
+                id: id,
+                kind: kind,
+                deferralAccountId: deferralAccountId,
+                categoryAccountId: categoryAccountId,
+                totalAmountMinor: totalAmountMinor,
+                cadenceUnit: cadenceUnit,
+                cadenceInterval: cadenceInterval,
+                firstRecognitionAt: firstRecognitionAt,
+                recognitionCount: recognitionCount,
+                defaultIsExcludedFromStats: defaultIsExcludedFromStats,
+                defaultIsExcludedFromBudget: defaultIsExcludedFromBudget,
+                initialTransactionId: initialTransactionId,
+                counterpartyId: counterpartyId,
+                note: note,
+                terminatedAt: terminatedAt,
+                terminationRecognitionTransactionId:
+                    terminationRecognitionTransactionId,
+                refundTransactionId: refundTransactionId,
+                refundAmountMinor: refundAmountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AmortizationPlansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AmortizationPlansTable,
+      AmortizationPlanRow,
+      $$AmortizationPlansTableFilterComposer,
+      $$AmortizationPlansTableOrderingComposer,
+      $$AmortizationPlansTableAnnotationComposer,
+      $$AmortizationPlansTableCreateCompanionBuilder,
+      $$AmortizationPlansTableUpdateCompanionBuilder,
+      (
+        AmortizationPlanRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AmortizationPlansTable,
+          AmortizationPlanRow
+        >,
+      ),
+      AmortizationPlanRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AmortizationEntriesTableCreateCompanionBuilder =
+    AmortizationEntriesCompanion Function({
+      required String id,
+      required String planId,
+      required int sequenceNo,
+      required DateTime dueAt,
+      required int amountMinor,
+      Value<String?> transactionId,
+      Value<DateTime?> canceledAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AmortizationEntriesTableUpdateCompanionBuilder =
+    AmortizationEntriesCompanion Function({
+      Value<String> id,
+      Value<String> planId,
+      Value<int> sequenceNo,
+      Value<DateTime> dueAt,
+      Value<int> amountMinor,
+      Value<String?> transactionId,
+      Value<DateTime?> canceledAt,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AmortizationEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
+  $$AmortizationEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sequenceNo => $composableBuilder(
+    column: $table.sequenceNo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get canceledAt => $composableBuilder(
+    column: $table.canceledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AmortizationEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
+  $$AmortizationEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sequenceNo => $composableBuilder(
+    column: $table.sequenceNo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get canceledAt => $composableBuilder(
+    column: $table.canceledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AmortizationEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
+  $$AmortizationEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get planId =>
+      $composableBuilder(column: $table.planId, builder: (column) => column);
+
+  GeneratedColumn<int> get sequenceNo => $composableBuilder(
+    column: $table.sequenceNo,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get dueAt =>
+      $composableBuilder(column: $table.dueAt, builder: (column) => column);
+
+  GeneratedColumn<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get canceledAt => $composableBuilder(
+    column: $table.canceledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AmortizationEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AmortizationEntriesTable,
+          AmortizationEntryRow,
+          $$AmortizationEntriesTableFilterComposer,
+          $$AmortizationEntriesTableOrderingComposer,
+          $$AmortizationEntriesTableAnnotationComposer,
+          $$AmortizationEntriesTableCreateCompanionBuilder,
+          $$AmortizationEntriesTableUpdateCompanionBuilder,
+          (
+            AmortizationEntryRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AmortizationEntriesTable,
+              AmortizationEntryRow
+            >,
+          ),
+          AmortizationEntryRow,
+          PrefetchHooks Function()
+        > {
+  $$AmortizationEntriesTableTableManager(
+    _$AppDatabase db,
+    $AmortizationEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AmortizationEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AmortizationEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AmortizationEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> planId = const Value.absent(),
+                Value<int> sequenceNo = const Value.absent(),
+                Value<DateTime> dueAt = const Value.absent(),
+                Value<int> amountMinor = const Value.absent(),
+                Value<String?> transactionId = const Value.absent(),
+                Value<DateTime?> canceledAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationEntriesCompanion(
+                id: id,
+                planId: planId,
+                sequenceNo: sequenceNo,
+                dueAt: dueAt,
+                amountMinor: amountMinor,
+                transactionId: transactionId,
+                canceledAt: canceledAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String planId,
+                required int sequenceNo,
+                required DateTime dueAt,
+                required int amountMinor,
+                Value<String?> transactionId = const Value.absent(),
+                Value<DateTime?> canceledAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationEntriesCompanion.insert(
+                id: id,
+                planId: planId,
+                sequenceNo: sequenceNo,
+                dueAt: dueAt,
+                amountMinor: amountMinor,
+                transactionId: transactionId,
+                canceledAt: canceledAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AmortizationEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AmortizationEntriesTable,
+      AmortizationEntryRow,
+      $$AmortizationEntriesTableFilterComposer,
+      $$AmortizationEntriesTableOrderingComposer,
+      $$AmortizationEntriesTableAnnotationComposer,
+      $$AmortizationEntriesTableCreateCompanionBuilder,
+      $$AmortizationEntriesTableUpdateCompanionBuilder,
+      (
+        AmortizationEntryRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AmortizationEntriesTable,
+          AmortizationEntryRow
+        >,
+      ),
+      AmortizationEntryRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -26659,4 +29323,8 @@ class $AppDatabaseManager {
       $$ImportBatchItemsTableTableManager(_db, _db.importBatchItems);
   $$AdvanceCasesTableTableManager get advanceCases =>
       $$AdvanceCasesTableTableManager(_db, _db.advanceCases);
+  $$AmortizationPlansTableTableManager get amortizationPlans =>
+      $$AmortizationPlansTableTableManager(_db, _db.amortizationPlans);
+  $$AmortizationEntriesTableTableManager get amortizationEntries =>
+      $$AmortizationEntriesTableTableManager(_db, _db.amortizationEntries);
 }

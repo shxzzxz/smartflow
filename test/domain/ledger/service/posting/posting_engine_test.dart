@@ -256,6 +256,10 @@ void main() {
     });
 
     test('transfer edit patch preserves posting time and accepts zero fee', () {
+      const ownership = TransactionOwnership(
+        ownerType: 'orchestration.amortization',
+        ownerId: 'plan',
+      );
       final current = TransferInstruction(
         amount: Money.parse('12.30'),
         fromAccountId: 'cash',
@@ -263,6 +267,9 @@ void main() {
         feeAmount: Money.parse('1.00'),
         occurredAt: DateTime(2026, 5, 1),
         postedAt: DateTime(2026, 5, 2),
+        ownership: ownership,
+        isExcludedFromStats: true,
+        isExcludedFromBudget: true,
       );
 
       final edited = TransferEditPatch(
@@ -273,6 +280,9 @@ void main() {
       expect(edited.amount, Money.parse('20.00'));
       expect(edited.feeAmount, Money.zero());
       expect(edited.postedAt, current.postedAt);
+      expect(edited.ownership, ownership);
+      expect(edited.isExcludedFromStats, isTrue);
+      expect(edited.isExcludedFromBudget, isTrue);
 
       final unchanged = const TransferEditPatch().applyTo(current);
       expect(unchanged.feeAmount, current.feeAmount);

@@ -40,7 +40,9 @@ import '../infrastructure/ledger/repository/drift_transaction_read_repository.da
 import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dart';
 import '../infrastructure/ledger/repository/drift_counterparty_repository.dart';
 import '../infrastructure/orchestration/advance_ledger_port.dart';
+import '../infrastructure/orchestration/amortization_ledger_port.dart';
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
+import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
 import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
@@ -54,6 +56,9 @@ import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import '../application/orchestration/advance/query/advance_case_query_service.dart';
+import '../application/orchestration/amortization/command/amortization_plan_app_service.dart';
+import '../application/orchestration/amortization/query/amortization_plan_query_service.dart';
+import '../application/orchestration/task/amortization_generation_task.dart';
 import '../application/import/import_plan_app_service.dart';
 import '../application/import/import_parser_registry.dart';
 import '../application/import/import_file_picker.dart';
@@ -85,6 +90,8 @@ import '../domain/credit/port/credit_ledger_port.dart';
 import '../domain/ledger/port/system_account_resolver.dart';
 import '../domain/orchestration/port/advance_case_repository.dart';
 import '../domain/orchestration/port/advance_ledger_port.dart';
+import '../domain/orchestration/port/amortization_ledger_port.dart';
+import '../domain/orchestration/port/amortization_repository.dart';
 import '../domain/ledger/service/account/account_role_policy.dart';
 import '../domain/ledger/service/posting/account_posting_service.dart';
 import '../domain/ledger/service/posting/ledger_posting_service.dart';
@@ -401,11 +408,27 @@ AdvanceCaseRepository advanceCaseRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+AmortizationRepository amortizationRepository(Ref ref) {
+  return DriftAmortizationRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AdvanceLedgerPort advanceLedgerPort(Ref ref) {
   return LedgerAdvancePort(
     posting: ref.watch(transactionPostingAppServiceProvider),
     editing: ref.watch(transactionEditAppServiceProvider),
     groups: ref.watch(ledgerRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AmortizationLedgerPort amortizationLedgerPort(Ref ref) {
+  return LedgerAmortizationPort(
+    posting: ref.watch(transactionPostingAppServiceProvider),
+    editing: ref.watch(transactionEditAppServiceProvider),
+    updating: ref.watch(transactionUpdateAppServiceProvider),
+    accounts: ref.watch(accountRepositoryProvider),
+    transactions: ref.watch(ledgerRepositoryProvider),
   );
 }
 
@@ -416,6 +439,23 @@ AdvanceOrchestrationAppService advanceOrchestrationAppService(Ref ref) {
     ledger: ref.watch(advanceLedgerPortProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AmortizationPlanAppService amortizationPlanAppService(Ref ref) {
+  return AmortizationPlanAppServiceImpl(
+    repository: ref.watch(amortizationRepositoryProvider),
+    ledger: ref.watch(amortizationLedgerPortProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
+    idGenerator: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AmortizationPlanQueryService amortizationPlanQueryService(Ref ref) {
+  return AmortizationPlanQueryService(
+    ref.watch(amortizationRepositoryProvider),
   );
 }
 
@@ -792,9 +832,17 @@ CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+AmortizationGenerationTask amortizationGenerationTask(Ref ref) {
+  return AmortizationGenerationTask(
+    ref.watch(amortizationPlanAppServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 PullTaskScheduler pullTaskScheduler(Ref ref) {
   return PullTaskScheduler(
     tasks: [
+      ref.watch(amortizationGenerationTaskProvider),
       ref.watch(creditBillGenerationTaskProvider),
       InstallmentRepricingTask(
         ref.watch(installmentRepricingAppServiceProvider),

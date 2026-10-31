@@ -22,11 +22,19 @@ void main() {
       archived.archive(DateTime(2026, 7, 16));
       await commandRepository.save(archived);
 
-      final accounts =
-          await queryRepository.watchAccounts({AccountType.asset}).first;
+      final accounts = await queryRepository.watchAccounts({
+        AccountType.asset,
+      }).first;
       final archivedById = await queryRepository.findAccountById(archived.id);
 
-      expect(accounts.map((account) => account.id), ['active']);
+      expect(
+        accounts.map((account) => account.id),
+        containsAll(['active', 'builtin-prepaid-expense-account']),
+      );
+      expect(
+        accounts.map((account) => account.id),
+        isNot(contains('archived')),
+      );
       expect(archivedById?.isArchived, true);
     },
   );

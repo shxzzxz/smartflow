@@ -66,11 +66,11 @@ class AccountRoleContext {
     return AccountRoleContext([
       AccountRoleRequirement(
         accountId: fromAccountId,
-        requiredUsage: AccountUsage.settlement,
+        requiredUsage: AccountUsage.transfer,
       ),
       AccountRoleRequirement(
         accountId: toAccountId,
-        requiredUsage: AccountUsage.settlement,
+        requiredUsage: AccountUsage.transfer,
       ),
     ]);
   }

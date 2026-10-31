@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../application/ledger/ledger_query_api.dart';
+import '../application/orchestration/orchestration_command_api.dart';
 import '../core/time/month_key.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import '../design_system/showcase/design_system_showcase_page.dart';
@@ -15,6 +16,9 @@ import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/account/presentation/account_creation_presets.dart';
+import '../feature/amortization/page/amortization_detail_page.dart';
+import '../feature/amortization/page/amortization_form_page.dart';
+import '../feature/amortization/page/amortization_plans_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/tag/page/tags_page.dart';
 import '../feature/category/page/category_form_page.dart';
@@ -177,6 +181,23 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/import', builder: (context, state) => const ImportPage()),
+    GoRoute(
+      path: '/amortizations',
+      builder: (context, state) => const AmortizationPlansPage(),
+    ),
+    GoRoute(
+      path: '/amortizations/new',
+      builder: (context, state) => AmortizationFormPage(
+        initialKind: _amortizationKindFromQuery(state.uri.queryParameters),
+        initialDeferralAccountId:
+            state.uri.queryParameters['deferralAccountId'],
+      ),
+    ),
+    GoRoute(
+      path: '/amortizations/:id',
+      builder: (context, state) =>
+          AmortizationDetailPage(planId: state.pathParameters['id']!),
+    ),
     GoRoute(
       path: '/calendar/bills/day',
       builder: (context, state) {
@@ -366,6 +387,13 @@ final appRouter = GoRouter(
           AccountInstallmentsPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
+      path: '/account/:id/amortizations',
+      builder: (context, state) => AmortizationPlansPage(
+        deferralAccountId: state.pathParameters['id']!,
+        initialKind: _amortizationKindFromQuery(state.uri.queryParameters),
+      ),
+    ),
+    GoRoute(
       path: '/account/:id/installments/new',
       builder: (context, state) {
         final lockedInstallmentType =
@@ -548,4 +576,11 @@ DateTime? _monthFromQuery(Map<String, String> query) {
   } on FormatException {
     return null;
   }
+}
+
+AmortizationKind _amortizationKindFromQuery(Map<String, String> query) {
+  return switch (query['kind']) {
+    'deferredIncome' => AmortizationKind.deferredIncome,
+    _ => AmortizationKind.prepaidExpense,
+  };
 }

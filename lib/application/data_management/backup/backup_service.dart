@@ -188,6 +188,11 @@ class BackupService {
             table == 'installment_refund_reductions') {
           continue;
         }
+        if (manifest.backupSchemaVersion < 5 &&
+            (table == 'amortization_plans' ||
+                table == 'amortization_entries')) {
+          continue;
+        }
         throw BackupValidationException('备份缺少业务表文件: $table');
       }
     }
@@ -215,6 +220,7 @@ class BackupService {
         1 => _upgradeBackupV1ToV2(upgraded),
         2 => _upgradeBackupV2ToV3(upgraded),
         3 => _upgradeBackupV3ToV4(upgraded),
+        4 => _upgradeBackupV4ToV5(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -301,6 +307,16 @@ class BackupService {
     );
   }
 
+  static BackupSnapshot _upgradeBackupV4ToV5(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'amortization_plans': snapshot.rows('amortization_plans'),
+        'amortization_entries': snapshot.rows('amortization_entries'),
+      },
+    );
+  }
+
   Future<BackupDiff> compare(Object source) async {
     final inspection = await inspect(source);
     final current = await _gateway.readSnapshot();
@@ -366,6 +382,7 @@ class BackupService {
     final groups = _index(snapshot.rows('account_groups'));
     final transactions = _index(snapshot.rows('transactions'));
     final advanceCases = _index(snapshot.rows('advance_cases'));
+    final amortizationPlans = _index(snapshot.rows('amortization_plans'));
     final tags = _index(snapshot.rows('tags'));
     final counterparties = _index(snapshot.rows('counterparties'));
     final contracts = _index(snapshot.rows('installment_contracts'));
@@ -426,6 +443,14 @@ class BackupService {
           row,
           'ownerId',
           advanceCases,
+          'transactions.ownerId',
+        );
+      }
+      if (ownerType == 'orchestration.amortization') {
+        _requiredReference(
+          row,
+          'ownerId',
+          amortizationPlans,
           'transactions.ownerId',
         );
       }
@@ -714,6 +739,81 @@ class BackupService {
         'targetAccountId',
         'import_entity_mappings.targetAccountId',
       );
+    }
+
+    for (final row in snapshot.rows('amortization_plans')) {
+      _requiredReference(
+        row,
+        'deferralAccountId',
+        accounts,
+        'amortization_plans.deferralAccountId',
+      );
+      _requiredReference(
+        row,
+        'categoryAccountId',
+        accounts,
+        'amortization_plans.categoryAccountId',
+      );
+      _requiredReference(
+        row,
+        'initialTransactionId',
+        transactions,
+        'amortization_plans.initialTransactionId',
+      );
+      _optionalReference(
+        row,
+        'counterpartyId',
+        counterparties,
+        'amortization_plans.counterpartyId',
+      );
+      _optionalReference(
+        row,
+        'terminationRecognitionTransactionId',
+        transactions,
+        'amortization_plans.terminationRecognitionTransactionId',
+      );
+      _optionalReference(
+        row,
+        'refundTransactionId',
+        transactions,
+        'amortization_plans.refundTransactionId',
+      );
+      final initial = transactions['${row['initialTransactionId']}'];
+      if (initial?['ownerType'] != 'orchestration.amortization' ||
+          initial?['ownerId'] != row['id']) {
+        throw const BackupValidationException('摊销初始交易未回指对应计划。');
+      }
+    }
+    final entrySequences = <String>{};
+    final generatedTransactions = <String>{};
+    for (final row in snapshot.rows('amortization_entries')) {
+      final planId = row['planId'];
+      if (planId is! String || !amortizationPlans.containsKey(planId)) {
+        throw const BackupValidationException('摊销期次引用了不存在的计划。');
+      }
+      final sequenceNo = row['sequenceNo'];
+      if (sequenceNo is! int ||
+          sequenceNo <= 0 ||
+          !entrySequences.add('$planId\u0000$sequenceNo')) {
+        throw const BackupValidationException('摊销期次序号无效或重复。');
+      }
+      _optionalReference(
+        row,
+        'transactionId',
+        transactions,
+        'amortization_entries.transactionId',
+      );
+      final transactionId = row['transactionId'];
+      if (transactionId is String) {
+        if (!generatedTransactions.add(transactionId)) {
+          throw const BackupValidationException('一笔交易被多个摊销期次引用。');
+        }
+        final transaction = transactions[transactionId];
+        if (transaction?['ownerType'] != 'orchestration.amortization' ||
+            transaction?['ownerId'] != planId) {
+          throw const BackupValidationException('摊销期次交易归属无效。');
+        }
+      }
     }
 
     _validatePostingBalance(snapshot, accounts);
@@ -1112,7 +1212,14 @@ class BackupService {
   static void _validateWireCodes(BackupSnapshot snapshot) {
     const codes = <String, Set<String>>{
       'accountType': {'asset', 'liability', 'equity', 'income', 'expense'},
-      'accountSubtype': {'fund', 'receivable', 'payable', 'loan'},
+      'accountSubtype': {
+        'fund',
+        'receivable',
+        'prepaidExpense',
+        'payable',
+        'loan',
+        'deferredIncome',
+      },
       'accountSource': {'builtin', 'user', 'import'},
       'businessPurpose': {
         'dailyExpense',
@@ -1172,6 +1279,8 @@ class BackupService {
       'repaymentType': {'BILL', 'INSTALLMENT', 'PREPAYMENT', 'UNATTRIBUTED'},
       'advanceScenario': {'aa', 'onBehalf', 'reimbursement'},
       'advanceTrackingMode': {'itemized', 'account'},
+      'amortizationKind': {'prepaidExpense', 'deferredIncome'},
+      'amortizationCadenceUnit': {'daily', 'monthly', 'yearly'},
     };
     void check(
       BackupJson row,
@@ -1213,6 +1322,29 @@ class BackupService {
       }
       if (row['scenario'] != 'aa' && aaPeopleCount != null) {
         throw const BackupValidationException('非 AA 场景不能保存参与人数。');
+      }
+    }
+    for (final row in snapshot.rows('amortization_plans')) {
+      check(row, 'kind', 'amortizationKind');
+      check(row, 'cadenceUnit', 'amortizationCadenceUnit');
+      final total = row['totalAmountMinor'];
+      final count = row['recognitionCount'];
+      final interval = row['cadenceInterval'];
+      if (total is! int ||
+          total <= 0 ||
+          count is! int ||
+          count <= 0 ||
+          count > total ||
+          interval is! int ||
+          interval <= 0) {
+        throw const BackupValidationException('摊销计划金额或期次配置无效。');
+      }
+      final terminatedAt = row['terminatedAt'];
+      if (terminatedAt == null &&
+          (row['refundAmountMinor'] != null ||
+              row['terminationRecognitionTransactionId'] != null ||
+              row['refundTransactionId'] != null)) {
+        throw const BackupValidationException('未终止摊销计划包含终止事实。');
       }
     }
     for (final row in snapshot.rows('entries')) {

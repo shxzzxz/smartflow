@@ -10,6 +10,7 @@ import '../../generated_migrations/schema.dart';
 import '../../generated_migrations/schema_v49.dart' as v49;
 import '../../generated_migrations/schema_v50.dart' as v50;
 import '../../generated_migrations/schema_v51.dart' as v51;
+import '../../generated_migrations/schema_v52.dart' as v52;
 
 void main() {
   late SchemaVerifier verifier;
@@ -89,11 +90,11 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 52,
+      newVersion: 53,
     );
   });
 
-  test('migrates v50 through v52 with refund reductions', () async {
+  test('migrates v50 through v53 with refund reductions', () async {
     await verifier.testWithDataIntegrity<v50.DatabaseAtV50, AppDatabase>(
       createOld: v50.DatabaseAtV50.new,
       createNew: AppDatabase.new,
@@ -130,7 +131,38 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 52,
+      newVersion: 53,
+    );
+  });
+
+  test('migrates v52 to v53 with amortization tables', () async {
+    await verifier.testWithDataIntegrity<v52.DatabaseAtV52, AppDatabase>(
+      createOld: v52.DatabaseAtV52.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {},
+      validateItems: (db) async {
+        final tables =
+            (await db
+                    .customSelect(
+                      "SELECT name FROM sqlite_master WHERE type = 'table' "
+                      "AND name IN ('amortization_plans', "
+                      "'amortization_entries')",
+                    )
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(tables, {'amortization_plans', 'amortization_entries'});
+        final indexes = (await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'index' "
+              "AND name = 'amortization_entries_pending_idx'",
+            )
+            .get());
+        expect(indexes, hasLength(1));
+      },
+      oldVersion: 52,
+      newVersion: 53,
     );
   });
 

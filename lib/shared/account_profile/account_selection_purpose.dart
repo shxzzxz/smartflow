@@ -8,4 +8,6 @@ enum AccountSelectionPurpose {
   advanceReceivable,
   ordinaryReceivable,
   receivable,
+  prepaidExpense,
+  deferredIncome,
 }

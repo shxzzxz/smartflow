@@ -205,6 +205,7 @@ IconData profileIconFor(String iconKey) => switch (iconKey) {
   'category' => RemixIcons.apps_2_line,
   'tag' => RemixIcons.price_tag_3_line,
   'counterparty' => RemixIcons.user_shared_line,
+  'amortization' => RemixIcons.calendar_schedule_line,
   'calculator' => RemixIcons.calculator_line,
   'settings' => RemixIcons.settings_3_line,
   'installment_product' => RemixIcons.file_list_3_line,

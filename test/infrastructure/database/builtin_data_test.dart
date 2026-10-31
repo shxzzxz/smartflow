@@ -13,6 +13,153 @@ import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
+  test('seeds default prepaid and deferred income accounts', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final prepaid =
+        await (database.select(database.accounts)..where(
+              (row) => row.accountProfileKey.equals(
+                AccountProfileKind.prepaidExpense.key,
+              ),
+            ))
+            .getSingle();
+    final deferred =
+        await (database.select(database.accounts)..where(
+              (row) => row.accountProfileKey.equals(
+                AccountProfileKind.deferredIncome.key,
+              ),
+            ))
+            .getSingle();
+
+    expect(prepaid.name, '通用预付');
+    expect(prepaid.accountType, AccountType.asset);
+    expect(prepaid.accountSubtype, AccountSubtype.prepaidExpense);
+    expect(
+      prepaid.groupId,
+      initialAccountGroupIdForProfile(AccountProfileKind.prepaidExpense),
+    );
+    expect(prepaid.source, AccountSource.builtin);
+
+    expect(deferred.name, '通用预收');
+    expect(deferred.accountType, AccountType.liability);
+    expect(deferred.accountSubtype, AccountSubtype.deferredIncome);
+    expect(
+      deferred.groupId,
+      initialAccountGroupIdForProfile(AccountProfileKind.deferredIncome),
+    );
+    expect(deferred.source, AccountSource.builtin);
+  });
+
+  test(
+    'v13 upgrade adds missing default accounts without overwriting groups',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final profileKeys = [
+        AccountProfileKind.prepaidExpense.key,
+        AccountProfileKind.deferredIncome.key,
+      ];
+      const prepaidGroupId = 'builtin-account-group-prepaid-expense';
+      const deferredGroupId = 'builtin-account-group-deferred-income';
+
+      await (database.delete(
+        database.accounts,
+      )..where((row) => row.accountProfileKey.isIn(profileKeys))).go();
+      await (database.delete(
+        database.accountGroups,
+      )..where((row) => row.id.equals(deferredGroupId))).go();
+      await (database.update(database.accountGroups)
+            ..where((row) => row.id.equals(prepaidGroupId)))
+          .write(const AccountGroupsCompanion(name: Value('我的预付')));
+      await (database.update(database.appMetadata)
+            ..where((row) => row.key.equals(builtinDataVersionKey)))
+          .write(const AppMetadataCompanion(value: Value('13')));
+
+      await ensureBuiltinData(database);
+
+      final groups = await (database.select(
+        database.accountGroups,
+      )..where((row) => row.id.isIn([prepaidGroupId, deferredGroupId]))).get();
+      expect(
+        {for (final group in groups) group.id: group.name},
+        {prepaidGroupId: '我的预付', deferredGroupId: '预收'},
+      );
+
+      final accounts =
+          await (database.select(database.accounts)
+                ..where((row) => row.accountProfileKey.isIn(profileKeys))
+                ..orderBy([(row) => OrderingTerm.asc(row.name)]))
+              .get();
+      expect(accounts.map((account) => account.name), ['通用预付', '通用预收']);
+      expect(accounts.map((account) => account.groupId), [
+        prepaidGroupId,
+        deferredGroupId,
+      ]);
+    },
+  );
+
+  test(
+    'v13 upgrade groups existing deferral accounts without duplicating them',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      const prepaidGroupId = 'builtin-account-group-prepaid-expense';
+      const deferredGroupId = 'builtin-account-group-deferred-income';
+
+      await (database.delete(database.accounts)..where(
+            (row) =>
+                row.accountProfileKey.equals(
+                  AccountProfileKind.prepaidExpense.key,
+                ) |
+                row.accountProfileKey.equals(
+                  AccountProfileKind.deferredIncome.key,
+                ),
+          ))
+          .go();
+      await database
+          .into(database.accounts)
+          .insert(
+            AccountsCompanion.insert(
+              id: 'existing-prepaid',
+              name: '我的预付',
+              accountType: AccountType.asset,
+              accountSubtype: const Value(AccountSubtype.prepaidExpense),
+              accountProfileKey: Value(AccountProfileKind.prepaidExpense.key),
+            ),
+          );
+      await (database.delete(
+        database.accountGroups,
+      )..where((row) => row.id.isIn([prepaidGroupId, deferredGroupId]))).go();
+      await (database.update(database.appMetadata)
+            ..where((row) => row.key.equals(builtinDataVersionKey)))
+          .write(const AppMetadataCompanion(value: Value('13')));
+
+      await ensureBuiltinData(database);
+
+      final prepaidAccounts =
+          await (database.select(database.accounts)..where(
+                (row) => row.accountProfileKey.equals(
+                  AccountProfileKind.prepaidExpense.key,
+                ),
+              ))
+              .get();
+      expect(prepaidAccounts, hasLength(1));
+      expect(prepaidAccounts.single.id, 'existing-prepaid');
+      expect(prepaidAccounts.single.groupId, prepaidGroupId);
+
+      final deferred =
+          await (database.select(database.accounts)..where(
+                (row) => row.accountProfileKey.equals(
+                  AccountProfileKind.deferredIncome.key,
+                ),
+              ))
+              .getSingle();
+      expect(deferred.name, '通用预收');
+      expect(deferred.groupId, deferredGroupId);
+    },
+  );
+
   test(
     'v11 template upgrade retires old combination and preserves existing edits',
     () async {

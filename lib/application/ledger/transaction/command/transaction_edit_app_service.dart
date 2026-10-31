@@ -140,6 +140,8 @@ class TransactionEditAppServiceImpl
           occurredAt: cmd.occurredAt,
           counterpartyId: cmd.counterpartyId,
           note: cmd.note,
+          isExcludedFromStats: cmd.isExcludedFromStats,
+          isExcludedFromBudget: cmd.isExcludedFromBudget,
           editPatch: TransferEditPatch(
             amount: cmd.amount,
             fromAccountId: cmd.fromAccountId,

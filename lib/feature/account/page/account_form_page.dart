@@ -14,6 +14,7 @@ import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../../shared/account_group/initial_account_groups.dart';
 import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
@@ -162,11 +163,15 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
     final notifier = ref.read(
       accountFormViewModelProvider(widget.accountId).notifier,
     );
-    final groups =
-        ref.watch(accountGroupsProvider).value ?? const <AccountGroup>[];
+    final groupsAsync = ref.watch(accountGroupsProvider);
+    final groups = groupsAsync.value ?? const <AccountGroup>[];
     final selectedGroup = groups
         .where((group) => group.id == formState.groupId)
         .firstOrNull;
+    final selectedGroupName =
+        selectedGroup?.name ??
+        initialAccountGroupNameForId(formState.groupId) ??
+        (groupsAsync.isLoading ? '分组加载中' : '未分组');
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -234,7 +239,9 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                         AppPlainSelectFormRow<String>(
                           label: '账户分组',
                           value: formState.groupId,
-                          valueText: selectedGroup?.name,
+                          valueText: formState.groupId == null
+                              ? null
+                              : selectedGroupName,
                           placeholder: '未分组',
                           onTap: (onSelected) =>
                               _showGroupSheet(groups, onSelected),
@@ -429,39 +436,52 @@ class _AccountKindTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _AccountKindTab(
-          label: '应收',
-          selected: kind == AccountProfileKind.receivable,
-          onTap: () => onChanged(AccountProfileKind.receivable),
-        ),
-        _AccountKindTab(
-          label: '应付',
-          selected: kind == AccountProfileKind.payable,
-          onTap: () => onChanged(AccountProfileKind.payable),
-        ),
-        _AccountKindTab(
-          label: '资金',
-          selected: kind == AccountProfileKind.fund,
-          onTap: () => onChanged(AccountProfileKind.fund),
-        ),
-        _AccountKindTab(
-          label: '信用',
-          selected: kind == AccountProfileKind.credit,
-          onTap: () => onChanged(AccountProfileKind.credit),
-        ),
-        _AccountKindTab(
-          label: '贷款',
-          selected: kind == AccountProfileKind.loan,
-          onTap: () => onChanged(AccountProfileKind.loan),
-        ),
-        _AccountKindTab(
-          label: '报销',
-          selected: kind == AccountProfileKind.reimbursement,
-          onTap: () => onChanged(AccountProfileKind.reimbursement),
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _AccountKindTab(
+            label: '应收',
+            selected: kind == AccountProfileKind.receivable,
+            onTap: () => onChanged(AccountProfileKind.receivable),
+          ),
+          _AccountKindTab(
+            label: '应付',
+            selected: kind == AccountProfileKind.payable,
+            onTap: () => onChanged(AccountProfileKind.payable),
+          ),
+          _AccountKindTab(
+            label: '资金',
+            selected: kind == AccountProfileKind.fund,
+            onTap: () => onChanged(AccountProfileKind.fund),
+          ),
+          _AccountKindTab(
+            label: '信用',
+            selected: kind == AccountProfileKind.credit,
+            onTap: () => onChanged(AccountProfileKind.credit),
+          ),
+          _AccountKindTab(
+            label: '贷款',
+            selected: kind == AccountProfileKind.loan,
+            onTap: () => onChanged(AccountProfileKind.loan),
+          ),
+          _AccountKindTab(
+            label: '报销',
+            selected: kind == AccountProfileKind.reimbursement,
+            onTap: () => onChanged(AccountProfileKind.reimbursement),
+          ),
+          _AccountKindTab(
+            label: '预付',
+            selected: kind == AccountProfileKind.prepaidExpense,
+            onTap: () => onChanged(AccountProfileKind.prepaidExpense),
+          ),
+          _AccountKindTab(
+            label: '预收',
+            selected: kind == AccountProfileKind.deferredIncome,
+            onTap: () => onChanged(AccountProfileKind.deferredIncome),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -481,7 +501,8 @@ class _AccountKindTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    return Expanded(
+    return SizedBox(
+      width: AppSpacing.space48 + AppSpacing.space16,
       child: InkWell(
         onTap: onTap,
         child: Column(
@@ -501,7 +522,7 @@ class _AccountKindTab extends StatelessWidget {
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              width: selected ? 82 : 0,
+              width: selected ? AppSpacing.space32 : 0,
               height: 3,
               decoration: BoxDecoration(
                 color: selected ? colors.primary : Colors.transparent,

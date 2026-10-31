@@ -56,8 +56,16 @@ class DriftBackupGateway
             .map(_json),
         'advance_cases': (await database.select(database.advanceCases).get())
             .map(_json),
+        'amortization_plans':
+            (await database.select(database.amortizationPlans).get()).map(
+              _json,
+            ),
         'transactions': (await database.select(database.transactions).get())
             .map(_json),
+        'amortization_entries':
+            (await database.select(database.amortizationEntries).get()).map(
+              _json,
+            ),
         'transaction_lines':
             (await database.select(database.transactionLines).get()).map(_json),
         'entries': (await database.select(database.entries).get()).map(_json),
@@ -175,6 +183,8 @@ class DriftBackupGateway
         'entries',
         'transaction_lines',
         'transactions',
+        'amortization_entries',
+        'amortization_plans',
         'advance_cases',
         'counterparties',
         'budgets',
@@ -256,6 +266,22 @@ class DriftBackupGateway
           snapshot
               .rows('transactions')
               .map((row) => TransactionRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.amortizationPlans,
+          snapshot
+              .rows('amortization_plans')
+              .map(
+                (row) => AmortizationPlanRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.amortizationEntries,
+          snapshot
+              .rows('amortization_entries')
+              .map(
+                (row) => AmortizationEntryRow.fromJson(row).toCompanion(true),
+              ),
         );
         batch.insertAll(
           database.transactionLines,
@@ -428,6 +454,12 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is AdvanceCaseRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AmortizationPlanRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AmortizationEntryRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is TransactionRow) {

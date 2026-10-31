@@ -64,6 +64,19 @@ void main() {
         payableActions.first.route,
         '/transaction/new?mode=borrowing&liabilityAccountId=payable',
       );
+      final prepaidActions = accountDetailActions(
+        _accountView('prepaid', AccountProfileKind.prepaidExpense),
+      );
+      expect(prepaidActions.map((action) => action.label), ['新建摊销', '摊销计划']);
+      expect(
+        prepaidActions.first.route,
+        '/amortizations/new?kind=prepaidExpense'
+        '&deferralAccountId=prepaid',
+      );
+      final deferredActions = accountDetailActions(
+        _accountView('deferred', AccountProfileKind.deferredIncome),
+      );
+      expect(deferredActions.first.route, contains('kind=deferredIncome'));
       expect(
         accountDetailActions(
           _accountView('card', AccountProfileKind.credit),

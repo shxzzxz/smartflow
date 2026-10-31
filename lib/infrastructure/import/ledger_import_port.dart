@@ -102,6 +102,15 @@ class LedgerImportPort implements ImportLedgerPort {
             profileKey: AccountProfileKind.receivable.key,
           ),
         )).id,
+      ImportTargetDescriptor.prepaidExpenseAccount =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.asset,
+            subtype: AccountSubtype.prepaidExpense,
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        )).id,
       ImportTargetDescriptor.payableAccount =>
         (await _accountCommands.createAccount(
           CreateAccountCommand(
@@ -109,6 +118,15 @@ class LedgerImportPort implements ImportLedgerPort {
             type: AccountType.liability,
             subtype: AccountSubtype.payable,
             profileKey: AccountProfileKind.payable.key,
+          ),
+        )).id,
+      ImportTargetDescriptor.deferredIncomeAccount =>
+        (await _accountCommands.createAccount(
+          CreateAccountCommand(
+            name: creation.name,
+            type: AccountType.liability,
+            subtype: AccountSubtype.deferredIncome,
+            profileKey: AccountProfileKind.deferredIncome.key,
           ),
         )).id,
       ImportTargetDescriptor.creditAccount => _createCreditTarget(
@@ -629,7 +647,11 @@ class LedgerImportPort implements ImportLedgerPort {
           ImportTargetDescriptor.advanceAccount,
         AccountProfileKind.receivable =>
           ImportTargetDescriptor.receivableAccount,
+        AccountProfileKind.prepaidExpense =>
+          ImportTargetDescriptor.prepaidExpenseAccount,
         AccountProfileKind.payable => ImportTargetDescriptor.payableAccount,
+        AccountProfileKind.deferredIncome =>
+          ImportTargetDescriptor.deferredIncomeAccount,
         AccountProfileKind.credit => ImportTargetDescriptor.creditAccount,
         AccountProfileKind.loan => ImportTargetDescriptor.loanAccount,
       };

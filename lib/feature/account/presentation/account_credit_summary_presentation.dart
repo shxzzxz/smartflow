@@ -100,7 +100,9 @@ String _installmentSourceLabel(
       AccountProfileKind.fund ||
       AccountProfileKind.reimbursement ||
       AccountProfileKind.receivable ||
-      AccountProfileKind.payable => '放款分期',
+      AccountProfileKind.payable ||
+      AccountProfileKind.prepaidExpense ||
+      AccountProfileKind.deferredIncome => '放款分期',
     },
   };
 }

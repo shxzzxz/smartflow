@@ -13,6 +13,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../amortization/presentation/amortization_configuration_draft.dart';
 import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/provider/tag_providers.dart';
@@ -131,7 +132,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final detail = editDetailAsync!.requireValue;
     if (detail == null) return const AsyncValue.data(null);
-    if (detail.ownership?.ownerType == installmentOwnerType) {
+    if (detail.ownership?.ownerType == installmentOwnerType ||
+        detail.ownership?.ownerType == orchestrationAmortizationOwnerType) {
       return const AsyncValue.data(null);
     }
     if (!supportsTransactionFormEdit(detail.businessPurpose)) {
@@ -185,6 +187,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         advanceReceivableAccountId: null,
         advanceScenario: AdvanceScenario.reimbursement,
         expenseScene: TransactionExpenseScene.ordinary,
+        incomeScene: TransactionIncomeScene.ordinary,
+        amortizationDeferralAccountId: null,
         ordinaryReceivableAccountId: null,
         excludeStats:
             value == TransactionFormMode.transfer ||
@@ -259,6 +263,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           (current.mode == TransactionFormMode.expense &&
               current.expenseScene ==
                   TransactionExpenseScene.consumptionInstallment) ||
+          current.isAmortization ||
           requestRevision != _defaultAccountRequestRevision ||
           selectedCategoryId(current) != categoryId ||
           !(current.mode == TransactionFormMode.expense
@@ -305,6 +310,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         advanceReceivableAccountId: null,
         advanceScenario: AdvanceScenario.reimbursement,
         expenseScene: TransactionExpenseScene.ordinary,
+        incomeScene: TransactionIncomeScene.ordinary,
+        amortizationDeferralAccountId: null,
         ordinaryReceivableAccountId: value.mode == TransactionFormMode.lending
             ? current.ordinaryReceivableAccountId
             : null,
@@ -399,6 +406,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void useAllocatedEntry(Money amount) {
     _defaultAccountRequestRevision += 1;
     _update((current) {
+      if (current.isAmortization) return current;
       final consumptionInstallment =
           current.mode == TransactionFormMode.expense &&
           current.expenseScene ==
@@ -439,6 +447,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void useNormalEntry() {
     _defaultAccountRequestRevision += 1;
     _update((current) {
+      if (current.isAmortization) return current;
       final consumptionInstallment =
           current.mode == TransactionFormMode.expense &&
           current.expenseScene ==
@@ -472,7 +481,13 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       final enteringConsumptionInstallment =
           value == TransactionExpenseScene.consumptionInstallment &&
           current.expenseScene != value;
-      final resetEntry = changingMode || enteringConsumptionInstallment;
+      final enteringAmortization =
+          value == TransactionExpenseScene.amortization &&
+          current.expenseScene != value;
+      final resetEntry =
+          changingMode ||
+          enteringConsumptionInstallment ||
+          enteringAmortization;
       final selectedAccountId = current.advanceReceivableAccountId;
       final availableAccountIds = {
         for (final account in advanceAccountsForExpenseScene(
@@ -494,6 +509,16 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           .firstOrNull;
       final consumptionAccountId =
           currentCreditAccount?.id ?? current.creditAccounts.firstOrNull?.id;
+      final currentFundingAccount = current.fundAccounts
+          .where((account) => account.id == current.fromAccountId)
+          .firstOrNull;
+      final amortizationFundingAccountId =
+          currentFundingAccount?.id ?? current.fundAccounts.firstOrNull?.id;
+      final currentDeferralAccount = current.prepaidExpenseAccounts
+          .where(
+            (account) => account.id == current.amortizationDeferralAccountId,
+          )
+          .firstOrNull;
       return current.copyWith(
         mode: TransactionFormMode.expense,
         entryMode: resetEntry ? TransactionEntryMode.normal : current.entryMode,
@@ -503,10 +528,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         settlementAllocations: resetEntry
             ? const []
             : current.settlementAllocations,
-        fromAccountId: value == TransactionExpenseScene.consumptionInstallment
-            ? consumptionAccountId
-            : current.fromAccountId,
+        fromAccountId: switch (value) {
+          TransactionExpenseScene.consumptionInstallment =>
+            consumptionAccountId,
+          TransactionExpenseScene.amortization => amortizationFundingAccountId,
+          _ => current.fromAccountId,
+        },
         expenseScene: value,
+        incomeScene: TransactionIncomeScene.ordinary,
+        amortizationDeferralAccountId:
+            value == TransactionExpenseScene.amortization
+            ? currentDeferralAccount?.id ??
+                  current.prepaidExpenseAccounts.firstOrNull?.id
+            : null,
         advanceScenario: value.advanceScenario ?? AdvanceScenario.reimbursement,
         advanceReceivableAccountId: canKeepSelectedAccount
             ? selectedAccountId
@@ -515,6 +549,52 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         excludeBudget: current.excludeBudget,
       );
     });
+  }
+
+  void setIncomeScene(TransactionIncomeScene value) {
+    _defaultAccountRequestRevision += 1;
+    _update((current) {
+      final enteringAmortization =
+          value == TransactionIncomeScene.amortization &&
+          current.incomeScene != value;
+      final currentFundingAccount = current.fundAccounts
+          .where((account) => account.id == current.toAccountId)
+          .firstOrNull;
+      final currentDeferralAccount = current.deferredIncomeAccounts
+          .where(
+            (account) => account.id == current.amortizationDeferralAccountId,
+          )
+          .firstOrNull;
+      return current.copyWith(
+        mode: TransactionFormMode.income,
+        entryMode: enteringAmortization
+            ? TransactionEntryMode.normal
+            : current.entryMode,
+        categoryAllocations: enteringAmortization
+            ? const []
+            : current.categoryAllocations,
+        settlementAllocations: enteringAmortization
+            ? const []
+            : current.settlementAllocations,
+        toAccountId: value == TransactionIncomeScene.amortization
+            ? currentFundingAccount?.id ?? current.fundAccounts.firstOrNull?.id
+            : current.toAccountId,
+        expenseScene: TransactionExpenseScene.ordinary,
+        incomeScene: value,
+        amortizationDeferralAccountId:
+            value == TransactionIncomeScene.amortization
+            ? currentDeferralAccount?.id ??
+                  current.deferredIncomeAccounts.firstOrNull?.id
+            : null,
+        ordinaryReceivableAccountId: null,
+      );
+    });
+  }
+
+  void setAmortizationDeferralAccountId(String? value) {
+    _update(
+      (current) => current.copyWith(amortizationDeferralAccountId: value),
+    );
   }
 
   void setAaPeopleCount(int value) {
@@ -575,6 +655,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         advanceReceivableAccountId: null,
         advanceScenario: AdvanceScenario.reimbursement,
         expenseScene: TransactionExpenseScene.ordinary,
+        incomeScene: TransactionIncomeScene.ordinary,
+        amortizationDeferralAccountId: null,
         aaPeopleCount: 2,
         ordinaryReceivableAccountId: null,
         excludeStats: false,
@@ -589,6 +671,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required String noteText,
     String? feeText,
     ConsumptionInstallmentConfiguration? consumptionInstallment,
+    AmortizationConfigurationDraft? amortizationConfiguration,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('交易表单尚未加载');
@@ -621,6 +704,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             feeAmount,
             noteText,
             consumptionInstallment,
+            amortizationConfiguration,
           );
         } else {
           await _submitEdit(
@@ -658,12 +742,22 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     Money? feeAmount,
     String noteText,
     ConsumptionInstallmentConfiguration? consumptionInstallment,
+    AmortizationConfigurationDraft? amortizationConfiguration,
   ) async {
     final postingService = ref.read(transactionPostingAppServiceProvider);
     final note = trimToNull(noteText);
 
     switch (formState.mode) {
       case TransactionFormMode.expense:
+        if (formState.expenseScene == TransactionExpenseScene.amortization) {
+          await _submitAmortization(
+            formState,
+            amount,
+            note,
+            amortizationConfiguration,
+          );
+          return;
+        }
         if (formState.expenseScene ==
             TransactionExpenseScene.consumptionInstallment) {
           if (consumptionInstallment == null) {
@@ -702,6 +796,15 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               ),
             );
       case TransactionFormMode.income:
+        if (formState.incomeScene == TransactionIncomeScene.amortization) {
+          await _submitAmortization(
+            formState,
+            amount,
+            note,
+            amortizationConfiguration,
+          );
+          return;
+        }
         final allocations = _incomeAllocations(formState, amount);
         await postingService.createIncome(
           CreateIncomeCommand(
@@ -736,6 +839,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             occurredAt: formState.occurredAt,
             counterpartyId: formState.counterpartyId,
             note: note,
+            isExcludedFromStats: formState.excludeStats,
+            isExcludedFromBudget: formState.excludeBudget,
             tagIds: formState.selectedTagIds,
           ),
         );
@@ -880,6 +985,75 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         );
   }
 
+  Future<void> _submitAmortization(
+    TransactionFormState formState,
+    Money amount,
+    String? note,
+    AmortizationConfigurationDraft? configuration,
+  ) async {
+    final kind = formState.amortizationKind;
+    if (kind == null) {
+      throw _invalidCommandException('当前交易不是摊销');
+    }
+    if (configuration == null) {
+      throw _invalidCommandException('请先完成摊销配置');
+    }
+    if (formState.entryMode != TransactionEntryMode.normal) {
+      throw _invalidCommandException('摊销不支持分项录入');
+    }
+    final categoryAccountId = switch (formState.mode) {
+      TransactionFormMode.expense => formState.expenseCategoryId,
+      TransactionFormMode.income => formState.incomeCategoryId,
+      _ => null,
+    };
+    if (categoryAccountId == null) {
+      throw _invalidCommandException(
+        formState.mode == TransactionFormMode.expense ? '请选择支出分类' : '请选择收入分类',
+      );
+    }
+    final fundingAccountId = _effectiveId(
+      formState.mode == TransactionFormMode.expense
+          ? formState.fromAccountId
+          : formState.toAccountId,
+      formState.fundAccounts,
+    );
+    if (fundingAccountId == null) {
+      throw _invalidCommandException(
+        formState.mode == TransactionFormMode.expense ? '请选择支出账户' : '请选择收入账户',
+      );
+    }
+    final deferralAccountId = _effectiveId(
+      formState.amortizationDeferralAccountId,
+      formState.amortizationDeferralAccounts,
+    );
+    if (deferralAccountId == null) {
+      throw _invalidCommandException(
+        kind == AmortizationKind.prepaidExpense ? '请先创建并选择预付账户' : '请先创建并选择预收账户',
+      );
+    }
+    await ref
+        .read(amortizationPlanAppServiceProvider)
+        .createPlan(
+          CreateAmortizationPlanCommand(
+            kind: kind,
+            total: amount,
+            fundingAccountId: fundingAccountId,
+            deferralAccountId: deferralAccountId,
+            categoryAccountId: categoryAccountId,
+            firstRecognitionAt: configuration.firstRecognitionAt,
+            cadenceUnit: configuration.cadenceUnit,
+            cadenceInterval: configuration.cadenceInterval,
+            recognitionCount: configuration.recognitionCount,
+            occurredAt: formState.occurredAt,
+            defaultIsExcludedFromStats: formState.excludeStats,
+            defaultIsExcludedFromBudget: formState.excludeBudget,
+            counterpartyId: formState.counterpartyId,
+            note: note,
+            tagIds: formState.selectedTagIds,
+          ),
+        );
+  }
+
   Future<void> _submitEdit(
     TransactionFormState formState,
     String transactionId,
@@ -956,6 +1130,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             occurredAt: formState.occurredAt,
             counterpartyId: counterpartyId,
             note: note,
+            isExcludedFromStats: formState.excludeStats,
+            isExcludedFromBudget: formState.excludeBudget,
             tagIds: formState.selectedTagIds,
           ),
         );
@@ -1263,6 +1439,8 @@ class TransactionFormState {
     this.advanceReceivableAccountId,
     this.advanceScenario = AdvanceScenario.reimbursement,
     this.expenseScene = TransactionExpenseScene.ordinary,
+    this.incomeScene = TransactionIncomeScene.ordinary,
+    this.amortizationDeferralAccountId,
     this.relationScene = TransactionRelationScene.borrowing,
     this.aaPeopleCount = 2,
     this.ordinaryReceivableAccountId,
@@ -1386,6 +1564,8 @@ class TransactionFormState {
   final String? advanceReceivableAccountId;
   final AdvanceScenario advanceScenario;
   final TransactionExpenseScene expenseScene;
+  final TransactionIncomeScene incomeScene;
+  final String? amortizationDeferralAccountId;
   final TransactionRelationScene relationScene;
   final int aaPeopleCount;
   final String? ordinaryReceivableAccountId;
@@ -1416,6 +1596,33 @@ class TransactionFormState {
       accountOptions.ordinaryReceivableAccounts;
   List<Account> get expenseSettlementAccounts =>
       accountOptions.expenseSettlementAccounts;
+  List<Account> get prepaidExpenseAccounts =>
+      accountOptions.prepaidExpenseAccounts;
+  List<Account> get deferredIncomeAccounts =>
+      accountOptions.deferredIncomeAccounts;
+
+  bool get isAmortization =>
+      (mode == TransactionFormMode.expense &&
+          expenseScene == TransactionExpenseScene.amortization) ||
+      (mode == TransactionFormMode.income &&
+          incomeScene == TransactionIncomeScene.amortization);
+
+  AmortizationKind? get amortizationKind {
+    if (mode == TransactionFormMode.expense &&
+        expenseScene == TransactionExpenseScene.amortization) {
+      return AmortizationKind.prepaidExpense;
+    }
+    if (mode == TransactionFormMode.income &&
+        incomeScene == TransactionIncomeScene.amortization) {
+      return AmortizationKind.deferredIncome;
+    }
+    return null;
+  }
+
+  List<Account> get amortizationDeferralAccounts =>
+      amortizationKind == AmortizationKind.deferredIncome
+      ? deferredIncomeAccounts
+      : prepaidExpenseAccounts;
 
   TransactionFormState copyWith({
     TransactionFormInitialValues? initialValues,
@@ -1431,6 +1638,8 @@ class TransactionFormState {
     Object? advanceReceivableAccountId = _sentinel,
     AdvanceScenario? advanceScenario,
     TransactionExpenseScene? expenseScene,
+    TransactionIncomeScene? incomeScene,
+    Object? amortizationDeferralAccountId = _sentinel,
     TransactionRelationScene? relationScene,
     int? aaPeopleCount,
     Object? ordinaryReceivableAccountId = _sentinel,
@@ -1476,6 +1685,10 @@ class TransactionFormState {
           : advanceReceivableAccountId as String?,
       advanceScenario: advanceScenario ?? this.advanceScenario,
       expenseScene: expenseScene ?? this.expenseScene,
+      incomeScene: incomeScene ?? this.incomeScene,
+      amortizationDeferralAccountId: amortizationDeferralAccountId == _sentinel
+          ? this.amortizationDeferralAccountId
+          : amortizationDeferralAccountId as String?,
       relationScene: relationScene ?? this.relationScene,
       aaPeopleCount: aaPeopleCount ?? this.aaPeopleCount,
       ordinaryReceivableAccountId: ordinaryReceivableAccountId == _sentinel

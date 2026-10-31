@@ -256,8 +256,8 @@ void main() {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 
     const expectedItems = {
-      'expense': ['普通支出', 'AA', '报销', '代付', 'AA（账户）', '报销（账户）'],
-      'income': ['普通收入'],
+      'expense': ['普通支出', '消费分期', '摊销', 'AA', '报销', '代付', 'AA（账户）', '报销（账户）'],
+      'income': ['普通收入', '摊销'],
       'transfer': ['转账'],
       'relations': ['借入', '借出', '押金'],
     };
@@ -390,6 +390,115 @@ void main() {
         'credit',
         'cash',
       ]);
+    },
+  );
+
+  testWidgets(
+    'adds expense and income amortization with account and configuration controls',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: [
+          _account('cash'),
+          _account('credit', profileKey: AccountProfileKind.credit.key),
+        ],
+        fundAccounts: [_account('cash')],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+        deferredIncomeAccounts: [
+          _account(
+            'deferred',
+            profileKey: AccountProfileKind.deferredIncome.key,
+          ),
+        ],
+        incomeTree: [
+          CategoryNode(account: _category('salary', type: AccountType.income)),
+        ],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final expenseAmortization = _sceneItem('expense', '摊销');
+      await tester.ensureVisible(expenseAmortization);
+      await tester.tap(expenseAmortization);
+      await tester.pumpAndSettle();
+
+      final primaryAccount = find.byKey(
+        const ValueKey('expense-primary-account-option'),
+      );
+      final deferralAccount = find.byKey(
+        const ValueKey('amortization-deferral-account-option'),
+      );
+      final configuration = find.byKey(
+        const ValueKey('amortization-configuration'),
+      );
+      expect(primaryAccount, findsOneWidget);
+      expect(deferralAccount, findsOneWidget);
+      expect(configuration, findsOneWidget);
+      expect(find.text('prepaid'), findsOneWidget);
+      expect(
+        tester.getTopLeft(primaryAccount).dx,
+        lessThan(tester.getTopLeft(deferralAccount).dx),
+      );
+      expect(
+        tester.getTopLeft(deferralAccount).dx,
+        lessThan(tester.getTopLeft(configuration).dx),
+      );
+      expect(
+        tester.getTopLeft(configuration).dx,
+        lessThan(tester.getTopLeft(find.text('不计收支')).dx),
+      );
+
+      await tester.tap(primaryAccount);
+      await tester.pumpAndSettle();
+      expect(find.text('cash'), findsWidgets);
+      expect(find.text('credit'), findsNothing);
+      Navigator.of(
+        tester.element(
+          find.byKey(const ValueKey('account-picker-layout-toggle')),
+        ),
+      ).pop();
+      await tester.pumpAndSettle();
+
+      await tester.tap(configuration);
+      await tester.pumpAndSettle();
+      expect(find.text('摊销配置'), findsOneWidget);
+      expect(find.text('首期日期'), findsOneWidget);
+      expect(find.text('使用此配置'), findsOneWidget);
+      await tester.tap(find.text('使用此配置'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('amortization-configuration')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('收入'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final incomeAmortization = _sceneItem('income', '摊销');
+      await tester.ensureVisible(incomeAmortization);
+      await tester.tap(incomeAmortization);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('amortization-deferral-account-option')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('amortization-configuration')),
+        findsOneWidget,
+      );
+      expect(find.text('deferred'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('toggle-transaction-entry-mode')),
+        findsNothing,
+      );
     },
   );
 
@@ -1165,6 +1274,8 @@ Future<void> _pumpTransactionForm(
   List<Account> fundAccounts = const [],
   List<Account> advanceReceivableAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
+  List<Account> prepaidExpenseAccounts = const [],
+  List<Account> deferredIncomeAccounts = const [],
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
 }) async {
@@ -1174,6 +1285,8 @@ Future<void> _pumpTransactionForm(
       ...fundAccounts,
       ...advanceReceivableAccounts,
       ...ordinaryReceivableAccounts,
+      ...prepaidExpenseAccounts,
+      ...deferredIncomeAccounts,
     ]),
   );
   final router = GoRouter(

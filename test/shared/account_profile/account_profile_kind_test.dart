@@ -28,9 +28,21 @@ void main() {
         AccountProfileOwner.ledger,
       ),
       (
+        AccountProfileKind.prepaidExpense,
+        AccountType.asset,
+        AccountSubtype.prepaidExpense,
+        AccountProfileOwner.ledger,
+      ),
+      (
         AccountProfileKind.payable,
         AccountType.liability,
         AccountSubtype.payable,
+        AccountProfileOwner.ledger,
+      ),
+      (
+        AccountProfileKind.deferredIncome,
+        AccountType.liability,
+        AccountSubtype.deferredIncome,
         AccountProfileOwner.ledger,
       ),
       (
@@ -134,6 +146,54 @@ void main() {
       );
     },
   );
+
+  test('matches prepaid and deferred accounts by their own semantics', () {
+    final prepaid = Account(
+      id: 'prepaid',
+      name: '预付账户',
+      type: AccountType.asset,
+      subtype: AccountSubtype.prepaidExpense,
+      profileKey: AccountProfileKind.prepaidExpense.key,
+      balance: Money.zero(),
+    );
+    final deferred = Account(
+      id: 'deferred',
+      name: '预收账户',
+      type: AccountType.liability,
+      subtype: AccountSubtype.deferredIncome,
+      profileKey: AccountProfileKind.deferredIncome.key,
+      balance: Money.zero(),
+    );
+
+    expect(
+      accountMatchesSelectionPurpose(
+        prepaid,
+        AccountSelectionPurpose.prepaidExpense,
+      ),
+      isTrue,
+    );
+    expect(
+      accountMatchesSelectionPurpose(
+        prepaid,
+        AccountSelectionPurpose.deferredIncome,
+      ),
+      isFalse,
+    );
+    expect(
+      accountMatchesSelectionPurpose(
+        deferred,
+        AccountSelectionPurpose.deferredIncome,
+      ),
+      isTrue,
+    );
+    expect(
+      accountMatchesSelectionPurpose(
+        deferred,
+        AccountSelectionPurpose.prepaidExpense,
+      ),
+      isFalse,
+    );
+  });
 }
 
 Account _receivable(AccountProfileKind kind) => Account(

@@ -17,7 +17,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 
 void main() {
-  testWidgets('shows all six account profiles when creating an account', (
+  testWidgets('shows every account profile when creating an account', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(480, 1200));
@@ -34,8 +34,8 @@ void main() {
       ),
     );
 
-    for (final label in ['资金', '报销', '应收', '应付', '信用', '贷款']) {
-      expect(find.text(label), findsOneWidget);
+    for (final label in ['资金', '报销', '应收', '应付', '信用', '贷款', '预付', '预收']) {
+      expect(find.text(label), findsWidgets);
     }
   });
 
@@ -93,6 +93,28 @@ void main() {
           .selectedKey,
       'boc_debit_card',
     );
+  });
+
+  testWidgets('shows built-in group names instead of internal ids', (
+    tester,
+  ) async {
+    final preset = accountCreationPresetForId('prepaid-expense')!;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountAppServiceProvider.overrideWith(
+            (ref) => _FakeAccountAppService(),
+          ),
+          _accountGroupsOverride(),
+        ],
+        child: MaterialApp(home: AccountFormPage(creationPreset: preset)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('builtin-account-group-prepaid-expense'), findsNothing);
+    expect(find.text('预付'), findsNWidgets(2));
   });
 
   testWidgets('uses whitespace sections instead of field dividers', (

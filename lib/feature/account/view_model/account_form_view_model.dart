@@ -425,6 +425,12 @@ String manualBalanceLabel({
   if (kind == AccountProfileKind.receivable) {
     return isEdit ? '当前应收' : '应收金额';
   }
+  if (kind == AccountProfileKind.prepaidExpense) {
+    return isEdit ? '当前预付' : '预付金额';
+  }
+  if (kind == AccountProfileKind.deferredIncome) {
+    return isEdit ? '当前预收' : '预收金额';
+  }
   if (isLiabilityAccountKind(kind)) {
     return isEdit ? '当前应付' : '应付金额';
   }
@@ -440,6 +446,12 @@ String manualBalanceHint({
   }
   if (kind == AccountProfileKind.receivable) {
     return isEdit ? '请输入当前应收' : '请输入应收金额';
+  }
+  if (kind == AccountProfileKind.prepaidExpense) {
+    return isEdit ? '请输入当前预付' : '请输入预付金额';
+  }
+  if (kind == AccountProfileKind.deferredIncome) {
+    return isEdit ? '请输入当前预收' : '请输入预收金额';
   }
   if (isLiabilityAccountKind(kind)) {
     return isEdit ? '请输入当前应付' : '请输入应付金额';

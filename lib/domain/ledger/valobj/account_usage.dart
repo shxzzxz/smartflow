@@ -3,6 +3,7 @@ import 'ledger_enum.dart';
 
 enum AccountUsage {
   settlement,
+  transfer,
   expenseSettlement,
   fund,
   repaymentTarget,
@@ -28,9 +29,15 @@ bool accountMatchesUsage(Account account, AccountUsage usage) {
     AccountUsage.settlement =>
       accountMatchesUsage(account, AccountUsage.fund) ||
           account.type == AccountType.liability,
+    AccountUsage.transfer =>
+      accountMatchesUsage(account, AccountUsage.settlement) ||
+          (account.type == AccountType.asset &&
+              account.subtype == AccountSubtype.prepaidExpense),
     AccountUsage.expenseSettlement =>
       accountMatchesUsage(account, AccountUsage.settlement) ||
-          accountMatchesUsage(account, AccountUsage.receivable),
+          accountMatchesUsage(account, AccountUsage.receivable) ||
+          (account.type == AccountType.asset &&
+              account.subtype == AccountSubtype.prepaidExpense),
     AccountUsage.fund =>
       account.type == AccountType.asset &&
           account.subtype == AccountSubtype.fund,

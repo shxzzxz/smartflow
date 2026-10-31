@@ -45,6 +45,7 @@ TransactionRelationScene transactionRelationSceneForMode(
 enum TransactionExpenseScene {
   ordinary,
   consumptionInstallment,
+  amortization,
   reimbursement,
   onBehalf,
   aa,
@@ -57,6 +58,7 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
   String get label => switch (this) {
     TransactionExpenseScene.ordinary => '普通支出',
     TransactionExpenseScene.consumptionInstallment => '消费分期',
+    TransactionExpenseScene.amortization => '摊销',
     TransactionExpenseScene.reimbursement => '报销',
     TransactionExpenseScene.onBehalf => '代付',
     TransactionExpenseScene.aa => 'AA',
@@ -67,7 +69,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
 
   bool get isAdvance => switch (this) {
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => false,
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => false,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.onBehalf ||
     TransactionExpenseScene.aa ||
@@ -88,7 +91,8 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.aa ||
     TransactionExpenseScene.aaAccount => '垫付账户',
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => '垫付账户',
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => '垫付账户',
   };
 
   String get noneLabel => switch (this) {
@@ -98,12 +102,14 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
     TransactionExpenseScene.onBehalfAccount => '不代付',
     TransactionExpenseScene.aa || TransactionExpenseScene.aaAccount => '不AA',
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => '不垫付',
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => '不垫付',
   };
 
   AdvanceScenario? get advanceScenario => switch (this) {
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => null,
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => null,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount =>
       AdvanceScenario.reimbursement,
@@ -115,13 +121,23 @@ extension TransactionExpenseScenePresentation on TransactionExpenseScene {
 
   AdvanceTrackingMode? get advanceTrackingMode => switch (this) {
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => null,
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => null,
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.onBehalf ||
     TransactionExpenseScene.aa => AdvanceTrackingMode.itemized,
     TransactionExpenseScene.reimbursementAccount ||
     TransactionExpenseScene.aaAccount ||
     TransactionExpenseScene.onBehalfAccount => AdvanceTrackingMode.account,
+  };
+}
+
+enum TransactionIncomeScene { ordinary, amortization }
+
+extension TransactionIncomeScenePresentation on TransactionIncomeScene {
+  String get label => switch (this) {
+    TransactionIncomeScene.ordinary => '普通收入',
+    TransactionIncomeScene.amortization => '摊销',
   };
 }
 
@@ -151,7 +167,8 @@ List<Account> advanceAccountsForExpenseScene(
 ) {
   final acceptedProfiles = switch (scene) {
     TransactionExpenseScene.ordinary ||
-    TransactionExpenseScene.consumptionInstallment => const <String>{},
+    TransactionExpenseScene.consumptionInstallment ||
+    TransactionExpenseScene.amortization => const <String>{},
     TransactionExpenseScene.reimbursement ||
     TransactionExpenseScene.reimbursementAccount => {
       AccountProfileKind.reimbursement.key,

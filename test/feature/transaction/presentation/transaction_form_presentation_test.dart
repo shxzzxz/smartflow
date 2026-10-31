@@ -308,6 +308,10 @@ void main() {
       expect(TransactionExpenseScene.aaAccount.label, 'AA（账户）');
       expect(TransactionExpenseScene.consumptionInstallment.label, '消费分期');
       expect(TransactionExpenseScene.consumptionInstallment.isAdvance, isFalse);
+      expect(TransactionExpenseScene.amortization.label, '摊销');
+      expect(TransactionExpenseScene.amortization.isAdvance, isFalse);
+      expect(TransactionIncomeScene.ordinary.label, '普通收入');
+      expect(TransactionIncomeScene.amortization.label, '摊销');
       expect(
         transactionExpenseSceneForAdvanceScenario(
           AdvanceScenario.reimbursement,

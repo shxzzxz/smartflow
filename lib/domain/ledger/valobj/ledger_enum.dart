@@ -1,6 +1,13 @@
 enum AccountType { asset, liability, equity, income, expense }
 
-enum AccountSubtype { fund, receivable, payable, loan }
+enum AccountSubtype {
+  fund,
+  receivable,
+  prepaidExpense,
+  payable,
+  loan,
+  deferredIncome,
+}
 
 enum EntryDirection { debit, credit }
 

@@ -13,6 +13,7 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/orchestration/port/advance_case_repository.dart';
+import 'package:smartflow/feature/amortization/presentation/amortization_configuration_draft.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
@@ -362,6 +363,132 @@ void main() {
         expect(command.isExcludedFromBudget, isTrue);
       },
     );
+
+    test('creates a prepaid expense amortization plan', () async {
+      final amortizationService = _FakeAmortizationPlanAppService();
+      final container = _container(
+        amortizationService: amortizationService,
+        settlementAccounts: [_account('cash')],
+        fundAccounts: [_account('cash')],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseScene(TransactionExpenseScene.amortization)
+        ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
+        ..setOccurredAt(DateTime(2026, 3, 15, 8, 30))
+        ..setExcludeStats(true)
+        ..setExcludeBudget(true);
+
+      final state = container.read(_provider()).requireValue!;
+      expect(state.amortizationKind, AmortizationKind.prepaidExpense);
+      expect(state.amortizationDeferralAccountId, 'prepaid');
+
+      final outcome = await viewModel.submit(
+        amountText: '1200',
+        noteText: '年费',
+        amortizationConfiguration: AmortizationConfigurationDraft(
+          firstRecognitionAt: DateTime(2026, 4, 15),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 12,
+        ),
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = amortizationService.commands.single;
+      expect(command.kind, AmortizationKind.prepaidExpense);
+      expect(command.total, const Money(minorUnits: 120000));
+      expect(command.fundingAccountId, 'cash');
+      expect(command.deferralAccountId, 'prepaid');
+      expect(command.categoryAccountId, 'lunch');
+      expect(command.firstRecognitionAt, DateTime(2026, 4, 15));
+      expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
+      expect(command.cadenceInterval, 1);
+      expect(command.recognitionCount, 12);
+      expect(command.occurredAt, DateTime(2026, 3, 15, 8, 30));
+      expect(command.defaultIsExcludedFromStats, isTrue);
+      expect(command.defaultIsExcludedFromBudget, isTrue);
+      expect(command.note, '年费');
+    });
+
+    test('creates a deferred income amortization plan', () async {
+      final amortizationService = _FakeAmortizationPlanAppService();
+      final container = _container(
+        amortizationService: amortizationService,
+        settlementAccounts: [_account('cash')],
+        fundAccounts: [_account('cash')],
+        deferredIncomeAccounts: [
+          _account(
+            'deferred',
+            type: AccountType.liability,
+            profileKey: AccountProfileKind.deferredIncome.key,
+          ),
+        ],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setIncomeScene(TransactionIncomeScene.amortization)
+        ..setIncomeCategory(rootId: 'salary', categoryId: 'salary')
+        ..setExcludeStats(true);
+
+      final state = container.read(_provider()).requireValue!;
+      expect(state.amortizationKind, AmortizationKind.deferredIncome);
+      expect(state.amortizationDeferralAccountId, 'deferred');
+      expect(state.toAccountId, 'cash');
+
+      final outcome = await viewModel.submit(
+        amountText: '600',
+        noteText: '服务费',
+        amortizationConfiguration: AmortizationConfigurationDraft(
+          firstRecognitionAt: DateTime(2026, 4, 1),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 6,
+        ),
+      );
+
+      expect(outcome, isA<SubmitSuccess>());
+      final command = amortizationService.commands.single;
+      expect(command.kind, AmortizationKind.deferredIncome);
+      expect(command.total, const Money(minorUnits: 60000));
+      expect(command.fundingAccountId, 'cash');
+      expect(command.deferralAccountId, 'deferred');
+      expect(command.categoryAccountId, 'salary');
+      expect(command.defaultIsExcludedFromStats, isTrue);
+    });
+
+    test('requires amortization configuration before submit', () async {
+      final amortizationService = _FakeAmortizationPlanAppService();
+      final container = _container(
+        amortizationService: amortizationService,
+        settlementAccounts: [_account('cash')],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseScene(TransactionExpenseScene.amortization)
+        ..setExpenseCategory(rootId: 'food', categoryId: 'lunch');
+
+      final outcome = await viewModel.submit(amountText: '100', noteText: '');
+
+      expect(outcome, isA<SubmitFailure>());
+      expect((outcome as SubmitFailure).error.message, '请先完成摊销配置');
+      expect(amortizationService.commands, isEmpty);
+    });
 
     test('creates a transaction with the selected counterparty id', () async {
       final posting = _FakeTransactionPostingAppService();
@@ -1457,8 +1584,11 @@ ProviderContainer _container({
   List<Account> liabilityAccounts = const [],
   List<Account> advanceReceivableAccounts = const [],
   List<Account> ordinaryReceivableAccounts = const [],
+  List<Account> prepaidExpenseAccounts = const [],
+  List<Account> deferredIncomeAccounts = const [],
   List<CounterpartyView> counterparties = const [],
   ConsumptionInstallmentAppService? installmentService,
+  AmortizationPlanAppService? amortizationService,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -1473,6 +1603,9 @@ ProviderContainer _container({
       ),
       consumptionInstallmentAppServiceProvider.overrideWithValue(
         installmentService ?? _FakeConsumptionInstallmentAppService(),
+      ),
+      amortizationPlanAppServiceProvider.overrideWithValue(
+        amortizationService ?? _FakeAmortizationPlanAppService(),
       ),
       advanceCaseRepositoryProvider.overrideWithValue(
         advanceCaseRepository ?? FakeAdvanceCaseRepository(),
@@ -1492,6 +1625,8 @@ ProviderContainer _container({
             liabilityAccounts: liabilityAccounts,
             advanceReceivableAccounts: advanceReceivableAccounts,
             ordinaryReceivableAccounts: ordinaryReceivableAccounts,
+            prepaidExpenseAccounts: prepaidExpenseAccounts,
+            deferredIncomeAccounts: deferredIncomeAccounts,
             expenseSettlementAccounts: [
               ...settlementAccounts,
               ...accountsMatchingSelectionPurpose(
@@ -1805,6 +1940,20 @@ class _FakeConsumptionInstallmentAppService
       contractId: 'contract-${consumptionCommands.length}',
       purchaseTransactionId: 'purchase-${consumptionCommands.length}',
     );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+class _FakeAmortizationPlanAppService implements AmortizationPlanAppService {
+  final commands = <CreateAmortizationPlanCommand>[];
+
+  @override
+  Future<String> createPlan(CreateAmortizationPlanCommand command) async {
+    commands.add(command);
+    return 'plan-${commands.length}';
   }
 
   @override

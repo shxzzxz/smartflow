@@ -35,6 +35,8 @@ class BackupTables {
     'import_batches',
     'import_batch_items',
     'advance_cases',
+    'amortization_plans',
+    'amortization_entries',
   ];
 
   static String sectionFor(String table) {
@@ -78,7 +80,11 @@ class BackupTables {
     }.contains(table)) {
       return 'import';
     }
-    if (table == 'advance_cases') return 'orchestration';
+    if (table == 'advance_cases' ||
+        table == 'amortization_plans' ||
+        table == 'amortization_entries') {
+      return 'orchestration';
+    }
     throw ArgumentError('Unknown backup table: $table');
   }
 }
@@ -208,7 +214,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 4;
+  static const currentBackupSchemaVersion = 5;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
@@ -356,6 +362,9 @@ class BackupDiff {
       }
       if (table == 'budgets') return '预算';
       if (table == 'advance_cases') return '垫付编排';
+      if (table == 'amortization_plans' || table == 'amortization_entries') {
+        return '摊销计划';
+      }
       if (table == 'import_batches' ||
           table == 'import_batch_items' ||
           table == 'import_entity_mappings') {

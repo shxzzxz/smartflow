@@ -50,6 +50,7 @@ class CreateIncomeCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
+    this.ownership,
   }) : categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
@@ -64,6 +65,7 @@ class CreateIncomeCommand {
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final Set<String> tagIds;
+  final TransactionOwnership? ownership;
 }
 
 class CreateTransferCommand {
@@ -76,6 +78,9 @@ class CreateTransferCommand {
     this.feeAmount,
     this.counterpartyId,
     this.note,
+    this.ownership,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
   });
@@ -88,6 +93,9 @@ class CreateTransferCommand {
   final Money? feeAmount;
   final String? counterpartyId;
   final String? note;
+  final TransactionOwnership? ownership;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
   final SourceKind sourceKind;
   final Set<String> tagIds;
 }
@@ -472,6 +480,8 @@ class EditTransferCommand {
     this.feeAmount,
     this.counterpartyId,
     this.note,
+    this.isExcludedFromStats,
+    this.isExcludedFromBudget,
     this.tagIds,
   });
 
@@ -485,6 +495,8 @@ class EditTransferCommand {
   final Money? feeAmount;
   final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
+  final bool? isExcludedFromStats;
+  final bool? isExcludedFromBudget;
 
   /// `null` 表示不改标签；非空集合表示用该集合整体替换交易标签。
   final Set<String>? tagIds;

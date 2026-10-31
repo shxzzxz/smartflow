@@ -47,6 +47,11 @@ Future<void> createCurrentSchema(
   await _createImportIndexes(database);
   await _createTagIndexes(database);
   await _createCounterpartyIndexes(database);
+  await database.customStatement(
+    'CREATE INDEX amortization_entries_pending_idx '
+    'ON amortization_entries (due_at) '
+    'WHERE transaction_id IS NULL AND canceled_at IS NULL',
+  );
 }
 
 Future<void> _createTransactionLineIndexes(AppDatabase database) async {

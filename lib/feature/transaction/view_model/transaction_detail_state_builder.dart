@@ -359,7 +359,9 @@ DetailEditPermission _accountEditPermission(
     AccountSelectionPurpose.advanceReceivable =>
       const DetailEditPermission.allowed(),
     AccountSelectionPurpose.ordinaryReceivable ||
-    AccountSelectionPurpose.receivable => const DetailEditPermission.denied(
+    AccountSelectionPurpose.receivable ||
+    AccountSelectionPurpose.prepaidExpense ||
+    AccountSelectionPurpose.deferredIncome => const DetailEditPermission.denied(
       reason: '当前账户用途不能在交易详情页编辑',
     ),
     AccountSelectionPurpose.repaymentTarget ||
@@ -460,6 +462,23 @@ DetailBehaviorConfig _behaviorConfigFor(
     );
   }
 
+  if (ownership.ownerType == orchestrationAmortizationOwnerType) {
+    return DetailBehaviorConfig(
+      editRoute: '/amortizations/${ownership.ownerId}',
+      canEditOccurredAt: const DetailEditPermission.denied(
+        reason: '摊销计划交易时间由计划控制',
+      ),
+      canEditPostedAt: const DetailEditPermission.denied(
+        reason: '摊销计划入账时间由计划控制',
+      ),
+      canEditNote: const DetailEditPermission.denied(reason: '请在摊销计划中修改备注'),
+      canEditSettlementAccount: const DetailEditPermission.denied(
+        reason: '摊销计划账户由计划控制',
+      ),
+      canEditTags: _tagEditPermissionFor(transaction),
+    );
+  }
+
   if (ownership.ownerType == creditRepaymentOwnerType) {
     return DetailBehaviorConfig(
       editRoute: creditRepaymentType == RepaymentType.bill
@@ -518,6 +537,9 @@ String _transactionDetailDeleteMessage(TransactionReadModel detail) {
   }
   if (owner?.ownerType == creditRepaymentOwnerType) {
     return '此操作将删除还款记录及其关联交易，并重新计算相关账单与分期的还款状态，无法恢复。';
+  }
+  if (owner?.ownerType == orchestrationAmortizationOwnerType) {
+    return '此交易属于摊销计划，请从计划详情终止或调整。';
   }
   return detail.parentTransactionId == null
       ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'

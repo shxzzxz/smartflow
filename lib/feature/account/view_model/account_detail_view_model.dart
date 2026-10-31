@@ -176,6 +176,34 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
         route: '/account/${account.id}/bad-debt',
       ),
     ],
+    AccountProfileKind.prepaidExpense => [
+      AccountDetailAction(
+        label: '新建摊销',
+        iconKey: 'calendar-schedule-line',
+        route:
+            '/amortizations/new?kind=prepaidExpense'
+            '&deferralAccountId=${account.id}',
+      ),
+      AccountDetailAction(
+        label: '摊销计划',
+        iconKey: 'calendar-schedule-line',
+        route: '/account/${account.id}/amortizations?kind=prepaidExpense',
+      ),
+    ],
+    AccountProfileKind.deferredIncome => [
+      AccountDetailAction(
+        label: '新建摊销',
+        iconKey: 'calendar-schedule-line',
+        route:
+            '/amortizations/new?kind=deferredIncome'
+            '&deferralAccountId=${account.id}',
+      ),
+      AccountDetailAction(
+        label: '摊销计划',
+        iconKey: 'calendar-schedule-line',
+        route: '/account/${account.id}/amortizations?kind=deferredIncome',
+      ),
+    ],
     AccountProfileKind.credit || AccountProfileKind.loan => [
       _recordTransactionAction(account),
       AccountDetailAction(

@@ -446,8 +446,9 @@ class PostingEngine {
         primaryAmount: instruction.amount,
         counterpartyId: instruction.counterpartyId,
         note: instruction.note,
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
+        isExcludedFromStats: instruction.isExcludedFromStats,
+        isExcludedFromBudget: instruction.isExcludedFromBudget,
+        ownership: instruction.ownership,
         sourceKind: instruction.sourceKind,
         lines: [
           _line(

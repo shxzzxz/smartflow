@@ -15,6 +15,8 @@ class TransactionAccountOptions {
     Iterable<Account> advanceReceivableAccounts = const <Account>[],
     Iterable<Account> ordinaryReceivableAccounts = const <Account>[],
     Iterable<Account> expenseSettlementAccounts = const <Account>[],
+    Iterable<Account> prepaidExpenseAccounts = const <Account>[],
+    Iterable<Account> deferredIncomeAccounts = const <Account>[],
   }) : settlementAccounts = List.unmodifiable(settlementAccounts),
        fundAccounts = List.unmodifiable(fundAccounts),
        liabilityAccounts = List.unmodifiable(liabilityAccounts),
@@ -22,7 +24,9 @@ class TransactionAccountOptions {
        ordinaryReceivableAccounts = List.unmodifiable(
          ordinaryReceivableAccounts,
        ),
-       expenseSettlementAccounts = List.unmodifiable(expenseSettlementAccounts);
+       expenseSettlementAccounts = List.unmodifiable(expenseSettlementAccounts),
+       prepaidExpenseAccounts = List.unmodifiable(prepaidExpenseAccounts),
+       deferredIncomeAccounts = List.unmodifiable(deferredIncomeAccounts);
 
   factory TransactionAccountOptions.fromAccounts(Iterable<Account> accounts) {
     final source = List<Account>.unmodifiable(accounts);
@@ -49,6 +53,14 @@ class TransactionAccountOptions {
         source,
         AccountSelectionPurpose.expenseSettlement,
       ),
+      prepaidExpenseAccounts: accountsMatchingSelectionPurpose(
+        source,
+        AccountSelectionPurpose.prepaidExpense,
+      ),
+      deferredIncomeAccounts: accountsMatchingSelectionPurpose(
+        source,
+        AccountSelectionPurpose.deferredIncome,
+      ),
     );
   }
 
@@ -62,6 +74,8 @@ class TransactionAccountOptions {
   final List<Account> advanceReceivableAccounts;
   final List<Account> ordinaryReceivableAccounts;
   final List<Account> expenseSettlementAccounts;
+  final List<Account> prepaidExpenseAccounts;
+  final List<Account> deferredIncomeAccounts;
 }
 
 @riverpod

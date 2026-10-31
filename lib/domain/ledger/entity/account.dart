@@ -257,9 +257,13 @@ class Account {
   }) {
     return switch (type) {
       AccountType.asset =>
-        subtype == AccountSubtype.fund || subtype == AccountSubtype.receivable,
+        subtype == AccountSubtype.fund ||
+            subtype == AccountSubtype.receivable ||
+            subtype == AccountSubtype.prepaidExpense,
       AccountType.liability =>
-        subtype == AccountSubtype.payable || subtype == AccountSubtype.loan,
+        subtype == AccountSubtype.payable ||
+            subtype == AccountSubtype.loan ||
+            subtype == AccountSubtype.deferredIncome,
       AccountType.equity ||
       AccountType.income ||
       AccountType.expense => subtype == null,

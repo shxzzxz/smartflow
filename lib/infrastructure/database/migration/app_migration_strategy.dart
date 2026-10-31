@@ -148,6 +148,15 @@ Future<void> _upgrade(
           'WHERE generated_contract_id IS NOT NULL',
         );
       },
+      from52To53: (migration, schema) async {
+        await migration.createTable(schema.amortizationPlans);
+        await migration.createTable(schema.amortizationEntries);
+        await migration.database.customStatement(
+          'CREATE INDEX amortization_entries_pending_idx '
+          'ON amortization_entries (due_at) '
+          'WHERE transaction_id IS NULL AND canceled_at IS NULL',
+        );
+      },
     )(migrator, from, to);
   });
 }

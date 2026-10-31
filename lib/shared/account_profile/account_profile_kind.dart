@@ -27,6 +27,14 @@ enum AccountProfileKind {
     accountType: AccountType.asset,
     accountSubtype: AccountSubtype.receivable,
   ),
+  prepaidExpense(
+    key: 'ledger.prepaidExpense',
+    label: '预付账户',
+    iconKey: 'prepaid-card',
+    owner: AccountProfileOwner.ledger,
+    accountType: AccountType.asset,
+    accountSubtype: AccountSubtype.prepaidExpense,
+  ),
   payable(
     key: 'ledger.payable',
     label: '应付账户',
@@ -34,6 +42,14 @@ enum AccountProfileKind {
     owner: AccountProfileOwner.ledger,
     accountType: AccountType.liability,
     accountSubtype: AccountSubtype.payable,
+  ),
+  deferredIncome(
+    key: 'ledger.deferredIncome',
+    label: '预收账户',
+    iconKey: 'loan_in',
+    owner: AccountProfileOwner.ledger,
+    accountType: AccountType.liability,
+    accountSubtype: AccountSubtype.deferredIncome,
   ),
   credit(
     key: 'credit.credit',

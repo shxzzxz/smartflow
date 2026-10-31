@@ -359,6 +359,8 @@ String _balanceTitle(AccountView account) {
     AccountProfileKind.receivable => '当前应收',
     AccountProfileKind.payable => '当前应付',
     AccountProfileKind.credit || AccountProfileKind.loan => '当前欠款',
+    AccountProfileKind.prepaidExpense => '当前预付',
+    AccountProfileKind.deferredIncome => '当前预收',
     AccountProfileKind.fund || AccountProfileKind.reimbursement => '当前余额',
   };
 }
@@ -471,6 +473,7 @@ class _AccountActionBar extends StatelessWidget {
               'loan' => RemixIcons.bank_line,
               'hand-heart-line' => RemixIcons.hand_heart_line,
               'transfer' => RemixIcons.arrow_left_right_line,
+              'calendar-schedule-line' => RemixIcons.calendar_schedule_line,
               _ => RemixIcons.wallet_line,
             },
             label: action.label,

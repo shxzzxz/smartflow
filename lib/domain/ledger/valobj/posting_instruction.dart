@@ -329,6 +329,9 @@ class TransferInstruction extends PostingInstruction {
     this.feeAmount,
     this.counterpartyId,
     this.note,
+    this.ownership,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
   });
 
@@ -340,6 +343,9 @@ class TransferInstruction extends PostingInstruction {
   final DateTime? postedAt;
   final String? counterpartyId;
   final String? note;
+  final TransactionOwnership? ownership;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
   final SourceKind sourceKind;
 
   @override
@@ -357,6 +363,9 @@ class TransferInstruction extends PostingInstruction {
     DateTime? postedAt,
     String? counterpartyId,
     String? note,
+    TransactionOwnership? ownership,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
     SourceKind? sourceKind,
   }) {
     return TransferInstruction(
@@ -368,6 +377,9 @@ class TransferInstruction extends PostingInstruction {
       postedAt: postedAt ?? this.postedAt,
       counterpartyId: counterpartyId ?? this.counterpartyId,
       note: note ?? this.note,
+      ownership: ownership ?? this.ownership,
+      isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
     );
   }
@@ -980,6 +992,9 @@ class TransferEditPatch extends PostingEditPatch {
         postedAt: current.postedAt,
         counterpartyId: current.counterpartyId,
         note: current.note,
+        ownership: current.ownership,
+        isExcludedFromStats: current.isExcludedFromStats,
+        isExcludedFromBudget: current.isExcludedFromBudget,
         sourceKind: current.sourceKind,
       );
     }

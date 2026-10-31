@@ -2,8 +2,14 @@ export 'advance/command/advance_command.dart';
 export 'advance/command/advance_share.dart';
 export 'advance/command/advance_orchestration_app_service.dart';
 export 'advance/query/advance_case_query_service.dart';
+export 'amortization/command/amortization_command.dart';
+export 'amortization/command/amortization_plan_app_service.dart';
+export 'amortization/query/amortization_plan_query_service.dart';
 export 'package:smartflow/domain/orchestration/entity/advance_case.dart';
 export 'package:smartflow/domain/ledger/valobj/ledger_enum.dart'
     show AdvanceShortfallKind;
 export 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 export 'package:smartflow/domain/orchestration/valobj/advance_error_code.dart';
+export 'package:smartflow/domain/orchestration/entity/amortization_entry.dart';
+export 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
+export 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';

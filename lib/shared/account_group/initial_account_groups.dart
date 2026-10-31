@@ -51,11 +51,31 @@ const initialAccountGroups = [
     profile: AccountProfileKind.reimbursement,
     sortOrder: 60,
   ),
+  InitialAccountGroup(
+    id: 'builtin-account-group-prepaid-expense',
+    name: '预付',
+    profile: AccountProfileKind.prepaidExpense,
+    sortOrder: 70,
+  ),
+  InitialAccountGroup(
+    id: 'builtin-account-group-deferred-income',
+    name: '预收',
+    profile: AccountProfileKind.deferredIncome,
+    sortOrder: 80,
+  ),
 ];
 
 String? initialAccountGroupIdForProfile(AccountProfileKind profile) {
   for (final group in initialAccountGroups) {
     if (group.profile == profile) return group.id;
+  }
+  return null;
+}
+
+String? initialAccountGroupNameForId(String? id) {
+  if (id == null) return null;
+  for (final group in initialAccountGroups) {
+    if (group.id == id) return group.name;
   }
   return null;
 }

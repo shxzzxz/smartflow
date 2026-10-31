@@ -9,6 +9,7 @@ import '../../domain/credit/valobj/bill_enums.dart';
 import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';
 import '../../domain/orchestration/valobj/advance_enums.dart';
+import '../../domain/orchestration/valobj/amortization_enums.dart';
 import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
 import 'table/ledger/account_groups.dart';
@@ -40,6 +41,8 @@ import 'table/import_entity_mappings.dart';
 import 'table/import_batches.dart';
 import 'table/import_batch_items.dart';
 import 'table/orchestration/advance_cases.dart';
+import 'table/orchestration/amortization_entries.dart';
+import 'table/orchestration/amortization_plans.dart';
 
 part 'app_database.g.dart';
 
@@ -75,6 +78,8 @@ part 'app_database.g.dart';
     ImportBatches,
     ImportBatchItems,
     AdvanceCases,
+    AmortizationPlans,
+    AmortizationEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -82,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 52;
+  int get schemaVersion => 53;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

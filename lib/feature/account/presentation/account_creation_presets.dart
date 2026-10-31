@@ -190,6 +190,26 @@ const accountCreationGroups = <AccountCreationGroup>[
       ),
     ],
   ),
+  AccountCreationGroup(
+    id: 'deferral',
+    label: '预收预付',
+    presets: [
+      AccountCreationPreset(
+        id: 'prepaid-expense',
+        label: '预付账户',
+        kind: AccountProfileKind.prepaidExpense,
+        iconKey: 'prepaid-card',
+        defaultName: '预付账户',
+      ),
+      AccountCreationPreset(
+        id: 'deferred-income',
+        label: '预收账户',
+        kind: AccountProfileKind.deferredIncome,
+        iconKey: 'loan_in',
+        defaultName: '预收账户',
+      ),
+    ],
+  ),
 ];
 
 AccountCreationPreset? accountCreationPresetForId(String? id) {
