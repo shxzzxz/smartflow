@@ -66,6 +66,12 @@ void main() {
       );
       expect(
         accountDetailActions(
+          _accountView('card', AccountProfileKind.credit),
+        ).map((action) => action.label),
+        ['记账', '未归属还款', '现金分期'],
+      );
+      expect(
+        accountDetailActions(
           _accountView('archived', AccountProfileKind.fund, isArchived: true),
         ),
         isEmpty,

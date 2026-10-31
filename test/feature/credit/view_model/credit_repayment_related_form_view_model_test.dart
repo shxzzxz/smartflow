@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart' as credit;
-import 'package:smartflow/domain/credit/port/credit_ledger_port.dart'
-    as credit_port;
 import 'package:smartflow/application/credit/credit_query_api.dart'
     as credit_query;
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
@@ -12,6 +10,8 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/credit_account_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
@@ -28,15 +28,16 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/view_model/refund_form_view_model.dart';
 import 'package:smartflow/feature/transaction/view_model/advance_form_view_model.dart';
+import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 
 void main() {
-  test('repayment form creates repayment command', () async {
+  test('repayment form creates ledger repayment command', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
-      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+      const RepaymentFormArgs(liabilityAccountId: 'payable'),
     );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -54,15 +55,15 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     expect(
-      repayment.liabilityRepaymentCommands.single.amount.principal,
+      repayment.posting.repaymentCommands.single.principal,
       const Money(minorUnits: 1234),
     );
     expect(
-      repayment.liabilityRepaymentCommands.single.liabilityAccountId,
-      'loan',
+      repayment.posting.repaymentCommands.single.liabilityAccountId,
+      'payable',
     );
     expect(
-      repayment.liabilityRepaymentCommands.single.paidFromAccountId,
+      repayment.posting.repaymentCommands.single.paidFromAccountId,
       'cash',
     );
   });
@@ -71,7 +72,7 @@ void main() {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
-      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+      const RepaymentFormArgs(liabilityAccountId: 'payable'),
     );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -88,16 +89,16 @@ void main() {
     );
 
     expect(outcome, isA<SubmitSuccess>());
-    final amount = repayment.liabilityRepaymentCommands.single.amount;
-    expect(amount.principal, Money.zero());
-    expect(amount.interest, const Money(minorUnits: 100));
+    final command = repayment.posting.repaymentCommands.single;
+    expect(command.principal, Money.zero());
+    expect(command.interest, const Money(minorUnits: 100));
   });
 
   test('repayment form rejects zero cash payment', () async {
     final repayment = _FakeRepaymentAppService();
     final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
-      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+      const RepaymentFormArgs(liabilityAccountId: 'payable'),
     );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -114,19 +115,19 @@ void main() {
     );
 
     expect(outcome, isA<SubmitFailure>());
-    expect(repayment.liabilityRepaymentCommands, isEmpty);
+    expect(repayment.posting.repaymentCommands, isEmpty);
   });
 
   test('repayment form maps business exception to failure', () async {
     final repayment = _FakeRepaymentAppService(
       exception: BusinessException(
-        credit.CreditErrorCode.repaymentExceedsAvailable,
-        message: '本金超过可还额度',
+        LedgerErrorCode.transactionInvalidCommand,
+        message: '账务拒绝了还款',
       ),
     );
     final container = _container(repaymentAppService: repayment);
     final provider = repaymentFormViewModelProvider(
-      const RepaymentFormArgs(liabilityAccountId: 'loan'),
+      const RepaymentFormArgs(liabilityAccountId: 'payable'),
     );
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -145,9 +146,132 @@ void main() {
     expect(outcome, isA<SubmitFailure>());
     expect(
       (outcome as SubmitFailure).error.code,
-      credit.CreditErrorCode.repaymentExceedsAvailable.code,
+      LedgerErrorCode.transactionInvalidCommand.code,
     );
   });
+
+  test('repayment form excludes credit accounts from payable entry', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(repaymentAppService: repayment);
+    final provider = repaymentFormViewModelProvider(
+      const RepaymentFormArgs(liabilityAccountId: 'card'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+
+    final state = await container.read(provider.future);
+
+    expect(state.status, RepaymentFormLoadStatus.notEditable);
+    expect(
+      state.liabilityAccounts.map((account) => account.id),
+      isNot(contains('card')),
+    );
+  });
+
+  test('repayment edit loads and submits through ledger', () async {
+    final repayment = _FakeRepaymentAppService();
+    final container = _container(
+      repaymentAppService: repayment,
+      transactionDetail: _repaymentDetail(),
+      editTagIds: const {'tag-trip'},
+    );
+    final provider = repaymentFormViewModelProvider(
+      const RepaymentFormArgs(editTransactionId: 'repayment-transaction'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+
+    final state = await container.read(provider.future);
+    expect(state.status, RepaymentFormLoadStatus.loaded);
+    expect(state.principalText, '50.00');
+    expect(state.interestText, '2.00');
+    expect(state.liabilityAccountId, 'payable');
+    expect(state.paidFromAccountId, 'cash');
+    expect(state.selectedTagIds, {'tag-trip'});
+
+    final viewModel = container.read(provider.notifier)
+      ..setPaidFromAccountId('company')
+      ..setOccurredAt(DateTime(2026, 10, 21, 10));
+    final outcome = await viewModel.submit(
+      principalText: '40',
+      interestText: '',
+      feeText: '1',
+      discountText: '',
+      noteText: '',
+    );
+
+    expect(outcome, isA<SubmitSuccess>());
+    final command = repayment.editing.repaymentCommands.single;
+    expect(command.transactionId, 'repayment-transaction');
+    expect(command.principal, const Money(minorUnits: 4000));
+    expect(command.paidFromAccountId, 'company');
+    expect(command.occurredAt, DateTime(2026, 10, 21, 10));
+    expect(command.tagIds, {'tag-trip'});
+    expect(command.interest, isA<PatchSet<Money?>>());
+    expect((command.interest as PatchSet<Money?>).value, isNull);
+    expect(command.fee, isA<PatchSet<Money?>>());
+    expect(
+      (command.fee as PatchSet<Money?>).value,
+      const Money(minorUnits: 100),
+    );
+    expect(command.note, isA<PatchClear<String?>>());
+  });
+
+  test('repayment edit failure preserves loaded form values', () async {
+    final repayment = _FakeRepaymentAppService(
+      editException: BusinessException(
+        LedgerErrorCode.transactionInvalidCommand,
+        message: '保存失败',
+      ),
+    );
+    final container = _container(
+      repaymentAppService: repayment,
+      transactionDetail: _repaymentDetail(),
+    );
+    final provider = repaymentFormViewModelProvider(
+      const RepaymentFormArgs(editTransactionId: 'repayment-transaction'),
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(
+          principalText: '99',
+          interestText: '',
+          feeText: '',
+          discountText: '',
+          noteText: '不应保存',
+        );
+
+    expect(outcome, isA<SubmitFailure>());
+    final state = container.read(provider).requireValue;
+    expect(state.principalText, '50.00');
+    expect(state.interestText, '2.00');
+    expect(state.noteText, '原备注');
+    expect(state.submitting, isFalse);
+  });
+
+  test(
+    'credit repayment transaction is not editable through payable form',
+    () async {
+      final repayment = _FakeRepaymentAppService();
+      final container = _container(
+        repaymentAppService: repayment,
+        transactionDetail: _repaymentDetail(liabilityAccountId: 'card'),
+      );
+      final provider = repaymentFormViewModelProvider(
+        const RepaymentFormArgs(editTransactionId: 'repayment-transaction'),
+      );
+      final subscription = container.listen(provider, (_, _) {});
+      addTearDown(subscription.close);
+
+      final state = await container.read(provider.future);
+
+      expect(state.status, RepaymentFormLoadStatus.notEditable);
+    },
+  );
 
   test(
     'installment prepayment submits through repayment app service',
@@ -805,10 +929,26 @@ ProviderContainer _container({
   _FakeAdvanceOrchestrationService? advanceOrchestration,
   credit_query.BillDetailReadModel? billDetail,
   credit_query.CreditAccountOverviewReadModel? creditOverview,
+  TransactionReadModel? transactionDetail,
+  Set<String> editTagIds = const {},
 }) {
   final accounts = [
     _account('cash', AccountType.asset),
-    _account('loan', AccountType.liability),
+    _account(
+      'payable',
+      AccountType.liability,
+      profileKey: AccountProfileKind.payable.key,
+    ),
+    _account(
+      'loan',
+      AccountType.liability,
+      profileKey: AccountProfileKind.loan.key,
+    ),
+    _account(
+      'card',
+      AccountType.liability,
+      profileKey: AccountProfileKind.credit.key,
+    ),
     _account('company', AccountType.asset),
   ];
   final repaymentServices = repaymentAppService ?? _FakeRepaymentAppService();
@@ -816,7 +956,11 @@ ProviderContainer _container({
     overrides: [
       accountsForSelectionPurposeProvider.overrideWith(
         (ref, purpose) => Stream.value(switch (purpose) {
-          AccountSelectionPurpose.repaymentTarget => [accounts[1]],
+          AccountSelectionPurpose.repaymentTarget => [
+            accounts[1],
+            accounts[2],
+            accounts[3],
+          ],
           AccountSelectionPurpose.repaymentSource => accounts,
           AccountSelectionPurpose.settlement => [accounts[0]],
           _ => const <Account>[],
@@ -828,10 +972,10 @@ ProviderContainer _container({
       ),
       tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
       transactionTagIdsProvider.overrideWith(
-        (ref, id) => Stream.value(const <String>{}),
+        (ref, id) => Stream.value(editTagIds),
       ),
       transactionDetailProvider.overrideWith(
-        (ref, id) => Stream.value(_detail()),
+        (ref, id) => Stream.value(transactionDetail ?? _detail()),
       ),
       billDetailProvider.overrideWith(
         (ref, id) async => billDetail ?? _billDetail(),
@@ -859,8 +1003,11 @@ ProviderContainer _container({
       accountRepaymentAppServiceProvider.overrideWithValue(
         repaymentServices.accounts,
       ),
-      liabilityRepaymentAppServiceProvider.overrideWithValue(
-        repaymentServices.liabilities,
+      transactionPostingAppServiceProvider.overrideWithValue(
+        repaymentServices.posting,
+      ),
+      transactionEditAppServiceProvider.overrideWithValue(
+        repaymentServices.editing,
       ),
       advanceOrchestrationAppServiceProvider.overrideWithValue(
         advanceOrchestration ?? _FakeAdvanceOrchestrationService(),
@@ -878,11 +1025,13 @@ class _FakeInstallmentContractAppService
 }
 
 class _FakeRepaymentAppService {
-  _FakeRepaymentAppService({this.exception, this.editView});
+  _FakeRepaymentAppService({this.exception, this.editException, this.editView});
 
   final Object? exception;
+  final Object? editException;
   final credit.BillRepaymentEditView? editView;
-  final liabilityRepaymentCommands = <credit.CreateLiabilityRepaymentCommand>[];
+  final _repaymentCommands = <CreateRepaymentCommand>[];
+  final _editRepaymentCommands = <EditRepaymentCommand>[];
   final prepaymentCommands =
       <credit.CreateContractPrepaymentRepaymentCommand>[];
   final billRepaymentCommands = <credit.CreateBillRepaymentCommand>[];
@@ -898,8 +1047,8 @@ class _FakeRepaymentAppService {
       _FakeInstallmentPrepaymentAppService(this);
   late final credit.AccountRepaymentAppService accounts =
       _FakeAccountRepaymentAppService(this);
-  late final credit.LiabilityRepaymentAppService liabilities =
-      _FakeLiabilityRepaymentAppService(this);
+  late final _FakePostingService posting = _FakePostingService(this);
+  late final _FakeEditService editing = _FakeEditService(this);
 }
 
 class _FakeBillRepaymentAppService implements credit.BillRepaymentAppService {
@@ -988,21 +1137,43 @@ class _FakeAccountRepaymentAppService
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeLiabilityRepaymentAppService
-    implements credit.LiabilityRepaymentAppService {
-  const _FakeLiabilityRepaymentAppService(this._test);
+class _FakePostingService implements TransactionPostingAppService {
+  const _FakePostingService(this._test);
 
   final _FakeRepaymentAppService _test;
+  List<CreateRepaymentCommand> get repaymentCommands =>
+      _test._repaymentCommands;
 
   @override
-  Future<credit_port.CreditLedgerPostedTransaction> createLiabilityRepayment(
-    credit.CreateLiabilityRepaymentCommand command,
+  Future<PostedTransactionResult> createRepayment(
+    CreateRepaymentCommand command,
   ) async {
-    _test.liabilityRepaymentCommands.add(command);
+    _test._repaymentCommands.add(command);
     final exception = _test.exception;
     if (exception != null) throw exception;
-    return const credit_port.CreditLedgerPostedTransaction(
-      transactionId: 'transaction',
+    return const PostedTransactionResult(transactionId: 'transaction');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeEditService implements TransactionEditAppService {
+  const _FakeEditService(this._test);
+
+  final _FakeRepaymentAppService _test;
+  List<EditRepaymentCommand> get repaymentCommands =>
+      _test._editRepaymentCommands;
+
+  @override
+  Future<PostedTransactionResult> editRepayment(
+    EditRepaymentCommand command,
+  ) async {
+    _test._editRepaymentCommands.add(command);
+    final exception = _test.editException;
+    if (exception != null) throw exception;
+    return const PostedTransactionResult(
+      transactionId: 'repayment-transaction',
     );
   }
 
@@ -1035,8 +1206,59 @@ class _FakeAdvanceOrchestrationService
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Account _account(String id, AccountType type) {
-  return Account(id: id, name: id, type: type, balance: Money.zero());
+Account _account(String id, AccountType type, {String? profileKey}) {
+  return Account(
+    id: id,
+    name: id,
+    type: type,
+    subtype: switch (type) {
+      AccountType.asset => AccountSubtype.fund,
+      AccountType.liability =>
+        profileKey == AccountProfileKind.loan.key
+            ? AccountSubtype.loan
+            : AccountSubtype.payable,
+      _ => null,
+    },
+    profileKey: profileKey,
+    balance: Money.zero(),
+  );
+}
+
+TransactionReadModel _repaymentDetail({String liabilityAccountId = 'payable'}) {
+  return TransactionReadModel(
+    id: 'repayment-transaction',
+    businessPurpose: BusinessPurpose.debtRepayment,
+    occurredAt: DateTime(2026, 10, 20, 9),
+    primaryAmount: const Money(minorUnits: 5200),
+    note: '原备注',
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+    lines: [
+      TransactionLine(
+        id: 'repayment-liability',
+        transactionId: 'repayment-transaction',
+        lineNo: 1,
+        role: TransactionRole.liability,
+        accountId: liabilityAccountId,
+        amount: const Money(minorUnits: 5000),
+      ),
+      TransactionLine(
+        id: 'repayment-interest',
+        transactionId: 'repayment-transaction',
+        lineNo: 2,
+        role: TransactionRole.interest,
+        amount: const Money(minorUnits: 200),
+      ),
+      TransactionLine(
+        id: 'repayment-settlement',
+        transactionId: 'repayment-transaction',
+        lineNo: 3,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: const Money(minorUnits: 5200),
+      ),
+    ],
+  );
 }
 
 credit_query.InstallmentContractReadModel _contract() {

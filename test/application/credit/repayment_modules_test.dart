@@ -1846,15 +1846,10 @@ class _Fixture {
       transactionRunner: runner,
       idGenerator: ids,
     );
-    liabilityService = credit.LiabilityRepaymentAppServiceImpl(
-      ledger: ledger,
-      installments: installments,
-    );
     service = _RepaymentServiceRouter(
       bills: billService,
       prepayments: prepaymentService,
       accounts: accountService,
-      liabilities: liabilityService,
       repayments: repayments,
     );
   }
@@ -1876,7 +1871,6 @@ class _Fixture {
   late final credit.BillRepaymentAppService billService;
   late final credit.InstallmentPrepaymentAppService prepaymentService;
   late final credit.AccountRepaymentAppService accountService;
-  late final credit.LiabilityRepaymentAppService liabilityService;
   late final _RepaymentServiceRouter service;
 
   Future<void> _recordDeletedTransactionInDatabase(String transactionId) {
@@ -2048,31 +2042,16 @@ class _RepaymentServiceRouter {
     required credit.BillRepaymentAppService bills,
     required credit.InstallmentPrepaymentAppService prepayments,
     required credit.AccountRepaymentAppService accounts,
-    required credit.LiabilityRepaymentAppService liabilities,
     required DriftRepaymentRepository repayments,
   }) : _bills = bills,
        _prepayments = prepayments,
        _accounts = accounts,
-       _liabilities = liabilities,
        _repayments = repayments;
 
   final credit.BillRepaymentAppService _bills;
   final credit.InstallmentPrepaymentAppService _prepayments;
   final credit.AccountRepaymentAppService _accounts;
-  final credit.LiabilityRepaymentAppService _liabilities;
   final DriftRepaymentRepository _repayments;
-
-  Future<CreditLedgerPostedTransaction> createLiabilityRepayment(
-    credit.CreateLiabilityRepaymentCommand command,
-  ) => _liabilities.createLiabilityRepayment(command);
-
-  Future<CreditLedgerPostedTransaction> editLiabilityRepayment(
-    credit.EditLiabilityRepaymentCommand command,
-  ) => _liabilities.editLiabilityRepayment(command);
-
-  Future<credit.LiabilityRepaymentEditViewLoadResult>
-  loadLiabilityRepaymentEditView(String transactionId) =>
-      _liabilities.loadLiabilityRepaymentEditView(transactionId);
 
   Future<credit.CreateRepaymentResult> createBillRepayment(
     credit.CreateBillRepaymentCommand command,

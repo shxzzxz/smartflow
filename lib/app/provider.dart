@@ -667,14 +667,6 @@ AccountRepaymentAppService accountRepaymentAppService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-LiabilityRepaymentAppService liabilityRepaymentAppService(Ref ref) {
-  return LiabilityRepaymentAppServiceImpl(
-    ledger: ref.watch(creditLedgerPortProvider),
-    installments: ref.watch(installmentRepositoryProvider),
-  );
-}
-
-@Riverpod(keepAlive: true)
 InstallmentContractAppService installmentContractAppService(Ref ref) {
   return InstallmentContractAppServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),

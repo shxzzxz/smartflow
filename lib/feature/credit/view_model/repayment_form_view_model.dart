@@ -2,18 +2,18 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
-import '../../../application/credit/credit_command_api.dart' as credit;
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart' as ledger_query;
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../provider/installment_query_providers.dart';
-import '../provider/credit_account_query_providers.dart';
 
 part 'repayment_form_view_model.g.dart';
 
@@ -23,10 +23,12 @@ final _logger = Logger('feature.credit.repayment_form');
 class RepaymentFormViewModel extends _$RepaymentFormViewModel {
   @override
   Future<RepaymentFormState> build(RepaymentFormArgs args) async {
-    final liabilityAccounts = await ref.watch(
-      accountsForSelectionPurposeProvider(
-        AccountSelectionPurpose.repaymentTarget,
-      ).future,
+    final liabilityAccounts = _payableAccounts(
+      await ref.watch(
+        accountsForSelectionPurposeProvider(
+          AccountSelectionPurpose.repaymentTarget,
+        ).future,
+      ),
     );
     final repaymentSourceAccounts = await ref.watch(
       accountsForSelectionPurposeProvider(
@@ -42,8 +44,18 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
 
     final editTransactionId = args.editTransactionId;
     if (editTransactionId == null) {
+      final requestedAccountId = args.liabilityAccountId;
+      if (requestedAccountId != null &&
+          !liabilityAccounts.any(
+            (account) => account.id == requestedAccountId,
+          )) {
+        return RepaymentFormState.notEditable(
+          liabilityAccounts: liabilityAccounts,
+          repaymentSourceAccounts: repaymentSourceAccounts,
+        );
+      }
       final liabilityAccountId = _selectedId(
-        args.liabilityAccountId,
+        requestedAccountId,
         liabilityAccounts,
       );
       final repaymentAccounts = _repaymentAccounts(
@@ -59,31 +71,33 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
       );
     }
 
-    final editResult = await ref
-        .read(liabilityRepaymentAppServiceProvider)
-        .loadLiabilityRepaymentEditView(editTransactionId);
-    switch (editResult.status) {
-      case credit.LiabilityRepaymentEditViewLoadStatus.notFound:
-        return RepaymentFormState.notFound(
-          liabilityAccounts: liabilityAccounts,
-          repaymentSourceAccounts: repaymentSourceAccounts,
-        );
-      case credit.LiabilityRepaymentEditViewLoadStatus.notEditable:
-        return RepaymentFormState.notEditable(
-          liabilityAccounts: liabilityAccounts,
-          repaymentSourceAccounts: repaymentSourceAccounts,
-        );
-      case credit.LiabilityRepaymentEditViewLoadStatus.loaded:
-        break;
+    final detail = await ref.watch(
+      transactionDetailProvider(editTransactionId).future,
+    );
+    if (detail == null) {
+      return RepaymentFormState.notFound(
+        liabilityAccounts: liabilityAccounts,
+        repaymentSourceAccounts: repaymentSourceAccounts,
+      );
     }
-    final view = editResult.view!;
+    final view = _repaymentEditView(
+      detail,
+      liabilityAccounts: liabilityAccounts,
+      repaymentSourceAccounts: repaymentSourceAccounts,
+    );
+    if (view == null) {
+      return RepaymentFormState.notEditable(
+        liabilityAccounts: liabilityAccounts,
+        repaymentSourceAccounts: repaymentSourceAccounts,
+      );
+    }
     return RepaymentFormState.loaded(
       liabilityAccounts: liabilityAccounts,
       repaymentSourceAccounts: repaymentSourceAccounts,
-      principalText: view.amount.principal.format(),
-      interestText: _positiveText(view.amount.interest),
-      feeText: _positiveText(view.amount.fee),
-      discountText: _positiveText(view.amount.discount),
+      principalText: view.principal.format(),
+      interestText: _positiveText(view.interest),
+      feeText: _positiveText(view.fee),
+      discountText: _positiveText(view.discount),
       noteText: view.note ?? '',
       liabilityAccountId: view.liabilityAccountId,
       paidFromAccountId: view.paidFromAccountId,
@@ -184,41 +198,51 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
         _logger,
         'Liability repayment form submit',
         () async {
-          final service = ref.read(liabilityRepaymentAppServiceProvider);
           final editTransactionId = args.editTransactionId;
           final note = trimToNull(noteText);
-          final amount = credit.RepaymentAmountDto(
-            principal: principal,
-            interest: interest,
-            fee: fee,
-            discount: discount,
-          );
-          final result = editTransactionId == null
-              ? await service.createLiabilityRepayment(
-                  credit.CreateLiabilityRepaymentCommand(
-                    liabilityAccountId: liabilityAccountId,
-                    paidFromAccountId: paidFromAccountId,
-                    amount: amount,
-                    occurredAt: current.occurredAt,
-                    note: note,
-                    tagIds: current.selectedTagIds,
-                  ),
-                )
-              : await service.editLiabilityRepayment(
-                  credit.EditLiabilityRepaymentCommand(
-                    transactionId: editTransactionId,
-                    liabilityAccountId: liabilityAccountId,
-                    paidFromAccountId: paidFromAccountId,
-                    amount: amount,
-                    occurredAt: current.occurredAt,
-                    note: note,
-                    tagIds: current.selectedTagIds,
-                  ),
-                );
+          final resultTransactionId = editTransactionId == null
+              ? (await ref
+                        .read(transactionPostingAppServiceProvider)
+                        .createRepayment(
+                          CreateRepaymentCommand(
+                            principal: principal,
+                            interest: _positiveOrNull(interest),
+                            fee: _positiveOrNull(fee),
+                            discount: _positiveOrNull(discount),
+                            liabilityAccountId: liabilityAccountId,
+                            paidFromAccountId: paidFromAccountId,
+                            occurredAt: current.occurredAt,
+                            note: note,
+                            tagIds: current.selectedTagIds,
+                          ),
+                        ))
+                    .transactionId
+              : (await ref
+                        .read(transactionEditAppServiceProvider)
+                        .editRepayment(
+                          EditRepaymentCommand(
+                            transactionId: editTransactionId,
+                            principal: principal,
+                            interest: Patch<Money?>.set(
+                              _positiveOrNull(interest),
+                            ),
+                            fee: Patch<Money?>.set(_positiveOrNull(fee)),
+                            discount: Patch<Money?>.set(
+                              _positiveOrNull(discount),
+                            ),
+                            liabilityAccountId: liabilityAccountId,
+                            paidFromAccountId: paidFromAccountId,
+                            occurredAt: current.occurredAt,
+                            note: note == null
+                                ? const Patch<String?>.clear()
+                                : Patch<String?>.set(note),
+                            tagIds: current.selectedTagIds,
+                          ),
+                        ))
+                    .transactionId;
           _invalidateAfterSubmit(
-            liabilityAccountId: liabilityAccountId,
             transactionId: editTransactionId,
-            newTransactionId: result.transactionId,
+            newTransactionId: resultTransactionId,
           );
         },
       );
@@ -228,7 +252,6 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
   }
 
   void _invalidateAfterSubmit({
-    required String liabilityAccountId,
     required String? transactionId,
     required String newTransactionId,
   }) {
@@ -243,8 +266,6 @@ class RepaymentFormViewModel extends _$RepaymentFormViewModel {
         AccountSelectionPurpose.repaymentSource,
       ),
     );
-    ref.invalidate(installmentContractsByAccountProvider(liabilityAccountId));
-    ref.invalidate(creditAccountOverviewProvider(liabilityAccountId));
     if (transactionId != null) {
       ref.invalidate(transactionDetailProvider(transactionId));
     }
@@ -430,6 +451,53 @@ List<Account> _repaymentAccounts(List<Account> accounts, String? liabilityId) {
   return accounts.where((account) => account.id != liabilityId).toList();
 }
 
+List<Account> _payableAccounts(List<Account> accounts) {
+  return List.unmodifiable(
+    accounts.where(
+      (account) => account.profileKey == AccountProfileKind.payable.key,
+    ),
+  );
+}
+
+_RepaymentEditView? _repaymentEditView(
+  ledger_query.TransactionReadModel detail, {
+  required List<Account> liabilityAccounts,
+  required List<Account> repaymentSourceAccounts,
+}) {
+  if (detail.businessPurpose != ledger_query.BusinessPurpose.debtRepayment ||
+      detail.ownership != null) {
+    return null;
+  }
+  final liabilityLines = detail
+      .linesOf(ledger_query.TransactionRole.liability)
+      .toList();
+  final settlementLines = detail
+      .linesOf(ledger_query.TransactionRole.settlementOut)
+      .toList();
+  if (liabilityLines.length != 1 || settlementLines.length != 1) return null;
+
+  final liabilityAccountId = liabilityLines.single.accountId;
+  final paidFromAccountId = settlementLines.single.accountId;
+  if (liabilityAccountId == null || paidFromAccountId == null) return null;
+  if (!liabilityAccounts.any((account) => account.id == liabilityAccountId) ||
+      !repaymentSourceAccounts.any(
+        (account) => account.id == paidFromAccountId,
+      )) {
+    return null;
+  }
+
+  return _RepaymentEditView(
+    principal: detail.amountOf(ledger_query.TransactionRole.liability),
+    interest: detail.amountOf(ledger_query.TransactionRole.interest),
+    fee: detail.amountOf(ledger_query.TransactionRole.fee),
+    discount: detail.amountOf(ledger_query.TransactionRole.discount),
+    liabilityAccountId: liabilityAccountId,
+    paidFromAccountId: paidFromAccountId,
+    occurredAt: detail.occurredAt,
+    note: detail.note,
+  );
+}
+
 String? _selectedId(String? id, List<Account> accounts) {
   if (id != null && accounts.any((account) => account.id == id)) return id;
   return accounts.isEmpty ? null : accounts.first.id;
@@ -457,6 +525,32 @@ Money? _parseOptionalNonNegativeMoney(String value) {
 
 String _positiveText(Money value) {
   return value.minorUnits > 0 ? value.format() : '';
+}
+
+Money? _positiveOrNull(Money value) {
+  return value.minorUnits > 0 ? value : null;
+}
+
+class _RepaymentEditView {
+  const _RepaymentEditView({
+    required this.principal,
+    required this.interest,
+    required this.fee,
+    required this.discount,
+    required this.liabilityAccountId,
+    required this.paidFromAccountId,
+    required this.occurredAt,
+    required this.note,
+  });
+
+  final Money principal;
+  final Money interest;
+  final Money fee;
+  final Money discount;
+  final String liabilityAccountId;
+  final String paidFromAccountId;
+  final DateTime occurredAt;
+  final String? note;
 }
 
 const Object _sentinel = Object();

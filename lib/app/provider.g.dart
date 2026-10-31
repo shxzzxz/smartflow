@@ -3355,55 +3355,6 @@ final class AccountRepaymentAppServiceProvider
 String _$accountRepaymentAppServiceHash() =>
     r'fe135505918162f32e099292683c88b2f9e2d679';
 
-@ProviderFor(liabilityRepaymentAppService)
-final liabilityRepaymentAppServiceProvider =
-    LiabilityRepaymentAppServiceProvider._();
-
-final class LiabilityRepaymentAppServiceProvider
-    extends
-        $FunctionalProvider<
-          LiabilityRepaymentAppService,
-          LiabilityRepaymentAppService,
-          LiabilityRepaymentAppService
-        >
-    with $Provider<LiabilityRepaymentAppService> {
-  LiabilityRepaymentAppServiceProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'liabilityRepaymentAppServiceProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$liabilityRepaymentAppServiceHash();
-
-  @$internal
-  @override
-  $ProviderElement<LiabilityRepaymentAppService> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  LiabilityRepaymentAppService create(Ref ref) {
-    return liabilityRepaymentAppService(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(LiabilityRepaymentAppService value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<LiabilityRepaymentAppService>(value),
-    );
-  }
-}
-
-String _$liabilityRepaymentAppServiceHash() =>
-    r'4b28354a3b255c2f26d8dc8c707a75ba75b698eb';
-
 @ProviderFor(installmentContractAppService)
 final installmentContractAppServiceProvider =
     InstallmentContractAppServiceProvider._();

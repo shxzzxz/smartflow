@@ -54,6 +54,8 @@ class _FakeDeleteCreditRepaymentCommand extends Fake
 class _FakeEditCreditRepaymentTransactionCommand extends Fake
     implements EditCreditRepaymentTransactionCommand {}
 
+class _FakeEditRepaymentCommand extends Fake implements EditRepaymentCommand {}
+
 void main() {
   late _MockTransactionEditAppService editService;
   late _MockTransactionUpdateAppService updateService;
@@ -72,6 +74,7 @@ void main() {
     registerFallbackValue(_FakeEditAdvanceRefundWorkflowCommand());
     registerFallbackValue(_FakeDeleteCreditRepaymentCommand());
     registerFallbackValue(_FakeEditCreditRepaymentTransactionCommand());
+    registerFallbackValue(_FakeEditRepaymentCommand());
   });
 
   setUp(() {
@@ -179,6 +182,39 @@ void main() {
       verify(() => advanceAppService.editRefund(any())).called(1);
     },
   );
+
+  test('plain debt repayment routes account edits through ledger', () async {
+    final transaction = TransactionReadModel(
+      id: 'repayment-transaction',
+      businessPurpose: BusinessPurpose.debtRepayment,
+      occurredAt: DateTime(2026, 10, 23),
+      primaryAmount: const Money(minorUnits: 10000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+    );
+    when(() => editService.editRepayment(any())).thenAnswer(
+      (_) async =>
+          const PostedTransactionResult(transactionId: 'repayment-transaction'),
+    );
+    final dispatcher = createTransactionDetailActionDispatcher(
+      transaction: transaction,
+      editService: editService,
+      updateService: updateService,
+      installmentAppService: installmentAppService,
+      disbursementInstallmentAppService: disbursementInstallmentAppService,
+      consumptionInstallmentAppService: consumptionInstallmentAppService,
+      billRepaymentAppService: billRepaymentAppService,
+      installmentPrepaymentAppService: installmentPrepaymentAppService,
+      accountRepaymentAppService: accountRepaymentAppService,
+      repaymentOwnerQuery: repaymentOwnerQuery,
+    );
+
+    expect(
+      await dispatcher.changeSettlementAccount('cash'),
+      isA<UiActionSuccess<void>>(),
+    );
+    verify(() => editService.editRepayment(any())).called(1);
+  });
 
   test('bill repayment ownership routes delete to the bill module', () async {
     when(

@@ -37,7 +37,6 @@ export 'installment/command/installment_status_repair_app_service.dart';
 export 'installment/command/contract_status_validation_result.dart';
 export 'installment_prepayment/command/installment_prepayment_app_service.dart';
 export 'repayment/command/repayment_command.dart';
-export 'repayment/command/liability_repayment_app_service.dart';
 export 'repayment/repayment_amount_dto.dart';
 export 'reference_rate/reference_rate_app_service.dart'
     show ReferenceRateAppService, ReferenceRateHistory;
