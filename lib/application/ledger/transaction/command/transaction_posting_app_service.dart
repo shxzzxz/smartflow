@@ -213,8 +213,8 @@ class TransactionPostingAppServiceImpl
       await _ledgerPostingService.postTransfer(
         TransferInstruction(
           amount: command.amount,
-          fromAccountId: command.fromAccountId,
-          toAccountId: command.toAccountId,
+          outgoingAllocations: command.outgoingAllocations,
+          incomingAllocations: command.incomingAllocations,
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           feeAmount: command.feeAmount,

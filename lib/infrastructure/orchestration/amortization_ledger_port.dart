@@ -36,15 +36,15 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   Future<void> validatePlanAccounts({
     required AmortizationKind kind,
     required String deferralAccountId,
-    required String categoryAccountId,
+    required Iterable<String> categoryAccountIds,
   }) async {
+    final categoryIds = categoryAccountIds.toSet();
     final accounts = await _accounts.findByIds({
       deferralAccountId,
-      categoryAccountId,
+      ...categoryIds,
     });
     final byId = {for (final account in accounts) account.id: account};
     final deferral = byId[deferralAccountId];
-    final category = byId[categoryAccountId];
     final expectedSubtype = switch (kind) {
       AmortizationKind.prepaidExpense => AccountSubtype.prepaidExpense,
       AmortizationKind.deferredIncome => AccountSubtype.deferredIncome,
@@ -61,21 +61,24 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
         message: 'Deferral account does not match the amortization kind.',
       );
     }
-    if (category == null ||
-        category.archivedAt != null ||
-        category.type != expectedCategoryType) {
-      throw BusinessException(
-        AmortizationErrorCode.invalidCommand,
-        message: 'Recognition category does not match the amortization kind.',
-      );
+    for (final categoryAccountId in categoryIds) {
+      final category = byId[categoryAccountId];
+      if (category == null ||
+          category.archivedAt != null ||
+          category.type != expectedCategoryType) {
+        throw BusinessException(
+          AmortizationErrorCode.invalidCommand,
+          message: 'Recognition category does not match the amortization kind.',
+        );
+      }
     }
   }
 
   @override
   Future<String> postTransfer({
     required Money amount,
-    required String fromAccountId,
-    required String toAccountId,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
     required DateTime occurredAt,
     DateTime? postedAt,
     Money? feeAmount,
@@ -90,8 +93,8 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
     final result = await _posting.createTransfer(
       CreateTransferCommand(
         amount: amount,
-        fromAccountId: fromAccountId,
-        toAccountId: toAccountId,
+        outgoingAllocations: outgoingAllocations,
+        incomingAllocations: incomingAllocations,
         occurredAt: occurredAt,
         postedAt: postedAt,
         feeAmount: feeAmount,

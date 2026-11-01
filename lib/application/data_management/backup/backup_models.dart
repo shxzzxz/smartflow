@@ -37,6 +37,7 @@ class BackupTables {
     'advance_cases',
     'amortization_plans',
     'amortization_entries',
+    'amortization_entry_allocations',
   ];
 
   static String sectionFor(String table) {
@@ -82,7 +83,8 @@ class BackupTables {
     }
     if (table == 'advance_cases' ||
         table == 'amortization_plans' ||
-        table == 'amortization_entries') {
+        table == 'amortization_entries' ||
+        table == 'amortization_entry_allocations') {
       return 'orchestration';
     }
     throw ArgumentError('Unknown backup table: $table');
@@ -214,7 +216,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 5;
+  static const currentBackupSchemaVersion = 6;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;

@@ -106,7 +106,7 @@ void main() {
         note: 'advance',
         sourceKind: SourceKind.import,
       ),
-      TransferInstruction(
+      TransferInstruction.simple(
         amount: const Money(minorUnits: 4500),
         fromAccountId: 'cash',
         toAccountId: 'bank',
@@ -264,7 +264,7 @@ void main() {
         ),
       ),
       engine.createTransfer(
-        TransferInstruction(
+        TransferInstruction.simple(
           amount: const Money(minorUnits: 1000),
           fromAccountId: 'cash',
           toAccountId: 'bank',

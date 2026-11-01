@@ -1,4 +1,5 @@
 import '../../../core/money/money.dart';
+import '../../ledger/valobj/account_amount_allocation.dart';
 
 class AmortizationEntry {
   const AmortizationEntry({
@@ -7,6 +8,7 @@ class AmortizationEntry {
     required this.sequenceNo,
     required this.dueAt,
     required this.amount,
+    this.categoryAllocations = const [],
     this.transactionId,
     this.canceledAt,
   });
@@ -16,6 +18,7 @@ class AmortizationEntry {
   final int sequenceNo;
   final DateTime dueAt;
   final Money amount;
+  final List<AccountAmountAllocation> categoryAllocations;
   final String? transactionId;
   final DateTime? canceledAt;
 
@@ -30,6 +33,7 @@ class AmortizationEntry {
       sequenceNo: sequenceNo,
       dueAt: dueAt,
       amount: amount,
+      categoryAllocations: categoryAllocations,
       transactionId: transactionId,
       canceledAt: canceledAt,
     );
@@ -42,6 +46,7 @@ class AmortizationEntry {
       sequenceNo: sequenceNo,
       dueAt: dueAt,
       amount: amount,
+      categoryAllocations: categoryAllocations,
       canceledAt: canceledAt,
     );
   }

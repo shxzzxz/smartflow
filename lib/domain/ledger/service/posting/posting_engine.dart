@@ -420,15 +420,35 @@ class PostingEngine {
         message: 'Transfer amount must be positive.',
       );
     }
-    if (instruction.fromAccountId == instruction.toAccountId) {
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.outgoingAllocations,
+    );
+    _validateAllocations(
+      total: instruction.amount,
+      allocations: instruction.incomingAllocations,
+    );
+    final outgoingAccountIds = {
+      for (final allocation in instruction.outgoingAllocations)
+        allocation.accountId,
+    };
+    final incomingAccountIds = {
+      for (final allocation in instruction.incomingAllocations)
+        allocation.accountId,
+    };
+    if (outgoingAccountIds.intersection(incomingAccountIds).isNotEmpty) {
       return LedgerViolationReason.transferAccountsMustDiffer.throwException(
-        message: 'Transfer source and target account must differ.',
+        message: 'Transfer source and target accounts must not overlap.',
       );
     }
     if (fee != null && fee.minorUnits < 0) {
       return LedgerViolationReason.transferFeeNegative.throwException(
         message: 'Transfer fee cannot be negative.',
       );
+    }
+    if (hasFee && instruction.outgoingAllocations.length != 1) {
+      return LedgerViolationReason.transferFeeRequiresSingleOutgoingAccount
+          .throwException();
     }
     if (hasFee && systemAccountIds[SystemKey.feeExpense] == null) {
       return LedgerViolationReason.transferFeeAccountRequired.throwException(
@@ -437,6 +457,7 @@ class PostingEngine {
     }
 
     final transactionId = _idGenerator.newId();
+    var lineNo = 1;
     return _posted(
       Transaction(
         id: transactionId,
@@ -451,24 +472,26 @@ class PostingEngine {
         ownership: instruction.ownership,
         sourceKind: instruction.sourceKind,
         lines: [
-          _line(
-            transactionId: transactionId,
-            lineNo: 1,
-            role: TransactionRole.settlementOut,
-            accountId: instruction.fromAccountId,
-            amount: instruction.amount,
-          ),
-          _line(
-            transactionId: transactionId,
-            lineNo: 2,
-            role: TransactionRole.settlementIn,
-            accountId: instruction.toAccountId,
-            amount: instruction.amount,
-          ),
+          for (final allocation in instruction.outgoingAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementOut,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
+          for (final allocation in instruction.incomingAllocations)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo++,
+              role: TransactionRole.settlementIn,
+              accountId: allocation.accountId,
+              amount: allocation.amount,
+            ),
           if (hasFee)
             _line(
               transactionId: transactionId,
-              lineNo: 3,
+              lineNo: lineNo,
               role: TransactionRole.fee,
               amount: fee,
             ),

@@ -260,7 +260,7 @@ void main() {
         ownerType: 'orchestration.amortization',
         ownerId: 'plan',
       );
-      final current = TransferInstruction(
+      final current = TransferInstruction.simple(
         amount: Money.parse('12.30'),
         fromAccountId: 'cash',
         toAccountId: 'bank',
@@ -286,6 +286,94 @@ void main() {
 
       final unchanged = const TransferEditPatch().applyTo(current);
       expect(unchanged.feeAmount, current.feeAmount);
+    });
+
+    test('creates a balanced transfer from multiple accounts', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+      final transaction = engine.createTransfer(
+        TransferInstruction(
+          amount: const Money(minorUnits: 30000),
+          outgoingAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 10000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'bank',
+              amount: Money(minorUnits: 20000),
+            ),
+          ],
+          incomingAllocations: singleAllocation(
+            accountId: 'prepaid',
+            amount: const Money(minorUnits: 30000),
+          ),
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+      );
+
+      expect(transaction.linesOf(TransactionRole.settlementOut), hasLength(2));
+      expect(transaction.linesOf(TransactionRole.settlementIn), hasLength(1));
+      expect(entriesAreBalanced(transaction.entries), isTrue);
+      expect(
+        transaction.entries
+            .where((entry) => entry.accountId == 'prepaid')
+            .single
+            .direction,
+        EntryDirection.debit,
+      );
+      expect(
+        transaction.entries
+            .where(
+              (entry) => entry.accountId == 'cash' || entry.accountId == 'bank',
+            )
+            .map((entry) => entry.direction),
+        everyElement(EntryDirection.credit),
+      );
+
+      final resolved = const DefaultPostingInstructionResolver().resolve(
+        transaction,
+      );
+      expect(resolved, isA<TransferInstruction>());
+      expect(
+        (resolved as TransferInstruction).outgoingAllocations.map(
+          (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+        ),
+        [('cash', 10000), ('bank', 20000)],
+      );
+    });
+
+    test('rejects a fee when multiple accounts fund one transfer', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+
+      expect(
+        () => engine.createTransfer(
+          TransferInstruction(
+            amount: const Money(minorUnits: 30000),
+            outgoingAllocations: const [
+              AccountAmountAllocation(
+                accountId: 'cash',
+                amount: Money(minorUnits: 10000),
+              ),
+              AccountAmountAllocation(
+                accountId: 'bank',
+                amount: Money(minorUnits: 20000),
+              ),
+            ],
+            incomingAllocations: singleAllocation(
+              accountId: 'prepaid',
+              amount: const Money(minorUnits: 30000),
+            ),
+            feeAmount: const Money(minorUnits: 500),
+            occurredAt: DateTime(2026, 5, 1),
+          ),
+          systemAccountIds: const {SystemKey.feeExpense: 'fee-expense'},
+        ),
+        throwsA(isA<BusinessException>()),
+      );
     });
 
     test('repayment edit patch preserves posting time', () {

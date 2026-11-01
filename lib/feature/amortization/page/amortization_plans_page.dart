@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../domain/ledger/entity/account.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../provider/amortization_providers.dart';
@@ -68,8 +69,7 @@ class AmortizationPlansPage extends ConsumerWidget {
                       plan: plan,
                       deferralName:
                           accounts[plan.deferralAccountId]?.name ?? '递延账户',
-                      categoryName:
-                          accounts[plan.categoryAccountId]?.name ?? '分类',
+                      categoryName: _categoryName(plan, accounts),
                       onTap: () => context.push('/amortizations/${plan.id}'),
                     );
                   },
@@ -91,6 +91,13 @@ class AmortizationPlansPage extends ConsumerWidget {
         : '&deferralAccountId=$deferralAccountId';
     context.push('/amortizations/new?source=list$kind$account');
   }
+}
+
+String _categoryName(AmortizationPlan plan, Map<String, Account> accounts) {
+  final allocations = plan.recognitionAllocations;
+  if (allocations.length > 1) return '多分类';
+  if (allocations.isEmpty) return '分类';
+  return accounts[allocations.single.accountId]?.name ?? '分类';
 }
 
 class _PlanCard extends StatelessWidget {

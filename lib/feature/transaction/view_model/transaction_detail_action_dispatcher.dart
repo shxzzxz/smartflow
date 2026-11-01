@@ -483,8 +483,18 @@ final class _DefaultActionDispatcher
           () => editService.editTransfer(
             EditTransferCommand(
               transactionId: transaction.id,
-              fromAccountId: currentAccountId == from ? accountId : null,
-              toAccountId: currentAccountId == to ? accountId : null,
+              outgoingAllocations: currentAccountId == from
+                  ? singleAllocation(
+                      accountId: accountId,
+                      amount: transaction.primaryAmount,
+                    )
+                  : null,
+              incomingAllocations: currentAccountId == to
+                  ? singleAllocation(
+                      accountId: accountId,
+                      amount: transaction.primaryAmount,
+                    )
+                  : null,
             ),
           ),
         );

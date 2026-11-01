@@ -29,6 +29,12 @@ void main() {
               'ledger.prepaidExpense',
             ),
             _account(
+              'bank',
+              AccountType.asset,
+              AccountSubtype.fund,
+              'ledger.fund',
+            ),
+            _account(
               'deferred',
               AccountType.liability,
               AccountSubtype.deferredIncome,
@@ -40,6 +46,10 @@ void main() {
           (ref) => Stream.value([
             CategoryNode(
               account: _account('rent', AccountType.expense, null, null),
+              children: const [],
+            ),
+            CategoryNode(
+              account: _account('utilities', AccountType.expense, null, null),
               children: const [],
             ),
           ]),
@@ -108,9 +118,31 @@ void main() {
     addTearDown(subscription.close);
     await pumpEventQueue();
     final state = container.read(provider).requireValue;
-    expect(state.fundingAccountId, 'fund');
+    expect(state.fundingAllocations.single.accountId, 'fund');
     expect(state.deferralAccountId, 'prepaid');
-    expect(state.categoryAccountId, 'rent');
+    expect(state.recognitionAllocations.single.accountId, 'rent');
+
+    container.read(provider.notifier)
+      ..setFundingAllocations(const [
+        AccountAmountAllocation(
+          accountId: 'fund',
+          amount: Money(minorUnits: 100000),
+        ),
+        AccountAmountAllocation(
+          accountId: 'bank',
+          amount: Money(minorUnits: 200000),
+        ),
+      ])
+      ..setRecognitionAllocations(const [
+        AccountAmountAllocation(
+          accountId: 'rent',
+          amount: Money(minorUnits: 200000),
+        ),
+        AccountAmountAllocation(
+          accountId: 'utilities',
+          amount: Money(minorUnits: 100000),
+        ),
+      ]);
 
     final outcome = await container
         .read(provider.notifier)
@@ -129,6 +161,18 @@ void main() {
     expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
     expect(command.recognitionCount, 3);
     expect(command.note, '季度房租');
+    expect(
+      command.fundingAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('fund', 100000), ('bank', 200000)],
+    );
+    expect(
+      command.recognitionAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('rent', 200000), ('utilities', 100000)],
+    );
   });
 }
 

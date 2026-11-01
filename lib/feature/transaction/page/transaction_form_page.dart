@@ -38,7 +38,7 @@ import '../../credit/view_model/installment_terms_draft.dart';
 import '../../credit/view_model/loan_configuration_view_model.dart';
 import '../presentation/transaction_form_presentation.dart';
 import '../view_model/transaction_form_view_model.dart';
-import '../widget/transaction_allocation_fields.dart';
+import '../../../widget/business/transaction/transaction_allocation_fields.dart';
 
 enum TransactionFormInitialMode {
   expense,
@@ -418,8 +418,7 @@ class _TransactionFormContentState
                           formState.entryMode == TransactionEntryMode.allocated,
                       showEntryMode:
                           (formState.mode == TransactionFormMode.expense ||
-                              formState.mode == TransactionFormMode.income) &&
-                          !amortization,
+                          formState.mode == TransactionFormMode.income),
                       counterpartyName: _selectedCounterpartyName(formState),
                       tagNames: _selectedTagNames(formState),
                       onSelectCounterparty: _selectCounterparty,

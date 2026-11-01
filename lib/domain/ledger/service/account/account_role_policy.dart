@@ -60,18 +60,15 @@ class AccountRoleContext {
   }
 
   factory AccountRoleContext.transfer({
-    required String fromAccountId,
-    required String toAccountId,
+    required Iterable<String> fromAccountIds,
+    required Iterable<String> toAccountIds,
   }) {
     return AccountRoleContext([
-      AccountRoleRequirement(
-        accountId: fromAccountId,
-        requiredUsage: AccountUsage.transfer,
-      ),
-      AccountRoleRequirement(
-        accountId: toAccountId,
-        requiredUsage: AccountUsage.transfer,
-      ),
+      for (final accountId in {...fromAccountIds, ...toAccountIds})
+        AccountRoleRequirement(
+          accountId: accountId,
+          requiredUsage: AccountUsage.transfer,
+        ),
     ]);
   }
 

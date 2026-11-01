@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
-  test('fresh databases create the current v53 schema', () async {
+  test('fresh databases create the current v54 schema', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.read<int>('user_version'), 53);
+    expect(version.read<int>('user_version'), 54);
     expect(
       await db
           .customSelect(
@@ -25,10 +25,11 @@ void main() {
       await db
           .customSelect(
             "SELECT name FROM sqlite_master WHERE type = 'table' "
-            "AND name IN ('amortization_plans', 'amortization_entries')",
+            "AND name IN ('amortization_plans', 'amortization_entries', "
+            "'amortization_entry_allocations')",
           )
           .get(),
-      hasLength(2),
+      hasLength(3),
     );
 
     final accountColumns = await db

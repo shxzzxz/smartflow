@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/orchestration/orchestration_command_api.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -15,6 +16,7 @@ import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../widget/business/account/account_picker_sheet.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
+import '../../../widget/business/transaction/transaction_allocation_fields.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/amortization_form_view_model.dart';
@@ -50,16 +52,22 @@ class _AmortizationFormPageState extends ConsumerState<AmortizationFormPage> {
     _countController = TextEditingController(text: '1');
     _feeController = TextEditingController();
     _noteController = TextEditingController();
+    _amountController.addListener(_onAmountChanged);
   }
 
   @override
   void dispose() {
+    _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
     _intervalController.dispose();
     _countController.dispose();
     _feeController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  void _onAmountChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -133,21 +141,28 @@ class _AmortizationFormPageState extends ConsumerState<AmortizationFormPage> {
                           requiredIndicator: true,
                           validator: validatePositiveMoneyText,
                         ),
-                        AccountPlainFormRow(
-                          label: state.kind == AmortizationKind.prepaidExpense
+                        TransactionInlineAllocationColumn(
+                          key: const ValueKey(
+                            'amortization-funding-allocations',
+                          ),
+                          title: state.kind == AmortizationKind.prepaidExpense
                               ? '付款账户'
                               : '收款账户',
-                          account: findAccountById(
-                            state.fundingAccountId,
+                          allocations: state.fundingAllocations,
+                          options: transactionAllocationOptionsForAccounts(
                             state.fundAccounts,
                           ),
-                          placeholder: '请选择资金账户',
-                          onTap: (onSelected) => _pickAccount(
-                            title: '选择资金账户',
-                            accountList: state.fundAccounts,
-                            selectedId: state.fundingAccountId,
-                            onSelected: notifier.setFundingAccountId,
-                          ),
+                          addLabel: '添加账户',
+                          expectedTotal: _amountTotal(),
+                          onSelectOption:
+                              (context, selectedAccountId, options) =>
+                                  selectTransactionAllocationAccount(
+                                    context,
+                                    accounts: state.fundAccounts,
+                                    selectedAccountId: selectedAccountId,
+                                    options: options,
+                                  ),
+                          onChanged: notifier.setFundingAllocations,
                         ),
                         AccountPlainFormRow(
                           label: '递延账户',
@@ -189,18 +204,26 @@ class _AmortizationFormPageState extends ConsumerState<AmortizationFormPage> {
                     AppFormSection(
                       title: '确认',
                       children: [
-                        AppPlainSelectFormRow<String>(
-                          label: '确认分类',
-                          value: state.categoryAccountId,
-                          valueText: _categoryName(
+                        TransactionInlineAllocationColumn(
+                          key: const ValueKey(
+                            'amortization-recognition-allocations',
+                          ),
+                          title: '确认分类',
+                          allocations: state.recognitionAllocations,
+                          options: transactionAllocationOptionsForAccounts(
                             state.categoryAccounts,
-                            state.categoryAccountId,
                           ),
-                          placeholder: '请选择收入或支出分类',
-                          onTap: (onSelected) => _pickCategory(
-                            accounts: state.categoryAccounts,
-                            onSelected: notifier.setCategoryAccountId,
-                          ),
+                          addLabel: '添加分类',
+                          expectedTotal: _amountTotal(),
+                          onSelectOption:
+                              (context, selectedAccountId, options) =>
+                                  selectTransactionAllocationAccount(
+                                    context,
+                                    accounts: state.categoryAccounts,
+                                    selectedAccountId: selectedAccountId,
+                                    options: options,
+                                  ),
+                          onChanged: notifier.setRecognitionAllocations,
                         ),
                         DateTimePlainFormRow(
                           label: '首期日期',
@@ -313,30 +336,9 @@ class _AmortizationFormPageState extends ConsumerState<AmortizationFormPage> {
     if (selected != null) onSelected(selected);
   }
 
-  Future<void> _pickCategory({
-    required List<Account> accounts,
-    required ValueChanged<String?> onSelected,
-  }) async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            for (final account in accounts)
-              ListTile(
-                title: Text(account.name),
-                trailing: account.parentId == null
-                    ? null
-                    : const Icon(RemixIcons.arrow_right_s_line),
-                onTap: () => Navigator.of(sheetContext).pop(account.id),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (selected != null) onSelected(selected);
+  Money? _amountTotal() {
+    final amount = Money.tryParse(_amountController.text);
+    return amount != null && amount.minorUnits > 0 ? amount : null;
   }
 
   Future<void> _pickDateTime({
@@ -437,14 +439,6 @@ class _StatusScaffold extends StatelessWidget {
 String _formatDate(DateTime value) =>
     '${value.year}-${value.month.toString().padLeft(2, '0')}-'
     '${value.day.toString().padLeft(2, '0')}';
-
-String? _categoryName(List<Account> accounts, String? id) {
-  if (id == null) return null;
-  for (final account in accounts) {
-    if (account.id == id) return account.name;
-  }
-  return null;
-}
 
 String? _positiveIntegerValidator(String? value) {
   final parsed = int.tryParse(value ?? '');

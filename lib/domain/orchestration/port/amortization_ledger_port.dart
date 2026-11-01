@@ -8,13 +8,13 @@ abstract interface class AmortizationLedgerPort {
   Future<void> validatePlanAccounts({
     required AmortizationKind kind,
     required String deferralAccountId,
-    required String categoryAccountId,
+    required Iterable<String> categoryAccountIds,
   });
 
   Future<String> postTransfer({
     required Money amount,
-    required String fromAccountId,
-    required String toAccountId,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
     required DateTime occurredAt,
     DateTime? postedAt,
     Money? feeAmount,

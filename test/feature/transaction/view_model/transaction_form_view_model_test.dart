@@ -262,7 +262,11 @@ void main() {
         noteText: ' lunch ',
       );
 
-      expect(outcome, isA<SubmitSuccess>());
+      expect(
+        outcome,
+        isA<SubmitSuccess>(),
+        reason: outcome is SubmitFailure ? outcome.error.message : null,
+      );
       expect(container.read(_provider()).requireValue!.submitting, false);
       final command = orchestration.createSceneCommands.single;
       expect(command.target, isA<OrdinaryExpenseSceneTarget>());
@@ -405,9 +409,9 @@ void main() {
       final command = amortizationService.commands.single;
       expect(command.kind, AmortizationKind.prepaidExpense);
       expect(command.total, const Money(minorUnits: 120000));
-      expect(command.fundingAccountId, 'cash');
+      expect(command.fundingAllocations.single.accountId, 'cash');
       expect(command.deferralAccountId, 'prepaid');
-      expect(command.categoryAccountId, 'lunch');
+      expect(command.recognitionAllocations.single.accountId, 'lunch');
       expect(command.firstRecognitionAt, DateTime(2026, 4, 15));
       expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
       expect(command.cadenceInterval, 1);
@@ -417,6 +421,81 @@ void main() {
       expect(command.defaultIsExcludedFromBudget, isTrue);
       expect(command.note, '年费');
     });
+
+    test(
+      'creates amortization with multiple categories and funding accounts',
+      () async {
+        final amortizationService = _FakeAmortizationPlanAppService();
+        final container = _container(
+          amortizationService: amortizationService,
+          settlementAccounts: [_account('cash'), _account('bank')],
+          fundAccounts: [_account('cash'), _account('bank')],
+          prepaidExpenseAccounts: [
+            _account(
+              'prepaid',
+              profileKey: AccountProfileKind.prepaidExpense.key,
+            ),
+          ],
+        );
+        final viewModel = container.read(_provider().notifier);
+
+        viewModel
+          ..setExpenseScene(TransactionExpenseScene.amortization)
+          ..useAllocatedEntry(const Money(minorUnits: 120000))
+          ..setCategoryAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'rent',
+              amount: Money(minorUnits: 70000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'utilities',
+              amount: Money(minorUnits: 50000),
+            ),
+          ])
+          ..setSettlementAllocations(const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 30000),
+            ),
+            AccountAmountAllocation(
+              accountId: 'bank',
+              amount: Money(minorUnits: 90000),
+            ),
+          ]);
+
+        final outcome = await viewModel.submit(
+          amountText: '1200',
+          noteText: '办公费用',
+          amortizationConfiguration: AmortizationConfigurationDraft(
+            firstRecognitionAt: DateTime(2026, 4, 15),
+            cadenceUnit: AmortizationCadenceUnit.monthly,
+            cadenceInterval: 1,
+            recognitionCount: 12,
+          ),
+        );
+
+        expect(
+          outcome,
+          isA<SubmitSuccess>(),
+          reason: outcome is SubmitFailure ? outcome.error.message : null,
+        );
+        final command = amortizationService.commands.single;
+        expect(
+          command.recognitionAllocations.map(
+            (allocation) =>
+                (allocation.accountId, allocation.amount.minorUnits),
+          ),
+          [('rent', 70000), ('utilities', 50000)],
+        );
+        expect(
+          command.fundingAllocations.map(
+            (allocation) =>
+                (allocation.accountId, allocation.amount.minorUnits),
+          ),
+          [('cash', 30000), ('bank', 90000)],
+        );
+      },
+    );
 
     test('creates a deferred income amortization plan', () async {
       final amortizationService = _FakeAmortizationPlanAppService();
@@ -459,9 +538,9 @@ void main() {
       final command = amortizationService.commands.single;
       expect(command.kind, AmortizationKind.deferredIncome);
       expect(command.total, const Money(minorUnits: 60000));
-      expect(command.fundingAccountId, 'cash');
+      expect(command.fundingAllocations.single.accountId, 'cash');
       expect(command.deferralAccountId, 'deferred');
-      expect(command.categoryAccountId, 'salary');
+      expect(command.recognitionAllocations.single.accountId, 'salary');
       expect(command.defaultIsExcludedFromStats, isTrue);
     });
 
@@ -1078,8 +1157,8 @@ void main() {
 
       expect(outcome, isA<SubmitSuccess>());
       final command = posting.transferCommands.single;
-      expect(command.fromAccountId, 'cash');
-      expect(command.toAccountId, 'bank');
+      expect(command.outgoingAllocations.single.accountId, 'cash');
+      expect(command.incomingAllocations.single.accountId, 'bank');
       expect(command.feeAmount, const Money(minorUnits: 300));
       expect(command.counterpartyId, 'cp-ziroom');
     });

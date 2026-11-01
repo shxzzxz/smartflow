@@ -54,16 +54,16 @@ class AmortizationFormViewModel extends _$AmortizationFormViewModel {
     _update((current) => current.withKind(value));
   }
 
-  void setFundingAccountId(String? value) {
-    _update((current) => current.copyWith(fundingAccountId: value));
+  void setFundingAllocations(List<AccountAmountAllocation> value) {
+    _update((current) => current.copyWith(fundingAllocations: value));
   }
 
   void setDeferralAccountId(String? value) {
     _update((current) => current.copyWith(deferralAccountId: value));
   }
 
-  void setCategoryAccountId(String? value) {
-    _update((current) => current.copyWith(categoryAccountId: value));
+  void setRecognitionAllocations(List<AccountAmountAllocation> value) {
+    _update((current) => current.copyWith(recognitionAllocations: value));
   }
 
   void setOccurredAt(DateTime value) {
@@ -122,13 +122,25 @@ class AmortizationFormViewModel extends _$AmortizationFormViewModel {
     if (fee == null || fee.minorUnits < 0) {
       return _invalid('请输入有效手续费');
     }
-    final fundingAccountId = current.fundingAccountId;
     final deferralAccountId = current.deferralAccountId;
-    final categoryAccountId = current.categoryAccountId;
-    if (fundingAccountId == null ||
+    final fundingAllocations = current.fundingAllocations;
+    final recognitionAllocations = current.recognitionAllocations;
+    if (fundingAllocations.isEmpty ||
         deferralAccountId == null ||
-        categoryAccountId == null) {
+        recognitionAllocations.isEmpty) {
       return _invalid('请选择资金、递延和分类账户');
+    }
+    if (fundingAllocations.any(
+          (allocation) => allocation.amount.minorUnits <= 0,
+        ) ||
+        sumAllocations(fundingAllocations) != amount) {
+      return _invalid('资金分配合计必须等于总额');
+    }
+    if (recognitionAllocations.any(
+          (allocation) => allocation.amount.minorUnits <= 0,
+        ) ||
+        sumAllocations(recognitionAllocations) != amount) {
+      return _invalid('分类分配合计必须等于总额');
     }
     _update((current) => current.copyWith(submitting: true));
     try {
@@ -141,9 +153,9 @@ class AmortizationFormViewModel extends _$AmortizationFormViewModel {
               CreateAmortizationPlanCommand(
                 kind: current.kind,
                 total: amount,
-                fundingAccountId: fundingAccountId,
+                fundingAllocations: fundingAllocations,
                 deferralAccountId: deferralAccountId,
-                categoryAccountId: categoryAccountId,
+                recognitionAllocations: recognitionAllocations,
                 firstRecognitionAt: current.firstRecognitionAt,
                 cadenceUnit: current.cadenceUnit,
                 cadenceInterval: interval,
@@ -189,10 +201,11 @@ class AmortizationFormState {
     required this.excludeStats,
     required this.excludeBudget,
     required this.submitting,
-    this.fundingAccountId,
     this.deferralAccountId,
-    this.categoryAccountId,
-  });
+    List<AccountAmountAllocation> fundingAllocations = const [],
+    List<AccountAmountAllocation> recognitionAllocations = const [],
+  }) : fundingAllocations = List.unmodifiable(fundingAllocations),
+       recognitionAllocations = List.unmodifiable(recognitionAllocations);
 
   factory AmortizationFormState.initial({
     required List<Account> accounts,
@@ -217,8 +230,14 @@ class AmortizationFormState {
     return state.copyWith(
       deferralAccountId:
           deferralAccountId ?? state.deferralAccounts.firstOrNull?.id,
-      fundingAccountId: state.fundAccounts.firstOrNull?.id,
-      categoryAccountId: state.categoryAccounts.firstOrNull?.id,
+      fundingAllocations: [
+        if (state.fundAccounts.firstOrNull case final account?)
+          AccountAmountAllocation(accountId: account.id, amount: Money.zero()),
+      ],
+      recognitionAllocations: [
+        if (state.categoryAccounts.firstOrNull case final account?)
+          AccountAmountAllocation(accountId: account.id, amount: Money.zero()),
+      ],
     );
   }
 
@@ -232,9 +251,9 @@ class AmortizationFormState {
   final bool excludeStats;
   final bool excludeBudget;
   final bool submitting;
-  final String? fundingAccountId;
   final String? deferralAccountId;
-  final String? categoryAccountId;
+  final List<AccountAmountAllocation> fundingAllocations;
+  final List<AccountAmountAllocation> recognitionAllocations;
 
   List<Account> get fundAccounts => [
     for (final account in accounts)
@@ -269,11 +288,20 @@ class AmortizationFormState {
         .where((account) => account.id == deferralAccountId)
         .firstOrNull;
     final category = next.categoryAccounts
-        .where((account) => account.id == categoryAccountId)
+        .where(
+          (account) => recognitionAllocations.any(
+            (allocation) => allocation.accountId == account.id,
+          ),
+        )
         .firstOrNull;
     return next.copyWith(
       deferralAccountId: deferral?.id ?? next.deferralAccounts.firstOrNull?.id,
-      categoryAccountId: category?.id ?? next.categoryAccounts.firstOrNull?.id,
+      recognitionAllocations: [
+        if (category != null)
+          AccountAmountAllocation(accountId: category.id, amount: Money.zero())
+        else if (next.categoryAccounts.firstOrNull case final account?)
+          AccountAmountAllocation(accountId: account.id, amount: Money.zero()),
+      ],
     );
   }
 
@@ -285,9 +313,9 @@ class AmortizationFormState {
     bool? excludeStats,
     bool? excludeBudget,
     bool? submitting,
-    Object? fundingAccountId = _sentinel,
     Object? deferralAccountId = _sentinel,
-    Object? categoryAccountId = _sentinel,
+    List<AccountAmountAllocation>? fundingAllocations,
+    List<AccountAmountAllocation>? recognitionAllocations,
   }) {
     return AmortizationFormState(
       kind: kind ?? this.kind,
@@ -300,15 +328,12 @@ class AmortizationFormState {
       excludeStats: excludeStats ?? this.excludeStats,
       excludeBudget: excludeBudget ?? this.excludeBudget,
       submitting: submitting ?? this.submitting,
-      fundingAccountId: fundingAccountId == _sentinel
-          ? this.fundingAccountId
-          : fundingAccountId as String?,
       deferralAccountId: deferralAccountId == _sentinel
           ? this.deferralAccountId
           : deferralAccountId as String?,
-      categoryAccountId: categoryAccountId == _sentinel
-          ? this.categoryAccountId
-          : categoryAccountId as String?,
+      fundingAllocations: fundingAllocations ?? this.fundingAllocations,
+      recognitionAllocations:
+          recognitionAllocations ?? this.recognitionAllocations,
     );
   }
 }

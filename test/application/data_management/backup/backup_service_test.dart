@@ -41,8 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 5);
-      expect(inspected.manifest.schemaVersion, 53);
+      expect(inspected.manifest.backupSchemaVersion, 6);
+      expect(inspected.manifest.schemaVersion, 54);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -79,7 +79,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 5);
+        expect(inspection.manifest.backupSchemaVersion, 6);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -165,6 +165,19 @@ void main() {
       expect(inspection.snapshot.rows('amortization_entries'), isEmpty);
     });
 
+    test('migrates v5 backups before requiring entry allocations', () async {
+      await service.createBackup(tempDirectory);
+      await _removeBackupTable(tempDirectory, 'amortization_entry_allocations');
+      await _rewriteBackupSchemaVersion(tempDirectory, 5);
+
+      final inspection = await service.inspect(tempDirectory);
+
+      expect(
+        inspection.snapshot.rows('amortization_entry_allocations'),
+        isEmpty,
+      );
+    });
+
     test('rejects obsolete backup format versions', () async {
       await service.createBackup(tempDirectory);
       final manifestFile = File('${tempDirectory.path}/manifest.json');
@@ -184,7 +197,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 6;
+      manifest['backupSchemaVersion'] = 7;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -193,7 +206,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 6'),
+            contains('backupSchemaVersion 7'),
           ),
         ),
       );
@@ -242,7 +255,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 5);
+        expect(manifest.backupSchemaVersion, 6);
       },
     );
   });
@@ -392,7 +405,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 53});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 54});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;

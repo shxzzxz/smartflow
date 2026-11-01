@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -15,7 +16,16 @@ void main() {
       id: 'plan',
       kind: AmortizationKind.prepaidExpense,
       deferralAccountId: 'prepaid',
-      categoryAccountId: 'rent',
+      recognitionAllocations: const [
+        AccountAmountAllocation(
+          accountId: 'rent',
+          amount: Money(minorUnits: 200000),
+        ),
+        AccountAmountAllocation(
+          accountId: 'utilities',
+          amount: Money(minorUnits: 100000),
+        ),
+      ],
       total: const Money(minorUnits: 300000),
       cadenceUnit: AmortizationCadenceUnit.monthly,
       cadenceInterval: 1,
@@ -34,6 +44,12 @@ void main() {
     final loaded = await repository.findById('plan');
     expect(loaded, isNotNull);
     expect(loaded!.entries.first.transactionId, 'recognition-1');
+    expect(
+      loaded.entries.first.categoryAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('rent', 66667), ('utilities', 33333)],
+    );
     expect(loaded.defaultIsExcludedFromStats, isTrue);
     expect(loaded.remainingAmount, const Money(minorUnits: 200000));
 

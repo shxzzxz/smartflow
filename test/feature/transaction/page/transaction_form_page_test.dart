@@ -19,7 +19,7 @@ import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form_view_model.dart';
-import 'package:smartflow/feature/transaction/widget/transaction_allocation_fields.dart';
+import 'package:smartflow/widget/business/transaction/transaction_allocation_fields.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
@@ -497,7 +497,19 @@ void main() {
       expect(find.text('deferred'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('toggle-transaction-entry-mode')),
-        findsNothing,
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('toggle-transaction-entry-mode')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('income-category-allocations')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('income-settlement-allocations')),
+        findsOneWidget,
       );
     },
   );

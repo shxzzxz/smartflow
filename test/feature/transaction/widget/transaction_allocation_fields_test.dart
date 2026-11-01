@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/feature/transaction/widget/transaction_allocation_fields.dart';
+import 'package:smartflow/widget/business/transaction/transaction_allocation_fields.dart';
 
 void main() {
   testWidgets('shows every name and edits allocation amounts in place', (

@@ -25,9 +25,15 @@ void main() {
         CreateAmortizationPlanCommand(
           kind: AmortizationKind.deferredIncome,
           total: _money(300000),
-          fundingAccountId: 'bank',
+          fundingAllocations: singleAllocation(
+            accountId: 'bank',
+            amount: _money(300000),
+          ),
           deferralAccountId: 'deferred',
-          categoryAccountId: 'rent-income',
+          recognitionAllocations: singleAllocation(
+            accountId: 'rent-income',
+            amount: _money(300000),
+          ),
           firstRecognitionAt: DateTime(2026, 9, 30),
           cadenceUnit: AmortizationCadenceUnit.monthly,
           cadenceInterval: 1,
@@ -39,8 +45,8 @@ void main() {
       );
 
       final transfer = ledger.transfers.single;
-      expect(transfer.fromAccountId, 'deferred');
-      expect(transfer.toAccountId, 'bank');
+      expect(transfer.outgoingAllocations.single.accountId, 'deferred');
+      expect(transfer.incomingAllocations.single.accountId, 'bank');
       expect(transfer.ownership.ownerType, orchestrationAmortizationOwnerType);
       expect(transfer.ownership.ownerId, planId);
       expect(transfer.isExcludedFromStats, isTrue);
@@ -48,6 +54,70 @@ void main() {
       expect((await repository.findById(planId))!.entries, hasLength(3));
     },
   );
+
+  test('creates a multi-account and multi-category plan', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+
+    final planId = await service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: AmortizationKind.prepaidExpense,
+        total: _money(300000),
+        fundingAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'bank',
+            amount: Money(minorUnits: 100000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 200000),
+          ),
+        ],
+        deferralAccountId: 'prepaid',
+        recognitionAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'rent',
+            amount: Money(minorUnits: 200000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'utilities',
+            amount: Money(minorUnits: 100000),
+          ),
+        ],
+        firstRecognitionAt: DateTime(2026, 1, 31),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 3,
+        occurredAt: DateTime(2026, 1, 1),
+      ),
+    );
+
+    final transfer = ledger.transfers.single;
+    expect(
+      transfer.outgoingAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('bank', 100000), ('cash', 200000)],
+    );
+    expect(transfer.incomingAllocations.single.accountId, 'prepaid');
+
+    final plan = (await repository.findById(planId))!;
+    expect(
+      plan.recognitionAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('rent', 200000), ('utilities', 100000)],
+    );
+
+    await service.generateDue(DateTime(2026, 1, 31));
+    expect(
+      ledger.expenseCategoryAllocations.single.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('rent', 66667), ('utilities', 33333)],
+    );
+  });
 
   test('catch-up generation is idempotent', () async {
     final repository = _MemoryRepository();
@@ -141,9 +211,15 @@ Future<String> _createPrepaidPlan(AmortizationPlanAppService service) {
     CreateAmortizationPlanCommand(
       kind: AmortizationKind.prepaidExpense,
       total: _money(300000),
-      fundingAccountId: 'bank',
+      fundingAllocations: singleAllocation(
+        accountId: 'bank',
+        amount: _money(300000),
+      ),
       deferralAccountId: 'prepaid',
-      categoryAccountId: 'rent',
+      recognitionAllocations: singleAllocation(
+        accountId: 'rent',
+        amount: _money(300000),
+      ),
       firstRecognitionAt: DateTime(2026, 1, 31),
       cadenceUnit: AmortizationCadenceUnit.monthly,
       cadenceInterval: 1,
@@ -190,16 +266,16 @@ class _MemoryRepository implements AmortizationRepository {
 class _TransferRequest {
   const _TransferRequest({
     required this.amount,
-    required this.fromAccountId,
-    required this.toAccountId,
+    required this.outgoingAllocations,
+    required this.incomingAllocations,
     required this.ownership,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
   });
 
   final Money amount;
-  final String fromAccountId;
-  final String toAccountId;
+  final List<AccountAmountAllocation> outgoingAllocations;
+  final List<AccountAmountAllocation> incomingAllocations;
   final TransactionOwnership ownership;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
@@ -209,6 +285,7 @@ class _FakeLedger implements AmortizationLedgerPort {
   int _nextTransaction = 1;
   final transfers = <_TransferRequest>[];
   final expenses = <Money>[];
+  final expenseCategoryAllocations = <List<AccountAmountAllocation>>[];
   final expenseOwnerships = <TransactionOwnership>[];
   final incomes = <Money>[];
   final deletedTransactionIds = <String>[];
@@ -219,14 +296,14 @@ class _FakeLedger implements AmortizationLedgerPort {
   Future<void> validatePlanAccounts({
     required AmortizationKind kind,
     required String deferralAccountId,
-    required String categoryAccountId,
+    required Iterable<String> categoryAccountIds,
   }) async {}
 
   @override
   Future<String> postTransfer({
     required Money amount,
-    required String fromAccountId,
-    required String toAccountId,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
     required DateTime occurredAt,
     DateTime? postedAt,
     Money? feeAmount,
@@ -241,8 +318,8 @@ class _FakeLedger implements AmortizationLedgerPort {
     transfers.add(
       _TransferRequest(
         amount: amount,
-        fromAccountId: fromAccountId,
-        toAccountId: toAccountId,
+        outgoingAllocations: outgoingAllocations,
+        incomingAllocations: incomingAllocations,
         ownership: ownership,
         isExcludedFromStats: isExcludedFromStats,
         isExcludedFromBudget: isExcludedFromBudget,
@@ -266,6 +343,7 @@ class _FakeLedger implements AmortizationLedgerPort {
     Set<String> tagIds = const {},
   }) async {
     expenses.add(amount);
+    expenseCategoryAllocations.add(categoryAllocations);
     expenseOwnerships.add(ownership);
     return 'tx-${_nextTransaction++}';
   }

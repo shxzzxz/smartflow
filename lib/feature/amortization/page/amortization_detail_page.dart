@@ -11,6 +11,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_segmented_control.dart';
+import '../../../domain/ledger/entity/account.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../../../widget/business/account/account_picker_sheet.dart';
@@ -86,10 +87,7 @@ class AmortizationDetailPage extends ConsumerWidget {
                         ),
                         _ValueRow(
                           label: '确认分类',
-                          value: Text(
-                            accounts[state.plan.categoryAccountId]?.name ??
-                                '未知分类',
-                          ),
+                          value: Text(_categoryNames(state.plan, accounts)),
                         ),
                         _ValueRow(
                           label: '下一期',
@@ -185,7 +183,8 @@ class _TerminationSheetState extends ConsumerState<_TerminationSheet> {
     _noteController = TextEditingController();
     _terminatedAt = DateTime.now();
     _refundAccountId = widget.state.settlementAccounts.firstOrNull?.id;
-    _categoryId = widget.state.plan.categoryAccountId;
+    final categories = widget.state.plan.recognitionAllocations;
+    _categoryId = categories.length == 1 ? categories.single.accountId : null;
   }
 
   @override
@@ -510,6 +509,15 @@ String _statusLabel(AmortizationStatus status) => switch (status) {
   AmortizationStatus.completed => '已完成',
   AmortizationStatus.terminated => '已终止',
 };
+
+String _categoryNames(AmortizationPlan plan, Map<String, Account> accounts) {
+  return plan.recognitionAllocations
+      .map(
+        (allocation) =>
+            accounts[allocation.accountId]?.name ?? allocation.accountId,
+      )
+      .join('、');
+}
 
 String _date(DateTime value) =>
     '${value.year}-${value.month.toString().padLeft(2, '0')}-'

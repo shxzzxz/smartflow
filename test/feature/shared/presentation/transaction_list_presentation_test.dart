@@ -673,6 +673,43 @@ void main() {
       },
     );
 
+    test('labels a transfer funded by multiple accounts', () {
+      final base = _item(
+        businessPurpose: BusinessPurpose.transfer,
+        primaryAmount: const Money(minorUnits: 1000),
+      );
+      final item = base.copyWith(
+        lines: [
+          const TransactionLine(
+            id: 'out-1',
+            transactionId: 'tx-1',
+            lineNo: 1,
+            role: TransactionRole.settlementOut,
+            accountId: 'cash',
+            amount: Money(minorUnits: 400),
+          ),
+          const TransactionLine(
+            id: 'out-2',
+            transactionId: 'tx-1',
+            lineNo: 2,
+            role: TransactionRole.settlementOut,
+            accountId: 'bank',
+            amount: Money(minorUnits: 600),
+          ),
+          const TransactionLine(
+            id: 'in-1',
+            transactionId: 'tx-1',
+            lineNo: 3,
+            role: TransactionRole.settlementIn,
+            accountId: 'card',
+            amount: Money(minorUnits: 1000),
+          ),
+        ],
+      );
+
+      expect(transactionAccountLabel(item, _lookup), '多账户');
+    });
+
     test('reflects account metadata changes without rebuilding read model', () {
       final item = _item();
       final renamedLookup = AccountLookup({

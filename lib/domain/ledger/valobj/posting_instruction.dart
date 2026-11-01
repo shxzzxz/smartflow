@@ -320,10 +320,10 @@ class AdvanceSettlementInstruction {
 }
 
 class TransferInstruction extends PostingInstruction {
-  const TransferInstruction({
+  TransferInstruction({
     required this.amount,
-    required this.fromAccountId,
-    required this.toAccountId,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
@@ -333,11 +333,48 @@ class TransferInstruction extends PostingInstruction {
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
-  });
+  }) : outgoingAllocations = List.unmodifiable(outgoingAllocations),
+       incomingAllocations = List.unmodifiable(incomingAllocations);
+
+  factory TransferInstruction.simple({
+    required Money amount,
+    required String fromAccountId,
+    required String toAccountId,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    Money? feeAmount,
+    String? counterpartyId,
+    String? note,
+    TransactionOwnership? ownership,
+    bool isExcludedFromStats = false,
+    bool isExcludedFromBudget = false,
+    SourceKind sourceKind = SourceKind.manual,
+  }) {
+    return TransferInstruction(
+      amount: amount,
+      outgoingAllocations: singleAllocation(
+        accountId: fromAccountId,
+        amount: amount,
+      ),
+      incomingAllocations: singleAllocation(
+        accountId: toAccountId,
+        amount: amount,
+      ),
+      occurredAt: occurredAt,
+      postedAt: postedAt,
+      feeAmount: feeAmount,
+      counterpartyId: counterpartyId,
+      note: note,
+      ownership: ownership,
+      isExcludedFromStats: isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget,
+      sourceKind: sourceKind,
+    );
+  }
 
   final Money amount;
-  final String fromAccountId;
-  final String toAccountId;
+  final List<AccountAmountAllocation> outgoingAllocations;
+  final List<AccountAmountAllocation> incomingAllocations;
   final Money? feeAmount;
   final DateTime occurredAt;
   final DateTime? postedAt;
@@ -352,12 +389,15 @@ class TransferInstruction extends PostingInstruction {
   BusinessPurpose get businessPurpose => BusinessPurpose.transfer;
 
   @override
-  Set<String> get accountIds => {fromAccountId, toAccountId};
+  Set<String> get accountIds => {
+    for (final allocation in outgoingAllocations) allocation.accountId,
+    for (final allocation in incomingAllocations) allocation.accountId,
+  };
 
   TransferInstruction copyWith({
     Money? amount,
-    String? fromAccountId,
-    String? toAccountId,
+    List<AccountAmountAllocation>? outgoingAllocations,
+    List<AccountAmountAllocation>? incomingAllocations,
     Money? feeAmount,
     DateTime? occurredAt,
     DateTime? postedAt,
@@ -370,8 +410,8 @@ class TransferInstruction extends PostingInstruction {
   }) {
     return TransferInstruction(
       amount: amount ?? this.amount,
-      fromAccountId: fromAccountId ?? this.fromAccountId,
-      toAccountId: toAccountId ?? this.toAccountId,
+      outgoingAllocations: outgoingAllocations ?? this.outgoingAllocations,
+      incomingAllocations: incomingAllocations ?? this.incomingAllocations,
       feeAmount: feeAmount ?? this.feeAmount,
       occurredAt: occurredAt ?? this.occurredAt,
       postedAt: postedAt ?? this.postedAt,
@@ -965,14 +1005,14 @@ class IncomeEditPatch extends PostingEditPatch {
 class TransferEditPatch extends PostingEditPatch {
   const TransferEditPatch({
     this.amount,
-    this.fromAccountId,
-    this.toAccountId,
+    this.outgoingAllocations,
+    this.incomingAllocations,
     this.feeAmount,
   });
 
   final Money? amount;
-  final String? fromAccountId;
-  final String? toAccountId;
+  final List<AccountAmountAllocation>? outgoingAllocations;
+  final List<AccountAmountAllocation>? incomingAllocations;
 
   /// `null` 表示不修改；零金额表示无手续费。
   final Money? feeAmount;
@@ -983,10 +1023,31 @@ class TransferEditPatch extends PostingEditPatch {
   @override
   TransferInstruction applyTo(PostingInstruction current) {
     if (current is TransferInstruction) {
+      final nextAmount = amount ?? current.amount;
+      final nextOutgoing =
+          outgoingAllocations ??
+          (nextAmount != current.amount &&
+                  current.outgoingAllocations.length == 1
+              ? [
+                  current.outgoingAllocations.single.copyWith(
+                    amount: nextAmount,
+                  ),
+                ]
+              : current.outgoingAllocations);
+      final nextIncoming =
+          incomingAllocations ??
+          (nextAmount != current.amount &&
+                  current.incomingAllocations.length == 1
+              ? [
+                  current.incomingAllocations.single.copyWith(
+                    amount: nextAmount,
+                  ),
+                ]
+              : current.incomingAllocations);
       return TransferInstruction(
-        amount: amount ?? current.amount,
-        fromAccountId: fromAccountId ?? current.fromAccountId,
-        toAccountId: toAccountId ?? current.toAccountId,
+        amount: nextAmount,
+        outgoingAllocations: nextOutgoing,
+        incomingAllocations: nextIncoming,
         feeAmount: feeAmount ?? current.feeAmount,
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,

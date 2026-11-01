@@ -69,10 +69,10 @@ class CreateIncomeCommand {
 }
 
 class CreateTransferCommand {
-  const CreateTransferCommand({
+  CreateTransferCommand({
     required this.amount,
-    required this.fromAccountId,
-    required this.toAccountId,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
@@ -83,11 +83,50 @@ class CreateTransferCommand {
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
     this.tagIds = const {},
-  });
+  }) : outgoingAllocations = List.unmodifiable(outgoingAllocations),
+       incomingAllocations = List.unmodifiable(incomingAllocations);
+
+  factory CreateTransferCommand.simple({
+    required Money amount,
+    required String fromAccountId,
+    required String toAccountId,
+    required DateTime occurredAt,
+    DateTime? postedAt,
+    Money? feeAmount,
+    String? counterpartyId,
+    String? note,
+    TransactionOwnership? ownership,
+    bool isExcludedFromStats = false,
+    bool isExcludedFromBudget = false,
+    SourceKind sourceKind = SourceKind.manual,
+    Set<String> tagIds = const {},
+  }) {
+    return CreateTransferCommand(
+      amount: amount,
+      outgoingAllocations: singleAllocation(
+        accountId: fromAccountId,
+        amount: amount,
+      ),
+      incomingAllocations: singleAllocation(
+        accountId: toAccountId,
+        amount: amount,
+      ),
+      occurredAt: occurredAt,
+      postedAt: postedAt,
+      feeAmount: feeAmount,
+      counterpartyId: counterpartyId,
+      note: note,
+      ownership: ownership,
+      isExcludedFromStats: isExcludedFromStats,
+      isExcludedFromBudget: isExcludedFromBudget,
+      sourceKind: sourceKind,
+      tagIds: tagIds,
+    );
+  }
 
   final Money amount;
-  final String fromAccountId;
-  final String toAccountId;
+  final List<AccountAmountAllocation> outgoingAllocations;
+  final List<AccountAmountAllocation> incomingAllocations;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final Money? feeAmount;
@@ -474,8 +513,8 @@ class EditTransferCommand {
   const EditTransferCommand({
     required this.transactionId,
     this.amount,
-    this.fromAccountId,
-    this.toAccountId,
+    this.outgoingAllocations,
+    this.incomingAllocations,
     this.occurredAt,
     this.feeAmount,
     this.counterpartyId,
@@ -487,8 +526,8 @@ class EditTransferCommand {
 
   final String transactionId;
   final Money? amount;
-  final String? fromAccountId;
-  final String? toAccountId;
+  final List<AccountAmountAllocation>? outgoingAllocations;
+  final List<AccountAmountAllocation>? incomingAllocations;
   final DateTime? occurredAt;
 
   /// `null` 表示不修改；`Money.zero()` 表示移除手续费。

@@ -1,5 +1,6 @@
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
+import '../../ledger/valobj/account_amount_allocation.dart';
 import '../service/amortization_schedule.dart';
 import '../valobj/amortization_enums.dart';
 import '../valobj/amortization_error_code.dart';
@@ -10,7 +11,6 @@ class AmortizationPlan {
     required this.id,
     required this.kind,
     required this.deferralAccountId,
-    required this.categoryAccountId,
     required this.total,
     required this.cadenceUnit,
     required this.cadenceInterval,
@@ -34,7 +34,7 @@ class AmortizationPlan {
     required String id,
     required AmortizationKind kind,
     required String deferralAccountId,
-    required String categoryAccountId,
+    required List<AccountAmountAllocation> recognitionAllocations,
     required Money total,
     required AmortizationCadenceUnit cadenceUnit,
     required int cadenceInterval,
@@ -50,7 +50,6 @@ class AmortizationPlan {
       id: id,
       kind: kind,
       deferralAccountId: deferralAccountId,
-      categoryAccountId: categoryAccountId,
       total: total,
       cadenceUnit: cadenceUnit,
       cadenceInterval: cadenceInterval,
@@ -68,6 +67,7 @@ class AmortizationPlan {
         cadenceUnit: cadenceUnit,
         cadenceInterval: cadenceInterval,
         recognitionCount: recognitionCount,
+        categoryAllocations: recognitionAllocations,
       ),
     );
   }
@@ -75,7 +75,6 @@ class AmortizationPlan {
   final String id;
   final AmortizationKind kind;
   final String deferralAccountId;
-  final String categoryAccountId;
   final Money total;
   final AmortizationCadenceUnit cadenceUnit;
   final int cadenceInterval;
@@ -112,6 +111,19 @@ class AmortizationPlan {
 
   Money get remainingAmount =>
       terminatedAt == null ? total - recognizedAmount : Money.zero();
+
+  List<AccountAmountAllocation> get recognitionAllocations =>
+      _sumCategoryAllocations(entries);
+
+  List<AccountAmountAllocation> get remainingCategoryAllocations =>
+      terminatedAt == null
+      ? subtractAllocations(
+          base: recognitionAllocations,
+          reductions: _sumCategoryAllocations(
+            entries.where((entry) => entry.isGenerated && !entry.isCanceled),
+          ),
+        )
+      : const [];
 
   List<AmortizationEntry> dueEntries(DateTime now) => [
     for (final entry in entries)
@@ -156,14 +168,35 @@ class AmortizationPlan {
     if (deferralAccountId.trim().isEmpty) {
       throw _invalid('deferralAccountId', 'Deferral account is required.');
     }
-    if (categoryAccountId.trim().isEmpty) {
-      throw _invalid('categoryAccountId', 'Category account is required.');
-    }
     if (initialTransactionId.trim().isEmpty) {
       throw _invalid(
         'initialTransactionId',
         'Initial transaction is required.',
       );
+    }
+    for (final entry in entries) {
+      if (entry.categoryAllocations.isEmpty) {
+        throw _invalid(
+          'entries',
+          'Every amortization entry requires category allocations.',
+        );
+      }
+      final accountIds = <String>{};
+      for (final allocation in entry.categoryAllocations) {
+        if (allocation.amount.minorUnits <= 0 ||
+            !accountIds.add(allocation.accountId)) {
+          throw _invalid(
+            'entries',
+            'Entry category allocations must be positive and unique.',
+          );
+        }
+      }
+      if (sumAllocations(entry.categoryAllocations) != entry.amount) {
+        throw _invalid(
+          'entries',
+          'Entry category allocations must equal the entry amount.',
+        );
+      }
     }
     final expected = buildAmortizationSchedule(
       planId: id,
@@ -225,7 +258,6 @@ class AmortizationPlan {
       id: id,
       kind: kind,
       deferralAccountId: deferralAccountId,
-      categoryAccountId: categoryAccountId,
       total: total,
       cadenceUnit: cadenceUnit,
       cadenceInterval: cadenceInterval,
@@ -250,6 +282,29 @@ class AmortizationPlan {
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
+
+  static List<AccountAmountAllocation> _sumCategoryAllocations(
+    Iterable<AmortizationEntry> entries,
+  ) {
+    final amounts = <String, int>{};
+    final order = <String>[];
+    for (final entry in entries) {
+      for (final allocation in entry.categoryAllocations) {
+        if (!amounts.containsKey(allocation.accountId)) {
+          order.add(allocation.accountId);
+        }
+        amounts[allocation.accountId] =
+            (amounts[allocation.accountId] ?? 0) + allocation.amount.minorUnits;
+      }
+    }
+    return [
+      for (final accountId in order)
+        AccountAmountAllocation(
+          accountId: accountId,
+          amount: Money(minorUnits: amounts[accountId]!),
+        ),
+    ];
+  }
 }
 
 BusinessException _invalid(String field, String message) {

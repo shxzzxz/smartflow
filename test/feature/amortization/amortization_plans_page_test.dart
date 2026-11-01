@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
@@ -21,7 +22,10 @@ void main() {
       id: 'plan',
       kind: AmortizationKind.prepaidExpense,
       deferralAccountId: 'prepaid',
-      categoryAccountId: 'rent',
+      recognitionAllocations: singleAllocation(
+        accountId: 'rent',
+        amount: const Money(minorUnits: 300000),
+      ),
       total: const Money(minorUnits: 300000),
       cadenceUnit: AmortizationCadenceUnit.monthly,
       cadenceInterval: 1,

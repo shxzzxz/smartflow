@@ -193,6 +193,10 @@ class BackupService {
                 table == 'amortization_entries')) {
           continue;
         }
+        if (manifest.backupSchemaVersion < 6 &&
+            table == 'amortization_entry_allocations') {
+          continue;
+        }
         throw BackupValidationException('备份缺少业务表文件: $table');
       }
     }
@@ -221,6 +225,7 @@ class BackupService {
         2 => _upgradeBackupV2ToV3(upgraded),
         3 => _upgradeBackupV3ToV4(upgraded),
         4 => _upgradeBackupV4ToV5(upgraded),
+        5 => _upgradeBackupV5ToV6(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -313,6 +318,36 @@ class BackupService {
         ...snapshot.tables,
         'amortization_plans': snapshot.rows('amortization_plans'),
         'amortization_entries': snapshot.rows('amortization_entries'),
+      },
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV5ToV6(BackupSnapshot snapshot) {
+    final categoryByPlanId = {
+      for (final row in snapshot.rows('amortization_plans'))
+        '${row['id']}': row['categoryAccountId'],
+    };
+    final plans = [
+      for (final row in snapshot.rows('amortization_plans'))
+        Map<String, Object?>.from(row)..remove('categoryAccountId'),
+    ];
+    final allocations = [
+      for (final entry in snapshot.rows('amortization_entries'))
+        {
+          'id': '${entry['id']}:allocation:1',
+          'entryId': entry['id'],
+          'lineNo': 1,
+          'accountId': categoryByPlanId[entry['planId']],
+          'amountMinor': entry['amountMinor'],
+          'createdAt': entry['createdAt'],
+          'updatedAt': entry['updatedAt'],
+        },
+    ];
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'amortization_plans': plans,
+        'amortization_entry_allocations': allocations,
       },
     );
   }
@@ -750,12 +785,6 @@ class BackupService {
       );
       _requiredReference(
         row,
-        'categoryAccountId',
-        accounts,
-        'amortization_plans.categoryAccountId',
-      );
-      _requiredReference(
-        row,
         'initialTransactionId',
         transactions,
         'amortization_plans.initialTransactionId',
@@ -786,7 +815,13 @@ class BackupService {
     }
     final entrySequences = <String>{};
     final generatedTransactions = <String>{};
+    final entryAmounts = <String, int>{};
     for (final row in snapshot.rows('amortization_entries')) {
+      final entryId = '${row['id']}';
+      entryAmounts[entryId] = _int(
+        row['amountMinor'],
+        'amortization_entries.amountMinor',
+      );
       final planId = row['planId'];
       if (planId is! String || !amortizationPlans.containsKey(planId)) {
         throw const BackupValidationException('摊销期次引用了不存在的计划。');
@@ -813,6 +848,39 @@ class BackupService {
             transaction?['ownerId'] != planId) {
           throw const BackupValidationException('摊销期次交易归属无效。');
         }
+      }
+    }
+    final allocationSequences = <String>{};
+    final allocationTotals = <String, int>{};
+    for (final row in snapshot.rows('amortization_entry_allocations')) {
+      final entryId = row['entryId'];
+      if (entryId is! String || !entryAmounts.containsKey(entryId)) {
+        throw const BackupValidationException('摊销期次分类分配引用了不存在的期次。');
+      }
+      final lineNo = row['lineNo'];
+      if (lineNo is! int ||
+          lineNo <= 0 ||
+          !allocationSequences.add('$entryId\u0000$lineNo')) {
+        throw const BackupValidationException('摊销期次分类分配顺序无效或重复。');
+      }
+      _requiredReference(
+        row,
+        'accountId',
+        accounts,
+        'amortization_entry_allocations.accountId',
+      );
+      final amount = _int(
+        row['amountMinor'],
+        'amortization_entry_allocations.amountMinor',
+      );
+      if (amount <= 0) {
+        throw const BackupValidationException('摊销期次分类分配金额必须为正数。');
+      }
+      allocationTotals[entryId] = (allocationTotals[entryId] ?? 0) + amount;
+    }
+    for (final entry in entryAmounts.entries) {
+      if (allocationTotals[entry.key] != entry.value) {
+        throw const BackupValidationException('摊销期次分类分配合计必须等于期次金额。');
       }
     }
 

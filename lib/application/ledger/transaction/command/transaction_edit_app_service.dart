@@ -144,8 +144,8 @@ class TransactionEditAppServiceImpl
           isExcludedFromBudget: cmd.isExcludedFromBudget,
           editPatch: TransferEditPatch(
             amount: cmd.amount,
-            fromAccountId: cmd.fromAccountId,
-            toAccountId: cmd.toAccountId,
+            outgoingAllocations: cmd.outgoingAllocations,
+            incomingAllocations: cmd.incomingAllocations,
             feeAmount: cmd.feeAmount,
           ),
         ),

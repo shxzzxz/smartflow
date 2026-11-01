@@ -1,13 +1,14 @@
 import '../../../../core/money/money.dart';
+import '../../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 
 class CreateAmortizationPlanCommand {
-  const CreateAmortizationPlanCommand({
+  CreateAmortizationPlanCommand({
     required this.kind,
     required this.total,
-    required this.fundingAccountId,
+    required List<AccountAmountAllocation> fundingAllocations,
     required this.deferralAccountId,
-    required this.categoryAccountId,
+    required List<AccountAmountAllocation> recognitionAllocations,
     required this.firstRecognitionAt,
     required this.cadenceUnit,
     required this.cadenceInterval,
@@ -19,13 +20,14 @@ class CreateAmortizationPlanCommand {
     this.counterpartyId,
     this.note,
     this.tagIds = const {},
-  });
+  }) : fundingAllocations = List.unmodifiable(fundingAllocations),
+       recognitionAllocations = List.unmodifiable(recognitionAllocations);
 
   final AmortizationKind kind;
   final Money total;
-  final String fundingAccountId;
+  final List<AccountAmountAllocation> fundingAllocations;
   final String deferralAccountId;
-  final String categoryAccountId;
+  final List<AccountAmountAllocation> recognitionAllocations;
   final DateTime firstRecognitionAt;
   final AmortizationCadenceUnit cadenceUnit;
   final int cadenceInterval;

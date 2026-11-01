@@ -16,7 +16,7 @@ import 'package:smartflow/widget/business/finance/money_input.dart';
 import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/advance_edit_form_view_model.dart';
-import '../widget/transaction_allocation_fields.dart';
+import '../../../widget/business/transaction/transaction_allocation_fields.dart';
 
 class AdvanceEditFormPage extends ConsumerWidget {
   const AdvanceEditFormPage({required this.transactionId, super.key});

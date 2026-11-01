@@ -394,8 +394,8 @@ void main() {
           isA<UiActionSuccess<void>>(),
         );
         final command = editing.transferCommands.single;
-        expect(command.fromAccountId, 'bank');
-        expect(command.toAccountId, isNull);
+        expect(command.outgoingAllocations!.single.accountId, 'bank');
+        expect(command.incomingAllocations, isNull);
         expect(command.feeAmount, isNull);
         expect(
           await notifier.changeAccount(

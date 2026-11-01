@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../domain/orchestration/entity/amortization_entry.dart';
 import '../../../domain/orchestration/entity/amortization_plan.dart';
 import '../../../domain/orchestration/port/amortization_repository.dart';
@@ -52,7 +53,6 @@ class DriftAmortizationRepository implements AmortizationRepository {
             id: plan.id,
             kind: plan.kind,
             deferralAccountId: plan.deferralAccountId,
-            categoryAccountId: plan.categoryAccountId,
             totalAmountMinor: plan.total.minorUnits,
             cadenceUnit: plan.cadenceUnit,
             cadenceInterval: plan.cadenceInterval,
@@ -88,6 +88,23 @@ class DriftAmortizationRepository implements AmortizationRepository {
             updatedAt: Value(DateTime.now()),
           ),
       ]);
+      final entryIds = {for (final entry in plan.entries) entry.id};
+      batch.deleteWhere(
+        _database.amortizationEntryAllocations,
+        (table) => table.entryId.isIn(entryIds),
+      );
+      batch.insertAll(_database.amortizationEntryAllocations, [
+        for (final entry in plan.entries)
+          for (var index = 0; index < entry.categoryAllocations.length; index++)
+            AmortizationEntryAllocationsCompanion.insert(
+              id: '${entry.id}:allocation:${index + 1}',
+              entryId: entry.id,
+              lineNo: index + 1,
+              accountId: entry.categoryAllocations[index].accountId,
+              amountMinor: entry.categoryAllocations[index].amount.minorUnits,
+              updatedAt: Value(DateTime.now()),
+            ),
+      ]);
     });
   }
 
@@ -103,6 +120,20 @@ class DriftAmortizationRepository implements AmortizationRepository {
               ..where((table) => table.planId.equals(planId))
               ..orderBy([(table) => OrderingTerm.asc(table.sequenceNo)]))
             .get();
+    if (rows.isEmpty) return const [];
+    final entryIds = {for (final row in rows) row.id};
+    final allocationRows =
+        await (_database.select(_database.amortizationEntryAllocations)
+              ..where((table) => table.entryId.isIn(entryIds))
+              ..orderBy([
+                (table) => OrderingTerm.asc(table.entryId),
+                (table) => OrderingTerm.asc(table.lineNo),
+              ]))
+            .get();
+    final allocationsByEntry = <String, List<AmortizationEntryAllocationRow>>{};
+    for (final row in allocationRows) {
+      (allocationsByEntry[row.entryId] ??= []).add(row);
+    }
     return [
       for (final row in rows)
         AmortizationEntry(
@@ -111,6 +142,13 @@ class DriftAmortizationRepository implements AmortizationRepository {
           sequenceNo: row.sequenceNo,
           dueAt: row.dueAt,
           amount: Money(minorUnits: row.amountMinor),
+          categoryAllocations: [
+            for (final allocation in allocationsByEntry[row.id] ?? const [])
+              AccountAmountAllocation(
+                accountId: allocation.accountId,
+                amount: Money(minorUnits: allocation.amountMinor),
+              ),
+          ],
           transactionId: row.transactionId,
           canceledAt: row.canceledAt,
         ),
@@ -125,7 +163,6 @@ class DriftAmortizationRepository implements AmortizationRepository {
       id: row.id,
       kind: row.kind,
       deferralAccountId: row.deferralAccountId,
-      categoryAccountId: row.categoryAccountId,
       total: Money(minorUnits: row.totalAmountMinor),
       cadenceUnit: row.cadenceUnit,
       cadenceInterval: row.cadenceInterval,

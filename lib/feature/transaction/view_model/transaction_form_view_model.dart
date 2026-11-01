@@ -406,7 +406,6 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void useAllocatedEntry(Money amount) {
     _defaultAccountRequestRevision += 1;
     _update((current) {
-      if (current.isAmortization) return current;
       final consumptionInstallment =
           current.mode == TransactionFormMode.expense &&
           current.expenseScene ==
@@ -422,7 +421,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           TransactionFormMode.income => current.toAccountId,
           _ => null,
         },
-        current.mode == TransactionFormMode.expense
+        current.isAmortization
+            ? current.fundAccounts
+            : current.mode == TransactionFormMode.expense
             ? current.expenseSettlementAccounts
             : current.settlementAccounts,
       );
@@ -447,7 +448,6 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   void useNormalEntry() {
     _defaultAccountRequestRevision += 1;
     _update((current) {
-      if (current.isAmortization) return current;
       final consumptionInstallment =
           current.mode == TransactionFormMode.expense &&
           current.expenseScene ==
@@ -831,7 +831,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           throw _invalidCommandException('请选择转出和转入账户');
         }
         await postingService.createTransfer(
-          CreateTransferCommand(
+          CreateTransferCommand.simple(
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
@@ -998,29 +998,45 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (configuration == null) {
       throw _invalidCommandException('请先完成摊销配置');
     }
-    if (formState.entryMode != TransactionEntryMode.normal) {
-      throw _invalidCommandException('摊销不支持分项录入');
+    final categoryAllocations =
+        formState.entryMode == TransactionEntryMode.normal
+        ? [
+            if ((formState.mode == TransactionFormMode.expense
+                    ? formState.expenseCategoryId
+                    : formState.incomeCategoryId)
+                case final categoryId?)
+              AccountAmountAllocation(accountId: categoryId, amount: amount),
+          ]
+        : formState.categoryAllocations;
+    if (categoryAllocations.isEmpty ||
+        categoryAllocations.any(
+          (allocation) => allocation.amount.minorUnits <= 0,
+        ) ||
+        sumAllocations(categoryAllocations) != amount) {
+      throw _invalidCommandException('分类分配合计必须等于交易金额');
     }
-    final categoryAccountId = switch (formState.mode) {
-      TransactionFormMode.expense => formState.expenseCategoryId,
-      TransactionFormMode.income => formState.incomeCategoryId,
-      _ => null,
-    };
-    if (categoryAccountId == null) {
-      throw _invalidCommandException(
-        formState.mode == TransactionFormMode.expense ? '请选择支出分类' : '请选择收入分类',
-      );
-    }
-    final fundingAccountId = _effectiveId(
-      formState.mode == TransactionFormMode.expense
-          ? formState.fromAccountId
-          : formState.toAccountId,
-      formState.fundAccounts,
-    );
-    if (fundingAccountId == null) {
-      throw _invalidCommandException(
-        formState.mode == TransactionFormMode.expense ? '请选择支出账户' : '请选择收入账户',
-      );
+    final fundingAllocations =
+        formState.entryMode == TransactionEntryMode.normal
+        ? [
+            if (_effectiveId(
+                  formState.mode == TransactionFormMode.expense
+                      ? formState.fromAccountId
+                      : formState.toAccountId,
+                  formState.fundAccounts,
+                )
+                case final fundingAccountId?)
+              AccountAmountAllocation(
+                accountId: fundingAccountId,
+                amount: amount,
+              ),
+          ]
+        : formState.settlementAllocations;
+    if (fundingAllocations.isEmpty ||
+        fundingAllocations.any(
+          (allocation) => allocation.amount.minorUnits <= 0,
+        ) ||
+        sumAllocations(fundingAllocations) != amount) {
+      throw _invalidCommandException('资金分配合计必须等于交易金额');
     }
     final deferralAccountId = _effectiveId(
       formState.amortizationDeferralAccountId,
@@ -1037,9 +1053,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           CreateAmortizationPlanCommand(
             kind: kind,
             total: amount,
-            fundingAccountId: fundingAccountId,
+            fundingAllocations: fundingAllocations,
             deferralAccountId: deferralAccountId,
-            categoryAccountId: categoryAccountId,
+            recognitionAllocations: categoryAllocations,
             firstRecognitionAt: configuration.firstRecognitionAt,
             cadenceUnit: configuration.cadenceUnit,
             cadenceInterval: configuration.cadenceInterval,
@@ -1124,8 +1140,14 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           EditTransferCommand(
             transactionId: transactionId,
             amount: amount,
-            fromAccountId: fromAccountId,
-            toAccountId: toAccountId,
+            outgoingAllocations: singleAllocation(
+              accountId: fromAccountId,
+              amount: amount,
+            ),
+            incomingAllocations: singleAllocation(
+              accountId: toAccountId,
+              amount: amount,
+            ),
             feeAmount: feeAmount,
             occurredAt: formState.occurredAt,
             counterpartyId: counterpartyId,

@@ -17705,18 +17705,6 @@ class $AmortizationPlansTable extends AmortizationPlans
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _categoryAccountIdMeta = const VerificationMeta(
-    'categoryAccountId',
-  );
-  @override
-  late final GeneratedColumn<String> categoryAccountId =
-      GeneratedColumn<String>(
-        'category_account_id',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      );
   static const VerificationMeta _totalAmountMinorMeta = const VerificationMeta(
     'totalAmountMinor',
   );
@@ -17907,7 +17895,6 @@ class $AmortizationPlansTable extends AmortizationPlans
     id,
     kind,
     deferralAccountId,
-    categoryAccountId,
     totalAmountMinor,
     cadenceUnit,
     cadenceInterval,
@@ -17952,17 +17939,6 @@ class $AmortizationPlansTable extends AmortizationPlans
       );
     } else if (isInserting) {
       context.missing(_deferralAccountIdMeta);
-    }
-    if (data.containsKey('category_account_id')) {
-      context.handle(
-        _categoryAccountIdMeta,
-        categoryAccountId.isAcceptableOrUnknown(
-          data['category_account_id']!,
-          _categoryAccountIdMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_categoryAccountIdMeta);
     }
     if (data.containsKey('total_amount_minor')) {
       context.handle(
@@ -18123,10 +18099,6 @@ class $AmortizationPlansTable extends AmortizationPlans
         DriftSqlType.string,
         data['${effectivePrefix}deferral_account_id'],
       )!,
-      categoryAccountId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}category_account_id'],
-      )!,
       totalAmountMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}total_amount_minor'],
@@ -18214,7 +18186,6 @@ class AmortizationPlanRow extends DataClass
   final String id;
   final AmortizationKind kind;
   final String deferralAccountId;
-  final String categoryAccountId;
   final int totalAmountMinor;
   final AmortizationCadenceUnit cadenceUnit;
   final int cadenceInterval;
@@ -18235,7 +18206,6 @@ class AmortizationPlanRow extends DataClass
     required this.id,
     required this.kind,
     required this.deferralAccountId,
-    required this.categoryAccountId,
     required this.totalAmountMinor,
     required this.cadenceUnit,
     required this.cadenceInterval,
@@ -18263,7 +18233,6 @@ class AmortizationPlanRow extends DataClass
       );
     }
     map['deferral_account_id'] = Variable<String>(deferralAccountId);
-    map['category_account_id'] = Variable<String>(categoryAccountId);
     map['total_amount_minor'] = Variable<int>(totalAmountMinor);
     {
       map['cadence_unit'] = Variable<String>(
@@ -18310,7 +18279,6 @@ class AmortizationPlanRow extends DataClass
       id: Value(id),
       kind: Value(kind),
       deferralAccountId: Value(deferralAccountId),
-      categoryAccountId: Value(categoryAccountId),
       totalAmountMinor: Value(totalAmountMinor),
       cadenceUnit: Value(cadenceUnit),
       cadenceInterval: Value(cadenceInterval),
@@ -18352,7 +18320,6 @@ class AmortizationPlanRow extends DataClass
         serializer.fromJson<String>(json['kind']),
       ),
       deferralAccountId: serializer.fromJson<String>(json['deferralAccountId']),
-      categoryAccountId: serializer.fromJson<String>(json['categoryAccountId']),
       totalAmountMinor: serializer.fromJson<int>(json['totalAmountMinor']),
       cadenceUnit: $AmortizationPlansTable.$convertercadenceUnit.fromJson(
         serializer.fromJson<String>(json['cadenceUnit']),
@@ -18394,7 +18361,6 @@ class AmortizationPlanRow extends DataClass
         $AmortizationPlansTable.$converterkind.toJson(kind),
       ),
       'deferralAccountId': serializer.toJson<String>(deferralAccountId),
-      'categoryAccountId': serializer.toJson<String>(categoryAccountId),
       'totalAmountMinor': serializer.toJson<int>(totalAmountMinor),
       'cadenceUnit': serializer.toJson<String>(
         $AmortizationPlansTable.$convertercadenceUnit.toJson(cadenceUnit),
@@ -18426,7 +18392,6 @@ class AmortizationPlanRow extends DataClass
     String? id,
     AmortizationKind? kind,
     String? deferralAccountId,
-    String? categoryAccountId,
     int? totalAmountMinor,
     AmortizationCadenceUnit? cadenceUnit,
     int? cadenceInterval,
@@ -18447,7 +18412,6 @@ class AmortizationPlanRow extends DataClass
     id: id ?? this.id,
     kind: kind ?? this.kind,
     deferralAccountId: deferralAccountId ?? this.deferralAccountId,
-    categoryAccountId: categoryAccountId ?? this.categoryAccountId,
     totalAmountMinor: totalAmountMinor ?? this.totalAmountMinor,
     cadenceUnit: cadenceUnit ?? this.cadenceUnit,
     cadenceInterval: cadenceInterval ?? this.cadenceInterval,
@@ -18483,9 +18447,6 @@ class AmortizationPlanRow extends DataClass
       deferralAccountId: data.deferralAccountId.present
           ? data.deferralAccountId.value
           : this.deferralAccountId,
-      categoryAccountId: data.categoryAccountId.present
-          ? data.categoryAccountId.value
-          : this.categoryAccountId,
       totalAmountMinor: data.totalAmountMinor.present
           ? data.totalAmountMinor.value
           : this.totalAmountMinor,
@@ -18538,7 +18499,6 @@ class AmortizationPlanRow extends DataClass
           ..write('id: $id, ')
           ..write('kind: $kind, ')
           ..write('deferralAccountId: $deferralAccountId, ')
-          ..write('categoryAccountId: $categoryAccountId, ')
           ..write('totalAmountMinor: $totalAmountMinor, ')
           ..write('cadenceUnit: $cadenceUnit, ')
           ..write('cadenceInterval: $cadenceInterval, ')
@@ -18566,7 +18526,6 @@ class AmortizationPlanRow extends DataClass
     id,
     kind,
     deferralAccountId,
-    categoryAccountId,
     totalAmountMinor,
     cadenceUnit,
     cadenceInterval,
@@ -18591,7 +18550,6 @@ class AmortizationPlanRow extends DataClass
           other.id == this.id &&
           other.kind == this.kind &&
           other.deferralAccountId == this.deferralAccountId &&
-          other.categoryAccountId == this.categoryAccountId &&
           other.totalAmountMinor == this.totalAmountMinor &&
           other.cadenceUnit == this.cadenceUnit &&
           other.cadenceInterval == this.cadenceInterval &&
@@ -18616,7 +18574,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
   final Value<String> id;
   final Value<AmortizationKind> kind;
   final Value<String> deferralAccountId;
-  final Value<String> categoryAccountId;
   final Value<int> totalAmountMinor;
   final Value<AmortizationCadenceUnit> cadenceUnit;
   final Value<int> cadenceInterval;
@@ -18638,7 +18595,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     this.id = const Value.absent(),
     this.kind = const Value.absent(),
     this.deferralAccountId = const Value.absent(),
-    this.categoryAccountId = const Value.absent(),
     this.totalAmountMinor = const Value.absent(),
     this.cadenceUnit = const Value.absent(),
     this.cadenceInterval = const Value.absent(),
@@ -18661,7 +18617,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     required String id,
     required AmortizationKind kind,
     required String deferralAccountId,
-    required String categoryAccountId,
     required int totalAmountMinor,
     required AmortizationCadenceUnit cadenceUnit,
     required int cadenceInterval,
@@ -18682,7 +18637,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
   }) : id = Value(id),
        kind = Value(kind),
        deferralAccountId = Value(deferralAccountId),
-       categoryAccountId = Value(categoryAccountId),
        totalAmountMinor = Value(totalAmountMinor),
        cadenceUnit = Value(cadenceUnit),
        cadenceInterval = Value(cadenceInterval),
@@ -18693,7 +18647,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     Expression<String>? id,
     Expression<String>? kind,
     Expression<String>? deferralAccountId,
-    Expression<String>? categoryAccountId,
     Expression<int>? totalAmountMinor,
     Expression<String>? cadenceUnit,
     Expression<int>? cadenceInterval,
@@ -18716,7 +18669,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
       if (id != null) 'id': id,
       if (kind != null) 'kind': kind,
       if (deferralAccountId != null) 'deferral_account_id': deferralAccountId,
-      if (categoryAccountId != null) 'category_account_id': categoryAccountId,
       if (totalAmountMinor != null) 'total_amount_minor': totalAmountMinor,
       if (cadenceUnit != null) 'cadence_unit': cadenceUnit,
       if (cadenceInterval != null) 'cadence_interval': cadenceInterval,
@@ -18748,7 +18700,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     Value<String>? id,
     Value<AmortizationKind>? kind,
     Value<String>? deferralAccountId,
-    Value<String>? categoryAccountId,
     Value<int>? totalAmountMinor,
     Value<AmortizationCadenceUnit>? cadenceUnit,
     Value<int>? cadenceInterval,
@@ -18771,7 +18722,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
       id: id ?? this.id,
       kind: kind ?? this.kind,
       deferralAccountId: deferralAccountId ?? this.deferralAccountId,
-      categoryAccountId: categoryAccountId ?? this.categoryAccountId,
       totalAmountMinor: totalAmountMinor ?? this.totalAmountMinor,
       cadenceUnit: cadenceUnit ?? this.cadenceUnit,
       cadenceInterval: cadenceInterval ?? this.cadenceInterval,
@@ -18809,9 +18759,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     }
     if (deferralAccountId.present) {
       map['deferral_account_id'] = Variable<String>(deferralAccountId.value);
-    }
-    if (categoryAccountId.present) {
-      map['category_account_id'] = Variable<String>(categoryAccountId.value);
     }
     if (totalAmountMinor.present) {
       map['total_amount_minor'] = Variable<int>(totalAmountMinor.value);
@@ -18887,7 +18834,6 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
           ..write('id: $id, ')
           ..write('kind: $kind, ')
           ..write('deferralAccountId: $deferralAccountId, ')
-          ..write('categoryAccountId: $categoryAccountId, ')
           ..write('totalAmountMinor: $totalAmountMinor, ')
           ..write('cadenceUnit: $cadenceUnit, ')
           ..write('cadenceInterval: $cadenceInterval, ')
@@ -19484,6 +19430,480 @@ class AmortizationEntriesCompanion
   }
 }
 
+class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
+    with
+        TableInfo<
+          $AmortizationEntryAllocationsTable,
+          AmortizationEntryAllocationRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AmortizationEntryAllocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entryIdMeta = const VerificationMeta(
+    'entryId',
+  );
+  @override
+  late final GeneratedColumn<String> entryId = GeneratedColumn<String>(
+    'entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lineNoMeta = const VerificationMeta('lineNo');
+  @override
+  late final GeneratedColumn<int> lineNo = GeneratedColumn<int>(
+    'line_no',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMinorMeta = const VerificationMeta(
+    'amountMinor',
+  );
+  @override
+  late final GeneratedColumn<int> amountMinor = GeneratedColumn<int>(
+    'amount_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    entryId,
+    lineNo,
+    accountId,
+    amountMinor,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'amortization_entry_allocations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AmortizationEntryAllocationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('entry_id')) {
+      context.handle(
+        _entryIdMeta,
+        entryId.isAcceptableOrUnknown(data['entry_id']!, _entryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entryIdMeta);
+    }
+    if (data.containsKey('line_no')) {
+      context.handle(
+        _lineNoMeta,
+        lineNo.isAcceptableOrUnknown(data['line_no']!, _lineNoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lineNoMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('amount_minor')) {
+      context.handle(
+        _amountMinorMeta,
+        amountMinor.isAcceptableOrUnknown(
+          data['amount_minor']!,
+          _amountMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMinorMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AmortizationEntryAllocationRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AmortizationEntryAllocationRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      entryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entry_id'],
+      )!,
+      lineNo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}line_no'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      amountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount_minor'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AmortizationEntryAllocationsTable createAlias(String alias) {
+    return $AmortizationEntryAllocationsTable(attachedDatabase, alias);
+  }
+}
+
+class AmortizationEntryAllocationRow extends DataClass
+    implements Insertable<AmortizationEntryAllocationRow> {
+  final String id;
+  final String entryId;
+  final int lineNo;
+  final String accountId;
+  final int amountMinor;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AmortizationEntryAllocationRow({
+    required this.id,
+    required this.entryId,
+    required this.lineNo,
+    required this.accountId,
+    required this.amountMinor,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['entry_id'] = Variable<String>(entryId);
+    map['line_no'] = Variable<int>(lineNo);
+    map['account_id'] = Variable<String>(accountId);
+    map['amount_minor'] = Variable<int>(amountMinor);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AmortizationEntryAllocationsCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationEntryAllocationsCompanion(
+      id: Value(id),
+      entryId: Value(entryId),
+      lineNo: Value(lineNo),
+      accountId: Value(accountId),
+      amountMinor: Value(amountMinor),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AmortizationEntryAllocationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AmortizationEntryAllocationRow(
+      id: serializer.fromJson<String>(json['id']),
+      entryId: serializer.fromJson<String>(json['entryId']),
+      lineNo: serializer.fromJson<int>(json['lineNo']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      amountMinor: serializer.fromJson<int>(json['amountMinor']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'entryId': serializer.toJson<String>(entryId),
+      'lineNo': serializer.toJson<int>(lineNo),
+      'accountId': serializer.toJson<String>(accountId),
+      'amountMinor': serializer.toJson<int>(amountMinor),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AmortizationEntryAllocationRow copyWith({
+    String? id,
+    String? entryId,
+    int? lineNo,
+    String? accountId,
+    int? amountMinor,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AmortizationEntryAllocationRow(
+    id: id ?? this.id,
+    entryId: entryId ?? this.entryId,
+    lineNo: lineNo ?? this.lineNo,
+    accountId: accountId ?? this.accountId,
+    amountMinor: amountMinor ?? this.amountMinor,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AmortizationEntryAllocationRow copyWithCompanion(
+    AmortizationEntryAllocationsCompanion data,
+  ) {
+    return AmortizationEntryAllocationRow(
+      id: data.id.present ? data.id.value : this.id,
+      entryId: data.entryId.present ? data.entryId.value : this.entryId,
+      lineNo: data.lineNo.present ? data.lineNo.value : this.lineNo,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      amountMinor: data.amountMinor.present
+          ? data.amountMinor.value
+          : this.amountMinor,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationEntryAllocationRow(')
+          ..write('id: $id, ')
+          ..write('entryId: $entryId, ')
+          ..write('lineNo: $lineNo, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    entryId,
+    lineNo,
+    accountId,
+    amountMinor,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AmortizationEntryAllocationRow &&
+          other.id == this.id &&
+          other.entryId == this.entryId &&
+          other.lineNo == this.lineNo &&
+          other.accountId == this.accountId &&
+          other.amountMinor == this.amountMinor &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AmortizationEntryAllocationsCompanion
+    extends UpdateCompanion<AmortizationEntryAllocationRow> {
+  final Value<String> id;
+  final Value<String> entryId;
+  final Value<int> lineNo;
+  final Value<String> accountId;
+  final Value<int> amountMinor;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AmortizationEntryAllocationsCompanion({
+    this.id = const Value.absent(),
+    this.entryId = const Value.absent(),
+    this.lineNo = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.amountMinor = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AmortizationEntryAllocationsCompanion.insert({
+    required String id,
+    required String entryId,
+    required int lineNo,
+    required String accountId,
+    required int amountMinor,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       entryId = Value(entryId),
+       lineNo = Value(lineNo),
+       accountId = Value(accountId),
+       amountMinor = Value(amountMinor);
+  static Insertable<AmortizationEntryAllocationRow> custom({
+    Expression<String>? id,
+    Expression<String>? entryId,
+    Expression<int>? lineNo,
+    Expression<String>? accountId,
+    Expression<int>? amountMinor,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (entryId != null) 'entry_id': entryId,
+      if (lineNo != null) 'line_no': lineNo,
+      if (accountId != null) 'account_id': accountId,
+      if (amountMinor != null) 'amount_minor': amountMinor,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AmortizationEntryAllocationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? entryId,
+    Value<int>? lineNo,
+    Value<String>? accountId,
+    Value<int>? amountMinor,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AmortizationEntryAllocationsCompanion(
+      id: id ?? this.id,
+      entryId: entryId ?? this.entryId,
+      lineNo: lineNo ?? this.lineNo,
+      accountId: accountId ?? this.accountId,
+      amountMinor: amountMinor ?? this.amountMinor,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (entryId.present) {
+      map['entry_id'] = Variable<String>(entryId.value);
+    }
+    if (lineNo.present) {
+      map['line_no'] = Variable<int>(lineNo.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (amountMinor.present) {
+      map['amount_minor'] = Variable<int>(amountMinor.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationEntryAllocationsCompanion(')
+          ..write('id: $id, ')
+          ..write('entryId: $entryId, ')
+          ..write('lineNo: $lineNo, ')
+          ..write('accountId: $accountId, ')
+          ..write('amountMinor: $amountMinor, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -19539,6 +19959,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AmortizationPlansTable(this);
   late final $AmortizationEntriesTable amortizationEntries =
       $AmortizationEntriesTable(this);
+  late final $AmortizationEntryAllocationsTable amortizationEntryAllocations =
+      $AmortizationEntryAllocationsTable(this);
   late final Index installmentRepricingRecordsPendingIdx = Index(
     'installment_repricing_records_pending_idx',
     'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
@@ -19584,6 +20006,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     advanceCases,
     amortizationPlans,
     amortizationEntries,
+    amortizationEntryAllocations,
     installmentRepricingRecordsPendingIdx,
     installmentRepricingConfigsActiveIdx,
   ];
@@ -28392,7 +28815,6 @@ typedef $$AmortizationPlansTableCreateCompanionBuilder =
       required String id,
       required AmortizationKind kind,
       required String deferralAccountId,
-      required String categoryAccountId,
       required int totalAmountMinor,
       required AmortizationCadenceUnit cadenceUnit,
       required int cadenceInterval,
@@ -28416,7 +28838,6 @@ typedef $$AmortizationPlansTableUpdateCompanionBuilder =
       Value<String> id,
       Value<AmortizationKind> kind,
       Value<String> deferralAccountId,
-      Value<String> categoryAccountId,
       Value<int> totalAmountMinor,
       Value<AmortizationCadenceUnit> cadenceUnit,
       Value<int> cadenceInterval,
@@ -28458,11 +28879,6 @@ class $$AmortizationPlansTableFilterComposer
 
   ColumnFilters<String> get deferralAccountId => $composableBuilder(
     column: $table.deferralAccountId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get categoryAccountId => $composableBuilder(
-    column: $table.categoryAccountId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -28577,11 +28993,6 @@ class $$AmortizationPlansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get categoryAccountId => $composableBuilder(
-    column: $table.categoryAccountId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get totalAmountMinor => $composableBuilder(
     column: $table.totalAmountMinor,
     builder: (column) => ColumnOrderings(column),
@@ -28681,11 +29092,6 @@ class $$AmortizationPlansTableAnnotationComposer
 
   GeneratedColumn<String> get deferralAccountId => $composableBuilder(
     column: $table.deferralAccountId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get categoryAccountId => $composableBuilder(
-    column: $table.categoryAccountId,
     builder: (column) => column,
   );
 
@@ -28809,7 +29215,6 @@ class $$AmortizationPlansTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<AmortizationKind> kind = const Value.absent(),
                 Value<String> deferralAccountId = const Value.absent(),
-                Value<String> categoryAccountId = const Value.absent(),
                 Value<int> totalAmountMinor = const Value.absent(),
                 Value<AmortizationCadenceUnit> cadenceUnit =
                     const Value.absent(),
@@ -28833,7 +29238,6 @@ class $$AmortizationPlansTableTableManager
                 id: id,
                 kind: kind,
                 deferralAccountId: deferralAccountId,
-                categoryAccountId: categoryAccountId,
                 totalAmountMinor: totalAmountMinor,
                 cadenceUnit: cadenceUnit,
                 cadenceInterval: cadenceInterval,
@@ -28858,7 +29262,6 @@ class $$AmortizationPlansTableTableManager
                 required String id,
                 required AmortizationKind kind,
                 required String deferralAccountId,
-                required String categoryAccountId,
                 required int totalAmountMinor,
                 required AmortizationCadenceUnit cadenceUnit,
                 required int cadenceInterval,
@@ -28881,7 +29284,6 @@ class $$AmortizationPlansTableTableManager
                 id: id,
                 kind: kind,
                 deferralAccountId: deferralAccountId,
-                categoryAccountId: categoryAccountId,
                 totalAmountMinor: totalAmountMinor,
                 cadenceUnit: cadenceUnit,
                 cadenceInterval: cadenceInterval,
@@ -29230,6 +29632,265 @@ typedef $$AmortizationEntriesTableProcessedTableManager =
       AmortizationEntryRow,
       PrefetchHooks Function()
     >;
+typedef $$AmortizationEntryAllocationsTableCreateCompanionBuilder =
+    AmortizationEntryAllocationsCompanion Function({
+      required String id,
+      required String entryId,
+      required int lineNo,
+      required String accountId,
+      required int amountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AmortizationEntryAllocationsTableUpdateCompanionBuilder =
+    AmortizationEntryAllocationsCompanion Function({
+      Value<String> id,
+      Value<String> entryId,
+      Value<int> lineNo,
+      Value<String> accountId,
+      Value<int> amountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AmortizationEntryAllocationsTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
+  $$AmortizationEntryAllocationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entryId => $composableBuilder(
+    column: $table.entryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lineNo => $composableBuilder(
+    column: $table.lineNo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AmortizationEntryAllocationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
+  $$AmortizationEntryAllocationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entryId => $composableBuilder(
+    column: $table.entryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lineNo => $composableBuilder(
+    column: $table.lineNo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AmortizationEntryAllocationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
+  $$AmortizationEntryAllocationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get entryId =>
+      $composableBuilder(column: $table.entryId, builder: (column) => column);
+
+  GeneratedColumn<int> get lineNo =>
+      $composableBuilder(column: $table.lineNo, builder: (column) => column);
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get amountMinor => $composableBuilder(
+    column: $table.amountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AmortizationEntryAllocationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AmortizationEntryAllocationsTable,
+          AmortizationEntryAllocationRow,
+          $$AmortizationEntryAllocationsTableFilterComposer,
+          $$AmortizationEntryAllocationsTableOrderingComposer,
+          $$AmortizationEntryAllocationsTableAnnotationComposer,
+          $$AmortizationEntryAllocationsTableCreateCompanionBuilder,
+          $$AmortizationEntryAllocationsTableUpdateCompanionBuilder,
+          (
+            AmortizationEntryAllocationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AmortizationEntryAllocationsTable,
+              AmortizationEntryAllocationRow
+            >,
+          ),
+          AmortizationEntryAllocationRow,
+          PrefetchHooks Function()
+        > {
+  $$AmortizationEntryAllocationsTableTableManager(
+    _$AppDatabase db,
+    $AmortizationEntryAllocationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AmortizationEntryAllocationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AmortizationEntryAllocationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AmortizationEntryAllocationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> entryId = const Value.absent(),
+                Value<int> lineNo = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<int> amountMinor = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationEntryAllocationsCompanion(
+                id: id,
+                entryId: entryId,
+                lineNo: lineNo,
+                accountId: accountId,
+                amountMinor: amountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String entryId,
+                required int lineNo,
+                required String accountId,
+                required int amountMinor,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationEntryAllocationsCompanion.insert(
+                id: id,
+                entryId: entryId,
+                lineNo: lineNo,
+                accountId: accountId,
+                amountMinor: amountMinor,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AmortizationEntryAllocationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AmortizationEntryAllocationsTable,
+      AmortizationEntryAllocationRow,
+      $$AmortizationEntryAllocationsTableFilterComposer,
+      $$AmortizationEntryAllocationsTableOrderingComposer,
+      $$AmortizationEntryAllocationsTableAnnotationComposer,
+      $$AmortizationEntryAllocationsTableCreateCompanionBuilder,
+      $$AmortizationEntryAllocationsTableUpdateCompanionBuilder,
+      (
+        AmortizationEntryAllocationRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AmortizationEntryAllocationsTable,
+          AmortizationEntryAllocationRow
+        >,
+      ),
+      AmortizationEntryAllocationRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -29327,4 +29988,10 @@ class $AppDatabaseManager {
       $$AmortizationPlansTableTableManager(_db, _db.amortizationPlans);
   $$AmortizationEntriesTableTableManager get amortizationEntries =>
       $$AmortizationEntriesTableTableManager(_db, _db.amortizationEntries);
+  $$AmortizationEntryAllocationsTableTableManager
+  get amortizationEntryAllocations =>
+      $$AmortizationEntryAllocationsTableTableManager(
+        _db,
+        _db.amortizationEntryAllocations,
+      );
 }

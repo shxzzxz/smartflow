@@ -1,4 +1,5 @@
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/service/amortization_schedule.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:test/test.dart';
@@ -71,6 +72,61 @@ void main() {
         recognitionCount: 3,
       ),
       throwsA(isA<Exception>()),
+    );
+  });
+
+  test('splits each period while preserving category totals', () {
+    final entries = buildAmortizationSchedule(
+      planId: 'plan',
+      total: const Money(minorUnits: 101),
+      categoryAllocations: const [
+        AccountAmountAllocation(
+          accountId: 'food',
+          amount: Money(minorUnits: 35),
+        ),
+        AccountAmountAllocation(
+          accountId: 'travel',
+          amount: Money(minorUnits: 66),
+        ),
+      ],
+      firstRecognitionAt: DateTime(2026, 1, 1),
+      cadenceUnit: AmortizationCadenceUnit.daily,
+      cadenceInterval: 1,
+      recognitionCount: 3,
+    );
+
+    expect(
+      entries.map(
+        (entry) => [
+          for (final allocation in entry.categoryAllocations)
+            allocation.amount.minorUnits,
+        ],
+      ),
+      [
+        [11, 22],
+        [12, 21],
+        [12, 23],
+      ],
+    );
+    expect(
+      entries
+          .expand((entry) => entry.categoryAllocations)
+          .where((allocation) => allocation.accountId == 'food')
+          .fold<int>(
+            0,
+            (sum, allocation) => sum + allocation.amount.minorUnits,
+          ),
+      35,
+    );
+    expect(
+      entries
+          .expand((entry) => entry.categoryAllocations)
+          .where((allocation) => allocation.accountId == 'travel')
+          .fold<int>(
+            0,
+            (sum, allocation) => sum + allocation.amount.minorUnits,
+          ),
+      66,
     );
   });
 }

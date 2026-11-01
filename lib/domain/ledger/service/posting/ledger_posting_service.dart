@@ -107,8 +107,12 @@ class LedgerPostingService {
           ),
         ),
         TransferInstruction i => AccountRoleContext.transfer(
-          fromAccountId: i.fromAccountId,
-          toAccountId: i.toAccountId,
+          fromAccountIds: i.outgoingAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
+          toAccountIds: i.incomingAllocations.map(
+            (allocation) => allocation.accountId,
+          ),
         ),
         RepaymentInstruction i => AccountRoleContext.repayment(
           liabilityAccountId: i.liabilityAccountId,

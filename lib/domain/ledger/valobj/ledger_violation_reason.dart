@@ -365,6 +365,10 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionInvalidCommand,
     'Transfer fee cannot be negative.',
   ),
+  transferFeeRequiresSingleOutgoingAccount(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A transfer fee requires exactly one outgoing account.',
+  ),
   transferInstructionUnresolvable(
     LedgerErrorCode.transactionPostingFailed,
     'Transfer accounts cannot be resolved.',

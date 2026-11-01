@@ -68,7 +68,9 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       await _ledger.validatePlanAccounts(
         kind: command.kind,
         deferralAccountId: command.deferralAccountId,
-        categoryAccountId: command.categoryAccountId,
+        categoryAccountIds: command.recognitionAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
       );
       if (command.kind == AmortizationKind.deferredIncome &&
           command.feeAmount != null &&
@@ -83,18 +85,22 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: planId,
       );
-      final fromAccountId = switch (command.kind) {
-        AmortizationKind.prepaidExpense => command.fundingAccountId,
-        AmortizationKind.deferredIncome => command.deferralAccountId,
+      final deferralAllocation = singleAllocation(
+        accountId: command.deferralAccountId,
+        amount: command.total,
+      );
+      final outgoingAllocations = switch (command.kind) {
+        AmortizationKind.prepaidExpense => command.fundingAllocations,
+        AmortizationKind.deferredIncome => deferralAllocation,
       };
-      final toAccountId = switch (command.kind) {
-        AmortizationKind.prepaidExpense => command.deferralAccountId,
-        AmortizationKind.deferredIncome => command.fundingAccountId,
+      final incomingAllocations = switch (command.kind) {
+        AmortizationKind.prepaidExpense => deferralAllocation,
+        AmortizationKind.deferredIncome => command.fundingAllocations,
       };
       final initialTransactionId = await _ledger.postTransfer(
         amount: command.total,
-        fromAccountId: fromAccountId,
-        toAccountId: toAccountId,
+        outgoingAllocations: outgoingAllocations,
+        incomingAllocations: incomingAllocations,
         occurredAt: command.occurredAt,
         feeAmount: command.feeAmount,
         counterpartyId: command.counterpartyId,
@@ -108,7 +114,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         id: planId,
         kind: command.kind,
         deferralAccountId: command.deferralAccountId,
-        categoryAccountId: command.categoryAccountId,
+        recognitionAllocations: command.recognitionAllocations,
         total: command.total,
         cadenceUnit: command.cadenceUnit,
         cadenceInterval: command.cadenceInterval,
@@ -200,14 +206,22 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         );
       }
       final recognitionAmount = remaining - command.refundAmount;
+      final recognitionAllocations =
+          command.recognitionCategoryAccountId == null
+          ? _proportionalAllocations(
+              allocations: beforeTermination.remainingCategoryAllocations,
+              amount: recognitionAmount,
+            )
+          : singleAllocation(
+              accountId: command.recognitionCategoryAccountId!,
+              amount: recognitionAmount,
+            );
       final recognitionTransactionId = recognitionAmount.minorUnits > 0
           ? await _postRecognition(
               plan: plan,
               amount: recognitionAmount,
+              categoryAllocations: recognitionAllocations,
               occurredAt: command.terminatedAt,
-              categoryAccountId:
-                  command.recognitionCategoryAccountId ??
-                  plan.categoryAccountId,
               note: command.note ?? plan.note,
             )
           : null;
@@ -302,8 +316,8 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       generatedBySequence[entry.sequenceNo] = await _postRecognition(
         plan: plan,
         amount: entry.amount,
+        categoryAllocations: entry.categoryAllocations,
         occurredAt: entry.dueAt,
-        categoryAccountId: plan.categoryAccountId,
         note: plan.note,
       );
     }
@@ -322,17 +336,13 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
   Future<String> _postRecognition({
     required AmortizationPlan plan,
     required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
     required DateTime occurredAt,
-    required String categoryAccountId,
     String? note,
   }) {
     final ownership = TransactionOwnership(
       ownerType: orchestrationAmortizationOwnerType,
       ownerId: plan.id,
-    );
-    final category = singleAllocation(
-      accountId: categoryAccountId,
-      amount: amount,
     );
     final settlement = singleAllocation(
       accountId: plan.deferralAccountId,
@@ -341,7 +351,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     return switch (plan.kind) {
       AmortizationKind.prepaidExpense => _ledger.postExpense(
         amount: amount,
-        categoryAllocations: category,
+        categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,
         occurredAt: occurredAt,
         counterpartyId: plan.counterpartyId,
@@ -352,7 +362,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       ),
       AmortizationKind.deferredIncome => _ledger.postIncome(
         amount: amount,
-        categoryAllocations: category,
+        categoryAllocations: categoryAllocations,
         settlementAllocations: settlement,
         occurredAt: occurredAt,
         counterpartyId: plan.counterpartyId,
@@ -375,8 +385,14 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
   }) {
     return _ledger.postTransfer(
       amount: amount,
-      fromAccountId: fromDeferralAccount ? plan.deferralAccountId : accountId,
-      toAccountId: fromDeferralAccount ? accountId : plan.deferralAccountId,
+      outgoingAllocations: singleAllocation(
+        accountId: fromDeferralAccount ? plan.deferralAccountId : accountId,
+        amount: amount,
+      ),
+      incomingAllocations: singleAllocation(
+        accountId: fromDeferralAccount ? accountId : plan.deferralAccountId,
+        amount: amount,
+      ),
       occurredAt: occurredAt,
       feeAmount: feeAmount,
       counterpartyId: plan.counterpartyId,
@@ -412,6 +428,48 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
+
+  static List<AccountAmountAllocation> _proportionalAllocations({
+    required List<AccountAmountAllocation> allocations,
+    required Money amount,
+  }) {
+    if (amount.minorUnits == 0) return const [];
+    final total = sumAllocations(allocations);
+    if (total == amount) return allocations;
+    if (allocations.isEmpty || amount.minorUnits > total.minorUnits) {
+      throw _error(
+        AmortizationErrorCode.invalidCommand,
+        'Termination allocation exceeds the remaining category balance.',
+      );
+    }
+    final allocated = <int>[];
+    final remainders = <int>[];
+    for (final allocation in allocations) {
+      final numerator = amount.minorUnits * allocation.amount.minorUnits;
+      allocated.add(numerator ~/ total.minorUnits);
+      remainders.add(numerator % total.minorUnits);
+    }
+    var remainingMinor =
+        amount.minorUnits - allocated.fold(0, (sum, value) => sum + value);
+    final order =
+        [for (var index = 0; index < allocations.length; index++) index]
+          ..sort((left, right) {
+            final byRemainder = remainders[right].compareTo(remainders[left]);
+            return byRemainder != 0 ? byRemainder : left.compareTo(right);
+          });
+    for (final index in order) {
+      if (remainingMinor == 0) break;
+      allocated[index]++;
+      remainingMinor--;
+    }
+    return [
+      for (var index = 0; index < allocations.length; index++)
+        if (allocated[index] > 0)
+          allocations[index].copyWith(
+            amount: Money(minorUnits: allocated[index]),
+          ),
+    ];
+  }
 
   static BusinessException _error(AmortizationErrorCode code, String message) =>
       BusinessException(code, message: message);

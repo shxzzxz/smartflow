@@ -9,9 +9,9 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_form_field.dart';
 import '../../../design_system/widget/app_surface.dart';
-import '../../../widget/business/account/account_picker_sheet.dart';
-import '../../../widget/business/finance/money_input.dart';
-import '../../../widget/business/icon/business_icon.dart';
+import '../account/account_picker_sheet.dart';
+import '../finance/money_input.dart';
+import '../icon/business_icon.dart';
 
 class TransactionAllocationOption {
   const TransactionAllocationOption({

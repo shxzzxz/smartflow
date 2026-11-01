@@ -661,6 +661,11 @@ String transactionAccountLabel(
       item.linesOf(TransactionRole.settlementIn).length > 1
           ? '多账户'
           : nameOf(EntryDirection.debit) ?? '',
+    BusinessPurpose.transfer =>
+      item.linesOf(TransactionRole.settlementOut).length > 1 ||
+              item.linesOf(TransactionRole.settlementIn).length > 1
+          ? '多账户'
+          : _flowAccountLabel(item, accountLookup),
     _ => _flowAccountLabel(item, accountLookup),
   };
 }

@@ -7,7 +7,6 @@ class AmortizationPlans extends Table {
   TextColumn get id => text()();
   TextColumn get kind => textEnum<AmortizationKind>()();
   TextColumn get deferralAccountId => text().named('deferral_account_id')();
-  TextColumn get categoryAccountId => text().named('category_account_id')();
   IntColumn get totalAmountMinor => integer().named('total_amount_minor')();
   TextColumn get cadenceUnit =>
       textEnum<AmortizationCadenceUnit>().named('cadence_unit')();

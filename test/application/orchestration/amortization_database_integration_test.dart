@@ -7,6 +7,7 @@ import 'package:smartflow/application/orchestration/amortization/command/amortiz
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
+import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -31,9 +32,27 @@ void main() {
       CreateAmortizationPlanCommand(
         kind: AmortizationKind.prepaidExpense,
         total: _money(300000),
-        fundingAccountId: 'fund',
+        fundingAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'fund',
+            amount: Money(minorUnits: 100000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'fund-2',
+            amount: Money(minorUnits: 200000),
+          ),
+        ],
         deferralAccountId: 'prepaid',
-        categoryAccountId: 'rent-expense',
+        recognitionAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'rent-expense',
+            amount: Money(minorUnits: 200000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'utilities-expense',
+            amount: Money(minorUnits: 100000),
+          ),
+        ],
         firstRecognitionAt: DateTime(2026, 1, 31),
         cadenceUnit: AmortizationCadenceUnit.monthly,
         cadenceInterval: 1,
@@ -43,9 +62,11 @@ void main() {
     );
     await fixture.service.generateDue(DateTime(2026, 1, 31));
 
-    expect(await fixture.balance('fund'), _money(-300000));
+    expect(await fixture.balance('fund'), _money(-100000));
+    expect(await fixture.balance('fund-2'), _money(-200000));
     expect(await fixture.balance('prepaid'), _money(200000));
-    expect(await fixture.balance('rent-expense'), _money(100000));
+    expect(await fixture.balance('rent-expense'), _money(66667));
+    expect(await fixture.balance('utilities-expense'), _money(33333));
 
     await fixture.service.terminate(
       TerminateAmortizationPlanCommand(
@@ -56,16 +77,24 @@ void main() {
       ),
     );
     expect(await fixture.balance('prepaid'), _money(0));
-    expect(await fixture.balance('fund'), _money(-250000));
-    expect(await fixture.balance('rent-expense'), _money(250000));
+    expect(await fixture.balance('fund'), _money(-50000));
+    expect(await fixture.balance('fund-2'), _money(-200000));
+    expect(await fixture.balance('rent-expense'), _money(166667));
+    expect(await fixture.balance('utilities-expense'), _money(83333));
 
     await fixture.service.createPlan(
       CreateAmortizationPlanCommand(
         kind: AmortizationKind.deferredIncome,
         total: _money(300000),
-        fundingAccountId: 'fund',
+        fundingAllocations: singleAllocation(
+          accountId: 'fund',
+          amount: _money(300000),
+        ),
         deferralAccountId: 'deferred',
-        categoryAccountId: 'rent-income',
+        recognitionAllocations: singleAllocation(
+          accountId: 'rent-income',
+          amount: _money(300000),
+        ),
         firstRecognitionAt: DateTime(2026, 3, 31),
         cadenceUnit: AmortizationCadenceUnit.monthly,
         cadenceInterval: 1,
@@ -75,7 +104,7 @@ void main() {
     );
     await fixture.service.generateDue(DateTime(2026, 3, 31));
 
-    expect(await fixture.balance('fund'), _money(50000));
+    expect(await fixture.balance('fund'), _money(250000));
     expect(await fixture.balance('deferred'), _money(200000));
     expect(await fixture.balance('rent-income'), _money(100000));
   });
@@ -97,6 +126,7 @@ class _Fixture {
     final accounts = DriftAccountRepository(database);
     for (final account in [
       _account('fund', AccountType.asset, AccountSubtype.fund, 'ledger.fund'),
+      _account('fund-2', AccountType.asset, AccountSubtype.fund, 'ledger.fund'),
       _account(
         'prepaid',
         AccountType.asset,
@@ -110,6 +140,7 @@ class _Fixture {
         'ledger.deferredIncome',
       ),
       _category('rent-expense', AccountType.expense, '房租支出'),
+      _category('utilities-expense', AccountType.expense, '水电支出'),
       _category('rent-income', AccountType.income, '房租收入'),
     ]) {
       await accounts.create(account);

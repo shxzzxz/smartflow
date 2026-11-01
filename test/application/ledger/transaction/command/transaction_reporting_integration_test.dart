@@ -190,7 +190,7 @@ void main() {
                 ),
               )
             : await posting.createTransfer(
-                CreateTransferCommand(
+                CreateTransferCommand.simple(
                   amount: Money.parse('100'),
                   feeAmount: Money.parse('5'),
                   fromAccountId: 'cash',
@@ -304,7 +304,7 @@ void main() {
 
   test('pure transfer retains flags when a fee is later added', () async {
     final result = await posting.createTransfer(
-      CreateTransferCommand(
+      CreateTransferCommand.simple(
         amount: Money.parse('100'),
         fromAccountId: 'cash',
         toAccountId: 'bank',

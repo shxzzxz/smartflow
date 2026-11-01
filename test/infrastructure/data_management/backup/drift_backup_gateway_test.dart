@@ -130,6 +130,31 @@ void main() {
     expect(after.preferences, before.preferences);
   });
 
+  test('round-trips amortization entry category allocations', () async {
+    await database
+        .into(database.amortizationEntryAllocations)
+        .insert(
+          AmortizationEntryAllocationsCompanion.insert(
+            id: 'entry-1:allocation:1',
+            entryId: 'entry-1',
+            lineNo: 1,
+            accountId: 'rent',
+            amountMinor: 1000,
+          ),
+        );
+
+    final snapshot = await gateway.readSnapshot();
+    await database.delete(database.amortizationEntryAllocations).go();
+    await gateway.replaceSnapshot(snapshot);
+
+    final restored = await database
+        .select(database.amortizationEntryAllocations)
+        .getSingle();
+    expect(restored.entryId, 'entry-1');
+    expect(restored.accountId, 'rent');
+    expect(restored.amountMinor, 1000);
+  });
+
   test(
     'serializes settings preferences without exporting metadata internals',
     () async {

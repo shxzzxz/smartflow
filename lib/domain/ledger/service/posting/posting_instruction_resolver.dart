@@ -174,16 +174,20 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
   }
 
   TransferInstruction _resolveTransfer(Transaction transaction) {
-    final fromAccountId = transaction.accountOf(TransactionRole.settlementOut);
-    final toAccountId = transaction.accountOf(TransactionRole.settlementIn);
-    if (fromAccountId == null || toAccountId == null) {
+    final outgoingAllocations = transaction.accountAllocationsOf(
+      TransactionRole.settlementOut,
+    );
+    final incomingAllocations = transaction.accountAllocationsOf(
+      TransactionRole.settlementIn,
+    );
+    if (outgoingAllocations.isEmpty || incomingAllocations.isEmpty) {
       return LedgerViolationReason.transferInstructionUnresolvable
           .throwException(message: 'Transfer accounts cannot be resolved.');
     }
     return TransferInstruction(
       amount: transaction.primaryAmount,
-      fromAccountId: fromAccountId,
-      toAccountId: toAccountId,
+      outgoingAllocations: outgoingAllocations,
+      incomingAllocations: incomingAllocations,
       feeAmount: transaction.amountOf(TransactionRole.fee),
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,

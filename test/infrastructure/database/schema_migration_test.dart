@@ -11,6 +11,7 @@ import '../../generated_migrations/schema_v49.dart' as v49;
 import '../../generated_migrations/schema_v50.dart' as v50;
 import '../../generated_migrations/schema_v51.dart' as v51;
 import '../../generated_migrations/schema_v52.dart' as v52;
+import '../../generated_migrations/schema_v53.dart' as v53;
 
 void main() {
   late SchemaVerifier verifier;
@@ -19,7 +20,7 @@ void main() {
     verifier = SchemaVerifier(GeneratedHelper());
   });
 
-  test('migrates v49 to v50 without losing account data', () async {
+  test('migrates v49 to current without losing account data', () async {
     await verifier.testWithDataIntegrity<v49.DatabaseAtV49, AppDatabase>(
       createOld: v49.DatabaseAtV49.new,
       createNew: AppDatabase.new,
@@ -90,11 +91,11 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 53,
+      newVersion: 54,
     );
   });
 
-  test('migrates v50 through v53 with refund reductions', () async {
+  test('migrates v50 through current with refund reductions', () async {
     await verifier.testWithDataIntegrity<v50.DatabaseAtV50, AppDatabase>(
       createOld: v50.DatabaseAtV50.new,
       createNew: AppDatabase.new,
@@ -131,7 +132,7 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 53,
+      newVersion: 54,
     );
   });
 
@@ -163,6 +164,65 @@ void main() {
       },
       oldVersion: 52,
       newVersion: 53,
+    );
+  });
+
+  test('migrates v53 amortization categories to entry allocations', () async {
+    await verifier.testWithDataIntegrity<v53.DatabaseAtV53, AppDatabase>(
+      createOld: v53.DatabaseAtV53.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {
+        batch.customStatement(
+          'INSERT INTO amortization_plans ('
+          'id, kind, deferral_account_id, category_account_id, '
+          'total_amount_minor, cadence_unit, cadence_interval, '
+          'first_recognition_at, recognition_count, initial_transaction_id'
+          ") VALUES ('plan', 'prepaidExpense', 'prepaid', 'rent', "
+          '300000, \'monthly\', 1, 1769788800, 3, \'initial\')',
+        );
+        batch.customStatement(
+          'INSERT INTO amortization_entries ('
+          'id, plan_id, sequence_no, due_at, amount_minor'
+          ") VALUES ('entry-1', 'plan', 1, 1769788800, 100000), "
+          "('entry-2', 'plan', 2, 1772377200, 100000), "
+          "('entry-3', 'plan', 3, 1774965600, 100000)",
+        );
+      },
+      validateItems: (db) async {
+        final planColumns =
+            (await db
+                    .customSelect('PRAGMA table_info(amortization_plans)')
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(planColumns, isNot(contains('category_account_id')));
+
+        final allocations = await db
+            .customSelect(
+              'SELECT entry_id, line_no, account_id, amount_minor '
+              'FROM amortization_entry_allocations ORDER BY entry_id',
+            )
+            .get();
+        expect(allocations, hasLength(3));
+        expect(
+          allocations.map(
+            (row) => (
+              row.read<String>('entry_id'),
+              row.read<int>('line_no'),
+              row.read<String>('account_id'),
+              row.read<int>('amount_minor'),
+            ),
+          ),
+          [
+            ('entry-1', 1, 'rent', 100000),
+            ('entry-2', 1, 'rent', 100000),
+            ('entry-3', 1, 'rent', 100000),
+          ],
+        );
+      },
+      oldVersion: 53,
+      newVersion: 54,
     );
   });
 

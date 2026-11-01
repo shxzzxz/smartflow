@@ -157,6 +157,18 @@ Future<void> _upgrade(
           'WHERE transaction_id IS NULL AND canceled_at IS NULL',
         );
       },
+      from53To54: (migration, schema) async {
+        await migration.createTable(schema.amortizationEntryAllocations);
+        await migration.database.customStatement(
+          'INSERT INTO amortization_entry_allocations '
+          '(id, entry_id, line_no, account_id, amount_minor) '
+          'SELECT entry.id || \':allocation:1\', entry.id, 1, '
+          'plan.category_account_id, entry.amount_minor '
+          'FROM amortization_entries entry '
+          'JOIN amortization_plans plan ON plan.id = entry.plan_id',
+        );
+        await migration.alterTable(TableMigration(schema.amortizationPlans));
+      },
     )(migrator, from, to);
   });
 }

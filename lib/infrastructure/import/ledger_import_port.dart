@@ -243,7 +243,7 @@ class LedgerImportPort implements ImportLedgerPort {
     String? note,
   }) async {
     final result = await _posting.createTransfer(
-      CreateTransferCommand(
+      CreateTransferCommand.simple(
         amount: amount,
         fromAccountId: fromAccountId,
         toAccountId: toAccountId,

@@ -66,6 +66,9 @@ class DriftBackupGateway
             (await database.select(database.amortizationEntries).get()).map(
               _json,
             ),
+        'amortization_entry_allocations':
+            (await database.select(database.amortizationEntryAllocations).get())
+                .map(_json),
         'transaction_lines':
             (await database.select(database.transactionLines).get()).map(_json),
         'entries': (await database.select(database.entries).get()).map(_json),
@@ -284,6 +287,16 @@ class DriftBackupGateway
               ),
         );
         batch.insertAll(
+          database.amortizationEntryAllocations,
+          snapshot
+              .rows('amortization_entry_allocations')
+              .map(
+                (row) => AmortizationEntryAllocationRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
           database.transactionLines,
           snapshot
               .rows('transaction_lines')
@@ -460,6 +473,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is AmortizationEntryRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AmortizationEntryAllocationRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is TransactionRow) {
