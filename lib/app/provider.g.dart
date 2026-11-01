@@ -2087,7 +2087,7 @@ final class AmortizationLedgerPortProvider
 }
 
 String _$amortizationLedgerPortHash() =>
-    r'ffc7f195571f88591af6df181eda70e132e4136d';
+    r'0d924904c76412ca60c96b645c6bf1b68943e51e';
 
 @ProviderFor(advanceOrchestrationAppService)
 final advanceOrchestrationAppServiceProvider =
@@ -2678,7 +2678,7 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'63baf97bb16ba02a1cc8ad1dd0c13870e5d0462b';
+    r'46f0fd5fb78038070d39ed7aa0a5de6b62112d10';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

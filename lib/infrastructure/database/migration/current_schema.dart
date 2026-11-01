@@ -48,9 +48,13 @@ Future<void> createCurrentSchema(
   await _createTagIndexes(database);
   await _createCounterpartyIndexes(database);
   await database.customStatement(
-    'CREATE INDEX amortization_entries_pending_idx '
-    'ON amortization_entries (due_at) '
-    'WHERE transaction_id IS NULL AND canceled_at IS NULL',
+    'CREATE INDEX amortization_periods_pending_idx '
+    'ON amortization_periods (due_at) '
+    "WHERE status = 'pending' AND amount_minor > 0",
+  );
+  await database.customStatement(
+    'CREATE INDEX amortization_allocations_subject_idx '
+    'ON amortization_allocations (subject_type, subject_id, dimension)',
   );
 }
 

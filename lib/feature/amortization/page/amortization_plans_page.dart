@@ -94,7 +94,7 @@ class AmortizationPlansPage extends ConsumerWidget {
 }
 
 String _categoryName(AmortizationPlan plan, Map<String, Account> accounts) {
-  final allocations = plan.recognitionAllocations;
+  final allocations = plan.currentCategoryAllocations;
   if (allocations.length > 1) return '多分类';
   if (allocations.isEmpty) return '分类';
   return accounts[allocations.single.accountId]?.name ?? '分类';
@@ -115,7 +115,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final next = plan.nextPendingEntry;
+    final next = plan.nextPendingPeriod;
     return AppSurface(
       child: InkWell(
         onTap: onTap,
@@ -152,7 +152,7 @@ class _PlanCard extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: '计划总额',
-                      value: MoneyText(money: plan.total),
+                      value: MoneyText(money: plan.originalAmount),
                     ),
                   ),
                   Expanded(

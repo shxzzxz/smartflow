@@ -3,20 +3,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
+import 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_amortization_repository.dart';
 
 void main() {
-  test('persists plan, generated entry and termination facts', () async {
+  test('round-trips plan, periods and refund allocations', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final repository = DriftAmortizationRepository(database);
-    final plan = AmortizationPlan.create(
+    final created = AmortizationPlan.create(
       id: 'plan',
       kind: AmortizationKind.prepaidExpense,
       deferralAccountId: 'prepaid',
-      recognitionAllocations: const [
+      fundingAllocations: const [
+        AccountAmountAllocation(
+          accountId: 'cash',
+          amount: Money(minorUnits: 200000),
+        ),
+        AccountAmountAllocation(
+          accountId: 'bank',
+          amount: Money(minorUnits: 100000),
+        ),
+      ],
+      categoryAllocations: const [
         AccountAmountAllocation(
           accountId: 'rent',
           amount: Money(minorUnits: 200000),
@@ -26,49 +37,72 @@ void main() {
           amount: Money(minorUnits: 100000),
         ),
       ],
-      total: const Money(minorUnits: 300000),
+      originalAmount: const Money(minorUnits: 300000),
       cadenceUnit: AmortizationCadenceUnit.monthly,
       cadenceInterval: 1,
       firstRecognitionAt: DateTime(2026, 1, 31),
       recognitionCount: 3,
-      defaultIsExcludedFromStats: true,
-      defaultIsExcludedFromBudget: false,
       initialTransactionId: 'initial',
     );
-    final generated = plan.withEntries([
-      plan.entries.first.generated('recognition-1'),
-      ...plan.entries.skip(1),
+    final generated = created.withPeriods([
+      created.periods.first.posted('recognition-1'),
+      ...created.periods.skip(1),
     ]);
-    await repository.save(generated);
+    final refunded = generated.withRefund(
+      AmortizationRefund(
+        id: 'refund',
+        planId: generated.id,
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'rent',
+            amount: Money(minorUnits: 50000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'utilities',
+            amount: Money(minorUnits: 25000),
+          ),
+        ],
+        settlementAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'cash',
+            amount: Money(minorUnits: 50000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'bank',
+            amount: Money(minorUnits: 25000),
+          ),
+        ],
+        transferTransactionId: 'refund-transfer',
+      ),
+    );
+    await repository.save(refunded);
 
     final loaded = await repository.findById('plan');
     expect(loaded, isNotNull);
-    expect(loaded!.entries.first.transactionId, 'recognition-1');
+    expect(loaded!.originalAmount, const Money(minorUnits: 300000));
+    expect(loaded.netAmount, const Money(minorUnits: 225000));
+    expect(loaded.fundingAllocations, hasLength(2));
+    expect(loaded.categoryAllocations, hasLength(2));
+    expect(loaded.periods.first.transactionId, 'recognition-1');
     expect(
-      loaded.entries.first.categoryAllocations.map(
-        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
-      ),
-      [('rent', 66667), ('utilities', 33333)],
+      loaded.periods.first.categoryAllocations
+          .map(
+            (allocation) =>
+                (allocation.accountId, allocation.amount.minorUnits),
+          )
+          .toList(),
+      [('rent', 50000), ('utilities', 25000)],
     );
-    expect(loaded.defaultIsExcludedFromStats, isTrue);
-    expect(loaded.remainingAmount, const Money(minorUnits: 200000));
-
-    final terminated = loaded.terminated(
-      terminatedAt: DateTime(2026, 2, 15),
-      refundAmount: const Money(minorUnits: 150000),
-      entries: [
-        ...loaded.entries.take(1),
-        loaded.entries[1].canceled(DateTime(2026, 2, 15)),
-        loaded.entries[2].canceled(DateTime(2026, 2, 15)),
-      ],
-      refundTransactionId: 'refund',
+    expect(loaded.refunds.single.amount, const Money(minorUnits: 75000));
+    expect(
+      loaded.refunds.single.settlementAllocations
+          .map(
+            (allocation) =>
+                (allocation.accountId, allocation.amount.minorUnits),
+          )
+          .toList(),
+      [('cash', 50000), ('bank', 25000)],
     );
-    await repository.save(terminated);
-
-    final reread = await repository.findById('plan');
-    expect(reread!.status, AmortizationStatus.terminated);
-    expect(reread.refundTransactionId, 'refund');
-    expect(reread.refundAmount, const Money(minorUnits: 150000));
     expect(
       (await repository.findAll(deferralAccountId: 'prepaid')).single.id,
       'plan',

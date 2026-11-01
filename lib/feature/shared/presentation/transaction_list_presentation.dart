@@ -2,6 +2,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
@@ -336,7 +337,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
   return TransactionRowPresentation(
     transactionId: item.id,
     businessPurpose: item.businessPurpose,
-    hasMultipleCategories: item.categoryLines.length > 1,
+    hasMultipleCategories: _businessCategoryAccountIds(item).length > 1,
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
@@ -609,9 +610,9 @@ String? resolveCategoryIconKey(
   TransactionReadModel item,
   AccountLookup accountLookup,
 ) {
-  final categoryLines = item.categoryLines.toList();
-  final category = categoryLines.length == 1
-      ? accountLookup.find(categoryLines.single.accountId!)
+  final categoryIds = _businessCategoryAccountIds(item).toList();
+  final category = categoryIds.length == 1
+      ? accountLookup.find(categoryIds.single)
       : null;
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
@@ -625,18 +626,18 @@ String transactionPrimaryLabel(
   TransactionReadModel item,
   AccountLookup accountLookup,
 ) {
-  final categoryLines = item.categoryLines.toList();
-  final category = categoryLines.length == 1
-      ? accountLookup.find(categoryLines.single.accountId!)
+  final categoryIds = _businessCategoryAccountIds(item).toList();
+  final category = categoryIds.length == 1
+      ? accountLookup.find(categoryIds.single)
       : null;
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
-      categoryLines.length > 1
+      categoryIds.length > 1
           ? '多类别'
           : _cleanText(category?.name) ??
                 transactionPurposeLabel(item.businessPurpose),
     BusinessPurpose.advance =>
-      categoryLines.length > 1 ? '多类别' : _cleanText(category?.name) ?? '支出',
+      categoryIds.length > 1 ? '多类别' : _cleanText(category?.name) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
 }
@@ -777,6 +778,7 @@ String formatAccountDelta(
 }
 
 bool canQuickEditTransaction(TransactionReadModel item) {
+  if (_isAmortizationTransaction(item)) return false;
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.advance ||
@@ -795,6 +797,13 @@ bool canQuickEditTransaction(TransactionReadModel item) {
     BusinessPurpose.advanceSettlement => false,
   };
 }
+
+Set<String> _businessCategoryAccountIds(TransactionReadModel item) {
+  return {for (final line in item.categoryLines) ?line.accountId};
+}
+
+bool _isAmortizationTransaction(TransactionReadModel item) =>
+    item.ownership?.ownerType == orchestrationAmortizationOwnerType;
 
 Money? adjustmentAmount(
   TransactionReadModel item,

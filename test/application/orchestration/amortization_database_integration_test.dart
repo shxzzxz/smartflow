@@ -1,8 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_edit_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
-import 'package:smartflow/application/ledger/transaction/command/transaction_update_app_service.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_command.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -12,6 +14,8 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
+import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
+import 'package:smartflow/infrastructure/data_management/backup/file_backup_package_store.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_account_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_posting_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_system_account_resolver.dart';
@@ -72,8 +76,20 @@ void main() {
       TerminateAmortizationPlanCommand(
         planId: prepaidId,
         terminatedAt: DateTime(2026, 2, 15),
-        refundAccountId: 'fund',
-        refundAmount: _money(50000),
+        categoryReturnAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'rent-expense',
+            amount: Money(minorUnits: 33333),
+          ),
+          AccountAmountAllocation(
+            accountId: 'utilities-expense',
+            amount: Money(minorUnits: 16667),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'fund',
+          amount: Money(minorUnits: 50000),
+        ),
       ),
     );
     expect(await fixture.balance('prepaid'), _money(0));
@@ -107,6 +123,20 @@ void main() {
     expect(await fixture.balance('fund'), _money(250000));
     expect(await fixture.balance('deferred'), _money(200000));
     expect(await fixture.balance('rent-income'), _money(100000));
+
+    final backupDirectory = await Directory.systemTemp.createTemp(
+      'smartflow_amortization_backup_',
+    );
+    addTearDown(() => backupDirectory.delete(recursive: true));
+    final backup = BackupService(
+      gateway: DriftBackupGateway(fixture.database),
+      packageStore: const FileBackupPackageStore(),
+    );
+    final manifest = await backup.createBackup(backupDirectory);
+    final inspection = await backup.inspect(backupDirectory);
+    expect(manifest.backupSchemaVersion, 7);
+    expect(inspection.snapshot.rows('amortization_periods'), isNotEmpty);
+    expect(inspection.snapshot.rows('amortization_allocations'), isNotEmpty);
   });
 }
 
@@ -172,17 +202,10 @@ class _Fixture {
       ledgerWriter: writer,
       idGenerator: ids,
     );
-    final updating = TransactionUpdateAppServiceImpl(
-      transactionRepository: transactions,
-      transactionGroupRepository: transactions,
-      ledgerWriter: writer,
-    );
     final ledger = LedgerAmortizationPort(
       posting: posting,
       editing: editing,
-      updating: updating,
       accounts: accounts,
-      transactions: transactions,
     );
     final service = AmortizationPlanAppServiceImpl(
       repository: DriftAmortizationRepository(database),

@@ -14,11 +14,11 @@ class CreateAmortizationPlanCommand {
     required this.cadenceInterval,
     required this.recognitionCount,
     required this.occurredAt,
-    this.defaultIsExcludedFromStats = false,
-    this.defaultIsExcludedFromBudget = false,
+    this.initialIsExcludedFromStats = false,
+    this.initialIsExcludedFromBudget = false,
     this.feeAmount,
-    this.counterpartyId,
-    this.note,
+    this.initialCounterpartyId,
+    this.initialNote,
     this.tagIds = const {},
   }) : fundingAllocations = List.unmodifiable(fundingAllocations),
        recognitionAllocations = List.unmodifiable(recognitionAllocations);
@@ -33,58 +33,42 @@ class CreateAmortizationPlanCommand {
   final int cadenceInterval;
   final int recognitionCount;
   final DateTime occurredAt;
-  final bool defaultIsExcludedFromStats;
-  final bool defaultIsExcludedFromBudget;
+  final bool initialIsExcludedFromStats;
+  final bool initialIsExcludedFromBudget;
   final Money? feeAmount;
-  final String? counterpartyId;
-  final String? note;
+  final String? initialCounterpartyId;
+  final String? initialNote;
   final Set<String> tagIds;
 }
 
+class CreateAmortizationRefundCommand {
+  CreateAmortizationRefundCommand({
+    required this.planId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required this.occurredAt,
+    this.postedAt,
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  final String planId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
+  final DateTime occurredAt;
+  final DateTime? postedAt;
+}
+
 class TerminateAmortizationPlanCommand {
-  const TerminateAmortizationPlanCommand({
+  TerminateAmortizationPlanCommand({
     required this.planId,
     required this.terminatedAt,
-    required this.refundAccountId,
-    required this.refundAmount,
-    this.recognitionCategoryAccountId,
-    this.refundFeeAmount,
-    this.note,
-  });
+    required List<AccountAmountAllocation> categoryReturnAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+  }) : categoryReturnAllocations = List.unmodifiable(categoryReturnAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final String planId;
   final DateTime terminatedAt;
-  final String refundAccountId;
-  final Money refundAmount;
-  final String? recognitionCategoryAccountId;
-  final Money? refundFeeAmount;
-  final String? note;
-}
-
-class UpdateAmortizationReportingDefaultsCommand {
-  const UpdateAmortizationReportingDefaultsCommand({
-    required this.planId,
-    required this.isExcludedFromStats,
-    required this.isExcludedFromBudget,
-    required this.scope,
-  });
-
-  final String planId;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
-  final AmortizationReportingScope scope;
-}
-
-class UpdateAmortizationTransactionReportingCommand {
-  const UpdateAmortizationTransactionReportingCommand({
-    required this.planId,
-    required this.transactionId,
-    required this.isExcludedFromStats,
-    required this.isExcludedFromBudget,
-  });
-
-  final String planId;
-  final String transactionId;
-  final bool isExcludedFromStats;
-  final bool isExcludedFromBudget;
+  final List<AccountAmountAllocation> categoryReturnAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
 }

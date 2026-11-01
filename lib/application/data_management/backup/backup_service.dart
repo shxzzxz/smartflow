@@ -188,13 +188,8 @@ class BackupService {
             table == 'installment_refund_reductions') {
           continue;
         }
-        if (manifest.backupSchemaVersion < 5 &&
-            (table == 'amortization_plans' ||
-                table == 'amortization_entries')) {
-          continue;
-        }
-        if (manifest.backupSchemaVersion < 6 &&
-            table == 'amortization_entry_allocations') {
+        if (manifest.backupSchemaVersion < 7 &&
+            table.startsWith('amortization_')) {
           continue;
         }
         throw BackupValidationException('备份缺少业务表文件: $table');
@@ -226,6 +221,7 @@ class BackupService {
         3 => _upgradeBackupV3ToV4(upgraded),
         4 => _upgradeBackupV4ToV5(upgraded),
         5 => _upgradeBackupV5ToV6(upgraded),
+        6 => _upgradeBackupV6ToV7(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -352,6 +348,239 @@ class BackupService {
     );
   }
 
+  static BackupSnapshot _upgradeBackupV6ToV7(BackupSnapshot snapshot) {
+    final plans = snapshot.rows('amortization_plans');
+    final entries = snapshot.rows('amortization_entries');
+    final entryAllocations = snapshot.rows('amortization_entry_allocations');
+    final planIdByEntryId = {
+      for (final entry in entries) '${entry['id']}': '${entry['planId']}',
+    };
+    final categoryByPlan = <String, Map<String, int>>{};
+    for (final allocation in entryAllocations) {
+      final planId = planIdByEntryId['${allocation['entryId']}'];
+      final accountId = allocation['accountId'];
+      final amount = allocation['amountMinor'];
+      if (planId == null || accountId is! String || amount is! int) continue;
+      (categoryByPlan[planId] ??= {})[accountId] =
+          (categoryByPlan[planId]![accountId] ?? 0) + amount;
+    }
+
+    final linesByTransaction = <String, List<BackupJson>>{};
+    for (final line in snapshot.rows('transaction_lines')) {
+      final transactionId = line['transactionId'];
+      if (transactionId is String) {
+        (linesByTransaction[transactionId] ??= []).add(line);
+      }
+    }
+
+    final fundingAllocations = <BackupJson>[];
+    final planAllocations = <BackupJson>[];
+    for (final plan in plans) {
+      final planId = '${plan['id']}';
+      final initialTransactionId = plan['initialTransactionId'];
+      if (initialTransactionId is String) {
+        final role = plan['kind'] == 'prepaidExpense'
+            ? 'settlementOut'
+            : 'settlementIn';
+        var lineNo = 1;
+        for (final line
+            in linesByTransaction[initialTransactionId] ?? const []) {
+          if (line['role'] != role ||
+              line['accountId'] is! String ||
+              line['amountMinor'] is! int) {
+            continue;
+          }
+          fundingAllocations.add(
+            _allocationRow(
+              subjectType: 'plan',
+              subjectId: planId,
+              dimension: 'funding',
+              lineNo: lineNo++,
+              accountId: line['accountId']! as String,
+              amountMinor: line['amountMinor']! as int,
+              createdAt: plan['createdAt'],
+              updatedAt: plan['updatedAt'],
+            ),
+          );
+        }
+      }
+      var categoryLineNo = 1;
+      final categories = (categoryByPlan[planId] ?? const {}).entries.toList()
+        ..sort((left, right) => left.key.compareTo(right.key));
+      for (final category in categories) {
+        planAllocations.add(
+          _allocationRow(
+            subjectType: 'plan',
+            subjectId: planId,
+            dimension: 'category',
+            lineNo: categoryLineNo++,
+            accountId: category.key,
+            amountMinor: category.value,
+            createdAt: plan['createdAt'],
+            updatedAt: plan['updatedAt'],
+          ),
+        );
+      }
+    }
+
+    final periodAllocations = [
+      for (final allocation in entryAllocations)
+        _allocationRow(
+          subjectType: 'period',
+          subjectId: '${allocation['entryId']}',
+          dimension: 'category',
+          lineNo: allocation['lineNo'] as int,
+          accountId: allocation['accountId'] as String,
+          amountMinor: allocation['amountMinor'] as int,
+          createdAt: allocation['createdAt'],
+          updatedAt: allocation['updatedAt'],
+        ),
+    ];
+    final periods = [
+      for (final entry in entries)
+        {
+          'id': entry['id'],
+          'planId': entry['planId'],
+          'sequenceNo': entry['sequenceNo'],
+          'dueAt': entry['dueAt'],
+          'amountMinor': entry['amountMinor'],
+          'transactionId': entry['transactionId'],
+          'status': switch (entry) {
+            {'canceledAt': final Object? value} when value != null =>
+              'canceled',
+            {'transactionId': final Object? value} when value != null =>
+              'posted',
+            {'amountMinor': 0} => 'zero',
+            _ => 'pending',
+          },
+          'createdAt': entry['createdAt'],
+          'updatedAt': entry['updatedAt'],
+        },
+    ];
+
+    final terminations = <BackupJson>[];
+    final terminationAllocations = <BackupJson>[];
+    for (final plan in plans) {
+      if (plan['terminatedAt'] == null) continue;
+      final planId = '${plan['id']}';
+      final terminationId = '$planId:termination';
+      terminations.add({
+        'id': terminationId,
+        'planId': planId,
+        'terminatedAt': plan['terminatedAt'],
+        'recognitionTransactionId': plan['terminationRecognitionTransactionId'],
+        'returnTransactionId': plan['refundTransactionId'],
+        'createdAt': plan['updatedAt'],
+        'updatedAt': plan['updatedAt'],
+      });
+      final refundAmount = plan['refundAmountMinor'];
+      final categories = categoryByPlan[planId];
+      if (refundAmount is int &&
+          refundAmount > 0 &&
+          categories != null &&
+          categories.isNotEmpty) {
+        final accountIds = categories.keys.toList()..sort();
+        terminationAllocations.add(
+          _allocationRow(
+            subjectType: 'termination',
+            subjectId: terminationId,
+            dimension: 'category',
+            lineNo: 1,
+            accountId: accountIds.first,
+            amountMinor: refundAmount,
+            createdAt: plan['updatedAt'],
+            updatedAt: plan['updatedAt'],
+          ),
+        );
+      }
+      final refundTransactionId = plan['refundTransactionId'];
+      if (refundTransactionId is String) {
+        final role = plan['kind'] == 'prepaidExpense'
+            ? 'settlementIn'
+            : 'settlementOut';
+        var lineNo = 1;
+        for (final line
+            in linesByTransaction[refundTransactionId] ?? const []) {
+          if (line['role'] != role ||
+              line['accountId'] is! String ||
+              line['amountMinor'] is! int) {
+            continue;
+          }
+          terminationAllocations.add(
+            _allocationRow(
+              subjectType: 'termination',
+              subjectId: terminationId,
+              dimension: 'settlement',
+              lineNo: lineNo++,
+              accountId: line['accountId']! as String,
+              amountMinor: line['amountMinor']! as int,
+              createdAt: plan['updatedAt'],
+              updatedAt: plan['updatedAt'],
+            ),
+          );
+        }
+      }
+    }
+
+    final upgradedPlans = [
+      for (final plan in plans)
+        {
+          for (final key in const [
+            'id',
+            'kind',
+            'deferralAccountId',
+            'totalAmountMinor',
+            'cadenceUnit',
+            'cadenceInterval',
+            'firstRecognitionAt',
+            'recognitionCount',
+            'initialTransactionId',
+            'createdAt',
+            'updatedAt',
+          ])
+            key: plan[key],
+        },
+    ];
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'amortization_plans': upgradedPlans,
+        'amortization_periods': periods,
+        'amortization_refunds': const <BackupJson>[],
+        'amortization_terminations': terminations,
+        'amortization_allocations': [
+          ...planAllocations,
+          ...fundingAllocations,
+          ...periodAllocations,
+          ...terminationAllocations,
+        ],
+      },
+    );
+  }
+
+  static BackupJson _allocationRow({
+    required String subjectType,
+    required String subjectId,
+    required String dimension,
+    required int lineNo,
+    required String accountId,
+    required int amountMinor,
+    required Object? createdAt,
+    required Object? updatedAt,
+  }) {
+    return {
+      'id': '$subjectType:$subjectId:$dimension:$lineNo',
+      'subjectType': subjectType,
+      'subjectId': subjectId,
+      'dimension': dimension,
+      'lineNo': lineNo,
+      'accountId': accountId,
+      'amountMinor': amountMinor,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
+
   Future<BackupDiff> compare(Object source) async {
     final inspection = await inspect(source);
     final current = await _gateway.readSnapshot();
@@ -418,6 +647,11 @@ class BackupService {
     final transactions = _index(snapshot.rows('transactions'));
     final advanceCases = _index(snapshot.rows('advance_cases'));
     final amortizationPlans = _index(snapshot.rows('amortization_plans'));
+    final amortizationPeriods = _index(snapshot.rows('amortization_periods'));
+    final amortizationRefunds = _index(snapshot.rows('amortization_refunds'));
+    final amortizationTerminations = _index(
+      snapshot.rows('amortization_terminations'),
+    );
     final tags = _index(snapshot.rows('tags'));
     final counterparties = _index(snapshot.rows('counterparties'));
     final contracts = _index(snapshot.rows('installment_contracts'));
@@ -776,7 +1010,54 @@ class BackupService {
       );
     }
 
-    for (final row in snapshot.rows('amortization_plans')) {
+    final amortizationAllocationTotals = <String, int>{};
+    final amortizationAllocationKeys = <String>{};
+    final amortizationAllocationAccounts = <String>{};
+    for (final row in snapshot.rows('amortization_allocations')) {
+      final subjectType = row['subjectType'];
+      final subjectId = row['subjectId'];
+      final dimension = row['dimension'];
+      final exists = switch (subjectType) {
+        'plan' => amortizationPlans.containsKey(subjectId),
+        'period' => amortizationPeriods.containsKey(subjectId),
+        'refund' => amortizationRefunds.containsKey(subjectId),
+        'termination' => amortizationTerminations.containsKey(subjectId),
+        _ => false,
+      };
+      if (!exists ||
+          !const {'funding', 'category', 'settlement'}.contains(dimension)) {
+        throw const BackupValidationException('摊销分项归属或维度无效。');
+      }
+      final lineNo = row['lineNo'];
+      final key = '$subjectType\u0000$subjectId\u0000$dimension';
+      if (lineNo is! int ||
+          lineNo <= 0 ||
+          !amortizationAllocationKeys.add('$key\u0000$lineNo')) {
+        throw const BackupValidationException('摊销分项顺序无效或重复。');
+      }
+      _requiredReference(
+        row,
+        'accountId',
+        accounts,
+        'amortization_allocations.accountId',
+      );
+      final accountId = row['accountId'] as String;
+      if (!amortizationAllocationAccounts.add('$key\u0000$accountId')) {
+        throw const BackupValidationException('摊销分项账户重复。');
+      }
+      final amount = _int(
+        row['amountMinor'],
+        'amortization_allocations.amountMinor',
+      );
+      if (amount <= 0) {
+        throw const BackupValidationException('摊销分项金额必须为正数。');
+      }
+      amortizationAllocationTotals[key] =
+          (amortizationAllocationTotals[key] ?? 0) + amount;
+    }
+
+    for (final row in amortizationPlans.values) {
+      final planId = '${row['id']}';
       _requiredReference(
         row,
         'deferralAccountId',
@@ -789,39 +1070,27 @@ class BackupService {
         transactions,
         'amortization_plans.initialTransactionId',
       );
-      _optionalReference(
-        row,
-        'counterpartyId',
-        counterparties,
-        'amortization_plans.counterpartyId',
-      );
-      _optionalReference(
-        row,
-        'terminationRecognitionTransactionId',
-        transactions,
-        'amortization_plans.terminationRecognitionTransactionId',
-      );
-      _optionalReference(
-        row,
-        'refundTransactionId',
-        transactions,
-        'amortization_plans.refundTransactionId',
-      );
       final initial = transactions['${row['initialTransactionId']}'];
       if (initial?['ownerType'] != 'orchestration.amortization' ||
-          initial?['ownerId'] != row['id']) {
+          initial?['ownerId'] != planId) {
         throw const BackupValidationException('摊销初始交易未回指对应计划。');
       }
-    }
-    final entrySequences = <String>{};
-    final generatedTransactions = <String>{};
-    final entryAmounts = <String, int>{};
-    for (final row in snapshot.rows('amortization_entries')) {
-      final entryId = '${row['id']}';
-      entryAmounts[entryId] = _int(
-        row['amountMinor'],
-        'amortization_entries.amountMinor',
+      final total = _int(
+        row['totalAmountMinor'],
+        'amortization_plans.totalAmountMinor',
       );
+      if (amortizationAllocationTotals['plan\u0000$planId\u0000funding'] !=
+              total ||
+          amortizationAllocationTotals['plan\u0000$planId\u0000category'] !=
+              total) {
+        throw const BackupValidationException('摊销计划分项必须等于原始金额。');
+      }
+    }
+
+    final periodSequences = <String>{};
+    final generatedTransactions = <String>{};
+    for (final row in amortizationPeriods.values) {
+      final periodId = '${row['id']}';
       final planId = row['planId'];
       if (planId is! String || !amortizationPlans.containsKey(planId)) {
         throw const BackupValidationException('摊销期次引用了不存在的计划。');
@@ -829,58 +1098,96 @@ class BackupService {
       final sequenceNo = row['sequenceNo'];
       if (sequenceNo is! int ||
           sequenceNo <= 0 ||
-          !entrySequences.add('$planId\u0000$sequenceNo')) {
+          !periodSequences.add('$planId\u0000$sequenceNo')) {
         throw const BackupValidationException('摊销期次序号无效或重复。');
       }
-      _optionalReference(
-        row,
-        'transactionId',
-        transactions,
-        'amortization_entries.transactionId',
+      final amount = _int(
+        row['amountMinor'],
+        'amortization_periods.amountMinor',
       );
+      if (amount < 0) {
+        throw const BackupValidationException('摊销期次金额不能为负数。');
+      }
+      final status = row['status'];
+      if (!const {'pending', 'posted', 'zero', 'canceled'}.contains(status)) {
+        throw const BackupValidationException('摊销期次状态无效。');
+      }
       final transactionId = row['transactionId'];
-      if (transactionId is String) {
-        if (!generatedTransactions.add(transactionId)) {
-          throw const BackupValidationException('一笔交易被多个摊销期次引用。');
+      if (status == 'posted') {
+        if (transactionId is! String ||
+            !transactions.containsKey(transactionId) ||
+            !generatedTransactions.add(transactionId)) {
+          throw const BackupValidationException('摊销期次确认交易无效或重复。');
         }
         final transaction = transactions[transactionId];
         if (transaction?['ownerType'] != 'orchestration.amortization' ||
             transaction?['ownerId'] != planId) {
           throw const BackupValidationException('摊销期次交易归属无效。');
         }
+      } else if (transactionId != null) {
+        throw const BackupValidationException('非已确认期次不能引用交易。');
+      }
+      final categoryTotal =
+          amortizationAllocationTotals['period\u0000$periodId\u0000category'] ??
+          0;
+      if (categoryTotal != amount) {
+        throw const BackupValidationException('摊销期次分类分配合计必须等于期次金额。');
       }
     }
-    final allocationSequences = <String>{};
-    final allocationTotals = <String, int>{};
-    for (final row in snapshot.rows('amortization_entry_allocations')) {
-      final entryId = row['entryId'];
-      if (entryId is! String || !entryAmounts.containsKey(entryId)) {
-        throw const BackupValidationException('摊销期次分类分配引用了不存在的期次。');
-      }
-      final lineNo = row['lineNo'];
-      if (lineNo is! int ||
-          lineNo <= 0 ||
-          !allocationSequences.add('$entryId\u0000$lineNo')) {
-        throw const BackupValidationException('摊销期次分类分配顺序无效或重复。');
+
+    for (final row in amortizationRefunds.values) {
+      final refundId = '${row['id']}';
+      final planId = row['planId'];
+      if (planId is! String || !amortizationPlans.containsKey(planId)) {
+        throw const BackupValidationException('摊销退款引用了不存在的计划。');
       }
       _requiredReference(
         row,
-        'accountId',
-        accounts,
-        'amortization_entry_allocations.accountId',
+        'transferTransactionId',
+        transactions,
+        'amortization_refunds.transferTransactionId',
       );
-      final amount = _int(
-        row['amountMinor'],
-        'amortization_entry_allocations.amountMinor',
-      );
-      if (amount <= 0) {
-        throw const BackupValidationException('摊销期次分类分配金额必须为正数。');
+      final transfer = transactions['${row['transferTransactionId']}'];
+      if (transfer?['ownerType'] != 'orchestration.amortization' ||
+          transfer?['ownerId'] != planId) {
+        throw const BackupValidationException('摊销退款交易归属无效。');
       }
-      allocationTotals[entryId] = (allocationTotals[entryId] ?? 0) + amount;
+      final categoryTotal =
+          amortizationAllocationTotals['refund\u0000$refundId\u0000category'] ??
+          0;
+      final settlementTotal =
+          amortizationAllocationTotals['refund\u0000$refundId\u0000settlement'] ??
+          0;
+      if (categoryTotal <= 0 || categoryTotal != settlementTotal) {
+        throw const BackupValidationException('摊销退款分配合计无效。');
+      }
     }
-    for (final entry in entryAmounts.entries) {
-      if (allocationTotals[entry.key] != entry.value) {
-        throw const BackupValidationException('摊销期次分类分配合计必须等于期次金额。');
+
+    for (final row in amortizationTerminations.values) {
+      final terminationId = '${row['id']}';
+      final planId = row['planId'];
+      if (planId is! String || !amortizationPlans.containsKey(planId)) {
+        throw const BackupValidationException('摊销终止引用了不存在的计划。');
+      }
+      for (final field in const [
+        'recognitionTransactionId',
+        'returnTransactionId',
+      ]) {
+        _optionalReference(
+          row,
+          field,
+          transactions,
+          'amortization_terminations.$field',
+        );
+      }
+      final categoryTotal =
+          amortizationAllocationTotals['termination\u0000$terminationId\u0000category'] ??
+          0;
+      final settlementTotal =
+          amortizationAllocationTotals['termination\u0000$terminationId\u0000settlement'] ??
+          0;
+      if (categoryTotal != settlementTotal) {
+        throw const BackupValidationException('摊销终止分配合计无效。');
       }
     }
 

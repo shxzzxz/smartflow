@@ -11,6 +11,12 @@ abstract interface class AmortizationLedgerPort {
     required Iterable<String> categoryAccountIds,
   });
 
+  Future<void> validateRefundAccounts({
+    required AmortizationKind kind,
+    required Iterable<String> categoryAccountIds,
+    required Iterable<String> settlementAccountIds,
+  });
+
   Future<String> postTransfer({
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
@@ -55,16 +61,19 @@ abstract interface class AmortizationLedgerPort {
     Set<String> tagIds = const {},
   });
 
+  Future<void> rewriteExpense({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+  });
+
+  Future<void> rewriteIncome({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+  });
+
   Future<void> deleteTransaction(String transactionId);
-
-  Future<void> updateReportingFlags({
-    required String transactionId,
-    required bool isExcludedFromStats,
-    required bool isExcludedFromBudget,
-  });
-
-  Future<bool> isOwnedBy({
-    required String transactionId,
-    required TransactionOwnership ownership,
-  });
 }

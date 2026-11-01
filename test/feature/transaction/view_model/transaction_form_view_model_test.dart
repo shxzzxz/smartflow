@@ -417,9 +417,9 @@ void main() {
       expect(command.cadenceInterval, 1);
       expect(command.recognitionCount, 12);
       expect(command.occurredAt, DateTime(2026, 3, 15, 8, 30));
-      expect(command.defaultIsExcludedFromStats, isTrue);
-      expect(command.defaultIsExcludedFromBudget, isTrue);
-      expect(command.note, '年费');
+      expect(command.initialIsExcludedFromStats, isTrue);
+      expect(command.initialIsExcludedFromBudget, isTrue);
+      expect(command.initialNote, '年费');
     });
 
     test(
@@ -541,7 +541,7 @@ void main() {
       expect(command.fundingAllocations.single.accountId, 'cash');
       expect(command.deferralAccountId, 'deferred');
       expect(command.recognitionAllocations.single.accountId, 'salary');
-      expect(command.defaultIsExcludedFromStats, isTrue);
+      expect(command.initialIsExcludedFromStats, isTrue);
     });
 
     test('requires amortization configuration before submit', () async {

@@ -61,18 +61,18 @@ void main() {
     ]);
   });
 
-  test('schedule rejects a period count larger than available cents', () {
-    expect(
-      () => buildAmortizationSchedule(
-        planId: 'plan',
-        total: const Money(minorUnits: 2),
-        firstRecognitionAt: DateTime(2026, 1, 1),
-        cadenceUnit: AmortizationCadenceUnit.daily,
-        cadenceInterval: 1,
-        recognitionCount: 3,
-      ),
-      throwsA(isA<Exception>()),
+  test('schedule allows zero-amount periods below the cent count', () {
+    final entries = buildAmortizationSchedule(
+      planId: 'plan',
+      total: const Money(minorUnits: 2),
+      firstRecognitionAt: DateTime(2026, 1, 1),
+      cadenceUnit: AmortizationCadenceUnit.daily,
+      cadenceInterval: 1,
+      recognitionCount: 3,
     );
+
+    expect(entries.map((entry) => entry.amount.minorUnits), [0, 0, 2]);
+    expect(entries.take(2).every((entry) => entry.isZero), isTrue);
   });
 
   test('splits each period while preserving category totals', () {

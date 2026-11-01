@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
-import '../../../core/money/money.dart';
 import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -42,26 +41,48 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
     );
   }
 
+  Future<UiActionOutcome<void>> refund({
+    required DateTime occurredAt,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+  }) {
+    final current = state.value;
+    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    if (sumAllocations(categoryAllocations).minorUnits <= 0 ||
+        sumAllocations(categoryAllocations) !=
+            sumAllocations(settlementAllocations)) {
+      return Future.value(_invalid('退款分类与账户金额必须相等且大于零'));
+    }
+    return _run(
+      current.plan.id,
+      'Create amortization refund',
+      () => ref
+          .read(amortizationPlanAppServiceProvider)
+          .refund(
+            CreateAmortizationRefundCommand(
+              planId: current.plan.id,
+              categoryAllocations: categoryAllocations,
+              settlementAllocations: settlementAllocations,
+              occurredAt: occurredAt,
+            ),
+          )
+          .then((_) {}),
+    );
+  }
+
   Future<UiActionOutcome<void>> terminate({
     required DateTime terminatedAt,
-    required String refundAccountId,
-    required String refundAmountText,
-    required String feeText,
-    required String? categoryAccountId,
-    required String noteText,
-  }) async {
+    required List<AccountAmountAllocation> categoryReturnAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+  }) {
     final current = state.value;
-    if (current == null) return _invalid('摊销计划尚未加载');
-    final refund = Money.tryParse(refundAmountText);
-    final fee = feeText.trim().isEmpty ? Money.zero() : Money.tryParse(feeText);
-    if (refund == null || refund.minorUnits < 0) {
-      return _invalid('请输入有效退款金额');
+    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    if (sumAllocations(categoryReturnAllocations) !=
+        sumAllocations(settlementAllocations)) {
+      return Future.value(_invalid('终止分类退还与账户退还金额必须相等'));
     }
-    if (fee == null || fee.minorUnits < 0) {
-      return _invalid('请输入有效手续费');
-    }
-    final outcome = await guardUiAction(
-      _logger,
+    return _run(
+      current.plan.id,
       'Terminate amortization plan',
       () => ref
           .read(amortizationPlanAppServiceProvider)
@@ -69,46 +90,23 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
             TerminateAmortizationPlanCommand(
               planId: current.plan.id,
               terminatedAt: terminatedAt,
-              refundAccountId: refundAccountId,
-              refundAmount: refund,
-              recognitionCategoryAccountId: categoryAccountId,
-              refundFeeAmount: fee.minorUnits == 0 ? null : fee,
-              note: noteText.trim().isEmpty ? null : noteText.trim(),
+              categoryReturnAllocations: categoryReturnAllocations,
+              settlementAllocations: settlementAllocations,
             ),
-          ),
+          )
+          .then((_) {}),
     );
-    if (outcome is UiActionSuccess) {
-      ref
-        ..invalidate(amortizationPlanProvider(current.plan.id))
-        ..invalidate(amortizationPlansProvider());
-    }
-    return outcome;
   }
 
-  Future<UiActionOutcome<void>> updateDefaults({
-    required bool isExcludedFromStats,
-    required bool isExcludedFromBudget,
-    required AmortizationReportingScope scope,
-  }) async {
-    final current = state.value;
-    if (current == null) return _invalid('摊销计划尚未加载');
-    final outcome = await guardUiAction(
-      _logger,
-      'Update amortization reporting defaults',
-      () => ref
-          .read(amortizationPlanAppServiceProvider)
-          .updateReportingDefaults(
-            UpdateAmortizationReportingDefaultsCommand(
-              planId: current.plan.id,
-              isExcludedFromStats: isExcludedFromStats,
-              isExcludedFromBudget: isExcludedFromBudget,
-              scope: scope,
-            ),
-          ),
-    );
+  Future<UiActionOutcome<void>> _run(
+    String planId,
+    String operation,
+    Future<void> Function() body,
+  ) async {
+    final outcome = await guardUiAction(_logger, operation, body);
     if (outcome is UiActionSuccess) {
       ref
-        ..invalidate(amortizationPlanProvider(current.plan.id))
+        ..invalidate(amortizationPlanProvider(planId))
         ..invalidate(amortizationPlansProvider());
     }
     return outcome;

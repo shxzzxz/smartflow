@@ -41,9 +41,11 @@ import 'table/import_entity_mappings.dart';
 import 'table/import_batches.dart';
 import 'table/import_batch_items.dart';
 import 'table/orchestration/advance_cases.dart';
-import 'table/orchestration/amortization_entry_allocations.dart';
-import 'table/orchestration/amortization_entries.dart';
+import 'table/orchestration/amortization_allocations.dart';
+import 'table/orchestration/amortization_periods.dart';
 import 'table/orchestration/amortization_plans.dart';
+import 'table/orchestration/amortization_refunds.dart';
+import 'table/orchestration/amortization_terminations.dart';
 
 part 'app_database.g.dart';
 
@@ -80,8 +82,10 @@ part 'app_database.g.dart';
     ImportBatchItems,
     AdvanceCases,
     AmortizationPlans,
-    AmortizationEntries,
-    AmortizationEntryAllocations,
+    AmortizationPeriods,
+    AmortizationRefunds,
+    AmortizationTerminations,
+    AmortizationAllocations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -89,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 54;
+  int get schemaVersion => 56;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

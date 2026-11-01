@@ -12,6 +12,8 @@ import '../../generated_migrations/schema_v50.dart' as v50;
 import '../../generated_migrations/schema_v51.dart' as v51;
 import '../../generated_migrations/schema_v52.dart' as v52;
 import '../../generated_migrations/schema_v53.dart' as v53;
+import '../../generated_migrations/schema_v54.dart' as v54;
+import '../../generated_migrations/schema_v55.dart' as v55;
 
 void main() {
   late SchemaVerifier verifier;
@@ -91,7 +93,7 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 54,
+      newVersion: 56,
     );
   });
 
@@ -132,11 +134,11 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 54,
+      newVersion: 56,
     );
   });
 
-  test('migrates v52 to v53 with amortization tables', () async {
+  test('migrates v52 through current with amortization tables', () async {
     await verifier.testWithDataIntegrity<v52.DatabaseAtV52, AppDatabase>(
       createOld: v52.DatabaseAtV52.new,
       createNew: AppDatabase.new,
@@ -148,83 +150,239 @@ void main() {
                     .customSelect(
                       "SELECT name FROM sqlite_master WHERE type = 'table' "
                       "AND name IN ('amortization_plans', "
-                      "'amortization_entries')",
+                      "'amortization_periods', 'amortization_refunds', "
+                      "'amortization_terminations', "
+                      "'amortization_allocations')",
                     )
                     .get())
                 .map((row) => row.read<String>('name'))
                 .toSet();
-        expect(tables, {'amortization_plans', 'amortization_entries'});
+        expect(tables, {
+          'amortization_plans',
+          'amortization_periods',
+          'amortization_refunds',
+          'amortization_terminations',
+          'amortization_allocations',
+        });
         final indexes = (await db
             .customSelect(
               "SELECT name FROM sqlite_master WHERE type = 'index' "
-              "AND name = 'amortization_entries_pending_idx'",
+              "AND name = 'amortization_periods_pending_idx'",
             )
             .get());
         expect(indexes, hasLength(1));
       },
       oldVersion: 52,
-      newVersion: 53,
+      newVersion: 56,
     );
   });
 
-  test('migrates v53 amortization categories to entry allocations', () async {
-    await verifier.testWithDataIntegrity<v53.DatabaseAtV53, AppDatabase>(
-      createOld: v53.DatabaseAtV53.new,
+  test(
+    'migrates legacy amortization categories to shared allocations',
+    () async {
+      await verifier.testWithDataIntegrity<v53.DatabaseAtV53, AppDatabase>(
+        createOld: v53.DatabaseAtV53.new,
+        createNew: AppDatabase.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, _) {
+          batch.customStatement(
+            'INSERT INTO amortization_plans ('
+            'id, kind, deferral_account_id, category_account_id, '
+            'total_amount_minor, cadence_unit, cadence_interval, '
+            'first_recognition_at, recognition_count, initial_transaction_id'
+            ") VALUES ('plan', 'prepaidExpense', 'prepaid', 'rent', "
+            '300000, \'monthly\', 1, 1769788800, 3, \'initial\')',
+          );
+          batch.customStatement(
+            'INSERT INTO amortization_entries ('
+            'id, plan_id, sequence_no, due_at, amount_minor'
+            ") VALUES ('entry-1', 'plan', 1, 1769788800, 100000), "
+            "('entry-2', 'plan', 2, 1772377200, 100000), "
+            "('entry-3', 'plan', 3, 1774965600, 100000)",
+          );
+        },
+        validateItems: (db) async {
+          final planColumns =
+              (await db
+                      .customSelect('PRAGMA table_info(amortization_plans)')
+                      .get())
+                  .map((row) => row.read<String>('name'))
+                  .toSet();
+          expect(planColumns, isNot(contains('category_account_id')));
+
+          final allocations = await db
+              .customSelect(
+                'SELECT subject_id, line_no, account_id, amount_minor '
+                'FROM amortization_allocations '
+                "WHERE subject_type = 'period' ORDER BY subject_id",
+              )
+              .get();
+          expect(allocations, hasLength(3));
+          expect(
+            allocations.map(
+              (row) => (
+                row.read<String>('subject_id'),
+                row.read<int>('line_no'),
+                row.read<String>('account_id'),
+                row.read<int>('amount_minor'),
+              ),
+            ),
+            [
+              ('entry-1', 1, 'rent', 100000),
+              ('entry-2', 1, 'rent', 100000),
+              ('entry-3', 1, 'rent', 100000),
+            ],
+          );
+        },
+        oldVersion: 53,
+        newVersion: 54,
+      );
+    },
+  );
+
+  test('migrates v54 amortization plan to refund-safe model', () async {
+    await verifier.testWithDataIntegrity<v54.DatabaseAtV54, AppDatabase>(
+      createOld: v54.DatabaseAtV54.new,
       createNew: AppDatabase.new,
       openTestedDatabase: AppDatabase.new,
       createItems: (batch, _) {
         batch.customStatement(
           'INSERT INTO amortization_plans ('
-          'id, kind, deferral_account_id, category_account_id, '
-          'total_amount_minor, cadence_unit, cadence_interval, '
-          'first_recognition_at, recognition_count, initial_transaction_id'
-          ") VALUES ('plan', 'prepaidExpense', 'prepaid', 'rent', "
-          '300000, \'monthly\', 1, 1769788800, 3, \'initial\')',
+          'id, kind, deferral_account_id, total_amount_minor, cadence_unit, '
+          'cadence_interval, first_recognition_at, recognition_count, '
+          'default_is_excluded_from_stats, default_is_excluded_from_budget, '
+          'initial_transaction_id, terminated_at, refund_amount_minor, '
+          'termination_recognition_transaction_id, refund_transaction_id) '
+          "VALUES ('plan', 'prepaidExpense', 'prepaid', 60000, 'monthly', "
+          "1, 1767225600, 2, 0, 0, 'initial', 1769904000, 5000, "
+          "'termination-recognition', 'termination-return')",
         );
         batch.customStatement(
-          'INSERT INTO amortization_entries ('
-          'id, plan_id, sequence_no, due_at, amount_minor'
-          ") VALUES ('entry-1', 'plan', 1, 1769788800, 100000), "
-          "('entry-2', 'plan', 2, 1772377200, 100000), "
-          "('entry-3', 'plan', 3, 1774965600, 100000)",
+          'INSERT INTO amortization_entries '
+          '(id, plan_id, sequence_no, due_at, amount_minor) '
+          "VALUES ('period-1', 'plan', 1, 1767225600, 30000), "
+          "('period-2', 'plan', 2, 1769904000, 30000)",
+        );
+        batch.customStatement(
+          'INSERT INTO amortization_entry_allocations '
+          '(id, entry_id, line_no, account_id, amount_minor) '
+          "VALUES ('allocation-1', 'period-1', 1, 'category-a', 10000), "
+          "('allocation-2', 'period-1', 2, 'category-b', 20000), "
+          "('allocation-3', 'period-2', 1, 'category-a', 10000), "
+          "('allocation-4', 'period-2', 2, 'category-b', 20000)",
         );
       },
       validateItems: (db) async {
+        final terminations = await db.select(db.amortizationTerminations).get();
+        expect(terminations, hasLength(1));
+        expect(
+          terminations.single.terminatedAt,
+          DateTime.fromMillisecondsSinceEpoch(1769904000 * 1000),
+        );
+
         final planColumns =
             (await db
                     .customSelect('PRAGMA table_info(amortization_plans)')
                     .get())
                 .map((row) => row.read<String>('name'))
                 .toSet();
-        expect(planColumns, isNot(contains('category_account_id')));
+        expect(planColumns, isNot(contains('counterparty_id')));
+        expect(planColumns, isNot(contains('note')));
+        expect(planColumns, isNot(contains('default_is_excluded_from_stats')));
+        expect(planColumns, isNot(contains('refund_amount_minor')));
 
-        final allocations = await db
+        final periods = await db
             .customSelect(
-              'SELECT entry_id, line_no, account_id, amount_minor '
-              'FROM amortization_entry_allocations ORDER BY entry_id',
+              'SELECT id, amount_minor, status FROM amortization_periods '
+              'ORDER BY sequence_no',
             )
             .get();
-        expect(allocations, hasLength(3));
         expect(
-          allocations.map(
+          periods.map(
             (row) => (
-              row.read<String>('entry_id'),
-              row.read<int>('line_no'),
-              row.read<String>('account_id'),
+              row.read<String>('id'),
               row.read<int>('amount_minor'),
+              row.read<String>('status'),
             ),
           ),
-          [
-            ('entry-1', 1, 'rent', 100000),
-            ('entry-2', 1, 'rent', 100000),
-            ('entry-3', 1, 'rent', 100000),
-          ],
+          [('period-1', 30000, 'pending'), ('period-2', 30000, 'pending')],
+        );
+        final planAllocations = await db
+            .customSelect(
+              'SELECT account_id, amount_minor FROM amortization_allocations '
+              "WHERE subject_type = 'plan' AND dimension = 'category' "
+              'ORDER BY account_id',
+            )
+            .get();
+        expect(
+          planAllocations.map(
+            (row) =>
+                (row.read<String>('account_id'), row.read<int>('amount_minor')),
+          ),
+          [('category-a', 20000), ('category-b', 40000)],
         );
       },
-      oldVersion: 53,
-      newVersion: 54,
+      oldVersion: 54,
+      newVersion: 55,
     );
   });
+
+  test(
+    'repairs text timestamps written by the v55 amortization migration',
+    () async {
+      const malformedTimestamp = '2026-11-01 17:18:31';
+      final repairedInstant = DateTime.utc(2026, 11, 1, 17, 18, 31);
+
+      await verifier.testWithDataIntegrity<v55.DatabaseAtV55, AppDatabase>(
+        createOld: v55.DatabaseAtV55.new,
+        createNew: AppDatabase.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, _) {
+          batch.customStatement(
+            'INSERT INTO amortization_terminations ('
+            'id, plan_id, terminated_at, recognition_transaction_id, '
+            'return_transaction_id, created_at, updated_at'
+            ") VALUES ('termination', 'plan', 1769904000, 'recognition', NULL, "
+            "'$malformedTimestamp', '$malformedTimestamp')",
+          );
+          batch.customStatement(
+            'INSERT INTO amortization_allocations ('
+            'id, subject_type, subject_id, dimension, line_no, account_id, '
+            'amount_minor, created_at, updated_at'
+            ") VALUES ('allocation', 'termination', 'termination', 'category', "
+            "1, 'rent', 5000, '$malformedTimestamp', '$malformedTimestamp')",
+          );
+        },
+        validateItems: (db) async {
+          final termination = await db
+              .select(db.amortizationTerminations)
+              .getSingle();
+          expect(
+            termination.createdAt.millisecondsSinceEpoch,
+            repairedInstant.millisecondsSinceEpoch,
+          );
+          expect(
+            termination.updatedAt.millisecondsSinceEpoch,
+            repairedInstant.millisecondsSinceEpoch,
+          );
+
+          final allocation = await db
+              .select(db.amortizationAllocations)
+              .getSingle();
+          expect(
+            allocation.createdAt.millisecondsSinceEpoch,
+            repairedInstant.millisecondsSinceEpoch,
+          );
+          expect(
+            allocation.updatedAt.millisecondsSinceEpoch,
+            repairedInstant.millisecondsSinceEpoch,
+          );
+        },
+        oldVersion: 55,
+        newVersion: 56,
+      );
+    },
+  );
 
   test(
     'migrates v51 installment sources and generated contract links',

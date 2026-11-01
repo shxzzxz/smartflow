@@ -36,9 +36,20 @@ class BackupTables {
     'import_batch_items',
     'advance_cases',
     'amortization_plans',
+    'amortization_periods',
+    'amortization_refunds',
+    'amortization_terminations',
+    'amortization_allocations',
+  ];
+
+  /// Tables used by supported backup contracts before v7.
+  static const legacy = <String>{
     'amortization_entries',
     'amortization_entry_allocations',
-  ];
+  };
+
+  static bool accepts(String table) =>
+      table == 'preferences' || all.contains(table) || legacy.contains(table);
 
   static String sectionFor(String table) {
     if (const {
@@ -83,8 +94,10 @@ class BackupTables {
     }
     if (table == 'advance_cases' ||
         table == 'amortization_plans' ||
-        table == 'amortization_entries' ||
-        table == 'amortization_entry_allocations') {
+        table == 'amortization_periods' ||
+        table == 'amortization_refunds' ||
+        table == 'amortization_terminations' ||
+        table == 'amortization_allocations') {
       return 'orchestration';
     }
     throw ArgumentError('Unknown backup table: $table');
@@ -120,6 +133,9 @@ class BackupSnapshot {
   }) : tables = {
          for (final table in BackupTables.all)
            table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
+         for (final table in BackupTables.legacy)
+           if (tables.containsKey(table))
+             table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
        },
        preferences = Map.unmodifiable(preferences);
 
@@ -169,7 +185,7 @@ class BackupFileDescriptor {
     final map = _stringMap(value, 'Invalid backup file entry.');
     final path = _requiredString(map, 'path');
     final table = _requiredString(map, 'table');
-    if (table != 'preferences' && !BackupTables.all.contains(table) ||
+    if (!BackupTables.accepts(table) ||
         path.contains('..') ||
         path.contains('\u0000') ||
         path.startsWith('/') ||
@@ -216,7 +232,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 6;
+  static const currentBackupSchemaVersion = 7;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
@@ -364,7 +380,7 @@ class BackupDiff {
       }
       if (table == 'budgets') return '预算';
       if (table == 'advance_cases') return '垫付编排';
-      if (table == 'amortization_plans' || table == 'amortization_entries') {
+      if (table.startsWith('amortization_')) {
         return '摊销计划';
       }
       if (table == 'import_batches' ||

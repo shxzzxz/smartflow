@@ -41,8 +41,8 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 6);
-      expect(inspected.manifest.schemaVersion, 54);
+      expect(inspected.manifest.backupSchemaVersion, 7);
+      expect(inspected.manifest.schemaVersion, 55);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -79,7 +79,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 6);
+        expect(inspection.manifest.backupSchemaVersion, 7);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -155,27 +155,73 @@ void main() {
 
     test('migrates v4 backups before requiring amortization tables', () async {
       await service.createBackup(tempDirectory);
-      await _removeBackupTable(tempDirectory, 'amortization_plans');
-      await _removeBackupTable(tempDirectory, 'amortization_entries');
+      for (final table in const [
+        'amortization_plans',
+        'amortization_periods',
+        'amortization_refunds',
+        'amortization_terminations',
+        'amortization_allocations',
+      ]) {
+        await _removeBackupTable(tempDirectory, table);
+      }
       await _rewriteBackupSchemaVersion(tempDirectory, 4);
 
       final inspection = await service.inspect(tempDirectory);
 
       expect(inspection.snapshot.rows('amortization_plans'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_entries'), isEmpty);
+      expect(inspection.snapshot.rows('amortization_periods'), isEmpty);
+      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
     });
 
-    test('migrates v5 backups before requiring entry allocations', () async {
+    test('migrates v5 backups before requiring amortization records', () async {
       await service.createBackup(tempDirectory);
-      await _removeBackupTable(tempDirectory, 'amortization_entry_allocations');
+      for (final table in const [
+        'amortization_plans',
+        'amortization_periods',
+        'amortization_refunds',
+        'amortization_terminations',
+        'amortization_allocations',
+      ]) {
+        await _removeBackupTable(tempDirectory, table);
+      }
       await _rewriteBackupSchemaVersion(tempDirectory, 5);
 
       final inspection = await service.inspect(tempDirectory);
 
-      expect(
-        inspection.snapshot.rows('amortization_entry_allocations'),
-        isEmpty,
+      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
+    });
+
+    test('migrates v6 backups to the refund-safe snapshot', () async {
+      await service.createBackup(tempDirectory);
+      for (final table in const [
+        'amortization_plans',
+        'amortization_periods',
+        'amortization_refunds',
+        'amortization_terminations',
+        'amortization_allocations',
+      ]) {
+        await _removeBackupTable(tempDirectory, table);
+      }
+      await _rewriteBackupSchemaVersion(tempDirectory, 6);
+
+      final inspection = await service.inspect(tempDirectory);
+
+      expect(inspection.snapshot.rows('amortization_periods'), isEmpty);
+      expect(inspection.snapshot.rows('amortization_refunds'), isEmpty);
+      expect(inspection.snapshot.rows('amortization_terminations'), isEmpty);
+      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
+    });
+
+    test('keeps legacy amortization rows available for migration', () {
+      final snapshot = BackupSnapshot(
+        tables: {
+          'amortization_entries': [
+            {'id': 'legacy-period', 'planId': 'legacy-plan'},
+          ],
+        },
       );
+
+      expect(snapshot.rows('amortization_entries'), hasLength(1));
     });
 
     test('rejects obsolete backup format versions', () async {
@@ -197,7 +243,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 7;
+      manifest['backupSchemaVersion'] = 8;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -206,7 +252,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 7'),
+            contains('backupSchemaVersion 8'),
           ),
         ),
       );
@@ -255,7 +301,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 6);
+        expect(manifest.backupSchemaVersion, 7);
       },
     );
   });
@@ -405,7 +451,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 54});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 55});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;

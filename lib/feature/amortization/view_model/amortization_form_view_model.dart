@@ -161,10 +161,10 @@ class AmortizationFormViewModel extends _$AmortizationFormViewModel {
                 cadenceInterval: interval,
                 recognitionCount: count,
                 occurredAt: current.occurredAt,
-                defaultIsExcludedFromStats: current.excludeStats,
-                defaultIsExcludedFromBudget: current.excludeBudget,
+                initialIsExcludedFromStats: current.excludeStats,
+                initialIsExcludedFromBudget: current.excludeBudget,
                 feeAmount: fee.minorUnits == 0 ? null : fee,
-                note: noteText.trim().isEmpty ? null : noteText.trim(),
+                initialNote: noteText.trim().isEmpty ? null : noteText.trim(),
               ),
             ),
       );

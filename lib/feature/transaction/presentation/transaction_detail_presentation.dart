@@ -77,9 +77,11 @@ DetailHero transactionDetailHero({
 }) {
   final transaction = detail;
   final semantic = semanticForTransactionPurpose(transaction.businessPurpose);
-  final categoryLines = detail.categoryLines.toList();
-  final hasMultipleCategories = categoryLines.length > 1;
-  final category = _resolveCategoryAccount(detail, accountLookup);
+  final categories = detail.categoryLines.toList();
+  final hasMultipleCategories = categories.length > 1;
+  final category = categories.length == 1
+      ? accountLookup.find(categories.single.accountId!)
+      : _resolveCategoryAccount(detail, accountLookup);
   final title = hasMultipleCategories
       ? '多分类'
       : category?.name ?? transactionPurposeLabel(transaction.businessPurpose);

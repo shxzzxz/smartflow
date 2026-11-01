@@ -426,9 +426,7 @@ AmortizationLedgerPort amortizationLedgerPort(Ref ref) {
   return LedgerAmortizationPort(
     posting: ref.watch(transactionPostingAppServiceProvider),
     editing: ref.watch(transactionEditAppServiceProvider),
-    updating: ref.watch(transactionUpdateAppServiceProvider),
     accounts: ref.watch(accountRepositoryProvider),
-    transactions: ref.watch(ledgerRepositoryProvider),
   );
 }
 

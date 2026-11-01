@@ -9,6 +9,7 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/domain/import/import_models.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -130,13 +131,15 @@ void main() {
     expect(after.preferences, before.preferences);
   });
 
-  test('round-trips amortization entry category allocations', () async {
+  test('round-trips amortization allocations', () async {
     await database
-        .into(database.amortizationEntryAllocations)
+        .into(database.amortizationAllocations)
         .insert(
-          AmortizationEntryAllocationsCompanion.insert(
-            id: 'entry-1:allocation:1',
-            entryId: 'entry-1',
+          AmortizationAllocationsCompanion.insert(
+            id: 'period:period-1:category:1',
+            subjectType: AmortizationSubjectType.period,
+            subjectId: 'period-1',
+            dimension: AmortizationAllocationDimension.category,
             lineNo: 1,
             accountId: 'rent',
             amountMinor: 1000,
@@ -144,13 +147,15 @@ void main() {
         );
 
     final snapshot = await gateway.readSnapshot();
-    await database.delete(database.amortizationEntryAllocations).go();
+    await database.delete(database.amortizationAllocations).go();
     await gateway.replaceSnapshot(snapshot);
 
     final restored = await database
-        .select(database.amortizationEntryAllocations)
+        .select(database.amortizationAllocations)
         .getSingle();
-    expect(restored.entryId, 'entry-1');
+    expect(restored.subjectId, 'period-1');
+    expect(restored.subjectType, AmortizationSubjectType.period);
+    expect(restored.dimension, AmortizationAllocationDimension.category);
     expect(restored.accountId, 'rent');
     expect(restored.amountMinor, 1000);
   });

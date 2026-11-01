@@ -1,9 +1,15 @@
 import 'package:drift/drift.dart';
 
-@DataClassName('AmortizationEntryAllocationRow')
-class AmortizationEntryAllocations extends Table {
+import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+
+@DataClassName('AmortizationAllocationRow')
+class AmortizationAllocations extends Table {
   TextColumn get id => text()();
-  TextColumn get entryId => text().named('entry_id')();
+  TextColumn get subjectType =>
+      textEnum<AmortizationSubjectType>().named('subject_type')();
+  TextColumn get subjectId => text().named('subject_id')();
+  TextColumn get dimension =>
+      textEnum<AmortizationAllocationDimension>().named('dimension')();
   IntColumn get lineNo => integer().named('line_no')();
   TextColumn get accountId => text().named('account_id')();
   IntColumn get amountMinor => integer().named('amount_minor')();
@@ -17,8 +23,8 @@ class AmortizationEntryAllocations extends Table {
 
   @override
   List<String> get customConstraints => [
-    'UNIQUE (entry_id, line_no)',
-    'UNIQUE (entry_id, account_id)',
+    'UNIQUE (subject_type, subject_id, dimension, line_no)',
+    'UNIQUE (subject_type, subject_id, dimension, account_id)',
     'CHECK (line_no > 0)',
     'CHECK (amount_minor > 0)',
   ];

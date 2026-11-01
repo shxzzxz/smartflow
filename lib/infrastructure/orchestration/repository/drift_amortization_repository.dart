@@ -1,10 +1,13 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/ledger/valobj/account_amount_allocation.dart';
-import '../../../domain/orchestration/entity/amortization_entry.dart';
-import '../../../domain/orchestration/entity/amortization_plan.dart';
-import '../../../domain/orchestration/port/amortization_repository.dart';
 import '../../../core/money/money.dart';
+import '../../../domain/ledger/valobj/account_amount_allocation.dart';
+import '../../../domain/orchestration/entity/amortization_period.dart';
+import '../../../domain/orchestration/entity/amortization_plan.dart';
+import '../../../domain/orchestration/entity/amortization_refund.dart';
+import '../../../domain/orchestration/entity/amortization_termination.dart';
+import '../../../domain/orchestration/port/amortization_repository.dart';
+import '../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../database/app_database.dart';
 
 class DriftAmortizationRepository implements AmortizationRepository {
@@ -17,9 +20,7 @@ class DriftAmortizationRepository implements AmortizationRepository {
     final row = await (_database.select(
       _database.amortizationPlans,
     )..where((table) => table.id.equals(id))).getSingleOrNull();
-    if (row == null) return null;
-    final entries = await _entriesFor(id);
-    return _toDomain(row, entries);
+    return row == null ? null : _loadPlan(row);
   }
 
   @override
@@ -29,8 +30,7 @@ class DriftAmortizationRepository implements AmortizationRepository {
     if (deferralAccountId != null) {
       query.where((table) => table.deferralAccountId.equals(deferralAccountId));
     }
-    final rows = await query.get();
-    return _loadPlans(rows);
+    return Future.wait((await query.get()).map(_loadPlan));
   }
 
   @override
@@ -40,12 +40,43 @@ class DriftAmortizationRepository implements AmortizationRepository {
     if (deferralAccountId != null) {
       query.where((table) => table.deferralAccountId.equals(deferralAccountId));
     }
-    return query.watch().asyncMap(_loadPlans);
+    return query.watch().asyncMap((rows) => Future.wait(rows.map(_loadPlan)));
   }
 
   @override
   Future<void> save(AmortizationPlan plan) async {
     plan.validate();
+    final existingPeriods = await (_database.select(
+      _database.amortizationPeriods,
+    )..where((table) => table.planId.equals(plan.id))).get();
+    final existingRefunds = await (_database.select(
+      _database.amortizationRefunds,
+    )..where((table) => table.planId.equals(plan.id))).get();
+    final existingTerminations = await (_database.select(
+      _database.amortizationTerminations,
+    )..where((table) => table.planId.equals(plan.id))).get();
+    final allocationSubjectIds = {
+      plan.id,
+      for (final row in existingPeriods) row.id,
+      for (final row in existingRefunds) row.id,
+      for (final row in existingTerminations) row.id,
+    };
+
+    if (allocationSubjectIds.isNotEmpty) {
+      await (_database.delete(
+        _database.amortizationAllocations,
+      )..where((table) => table.subjectId.isIn(allocationSubjectIds))).go();
+    }
+    await (_database.delete(
+      _database.amortizationPeriods,
+    )..where((table) => table.planId.equals(plan.id))).go();
+    await (_database.delete(
+      _database.amortizationRefunds,
+    )..where((table) => table.planId.equals(plan.id))).go();
+    await (_database.delete(
+      _database.amortizationTerminations,
+    )..where((table) => table.planId.equals(plan.id))).go();
+
     await _database
         .into(_database.amortizationPlans)
         .insertOnConflictUpdate(
@@ -53,134 +84,290 @@ class DriftAmortizationRepository implements AmortizationRepository {
             id: plan.id,
             kind: plan.kind,
             deferralAccountId: plan.deferralAccountId,
-            totalAmountMinor: plan.total.minorUnits,
+            totalAmountMinor: plan.originalAmount.minorUnits,
             cadenceUnit: plan.cadenceUnit,
             cadenceInterval: plan.cadenceInterval,
             firstRecognitionAt: plan.firstRecognitionAt,
             recognitionCount: plan.recognitionCount,
-            defaultIsExcludedFromStats: Value(plan.defaultIsExcludedFromStats),
-            defaultIsExcludedFromBudget: Value(
-              plan.defaultIsExcludedFromBudget,
-            ),
             initialTransactionId: plan.initialTransactionId,
-            counterpartyId: Value(plan.counterpartyId),
-            note: Value(plan.note),
-            terminatedAt: Value(plan.terminatedAt),
-            terminationRecognitionTransactionId: Value(
-              plan.terminationRecognitionTransactionId,
-            ),
-            refundTransactionId: Value(plan.refundTransactionId),
-            refundAmountMinor: Value(plan.refundAmount?.minorUnits),
             updatedAt: Value(DateTime.now()),
           ),
         );
+
     await _database.batch((batch) {
-      batch.insertAllOnConflictUpdate(_database.amortizationEntries, [
-        for (final entry in plan.entries)
-          AmortizationEntriesCompanion.insert(
-            id: entry.id,
-            planId: entry.planId,
-            sequenceNo: entry.sequenceNo,
-            dueAt: entry.dueAt,
-            amountMinor: entry.amount.minorUnits,
-            transactionId: Value(entry.transactionId),
-            canceledAt: Value(entry.canceledAt),
+      batch.insertAll(_database.amortizationPeriods, [
+        for (final period in plan.periods)
+          AmortizationPeriodsCompanion.insert(
+            id: period.id,
+            planId: period.planId,
+            sequenceNo: period.sequenceNo,
+            dueAt: period.dueAt,
+            amountMinor: period.amount.minorUnits,
+            transactionId: Value(period.transactionId),
+            status: period.status,
             updatedAt: Value(DateTime.now()),
           ),
       ]);
-      final entryIds = {for (final entry in plan.entries) entry.id};
-      batch.deleteWhere(
-        _database.amortizationEntryAllocations,
-        (table) => table.entryId.isIn(entryIds),
-      );
-      batch.insertAll(_database.amortizationEntryAllocations, [
-        for (final entry in plan.entries)
-          for (var index = 0; index < entry.categoryAllocations.length; index++)
-            AmortizationEntryAllocationsCompanion.insert(
-              id: '${entry.id}:allocation:${index + 1}',
-              entryId: entry.id,
-              lineNo: index + 1,
-              accountId: entry.categoryAllocations[index].accountId,
-              amountMinor: entry.categoryAllocations[index].amount.minorUnits,
-              updatedAt: Value(DateTime.now()),
+      batch.insertAll(_database.amortizationRefunds, [
+        for (final refund in plan.refunds)
+          AmortizationRefundsCompanion.insert(
+            id: refund.id,
+            planId: refund.planId,
+            transferTransactionId: refund.transferTransactionId,
+            updatedAt: Value(DateTime.now()),
+          ),
+      ]);
+      final termination = plan.termination;
+      if (termination != null) {
+        batch.insert(
+          _database.amortizationTerminations,
+          AmortizationTerminationsCompanion.insert(
+            id: termination.id,
+            planId: termination.planId,
+            terminatedAt: termination.terminatedAt,
+            recognitionTransactionId: Value(
+              termination.recognitionTransactionId,
             ),
+            returnTransactionId: Value(termination.returnTransactionId),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      }
+      batch.insertAll(_database.amortizationAllocations, [
+        ..._planAllocationRows(plan),
+        for (final period in plan.periods)
+          ..._allocationRows(
+            subjectType: AmortizationSubjectType.period,
+            subjectId: period.id,
+            dimension: AmortizationAllocationDimension.category,
+            allocations: period.categoryAllocations,
+          ),
+        for (final refund in plan.refunds) ...[
+          ..._allocationRows(
+            subjectType: AmortizationSubjectType.refund,
+            subjectId: refund.id,
+            dimension: AmortizationAllocationDimension.category,
+            allocations: refund.categoryAllocations,
+          ),
+          ..._allocationRows(
+            subjectType: AmortizationSubjectType.refund,
+            subjectId: refund.id,
+            dimension: AmortizationAllocationDimension.settlement,
+            allocations: refund.settlementAllocations,
+          ),
+        ],
+        if (termination != null) ...[
+          ..._allocationRows(
+            subjectType: AmortizationSubjectType.termination,
+            subjectId: termination.id,
+            dimension: AmortizationAllocationDimension.category,
+            allocations: termination.categoryReturnAllocations,
+          ),
+          ..._allocationRows(
+            subjectType: AmortizationSubjectType.termination,
+            subjectId: termination.id,
+            dimension: AmortizationAllocationDimension.settlement,
+            allocations: termination.settlementAllocations,
+          ),
+        ],
       ]);
     });
   }
 
-  Future<List<AmortizationPlan>> _loadPlans(
-    List<AmortizationPlanRow> rows,
-  ) async {
-    return [for (final row in rows) _toDomain(row, await _entriesFor(row.id))];
-  }
-
-  Future<List<AmortizationEntry>> _entriesFor(String planId) async {
-    final rows =
-        await (_database.select(_database.amortizationEntries)
-              ..where((table) => table.planId.equals(planId))
+  Future<AmortizationPlan> _loadPlan(AmortizationPlanRow row) async {
+    final periodRows =
+        await (_database.select(_database.amortizationPeriods)
+              ..where((table) => table.planId.equals(row.id))
               ..orderBy([(table) => OrderingTerm.asc(table.sequenceNo)]))
             .get();
-    if (rows.isEmpty) return const [];
-    final entryIds = {for (final row in rows) row.id};
-    final allocationRows =
-        await (_database.select(_database.amortizationEntryAllocations)
-              ..where((table) => table.entryId.isIn(entryIds))
-              ..orderBy([
-                (table) => OrderingTerm.asc(table.entryId),
-                (table) => OrderingTerm.asc(table.lineNo),
-              ]))
+    final refundRows =
+        await (_database.select(_database.amortizationRefunds)
+              ..where((table) => table.planId.equals(row.id))
+              ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
             .get();
-    final allocationsByEntry = <String, List<AmortizationEntryAllocationRow>>{};
-    for (final row in allocationRows) {
-      (allocationsByEntry[row.entryId] ??= []).add(row);
-    }
-    return [
-      for (final row in rows)
-        AmortizationEntry(
-          id: row.id,
-          planId: row.planId,
-          sequenceNo: row.sequenceNo,
-          dueAt: row.dueAt,
-          amount: Money(minorUnits: row.amountMinor),
-          categoryAllocations: [
-            for (final allocation in allocationsByEntry[row.id] ?? const [])
-              AccountAmountAllocation(
-                accountId: allocation.accountId,
-                amount: Money(minorUnits: allocation.amountMinor),
-              ),
-          ],
-          transactionId: row.transactionId,
-          canceledAt: row.canceledAt,
+    final terminationRows = await (_database.select(
+      _database.amortizationTerminations,
+    )..where((table) => table.planId.equals(row.id))).get();
+    final subjectIds = {
+      row.id,
+      for (final period in periodRows) period.id,
+      for (final refund in refundRows) refund.id,
+      for (final termination in terminationRows) termination.id,
+    };
+    final allocationRows = subjectIds.isEmpty
+        ? const <AmortizationAllocationRow>[]
+        : await (_database.select(_database.amortizationAllocations)
+                ..where((table) => table.subjectId.isIn(subjectIds))
+                ..orderBy([
+                  (table) => OrderingTerm.asc(table.subjectType),
+                  (table) => OrderingTerm.asc(table.subjectId),
+                  (table) => OrderingTerm.asc(table.dimension),
+                  (table) => OrderingTerm.asc(table.lineNo),
+                ]))
+              .get();
+    final allocations = _groupAllocations(allocationRows);
+    final planFunding =
+        allocations[(
+          AmortizationSubjectType.plan,
+          row.id,
+          AmortizationAllocationDimension.funding,
+        )] ??
+        const [];
+    final planCategories =
+        allocations[(
+          AmortizationSubjectType.plan,
+          row.id,
+          AmortizationAllocationDimension.category,
+        )] ??
+        const [];
+
+    final periods = [
+      for (final period in periodRows)
+        AmortizationPeriod(
+          id: period.id,
+          planId: period.planId,
+          sequenceNo: period.sequenceNo,
+          dueAt: period.dueAt,
+          amount: Money(minorUnits: period.amountMinor),
+          categoryAllocations:
+              allocations[(
+                AmortizationSubjectType.period,
+                period.id,
+                AmortizationAllocationDimension.category,
+              )] ??
+              const [],
+          transactionId: period.transactionId,
+          status: period.status,
         ),
     ];
-  }
-
-  AmortizationPlan _toDomain(
-    AmortizationPlanRow row,
-    List<AmortizationEntry> entries,
-  ) {
+    final refunds = [
+      for (final refund in refundRows)
+        AmortizationRefund(
+          id: refund.id,
+          planId: refund.planId,
+          categoryAllocations:
+              allocations[(
+                AmortizationSubjectType.refund,
+                refund.id,
+                AmortizationAllocationDimension.category,
+              )] ??
+              const [],
+          settlementAllocations:
+              allocations[(
+                AmortizationSubjectType.refund,
+                refund.id,
+                AmortizationAllocationDimension.settlement,
+              )] ??
+              const [],
+          transferTransactionId: refund.transferTransactionId,
+        ),
+    ];
+    final termination = terminationRows.isEmpty
+        ? null
+        : AmortizationTermination(
+            id: terminationRows.single.id,
+            planId: terminationRows.single.planId,
+            terminatedAt: terminationRows.single.terminatedAt,
+            categoryReturnAllocations:
+                allocations[(
+                  AmortizationSubjectType.termination,
+                  terminationRows.single.id,
+                  AmortizationAllocationDimension.category,
+                )] ??
+                const [],
+            settlementAllocations:
+                allocations[(
+                  AmortizationSubjectType.termination,
+                  terminationRows.single.id,
+                  AmortizationAllocationDimension.settlement,
+                )] ??
+                const [],
+            recognitionTransactionId:
+                terminationRows.single.recognitionTransactionId,
+            returnTransactionId: terminationRows.single.returnTransactionId,
+          );
     return AmortizationPlan(
       id: row.id,
       kind: row.kind,
       deferralAccountId: row.deferralAccountId,
-      total: Money(minorUnits: row.totalAmountMinor),
+      originalAmount: Money(minorUnits: row.totalAmountMinor),
+      fundingAllocations: planFunding,
+      categoryAllocations: planCategories,
       cadenceUnit: row.cadenceUnit,
       cadenceInterval: row.cadenceInterval,
       firstRecognitionAt: row.firstRecognitionAt,
       recognitionCount: row.recognitionCount,
-      defaultIsExcludedFromStats: row.defaultIsExcludedFromStats,
-      defaultIsExcludedFromBudget: row.defaultIsExcludedFromBudget,
       initialTransactionId: row.initialTransactionId,
-      counterpartyId: row.counterpartyId,
-      note: row.note,
-      terminatedAt: row.terminatedAt,
-      terminationRecognitionTransactionId:
-          row.terminationRecognitionTransactionId,
-      refundTransactionId: row.refundTransactionId,
-      refundAmount: row.refundAmountMinor == null
-          ? null
-          : Money(minorUnits: row.refundAmountMinor!),
-      entries: entries,
+      periods: periods,
+      refunds: refunds,
+      termination: termination,
     );
+  }
+
+  List<AmortizationAllocationsCompanion> _planAllocationRows(
+    AmortizationPlan plan,
+  ) {
+    return [
+      ..._allocationRows(
+        subjectType: AmortizationSubjectType.plan,
+        subjectId: plan.id,
+        dimension: AmortizationAllocationDimension.funding,
+        allocations: plan.fundingAllocations,
+      ),
+      ..._allocationRows(
+        subjectType: AmortizationSubjectType.plan,
+        subjectId: plan.id,
+        dimension: AmortizationAllocationDimension.category,
+        allocations: plan.categoryAllocations,
+      ),
+    ];
+  }
+
+  List<AmortizationAllocationsCompanion> _allocationRows({
+    required AmortizationSubjectType subjectType,
+    required String subjectId,
+    required AmortizationAllocationDimension dimension,
+    required Iterable<AccountAmountAllocation> allocations,
+  }) {
+    return [
+      for (var index = 0; index < allocations.length; index++)
+        AmortizationAllocationsCompanion.insert(
+          id: '${subjectType.name}:$subjectId:${dimension.name}:${index + 1}',
+          subjectType: subjectType,
+          subjectId: subjectId,
+          dimension: dimension,
+          lineNo: index + 1,
+          accountId: allocations.elementAt(index).accountId,
+          amountMinor: allocations.elementAt(index).amount.minorUnits,
+          updatedAt: Value(DateTime.now()),
+        ),
+    ];
+  }
+
+  Map<
+    (AmortizationSubjectType, String, AmortizationAllocationDimension),
+    List<AccountAmountAllocation>
+  >
+  _groupAllocations(List<AmortizationAllocationRow> rows) {
+    final result =
+        <
+          (AmortizationSubjectType, String, AmortizationAllocationDimension),
+          List<AccountAmountAllocation>
+        >{};
+    for (final row in rows) {
+      result
+          .putIfAbsent((
+            row.subjectType,
+            row.subjectId,
+            row.dimension,
+          ), () => [])
+          .add(
+            AccountAmountAllocation(
+              accountId: row.accountId,
+              amount: Money(minorUnits: row.amountMinor),
+            ),
+          );
+    }
+    return result;
   }
 }

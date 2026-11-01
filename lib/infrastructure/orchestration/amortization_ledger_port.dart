@@ -1,11 +1,9 @@
 import '../../application/ledger/transaction/command/transaction_command.dart';
 import '../../application/ledger/transaction/command/transaction_edit_app_service.dart';
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
-import '../../application/ledger/transaction/command/transaction_update_app_service.dart';
 import '../../core/error/app_exception.dart';
 import '../../core/money/money.dart';
 import '../../domain/ledger/port/account_repository.dart';
-import '../../domain/ledger/port/transaction_repository.dart';
 import '../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../domain/ledger/valobj/ledger_enum.dart';
 import '../../domain/ledger/valobj/transaction_ownership.dart';
@@ -17,20 +15,14 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   const LedgerAmortizationPort({
     required TransactionPostingAppService posting,
     required TransactionEditAppService editing,
-    required TransactionUpdateAppService updating,
     required AccountRepository accounts,
-    required TransactionRepository transactions,
   }) : _posting = posting,
        _editing = editing,
-       _updating = updating,
-       _accounts = accounts,
-       _transactions = transactions;
+       _accounts = accounts;
 
   final TransactionPostingAppService _posting;
   final TransactionEditAppService _editing;
-  final TransactionUpdateAppService _updating;
   final AccountRepository _accounts;
-  final TransactionRepository _transactions;
 
   @override
   Future<void> validatePlanAccounts({
@@ -69,6 +61,47 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
         throw BusinessException(
           AmortizationErrorCode.invalidCommand,
           message: 'Recognition category does not match the amortization kind.',
+        );
+      }
+    }
+  }
+
+  @override
+  Future<void> validateRefundAccounts({
+    required AmortizationKind kind,
+    required Iterable<String> categoryAccountIds,
+    required Iterable<String> settlementAccountIds,
+  }) async {
+    final categoryIds = categoryAccountIds.toSet();
+    final settlementIds = settlementAccountIds.toSet();
+    final accounts = await _accounts.findByIds({
+      ...categoryIds,
+      ...settlementIds,
+    });
+    final byId = {for (final account in accounts) account.id: account};
+    final expectedCategoryType = switch (kind) {
+      AmortizationKind.prepaidExpense => AccountType.expense,
+      AmortizationKind.deferredIncome => AccountType.income,
+    };
+    for (final categoryAccountId in categoryIds) {
+      final category = byId[categoryAccountId];
+      if (category == null ||
+          category.archivedAt != null ||
+          category.type != expectedCategoryType) {
+        throw BusinessException(
+          AmortizationErrorCode.invalidCommand,
+          message: 'Refund category does not match the amortization kind.',
+        );
+      }
+    }
+    for (final settlementAccountId in settlementIds) {
+      final account = byId[settlementAccountId];
+      if (account == null ||
+          account.archivedAt != null ||
+          !account.type.isUserAccount) {
+        throw BusinessException(
+          AmortizationErrorCode.invalidCommand,
+          message: 'Refund settlement account is unavailable.',
         );
       }
     }
@@ -175,33 +208,43 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   }
 
   @override
-  Future<void> deleteTransaction(String transactionId) async {
-    await _editing.deleteTransaction(
-      DeleteTransactionCommand(transactionId: transactionId),
-    );
-  }
-
-  @override
-  Future<void> updateReportingFlags({
+  Future<void> rewriteExpense({
     required String transactionId,
-    required bool isExcludedFromStats,
-    required bool isExcludedFromBudget,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
   }) async {
-    await _updating.updateReportingFlag(
-      UpdateTransactionReportingFlagCommand(
+    await _editing.editExpense(
+      EditExpenseCommand(
         transactionId: transactionId,
-        isExcludedFromStats: isExcludedFromStats,
-        isExcludedFromBudget: isExcludedFromBudget,
+        amount: amount,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
       ),
     );
   }
 
   @override
-  Future<bool> isOwnedBy({
+  Future<void> rewriteIncome({
     required String transactionId,
-    required TransactionOwnership ownership,
+    required Money amount,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
   }) async {
-    final transaction = await _transactions.findById(transactionId);
-    return transaction?.ownership == ownership;
+    await _editing.editIncome(
+      EditIncomeCommand(
+        transactionId: transactionId,
+        amount: amount,
+        categoryAllocations: categoryAllocations,
+        settlementAllocations: settlementAllocations,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteTransaction(String transactionId) async {
+    await _editing.deleteTransaction(
+      DeleteTransactionCommand(transactionId: transactionId),
+    );
   }
 }

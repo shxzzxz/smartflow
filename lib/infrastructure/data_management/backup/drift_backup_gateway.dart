@@ -62,13 +62,21 @@ class DriftBackupGateway
             ),
         'transactions': (await database.select(database.transactions).get())
             .map(_json),
-        'amortization_entries':
-            (await database.select(database.amortizationEntries).get()).map(
+        'amortization_periods':
+            (await database.select(database.amortizationPeriods).get()).map(
               _json,
             ),
-        'amortization_entry_allocations':
-            (await database.select(database.amortizationEntryAllocations).get())
+        'amortization_refunds':
+            (await database.select(database.amortizationRefunds).get()).map(
+              _json,
+            ),
+        'amortization_terminations':
+            (await database.select(database.amortizationTerminations).get())
                 .map(_json),
+        'amortization_allocations':
+            (await database.select(database.amortizationAllocations).get()).map(
+              _json,
+            ),
         'transaction_lines':
             (await database.select(database.transactionLines).get()).map(_json),
         'entries': (await database.select(database.entries).get()).map(_json),
@@ -186,7 +194,10 @@ class DriftBackupGateway
         'entries',
         'transaction_lines',
         'transactions',
-        'amortization_entries',
+        'amortization_allocations',
+        'amortization_periods',
+        'amortization_refunds',
+        'amortization_terminations',
         'amortization_plans',
         'advance_cases',
         'counterparties',
@@ -279,21 +290,37 @@ class DriftBackupGateway
               ),
         );
         batch.insertAll(
-          database.amortizationEntries,
+          database.amortizationPeriods,
           snapshot
-              .rows('amortization_entries')
+              .rows('amortization_periods')
               .map(
-                (row) => AmortizationEntryRow.fromJson(row).toCompanion(true),
+                (row) => AmortizationPeriodRow.fromJson(row).toCompanion(true),
               ),
         );
         batch.insertAll(
-          database.amortizationEntryAllocations,
+          database.amortizationRefunds,
           snapshot
-              .rows('amortization_entry_allocations')
+              .rows('amortization_refunds')
               .map(
-                (row) => AmortizationEntryAllocationRow.fromJson(
-                  row,
-                ).toCompanion(true),
+                (row) => AmortizationRefundRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.amortizationTerminations,
+          snapshot
+              .rows('amortization_terminations')
+              .map(
+                (row) =>
+                    AmortizationTerminationRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.amortizationAllocations,
+          snapshot
+              .rows('amortization_allocations')
+              .map(
+                (row) =>
+                    AmortizationAllocationRow.fromJson(row).toCompanion(true),
               ),
         );
         batch.insertAll(
@@ -472,10 +499,16 @@ class DriftBackupGateway
     if (row is AmortizationPlanRow) {
       return row.toJson().cast<String, Object?>();
     }
-    if (row is AmortizationEntryRow) {
+    if (row is AmortizationPeriodRow) {
       return row.toJson().cast<String, Object?>();
     }
-    if (row is AmortizationEntryAllocationRow) {
+    if (row is AmortizationRefundRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AmortizationTerminationRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AmortizationAllocationRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is TransactionRow) {

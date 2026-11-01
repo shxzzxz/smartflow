@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
@@ -121,6 +122,22 @@ void main() {
         amountSource: const TransactionCashflowImpactAmountSource({'food'}),
       );
       expect(row.amountText, '+5');
+    });
+
+    test('amortization ownership disables quick edit', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.dailyExpense,
+          ownership: const TransactionOwnership(
+            ownerType: orchestrationAmortizationOwnerType,
+            ownerId: 'plan',
+          ),
+        ),
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '餐饮');
+      expect(row.canQuickEdit, isFalse);
     });
 
     test('groups transactions with daily summaries by descending date', () {
@@ -841,6 +858,7 @@ TransactionReadModel _item({
   Map<String, TransactionAccountImpact>? impactsByAccountId,
   List<TransactionAdjustment> adjustments = const [],
   List<TransactionReadModel> additionalChildren = const [],
+  TransactionOwnership? ownership,
 }) {
   final refundSummary = refundedTotal == null
       ? null
@@ -877,6 +895,7 @@ TransactionReadModel _item({
     primaryAmount: primaryAmount,
     isExcludedFromStats: isExcludedFromStats,
     isExcludedFromBudget: false,
+    ownership: ownership,
     lines: [
       if (categoryAccountId != null)
         TransactionLine(

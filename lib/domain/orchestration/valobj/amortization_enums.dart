@@ -6,4 +6,8 @@ enum AmortizationCadenceUnit { daily, monthly, yearly }
 
 enum AmortizationStatus { active, completed, terminated }
 
-enum AmortizationReportingScope { futureOnly, all }
+enum AmortizationPeriodStatus { pending, posted, zero, canceled }
+
+enum AmortizationSubjectType { plan, period, refund, termination }
+
+enum AmortizationAllocationDimension { funding, category, settlement }

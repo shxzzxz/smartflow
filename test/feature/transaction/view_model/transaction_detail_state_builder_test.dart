@@ -6,6 +6,7 @@ import 'package:smartflow/feature/transaction/view_model/transaction_detail_stat
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state_builder.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 
 void main() {
@@ -88,6 +89,28 @@ void main() {
       expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
     },
   );
+
+  test('amortization recognition keeps business edits and hides refund', () {
+    final state = _build(
+      purpose: BusinessPurpose.dailyExpense,
+      parentTransactionId: null,
+      ownership: const TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+      ),
+    );
+
+    expect(
+      state.actionButtons.where(
+        (button) => button.kind == DetailActionKind.refund,
+      ),
+      isEmpty,
+    );
+    expect(state.canEditReportingFlags, isTrue);
+    expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
+    expect(state.behavior.canEditPostedAt, isA<DetailEditAllowed>());
+    expect(state.behavior.canEditOccurredAt, isA<DetailEditDenied>());
+  });
 
   test('routes open advance receipt child to shared advance edit', () {
     final state = _build(

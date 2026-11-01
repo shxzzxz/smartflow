@@ -1,11 +1,11 @@
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../ledger/valobj/account_amount_allocation.dart';
-import '../entity/amortization_entry.dart';
+import '../entity/amortization_period.dart';
 import '../valobj/amortization_enums.dart';
 import '../valobj/amortization_error_code.dart';
 
-List<AmortizationEntry> buildAmortizationSchedule({
+List<AmortizationPeriod> buildAmortizationSchedule({
   required String planId,
   required Money total,
   required DateTime firstRecognitionAt,
@@ -17,18 +17,14 @@ List<AmortizationEntry> buildAmortizationSchedule({
   if (planId.trim().isEmpty) {
     throw _invalid('planId', 'Plan id is required.');
   }
-  if (total.minorUnits <= 0) {
-    throw _invalid('total', 'Amortization total must be positive.');
+  if (total.minorUnits < 0) {
+    throw _invalid('total', 'Amortization total cannot be negative.');
   }
   if (cadenceInterval <= 0) {
     throw _invalid('cadenceInterval', 'Cadence interval must be positive.');
   }
-  if (recognitionCount <= 0 || total.minorUnits < recognitionCount) {
-    throw _invalid(
-      'recognitionCount',
-      'Recognition count must be positive and no greater than the total '
-          'number of minor units.',
-    );
+  if (recognitionCount <= 0) {
+    throw _invalid('recognitionCount', 'Recognition count must be positive.');
   }
   if (categoryAllocations.isNotEmpty) {
     final categoryIds = <String>{};
@@ -48,6 +44,12 @@ List<AmortizationEntry> buildAmortizationSchedule({
       );
     }
   }
+  if (total.minorUnits == 0 && categoryAllocations.isNotEmpty) {
+    throw _invalid(
+      'categoryAllocations',
+      'A zero amortization total cannot have category allocations.',
+    );
+  }
 
   final baseAmount = total.minorUnits ~/ recognitionCount;
   final remainder = total.minorUnits % recognitionCount;
@@ -59,7 +61,8 @@ List<AmortizationEntry> buildAmortizationSchedule({
           minorUnits:
               baseAmount + (index == recognitionCount - 1 ? remainder : 0),
         );
-        final allocations = remainingCategories.isEmpty
+        final allocations =
+            amount.minorUnits == 0 || remainingCategories.isEmpty
             ? const <AccountAmountAllocation>[]
             : index == recognitionCount - 1
             ? List<AccountAmountAllocation>.unmodifiable(remainingCategories)
@@ -68,7 +71,7 @@ List<AmortizationEntry> buildAmortizationSchedule({
           base: remainingCategories,
           reductions: allocations,
         );
-        return AmortizationEntry(
+        return AmortizationPeriod(
           id: '$planId:${index + 1}',
           planId: planId,
           sequenceNo: index + 1,
@@ -79,6 +82,9 @@ List<AmortizationEntry> buildAmortizationSchedule({
           ),
           amount: amount,
           categoryAllocations: allocations,
+          status: amount.minorUnits == 0
+              ? AmortizationPeriodStatus.zero
+              : AmortizationPeriodStatus.pending,
         );
       }(),
   ];

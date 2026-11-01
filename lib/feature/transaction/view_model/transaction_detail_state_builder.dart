@@ -271,15 +271,17 @@ List<DetailActionButton> _actionButtons(
   final result = <DetailActionButton>[];
   switch (transaction.businessPurpose) {
     case BusinessPurpose.dailyExpense:
-      result.add(
-        DetailActionButton(
-          kind: DetailActionKind.refund,
-          label: '退款',
-          primary: false,
-          enabled: true,
-          route: '/transaction/${transaction.id}/refund',
-        ),
-      );
+      if (!_isAmortizationTransaction(transaction)) {
+        result.add(
+          DetailActionButton(
+            kind: DetailActionKind.refund,
+            label: '退款',
+            primary: false,
+            enabled: true,
+            route: '/transaction/${transaction.id}/refund',
+          ),
+        );
+      }
     case BusinessPurpose.advance:
       final closed = detail.advanceSummary?.isClosed ?? false;
       if (advanceCase?.trackingMode == AdvanceTrackingMode.itemized) {
@@ -331,6 +333,9 @@ List<DetailActionButton> _actionButtons(
   );
   return result;
 }
+
+bool _isAmortizationTransaction(TransactionReadModel transaction) =>
+    transaction.ownership?.ownerType == orchestrationAmortizationOwnerType;
 
 String _advanceActionLabel(AdvanceScenario? scenario) {
   return switch (scenario) {
@@ -468,10 +473,8 @@ DetailBehaviorConfig _behaviorConfigFor(
       canEditOccurredAt: const DetailEditPermission.denied(
         reason: '摊销计划交易时间由计划控制',
       ),
-      canEditPostedAt: const DetailEditPermission.denied(
-        reason: '摊销计划入账时间由计划控制',
-      ),
-      canEditNote: const DetailEditPermission.denied(reason: '请在摊销计划中修改备注'),
+      canEditPostedAt: const DetailEditPermission.allowed(),
+      canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: const DetailEditPermission.denied(
         reason: '摊销计划账户由计划控制',
       ),

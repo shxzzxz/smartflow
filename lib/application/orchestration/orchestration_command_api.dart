@@ -10,6 +10,8 @@ export 'package:smartflow/domain/ledger/valobj/ledger_enum.dart'
     show AdvanceShortfallKind;
 export 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 export 'package:smartflow/domain/orchestration/valobj/advance_error_code.dart';
-export 'package:smartflow/domain/orchestration/entity/amortization_entry.dart';
+export 'package:smartflow/domain/orchestration/entity/amortization_period.dart';
 export 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
+export 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
+export 'package:smartflow/domain/orchestration/entity/amortization_termination.dart';
 export 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';

@@ -160,7 +160,7 @@ void main() {
     expect(command.kind, AmortizationKind.prepaidExpense);
     expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
     expect(command.recognitionCount, 3);
-    expect(command.note, '季度房租');
+    expect(command.initialNote, '季度房租');
     expect(
       command.fundingAllocations.map(
         (allocation) => (allocation.accountId, allocation.amount.minorUnits),
@@ -198,14 +198,11 @@ class _FakeAmortizationService implements AmortizationPlanAppService {
   }
 
   @override
-  Future<void> updateReportingDefaults(
-    UpdateAmortizationReportingDefaultsCommand command,
-  ) async {}
-
-  @override
-  Future<void> updateTransactionReporting(
-    UpdateAmortizationTransactionReportingCommand command,
-  ) async {}
+  Future<AmortizationRefundResult> refund(
+    CreateAmortizationRefundCommand command,
+  ) {
+    throw UnimplementedError();
+  }
 }
 
 Account _account(

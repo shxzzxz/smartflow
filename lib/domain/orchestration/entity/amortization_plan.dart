@@ -4,29 +4,30 @@ import '../../ledger/valobj/account_amount_allocation.dart';
 import '../service/amortization_schedule.dart';
 import '../valobj/amortization_enums.dart';
 import '../valobj/amortization_error_code.dart';
-import 'amortization_entry.dart';
+import 'amortization_period.dart';
+import 'amortization_refund.dart';
+import 'amortization_termination.dart';
 
 class AmortizationPlan {
   AmortizationPlan({
     required this.id,
     required this.kind,
     required this.deferralAccountId,
-    required this.total,
+    required this.originalAmount,
+    required Iterable<AccountAmountAllocation> fundingAllocations,
+    required Iterable<AccountAmountAllocation> categoryAllocations,
     required this.cadenceUnit,
     required this.cadenceInterval,
     required this.firstRecognitionAt,
     required this.recognitionCount,
-    required this.defaultIsExcludedFromStats,
-    required this.defaultIsExcludedFromBudget,
     required this.initialTransactionId,
-    required Iterable<AmortizationEntry> entries,
-    this.counterpartyId,
-    this.note,
-    this.terminatedAt,
-    this.terminationRecognitionTransactionId,
-    this.refundTransactionId,
-    this.refundAmount,
-  }) : entries = List.unmodifiable(entries) {
+    required Iterable<AmortizationPeriod> periods,
+    Iterable<AmortizationRefund> refunds = const [],
+    this.termination,
+  }) : periods = List.unmodifiable(periods),
+       refunds = List.unmodifiable(refunds),
+       fundingAllocations = List.unmodifiable(fundingAllocations),
+       categoryAllocations = List.unmodifiable(categoryAllocations) {
     validate();
   }
 
@@ -34,40 +35,35 @@ class AmortizationPlan {
     required String id,
     required AmortizationKind kind,
     required String deferralAccountId,
-    required List<AccountAmountAllocation> recognitionAllocations,
-    required Money total,
+    required List<AccountAmountAllocation> fundingAllocations,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required Money originalAmount,
     required AmortizationCadenceUnit cadenceUnit,
     required int cadenceInterval,
     required DateTime firstRecognitionAt,
     required int recognitionCount,
-    required bool defaultIsExcludedFromStats,
-    required bool defaultIsExcludedFromBudget,
     required String initialTransactionId,
-    String? counterpartyId,
-    String? note,
   }) {
     return AmortizationPlan(
       id: id,
       kind: kind,
       deferralAccountId: deferralAccountId,
-      total: total,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
       cadenceUnit: cadenceUnit,
       cadenceInterval: cadenceInterval,
       firstRecognitionAt: firstRecognitionAt,
       recognitionCount: recognitionCount,
-      defaultIsExcludedFromStats: defaultIsExcludedFromStats,
-      defaultIsExcludedFromBudget: defaultIsExcludedFromBudget,
       initialTransactionId: initialTransactionId,
-      counterpartyId: counterpartyId,
-      note: note,
-      entries: buildAmortizationSchedule(
+      periods: buildAmortizationSchedule(
         planId: id,
-        total: total,
+        total: originalAmount,
         firstRecognitionAt: firstRecognitionAt,
         cadenceUnit: cadenceUnit,
         cadenceInterval: cadenceInterval,
         recognitionCount: recognitionCount,
-        categoryAllocations: recognitionAllocations,
+        categoryAllocations: categoryAllocations,
       ),
     );
   }
@@ -75,91 +71,169 @@ class AmortizationPlan {
   final String id;
   final AmortizationKind kind;
   final String deferralAccountId;
-  final Money total;
+  final Money originalAmount;
+  final List<AccountAmountAllocation> fundingAllocations;
+  final List<AccountAmountAllocation> categoryAllocations;
   final AmortizationCadenceUnit cadenceUnit;
   final int cadenceInterval;
   final DateTime firstRecognitionAt;
   final int recognitionCount;
-  final bool defaultIsExcludedFromStats;
-  final bool defaultIsExcludedFromBudget;
   final String initialTransactionId;
-  final List<AmortizationEntry> entries;
-  final String? counterpartyId;
-  final String? note;
-  final DateTime? terminatedAt;
-  final String? terminationRecognitionTransactionId;
-  final String? refundTransactionId;
-  final Money? refundAmount;
+  final List<AmortizationPeriod> periods;
+  final List<AmortizationRefund> refunds;
+  final AmortizationTermination? termination;
+
+  Money get refundedAmount =>
+      refunds.fold(Money.zero(), (total, refund) => total + refund.amount);
+
+  Money get netAmount => originalAmount - refundedAmount;
+
+  List<AccountAmountAllocation> get currentCategoryAllocations =>
+      subtractAllocations(
+        base: categoryAllocations,
+        reductions: refunds.expand((refund) => refund.categoryAllocations),
+      );
 
   AmortizationStatus get status {
-    if (terminatedAt != null) return AmortizationStatus.terminated;
-    if (entries.every((entry) => entry.isGenerated || entry.isCanceled)) {
+    if (termination != null) return AmortizationStatus.terminated;
+    if (periods.every((period) => !period.isPending && !period.isPosted)) {
       return AmortizationStatus.completed;
     }
+    if (netAmount == Money.zero()) return AmortizationStatus.completed;
     return AmortizationStatus.active;
   }
 
-  AmortizationEntry? get nextPendingEntry => entries
-      .where((entry) => !entry.isGenerated && !entry.isCanceled)
-      .firstOrNull;
+  AmortizationPeriod? get nextPendingPeriod =>
+      periods.where((period) => period.isPending).firstOrNull;
 
-  DateTime get lastRecognitionAt => entries.last.dueAt;
+  DateTime get lastRecognitionAt => periods.last.dueAt;
 
-  Money get recognizedAmount => entries
-      .where((entry) => entry.isGenerated && !entry.isCanceled)
-      .fold(Money.zero(), (sum, entry) => sum + entry.amount);
+  Money get recognizedAmount => periods
+      .where((period) => period.isPosted)
+      .fold(Money.zero(), (total, period) => total + period.amount);
 
-  Money get remainingAmount =>
-      terminatedAt == null ? total - recognizedAmount : Money.zero();
+  Money get remainingAmount => status == AmortizationStatus.terminated
+      ? Money.zero()
+      : netAmount - recognizedAmount;
 
-  List<AccountAmountAllocation> get recognitionAllocations =>
-      _sumCategoryAllocations(entries);
-
-  List<AccountAmountAllocation> get remainingCategoryAllocations =>
-      terminatedAt == null
-      ? subtractAllocations(
-          base: recognitionAllocations,
-          reductions: _sumCategoryAllocations(
-            entries.where((entry) => entry.isGenerated && !entry.isCanceled),
-          ),
-        )
-      : const [];
-
-  List<AmortizationEntry> dueEntries(DateTime now) => [
-    for (final entry in entries)
-      if (!entry.isGenerated &&
-          !entry.isCanceled &&
-          !_dateOnly(entry.dueAt).isAfter(_dateOnly(now)))
-        entry,
+  List<AmortizationPeriod> duePeriods(DateTime now) => [
+    for (final period in periods)
+      if (period.isPending &&
+          period.amount.minorUnits > 0 &&
+          !_dateOnly(period.dueAt).isAfter(_dateOnly(now)))
+        period,
   ];
 
-  AmortizationPlan withEntries(Iterable<AmortizationEntry> nextEntries) {
-    return _copyWith(entries: nextEntries);
+  List<AccountAmountAllocation> get recognizedCategoryAllocations {
+    final totals = <String, int>{};
+    final order = <String>[];
+    for (final period in periods.where((period) => period.isPosted)) {
+      for (final allocation in period.categoryAllocations) {
+        if (!totals.containsKey(allocation.accountId)) {
+          order.add(allocation.accountId);
+        }
+        totals[allocation.accountId] =
+            (totals[allocation.accountId] ?? 0) + allocation.amount.minorUnits;
+      }
+    }
+    return [
+      for (final accountId in order)
+        if ((totals[accountId] ?? 0) > 0)
+          AccountAmountAllocation(
+            accountId: accountId,
+            amount: Money(minorUnits: totals[accountId]!),
+          ),
+    ];
   }
 
-  AmortizationPlan withDefaults({
-    required bool isExcludedFromStats,
-    required bool isExcludedFromBudget,
-  }) {
-    return _copyWith(
-      defaultIsExcludedFromStats: isExcludedFromStats,
-      defaultIsExcludedFromBudget: isExcludedFromBudget,
+  List<AccountAmountAllocation> get remainingCategoryAllocations =>
+      status == AmortizationStatus.terminated
+      ? const []
+      : subtractAllocations(
+          base: currentCategoryAllocations,
+          reductions: recognizedCategoryAllocations,
+        );
+
+  AmortizationPlan withPeriods(Iterable<AmortizationPeriod> nextPeriods) {
+    return _copyWith(periods: nextPeriods);
+  }
+
+  AmortizationPlan withRefund(AmortizationRefund refund) {
+    if (refund.planId != id) {
+      throw _invalid('refund.planId', 'Refund plan does not match.');
+    }
+    if (status == AmortizationStatus.terminated) {
+      throw _invalid('refund', 'A terminated plan cannot be refunded.');
+    }
+    if (refunds.any((existing) => existing.id == refund.id)) {
+      throw _invalid('refund.id', 'Refund already exists.');
+    }
+    if (refund.amount.minorUnits > netAmount.minorUnits ||
+        !allocationsFitAvailable(
+          requested: refund.categoryAllocations,
+          available: currentCategoryAllocations,
+        )) {
+      throw _invalid(
+        'refund',
+        'Refund exceeds the current amortization balance.',
+      );
+    }
+    final nextCategoryAllocations = subtractAllocations(
+      base: currentCategoryAllocations,
+      reductions: refund.categoryAllocations,
+    );
+    final nextNetAmount = netAmount - refund.amount;
+    final draftPeriods = buildAmortizationSchedule(
+      planId: id,
+      total: nextNetAmount,
+      firstRecognitionAt: firstRecognitionAt,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      recognitionCount: recognitionCount,
+      categoryAllocations: nextCategoryAllocations,
+    );
+    final currentById = {for (final period in periods) period.id: period};
+    final nextPeriods = [
+      for (final draft in draftPeriods)
+        _reconcilePeriod(currentById[draft.id]!, draft),
+    ];
+    return AmortizationPlan(
+      id: id,
+      kind: kind,
+      deferralAccountId: deferralAccountId,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt,
+      recognitionCount: recognitionCount,
+      initialTransactionId: initialTransactionId,
+      periods: nextPeriods,
+      refunds: [...refunds, refund],
+      termination: termination,
     );
   }
 
-  AmortizationPlan terminated({
-    required DateTime terminatedAt,
-    required Money refundAmount,
-    required Iterable<AmortizationEntry> entries,
-    String? recognitionTransactionId,
-    String? refundTransactionId,
+  AmortizationPlan terminatedWith({
+    required AmortizationTermination termination,
+    required Iterable<AmortizationPeriod> periods,
   }) {
-    return _copyWith(
-      entries: entries,
-      terminatedAt: terminatedAt,
-      terminationRecognitionTransactionId: recognitionTransactionId,
-      refundTransactionId: refundTransactionId,
-      refundAmount: refundAmount,
+    return AmortizationPlan(
+      id: id,
+      kind: kind,
+      deferralAccountId: deferralAccountId,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt,
+      recognitionCount: recognitionCount,
+      initialTransactionId: initialTransactionId,
+      periods: periods,
+      refunds: refunds,
+      termination: termination,
     );
   }
 
@@ -174,137 +248,218 @@ class AmortizationPlan {
         'Initial transaction is required.',
       );
     }
-    for (final entry in entries) {
-      if (entry.categoryAllocations.isEmpty) {
-        throw _invalid(
-          'entries',
-          'Every amortization entry requires category allocations.',
-        );
-      }
-      final accountIds = <String>{};
-      for (final allocation in entry.categoryAllocations) {
-        if (allocation.amount.minorUnits <= 0 ||
-            !accountIds.add(allocation.accountId)) {
-          throw _invalid(
-            'entries',
-            'Entry category allocations must be positive and unique.',
-          );
-        }
-      }
-      if (sumAllocations(entry.categoryAllocations) != entry.amount) {
-        throw _invalid(
-          'entries',
-          'Entry category allocations must equal the entry amount.',
-        );
+    if (originalAmount.minorUnits <= 0) {
+      throw _invalid('originalAmount', 'Original amount must be positive.');
+    }
+    if (cadenceInterval <= 0 || recognitionCount <= 0) {
+      throw _invalid(
+        'schedule',
+        'Cadence interval and recognition count must be positive.',
+      );
+    }
+    _validateAllocations(
+      fundingAllocations,
+      originalAmount,
+      'fundingAllocations',
+    );
+    _validateAllocations(
+      categoryAllocations,
+      originalAmount,
+      'categoryAllocations',
+    );
+
+    final refundIds = <String>{};
+    final transferIds = <String>{};
+    for (final refund in refunds) {
+      if (refund.planId != id ||
+          !refundIds.add(refund.id) ||
+          !transferIds.add(refund.transferTransactionId)) {
+        throw _invalid('refunds', 'Refund identities must be unique.');
       }
     }
+    final currentCategories = currentCategoryAllocations;
+    if (sumAllocations(currentCategories) != netAmount) {
+      throw _invalid(
+        'refunds',
+        'Refund allocations must preserve the net amount.',
+      );
+    }
+
     final expected = buildAmortizationSchedule(
       planId: id,
-      total: total,
+      total: netAmount,
       firstRecognitionAt: firstRecognitionAt,
       cadenceUnit: cadenceUnit,
       cadenceInterval: cadenceInterval,
       recognitionCount: recognitionCount,
+      categoryAllocations: currentCategories,
     );
-    if (entries.length != expected.length) {
-      throw _invalid('entries', 'Amortization entry count does not match.');
+    if (periods.length != expected.length) {
+      throw _invalid('periods', 'Amortization period count does not match.');
     }
-    final entryTotal = entries.fold(
-      Money.zero(),
-      (sum, entry) => sum + entry.amount,
-    );
-    if (entryTotal != total) {
-      throw _invalid('entries', 'Amortization entries must equal the total.');
-    }
-    for (var index = 0; index < entries.length; index++) {
-      final actual = entries[index];
+    final transactionIds = <String>{};
+    for (var index = 0; index < periods.length; index++) {
+      final actual = periods[index];
       final planned = expected[index];
       if (actual.id != planned.id ||
           actual.planId != id ||
           actual.sequenceNo != index + 1 ||
           actual.dueAt != planned.dueAt ||
           actual.amount != planned.amount ||
-          actual.amount.minorUnits <= 0) {
+          !_sameAllocations(
+            actual.categoryAllocations,
+            planned.categoryAllocations,
+          )) {
         throw _invalid(
-          'entries[$index]',
-          'Amortization entry does not match the plan schedule.',
+          'periods[$index]',
+          'Amortization period does not match the current schedule.',
+        );
+      }
+      if (actual.amount.minorUnits == 0) {
+        if (actual.status != AmortizationPeriodStatus.zero &&
+            actual.status != AmortizationPeriodStatus.canceled) {
+          throw _invalid(
+            'periods[$index]',
+            'A zero period must be completed or canceled.',
+          );
+        }
+      } else if (actual.status == AmortizationPeriodStatus.zero) {
+        throw _invalid(
+          'periods[$index]',
+          'A positive period cannot be marked zero.',
+        );
+      }
+      final transactionId = actual.transactionId;
+      if (actual.status == AmortizationPeriodStatus.posted) {
+        if (transactionId == null || !transactionIds.add(transactionId)) {
+          throw _invalid(
+            'periods[$index]',
+            'Posted periods require a unique transaction.',
+          );
+        }
+      } else if (transactionId != null) {
+        throw _invalid(
+          'periods[$index]',
+          'Only posted periods can reference a transaction.',
         );
       }
     }
-    if (refundAmount != null && refundAmount!.minorUnits < 0) {
-      throw _invalid('refundAmount', 'Refund amount cannot be negative.');
+    if (termination != null) {
+      _validateTermination(termination!);
     }
-    if (terminatedAt == null &&
-        (terminationRecognitionTransactionId != null ||
-            refundTransactionId != null ||
-            refundAmount != null)) {
+  }
+
+  void _validateTermination(AmortizationTermination value) {
+    if (value.planId != id) {
+      throw _invalid('termination.planId', 'Termination plan does not match.');
+    }
+    final remainingBeforeTermination = status == AmortizationStatus.terminated
+        ? currentCategoryAllocations
+        : remainingCategoryAllocations;
+    if (!allocationsFitAvailable(
+      requested: value.categoryReturnAllocations,
+      available: remainingBeforeTermination,
+    )) {
       throw _invalid(
-        'terminatedAt',
-        'Termination transaction facts require a termination time.',
+        'termination',
+        'Termination return exceeds remaining category balances.',
       );
     }
   }
 
   AmortizationPlan _copyWith({
-    Iterable<AmortizationEntry>? entries,
-    bool? defaultIsExcludedFromStats,
-    bool? defaultIsExcludedFromBudget,
-    DateTime? terminatedAt,
-    String? terminationRecognitionTransactionId,
-    String? refundTransactionId,
-    Money? refundAmount,
+    Iterable<AmortizationPeriod>? periods,
+    Iterable<AmortizationRefund>? refunds,
+    AmortizationTermination? termination,
   }) {
     return AmortizationPlan(
       id: id,
       kind: kind,
       deferralAccountId: deferralAccountId,
-      total: total,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
       cadenceUnit: cadenceUnit,
       cadenceInterval: cadenceInterval,
       firstRecognitionAt: firstRecognitionAt,
       recognitionCount: recognitionCount,
-      defaultIsExcludedFromStats:
-          defaultIsExcludedFromStats ?? this.defaultIsExcludedFromStats,
-      defaultIsExcludedFromBudget:
-          defaultIsExcludedFromBudget ?? this.defaultIsExcludedFromBudget,
       initialTransactionId: initialTransactionId,
-      entries: entries ?? this.entries,
-      counterpartyId: counterpartyId,
-      note: note,
-      terminatedAt: terminatedAt ?? this.terminatedAt,
-      terminationRecognitionTransactionId:
-          terminationRecognitionTransactionId ??
-          this.terminationRecognitionTransactionId,
-      refundTransactionId: refundTransactionId ?? this.refundTransactionId,
-      refundAmount: refundAmount ?? this.refundAmount,
+      periods: periods ?? this.periods,
+      refunds: refunds ?? this.refunds,
+      termination: termination ?? this.termination,
     );
+  }
+
+  static AmortizationPeriod _reconcilePeriod(
+    AmortizationPeriod current,
+    AmortizationPeriod draft,
+  ) {
+    if (draft.amount.minorUnits == 0) {
+      return AmortizationPeriod(
+        id: draft.id,
+        planId: draft.planId,
+        sequenceNo: draft.sequenceNo,
+        dueAt: draft.dueAt,
+        amount: draft.amount,
+        categoryAllocations: const [],
+        status: AmortizationPeriodStatus.zero,
+      );
+    }
+    return AmortizationPeriod(
+      id: draft.id,
+      planId: draft.planId,
+      sequenceNo: draft.sequenceNo,
+      dueAt: draft.dueAt,
+      amount: draft.amount,
+      categoryAllocations: draft.categoryAllocations,
+      transactionId: current.transactionId,
+      status: current.transactionId == null
+          ? AmortizationPeriodStatus.pending
+          : AmortizationPeriodStatus.posted,
+    );
+  }
+
+  static void _validateAllocations(
+    Iterable<AccountAmountAllocation> allocations,
+    Money total,
+    String field,
+  ) {
+    if (allocations.isEmpty) {
+      throw _invalid(field, 'Plan allocations cannot be empty.');
+    }
+    final accountIds = <String>{};
+    for (final allocation in allocations) {
+      if (allocation.amount.minorUnits <= 0 ||
+          !accountIds.add(allocation.accountId)) {
+        throw _invalid(
+          field,
+          'Plan allocations must be positive and unique by account.',
+        );
+      }
+    }
+    if (sumAllocations(allocations) != total) {
+      throw _invalid(field, 'Plan allocations must equal the original amount.');
+    }
+  }
+
+  static bool _sameAllocations(
+    Iterable<AccountAmountAllocation> left,
+    Iterable<AccountAmountAllocation> right,
+  ) {
+    final leftList = left.toList(growable: false);
+    final rightList = right.toList(growable: false);
+    if (leftList.length != rightList.length) return false;
+    for (var index = 0; index < leftList.length; index++) {
+      if (leftList[index].accountId != rightList[index].accountId ||
+          leftList[index].amount != rightList[index].amount) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
-
-  static List<AccountAmountAllocation> _sumCategoryAllocations(
-    Iterable<AmortizationEntry> entries,
-  ) {
-    final amounts = <String, int>{};
-    final order = <String>[];
-    for (final entry in entries) {
-      for (final allocation in entry.categoryAllocations) {
-        if (!amounts.containsKey(allocation.accountId)) {
-          order.add(allocation.accountId);
-        }
-        amounts[allocation.accountId] =
-            (amounts[allocation.accountId] ?? 0) + allocation.amount.minorUnits;
-      }
-    }
-    return [
-      for (final accountId in order)
-        AccountAmountAllocation(
-          accountId: accountId,
-          amount: Money(minorUnits: amounts[accountId]!),
-        ),
-    ];
-  }
 }
 
 BusinessException _invalid(String field, String message) {

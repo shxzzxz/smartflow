@@ -17761,36 +17761,6 @@ class $AmortizationPlansTable extends AmortizationPlans
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _defaultIsExcludedFromStatsMeta =
-      const VerificationMeta('defaultIsExcludedFromStats');
-  @override
-  late final GeneratedColumn<bool> defaultIsExcludedFromStats =
-      GeneratedColumn<bool>(
-        'default_is_excluded_from_stats',
-        aliasedName,
-        false,
-        type: DriftSqlType.bool,
-        requiredDuringInsert: false,
-        defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("default_is_excluded_from_stats" IN (0, 1))',
-        ),
-        defaultValue: const Constant(false),
-      );
-  static const VerificationMeta _defaultIsExcludedFromBudgetMeta =
-      const VerificationMeta('defaultIsExcludedFromBudget');
-  @override
-  late final GeneratedColumn<bool> defaultIsExcludedFromBudget =
-      GeneratedColumn<bool>(
-        'default_is_excluded_from_budget',
-        aliasedName,
-        false,
-        type: DriftSqlType.bool,
-        requiredDuringInsert: false,
-        defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("default_is_excluded_from_budget" IN (0, 1))',
-        ),
-        defaultValue: const Constant(false),
-      );
   static const VerificationMeta _initialTransactionIdMeta =
       const VerificationMeta('initialTransactionId');
   @override
@@ -17802,70 +17772,6 @@ class $AmortizationPlansTable extends AmortizationPlans
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _counterpartyIdMeta = const VerificationMeta(
-    'counterpartyId',
-  );
-  @override
-  late final GeneratedColumn<String> counterpartyId = GeneratedColumn<String>(
-    'counterparty_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _noteMeta = const VerificationMeta('note');
-  @override
-  late final GeneratedColumn<String> note = GeneratedColumn<String>(
-    'note',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _terminatedAtMeta = const VerificationMeta(
-    'terminatedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> terminatedAt = GeneratedColumn<DateTime>(
-    'terminated_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _terminationRecognitionTransactionIdMeta =
-      const VerificationMeta('terminationRecognitionTransactionId');
-  @override
-  late final GeneratedColumn<String> terminationRecognitionTransactionId =
-      GeneratedColumn<String>(
-        'termination_recognition_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _refundTransactionIdMeta =
-      const VerificationMeta('refundTransactionId');
-  @override
-  late final GeneratedColumn<String> refundTransactionId =
-      GeneratedColumn<String>(
-        'refund_transaction_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _refundAmountMinorMeta = const VerificationMeta(
-    'refundAmountMinor',
-  );
-  @override
-  late final GeneratedColumn<int> refundAmountMinor = GeneratedColumn<int>(
-    'refund_amount_minor',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -17900,15 +17806,7 @@ class $AmortizationPlansTable extends AmortizationPlans
     cadenceInterval,
     firstRecognitionAt,
     recognitionCount,
-    defaultIsExcludedFromStats,
-    defaultIsExcludedFromBudget,
     initialTransactionId,
-    counterpartyId,
-    note,
-    terminatedAt,
-    terminationRecognitionTransactionId,
-    refundTransactionId,
-    refundAmountMinor,
     createdAt,
     updatedAt,
   ];
@@ -17984,24 +17882,6 @@ class $AmortizationPlansTable extends AmortizationPlans
     } else if (isInserting) {
       context.missing(_recognitionCountMeta);
     }
-    if (data.containsKey('default_is_excluded_from_stats')) {
-      context.handle(
-        _defaultIsExcludedFromStatsMeta,
-        defaultIsExcludedFromStats.isAcceptableOrUnknown(
-          data['default_is_excluded_from_stats']!,
-          _defaultIsExcludedFromStatsMeta,
-        ),
-      );
-    }
-    if (data.containsKey('default_is_excluded_from_budget')) {
-      context.handle(
-        _defaultIsExcludedFromBudgetMeta,
-        defaultIsExcludedFromBudget.isAcceptableOrUnknown(
-          data['default_is_excluded_from_budget']!,
-          _defaultIsExcludedFromBudgetMeta,
-        ),
-      );
-    }
     if (data.containsKey('initial_transaction_id')) {
       context.handle(
         _initialTransactionIdMeta,
@@ -18012,57 +17892,6 @@ class $AmortizationPlansTable extends AmortizationPlans
       );
     } else if (isInserting) {
       context.missing(_initialTransactionIdMeta);
-    }
-    if (data.containsKey('counterparty_id')) {
-      context.handle(
-        _counterpartyIdMeta,
-        counterpartyId.isAcceptableOrUnknown(
-          data['counterparty_id']!,
-          _counterpartyIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('note')) {
-      context.handle(
-        _noteMeta,
-        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
-      );
-    }
-    if (data.containsKey('terminated_at')) {
-      context.handle(
-        _terminatedAtMeta,
-        terminatedAt.isAcceptableOrUnknown(
-          data['terminated_at']!,
-          _terminatedAtMeta,
-        ),
-      );
-    }
-    if (data.containsKey('termination_recognition_transaction_id')) {
-      context.handle(
-        _terminationRecognitionTransactionIdMeta,
-        terminationRecognitionTransactionId.isAcceptableOrUnknown(
-          data['termination_recognition_transaction_id']!,
-          _terminationRecognitionTransactionIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('refund_transaction_id')) {
-      context.handle(
-        _refundTransactionIdMeta,
-        refundTransactionId.isAcceptableOrUnknown(
-          data['refund_transaction_id']!,
-          _refundTransactionIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('refund_amount_minor')) {
-      context.handle(
-        _refundAmountMinorMeta,
-        refundAmountMinor.isAcceptableOrUnknown(
-          data['refund_amount_minor']!,
-          _refundAmountMinorMeta,
-        ),
-      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -18121,42 +17950,10 @@ class $AmortizationPlansTable extends AmortizationPlans
         DriftSqlType.int,
         data['${effectivePrefix}recognition_count'],
       )!,
-      defaultIsExcludedFromStats: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}default_is_excluded_from_stats'],
-      )!,
-      defaultIsExcludedFromBudget: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}default_is_excluded_from_budget'],
-      )!,
       initialTransactionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}initial_transaction_id'],
       )!,
-      counterpartyId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}counterparty_id'],
-      ),
-      note: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}note'],
-      ),
-      terminatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}terminated_at'],
-      ),
-      terminationRecognitionTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}termination_recognition_transaction_id'],
-      ),
-      refundTransactionId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}refund_transaction_id'],
-      ),
-      refundAmountMinor: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}refund_amount_minor'],
-      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -18191,15 +17988,7 @@ class AmortizationPlanRow extends DataClass
   final int cadenceInterval;
   final DateTime firstRecognitionAt;
   final int recognitionCount;
-  final bool defaultIsExcludedFromStats;
-  final bool defaultIsExcludedFromBudget;
   final String initialTransactionId;
-  final String? counterpartyId;
-  final String? note;
-  final DateTime? terminatedAt;
-  final String? terminationRecognitionTransactionId;
-  final String? refundTransactionId;
-  final int? refundAmountMinor;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AmortizationPlanRow({
@@ -18211,15 +18000,7 @@ class AmortizationPlanRow extends DataClass
     required this.cadenceInterval,
     required this.firstRecognitionAt,
     required this.recognitionCount,
-    required this.defaultIsExcludedFromStats,
-    required this.defaultIsExcludedFromBudget,
     required this.initialTransactionId,
-    this.counterpartyId,
-    this.note,
-    this.terminatedAt,
-    this.terminationRecognitionTransactionId,
-    this.refundTransactionId,
-    this.refundAmountMinor,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -18242,33 +18023,7 @@ class AmortizationPlanRow extends DataClass
     map['cadence_interval'] = Variable<int>(cadenceInterval);
     map['first_recognition_at'] = Variable<DateTime>(firstRecognitionAt);
     map['recognition_count'] = Variable<int>(recognitionCount);
-    map['default_is_excluded_from_stats'] = Variable<bool>(
-      defaultIsExcludedFromStats,
-    );
-    map['default_is_excluded_from_budget'] = Variable<bool>(
-      defaultIsExcludedFromBudget,
-    );
     map['initial_transaction_id'] = Variable<String>(initialTransactionId);
-    if (!nullToAbsent || counterpartyId != null) {
-      map['counterparty_id'] = Variable<String>(counterpartyId);
-    }
-    if (!nullToAbsent || note != null) {
-      map['note'] = Variable<String>(note);
-    }
-    if (!nullToAbsent || terminatedAt != null) {
-      map['terminated_at'] = Variable<DateTime>(terminatedAt);
-    }
-    if (!nullToAbsent || terminationRecognitionTransactionId != null) {
-      map['termination_recognition_transaction_id'] = Variable<String>(
-        terminationRecognitionTransactionId,
-      );
-    }
-    if (!nullToAbsent || refundTransactionId != null) {
-      map['refund_transaction_id'] = Variable<String>(refundTransactionId);
-    }
-    if (!nullToAbsent || refundAmountMinor != null) {
-      map['refund_amount_minor'] = Variable<int>(refundAmountMinor);
-    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -18284,26 +18039,7 @@ class AmortizationPlanRow extends DataClass
       cadenceInterval: Value(cadenceInterval),
       firstRecognitionAt: Value(firstRecognitionAt),
       recognitionCount: Value(recognitionCount),
-      defaultIsExcludedFromStats: Value(defaultIsExcludedFromStats),
-      defaultIsExcludedFromBudget: Value(defaultIsExcludedFromBudget),
       initialTransactionId: Value(initialTransactionId),
-      counterpartyId: counterpartyId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(counterpartyId),
-      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
-      terminatedAt: terminatedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(terminatedAt),
-      terminationRecognitionTransactionId:
-          terminationRecognitionTransactionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(terminationRecognitionTransactionId),
-      refundTransactionId: refundTransactionId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(refundTransactionId),
-      refundAmountMinor: refundAmountMinor == null && nullToAbsent
-          ? const Value.absent()
-          : Value(refundAmountMinor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -18329,25 +18065,9 @@ class AmortizationPlanRow extends DataClass
         json['firstRecognitionAt'],
       ),
       recognitionCount: serializer.fromJson<int>(json['recognitionCount']),
-      defaultIsExcludedFromStats: serializer.fromJson<bool>(
-        json['defaultIsExcludedFromStats'],
-      ),
-      defaultIsExcludedFromBudget: serializer.fromJson<bool>(
-        json['defaultIsExcludedFromBudget'],
-      ),
       initialTransactionId: serializer.fromJson<String>(
         json['initialTransactionId'],
       ),
-      counterpartyId: serializer.fromJson<String?>(json['counterpartyId']),
-      note: serializer.fromJson<String?>(json['note']),
-      terminatedAt: serializer.fromJson<DateTime?>(json['terminatedAt']),
-      terminationRecognitionTransactionId: serializer.fromJson<String?>(
-        json['terminationRecognitionTransactionId'],
-      ),
-      refundTransactionId: serializer.fromJson<String?>(
-        json['refundTransactionId'],
-      ),
-      refundAmountMinor: serializer.fromJson<int?>(json['refundAmountMinor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -18368,21 +18088,7 @@ class AmortizationPlanRow extends DataClass
       'cadenceInterval': serializer.toJson<int>(cadenceInterval),
       'firstRecognitionAt': serializer.toJson<DateTime>(firstRecognitionAt),
       'recognitionCount': serializer.toJson<int>(recognitionCount),
-      'defaultIsExcludedFromStats': serializer.toJson<bool>(
-        defaultIsExcludedFromStats,
-      ),
-      'defaultIsExcludedFromBudget': serializer.toJson<bool>(
-        defaultIsExcludedFromBudget,
-      ),
       'initialTransactionId': serializer.toJson<String>(initialTransactionId),
-      'counterpartyId': serializer.toJson<String?>(counterpartyId),
-      'note': serializer.toJson<String?>(note),
-      'terminatedAt': serializer.toJson<DateTime?>(terminatedAt),
-      'terminationRecognitionTransactionId': serializer.toJson<String?>(
-        terminationRecognitionTransactionId,
-      ),
-      'refundTransactionId': serializer.toJson<String?>(refundTransactionId),
-      'refundAmountMinor': serializer.toJson<int?>(refundAmountMinor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -18397,15 +18103,7 @@ class AmortizationPlanRow extends DataClass
     int? cadenceInterval,
     DateTime? firstRecognitionAt,
     int? recognitionCount,
-    bool? defaultIsExcludedFromStats,
-    bool? defaultIsExcludedFromBudget,
     String? initialTransactionId,
-    Value<String?> counterpartyId = const Value.absent(),
-    Value<String?> note = const Value.absent(),
-    Value<DateTime?> terminatedAt = const Value.absent(),
-    Value<String?> terminationRecognitionTransactionId = const Value.absent(),
-    Value<String?> refundTransactionId = const Value.absent(),
-    Value<int?> refundAmountMinor = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AmortizationPlanRow(
@@ -18417,26 +18115,7 @@ class AmortizationPlanRow extends DataClass
     cadenceInterval: cadenceInterval ?? this.cadenceInterval,
     firstRecognitionAt: firstRecognitionAt ?? this.firstRecognitionAt,
     recognitionCount: recognitionCount ?? this.recognitionCount,
-    defaultIsExcludedFromStats:
-        defaultIsExcludedFromStats ?? this.defaultIsExcludedFromStats,
-    defaultIsExcludedFromBudget:
-        defaultIsExcludedFromBudget ?? this.defaultIsExcludedFromBudget,
     initialTransactionId: initialTransactionId ?? this.initialTransactionId,
-    counterpartyId: counterpartyId.present
-        ? counterpartyId.value
-        : this.counterpartyId,
-    note: note.present ? note.value : this.note,
-    terminatedAt: terminatedAt.present ? terminatedAt.value : this.terminatedAt,
-    terminationRecognitionTransactionId:
-        terminationRecognitionTransactionId.present
-        ? terminationRecognitionTransactionId.value
-        : this.terminationRecognitionTransactionId,
-    refundTransactionId: refundTransactionId.present
-        ? refundTransactionId.value
-        : this.refundTransactionId,
-    refundAmountMinor: refundAmountMinor.present
-        ? refundAmountMinor.value
-        : this.refundAmountMinor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -18462,32 +18141,9 @@ class AmortizationPlanRow extends DataClass
       recognitionCount: data.recognitionCount.present
           ? data.recognitionCount.value
           : this.recognitionCount,
-      defaultIsExcludedFromStats: data.defaultIsExcludedFromStats.present
-          ? data.defaultIsExcludedFromStats.value
-          : this.defaultIsExcludedFromStats,
-      defaultIsExcludedFromBudget: data.defaultIsExcludedFromBudget.present
-          ? data.defaultIsExcludedFromBudget.value
-          : this.defaultIsExcludedFromBudget,
       initialTransactionId: data.initialTransactionId.present
           ? data.initialTransactionId.value
           : this.initialTransactionId,
-      counterpartyId: data.counterpartyId.present
-          ? data.counterpartyId.value
-          : this.counterpartyId,
-      note: data.note.present ? data.note.value : this.note,
-      terminatedAt: data.terminatedAt.present
-          ? data.terminatedAt.value
-          : this.terminatedAt,
-      terminationRecognitionTransactionId:
-          data.terminationRecognitionTransactionId.present
-          ? data.terminationRecognitionTransactionId.value
-          : this.terminationRecognitionTransactionId,
-      refundTransactionId: data.refundTransactionId.present
-          ? data.refundTransactionId.value
-          : this.refundTransactionId,
-      refundAmountMinor: data.refundAmountMinor.present
-          ? data.refundAmountMinor.value
-          : this.refundAmountMinor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -18504,17 +18160,7 @@ class AmortizationPlanRow extends DataClass
           ..write('cadenceInterval: $cadenceInterval, ')
           ..write('firstRecognitionAt: $firstRecognitionAt, ')
           ..write('recognitionCount: $recognitionCount, ')
-          ..write('defaultIsExcludedFromStats: $defaultIsExcludedFromStats, ')
-          ..write('defaultIsExcludedFromBudget: $defaultIsExcludedFromBudget, ')
           ..write('initialTransactionId: $initialTransactionId, ')
-          ..write('counterpartyId: $counterpartyId, ')
-          ..write('note: $note, ')
-          ..write('terminatedAt: $terminatedAt, ')
-          ..write(
-            'terminationRecognitionTransactionId: $terminationRecognitionTransactionId, ',
-          )
-          ..write('refundTransactionId: $refundTransactionId, ')
-          ..write('refundAmountMinor: $refundAmountMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -18531,15 +18177,7 @@ class AmortizationPlanRow extends DataClass
     cadenceInterval,
     firstRecognitionAt,
     recognitionCount,
-    defaultIsExcludedFromStats,
-    defaultIsExcludedFromBudget,
     initialTransactionId,
-    counterpartyId,
-    note,
-    terminatedAt,
-    terminationRecognitionTransactionId,
-    refundTransactionId,
-    refundAmountMinor,
     createdAt,
     updatedAt,
   );
@@ -18555,17 +18193,7 @@ class AmortizationPlanRow extends DataClass
           other.cadenceInterval == this.cadenceInterval &&
           other.firstRecognitionAt == this.firstRecognitionAt &&
           other.recognitionCount == this.recognitionCount &&
-          other.defaultIsExcludedFromStats == this.defaultIsExcludedFromStats &&
-          other.defaultIsExcludedFromBudget ==
-              this.defaultIsExcludedFromBudget &&
           other.initialTransactionId == this.initialTransactionId &&
-          other.counterpartyId == this.counterpartyId &&
-          other.note == this.note &&
-          other.terminatedAt == this.terminatedAt &&
-          other.terminationRecognitionTransactionId ==
-              this.terminationRecognitionTransactionId &&
-          other.refundTransactionId == this.refundTransactionId &&
-          other.refundAmountMinor == this.refundAmountMinor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -18579,15 +18207,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
   final Value<int> cadenceInterval;
   final Value<DateTime> firstRecognitionAt;
   final Value<int> recognitionCount;
-  final Value<bool> defaultIsExcludedFromStats;
-  final Value<bool> defaultIsExcludedFromBudget;
   final Value<String> initialTransactionId;
-  final Value<String?> counterpartyId;
-  final Value<String?> note;
-  final Value<DateTime?> terminatedAt;
-  final Value<String?> terminationRecognitionTransactionId;
-  final Value<String?> refundTransactionId;
-  final Value<int?> refundAmountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -18600,15 +18220,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     this.cadenceInterval = const Value.absent(),
     this.firstRecognitionAt = const Value.absent(),
     this.recognitionCount = const Value.absent(),
-    this.defaultIsExcludedFromStats = const Value.absent(),
-    this.defaultIsExcludedFromBudget = const Value.absent(),
     this.initialTransactionId = const Value.absent(),
-    this.counterpartyId = const Value.absent(),
-    this.note = const Value.absent(),
-    this.terminatedAt = const Value.absent(),
-    this.terminationRecognitionTransactionId = const Value.absent(),
-    this.refundTransactionId = const Value.absent(),
-    this.refundAmountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -18622,15 +18234,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     required int cadenceInterval,
     required DateTime firstRecognitionAt,
     required int recognitionCount,
-    this.defaultIsExcludedFromStats = const Value.absent(),
-    this.defaultIsExcludedFromBudget = const Value.absent(),
     required String initialTransactionId,
-    this.counterpartyId = const Value.absent(),
-    this.note = const Value.absent(),
-    this.terminatedAt = const Value.absent(),
-    this.terminationRecognitionTransactionId = const Value.absent(),
-    this.refundTransactionId = const Value.absent(),
-    this.refundAmountMinor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -18652,15 +18256,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     Expression<int>? cadenceInterval,
     Expression<DateTime>? firstRecognitionAt,
     Expression<int>? recognitionCount,
-    Expression<bool>? defaultIsExcludedFromStats,
-    Expression<bool>? defaultIsExcludedFromBudget,
     Expression<String>? initialTransactionId,
-    Expression<String>? counterpartyId,
-    Expression<String>? note,
-    Expression<DateTime>? terminatedAt,
-    Expression<String>? terminationRecognitionTransactionId,
-    Expression<String>? refundTransactionId,
-    Expression<int>? refundAmountMinor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -18675,21 +18271,8 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
       if (firstRecognitionAt != null)
         'first_recognition_at': firstRecognitionAt,
       if (recognitionCount != null) 'recognition_count': recognitionCount,
-      if (defaultIsExcludedFromStats != null)
-        'default_is_excluded_from_stats': defaultIsExcludedFromStats,
-      if (defaultIsExcludedFromBudget != null)
-        'default_is_excluded_from_budget': defaultIsExcludedFromBudget,
       if (initialTransactionId != null)
         'initial_transaction_id': initialTransactionId,
-      if (counterpartyId != null) 'counterparty_id': counterpartyId,
-      if (note != null) 'note': note,
-      if (terminatedAt != null) 'terminated_at': terminatedAt,
-      if (terminationRecognitionTransactionId != null)
-        'termination_recognition_transaction_id':
-            terminationRecognitionTransactionId,
-      if (refundTransactionId != null)
-        'refund_transaction_id': refundTransactionId,
-      if (refundAmountMinor != null) 'refund_amount_minor': refundAmountMinor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -18705,15 +18288,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     Value<int>? cadenceInterval,
     Value<DateTime>? firstRecognitionAt,
     Value<int>? recognitionCount,
-    Value<bool>? defaultIsExcludedFromStats,
-    Value<bool>? defaultIsExcludedFromBudget,
     Value<String>? initialTransactionId,
-    Value<String?>? counterpartyId,
-    Value<String?>? note,
-    Value<DateTime?>? terminatedAt,
-    Value<String?>? terminationRecognitionTransactionId,
-    Value<String?>? refundTransactionId,
-    Value<int?>? refundAmountMinor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -18727,19 +18302,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
       cadenceInterval: cadenceInterval ?? this.cadenceInterval,
       firstRecognitionAt: firstRecognitionAt ?? this.firstRecognitionAt,
       recognitionCount: recognitionCount ?? this.recognitionCount,
-      defaultIsExcludedFromStats:
-          defaultIsExcludedFromStats ?? this.defaultIsExcludedFromStats,
-      defaultIsExcludedFromBudget:
-          defaultIsExcludedFromBudget ?? this.defaultIsExcludedFromBudget,
       initialTransactionId: initialTransactionId ?? this.initialTransactionId,
-      counterpartyId: counterpartyId ?? this.counterpartyId,
-      note: note ?? this.note,
-      terminatedAt: terminatedAt ?? this.terminatedAt,
-      terminationRecognitionTransactionId:
-          terminationRecognitionTransactionId ??
-          this.terminationRecognitionTransactionId,
-      refundTransactionId: refundTransactionId ?? this.refundTransactionId,
-      refundAmountMinor: refundAmountMinor ?? this.refundAmountMinor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -18779,42 +18342,10 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
     if (recognitionCount.present) {
       map['recognition_count'] = Variable<int>(recognitionCount.value);
     }
-    if (defaultIsExcludedFromStats.present) {
-      map['default_is_excluded_from_stats'] = Variable<bool>(
-        defaultIsExcludedFromStats.value,
-      );
-    }
-    if (defaultIsExcludedFromBudget.present) {
-      map['default_is_excluded_from_budget'] = Variable<bool>(
-        defaultIsExcludedFromBudget.value,
-      );
-    }
     if (initialTransactionId.present) {
       map['initial_transaction_id'] = Variable<String>(
         initialTransactionId.value,
       );
-    }
-    if (counterpartyId.present) {
-      map['counterparty_id'] = Variable<String>(counterpartyId.value);
-    }
-    if (note.present) {
-      map['note'] = Variable<String>(note.value);
-    }
-    if (terminatedAt.present) {
-      map['terminated_at'] = Variable<DateTime>(terminatedAt.value);
-    }
-    if (terminationRecognitionTransactionId.present) {
-      map['termination_recognition_transaction_id'] = Variable<String>(
-        terminationRecognitionTransactionId.value,
-      );
-    }
-    if (refundTransactionId.present) {
-      map['refund_transaction_id'] = Variable<String>(
-        refundTransactionId.value,
-      );
-    }
-    if (refundAmountMinor.present) {
-      map['refund_amount_minor'] = Variable<int>(refundAmountMinor.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -18839,17 +18370,7 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
           ..write('cadenceInterval: $cadenceInterval, ')
           ..write('firstRecognitionAt: $firstRecognitionAt, ')
           ..write('recognitionCount: $recognitionCount, ')
-          ..write('defaultIsExcludedFromStats: $defaultIsExcludedFromStats, ')
-          ..write('defaultIsExcludedFromBudget: $defaultIsExcludedFromBudget, ')
           ..write('initialTransactionId: $initialTransactionId, ')
-          ..write('counterpartyId: $counterpartyId, ')
-          ..write('note: $note, ')
-          ..write('terminatedAt: $terminatedAt, ')
-          ..write(
-            'terminationRecognitionTransactionId: $terminationRecognitionTransactionId, ',
-          )
-          ..write('refundTransactionId: $refundTransactionId, ')
-          ..write('refundAmountMinor: $refundAmountMinor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -18858,12 +18379,12 @@ class AmortizationPlansCompanion extends UpdateCompanion<AmortizationPlanRow> {
   }
 }
 
-class $AmortizationEntriesTable extends AmortizationEntries
-    with TableInfo<$AmortizationEntriesTable, AmortizationEntryRow> {
+class $AmortizationPeriodsTable extends AmortizationPeriods
+    with TableInfo<$AmortizationPeriodsTable, AmortizationPeriodRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $AmortizationEntriesTable(this.attachedDatabase, [this._alias]);
+  $AmortizationPeriodsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -18924,17 +18445,18 @@ class $AmortizationEntriesTable extends AmortizationEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _canceledAtMeta = const VerificationMeta(
-    'canceledAt',
-  );
   @override
-  late final GeneratedColumn<DateTime> canceledAt = GeneratedColumn<DateTime>(
-    'canceled_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumnWithTypeConverter<AmortizationPeriodStatus, String>
+  status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AmortizationPeriodStatus>(
+        $AmortizationPeriodsTable.$converterstatus,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -18967,7 +18489,7 @@ class $AmortizationEntriesTable extends AmortizationEntries
     dueAt,
     amountMinor,
     transactionId,
-    canceledAt,
+    status,
     createdAt,
     updatedAt,
   ];
@@ -18975,10 +18497,10 @@ class $AmortizationEntriesTable extends AmortizationEntries
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'amortization_entries';
+  static const String $name = 'amortization_periods';
   @override
   VerificationContext validateIntegrity(
-    Insertable<AmortizationEntryRow> instance, {
+    Insertable<AmortizationPeriodRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -19032,12 +18554,6 @@ class $AmortizationEntriesTable extends AmortizationEntries
         ),
       );
     }
-    if (data.containsKey('canceled_at')) {
-      context.handle(
-        _canceledAtMeta,
-        canceledAt.isAcceptableOrUnknown(data['canceled_at']!, _canceledAtMeta),
-      );
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -19056,9 +18572,9 @@ class $AmortizationEntriesTable extends AmortizationEntries
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  AmortizationEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+  AmortizationPeriodRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return AmortizationEntryRow(
+    return AmortizationPeriodRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -19083,9 +18599,11 @@ class $AmortizationEntriesTable extends AmortizationEntries
         DriftSqlType.string,
         data['${effectivePrefix}transaction_id'],
       ),
-      canceledAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}canceled_at'],
+      status: $AmortizationPeriodsTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
       ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -19099,30 +18617,35 @@ class $AmortizationEntriesTable extends AmortizationEntries
   }
 
   @override
-  $AmortizationEntriesTable createAlias(String alias) {
-    return $AmortizationEntriesTable(attachedDatabase, alias);
+  $AmortizationPeriodsTable createAlias(String alias) {
+    return $AmortizationPeriodsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<AmortizationPeriodStatus, String, String>
+  $converterstatus = const EnumNameConverter<AmortizationPeriodStatus>(
+    AmortizationPeriodStatus.values,
+  );
 }
 
-class AmortizationEntryRow extends DataClass
-    implements Insertable<AmortizationEntryRow> {
+class AmortizationPeriodRow extends DataClass
+    implements Insertable<AmortizationPeriodRow> {
   final String id;
   final String planId;
   final int sequenceNo;
   final DateTime dueAt;
   final int amountMinor;
   final String? transactionId;
-  final DateTime? canceledAt;
+  final AmortizationPeriodStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const AmortizationEntryRow({
+  const AmortizationPeriodRow({
     required this.id,
     required this.planId,
     required this.sequenceNo,
     required this.dueAt,
     required this.amountMinor,
     this.transactionId,
-    this.canceledAt,
+    required this.status,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -19137,16 +18660,18 @@ class AmortizationEntryRow extends DataClass
     if (!nullToAbsent || transactionId != null) {
       map['transaction_id'] = Variable<String>(transactionId);
     }
-    if (!nullToAbsent || canceledAt != null) {
-      map['canceled_at'] = Variable<DateTime>(canceledAt);
+    {
+      map['status'] = Variable<String>(
+        $AmortizationPeriodsTable.$converterstatus.toSql(status),
+      );
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
 
-  AmortizationEntriesCompanion toCompanion(bool nullToAbsent) {
-    return AmortizationEntriesCompanion(
+  AmortizationPeriodsCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationPeriodsCompanion(
       id: Value(id),
       planId: Value(planId),
       sequenceNo: Value(sequenceNo),
@@ -19155,27 +18680,27 @@ class AmortizationEntryRow extends DataClass
       transactionId: transactionId == null && nullToAbsent
           ? const Value.absent()
           : Value(transactionId),
-      canceledAt: canceledAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(canceledAt),
+      status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
   }
 
-  factory AmortizationEntryRow.fromJson(
+  factory AmortizationPeriodRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return AmortizationEntryRow(
+    return AmortizationPeriodRow(
       id: serializer.fromJson<String>(json['id']),
       planId: serializer.fromJson<String>(json['planId']),
       sequenceNo: serializer.fromJson<int>(json['sequenceNo']),
       dueAt: serializer.fromJson<DateTime>(json['dueAt']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
       transactionId: serializer.fromJson<String?>(json['transactionId']),
-      canceledAt: serializer.fromJson<DateTime?>(json['canceledAt']),
+      status: $AmortizationPeriodsTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -19190,23 +18715,25 @@ class AmortizationEntryRow extends DataClass
       'dueAt': serializer.toJson<DateTime>(dueAt),
       'amountMinor': serializer.toJson<int>(amountMinor),
       'transactionId': serializer.toJson<String?>(transactionId),
-      'canceledAt': serializer.toJson<DateTime?>(canceledAt),
+      'status': serializer.toJson<String>(
+        $AmortizationPeriodsTable.$converterstatus.toJson(status),
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
-  AmortizationEntryRow copyWith({
+  AmortizationPeriodRow copyWith({
     String? id,
     String? planId,
     int? sequenceNo,
     DateTime? dueAt,
     int? amountMinor,
     Value<String?> transactionId = const Value.absent(),
-    Value<DateTime?> canceledAt = const Value.absent(),
+    AmortizationPeriodStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => AmortizationEntryRow(
+  }) => AmortizationPeriodRow(
     id: id ?? this.id,
     planId: planId ?? this.planId,
     sequenceNo: sequenceNo ?? this.sequenceNo,
@@ -19215,12 +18742,12 @@ class AmortizationEntryRow extends DataClass
     transactionId: transactionId.present
         ? transactionId.value
         : this.transactionId,
-    canceledAt: canceledAt.present ? canceledAt.value : this.canceledAt,
+    status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  AmortizationEntryRow copyWithCompanion(AmortizationEntriesCompanion data) {
-    return AmortizationEntryRow(
+  AmortizationPeriodRow copyWithCompanion(AmortizationPeriodsCompanion data) {
+    return AmortizationPeriodRow(
       id: data.id.present ? data.id.value : this.id,
       planId: data.planId.present ? data.planId.value : this.planId,
       sequenceNo: data.sequenceNo.present
@@ -19233,9 +18760,7 @@ class AmortizationEntryRow extends DataClass
       transactionId: data.transactionId.present
           ? data.transactionId.value
           : this.transactionId,
-      canceledAt: data.canceledAt.present
-          ? data.canceledAt.value
-          : this.canceledAt,
+      status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -19243,14 +18768,14 @@ class AmortizationEntryRow extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('AmortizationEntryRow(')
+    return (StringBuffer('AmortizationPeriodRow(')
           ..write('id: $id, ')
           ..write('planId: $planId, ')
           ..write('sequenceNo: $sequenceNo, ')
           ..write('dueAt: $dueAt, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('transactionId: $transactionId, ')
-          ..write('canceledAt: $canceledAt, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -19265,57 +18790,57 @@ class AmortizationEntryRow extends DataClass
     dueAt,
     amountMinor,
     transactionId,
-    canceledAt,
+    status,
     createdAt,
     updatedAt,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AmortizationEntryRow &&
+      (other is AmortizationPeriodRow &&
           other.id == this.id &&
           other.planId == this.planId &&
           other.sequenceNo == this.sequenceNo &&
           other.dueAt == this.dueAt &&
           other.amountMinor == this.amountMinor &&
           other.transactionId == this.transactionId &&
-          other.canceledAt == this.canceledAt &&
+          other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
-class AmortizationEntriesCompanion
-    extends UpdateCompanion<AmortizationEntryRow> {
+class AmortizationPeriodsCompanion
+    extends UpdateCompanion<AmortizationPeriodRow> {
   final Value<String> id;
   final Value<String> planId;
   final Value<int> sequenceNo;
   final Value<DateTime> dueAt;
   final Value<int> amountMinor;
   final Value<String?> transactionId;
-  final Value<DateTime?> canceledAt;
+  final Value<AmortizationPeriodStatus> status;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
-  const AmortizationEntriesCompanion({
+  const AmortizationPeriodsCompanion({
     this.id = const Value.absent(),
     this.planId = const Value.absent(),
     this.sequenceNo = const Value.absent(),
     this.dueAt = const Value.absent(),
     this.amountMinor = const Value.absent(),
     this.transactionId = const Value.absent(),
-    this.canceledAt = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  AmortizationEntriesCompanion.insert({
+  AmortizationPeriodsCompanion.insert({
     required String id,
     required String planId,
     required int sequenceNo,
     required DateTime dueAt,
     required int amountMinor,
     this.transactionId = const Value.absent(),
-    this.canceledAt = const Value.absent(),
+    required AmortizationPeriodStatus status,
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -19323,15 +18848,16 @@ class AmortizationEntriesCompanion
        planId = Value(planId),
        sequenceNo = Value(sequenceNo),
        dueAt = Value(dueAt),
-       amountMinor = Value(amountMinor);
-  static Insertable<AmortizationEntryRow> custom({
+       amountMinor = Value(amountMinor),
+       status = Value(status);
+  static Insertable<AmortizationPeriodRow> custom({
     Expression<String>? id,
     Expression<String>? planId,
     Expression<int>? sequenceNo,
     Expression<DateTime>? dueAt,
     Expression<int>? amountMinor,
     Expression<String>? transactionId,
-    Expression<DateTime>? canceledAt,
+    Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -19343,33 +18869,33 @@ class AmortizationEntriesCompanion
       if (dueAt != null) 'due_at': dueAt,
       if (amountMinor != null) 'amount_minor': amountMinor,
       if (transactionId != null) 'transaction_id': transactionId,
-      if (canceledAt != null) 'canceled_at': canceledAt,
+      if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  AmortizationEntriesCompanion copyWith({
+  AmortizationPeriodsCompanion copyWith({
     Value<String>? id,
     Value<String>? planId,
     Value<int>? sequenceNo,
     Value<DateTime>? dueAt,
     Value<int>? amountMinor,
     Value<String?>? transactionId,
-    Value<DateTime?>? canceledAt,
+    Value<AmortizationPeriodStatus>? status,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
-    return AmortizationEntriesCompanion(
+    return AmortizationPeriodsCompanion(
       id: id ?? this.id,
       planId: planId ?? this.planId,
       sequenceNo: sequenceNo ?? this.sequenceNo,
       dueAt: dueAt ?? this.dueAt,
       amountMinor: amountMinor ?? this.amountMinor,
       transactionId: transactionId ?? this.transactionId,
-      canceledAt: canceledAt ?? this.canceledAt,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -19397,8 +18923,10 @@ class AmortizationEntriesCompanion
     if (transactionId.present) {
       map['transaction_id'] = Variable<String>(transactionId.value);
     }
-    if (canceledAt.present) {
-      map['canceled_at'] = Variable<DateTime>(canceledAt.value);
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $AmortizationPeriodsTable.$converterstatus.toSql(status.value),
+      );
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -19414,14 +18942,14 @@ class AmortizationEntriesCompanion
 
   @override
   String toString() {
-    return (StringBuffer('AmortizationEntriesCompanion(')
+    return (StringBuffer('AmortizationPeriodsCompanion(')
           ..write('id: $id, ')
           ..write('planId: $planId, ')
           ..write('sequenceNo: $sequenceNo, ')
           ..write('dueAt: $dueAt, ')
           ..write('amountMinor: $amountMinor, ')
           ..write('transactionId: $transactionId, ')
-          ..write('canceledAt: $canceledAt, ')
+          ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -19430,16 +18958,12 @@ class AmortizationEntriesCompanion
   }
 }
 
-class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
-    with
-        TableInfo<
-          $AmortizationEntryAllocationsTable,
-          AmortizationEntryAllocationRow
-        > {
+class $AmortizationRefundsTable extends AmortizationRefunds
+    with TableInfo<$AmortizationRefundsTable, AmortizationRefundRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $AmortizationEntryAllocationsTable(this.attachedDatabase, [this._alias]);
+  $AmortizationRefundsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -19449,17 +18973,915 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _entryIdMeta = const VerificationMeta(
-    'entryId',
-  );
+  static const VerificationMeta _planIdMeta = const VerificationMeta('planId');
   @override
-  late final GeneratedColumn<String> entryId = GeneratedColumn<String>(
-    'entry_id',
+  late final GeneratedColumn<String> planId = GeneratedColumn<String>(
+    'plan_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _transferTransactionIdMeta =
+      const VerificationMeta('transferTransactionId');
+  @override
+  late final GeneratedColumn<String> transferTransactionId =
+      GeneratedColumn<String>(
+        'transfer_transaction_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    planId,
+    transferTransactionId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'amortization_refunds';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AmortizationRefundRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('plan_id')) {
+      context.handle(
+        _planIdMeta,
+        planId.isAcceptableOrUnknown(data['plan_id']!, _planIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_planIdMeta);
+    }
+    if (data.containsKey('transfer_transaction_id')) {
+      context.handle(
+        _transferTransactionIdMeta,
+        transferTransactionId.isAcceptableOrUnknown(
+          data['transfer_transaction_id']!,
+          _transferTransactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transferTransactionIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AmortizationRefundRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AmortizationRefundRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      planId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_id'],
+      )!,
+      transferTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transfer_transaction_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AmortizationRefundsTable createAlias(String alias) {
+    return $AmortizationRefundsTable(attachedDatabase, alias);
+  }
+}
+
+class AmortizationRefundRow extends DataClass
+    implements Insertable<AmortizationRefundRow> {
+  final String id;
+  final String planId;
+  final String transferTransactionId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AmortizationRefundRow({
+    required this.id,
+    required this.planId,
+    required this.transferTransactionId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['plan_id'] = Variable<String>(planId);
+    map['transfer_transaction_id'] = Variable<String>(transferTransactionId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AmortizationRefundsCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationRefundsCompanion(
+      id: Value(id),
+      planId: Value(planId),
+      transferTransactionId: Value(transferTransactionId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AmortizationRefundRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AmortizationRefundRow(
+      id: serializer.fromJson<String>(json['id']),
+      planId: serializer.fromJson<String>(json['planId']),
+      transferTransactionId: serializer.fromJson<String>(
+        json['transferTransactionId'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'planId': serializer.toJson<String>(planId),
+      'transferTransactionId': serializer.toJson<String>(transferTransactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AmortizationRefundRow copyWith({
+    String? id,
+    String? planId,
+    String? transferTransactionId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AmortizationRefundRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    transferTransactionId: transferTransactionId ?? this.transferTransactionId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AmortizationRefundRow copyWithCompanion(AmortizationRefundsCompanion data) {
+    return AmortizationRefundRow(
+      id: data.id.present ? data.id.value : this.id,
+      planId: data.planId.present ? data.planId.value : this.planId,
+      transferTransactionId: data.transferTransactionId.present
+          ? data.transferTransactionId.value
+          : this.transferTransactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationRefundRow(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('transferTransactionId: $transferTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, planId, transferTransactionId, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AmortizationRefundRow &&
+          other.id == this.id &&
+          other.planId == this.planId &&
+          other.transferTransactionId == this.transferTransactionId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AmortizationRefundsCompanion
+    extends UpdateCompanion<AmortizationRefundRow> {
+  final Value<String> id;
+  final Value<String> planId;
+  final Value<String> transferTransactionId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AmortizationRefundsCompanion({
+    this.id = const Value.absent(),
+    this.planId = const Value.absent(),
+    this.transferTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AmortizationRefundsCompanion.insert({
+    required String id,
+    required String planId,
+    required String transferTransactionId,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       planId = Value(planId),
+       transferTransactionId = Value(transferTransactionId);
+  static Insertable<AmortizationRefundRow> custom({
+    Expression<String>? id,
+    Expression<String>? planId,
+    Expression<String>? transferTransactionId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (planId != null) 'plan_id': planId,
+      if (transferTransactionId != null)
+        'transfer_transaction_id': transferTransactionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AmortizationRefundsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? planId,
+    Value<String>? transferTransactionId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AmortizationRefundsCompanion(
+      id: id ?? this.id,
+      planId: planId ?? this.planId,
+      transferTransactionId:
+          transferTransactionId ?? this.transferTransactionId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (planId.present) {
+      map['plan_id'] = Variable<String>(planId.value);
+    }
+    if (transferTransactionId.present) {
+      map['transfer_transaction_id'] = Variable<String>(
+        transferTransactionId.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationRefundsCompanion(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('transferTransactionId: $transferTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AmortizationTerminationsTable extends AmortizationTerminations
+    with TableInfo<$AmortizationTerminationsTable, AmortizationTerminationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AmortizationTerminationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _planIdMeta = const VerificationMeta('planId');
+  @override
+  late final GeneratedColumn<String> planId = GeneratedColumn<String>(
+    'plan_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _terminatedAtMeta = const VerificationMeta(
+    'terminatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> terminatedAt = GeneratedColumn<DateTime>(
+    'terminated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recognitionTransactionIdMeta =
+      const VerificationMeta('recognitionTransactionId');
+  @override
+  late final GeneratedColumn<String> recognitionTransactionId =
+      GeneratedColumn<String>(
+        'recognition_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _returnTransactionIdMeta =
+      const VerificationMeta('returnTransactionId');
+  @override
+  late final GeneratedColumn<String> returnTransactionId =
+      GeneratedColumn<String>(
+        'return_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    planId,
+    terminatedAt,
+    recognitionTransactionId,
+    returnTransactionId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'amortization_terminations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AmortizationTerminationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('plan_id')) {
+      context.handle(
+        _planIdMeta,
+        planId.isAcceptableOrUnknown(data['plan_id']!, _planIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_planIdMeta);
+    }
+    if (data.containsKey('terminated_at')) {
+      context.handle(
+        _terminatedAtMeta,
+        terminatedAt.isAcceptableOrUnknown(
+          data['terminated_at']!,
+          _terminatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_terminatedAtMeta);
+    }
+    if (data.containsKey('recognition_transaction_id')) {
+      context.handle(
+        _recognitionTransactionIdMeta,
+        recognitionTransactionId.isAcceptableOrUnknown(
+          data['recognition_transaction_id']!,
+          _recognitionTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('return_transaction_id')) {
+      context.handle(
+        _returnTransactionIdMeta,
+        returnTransactionId.isAcceptableOrUnknown(
+          data['return_transaction_id']!,
+          _returnTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AmortizationTerminationRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AmortizationTerminationRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      planId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plan_id'],
+      )!,
+      terminatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}terminated_at'],
+      )!,
+      recognitionTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recognition_transaction_id'],
+      ),
+      returnTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}return_transaction_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AmortizationTerminationsTable createAlias(String alias) {
+    return $AmortizationTerminationsTable(attachedDatabase, alias);
+  }
+}
+
+class AmortizationTerminationRow extends DataClass
+    implements Insertable<AmortizationTerminationRow> {
+  final String id;
+  final String planId;
+  final DateTime terminatedAt;
+  final String? recognitionTransactionId;
+  final String? returnTransactionId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AmortizationTerminationRow({
+    required this.id,
+    required this.planId,
+    required this.terminatedAt,
+    this.recognitionTransactionId,
+    this.returnTransactionId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['plan_id'] = Variable<String>(planId);
+    map['terminated_at'] = Variable<DateTime>(terminatedAt);
+    if (!nullToAbsent || recognitionTransactionId != null) {
+      map['recognition_transaction_id'] = Variable<String>(
+        recognitionTransactionId,
+      );
+    }
+    if (!nullToAbsent || returnTransactionId != null) {
+      map['return_transaction_id'] = Variable<String>(returnTransactionId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AmortizationTerminationsCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationTerminationsCompanion(
+      id: Value(id),
+      planId: Value(planId),
+      terminatedAt: Value(terminatedAt),
+      recognitionTransactionId: recognitionTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recognitionTransactionId),
+      returnTransactionId: returnTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(returnTransactionId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AmortizationTerminationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AmortizationTerminationRow(
+      id: serializer.fromJson<String>(json['id']),
+      planId: serializer.fromJson<String>(json['planId']),
+      terminatedAt: serializer.fromJson<DateTime>(json['terminatedAt']),
+      recognitionTransactionId: serializer.fromJson<String?>(
+        json['recognitionTransactionId'],
+      ),
+      returnTransactionId: serializer.fromJson<String?>(
+        json['returnTransactionId'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'planId': serializer.toJson<String>(planId),
+      'terminatedAt': serializer.toJson<DateTime>(terminatedAt),
+      'recognitionTransactionId': serializer.toJson<String?>(
+        recognitionTransactionId,
+      ),
+      'returnTransactionId': serializer.toJson<String?>(returnTransactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AmortizationTerminationRow copyWith({
+    String? id,
+    String? planId,
+    DateTime? terminatedAt,
+    Value<String?> recognitionTransactionId = const Value.absent(),
+    Value<String?> returnTransactionId = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AmortizationTerminationRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    terminatedAt: terminatedAt ?? this.terminatedAt,
+    recognitionTransactionId: recognitionTransactionId.present
+        ? recognitionTransactionId.value
+        : this.recognitionTransactionId,
+    returnTransactionId: returnTransactionId.present
+        ? returnTransactionId.value
+        : this.returnTransactionId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AmortizationTerminationRow copyWithCompanion(
+    AmortizationTerminationsCompanion data,
+  ) {
+    return AmortizationTerminationRow(
+      id: data.id.present ? data.id.value : this.id,
+      planId: data.planId.present ? data.planId.value : this.planId,
+      terminatedAt: data.terminatedAt.present
+          ? data.terminatedAt.value
+          : this.terminatedAt,
+      recognitionTransactionId: data.recognitionTransactionId.present
+          ? data.recognitionTransactionId.value
+          : this.recognitionTransactionId,
+      returnTransactionId: data.returnTransactionId.present
+          ? data.returnTransactionId.value
+          : this.returnTransactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationTerminationRow(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('terminatedAt: $terminatedAt, ')
+          ..write('recognitionTransactionId: $recognitionTransactionId, ')
+          ..write('returnTransactionId: $returnTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    planId,
+    terminatedAt,
+    recognitionTransactionId,
+    returnTransactionId,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AmortizationTerminationRow &&
+          other.id == this.id &&
+          other.planId == this.planId &&
+          other.terminatedAt == this.terminatedAt &&
+          other.recognitionTransactionId == this.recognitionTransactionId &&
+          other.returnTransactionId == this.returnTransactionId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AmortizationTerminationsCompanion
+    extends UpdateCompanion<AmortizationTerminationRow> {
+  final Value<String> id;
+  final Value<String> planId;
+  final Value<DateTime> terminatedAt;
+  final Value<String?> recognitionTransactionId;
+  final Value<String?> returnTransactionId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AmortizationTerminationsCompanion({
+    this.id = const Value.absent(),
+    this.planId = const Value.absent(),
+    this.terminatedAt = const Value.absent(),
+    this.recognitionTransactionId = const Value.absent(),
+    this.returnTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AmortizationTerminationsCompanion.insert({
+    required String id,
+    required String planId,
+    required DateTime terminatedAt,
+    this.recognitionTransactionId = const Value.absent(),
+    this.returnTransactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       planId = Value(planId),
+       terminatedAt = Value(terminatedAt);
+  static Insertable<AmortizationTerminationRow> custom({
+    Expression<String>? id,
+    Expression<String>? planId,
+    Expression<DateTime>? terminatedAt,
+    Expression<String>? recognitionTransactionId,
+    Expression<String>? returnTransactionId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (planId != null) 'plan_id': planId,
+      if (terminatedAt != null) 'terminated_at': terminatedAt,
+      if (recognitionTransactionId != null)
+        'recognition_transaction_id': recognitionTransactionId,
+      if (returnTransactionId != null)
+        'return_transaction_id': returnTransactionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AmortizationTerminationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? planId,
+    Value<DateTime>? terminatedAt,
+    Value<String?>? recognitionTransactionId,
+    Value<String?>? returnTransactionId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AmortizationTerminationsCompanion(
+      id: id ?? this.id,
+      planId: planId ?? this.planId,
+      terminatedAt: terminatedAt ?? this.terminatedAt,
+      recognitionTransactionId:
+          recognitionTransactionId ?? this.recognitionTransactionId,
+      returnTransactionId: returnTransactionId ?? this.returnTransactionId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (planId.present) {
+      map['plan_id'] = Variable<String>(planId.value);
+    }
+    if (terminatedAt.present) {
+      map['terminated_at'] = Variable<DateTime>(terminatedAt.value);
+    }
+    if (recognitionTransactionId.present) {
+      map['recognition_transaction_id'] = Variable<String>(
+        recognitionTransactionId.value,
+      );
+    }
+    if (returnTransactionId.present) {
+      map['return_transaction_id'] = Variable<String>(
+        returnTransactionId.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AmortizationTerminationsCompanion(')
+          ..write('id: $id, ')
+          ..write('planId: $planId, ')
+          ..write('terminatedAt: $terminatedAt, ')
+          ..write('recognitionTransactionId: $recognitionTransactionId, ')
+          ..write('returnTransactionId: $returnTransactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AmortizationAllocationsTable extends AmortizationAllocations
+    with TableInfo<$AmortizationAllocationsTable, AmortizationAllocationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AmortizationAllocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AmortizationSubjectType, String>
+  subjectType =
+      GeneratedColumn<String>(
+        'subject_type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AmortizationSubjectType>(
+        $AmortizationAllocationsTable.$convertersubjectType,
+      );
+  static const VerificationMeta _subjectIdMeta = const VerificationMeta(
+    'subjectId',
+  );
+  @override
+  late final GeneratedColumn<String> subjectId = GeneratedColumn<String>(
+    'subject_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    AmortizationAllocationDimension,
+    String
+  >
+  dimension =
+      GeneratedColumn<String>(
+        'dimension',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AmortizationAllocationDimension>(
+        $AmortizationAllocationsTable.$converterdimension,
+      );
   static const VerificationMeta _lineNoMeta = const VerificationMeta('lineNo');
   @override
   late final GeneratedColumn<int> lineNo = GeneratedColumn<int>(
@@ -19518,7 +19940,9 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    entryId,
+    subjectType,
+    subjectId,
+    dimension,
     lineNo,
     accountId,
     amountMinor,
@@ -19529,10 +19953,10 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'amortization_entry_allocations';
+  static const String $name = 'amortization_allocations';
   @override
   VerificationContext validateIntegrity(
-    Insertable<AmortizationEntryAllocationRow> instance, {
+    Insertable<AmortizationAllocationRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -19542,13 +19966,13 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('entry_id')) {
+    if (data.containsKey('subject_id')) {
       context.handle(
-        _entryIdMeta,
-        entryId.isAcceptableOrUnknown(data['entry_id']!, _entryIdMeta),
+        _subjectIdMeta,
+        subjectId.isAcceptableOrUnknown(data['subject_id']!, _subjectIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_entryIdMeta);
+      context.missing(_subjectIdMeta);
     }
     if (data.containsKey('line_no')) {
       context.handle(
@@ -19595,20 +20019,32 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  AmortizationEntryAllocationRow map(
+  AmortizationAllocationRow map(
     Map<String, dynamic> data, {
     String? tablePrefix,
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return AmortizationEntryAllocationRow(
+    return AmortizationAllocationRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
-      entryId: attachedDatabase.typeMapping.read(
+      subjectType: $AmortizationAllocationsTable.$convertersubjectType.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}subject_type'],
+        )!,
+      ),
+      subjectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}entry_id'],
+        data['${effectivePrefix}subject_id'],
       )!,
+      dimension: $AmortizationAllocationsTable.$converterdimension.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}dimension'],
+        )!,
+      ),
       lineNo: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}line_no'],
@@ -19633,23 +20069,37 @@ class $AmortizationEntryAllocationsTable extends AmortizationEntryAllocations
   }
 
   @override
-  $AmortizationEntryAllocationsTable createAlias(String alias) {
-    return $AmortizationEntryAllocationsTable(attachedDatabase, alias);
+  $AmortizationAllocationsTable createAlias(String alias) {
+    return $AmortizationAllocationsTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<AmortizationSubjectType, String, String>
+  $convertersubjectType = const EnumNameConverter<AmortizationSubjectType>(
+    AmortizationSubjectType.values,
+  );
+  static JsonTypeConverter2<AmortizationAllocationDimension, String, String>
+  $converterdimension =
+      const EnumNameConverter<AmortizationAllocationDimension>(
+        AmortizationAllocationDimension.values,
+      );
 }
 
-class AmortizationEntryAllocationRow extends DataClass
-    implements Insertable<AmortizationEntryAllocationRow> {
+class AmortizationAllocationRow extends DataClass
+    implements Insertable<AmortizationAllocationRow> {
   final String id;
-  final String entryId;
+  final AmortizationSubjectType subjectType;
+  final String subjectId;
+  final AmortizationAllocationDimension dimension;
   final int lineNo;
   final String accountId;
   final int amountMinor;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const AmortizationEntryAllocationRow({
+  const AmortizationAllocationRow({
     required this.id,
-    required this.entryId,
+    required this.subjectType,
+    required this.subjectId,
+    required this.dimension,
     required this.lineNo,
     required this.accountId,
     required this.amountMinor,
@@ -19660,7 +20110,17 @@ class AmortizationEntryAllocationRow extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['entry_id'] = Variable<String>(entryId);
+    {
+      map['subject_type'] = Variable<String>(
+        $AmortizationAllocationsTable.$convertersubjectType.toSql(subjectType),
+      );
+    }
+    map['subject_id'] = Variable<String>(subjectId);
+    {
+      map['dimension'] = Variable<String>(
+        $AmortizationAllocationsTable.$converterdimension.toSql(dimension),
+      );
+    }
     map['line_no'] = Variable<int>(lineNo);
     map['account_id'] = Variable<String>(accountId);
     map['amount_minor'] = Variable<int>(amountMinor);
@@ -19669,10 +20129,12 @@ class AmortizationEntryAllocationRow extends DataClass
     return map;
   }
 
-  AmortizationEntryAllocationsCompanion toCompanion(bool nullToAbsent) {
-    return AmortizationEntryAllocationsCompanion(
+  AmortizationAllocationsCompanion toCompanion(bool nullToAbsent) {
+    return AmortizationAllocationsCompanion(
       id: Value(id),
-      entryId: Value(entryId),
+      subjectType: Value(subjectType),
+      subjectId: Value(subjectId),
+      dimension: Value(dimension),
       lineNo: Value(lineNo),
       accountId: Value(accountId),
       amountMinor: Value(amountMinor),
@@ -19681,14 +20143,20 @@ class AmortizationEntryAllocationRow extends DataClass
     );
   }
 
-  factory AmortizationEntryAllocationRow.fromJson(
+  factory AmortizationAllocationRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return AmortizationEntryAllocationRow(
+    return AmortizationAllocationRow(
       id: serializer.fromJson<String>(json['id']),
-      entryId: serializer.fromJson<String>(json['entryId']),
+      subjectType: $AmortizationAllocationsTable.$convertersubjectType.fromJson(
+        serializer.fromJson<String>(json['subjectType']),
+      ),
+      subjectId: serializer.fromJson<String>(json['subjectId']),
+      dimension: $AmortizationAllocationsTable.$converterdimension.fromJson(
+        serializer.fromJson<String>(json['dimension']),
+      ),
       lineNo: serializer.fromJson<int>(json['lineNo']),
       accountId: serializer.fromJson<String>(json['accountId']),
       amountMinor: serializer.fromJson<int>(json['amountMinor']),
@@ -19701,7 +20169,13 @@ class AmortizationEntryAllocationRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'entryId': serializer.toJson<String>(entryId),
+      'subjectType': serializer.toJson<String>(
+        $AmortizationAllocationsTable.$convertersubjectType.toJson(subjectType),
+      ),
+      'subjectId': serializer.toJson<String>(subjectId),
+      'dimension': serializer.toJson<String>(
+        $AmortizationAllocationsTable.$converterdimension.toJson(dimension),
+      ),
       'lineNo': serializer.toJson<int>(lineNo),
       'accountId': serializer.toJson<String>(accountId),
       'amountMinor': serializer.toJson<int>(amountMinor),
@@ -19710,29 +20184,37 @@ class AmortizationEntryAllocationRow extends DataClass
     };
   }
 
-  AmortizationEntryAllocationRow copyWith({
+  AmortizationAllocationRow copyWith({
     String? id,
-    String? entryId,
+    AmortizationSubjectType? subjectType,
+    String? subjectId,
+    AmortizationAllocationDimension? dimension,
     int? lineNo,
     String? accountId,
     int? amountMinor,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => AmortizationEntryAllocationRow(
+  }) => AmortizationAllocationRow(
     id: id ?? this.id,
-    entryId: entryId ?? this.entryId,
+    subjectType: subjectType ?? this.subjectType,
+    subjectId: subjectId ?? this.subjectId,
+    dimension: dimension ?? this.dimension,
     lineNo: lineNo ?? this.lineNo,
     accountId: accountId ?? this.accountId,
     amountMinor: amountMinor ?? this.amountMinor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  AmortizationEntryAllocationRow copyWithCompanion(
-    AmortizationEntryAllocationsCompanion data,
+  AmortizationAllocationRow copyWithCompanion(
+    AmortizationAllocationsCompanion data,
   ) {
-    return AmortizationEntryAllocationRow(
+    return AmortizationAllocationRow(
       id: data.id.present ? data.id.value : this.id,
-      entryId: data.entryId.present ? data.entryId.value : this.entryId,
+      subjectType: data.subjectType.present
+          ? data.subjectType.value
+          : this.subjectType,
+      subjectId: data.subjectId.present ? data.subjectId.value : this.subjectId,
+      dimension: data.dimension.present ? data.dimension.value : this.dimension,
       lineNo: data.lineNo.present ? data.lineNo.value : this.lineNo,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
       amountMinor: data.amountMinor.present
@@ -19745,9 +20227,11 @@ class AmortizationEntryAllocationRow extends DataClass
 
   @override
   String toString() {
-    return (StringBuffer('AmortizationEntryAllocationRow(')
+    return (StringBuffer('AmortizationAllocationRow(')
           ..write('id: $id, ')
-          ..write('entryId: $entryId, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('dimension: $dimension, ')
           ..write('lineNo: $lineNo, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
@@ -19760,7 +20244,9 @@ class AmortizationEntryAllocationRow extends DataClass
   @override
   int get hashCode => Object.hash(
     id,
-    entryId,
+    subjectType,
+    subjectId,
+    dimension,
     lineNo,
     accountId,
     amountMinor,
@@ -19770,9 +20256,11 @@ class AmortizationEntryAllocationRow extends DataClass
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AmortizationEntryAllocationRow &&
+      (other is AmortizationAllocationRow &&
           other.id == this.id &&
-          other.entryId == this.entryId &&
+          other.subjectType == this.subjectType &&
+          other.subjectId == this.subjectId &&
+          other.dimension == this.dimension &&
           other.lineNo == this.lineNo &&
           other.accountId == this.accountId &&
           other.amountMinor == this.amountMinor &&
@@ -19780,19 +20268,23 @@ class AmortizationEntryAllocationRow extends DataClass
           other.updatedAt == this.updatedAt);
 }
 
-class AmortizationEntryAllocationsCompanion
-    extends UpdateCompanion<AmortizationEntryAllocationRow> {
+class AmortizationAllocationsCompanion
+    extends UpdateCompanion<AmortizationAllocationRow> {
   final Value<String> id;
-  final Value<String> entryId;
+  final Value<AmortizationSubjectType> subjectType;
+  final Value<String> subjectId;
+  final Value<AmortizationAllocationDimension> dimension;
   final Value<int> lineNo;
   final Value<String> accountId;
   final Value<int> amountMinor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
-  const AmortizationEntryAllocationsCompanion({
+  const AmortizationAllocationsCompanion({
     this.id = const Value.absent(),
-    this.entryId = const Value.absent(),
+    this.subjectType = const Value.absent(),
+    this.subjectId = const Value.absent(),
+    this.dimension = const Value.absent(),
     this.lineNo = const Value.absent(),
     this.accountId = const Value.absent(),
     this.amountMinor = const Value.absent(),
@@ -19800,9 +20292,11 @@ class AmortizationEntryAllocationsCompanion
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  AmortizationEntryAllocationsCompanion.insert({
+  AmortizationAllocationsCompanion.insert({
     required String id,
-    required String entryId,
+    required AmortizationSubjectType subjectType,
+    required String subjectId,
+    required AmortizationAllocationDimension dimension,
     required int lineNo,
     required String accountId,
     required int amountMinor,
@@ -19810,13 +20304,17 @@ class AmortizationEntryAllocationsCompanion
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       entryId = Value(entryId),
+       subjectType = Value(subjectType),
+       subjectId = Value(subjectId),
+       dimension = Value(dimension),
        lineNo = Value(lineNo),
        accountId = Value(accountId),
        amountMinor = Value(amountMinor);
-  static Insertable<AmortizationEntryAllocationRow> custom({
+  static Insertable<AmortizationAllocationRow> custom({
     Expression<String>? id,
-    Expression<String>? entryId,
+    Expression<String>? subjectType,
+    Expression<String>? subjectId,
+    Expression<String>? dimension,
     Expression<int>? lineNo,
     Expression<String>? accountId,
     Expression<int>? amountMinor,
@@ -19826,7 +20324,9 @@ class AmortizationEntryAllocationsCompanion
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (entryId != null) 'entry_id': entryId,
+      if (subjectType != null) 'subject_type': subjectType,
+      if (subjectId != null) 'subject_id': subjectId,
+      if (dimension != null) 'dimension': dimension,
       if (lineNo != null) 'line_no': lineNo,
       if (accountId != null) 'account_id': accountId,
       if (amountMinor != null) 'amount_minor': amountMinor,
@@ -19836,9 +20336,11 @@ class AmortizationEntryAllocationsCompanion
     });
   }
 
-  AmortizationEntryAllocationsCompanion copyWith({
+  AmortizationAllocationsCompanion copyWith({
     Value<String>? id,
-    Value<String>? entryId,
+    Value<AmortizationSubjectType>? subjectType,
+    Value<String>? subjectId,
+    Value<AmortizationAllocationDimension>? dimension,
     Value<int>? lineNo,
     Value<String>? accountId,
     Value<int>? amountMinor,
@@ -19846,9 +20348,11 @@ class AmortizationEntryAllocationsCompanion
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
-    return AmortizationEntryAllocationsCompanion(
+    return AmortizationAllocationsCompanion(
       id: id ?? this.id,
-      entryId: entryId ?? this.entryId,
+      subjectType: subjectType ?? this.subjectType,
+      subjectId: subjectId ?? this.subjectId,
+      dimension: dimension ?? this.dimension,
       lineNo: lineNo ?? this.lineNo,
       accountId: accountId ?? this.accountId,
       amountMinor: amountMinor ?? this.amountMinor,
@@ -19864,8 +20368,22 @@ class AmortizationEntryAllocationsCompanion
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (entryId.present) {
-      map['entry_id'] = Variable<String>(entryId.value);
+    if (subjectType.present) {
+      map['subject_type'] = Variable<String>(
+        $AmortizationAllocationsTable.$convertersubjectType.toSql(
+          subjectType.value,
+        ),
+      );
+    }
+    if (subjectId.present) {
+      map['subject_id'] = Variable<String>(subjectId.value);
+    }
+    if (dimension.present) {
+      map['dimension'] = Variable<String>(
+        $AmortizationAllocationsTable.$converterdimension.toSql(
+          dimension.value,
+        ),
+      );
     }
     if (lineNo.present) {
       map['line_no'] = Variable<int>(lineNo.value);
@@ -19890,9 +20408,11 @@ class AmortizationEntryAllocationsCompanion
 
   @override
   String toString() {
-    return (StringBuffer('AmortizationEntryAllocationsCompanion(')
+    return (StringBuffer('AmortizationAllocationsCompanion(')
           ..write('id: $id, ')
-          ..write('entryId: $entryId, ')
+          ..write('subjectType: $subjectType, ')
+          ..write('subjectId: $subjectId, ')
+          ..write('dimension: $dimension, ')
           ..write('lineNo: $lineNo, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinor: $amountMinor, ')
@@ -19957,10 +20477,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AdvanceCasesTable advanceCases = $AdvanceCasesTable(this);
   late final $AmortizationPlansTable amortizationPlans =
       $AmortizationPlansTable(this);
-  late final $AmortizationEntriesTable amortizationEntries =
-      $AmortizationEntriesTable(this);
-  late final $AmortizationEntryAllocationsTable amortizationEntryAllocations =
-      $AmortizationEntryAllocationsTable(this);
+  late final $AmortizationPeriodsTable amortizationPeriods =
+      $AmortizationPeriodsTable(this);
+  late final $AmortizationRefundsTable amortizationRefunds =
+      $AmortizationRefundsTable(this);
+  late final $AmortizationTerminationsTable amortizationTerminations =
+      $AmortizationTerminationsTable(this);
+  late final $AmortizationAllocationsTable amortizationAllocations =
+      $AmortizationAllocationsTable(this);
   late final Index installmentRepricingRecordsPendingIdx = Index(
     'installment_repricing_records_pending_idx',
     'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
@@ -20005,8 +20529,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     importBatchItems,
     advanceCases,
     amortizationPlans,
-    amortizationEntries,
-    amortizationEntryAllocations,
+    amortizationPeriods,
+    amortizationRefunds,
+    amortizationTerminations,
+    amortizationAllocations,
     installmentRepricingRecordsPendingIdx,
     installmentRepricingConfigsActiveIdx,
   ];
@@ -28820,15 +29346,7 @@ typedef $$AmortizationPlansTableCreateCompanionBuilder =
       required int cadenceInterval,
       required DateTime firstRecognitionAt,
       required int recognitionCount,
-      Value<bool> defaultIsExcludedFromStats,
-      Value<bool> defaultIsExcludedFromBudget,
       required String initialTransactionId,
-      Value<String?> counterpartyId,
-      Value<String?> note,
-      Value<DateTime?> terminatedAt,
-      Value<String?> terminationRecognitionTransactionId,
-      Value<String?> refundTransactionId,
-      Value<int?> refundAmountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -28843,15 +29361,7 @@ typedef $$AmortizationPlansTableUpdateCompanionBuilder =
       Value<int> cadenceInterval,
       Value<DateTime> firstRecognitionAt,
       Value<int> recognitionCount,
-      Value<bool> defaultIsExcludedFromStats,
-      Value<bool> defaultIsExcludedFromBudget,
       Value<String> initialTransactionId,
-      Value<String?> counterpartyId,
-      Value<String?> note,
-      Value<DateTime?> terminatedAt,
-      Value<String?> terminationRecognitionTransactionId,
-      Value<String?> refundTransactionId,
-      Value<int?> refundAmountMinor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -28912,49 +29422,8 @@ class $$AmortizationPlansTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get defaultIsExcludedFromStats => $composableBuilder(
-    column: $table.defaultIsExcludedFromStats,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get defaultIsExcludedFromBudget => $composableBuilder(
-    column: $table.defaultIsExcludedFromBudget,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get initialTransactionId => $composableBuilder(
     column: $table.initialTransactionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get counterpartyId => $composableBuilder(
-    column: $table.counterpartyId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get note => $composableBuilder(
-    column: $table.note,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get terminatedAt => $composableBuilder(
-    column: $table.terminatedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get terminationRecognitionTransactionId =>
-      $composableBuilder(
-        column: $table.terminationRecognitionTransactionId,
-        builder: (column) => ColumnFilters(column),
-      );
-
-  ColumnFilters<String> get refundTransactionId => $composableBuilder(
-    column: $table.refundTransactionId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get refundAmountMinor => $composableBuilder(
-    column: $table.refundAmountMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -29018,49 +29487,8 @@ class $$AmortizationPlansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get defaultIsExcludedFromStats => $composableBuilder(
-    column: $table.defaultIsExcludedFromStats,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get defaultIsExcludedFromBudget => $composableBuilder(
-    column: $table.defaultIsExcludedFromBudget,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get initialTransactionId => $composableBuilder(
     column: $table.initialTransactionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get counterpartyId => $composableBuilder(
-    column: $table.counterpartyId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get note => $composableBuilder(
-    column: $table.note,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get terminatedAt => $composableBuilder(
-    column: $table.terminatedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get terminationRecognitionTransactionId =>
-      $composableBuilder(
-        column: $table.terminationRecognitionTransactionId,
-        builder: (column) => ColumnOrderings(column),
-      );
-
-  ColumnOrderings<String> get refundTransactionId => $composableBuilder(
-    column: $table.refundTransactionId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get refundAmountMinor => $composableBuilder(
-    column: $table.refundAmountMinor,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -29121,47 +29549,8 @@ class $$AmortizationPlansTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get defaultIsExcludedFromStats => $composableBuilder(
-    column: $table.defaultIsExcludedFromStats,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get defaultIsExcludedFromBudget => $composableBuilder(
-    column: $table.defaultIsExcludedFromBudget,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get initialTransactionId => $composableBuilder(
     column: $table.initialTransactionId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get counterpartyId => $composableBuilder(
-    column: $table.counterpartyId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get note =>
-      $composableBuilder(column: $table.note, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get terminatedAt => $composableBuilder(
-    column: $table.terminatedAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get terminationRecognitionTransactionId =>
-      $composableBuilder(
-        column: $table.terminationRecognitionTransactionId,
-        builder: (column) => column,
-      );
-
-  GeneratedColumn<String> get refundTransactionId => $composableBuilder(
-    column: $table.refundTransactionId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get refundAmountMinor => $composableBuilder(
-    column: $table.refundAmountMinor,
     builder: (column) => column,
   );
 
@@ -29221,16 +29610,7 @@ class $$AmortizationPlansTableTableManager
                 Value<int> cadenceInterval = const Value.absent(),
                 Value<DateTime> firstRecognitionAt = const Value.absent(),
                 Value<int> recognitionCount = const Value.absent(),
-                Value<bool> defaultIsExcludedFromStats = const Value.absent(),
-                Value<bool> defaultIsExcludedFromBudget = const Value.absent(),
                 Value<String> initialTransactionId = const Value.absent(),
-                Value<String?> counterpartyId = const Value.absent(),
-                Value<String?> note = const Value.absent(),
-                Value<DateTime?> terminatedAt = const Value.absent(),
-                Value<String?> terminationRecognitionTransactionId =
-                    const Value.absent(),
-                Value<String?> refundTransactionId = const Value.absent(),
-                Value<int?> refundAmountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -29243,16 +29623,7 @@ class $$AmortizationPlansTableTableManager
                 cadenceInterval: cadenceInterval,
                 firstRecognitionAt: firstRecognitionAt,
                 recognitionCount: recognitionCount,
-                defaultIsExcludedFromStats: defaultIsExcludedFromStats,
-                defaultIsExcludedFromBudget: defaultIsExcludedFromBudget,
                 initialTransactionId: initialTransactionId,
-                counterpartyId: counterpartyId,
-                note: note,
-                terminatedAt: terminatedAt,
-                terminationRecognitionTransactionId:
-                    terminationRecognitionTransactionId,
-                refundTransactionId: refundTransactionId,
-                refundAmountMinor: refundAmountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -29267,16 +29638,7 @@ class $$AmortizationPlansTableTableManager
                 required int cadenceInterval,
                 required DateTime firstRecognitionAt,
                 required int recognitionCount,
-                Value<bool> defaultIsExcludedFromStats = const Value.absent(),
-                Value<bool> defaultIsExcludedFromBudget = const Value.absent(),
                 required String initialTransactionId,
-                Value<String?> counterpartyId = const Value.absent(),
-                Value<String?> note = const Value.absent(),
-                Value<DateTime?> terminatedAt = const Value.absent(),
-                Value<String?> terminationRecognitionTransactionId =
-                    const Value.absent(),
-                Value<String?> refundTransactionId = const Value.absent(),
-                Value<int?> refundAmountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -29289,16 +29651,7 @@ class $$AmortizationPlansTableTableManager
                 cadenceInterval: cadenceInterval,
                 firstRecognitionAt: firstRecognitionAt,
                 recognitionCount: recognitionCount,
-                defaultIsExcludedFromStats: defaultIsExcludedFromStats,
-                defaultIsExcludedFromBudget: defaultIsExcludedFromBudget,
                 initialTransactionId: initialTransactionId,
-                counterpartyId: counterpartyId,
-                note: note,
-                terminatedAt: terminatedAt,
-                terminationRecognitionTransactionId:
-                    terminationRecognitionTransactionId,
-                refundTransactionId: refundTransactionId,
-                refundAmountMinor: refundAmountMinor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -29332,36 +29685,36 @@ typedef $$AmortizationPlansTableProcessedTableManager =
       AmortizationPlanRow,
       PrefetchHooks Function()
     >;
-typedef $$AmortizationEntriesTableCreateCompanionBuilder =
-    AmortizationEntriesCompanion Function({
+typedef $$AmortizationPeriodsTableCreateCompanionBuilder =
+    AmortizationPeriodsCompanion Function({
       required String id,
       required String planId,
       required int sequenceNo,
       required DateTime dueAt,
       required int amountMinor,
       Value<String?> transactionId,
-      Value<DateTime?> canceledAt,
+      required AmortizationPeriodStatus status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
-typedef $$AmortizationEntriesTableUpdateCompanionBuilder =
-    AmortizationEntriesCompanion Function({
+typedef $$AmortizationPeriodsTableUpdateCompanionBuilder =
+    AmortizationPeriodsCompanion Function({
       Value<String> id,
       Value<String> planId,
       Value<int> sequenceNo,
       Value<DateTime> dueAt,
       Value<int> amountMinor,
       Value<String?> transactionId,
-      Value<DateTime?> canceledAt,
+      Value<AmortizationPeriodStatus> status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
 
-class $$AmortizationEntriesTableFilterComposer
-    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
-  $$AmortizationEntriesTableFilterComposer({
+class $$AmortizationPeriodsTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationPeriodsTable> {
+  $$AmortizationPeriodsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29398,9 +29751,14 @@ class $$AmortizationEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get canceledAt => $composableBuilder(
-    column: $table.canceledAt,
-    builder: (column) => ColumnFilters(column),
+  ColumnWithTypeConverterFilters<
+    AmortizationPeriodStatus,
+    AmortizationPeriodStatus,
+    String
+  >
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
@@ -29414,9 +29772,9 @@ class $$AmortizationEntriesTableFilterComposer
   );
 }
 
-class $$AmortizationEntriesTableOrderingComposer
-    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
-  $$AmortizationEntriesTableOrderingComposer({
+class $$AmortizationPeriodsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationPeriodsTable> {
+  $$AmortizationPeriodsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29453,8 +29811,8 @@ class $$AmortizationEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get canceledAt => $composableBuilder(
-    column: $table.canceledAt,
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -29469,9 +29827,9 @@ class $$AmortizationEntriesTableOrderingComposer
   );
 }
 
-class $$AmortizationEntriesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $AmortizationEntriesTable> {
-  $$AmortizationEntriesTableAnnotationComposer({
+class $$AmortizationPeriodsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationPeriodsTable> {
+  $$AmortizationPeriodsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29502,10 +29860,9 @@ class $$AmortizationEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<DateTime> get canceledAt => $composableBuilder(
-    column: $table.canceledAt,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<AmortizationPeriodStatus, String>
+  get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -29514,44 +29871,44 @@ class $$AmortizationEntriesTableAnnotationComposer
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
-class $$AmortizationEntriesTableTableManager
+class $$AmortizationPeriodsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $AmortizationEntriesTable,
-          AmortizationEntryRow,
-          $$AmortizationEntriesTableFilterComposer,
-          $$AmortizationEntriesTableOrderingComposer,
-          $$AmortizationEntriesTableAnnotationComposer,
-          $$AmortizationEntriesTableCreateCompanionBuilder,
-          $$AmortizationEntriesTableUpdateCompanionBuilder,
+          $AmortizationPeriodsTable,
+          AmortizationPeriodRow,
+          $$AmortizationPeriodsTableFilterComposer,
+          $$AmortizationPeriodsTableOrderingComposer,
+          $$AmortizationPeriodsTableAnnotationComposer,
+          $$AmortizationPeriodsTableCreateCompanionBuilder,
+          $$AmortizationPeriodsTableUpdateCompanionBuilder,
           (
-            AmortizationEntryRow,
+            AmortizationPeriodRow,
             BaseReferences<
               _$AppDatabase,
-              $AmortizationEntriesTable,
-              AmortizationEntryRow
+              $AmortizationPeriodsTable,
+              AmortizationPeriodRow
             >,
           ),
-          AmortizationEntryRow,
+          AmortizationPeriodRow,
           PrefetchHooks Function()
         > {
-  $$AmortizationEntriesTableTableManager(
+  $$AmortizationPeriodsTableTableManager(
     _$AppDatabase db,
-    $AmortizationEntriesTable table,
+    $AmortizationPeriodsTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$AmortizationEntriesTableFilterComposer($db: db, $table: table),
+              $$AmortizationPeriodsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$AmortizationEntriesTableOrderingComposer(
+              $$AmortizationPeriodsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
           createComputedFieldComposer: () =>
-              $$AmortizationEntriesTableAnnotationComposer(
+              $$AmortizationPeriodsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
@@ -29563,18 +29920,18 @@ class $$AmortizationEntriesTableTableManager
                 Value<DateTime> dueAt = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<String?> transactionId = const Value.absent(),
-                Value<DateTime?> canceledAt = const Value.absent(),
+                Value<AmortizationPeriodStatus> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => AmortizationEntriesCompanion(
+              }) => AmortizationPeriodsCompanion(
                 id: id,
                 planId: planId,
                 sequenceNo: sequenceNo,
                 dueAt: dueAt,
                 amountMinor: amountMinor,
                 transactionId: transactionId,
-                canceledAt: canceledAt,
+                status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -29587,18 +29944,18 @@ class $$AmortizationEntriesTableTableManager
                 required DateTime dueAt,
                 required int amountMinor,
                 Value<String?> transactionId = const Value.absent(),
-                Value<DateTime?> canceledAt = const Value.absent(),
+                required AmortizationPeriodStatus status,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => AmortizationEntriesCompanion.insert(
+              }) => AmortizationPeriodsCompanion.insert(
                 id: id,
                 planId: planId,
                 sequenceNo: sequenceNo,
                 dueAt: dueAt,
                 amountMinor: amountMinor,
                 transactionId: transactionId,
-                canceledAt: canceledAt,
+                status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -29611,53 +29968,49 @@ class $$AmortizationEntriesTableTableManager
       );
 }
 
-typedef $$AmortizationEntriesTableProcessedTableManager =
+typedef $$AmortizationPeriodsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $AmortizationEntriesTable,
-      AmortizationEntryRow,
-      $$AmortizationEntriesTableFilterComposer,
-      $$AmortizationEntriesTableOrderingComposer,
-      $$AmortizationEntriesTableAnnotationComposer,
-      $$AmortizationEntriesTableCreateCompanionBuilder,
-      $$AmortizationEntriesTableUpdateCompanionBuilder,
+      $AmortizationPeriodsTable,
+      AmortizationPeriodRow,
+      $$AmortizationPeriodsTableFilterComposer,
+      $$AmortizationPeriodsTableOrderingComposer,
+      $$AmortizationPeriodsTableAnnotationComposer,
+      $$AmortizationPeriodsTableCreateCompanionBuilder,
+      $$AmortizationPeriodsTableUpdateCompanionBuilder,
       (
-        AmortizationEntryRow,
+        AmortizationPeriodRow,
         BaseReferences<
           _$AppDatabase,
-          $AmortizationEntriesTable,
-          AmortizationEntryRow
+          $AmortizationPeriodsTable,
+          AmortizationPeriodRow
         >,
       ),
-      AmortizationEntryRow,
+      AmortizationPeriodRow,
       PrefetchHooks Function()
     >;
-typedef $$AmortizationEntryAllocationsTableCreateCompanionBuilder =
-    AmortizationEntryAllocationsCompanion Function({
+typedef $$AmortizationRefundsTableCreateCompanionBuilder =
+    AmortizationRefundsCompanion Function({
       required String id,
-      required String entryId,
-      required int lineNo,
-      required String accountId,
-      required int amountMinor,
+      required String planId,
+      required String transferTransactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
-typedef $$AmortizationEntryAllocationsTableUpdateCompanionBuilder =
-    AmortizationEntryAllocationsCompanion Function({
+typedef $$AmortizationRefundsTableUpdateCompanionBuilder =
+    AmortizationRefundsCompanion Function({
       Value<String> id,
-      Value<String> entryId,
-      Value<int> lineNo,
-      Value<String> accountId,
-      Value<int> amountMinor,
+      Value<String> planId,
+      Value<String> transferTransactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
 
-class $$AmortizationEntryAllocationsTableFilterComposer
-    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
-  $$AmortizationEntryAllocationsTableFilterComposer({
+class $$AmortizationRefundsTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationRefundsTable> {
+  $$AmortizationRefundsTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29669,9 +30022,518 @@ class $$AmortizationEntryAllocationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get entryId => $composableBuilder(
-    column: $table.entryId,
+  ColumnFilters<String> get planId => $composableBuilder(
+    column: $table.planId,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transferTransactionId => $composableBuilder(
+    column: $table.transferTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AmortizationRefundsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationRefundsTable> {
+  $$AmortizationRefundsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transferTransactionId => $composableBuilder(
+    column: $table.transferTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AmortizationRefundsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationRefundsTable> {
+  $$AmortizationRefundsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get planId =>
+      $composableBuilder(column: $table.planId, builder: (column) => column);
+
+  GeneratedColumn<String> get transferTransactionId => $composableBuilder(
+    column: $table.transferTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AmortizationRefundsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AmortizationRefundsTable,
+          AmortizationRefundRow,
+          $$AmortizationRefundsTableFilterComposer,
+          $$AmortizationRefundsTableOrderingComposer,
+          $$AmortizationRefundsTableAnnotationComposer,
+          $$AmortizationRefundsTableCreateCompanionBuilder,
+          $$AmortizationRefundsTableUpdateCompanionBuilder,
+          (
+            AmortizationRefundRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AmortizationRefundsTable,
+              AmortizationRefundRow
+            >,
+          ),
+          AmortizationRefundRow,
+          PrefetchHooks Function()
+        > {
+  $$AmortizationRefundsTableTableManager(
+    _$AppDatabase db,
+    $AmortizationRefundsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AmortizationRefundsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AmortizationRefundsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AmortizationRefundsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> planId = const Value.absent(),
+                Value<String> transferTransactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationRefundsCompanion(
+                id: id,
+                planId: planId,
+                transferTransactionId: transferTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String planId,
+                required String transferTransactionId,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationRefundsCompanion.insert(
+                id: id,
+                planId: planId,
+                transferTransactionId: transferTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AmortizationRefundsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AmortizationRefundsTable,
+      AmortizationRefundRow,
+      $$AmortizationRefundsTableFilterComposer,
+      $$AmortizationRefundsTableOrderingComposer,
+      $$AmortizationRefundsTableAnnotationComposer,
+      $$AmortizationRefundsTableCreateCompanionBuilder,
+      $$AmortizationRefundsTableUpdateCompanionBuilder,
+      (
+        AmortizationRefundRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AmortizationRefundsTable,
+          AmortizationRefundRow
+        >,
+      ),
+      AmortizationRefundRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AmortizationTerminationsTableCreateCompanionBuilder =
+    AmortizationTerminationsCompanion Function({
+      required String id,
+      required String planId,
+      required DateTime terminatedAt,
+      Value<String?> recognitionTransactionId,
+      Value<String?> returnTransactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AmortizationTerminationsTableUpdateCompanionBuilder =
+    AmortizationTerminationsCompanion Function({
+      Value<String> id,
+      Value<String> planId,
+      Value<DateTime> terminatedAt,
+      Value<String?> recognitionTransactionId,
+      Value<String?> returnTransactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AmortizationTerminationsTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationTerminationsTable> {
+  $$AmortizationTerminationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recognitionTransactionId => $composableBuilder(
+    column: $table.recognitionTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get returnTransactionId => $composableBuilder(
+    column: $table.returnTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AmortizationTerminationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationTerminationsTable> {
+  $$AmortizationTerminationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get planId => $composableBuilder(
+    column: $table.planId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recognitionTransactionId => $composableBuilder(
+    column: $table.recognitionTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get returnTransactionId => $composableBuilder(
+    column: $table.returnTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AmortizationTerminationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationTerminationsTable> {
+  $$AmortizationTerminationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get planId =>
+      $composableBuilder(column: $table.planId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get terminatedAt => $composableBuilder(
+    column: $table.terminatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recognitionTransactionId => $composableBuilder(
+    column: $table.recognitionTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get returnTransactionId => $composableBuilder(
+    column: $table.returnTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AmortizationTerminationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AmortizationTerminationsTable,
+          AmortizationTerminationRow,
+          $$AmortizationTerminationsTableFilterComposer,
+          $$AmortizationTerminationsTableOrderingComposer,
+          $$AmortizationTerminationsTableAnnotationComposer,
+          $$AmortizationTerminationsTableCreateCompanionBuilder,
+          $$AmortizationTerminationsTableUpdateCompanionBuilder,
+          (
+            AmortizationTerminationRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AmortizationTerminationsTable,
+              AmortizationTerminationRow
+            >,
+          ),
+          AmortizationTerminationRow,
+          PrefetchHooks Function()
+        > {
+  $$AmortizationTerminationsTableTableManager(
+    _$AppDatabase db,
+    $AmortizationTerminationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AmortizationTerminationsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AmortizationTerminationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AmortizationTerminationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> planId = const Value.absent(),
+                Value<DateTime> terminatedAt = const Value.absent(),
+                Value<String?> recognitionTransactionId = const Value.absent(),
+                Value<String?> returnTransactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationTerminationsCompanion(
+                id: id,
+                planId: planId,
+                terminatedAt: terminatedAt,
+                recognitionTransactionId: recognitionTransactionId,
+                returnTransactionId: returnTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String planId,
+                required DateTime terminatedAt,
+                Value<String?> recognitionTransactionId = const Value.absent(),
+                Value<String?> returnTransactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AmortizationTerminationsCompanion.insert(
+                id: id,
+                planId: planId,
+                terminatedAt: terminatedAt,
+                recognitionTransactionId: recognitionTransactionId,
+                returnTransactionId: returnTransactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AmortizationTerminationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AmortizationTerminationsTable,
+      AmortizationTerminationRow,
+      $$AmortizationTerminationsTableFilterComposer,
+      $$AmortizationTerminationsTableOrderingComposer,
+      $$AmortizationTerminationsTableAnnotationComposer,
+      $$AmortizationTerminationsTableCreateCompanionBuilder,
+      $$AmortizationTerminationsTableUpdateCompanionBuilder,
+      (
+        AmortizationTerminationRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AmortizationTerminationsTable,
+          AmortizationTerminationRow
+        >,
+      ),
+      AmortizationTerminationRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AmortizationAllocationsTableCreateCompanionBuilder =
+    AmortizationAllocationsCompanion Function({
+      required String id,
+      required AmortizationSubjectType subjectType,
+      required String subjectId,
+      required AmortizationAllocationDimension dimension,
+      required int lineNo,
+      required String accountId,
+      required int amountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AmortizationAllocationsTableUpdateCompanionBuilder =
+    AmortizationAllocationsCompanion Function({
+      Value<String> id,
+      Value<AmortizationSubjectType> subjectType,
+      Value<String> subjectId,
+      Value<AmortizationAllocationDimension> dimension,
+      Value<int> lineNo,
+      Value<String> accountId,
+      Value<int> amountMinor,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AmortizationAllocationsTableFilterComposer
+    extends Composer<_$AppDatabase, $AmortizationAllocationsTable> {
+  $$AmortizationAllocationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    AmortizationSubjectType,
+    AmortizationSubjectType,
+    String
+  >
+  get subjectType => $composableBuilder(
+    column: $table.subjectType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get subjectId => $composableBuilder(
+    column: $table.subjectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    AmortizationAllocationDimension,
+    AmortizationAllocationDimension,
+    String
+  >
+  get dimension => $composableBuilder(
+    column: $table.dimension,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<int> get lineNo => $composableBuilder(
@@ -29700,9 +30562,9 @@ class $$AmortizationEntryAllocationsTableFilterComposer
   );
 }
 
-class $$AmortizationEntryAllocationsTableOrderingComposer
-    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
-  $$AmortizationEntryAllocationsTableOrderingComposer({
+class $$AmortizationAllocationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AmortizationAllocationsTable> {
+  $$AmortizationAllocationsTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29714,8 +30576,18 @@ class $$AmortizationEntryAllocationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get entryId => $composableBuilder(
-    column: $table.entryId,
+  ColumnOrderings<String> get subjectType => $composableBuilder(
+    column: $table.subjectType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subjectId => $composableBuilder(
+    column: $table.subjectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dimension => $composableBuilder(
+    column: $table.dimension,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -29745,9 +30617,9 @@ class $$AmortizationEntryAllocationsTableOrderingComposer
   );
 }
 
-class $$AmortizationEntryAllocationsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $AmortizationEntryAllocationsTable> {
-  $$AmortizationEntryAllocationsTableAnnotationComposer({
+class $$AmortizationAllocationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AmortizationAllocationsTable> {
+  $$AmortizationAllocationsTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -29757,8 +30629,18 @@ class $$AmortizationEntryAllocationsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get entryId =>
-      $composableBuilder(column: $table.entryId, builder: (column) => column);
+  GeneratedColumnWithTypeConverter<AmortizationSubjectType, String>
+  get subjectType => $composableBuilder(
+    column: $table.subjectType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subjectId =>
+      $composableBuilder(column: $table.subjectId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AmortizationAllocationDimension, String>
+  get dimension =>
+      $composableBuilder(column: $table.dimension, builder: (column) => column);
 
   GeneratedColumn<int> get lineNo =>
       $composableBuilder(column: $table.lineNo, builder: (column) => column);
@@ -29778,63 +30660,69 @@ class $$AmortizationEntryAllocationsTableAnnotationComposer
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
-class $$AmortizationEntryAllocationsTableTableManager
+class $$AmortizationAllocationsTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $AmortizationEntryAllocationsTable,
-          AmortizationEntryAllocationRow,
-          $$AmortizationEntryAllocationsTableFilterComposer,
-          $$AmortizationEntryAllocationsTableOrderingComposer,
-          $$AmortizationEntryAllocationsTableAnnotationComposer,
-          $$AmortizationEntryAllocationsTableCreateCompanionBuilder,
-          $$AmortizationEntryAllocationsTableUpdateCompanionBuilder,
+          $AmortizationAllocationsTable,
+          AmortizationAllocationRow,
+          $$AmortizationAllocationsTableFilterComposer,
+          $$AmortizationAllocationsTableOrderingComposer,
+          $$AmortizationAllocationsTableAnnotationComposer,
+          $$AmortizationAllocationsTableCreateCompanionBuilder,
+          $$AmortizationAllocationsTableUpdateCompanionBuilder,
           (
-            AmortizationEntryAllocationRow,
+            AmortizationAllocationRow,
             BaseReferences<
               _$AppDatabase,
-              $AmortizationEntryAllocationsTable,
-              AmortizationEntryAllocationRow
+              $AmortizationAllocationsTable,
+              AmortizationAllocationRow
             >,
           ),
-          AmortizationEntryAllocationRow,
+          AmortizationAllocationRow,
           PrefetchHooks Function()
         > {
-  $$AmortizationEntryAllocationsTableTableManager(
+  $$AmortizationAllocationsTableTableManager(
     _$AppDatabase db,
-    $AmortizationEntryAllocationsTable table,
+    $AmortizationAllocationsTable table,
   ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$AmortizationEntryAllocationsTableFilterComposer(
+              $$AmortizationAllocationsTableFilterComposer(
                 $db: db,
                 $table: table,
               ),
           createOrderingComposer: () =>
-              $$AmortizationEntryAllocationsTableOrderingComposer(
+              $$AmortizationAllocationsTableOrderingComposer(
                 $db: db,
                 $table: table,
               ),
           createComputedFieldComposer: () =>
-              $$AmortizationEntryAllocationsTableAnnotationComposer(
+              $$AmortizationAllocationsTableAnnotationComposer(
                 $db: db,
                 $table: table,
               ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
-                Value<String> entryId = const Value.absent(),
+                Value<AmortizationSubjectType> subjectType =
+                    const Value.absent(),
+                Value<String> subjectId = const Value.absent(),
+                Value<AmortizationAllocationDimension> dimension =
+                    const Value.absent(),
                 Value<int> lineNo = const Value.absent(),
                 Value<String> accountId = const Value.absent(),
                 Value<int> amountMinor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => AmortizationEntryAllocationsCompanion(
+              }) => AmortizationAllocationsCompanion(
                 id: id,
-                entryId: entryId,
+                subjectType: subjectType,
+                subjectId: subjectId,
+                dimension: dimension,
                 lineNo: lineNo,
                 accountId: accountId,
                 amountMinor: amountMinor,
@@ -29845,16 +30733,20 @@ class $$AmortizationEntryAllocationsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
-                required String entryId,
+                required AmortizationSubjectType subjectType,
+                required String subjectId,
+                required AmortizationAllocationDimension dimension,
                 required int lineNo,
                 required String accountId,
                 required int amountMinor,
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
-              }) => AmortizationEntryAllocationsCompanion.insert(
+              }) => AmortizationAllocationsCompanion.insert(
                 id: id,
-                entryId: entryId,
+                subjectType: subjectType,
+                subjectId: subjectId,
+                dimension: dimension,
                 lineNo: lineNo,
                 accountId: accountId,
                 amountMinor: amountMinor,
@@ -29870,25 +30762,25 @@ class $$AmortizationEntryAllocationsTableTableManager
       );
 }
 
-typedef $$AmortizationEntryAllocationsTableProcessedTableManager =
+typedef $$AmortizationAllocationsTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $AmortizationEntryAllocationsTable,
-      AmortizationEntryAllocationRow,
-      $$AmortizationEntryAllocationsTableFilterComposer,
-      $$AmortizationEntryAllocationsTableOrderingComposer,
-      $$AmortizationEntryAllocationsTableAnnotationComposer,
-      $$AmortizationEntryAllocationsTableCreateCompanionBuilder,
-      $$AmortizationEntryAllocationsTableUpdateCompanionBuilder,
+      $AmortizationAllocationsTable,
+      AmortizationAllocationRow,
+      $$AmortizationAllocationsTableFilterComposer,
+      $$AmortizationAllocationsTableOrderingComposer,
+      $$AmortizationAllocationsTableAnnotationComposer,
+      $$AmortizationAllocationsTableCreateCompanionBuilder,
+      $$AmortizationAllocationsTableUpdateCompanionBuilder,
       (
-        AmortizationEntryAllocationRow,
+        AmortizationAllocationRow,
         BaseReferences<
           _$AppDatabase,
-          $AmortizationEntryAllocationsTable,
-          AmortizationEntryAllocationRow
+          $AmortizationAllocationsTable,
+          AmortizationAllocationRow
         >,
       ),
-      AmortizationEntryAllocationRow,
+      AmortizationAllocationRow,
       PrefetchHooks Function()
     >;
 
@@ -29986,12 +30878,18 @@ class $AppDatabaseManager {
       $$AdvanceCasesTableTableManager(_db, _db.advanceCases);
   $$AmortizationPlansTableTableManager get amortizationPlans =>
       $$AmortizationPlansTableTableManager(_db, _db.amortizationPlans);
-  $$AmortizationEntriesTableTableManager get amortizationEntries =>
-      $$AmortizationEntriesTableTableManager(_db, _db.amortizationEntries);
-  $$AmortizationEntryAllocationsTableTableManager
-  get amortizationEntryAllocations =>
-      $$AmortizationEntryAllocationsTableTableManager(
+  $$AmortizationPeriodsTableTableManager get amortizationPeriods =>
+      $$AmortizationPeriodsTableTableManager(_db, _db.amortizationPeriods);
+  $$AmortizationRefundsTableTableManager get amortizationRefunds =>
+      $$AmortizationRefundsTableTableManager(_db, _db.amortizationRefunds);
+  $$AmortizationTerminationsTableTableManager get amortizationTerminations =>
+      $$AmortizationTerminationsTableTableManager(
         _db,
-        _db.amortizationEntryAllocations,
+        _db.amortizationTerminations,
+      );
+  $$AmortizationAllocationsTableTableManager get amortizationAllocations =>
+      $$AmortizationAllocationsTableTableManager(
+        _db,
+        _db.amortizationAllocations,
       );
 }

@@ -22,17 +22,19 @@ void main() {
       id: 'plan',
       kind: AmortizationKind.prepaidExpense,
       deferralAccountId: 'prepaid',
-      recognitionAllocations: singleAllocation(
+      fundingAllocations: singleAllocation(
+        accountId: 'cash',
+        amount: const Money(minorUnits: 300000),
+      ),
+      categoryAllocations: singleAllocation(
         accountId: 'rent',
         amount: const Money(minorUnits: 300000),
       ),
-      total: const Money(minorUnits: 300000),
+      originalAmount: const Money(minorUnits: 300000),
       cadenceUnit: AmortizationCadenceUnit.monthly,
       cadenceInterval: 1,
       firstRecognitionAt: DateTime(2026, 1, 31),
       recognitionCount: 3,
-      defaultIsExcludedFromStats: false,
-      defaultIsExcludedFromBudget: false,
       initialTransactionId: 'initial',
     );
     final router = GoRouter(
