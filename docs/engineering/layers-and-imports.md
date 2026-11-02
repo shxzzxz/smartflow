@@ -91,6 +91,8 @@ application/ledger + domain/ledger + infrastructure/ledger
 application/credit + domain/credit + infrastructure/credit
 ```
 
+`application/transaction_view` 是跨域读侧能力而不是业务域。各业务事项来源可以依赖所属领域的 query/port 和对应基础设施读查询，并自行完成锚点、筛选与分页；公共查询层只合并来源结果，不能让账务核心或其他提供域反向依赖该模块。
+
 薄域允许先保持轻量结构；当长出复杂不变量、状态机或跨用例规则，再拆完整分层。
 
 ## 目录结构模板
@@ -109,6 +111,9 @@ lib/
 │   │       ├── command/                 # 写用例 + command model；无写侧时可省略
 │   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
 │   │           └── port/                # 读侧 application port；无 port 时可省略
+│   ├── transaction_view/                # 跨域用户交易读视图；不是业务域
+│   │   ├── business_item/query/         # 业务事项来源与统一读模型
+│   │   └── impact_feed/query/           # 账务影响流语义封装
 │   └── shared/                          # 事务执行抽象等 application 共享能力
 │       └── task/                        # Task 定义、调度器、重试策略分别存放
 ├── domain/                               # 领域层：按业务域分子目录
@@ -191,6 +196,7 @@ lib/infrastructure/database/table/*
 - `domain/*` 不依赖 `application/`、`infrastructure/`、`feature/`、`app/`、Drift、Riverpod。
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
+- `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
 - application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。
