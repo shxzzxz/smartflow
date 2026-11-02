@@ -53,6 +53,54 @@ void main() {
     });
 
     test(
+      'shows parent and child rows with actual account net impact',
+      () async {
+        final transactionService = _FakeTransactionQueryService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: _accounts,
+        );
+        final parent = _item(
+          'parent',
+          occurredAt: DateTime(2026, 1, 2, 9),
+          settlementDeltaMinor: -1000,
+        );
+        final child = _item(
+          'child',
+          occurredAt: DateTime(2026, 1, 2, 8),
+          settlementDeltaMinor: -200,
+        );
+        final container = _container(
+          transactionService,
+          accountService,
+          overrides: [
+            transactionListProvider(
+              settlementAccountId: 'cash',
+              limit: accountTransactionPageSize,
+            ).overrideWith((ref) => Stream.value([parent, child])),
+          ],
+        );
+
+        final sub = container.listen(
+          accountTransactionsViewModelProvider('cash'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountLookupProvider.future);
+        await container.pump();
+        await _flush();
+
+        final loaded =
+            container.read(accountTransactionsViewModelProvider('cash'))
+                as AccountTransactionsLoaded;
+        expect(loaded.rows.map((row) => row.transactionId), [
+          'parent',
+          'child',
+        ]);
+        expect(loaded.rows.map((row) => row.amountText), ['-10', '-2']);
+      },
+    );
+
+    test(
       'loads a larger prefix once and stops at the end of the feed',
       () async {
         final transactionService = _FakeTransactionQueryService();
@@ -212,7 +260,11 @@ final _accounts = <String, Account>{
   'food': _account('food', '餐饮', type: AccountType.expense, iconKey: 'meal'),
 };
 
-TransactionReadModel _item(String id, {DateTime? occurredAt}) {
+TransactionReadModel _item(
+  String id, {
+  DateTime? occurredAt,
+  int settlementDeltaMinor = -1234,
+}) {
   return TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyExpense,
@@ -221,19 +273,33 @@ TransactionReadModel _item(String id, {DateTime? occurredAt}) {
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     lines: const [
-      TransactionLine(id: 'category', transactionId: 'item', lineNo: 1, role: TransactionRole.category, accountId: 'food', amount: Money(minorUnits: 1234)),
-      TransactionLine(id: 'settlement', transactionId: 'item', lineNo: 2, role: TransactionRole.settlementOut, accountId: 'cash', amount: Money(minorUnits: 1234)),
+      TransactionLine(
+        id: 'category',
+        transactionId: 'item',
+        lineNo: 1,
+        role: TransactionRole.category,
+        accountId: 'food',
+        amount: Money(minorUnits: 1234),
+      ),
+      TransactionLine(
+        id: 'settlement',
+        transactionId: 'item',
+        lineNo: 2,
+        role: TransactionRole.settlementOut,
+        accountId: 'cash',
+        amount: Money(minorUnits: 1234),
+      ),
     ],
-    impactsByAccountId: const {
+    impactsByAccountId: {
       'food': TransactionAccountImpact(
         debitAmount: Money(minorUnits: 1234),
         creditAmount: Money(minorUnits: 0),
         netChange: Money(minorUnits: 1234),
       ),
       'cash': TransactionAccountImpact(
-        debitAmount: Money(minorUnits: 0),
-        creditAmount: Money(minorUnits: 1234),
-        netChange: Money(minorUnits: -1234),
+        debitAmount: Money.zero(),
+        creditAmount: Money(minorUnits: settlementDeltaMinor.abs()),
+        netChange: Money(minorUnits: settlementDeltaMinor),
       ),
     },
   );

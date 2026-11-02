@@ -1,7 +1,10 @@
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -67,8 +70,8 @@ class TransactionDayGroup {
   }
 }
 
-class TransactionRowPresentation {
-  const TransactionRowPresentation({
+class FinancialFeedRowPresentation {
+  const FinancialFeedRowPresentation({
     required this.transactionId,
     required this.iconKey,
     required this.title,
@@ -86,6 +89,7 @@ class TransactionRowPresentation {
     this.selectable = false,
     this.selected = false,
     this.dimmed = false,
+    this.supportingText,
   });
 
   final String transactionId;
@@ -104,23 +108,27 @@ class TransactionRowPresentation {
   final bool canQuickEdit;
   final bool selectable;
   final bool selected;
+  final String? supportingText;
 
   /// 行不会参与导入/展示时置灰，保持可交互。
   final bool dimmed;
 
   bool get hasBadges => badges.isNotEmpty;
 
-  TransactionRowPresentation copyWith({
+  FinancialFeedRowPresentation copyWith({
+    String? title,
+    List<TransactionBadgePresentation>? badges,
+    String? supportingText,
     bool? selectable,
     bool? selected,
     bool? dimmed,
   }) {
-    return TransactionRowPresentation(
+    return FinancialFeedRowPresentation(
       transactionId: transactionId,
       businessPurpose: businessPurpose,
       hasMultipleCategories: hasMultipleCategories,
       iconKey: iconKey,
-      title: title,
+      title: title ?? this.title,
       subtitle: subtitle,
       amountText: amountText,
       compactAmountText: compactAmountText,
@@ -128,14 +136,17 @@ class TransactionRowPresentation {
       originalCompactAmountText: originalCompactAmountText,
       amountTone: amountTone,
       accountFlow: accountFlow,
-      badges: badges,
+      badges: badges ?? this.badges,
       canQuickEdit: canQuickEdit,
       selectable: selectable ?? this.selectable,
       selected: selected ?? this.selected,
       dimmed: dimmed ?? this.dimmed,
+      supportingText: supportingText ?? this.supportingText,
     );
   }
 }
+
+typedef TransactionRowPresentation = FinancialFeedRowPresentation;
 
 class TransactionAccountFlowPresentation {
   const TransactionAccountFlowPresentation({
@@ -265,6 +276,37 @@ List<TransactionDayGroup> groupTransactionsByDay({
   ];
 }
 
+List<TransactionDayGroup> groupBusinessItemsByDay({
+  required List<BusinessItemReadModel> items,
+  required AccountLookup accountLookup,
+  List<DailyCashflowSummary> dailySummaries = const [],
+}) {
+  final groups = <DateTime, List<FinancialFeedRowPresentation>>{};
+  for (final item in items) {
+    final date = normalizeDate(item.anchorAt);
+    groups
+        .putIfAbsent(date, () => [])
+        .add(
+          buildBusinessItemRowPresentation(
+            item: item,
+            accountLookup: accountLookup,
+          ),
+        );
+  }
+
+  final totalsByDate = _dailySummariesByDate(dailySummaries);
+  final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [
+    for (final date in dates)
+      TransactionDayGroup(
+        date: date,
+        rows: groups[date] ?? const [],
+        incomeMinor: totalsByDate[date]?.income.minorUnits ?? 0,
+        expenseMinor: totalsByDate[date]?.expense.minorUnits ?? 0,
+      ),
+  ];
+}
+
 TransactionDayGroup transactionGroupForDate({
   required DateTime date,
   required List<TransactionReadModel> transactions,
@@ -287,6 +329,32 @@ TransactionDayGroup transactionGroupForDate({
           item: item,
           accountLookup: accountLookup,
           amountSource: amountSource,
+        ),
+    ],
+    incomeMinor: summary?.income.minorUnits ?? 0,
+    expenseMinor: summary?.expense.minorUnits ?? 0,
+  );
+}
+
+TransactionDayGroup businessItemGroupForDate({
+  required DateTime date,
+  required List<BusinessItemReadModel> items,
+  required List<DailyCashflowSummary> dailySummaries,
+  required AccountLookup accountLookup,
+}) {
+  final normalized = normalizeDate(date);
+  final dayItems = [
+    for (final item in items)
+      if (isSameDate(item.anchorAt, normalized)) item,
+  ];
+  final summary = _dailySummariesByDate(dailySummaries)[normalized];
+  return TransactionDayGroup(
+    date: normalized,
+    rows: [
+      for (final item in dayItems)
+        buildBusinessItemRowPresentation(
+          item: item,
+          accountLookup: accountLookup,
         ),
     ],
     incomeMinor: summary?.income.minorUnits ?? 0,
@@ -384,6 +452,118 @@ TransactionRowPresentation buildTransactionRowPresentation({
     badges: buildTransactionBadges(item),
     canQuickEdit: canQuickEditTransaction(item),
   );
+}
+
+FinancialFeedRowPresentation buildBusinessItemRowPresentation({
+  required BusinessItemReadModel item,
+  required AccountLookup accountLookup,
+}) {
+  final transaction = item.anchorTransaction;
+  final base = buildTransactionRowPresentation(
+    item: transaction,
+    accountLookup: accountLookup,
+  );
+  return base.copyWith(
+    title: _businessItemTitle(item, base.title),
+    badges: [...base.badges, ..._businessStatusBadges(item.summary)],
+    supportingText: _businessItemSupportingText(item.summary),
+  );
+}
+
+String _businessItemTitle(BusinessItemReadModel item, String fallback) {
+  return switch (item.summary) {
+    LedgerBusinessItemSummary() => fallback,
+    AdvanceBusinessItemSummary() => fallback,
+    InstallmentBusinessItemSummary(:final installmentType) =>
+      switch (installmentType) {
+        InstallmentType.purchase => '消费分期',
+        InstallmentType.disbursement => '放款分期',
+        InstallmentType.billConversion => fallback,
+      },
+    RepaymentBusinessItemSummary() => fallback,
+    AmortizationBusinessItemSummary(:final kind) => switch (kind) {
+      AmortizationKind.prepaidExpense => '预付摊销',
+      AmortizationKind.deferredIncome => '预收摊销',
+    },
+  };
+}
+
+String? _businessItemSupportingText(BusinessItemSummary summary) {
+  return switch (summary) {
+    LedgerBusinessItemSummary() => null,
+    AdvanceBusinessItemSummary(:final outstanding, :final isClosed) =>
+      isClosed
+          ? '垫付已结清'
+          : '剩余应收 ${formatMoney(outstanding, style: MoneyFormatStyle.compact)}',
+    InstallmentBusinessItemSummary(
+      :final paidPeriodCount,
+      :final totalPeriodCount,
+      :final remainingPrincipal,
+    ) =>
+      '已还 $paidPeriodCount/$totalPeriodCount · '
+          '剩余本金 ${formatMoney(remainingPrincipal, style: MoneyFormatStyle.compact)}',
+    RepaymentBusinessItemSummary(:final repaymentType, :final targetType) =>
+      '${_repaymentTypeLabel(repaymentType)} · '
+          '${_repaymentTargetLabel(targetType)}',
+    AmortizationBusinessItemSummary(
+      :final postedPeriodCount,
+      :final totalPeriodCount,
+      :final remainingAmount,
+    ) =>
+      '已确认 $postedPeriodCount/$totalPeriodCount · '
+          '剩余 ${formatMoney(remainingAmount, style: MoneyFormatStyle.compact)}',
+  };
+}
+
+List<TransactionBadgePresentation> _businessStatusBadges(
+  BusinessItemSummary summary,
+) {
+  return switch (summary) {
+    LedgerBusinessItemSummary() || RepaymentBusinessItemSummary() => const [],
+    AdvanceBusinessItemSummary(:final isClosed) => [
+      TransactionBadgePresentation(
+        label: isClosed ? '已结清' : '未结清',
+        tone: isClosed ? FinanceTone.info : FinanceTone.equity,
+      ),
+    ],
+    InstallmentBusinessItemSummary(:final status) => [
+      TransactionBadgePresentation(
+        label: status == InstallmentContractStatus.settled ? '已结清' : '进行中',
+        tone: status == InstallmentContractStatus.settled
+            ? FinanceTone.info
+            : FinanceTone.equity,
+      ),
+    ],
+    AmortizationBusinessItemSummary(:final status) => [
+      TransactionBadgePresentation(
+        label: switch (status) {
+          AmortizationStatus.active => '进行中',
+          AmortizationStatus.completed => '已完成',
+          AmortizationStatus.terminated => '已终止',
+        },
+        tone: status == AmortizationStatus.terminated
+            ? FinanceTone.equity
+            : FinanceTone.info,
+      ),
+    ],
+  };
+}
+
+String _repaymentTypeLabel(RepaymentType type) {
+  return switch (type) {
+    RepaymentType.bill => '账单还款',
+    RepaymentType.installment => '分期还款',
+    RepaymentType.prepayment => '提前还款',
+    RepaymentType.unattributed => '未归属还款',
+  };
+}
+
+String _repaymentTargetLabel(RepaymentTargetType type) {
+  return switch (type) {
+    RepaymentTargetType.bill => '账单',
+    RepaymentTargetType.contract => '合同',
+    RepaymentTargetType.account => '账户',
+  };
 }
 
 String? _flowAccountId(

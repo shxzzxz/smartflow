@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -836,6 +838,61 @@ void main() {
       expect(budget.amount, const Money(minorUnits: -20000));
       expect(budget.caption, '120%/1000');
     });
+
+    test('business items add one business supporting line', () {
+      final item = _businessItem(
+        summary: const AmortizationBusinessItemSummary(
+          kind: AmortizationKind.prepaidExpense,
+          status: AmortizationStatus.active,
+          originalAmount: Money(minorUnits: 10000),
+          recognizedAmount: Money(minorUnits: 2000),
+          remainingAmount: Money(minorUnits: 8000),
+          postedPeriodCount: 2,
+          totalPeriodCount: 5,
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '预付摊销');
+      expect(row.supportingText, '已确认 2/5 · 剩余 80');
+      expect(row.badges.map((badge) => badge.label), contains('进行中'));
+    });
+
+    test('installments show paid periods and remaining principal', () {
+      final item = _businessItem(
+        summary: const InstallmentBusinessItemSummary(
+          installmentType: InstallmentType.purchase,
+          status: InstallmentContractStatus.active,
+          principal: Money(minorUnits: 12000),
+          remainingPrincipal: Money(minorUnits: 6000),
+          paidPeriodCount: 1,
+          totalPeriodCount: 2,
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '消费分期');
+      expect(row.supportingText, '已还 1/2 · 剩余本金 60');
+    });
+
+    test('ordinary ledger items do not reserve a supporting line', () {
+      final item = _businessItem(summary: const LedgerBusinessItemSummary());
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.supportingText, isNull);
+    });
   });
 }
 
@@ -1008,6 +1065,19 @@ TransactionReadModel _item({
     ],
     refundSummary: refundSummary,
     advanceSummary: advanceSummary,
+  );
+}
+
+BusinessItemReadModel _businessItem({required BusinessItemSummary summary}) {
+  final transaction = _item();
+  return BusinessItemReadModel.fromCandidate(
+    candidate: BusinessItemAnchorCandidate(
+      itemKey: BusinessItemKey.transactionGroup(transaction.id),
+      anchorTransactionId: transaction.id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: summary,
   );
 }
 

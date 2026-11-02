@@ -5,6 +5,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/token/transaction.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
@@ -14,6 +15,35 @@ import 'package:smartflow/widget/business/transaction/transaction_row.dart';
 import 'package:smartflow/widget/business/transaction/transaction_progress_badges.dart';
 
 void main() {
+  testWidgets('supporting information uses one optional line', (tester) async {
+    final base = _presentationWithBadges(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: TransactionRow(presentation: base)),
+      ),
+    );
+    expect(
+      tester.getSize(find.byType(TransactionRow)).height,
+      AppTransactionTokens.rowHeight,
+    );
+    expect(find.text('已确认 2/5 · 剩余 80'), findsNothing);
+
+    final withSupporting = base.copyWith(supportingText: '已确认 2/5 · 剩余 80');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: TransactionRow(presentation: withSupporting)),
+      ),
+    );
+
+    expect(find.text('已确认 2/5 · 剩余 80'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(TransactionRow)).height,
+      AppTransactionTokens.rowHeightWithSupporting,
+    );
+  });
+
   for (final purpose in [
     BusinessPurpose.dailyExpense,
     BusinessPurpose.dailyIncome,

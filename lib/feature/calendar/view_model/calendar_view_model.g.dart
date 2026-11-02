@@ -61,55 +61,53 @@ abstract class _$CalendarViewModel extends $Notifier<CalendarPageState> {
   }
 }
 
-@ProviderFor(calendarTransactions)
-final calendarTransactionsProvider = CalendarTransactionsFamily._();
+@ProviderFor(calendarBusinessItems)
+final calendarBusinessItemsProvider = CalendarBusinessItemsFamily._();
 
-final class CalendarTransactionsProvider
+final class CalendarBusinessItemsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionReadModel>>,
-          List<TransactionReadModel>,
-          Stream<List<TransactionReadModel>>
+          AsyncValue<BusinessItemPage>,
+          BusinessItemPage,
+          Stream<BusinessItemPage>
         >
-    with
-        $FutureModifier<List<TransactionReadModel>>,
-        $StreamProvider<List<TransactionReadModel>> {
-  CalendarTransactionsProvider._({
-    required CalendarTransactionsFamily super.from,
+    with $FutureModifier<BusinessItemPage>, $StreamProvider<BusinessItemPage> {
+  CalendarBusinessItemsProvider._({
+    required CalendarBusinessItemsFamily super.from,
     required DateTime super.argument,
   }) : super(
          retry: null,
-         name: r'calendarTransactionsProvider',
+         name: r'calendarBusinessItemsProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$calendarTransactionsHash();
+  String debugGetCreateSourceHash() => _$calendarBusinessItemsHash();
 
   @override
   String toString() {
-    return r'calendarTransactionsProvider'
+    return r'calendarBusinessItemsProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionReadModel>> $createElement(
+  $StreamProviderElement<BusinessItemPage> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionReadModel>> create(Ref ref) {
+  Stream<BusinessItemPage> create(Ref ref) {
     final argument = this.argument as DateTime;
-    return calendarTransactions(ref, argument);
+    return calendarBusinessItems(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is CalendarTransactionsProvider && other.argument == argument;
+    return other is CalendarBusinessItemsProvider && other.argument == argument;
   }
 
   @override
@@ -118,48 +116,44 @@ final class CalendarTransactionsProvider
   }
 }
 
-String _$calendarTransactionsHash() =>
-    r'bd89c114baa4089d279094e22dc2074f3ee5501e';
+String _$calendarBusinessItemsHash() =>
+    r'32005a7841f1a8887e4a3f21e4e4725a195fe8f1';
 
-final class CalendarTransactionsFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          Stream<List<TransactionReadModel>>,
-          DateTime
-        > {
-  CalendarTransactionsFamily._()
+final class CalendarBusinessItemsFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<BusinessItemPage>, DateTime> {
+  CalendarBusinessItemsFamily._()
     : super(
         retry: null,
-        name: r'calendarTransactionsProvider',
+        name: r'calendarBusinessItemsProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  CalendarTransactionsProvider call(DateTime selectedDate) =>
-      CalendarTransactionsProvider._(argument: selectedDate, from: this);
+  CalendarBusinessItemsProvider call(DateTime selectedDate) =>
+      CalendarBusinessItemsProvider._(argument: selectedDate, from: this);
 
   @override
-  String toString() => r'calendarTransactionsProvider';
+  String toString() => r'calendarBusinessItemsProvider';
 }
 
-/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+/// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+/// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 
 @ProviderFor(CalendarTransactionFeedViewModel)
 final calendarTransactionFeedViewModelProvider =
     CalendarTransactionFeedViewModelFamily._();
 
-/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+/// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+/// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 final class CalendarTransactionFeedViewModelProvider
     extends
         $NotifierProvider<
           CalendarTransactionFeedViewModel,
           CalendarTransactionFeedState
         > {
-  /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-  /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+  /// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+  /// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
   CalendarTransactionFeedViewModelProvider._({
     required CalendarTransactionFeedViewModelFamily super.from,
     required DateTime super.argument,
@@ -207,10 +201,10 @@ final class CalendarTransactionFeedViewModelProvider
 }
 
 String _$calendarTransactionFeedViewModelHash() =>
-    r'1e96b95f3f094708019bbf9ac7d6ed9065045344';
+    r'055e2270b3d662caab1f79d9292ddf67ace0ec55';
 
-/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+/// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+/// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 
 final class CalendarTransactionFeedViewModelFamily extends $Family
     with
@@ -230,8 +224,8 @@ final class CalendarTransactionFeedViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-  /// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+  /// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+  /// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 
   CalendarTransactionFeedViewModelProvider call(DateTime selectedDate) =>
       CalendarTransactionFeedViewModelProvider._(
@@ -243,8 +237,8 @@ final class CalendarTransactionFeedViewModelFamily extends $Family
   String toString() => r'calendarTransactionFeedViewModelProvider';
 }
 
-/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+/// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+/// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 
 abstract class _$CalendarTransactionFeedViewModel
     extends $Notifier<CalendarTransactionFeedState> {
@@ -688,7 +682,7 @@ final class CalendarContentProvider
   }
 }
 
-String _$calendarContentHash() => r'fed852c3ba9234ce542cddb50d36762b693760d0';
+String _$calendarContentHash() => r'1d990e2b03e28537efabc29754d9fe4eeed74e85';
 
 final class CalendarContentFamily extends $Family
     with

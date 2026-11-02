@@ -121,6 +121,32 @@ void main() {
     expect(item.impactsByAccountId['bank']?.netChange.minorUnits, 1000);
   });
 
+  test('batch anchor query returns fully projected transactions', () async {
+    final tx = _transaction('transfer', BusinessPurpose.transfer, 1000);
+    final service = _service(
+      transactions: {tx.id: tx},
+      accounts: [_account('cash'), _account('bank')],
+      lines: {
+        tx.id: [
+          _line(tx.id, 1, TransactionRole.settlementOut, 1000, 'cash'),
+          _line(tx.id, 2, TransactionRole.settlementIn, 1000, 'bank'),
+        ],
+      },
+      entries: {
+        tx.id: [
+          _entry(tx.id, 'cash', EntryDirection.credit),
+          _entry(tx.id, 'bank', EntryDirection.debit),
+        ],
+      },
+    );
+
+    final item = (await service.findTransactionsByIds({'transfer'})).single;
+
+    expect(item.lines, hasLength(2));
+    expect(item.impactsByAccountId['cash']?.netChange.minorUnits, -1000);
+    expect(item.impactsByAccountId['bank']?.netChange.minorUnits, 1000);
+  });
+
   test('projects counterparty identity and current vocabulary name', () async {
     final tx = _transaction(
       'expense',
@@ -211,6 +237,11 @@ class _FakeTransactionReadRepository implements TransactionReadRepository {
 
   @override
   Future<Transaction?> findById(String id) async => transactions[id];
+
+  @override
+  Future<List<Transaction>> findByIds(Set<String> ids) async => [
+    for (final id in ids) ?transactions[id],
+  ];
 
   @override
   Future<Map<String, DateTime>> findCreatedAtByIds(Set<String> ids) async => {

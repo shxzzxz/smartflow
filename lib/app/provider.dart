@@ -43,6 +43,10 @@ import '../infrastructure/orchestration/advance_ledger_port.dart';
 import '../infrastructure/orchestration/amortization_ledger_port.dart';
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
+import '../infrastructure/transaction_view/business_item/drift_advance_business_item_source.dart';
+import '../infrastructure/transaction_view/business_item/drift_amortization_business_item_source.dart';
+import '../infrastructure/transaction_view/business_item/drift_credit_business_item_source.dart';
+import '../infrastructure/transaction_view/business_item/drift_ledger_business_item_source.dart';
 import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
@@ -54,6 +58,7 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
+import '../application/transaction_view/transaction_view_query_api.dart';
 import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import '../application/orchestration/advance/query/advance_case_query_service.dart';
 import '../application/orchestration/amortization/command/amortization_plan_app_service.dart';
@@ -551,6 +556,20 @@ TransactionQueryService transactionQueryService(Ref ref) {
     accountQuery: ref.watch(accountQueryServiceProvider),
     counterpartyRepository: ref.watch(counterpartyRepositoryProvider),
     metricsSource: ref.watch(ledgerMetricsSourceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+BusinessItemQueryService businessItemQueryService(Ref ref) {
+  final database = ref.watch(appDatabaseProvider);
+  return BusinessItemQueryServiceImpl(
+    sources: [
+      DriftLedgerBusinessItemSource(database),
+      DriftAdvanceBusinessItemSource(database),
+      DriftAmortizationBusinessItemSource(database),
+      DriftCreditBusinessItemSource(database),
+    ],
+    transactionQuery: ref.watch(transactionQueryServiceProvider),
   );
 }
 

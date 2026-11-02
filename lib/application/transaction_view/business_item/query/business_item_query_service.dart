@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import '../../../../domain/ledger/entity/transaction.dart';
-import '../../../ledger/ledger_query_port_api.dart';
+import '../../../ledger/ledger_query_api.dart';
 import 'business_item_queries.dart';
 import 'business_item_read_models.dart';
 import 'business_item_source.dart';
@@ -20,12 +19,12 @@ abstract interface class BusinessItemQueryService {
 final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
   BusinessItemQueryServiceImpl({
     required Iterable<BusinessItemSource> sources,
-    required TransactionReadRepository transactionRead,
+    required TransactionBatchQueryService transactionQuery,
   }) : _sources = List.unmodifiable(sources),
-       _transactionRead = transactionRead;
+       _transactionQuery = transactionQuery;
 
   final List<BusinessItemSource> _sources;
-  final TransactionReadRepository _transactionRead;
+  final TransactionBatchQueryService _transactionQuery;
 
   @override
   Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
@@ -101,7 +100,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
         else
           Future.value(const <BusinessItemKey, BusinessItemSummary>{}),
     ];
-    final transactionFuture = _transactionRead.findByIds({
+    final transactionFuture = _transactionQuery.findTransactionsByIds({
       for (final candidate in selected) candidate.candidate.anchorTransactionId,
     });
     final results = await Future.wait<Object>([
@@ -113,7 +112,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
         results[index] as Map<BusinessItemKey, BusinessItemSummary>,
     ];
     final transactionsById = {
-      for (final transaction in results.last as List<Transaction>)
+      for (final transaction in results.last as List<TransactionReadModel>)
         transaction.id: transaction,
     };
 
@@ -133,7 +132,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
   BusinessItemReadModel _buildReadModel(
     _SourcedCandidate sourced,
     Map<BusinessItemKey, BusinessItemSummary> summaries,
-    Map<String, Transaction> transactionsById,
+    Map<String, TransactionReadModel> transactionsById,
   ) {
     final candidate = sourced.candidate;
     final transaction = transactionsById[candidate.anchorTransactionId];
@@ -151,9 +150,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     }
     return BusinessItemReadModel.fromCandidate(
       candidate: candidate,
-      anchorTransaction: TransactionReadModel.fromTransaction(
-        transaction: transaction,
-      ),
+      anchorTransaction: transaction,
       summary: summary,
     );
   }

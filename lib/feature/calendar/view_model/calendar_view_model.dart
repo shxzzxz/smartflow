@@ -5,6 +5,7 @@ import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/shared/app_settings_store.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
@@ -13,7 +14,7 @@ import '../presentation/calendar_month_presentation.dart';
 
 part 'calendar_view_model.g.dart';
 
-const calendarTransactionPageSize = 50;
+const calendarBusinessItemPageSize = 50;
 final _logger = Logger('feature.calendar');
 
 @riverpod
@@ -69,32 +70,27 @@ class CalendarViewModel extends _$CalendarViewModel {
 }
 
 @riverpod
-Stream<List<TransactionReadModel>> calendarTransactions(
-  Ref ref,
-  DateTime selectedDate,
-) {
+Stream<BusinessItemPage> calendarBusinessItems(Ref ref, DateTime selectedDate) {
   return ref
-      .watch(transactionQueryServiceProvider)
-      .watchTransactions(_dayQuery(selectedDate));
+      .watch(businessItemQueryServiceProvider)
+      .watchPage(_dayQuery(selectedDate));
 }
 
-TransactionListQuery _dayQuery(
+BusinessItemPageQuery _dayQuery(
   DateTime selectedDate, {
-  TransactionListCursor? before,
+  BusinessItemCursor? before,
 }) {
   final day = normalizeDate(selectedDate);
-  return TransactionListQuery(
-    match: const TransactionFactMatch(),
-    topLevelOnly: true,
+  return BusinessItemPageQuery(
     occurredFrom: day,
     occurredUntil: DateTime(day.year, day.month, day.day + 1),
-    limit: calendarTransactionPageSize,
+    limit: calendarBusinessItemPageSize,
     before: before,
   );
 }
 
-/// 选中日的交易分页。首页数据由 [calendarTransactions] 订阅推送，
-/// 后续页按游标补拉；任何交易变更都会把列表重置回第一页。
+/// 选中日的业务事项分页。首页数据由 [calendarBusinessItems] 订阅推送，
+/// 后续页按业务事项游标补拉；相关来源变化会把列表重置回第一页。
 @riverpod
 class CalendarTransactionFeedViewModel
     extends _$CalendarTransactionFeedViewModel {
@@ -102,18 +98,19 @@ class CalendarTransactionFeedViewModel
 
   @override
   CalendarTransactionFeedState build(DateTime selectedDate) {
-    final provider = calendarTransactionsProvider(selectedDate);
+    final provider = calendarBusinessItemsProvider(selectedDate);
     ref.listen(provider, (_, next) => _applyFirstPage(next));
     return _firstPageState(ref.read(provider));
   }
 
   CalendarTransactionFeedState _firstPageState(
-    AsyncValue<List<TransactionReadModel>> value,
+    AsyncValue<BusinessItemPage> value,
   ) {
     return switch (value) {
       AsyncData(:final value) => CalendarTransactionFeedState.loaded(
-        items: value,
-        hasMore: value.length == calendarTransactionPageSize,
+        items: value.items,
+        hasMore: value.hasMore,
+        nextCursor: value.nextCursor,
       ),
       AsyncError() => const CalendarTransactionFeedState.error(
         message: '加载失败，请稍后重试',
@@ -122,7 +119,7 @@ class CalendarTransactionFeedViewModel
     };
   }
 
-  void _applyFirstPage(AsyncValue<List<TransactionReadModel>> next) {
+  void _applyFirstPage(AsyncValue<BusinessItemPage> next) {
     if (next is AsyncLoading && state is CalendarTransactionFeedLoaded) return;
     _requestGeneration += 1;
     state = _firstPageState(next);
@@ -132,28 +129,21 @@ class CalendarTransactionFeedViewModel
     final current = state;
     if (current is! CalendarTransactionFeedLoaded ||
         !current.hasMore ||
-        current.isLoadingMore) {
+        current.isLoadingMore ||
+        current.nextCursor == null) {
       return;
     }
-    final cursorItem = current.items.last;
     final requestGeneration = _requestGeneration;
     state = current.copyWith(isLoadingMore: true);
     try {
       final nextPage = await ref
-          .read(transactionQueryServiceProvider)
-          .findTransactions(
-            _dayQuery(
-              selectedDate,
-              before: TransactionListCursor(
-                occurredAt: cursorItem.occurredAt,
-                id: cursorItem.id,
-              ),
-            ),
-          );
+          .read(businessItemQueryServiceProvider)
+          .findPage(_dayQuery(selectedDate, before: current.nextCursor));
       if (!ref.mounted || requestGeneration != _requestGeneration) return;
       state = current.copyWith(
-        items: [...current.items, ...nextPage],
-        hasMore: nextPage.length == calendarTransactionPageSize,
+        items: [...current.items, ...nextPage.items],
+        hasMore: nextPage.hasMore,
+        nextCursor: nextPage.nextCursor,
         isLoadingMore: false,
       );
     } catch (error, stackTrace) {
@@ -293,9 +283,9 @@ CalendarContentState calendarContent(
       today: now,
     ),
     day: CalendarDaySectionPresentation(
-      group: transactionGroupForDate(
+      group: businessItemGroupForDate(
         date: selectedDate,
-        transactions: loadedFeed?.items ?? const [],
+        items: loadedFeed?.items ?? const [],
         dailySummaries: dailySummaryValues,
         accountLookup: lookup,
       ),
@@ -376,8 +366,9 @@ sealed class CalendarTransactionFeedState {
       CalendarTransactionFeedError;
 
   const factory CalendarTransactionFeedState.loaded({
-    required List<TransactionReadModel> items,
+    required List<BusinessItemReadModel> items,
     required bool hasMore,
+    BusinessItemCursor? nextCursor,
     bool isLoadingMore,
     String? loadMoreErrorMessage,
   }) = CalendarTransactionFeedLoaded;
@@ -398,24 +389,28 @@ final class CalendarTransactionFeedLoaded extends CalendarTransactionFeedState {
   const CalendarTransactionFeedLoaded({
     required this.items,
     required this.hasMore,
+    this.nextCursor,
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
   });
 
-  final List<TransactionReadModel> items;
+  final List<BusinessItemReadModel> items;
   final bool hasMore;
+  final BusinessItemCursor? nextCursor;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
 
   CalendarTransactionFeedLoaded copyWith({
-    List<TransactionReadModel>? items,
+    List<BusinessItemReadModel>? items,
     bool? hasMore,
+    BusinessItemCursor? nextCursor,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
   }) {
     return CalendarTransactionFeedLoaded(
       items: items ?? this.items,
       hasMore: hasMore ?? this.hasMore,
+      nextCursor: nextCursor ?? this.nextCursor,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,
     );

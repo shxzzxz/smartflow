@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
-import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
@@ -567,7 +567,7 @@ void main() {
         DriftAmortizationBusinessItemSource(db),
         DriftCreditBusinessItemSource(db),
       ],
-      transactionRead: DriftTransactionReadRepository(db),
+      transactionQuery: _TransactionBatchQuery(db),
     );
     final firstPage = await service.findPage(_query(limit: 2));
     expect(firstPage.items.map((item) => item.anchorTransactionId), [
@@ -615,7 +615,7 @@ void main() {
         DriftLedgerBusinessItemSource(db),
         DriftAmortizationBusinessItemSource(db),
       ],
-      transactionRead: DriftTransactionReadRepository(db),
+      transactionQuery: _TransactionBatchQuery(db),
     );
     final iterator = StreamIterator(service.watchPage(_query()));
 
@@ -718,7 +718,7 @@ LIMIT 21
         DriftLedgerBusinessItemSource(db),
         DriftAdvanceBusinessItemSource(db),
       ],
-      transactionRead: DriftTransactionReadRepository(db),
+      transactionQuery: _TransactionBatchQuery(db),
     );
 
     final stopwatch = Stopwatch()..start();
@@ -729,6 +729,29 @@ LIMIT 21
     expect(page.hasMore, isTrue);
     expect(stopwatch.elapsed, lessThan(const Duration(seconds: 2)));
   });
+}
+
+final class _TransactionBatchQuery implements TransactionBatchQueryService {
+  const _TransactionBatchQuery(this._db);
+
+  final AppDatabase _db;
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(
+    Set<String> ids,
+  ) async {
+    final transactions = await DriftTransactionReadRepository(
+      _db,
+    ).findByIds(ids);
+    final byId = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
+    return [
+      for (final id in ids)
+        if (byId[id] case final transaction?)
+          TransactionReadModel.fromTransaction(transaction: transaction),
+    ];
+  }
 }
 
 BusinessItemPageQuery _query({

@@ -55,7 +55,9 @@ class TransactionRow extends StatelessWidget {
             : Colors.transparent,
         child: SizedBox(
           width: double.infinity,
-          height: AppTransactionTokens.rowHeight,
+          height: presentation.supportingText == null
+              ? AppTransactionTokens.rowHeight
+              : AppTransactionTokens.rowHeightWithSupporting,
           child: InkWell(
             onTap: onTap,
             onLongPress: onLongPress,
@@ -111,6 +113,19 @@ class TransactionRow extends StatelessWidget {
                             badges: presentation.badges,
                           ),
                         ),
+                        if (presentation.supportingText case final text?) ...[
+                          const SizedBox(height: AppSpacing.space2),
+                          SizedBox(
+                            width: double.infinity,
+                            height: AppSpacing.space16,
+                            child: Text(
+                              text,
+                              style: textStyles.transactionSupporting,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.space2),
                         SizedBox(
                           width: double.infinity,

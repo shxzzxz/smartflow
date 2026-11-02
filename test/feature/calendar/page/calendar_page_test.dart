@@ -6,6 +6,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
@@ -25,7 +26,9 @@ void main() {
   ) async {
     await _pumpCalendar(
       tester,
-      dayTransactions: [_item(_selectedDate.add(const Duration(hours: 9)))],
+      dayTransactions: [
+        _businessItem(_selectedDate.add(const Duration(hours: 9))),
+      ],
     );
 
     expect(find.text('1月15日'), findsOneWidget);
@@ -179,17 +182,20 @@ void main() {
   testWidgets('loads the next day page when scrolled to the end', (
     tester,
   ) async {
-    final service = _FakeTransactionQueryService(
-      nextPage: [
-        _item(_selectedDate.add(const Duration(hours: 1)), id: 'older'),
-      ],
+    final service = _FakeBusinessItemQueryService(
+      nextPage: _page([
+        _businessItem(_selectedDate.add(const Duration(hours: 1)), id: 'older'),
+      ]),
     );
     await _pumpCalendar(
       tester,
       transactionService: service,
       dayTransactions: [
-        for (var index = 0; index < calendarTransactionPageSize; index++)
-          _item(_selectedDate.add(const Duration(hours: 9)), id: 'tx-$index'),
+        for (var index = 0; index < calendarBusinessItemPageSize; index++)
+          _businessItem(
+            _selectedDate.add(const Duration(hours: 9)),
+            id: 'tx-$index',
+          ),
       ],
     );
 
@@ -205,8 +211,8 @@ void main() {
 
 Future<void> _pumpCalendar(
   WidgetTester tester, {
-  required List<TransactionReadModel> dayTransactions,
-  _FakeTransactionQueryService? transactionService,
+  required List<BusinessItemReadModel> dayTransactions,
+  _FakeBusinessItemQueryService? transactionService,
   AppSettingsStore? settingsStore,
   List<CreditDueCalendarItemReadModel> dueItems = const [],
   List<MonthlyBillSummaryReadModel> monthlyBills = const [],
@@ -225,8 +231,8 @@ Future<void> _pumpCalendar(
         currentDateTimeProvider.overrideWith(
           (ref) => _selectedDate.add(const Duration(hours: 9)),
         ),
-        transactionQueryServiceProvider.overrideWithValue(
-          transactionService ?? _FakeTransactionQueryService(),
+        businessItemQueryServiceProvider.overrideWithValue(
+          transactionService ?? _FakeBusinessItemQueryService(),
         ),
         creditAccountQueryServiceProvider.overrideWithValue(
           _FakeCreditAccountQueryService(
@@ -237,9 +243,14 @@ Future<void> _pumpCalendar(
         accountQueryServiceProvider.overrideWithValue(
           _FakeAccountQueryService(),
         ),
-        calendarTransactionsProvider(
-          _selectedDate,
-        ).overrideWith((ref) => Stream.value(dayTransactions)),
+        calendarBusinessItemsProvider(_selectedDate).overrideWith(
+          (ref) => Stream.value(
+            _page(
+              dayTransactions,
+              hasMore: dayTransactions.length >= calendarBusinessItemPageSize,
+            ),
+          ),
+        ),
         calendarCashflowComparisonProvider(
           _visibleMonth,
         ).overrideWith((ref) => Stream.value(_comparison())),
@@ -269,19 +280,17 @@ Future<void> _pumpCalendar(
             ),
             GoRoute(
               path: '/calendar/bills/month',
-              builder:
-                  (context, state) => CalendarMonthBillsPage(
-                    month: DateTime.parse(
-                      '${state.uri.queryParameters['month']!}-01',
-                    ),
-                  ),
+              builder: (context, state) => CalendarMonthBillsPage(
+                month: DateTime.parse(
+                  '${state.uri.queryParameters['month']!}-01',
+                ),
+              ),
             ),
             GoRoute(
               path: '/calendar/bills/day',
-              builder:
-                  (context, state) => CalendarDayBillsPage(
-                    date: DateTime.parse(state.uri.queryParameters['date']!),
-                  ),
+              builder: (context, state) => CalendarDayBillsPage(
+                date: DateTime.parse(state.uri.queryParameters['date']!),
+              ),
             ),
           ],
         ),
@@ -354,6 +363,26 @@ TransactionReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
   );
 }
 
+BusinessItemReadModel _businessItem(DateTime occurredAt, {String id = 'tx-1'}) {
+  final transaction = _item(occurredAt, id: id);
+  return BusinessItemReadModel.fromCandidate(
+    candidate: BusinessItemAnchorCandidate(
+      itemKey: BusinessItemKey.transactionGroup(id),
+      anchorTransactionId: id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: const LedgerBusinessItemSummary(),
+  );
+}
+
+BusinessItemPage _page(
+  List<BusinessItemReadModel> items, {
+  bool hasMore = false,
+}) {
+  return BusinessItemPage(items: items, hasMore: hasMore);
+}
+
 CashflowComparison _comparison() {
   return const CashflowComparison(
     current: CashflowSummary(
@@ -385,26 +414,21 @@ class _InMemoryAppSettingsStore implements AppSettingsStore {
   }
 }
 
-class _FakeTransactionQueryService implements TransactionQueryService {
-  _FakeTransactionQueryService({
-    List<TransactionReadModel> nextPage = const [],
-  }) : _nextPage = nextPage;
+class _FakeBusinessItemQueryService implements BusinessItemQueryService {
+  _FakeBusinessItemQueryService({BusinessItemPage? nextPage})
+    : _nextPage = nextPage ?? _page(const []);
 
-  final List<TransactionReadModel> _nextPage;
-  final queries = <TransactionListQuery>[];
+  final BusinessItemPage _nextPage;
+  final queries = <BusinessItemPageQuery>[];
 
   @override
-  Stream<List<TransactionReadModel>> watchTransactions(
-    TransactionListQuery query,
-  ) {
+  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
     queries.add(query);
     return const Stream.empty();
   }
 
   @override
-  Future<List<TransactionReadModel>> findTransactions(
-    TransactionListQuery query,
-  ) async {
+  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
     queries.add(query);
     return _nextPage;
   }

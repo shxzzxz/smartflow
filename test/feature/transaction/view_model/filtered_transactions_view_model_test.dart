@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
@@ -12,42 +13,11 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/view_model/filtered_transactions_view_model.dart';
 
 void main() {
-  test(
-    'category feed includes child categories and only top-level transactions',
-    () async {
-      final service = _RecordingTransactionQueryService();
-      final container = ProviderContainer(
-        overrides: [
-          transactionQueryServiceProvider.overrideWithValue(service),
-          accountLookupProvider.overrideWithValue(
-            AsyncData(AccountLookup(_accounts)),
-          ),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      final provider = filteredTransactionsProvider(
-        FilteredTransactionTarget.category,
-        'food',
-        filteredTransactionPageSize,
-      );
-      final subscription = container.listen(provider, (_, _) {});
-      addTearDown(subscription.close);
-      await container.read(provider.future);
-
-      final query = service.queries.single;
-      expect(query.match.categoryAccountIds, {'food', 'breakfast'});
-      expect(query.tagIds, isNull);
-      expect(query.topLevelOnly, isTrue);
-      expect(query.limit, filteredTransactionPageSize);
-    },
-  );
-
-  test('tag feed applies the selected tag filter', () async {
-    final service = _RecordingTransactionQueryService();
+  test('category business items include child category filters', () async {
+    final service = _RecordingBusinessItemQueryService();
     final container = ProviderContainer(
       overrides: [
-        transactionQueryServiceProvider.overrideWithValue(service),
+        businessItemQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -55,7 +25,34 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final provider = filteredTransactionsProvider(
+    final provider = filteredBusinessItemsProvider(
+      FilteredTransactionTarget.category,
+      'food',
+      filteredTransactionPageSize,
+    );
+    final subscription = container.listen(provider, (_, _) {});
+    addTearDown(subscription.close);
+    await container.read(provider.future);
+
+    final query = service.queries.single;
+    expect(query.categoryAccountIds, {'food', 'breakfast'});
+    expect(query.tagIds, isNull);
+    expect(query.limit, filteredTransactionPageSize);
+  });
+
+  test('tag feed applies the selected tag filter', () async {
+    final service = _RecordingBusinessItemQueryService();
+    final container = ProviderContainer(
+      overrides: [
+        businessItemQueryServiceProvider.overrideWithValue(service),
+        accountLookupProvider.overrideWithValue(
+          AsyncData(AccountLookup(_accounts)),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final provider = filteredBusinessItemsProvider(
       FilteredTransactionTarget.tag,
       'travel',
       filteredTransactionPageSize,
@@ -65,16 +62,15 @@ void main() {
     await container.read(provider.future);
 
     final query = service.queries.single;
-    expect(query.match.categoryAccountIds, isNull);
+    expect(query.categoryAccountIds, isNull);
     expect(query.tagIds, {'travel'});
-    expect(query.topLevelOnly, isTrue);
   });
 
   test('counterparty feed applies the selected counterparty filter', () async {
-    final service = _RecordingTransactionQueryService();
+    final service = _RecordingBusinessItemQueryService();
     final container = ProviderContainer(
       overrides: [
-        transactionQueryServiceProvider.overrideWithValue(service),
+        businessItemQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -82,7 +78,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final provider = filteredTransactionsProvider(
+    final provider = filteredBusinessItemsProvider(
       FilteredTransactionTarget.counterparty,
       'ziroom',
       filteredTransactionPageSize,
@@ -94,14 +90,13 @@ void main() {
     final query = service.queries.single;
     expect(query.counterpartyId, 'ziroom');
     expect(query.tagIds, isNull);
-    expect(query.topLevelOnly, isTrue);
   });
 
   test('counterparty feed labels the current vocabulary name', () async {
-    final service = _RecordingTransactionQueryService();
+    final service = _RecordingBusinessItemQueryService();
     final container = ProviderContainer(
       overrides: [
-        transactionQueryServiceProvider.overrideWithValue(service),
+        businessItemQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -283,15 +278,40 @@ Account _category(String id, String name, {String? parentId}) {
   );
 }
 
-class _RecordingTransactionQueryService implements TransactionQueryService {
-  final queries = <TransactionListQuery>[];
+BusinessItemReadModel _businessItem(String id) {
+  final transaction = TransactionReadModel(
+    id: id,
+    businessPurpose: BusinessPurpose.dailyExpense,
+    occurredAt: DateTime(2026, 10, 1, 12),
+    primaryAmount: const Money(minorUnits: 1234),
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+  );
+  return BusinessItemReadModel.fromCandidate(
+    candidate: BusinessItemAnchorCandidate(
+      itemKey: BusinessItemKey.transactionGroup(id),
+      anchorTransactionId: id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: const LedgerBusinessItemSummary(),
+  );
+}
+
+BusinessItemPage _page(List<BusinessItemReadModel> items, int limit) {
+  return BusinessItemPage(
+    items: items.take(limit),
+    hasMore: items.length > limit,
+  );
+}
+
+class _RecordingBusinessItemQueryService implements BusinessItemQueryService {
+  final queries = <BusinessItemPageQuery>[];
 
   @override
-  Stream<List<TransactionReadModel>> watchTransactions(
-    TransactionListQuery query,
-  ) {
+  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
     queries.add(query);
-    return Stream.value(const []);
+    return Stream.value(BusinessItemPage(items: const [], hasMore: false));
   }
 
   @override
@@ -319,7 +339,7 @@ class _BatchFixture {
     final service = _RecordingBatchService();
     final container = ProviderContainer(
       overrides: [
-        transactionQueryServiceProvider.overrideWithValue(query),
+        businessItemQueryServiceProvider.overrideWithValue(query),
         transactionBatchOperationAppServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
@@ -345,30 +365,22 @@ class _BatchFixture {
   }
 }
 
-class _BatchQueryService implements TransactionQueryService {
+class _BatchQueryService implements BusinessItemQueryService {
   _BatchQueryService(int count)
-    : items = [
-        for (var i = 0; i < count; i++)
-          TransactionReadModel(
-            id: 'tx-$i',
-            businessPurpose: BusinessPurpose.dailyExpense,
-            occurredAt: DateTime(2026, 10, 1, 12),
-            primaryAmount: const Money(minorUnits: 1234),
-            isExcludedFromStats: false,
-            isExcludedFromBudget: false,
-            impactsByAccountId: const {},
-          ),
-      ];
+    : items = [for (var i = 0; i < count; i++) _businessItem('tx-$i')];
 
-  List<TransactionReadModel> items;
-  final changes = StreamController<List<TransactionReadModel>>.broadcast();
+  List<BusinessItemReadModel> items;
+  final changes = StreamController<List<BusinessItemReadModel>>.broadcast();
 
   @override
-  Stream<List<TransactionReadModel>> watchTransactions(
-    TransactionListQuery query,
-  ) async* {
-    yield items.take(query.limit!).toList();
-    yield* changes.stream.map((items) => items.take(query.limit!).toList());
+  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) async* {
+    yield _page(items, query.limit);
+    yield* changes.stream.map((items) => _page(items, query.limit));
+  }
+
+  @override
+  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+    return _page(items, query.limit);
   }
 
   @override

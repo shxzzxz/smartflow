@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/time/month_key.dart';
 import '../../../shared/account_profile/account_selection_policy.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
@@ -90,16 +91,16 @@ Stream<List<TransactionReadModel>> transactionList(
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactions(
-        TransactionListQuery(
+        LedgerImpactFeedQuery(
           match: TransactionImpactMatch(
             settlementAccountIds: settlementAccountId == null
                 ? null
                 : {settlementAccountId},
           ),
-          topLevelOnly: settlementAccountId == null,
+          includeChildTransactions: settlementAccountId != null,
           limit: limit,
           offset: offset,
-        ),
+        ).toTransactionListQuery(),
       );
 }
 

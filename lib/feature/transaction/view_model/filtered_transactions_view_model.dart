@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../shared/provider/counterparty_providers.dart';
 import '../../shared/presentation/account_lookup.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
@@ -24,7 +25,7 @@ class FilteredTransactionPaging extends _$FilteredTransactionPaging {
 }
 
 @riverpod
-Stream<List<TransactionReadModel>> filteredTransactions(
+Stream<BusinessItemPage> filteredBusinessItems(
   Ref ref,
   FilteredTransactionTarget target,
   String targetId,
@@ -41,15 +42,16 @@ Stream<List<TransactionReadModel>> filteredTransactions(
   };
 
   yield* ref
-      .watch(transactionQueryServiceProvider)
-      .watchTransactions(
-        TransactionListQuery(
-          match: TransactionFactMatch(categoryAccountIds: categoryIds),
+      .watch(businessItemQueryServiceProvider)
+      .watchPage(
+        BusinessItemPageQuery(
+          occurredFrom: DateTime.utc(1),
+          occurredUntil: DateTime.utc(9999, 12, 31),
+          categoryAccountIds: categoryIds,
           tagIds: target == FilteredTransactionTarget.tag ? {targetId} : null,
           counterpartyId: target == FilteredTransactionTarget.counterparty
               ? targetId
               : null,
-          topLevelOnly: true,
           limit: limit,
         ),
       );
@@ -57,7 +59,7 @@ Stream<List<TransactionReadModel>> filteredTransactions(
 
 @riverpod
 class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
-  List<TransactionReadModel> _previousItems = const [];
+  List<BusinessItemReadModel> _previousItems = const [];
   var _batch = const FilteredTransactionBatchState();
 
   @override
@@ -70,7 +72,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     );
     final limit = pageCount * filteredTransactionPageSize;
     final transactions = ref.watch(
-      filteredTransactionsProvider(target, targetId, limit),
+      filteredBusinessItemsProvider(target, targetId, limit),
     );
     final accountLookup = ref.watch(accountLookupProvider);
     final tags = target == FilteredTransactionTarget.tag
@@ -127,9 +129,9 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     return switch (transactions) {
       AsyncData(:final value) => _loaded(
         metadata: metadata,
-        items: _previousItems = value,
+        items: _previousItems = value.items,
         accountLookup: lookup,
-        hasMore: value.length == limit,
+        hasMore: value.hasMore,
         isLoadingMore: false,
       ),
       AsyncError() =>
@@ -256,7 +258,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
           filteredTransactionPagingProvider(target, targetId),
         );
         ref.invalidate(
-          filteredTransactionsProvider(
+          filteredBusinessItemsProvider(
             target,
             targetId,
             pageCount * filteredTransactionPageSize,
@@ -272,7 +274,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
 
   FilteredTransactionsLoaded _loaded({
     required _FilteredTransactionMetadata metadata,
-    required List<TransactionReadModel> items,
+    required List<BusinessItemReadModel> items,
     required AccountLookup accountLookup,
     required bool hasMore,
     required bool isLoadingMore,
@@ -282,10 +284,9 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
       title: metadata.title,
       subtitle: metadata.subtitle,
       emptyMessage: metadata.emptyMessage,
-      groups: groupTransactionsByDay(
+      groups: groupBusinessItemsByDay(
         items: items,
         accountLookup: accountLookup,
-        amountSource: metadata.amountSource,
       ),
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,
@@ -314,7 +315,6 @@ _FilteredTransactionMetadata? _metadata(
         title: category.name,
         subtitle: '分类交易',
         emptyMessage: '该分类暂无交易',
-        amountSource: const TransactionGroupAmountSource(),
       );
     case FilteredTransactionTarget.tag:
       TagView? selectedTag;
@@ -329,7 +329,6 @@ _FilteredTransactionMetadata? _metadata(
         title: selectedTag.name,
         subtitle: '标签交易',
         emptyMessage: '该标签暂无交易',
-        amountSource: const TransactionGroupAmountSource(),
       );
     case FilteredTransactionTarget.counterparty:
       CounterpartyView? selectedCounterparty;
@@ -344,7 +343,6 @@ _FilteredTransactionMetadata? _metadata(
         title: selectedCounterparty.name,
         subtitle: '对手方交易',
         emptyMessage: '该对手方暂无交易',
-        amountSource: const TransactionGroupAmountSource(),
       );
   }
 }
@@ -366,13 +364,11 @@ class _FilteredTransactionMetadata {
     required this.title,
     required this.subtitle,
     required this.emptyMessage,
-    required this.amountSource,
   });
 
   final String title;
   final String subtitle;
   final String emptyMessage;
-  final TransactionListAmountSource amountSource;
 }
 
 sealed class FilteredTransactionsState {

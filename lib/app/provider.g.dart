@@ -2678,7 +2678,55 @@ final class TransactionQueryServiceProvider
 }
 
 String _$transactionQueryServiceHash() =>
-    r'46f0fd5fb78038070d39ed7aa0a5de6b62112d10';
+    r'63baf97bb16ba02a1cc8ad1dd0c13870e5d0462b';
+
+@ProviderFor(businessItemQueryService)
+final businessItemQueryServiceProvider = BusinessItemQueryServiceProvider._();
+
+final class BusinessItemQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          BusinessItemQueryService,
+          BusinessItemQueryService,
+          BusinessItemQueryService
+        >
+    with $Provider<BusinessItemQueryService> {
+  BusinessItemQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'businessItemQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$businessItemQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BusinessItemQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BusinessItemQueryService create(Ref ref) {
+    return businessItemQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BusinessItemQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BusinessItemQueryService>(value),
+    );
+  }
+}
+
+String _$businessItemQueryServiceHash() =>
+    r'25aff96fed750daabd43ba05c98f0102c0c58b8b';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

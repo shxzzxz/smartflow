@@ -19,7 +19,13 @@ import 'transaction_queries.dart';
 import 'transaction_read_models.dart';
 import 'transaction_scope.dart';
 
-abstract interface class TransactionQueryService {
+abstract interface class TransactionBatchQueryService {
+  /// Batch-loads fully projected transactions without issuing per-item reads.
+  Future<List<TransactionReadModel>> findTransactionsByIds(Set<String> ids);
+}
+
+abstract interface class TransactionQueryService
+    implements TransactionBatchQueryService {
   /// 交易列表订阅同时响应交易事实与账户快照变化：
   /// 分类改名、换图标或调整二级归属后重新规范化查询并重新投影。
   Stream<List<TransactionReadModel>> watchTransactions(
@@ -29,6 +35,9 @@ abstract interface class TransactionQueryService {
   Future<List<TransactionReadModel>> findTransactions(
     TransactionListQuery query,
   );
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(Set<String> ids);
 
   Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
 
@@ -89,6 +98,23 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
   ) {
     return _loadTransactions(query);
+  }
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(
+    Set<String> ids,
+  ) async {
+    if (ids.isEmpty) return const [];
+    final transactions = await _txRead.findByIds(ids);
+    if (transactions.isEmpty) return const [];
+    final byId = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
+    final ordered = [for (final id in ids) ?byId[id]];
+    return _projectTransactions(
+      ordered,
+      await _accountQuery.findAccountsById(),
+    );
   }
 
   Future<List<TransactionReadModel>> _loadTransactions(
