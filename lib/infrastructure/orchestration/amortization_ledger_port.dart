@@ -208,6 +208,23 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
   }
 
   @override
+  Future<void> rewriteTransfer({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
+  }) async {
+    await _editing.editTransfer(
+      EditTransferCommand(
+        transactionId: transactionId,
+        amount: amount,
+        outgoingAllocations: outgoingAllocations,
+        incomingAllocations: incomingAllocations,
+      ),
+    );
+  }
+
+  @override
   Future<void> rewriteExpense({
     required String transactionId,
     required Money amount,

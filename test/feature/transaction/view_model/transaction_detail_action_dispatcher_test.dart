@@ -56,6 +56,9 @@ class _FakeEditCreditRepaymentTransactionCommand extends Fake
 
 class _FakeEditRepaymentCommand extends Fake implements EditRepaymentCommand {}
 
+class _FakeUpdateTransactionBasicInfoCommand extends Fake
+    implements UpdateTransactionBasicInfoCommand {}
+
 void main() {
   late _MockTransactionEditAppService editService;
   late _MockTransactionUpdateAppService updateService;
@@ -75,6 +78,7 @@ void main() {
     registerFallbackValue(_FakeDeleteCreditRepaymentCommand());
     registerFallbackValue(_FakeEditCreditRepaymentTransactionCommand());
     registerFallbackValue(_FakeEditRepaymentCommand());
+    registerFallbackValue(_FakeUpdateTransactionBasicInfoCommand());
   });
 
   setUp(() {
@@ -140,6 +144,58 @@ void main() {
       verify(() => advanceAppService.editAdvance(any())).called(1);
     },
   );
+
+  test('amortization business fields update the ledger transaction', () async {
+    final transaction = TransactionReadModel(
+      id: 'amortization-entry',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 1, 31),
+      primaryAmount: const Money(minorUnits: 10000),
+      ownership: const TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+      ),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+    );
+    when(() => updateService.updateBasicInfo(any())).thenAnswer(
+      (_) async =>
+          const PostedTransactionResult(transactionId: 'amortization-entry'),
+    );
+    final dispatcher = createTransactionDetailActionDispatcher(
+      transaction: transaction,
+      editService: editService,
+      updateService: updateService,
+      installmentAppService: installmentAppService,
+      disbursementInstallmentAppService: disbursementInstallmentAppService,
+      consumptionInstallmentAppService: consumptionInstallmentAppService,
+      billRepaymentAppService: billRepaymentAppService,
+      installmentPrepaymentAppService: installmentPrepaymentAppService,
+      accountRepaymentAppService: accountRepaymentAppService,
+      repaymentOwnerQuery: repaymentOwnerQuery,
+    );
+
+    expect(
+      await dispatcher.changeNote('updated note'),
+      isA<UiActionSuccess<void>>(),
+    );
+    expect(
+      await dispatcher.changeOccurredAt(DateTime(2026, 2, 1)),
+      isA<UiActionSuccess<void>>(),
+    );
+    expect(
+      await dispatcher.changePostedAt(DateTime(2026, 2, 2)),
+      isA<UiActionSuccess<void>>(),
+    );
+
+    final commands = verify(
+      () => updateService.updateBasicInfo(captureAny()),
+    ).captured.cast<UpdateTransactionBasicInfoCommand>();
+    expect(commands, hasLength(3));
+    expect(commands[0].note, isNotNull);
+    expect(commands[1].occurredAt, DateTime(2026, 2, 1));
+    expect(commands[2].postedAt, DateTime(2026, 2, 2));
+  });
 
   test(
     'advance refund inheritance routes account edits through orchestration',

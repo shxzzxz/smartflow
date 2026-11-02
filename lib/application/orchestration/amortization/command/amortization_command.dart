@@ -58,6 +58,23 @@ class CreateAmortizationRefundCommand {
   final DateTime? postedAt;
 }
 
+class EditAmortizationRefundCommand {
+  EditAmortizationRefundCommand({
+    required this.planId,
+    required this.refundId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    required this.now,
+  }) : categoryAllocations = List.unmodifiable(categoryAllocations),
+       settlementAllocations = List.unmodifiable(settlementAllocations);
+
+  final String planId;
+  final String refundId;
+  final List<AccountAmountAllocation> categoryAllocations;
+  final List<AccountAmountAllocation> settlementAllocations;
+  final DateTime now;
+}
+
 class TerminateAmortizationPlanCommand {
   TerminateAmortizationPlanCommand({
     required this.planId,
@@ -71,4 +88,20 @@ class TerminateAmortizationPlanCommand {
   final DateTime terminatedAt;
   final List<AccountAmountAllocation> categoryReturnAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
+}
+
+class UndoAmortizationTerminationCommand {
+  const UndoAmortizationTerminationCommand({
+    required this.planId,
+    required this.now,
+  });
+
+  final String planId;
+  final DateTime now;
+}
+
+class DeleteAmortizationPlanCommand {
+  const DeleteAmortizationPlanCommand({required this.planId});
+
+  final String planId;
 }

@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
+import 'package:smartflow/domain/orchestration/entity/amortization_termination.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 
 void main() {
@@ -136,4 +138,147 @@ void main() {
     expect(updated.periods.every((period) => period.isZero), isTrue);
     expect(updated.status, AmortizationStatus.completed);
   });
+
+  test('editing a refund replaces its facts and keeps posted identities', () {
+    final created = _plan(multiCategory: true);
+    final refunded = created.withRefund(
+      AmortizationRefund(
+        id: 'refund',
+        planId: created.id,
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 10000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 20000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: const Money(minorUnits: 30000),
+        ),
+        transferTransactionId: 'refund-transfer',
+      ),
+    );
+    final posted = refunded.withPeriods([
+      refunded.periods.first.posted('recognition-1'),
+      ...refunded.periods.skip(1),
+    ]);
+    final edited = posted.withUpdatedRefund(
+      AmortizationRefund(
+        id: 'refund',
+        planId: posted.id,
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 15000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 15000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-d',
+          amount: const Money(minorUnits: 30000),
+        ),
+        transferTransactionId: 'refund-transfer',
+      ),
+    );
+
+    expect(edited.refunds.single.id, 'refund');
+    expect(edited.periods.first.transactionId, 'recognition-1');
+    expect(
+      edited.periods.first.categoryAllocations.map(
+        (allocation) => allocation.accountId,
+      ),
+      ['category-a', 'category-b'],
+    );
+    expect(
+      sumAllocations(edited.periods.first.categoryAllocations),
+      edited.periods.first.amount,
+    );
+  });
+
+  test('termination cannot return more than the unrecognized balance', () {
+    final created = _plan(recognitionCount: 12, totalMinor: 120000);
+    final posted = created.withPeriods([
+      for (var index = 0; index < created.periods.length; index++)
+        index < 10
+            ? created.periods[index].posted('recognition-$index')
+            : created.periods[index].canceled(),
+    ]);
+
+    expect(
+      () => posted.terminatedWith(
+        termination: AmortizationTermination(
+          id: 'termination',
+          planId: posted.id,
+          terminatedAt: DateTime(2026, 3, 15),
+          categoryReturnAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: const Money(minorUnits: 50000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: const Money(minorUnits: 50000),
+          ),
+          recognitionTransactionId: 'termination-recognition',
+          returnTransactionId: 'termination-return',
+        ),
+        periods: posted.periods,
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+  });
+}
+
+AmortizationPlan _plan({
+  int recognitionCount = 4,
+  int totalMinor = 60000,
+  bool multiCategory = false,
+}) {
+  return AmortizationPlan.create(
+    id: 'plan',
+    kind: AmortizationKind.prepaidExpense,
+    deferralAccountId: 'deferral',
+    fundingAllocations: multiCategory
+        ? [
+            AccountAmountAllocation(
+              accountId: 'account-c',
+              amount: Money(minorUnits: totalMinor ~/ 2),
+            ),
+            AccountAmountAllocation(
+              accountId: 'account-d',
+              amount: Money(minorUnits: totalMinor - totalMinor ~/ 2),
+            ),
+          ]
+        : singleAllocation(
+            accountId: 'account-c',
+            amount: Money(minorUnits: totalMinor),
+          ),
+    categoryAllocations: multiCategory
+        ? [
+            AccountAmountAllocation(
+              accountId: 'category-a',
+              amount: Money(minorUnits: totalMinor ~/ 3),
+            ),
+            AccountAmountAllocation(
+              accountId: 'category-b',
+              amount: Money(minorUnits: totalMinor - totalMinor ~/ 3),
+            ),
+          ]
+        : singleAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: totalMinor),
+          ),
+    originalAmount: Money(minorUnits: totalMinor),
+    cadenceUnit: AmortizationCadenceUnit.monthly,
+    cadenceInterval: 1,
+    firstRecognitionAt: DateTime(2026, 1, 31),
+    recognitionCount: recognitionCount,
+    initialTransactionId: 'initial',
+  );
 }

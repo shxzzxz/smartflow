@@ -89,14 +89,19 @@ class AmortizationPlan {
   Money get netAmount => originalAmount - refundedAmount;
 
   List<AccountAmountAllocation> get currentCategoryAllocations =>
-      subtractAllocations(
-        base: categoryAllocations,
-        reductions: refunds.expand((refund) => refund.categoryAllocations),
-      );
+      _categoryAllocationsAfterRefunds(refunds);
+
+  List<AccountAmountAllocation> categoryAllocationsExcludingRefund(
+    String refundId,
+  ) {
+    return _categoryAllocationsAfterRefunds(
+      refunds.where((refund) => refund.id != refundId),
+    );
+  }
 
   AmortizationStatus get status {
     if (termination != null) return AmortizationStatus.terminated;
-    if (periods.every((period) => !period.isPending && !period.isPosted)) {
+    if (periods.every((period) => period.isPosted || period.isZero)) {
       return AmortizationStatus.completed;
     }
     if (netAmount == Money.zero()) return AmortizationStatus.completed;
@@ -178,11 +183,49 @@ class AmortizationPlan {
         'Refund exceeds the current amortization balance.',
       );
     }
-    final nextCategoryAllocations = subtractAllocations(
-      base: currentCategoryAllocations,
-      reductions: refund.categoryAllocations,
+    return _withRefundFacts([...refunds, refund]);
+  }
+
+  AmortizationPlan withUpdatedRefund(AmortizationRefund refund) {
+    if (refund.planId != id) {
+      throw _invalid('refund.planId', 'Refund plan does not match.');
+    }
+    if (status == AmortizationStatus.terminated) {
+      throw _invalid('refund', 'A terminated plan cannot be refunded.');
+    }
+    final index = refunds.indexWhere((existing) => existing.id == refund.id);
+    if (index < 0) {
+      throw _invalid('refund.id', 'Refund does not exist.');
+    }
+    if (!allocationsFitAvailable(
+      requested: refund.categoryAllocations,
+      available: categoryAllocationsExcludingRefund(refund.id),
+    )) {
+      throw _invalid(
+        'refund',
+        'Refund exceeds the current amortization balance.',
+      );
+    }
+    final nextRefunds = [...refunds]..[index] = refund;
+    return _withRefundFacts(nextRefunds);
+  }
+
+  AmortizationPlan _withRefundFacts(List<AmortizationRefund> nextRefunds) {
+    final nextCategoryAllocations = _categoryAllocationsAfterRefunds(
+      nextRefunds,
     );
-    final nextNetAmount = netAmount - refund.amount;
+    final nextNetAmount =
+        originalAmount -
+        nextRefunds.fold(
+          Money.zero(),
+          (total, refund) => total + refund.amount,
+        );
+    if (sumAllocations(nextCategoryAllocations) != nextNetAmount) {
+      throw _invalid(
+        'refunds',
+        'Refund allocations must preserve the net amount.',
+      );
+    }
     final draftPeriods = buildAmortizationSchedule(
       planId: id,
       total: nextNetAmount,
@@ -210,7 +253,7 @@ class AmortizationPlan {
       recognitionCount: recognitionCount,
       initialTransactionId: initialTransactionId,
       periods: nextPeriods,
-      refunds: [...refunds, refund],
+      refunds: nextRefunds,
       termination: termination,
     );
   }
@@ -234,6 +277,24 @@ class AmortizationPlan {
       periods: periods,
       refunds: refunds,
       termination: termination,
+    );
+  }
+
+  AmortizationPlan withoutTermination(Iterable<AmortizationPeriod> periods) {
+    return AmortizationPlan(
+      id: id,
+      kind: kind,
+      deferralAccountId: deferralAccountId,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt,
+      recognitionCount: recognitionCount,
+      initialTransactionId: initialTransactionId,
+      periods: periods,
+      refunds: refunds,
     );
   }
 
@@ -353,9 +414,10 @@ class AmortizationPlan {
     if (value.planId != id) {
       throw _invalid('termination.planId', 'Termination plan does not match.');
     }
-    final remainingBeforeTermination = status == AmortizationStatus.terminated
-        ? currentCategoryAllocations
-        : remainingCategoryAllocations;
+    final remainingBeforeTermination = subtractAllocations(
+      base: currentCategoryAllocations,
+      reductions: recognizedCategoryAllocations,
+    );
     if (!allocationsFitAvailable(
       requested: value.categoryReturnAllocations,
       available: remainingBeforeTermination,
@@ -365,6 +427,15 @@ class AmortizationPlan {
         'Termination return exceeds remaining category balances.',
       );
     }
+  }
+
+  List<AccountAmountAllocation> _categoryAllocationsAfterRefunds(
+    Iterable<AmortizationRefund> values,
+  ) {
+    return subtractAllocations(
+      base: categoryAllocations,
+      reductions: values.expand((refund) => refund.categoryAllocations),
+    );
   }
 
   AmortizationPlan _copyWith({

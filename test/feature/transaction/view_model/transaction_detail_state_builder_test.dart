@@ -108,8 +108,8 @@ void main() {
     );
     expect(state.canEditReportingFlags, isTrue);
     expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
+    expect(state.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
     expect(state.behavior.canEditPostedAt, isA<DetailEditAllowed>());
-    expect(state.behavior.canEditOccurredAt, isA<DetailEditDenied>());
   });
 
   test('routes open advance receipt child to shared advance edit', () {

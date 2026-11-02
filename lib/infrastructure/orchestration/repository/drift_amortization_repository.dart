@@ -174,6 +174,43 @@ class DriftAmortizationRepository implements AmortizationRepository {
     });
   }
 
+  @override
+  Future<void> deleteById(String id) async {
+    final periodRows = await (_database.select(
+      _database.amortizationPeriods,
+    )..where((table) => table.planId.equals(id))).get();
+    final refundRows = await (_database.select(
+      _database.amortizationRefunds,
+    )..where((table) => table.planId.equals(id))).get();
+    final terminationRows = await (_database.select(
+      _database.amortizationTerminations,
+    )..where((table) => table.planId.equals(id))).get();
+    final subjectIds = {
+      id,
+      for (final period in periodRows) period.id,
+      for (final refund in refundRows) refund.id,
+      for (final termination in terminationRows) termination.id,
+    };
+
+    if (subjectIds.isNotEmpty) {
+      await (_database.delete(
+        _database.amortizationAllocations,
+      )..where((table) => table.subjectId.isIn(subjectIds))).go();
+    }
+    await (_database.delete(
+      _database.amortizationPeriods,
+    )..where((table) => table.planId.equals(id))).go();
+    await (_database.delete(
+      _database.amortizationRefunds,
+    )..where((table) => table.planId.equals(id))).go();
+    await (_database.delete(
+      _database.amortizationTerminations,
+    )..where((table) => table.planId.equals(id))).go();
+    await (_database.delete(
+      _database.amortizationPlans,
+    )..where((table) => table.id.equals(id))).go();
+  }
+
   Future<AmortizationPlan> _loadPlan(AmortizationPlanRow row) async {
     final periodRows =
         await (_database.select(_database.amortizationPeriods)

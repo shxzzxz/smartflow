@@ -8,4 +8,6 @@ abstract interface class AmortizationRepository {
   Stream<List<AmortizationPlan>> watchAll({String? deferralAccountId});
 
   Future<void> save(AmortizationPlan plan);
+
+  Future<void> deleteById(String id);
 }

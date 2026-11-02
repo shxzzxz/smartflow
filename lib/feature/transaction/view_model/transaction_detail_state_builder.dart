@@ -470,9 +470,7 @@ DetailBehaviorConfig _behaviorConfigFor(
   if (ownership.ownerType == orchestrationAmortizationOwnerType) {
     return DetailBehaviorConfig(
       editRoute: '/amortizations/${ownership.ownerId}',
-      canEditOccurredAt: const DetailEditPermission.denied(
-        reason: '摊销计划交易时间由计划控制',
-      ),
+      canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: const DetailEditPermission.allowed(),
       canEditNote: const DetailEditPermission.allowed(),
       canEditSettlementAccount: const DetailEditPermission.denied(

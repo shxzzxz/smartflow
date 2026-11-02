@@ -61,6 +61,13 @@ abstract interface class AmortizationLedgerPort {
     Set<String> tagIds = const {},
   });
 
+  Future<void> rewriteTransfer({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
+  });
+
   Future<void> rewriteExpense({
     required String transactionId,
     required Money amount,

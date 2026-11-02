@@ -203,6 +203,10 @@ class _FakeAmortizationService implements AmortizationPlanAppService {
   ) {
     throw UnimplementedError();
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 Account _account(

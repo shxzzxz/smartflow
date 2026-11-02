@@ -222,6 +222,58 @@ void main() {
   });
 
   test(
+    'termination deletes confirmations generated after its natural day',
+    () async {
+      final repository = _MemoryRepository();
+      final ledger = _FakeLedger();
+      final service = _service(repository, ledger);
+      final planId = await service.createPlan(
+        CreateAmortizationPlanCommand(
+          kind: AmortizationKind.prepaidExpense,
+          total: _money(120000),
+          fundingAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(120000),
+          ),
+          deferralAccountId: 'deferral',
+          recognitionAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(120000),
+          ),
+          firstRecognitionAt: DateTime(2026, 1, 31),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 4,
+          occurredAt: DateTime(2026, 1, 1),
+        ),
+      );
+      await service.generateDue(DateTime(2026, 4, 30));
+      final generated = (await repository.findById(
+        planId,
+      ))!.periods.map((period) => period.transactionId!).toList();
+
+      await service.terminate(
+        TerminateAmortizationPlanCommand(
+          planId: planId,
+          terminatedAt: DateTime(2026, 3, 15),
+          categoryReturnAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(20000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(20000),
+          ),
+        ),
+      );
+
+      expect(ledger.deletedTransactionIds, containsAll(generated.skip(2)));
+      expect(ledger.deletedTransactionIds, isNot(contains(generated[0])));
+      expect(ledger.deletedTransactionIds, isNot(contains(generated[1])));
+    },
+  );
+
+  test(
     'full refund deletes confirmations and completes with zero periods',
     () async {
       final repository = _MemoryRepository();
@@ -271,6 +323,214 @@ void main() {
       expect(plan.periods.every((period) => period.isZero), isTrue);
     },
   );
+
+  test('editing a refund rewrites its transfer and rebases periods', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: AmortizationKind.prepaidExpense,
+        total: const Money(minorUnits: 60000),
+        fundingAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: const Money(minorUnits: 60000),
+        ),
+        deferralAccountId: 'deferral',
+        recognitionAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 20000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 40000),
+          ),
+        ],
+        firstRecognitionAt: DateTime(2026, 1, 31),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 4,
+        occurredAt: DateTime(2026, 1, 1),
+      ),
+    );
+    await service.generateDue(DateTime(2026, 1, 31));
+    final refund = await service.refund(
+      CreateAmortizationRefundCommand(
+        planId: planId,
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 10000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 20000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: const Money(minorUnits: 30000),
+        ),
+        occurredAt: DateTime(2026, 2, 1),
+      ),
+    );
+    final plan = (await repository.findById(planId))!;
+
+    await service.editRefund(
+      EditAmortizationRefundCommand(
+        planId: planId,
+        refundId: plan.refunds.single.id,
+        categoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 15000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 15000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-d',
+          amount: const Money(minorUnits: 30000),
+        ),
+        now: DateTime(2026, 2, 1),
+      ),
+    );
+
+    final updated = (await repository.findById(planId))!;
+    expect(ledger.transferRewrites.single.amount, _money(30000));
+    expect(
+      ledger.transferRewrites.single.outgoingAllocations.single.accountId,
+      'deferral',
+    );
+    expect(
+      ledger.transferRewrites.single.incomingAllocations.single.accountId,
+      'account-d',
+    );
+    expect(
+      updated.refunds.single.transferTransactionId,
+      refund.refundTransactionId,
+    );
+    expect(
+      updated.periods.first.categoryAllocations.map(
+        (allocation) => allocation.accountId,
+      ),
+      ['category-a', 'category-b'],
+    );
+  });
+
+  test(
+    'undoing termination reopens canceled periods and catches up dues',
+    () async {
+      final repository = _MemoryRepository();
+      final ledger = _FakeLedger();
+      final service = _service(repository, ledger);
+      final planId = await service.createPlan(
+        CreateAmortizationPlanCommand(
+          kind: AmortizationKind.prepaidExpense,
+          total: _money(300000),
+          fundingAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(300000),
+          ),
+          deferralAccountId: 'deferral',
+          recognitionAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(300000),
+          ),
+          firstRecognitionAt: DateTime(2026, 1, 31),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 3,
+          occurredAt: DateTime(2026, 1, 1),
+        ),
+      );
+      final result = await service.terminate(
+        TerminateAmortizationPlanCommand(
+          planId: planId,
+          terminatedAt: DateTime(2026, 3, 15),
+          categoryReturnAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(50000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(50000),
+          ),
+        ),
+      );
+
+      final generated = await service.undoTermination(
+        UndoAmortizationTerminationCommand(
+          planId: planId,
+          now: DateTime(2026, 5, 1),
+        ),
+      );
+
+      final reopened = (await repository.findById(planId))!;
+      expect(generated.generatedCount, 1);
+      expect(
+        ledger.deletedTransactionIds,
+        contains(result.recognitionTransactionId),
+      );
+      expect(
+        ledger.deletedTransactionIds,
+        contains(result.returnTransactionId),
+      );
+      expect(reopened.termination, isNull);
+      expect(reopened.periods.map((period) => period.status).toList(), [
+        AmortizationPeriodStatus.posted,
+        AmortizationPeriodStatus.posted,
+        AmortizationPeriodStatus.posted,
+      ]);
+      expect(reopened.status, AmortizationStatus.completed);
+      expect(reopened.periods.every((period) => period.isPosted), isTrue);
+    },
+  );
+
+  test(
+    'deleting a plan removes every owner transaction and its projection',
+    () async {
+      final repository = _MemoryRepository();
+      final ledger = _FakeLedger();
+      final service = _service(repository, ledger);
+      final planId = await service.createPlan(
+        CreateAmortizationPlanCommand(
+          kind: AmortizationKind.prepaidExpense,
+          total: _money(120000),
+          fundingAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(120000),
+          ),
+          deferralAccountId: 'deferral',
+          recognitionAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(120000),
+          ),
+          firstRecognitionAt: DateTime(2026, 1, 31),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 3,
+          occurredAt: DateTime(2026, 1, 1),
+        ),
+      );
+      await service.generateDue(DateTime(2026, 1, 31));
+      final plan = (await repository.findById(planId))!;
+
+      await service.deletePlan(DeleteAmortizationPlanCommand(planId: planId));
+
+      expect(await repository.findById(planId), isNull);
+      expect(
+        ledger.deletedTransactionIds,
+        containsAll([
+          plan.initialTransactionId,
+          plan.periods.first.transactionId!,
+        ]),
+      );
+    },
+  );
 }
 
 AmortizationPlanAppService _service(
@@ -284,6 +544,8 @@ AmortizationPlanAppService _service(
     idGenerator: SequentialIdGenerator(prefix: 'plan'),
   );
 }
+
+Money _money(int minorUnits) => Money(minorUnits: minorUnits);
 
 class _Runner implements TransactionRunner {
   const _Runner();
@@ -317,6 +579,11 @@ class _MemoryRepository implements AmortizationRepository {
   Future<void> save(AmortizationPlan plan) async {
     _plans[plan.id] = plan;
   }
+
+  @override
+  Future<void> deleteById(String id) async {
+    _plans.remove(id);
+  }
 }
 
 class _TransferRequest {
@@ -348,6 +615,7 @@ class _RecognitionRequest {
 class _FakeLedger implements AmortizationLedgerPort {
   int _nextTransaction = 1;
   final transfers = <_TransferRequest>[];
+  final transferRewrites = <_TransferRequest>[];
   final expenses = <_RecognitionRequest>[];
   final incomes = <_RecognitionRequest>[];
   final rewrites = <_RecognitionRequest>[];
@@ -442,6 +710,26 @@ class _FakeLedger implements AmortizationLedgerPort {
       ),
     );
     return transactionId;
+  }
+
+  @override
+  Future<void> rewriteTransfer({
+    required String transactionId,
+    required Money amount,
+    required List<AccountAmountAllocation> outgoingAllocations,
+    required List<AccountAmountAllocation> incomingAllocations,
+  }) async {
+    transferRewrites.add(
+      _TransferRequest(
+        amount: amount,
+        outgoingAllocations: outgoingAllocations,
+        incomingAllocations: incomingAllocations,
+        ownership: const TransactionOwnership(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: 'rewritten',
+        ),
+      ),
+    );
   }
 
   @override

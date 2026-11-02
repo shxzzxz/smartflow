@@ -42,6 +42,17 @@ class AmortizationPeriod {
     return _copyWith(
       transactionId: null,
       status: AmortizationPeriodStatus.canceled,
+      clearTransactionId: true,
+    );
+  }
+
+  AmortizationPeriod reopened() {
+    return _copyWith(
+      transactionId: null,
+      status: amount.minorUnits == 0
+          ? AmortizationPeriodStatus.zero
+          : AmortizationPeriodStatus.pending,
+      clearTransactionId: true,
     );
   }
 

@@ -70,6 +70,36 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
     );
   }
 
+  Future<UiActionOutcome<void>> editRefund({
+    required String refundId,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required List<AccountAmountAllocation> settlementAllocations,
+    DateTime? now,
+  }) {
+    final current = state.value;
+    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    if (sumAllocations(categoryAllocations).minorUnits <= 0 ||
+        sumAllocations(categoryAllocations) !=
+            sumAllocations(settlementAllocations)) {
+      return Future.value(_invalid('退款分类与账户金额必须相等且大于零'));
+    }
+    return _run(
+      current.plan.id,
+      'Edit amortization refund',
+      () => ref
+          .read(amortizationPlanAppServiceProvider)
+          .editRefund(
+            EditAmortizationRefundCommand(
+              planId: current.plan.id,
+              refundId: refundId,
+              categoryAllocations: categoryAllocations,
+              settlementAllocations: settlementAllocations,
+              now: now ?? DateTime.now(),
+            ),
+          ),
+    );
+  }
+
   Future<UiActionOutcome<void>> terminate({
     required DateTime terminatedAt,
     required List<AccountAmountAllocation> categoryReturnAllocations,
@@ -95,6 +125,36 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
             ),
           )
           .then((_) {}),
+    );
+  }
+
+  Future<UiActionOutcome<void>> undoTermination({DateTime? now}) {
+    final current = state.value;
+    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    return _run(
+      current.plan.id,
+      'Undo amortization termination',
+      () => ref
+          .read(amortizationPlanAppServiceProvider)
+          .undoTermination(
+            UndoAmortizationTerminationCommand(
+              planId: current.plan.id,
+              now: now ?? DateTime.now(),
+            ),
+          )
+          .then((_) {}),
+    );
+  }
+
+  Future<UiActionOutcome<void>> deletePlan() {
+    final current = state.value;
+    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    return _run(
+      current.plan.id,
+      'Delete amortization plan',
+      () => ref
+          .read(amortizationPlanAppServiceProvider)
+          .deletePlan(DeleteAmortizationPlanCommand(planId: current.plan.id)),
     );
   }
 

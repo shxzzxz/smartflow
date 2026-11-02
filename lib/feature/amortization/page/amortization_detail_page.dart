@@ -13,6 +13,7 @@ import '../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../domain/ledger/entity/account.dart';
 import '../../../domain/orchestration/entity/amortization_period.dart';
 import '../../../domain/orchestration/entity/amortization_plan.dart';
+import '../../../domain/orchestration/entity/amortization_refund.dart';
 import '../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
@@ -47,13 +48,23 @@ class AmortizationDetailPage extends ConsumerWidget {
                         ? null
                         : () => _showRefundSheet(context, state),
                   ),
+                  if (state.plan.status == AmortizationStatus.terminated)
+                    AppHeaderIconButton(
+                      icon: RemixIcons.arrow_go_back_line,
+                      tooltip: '撤销终止',
+                      onPressed: () =>
+                          _confirmUndoTermination(context, ref, state),
+                    )
+                  else
+                    AppHeaderIconButton(
+                      icon: RemixIcons.stop_circle_line,
+                      tooltip: '摊销终止',
+                      onPressed: () => _showTerminationSheet(context, state),
+                    ),
                   AppHeaderIconButton(
-                    icon: RemixIcons.stop_circle_line,
-                    tooltip: '摊销终止',
-                    onPressed:
-                        state.plan.status == AmortizationStatus.terminated
-                        ? null
-                        : () => _showTerminationSheet(context, state),
+                    icon: RemixIcons.delete_bin_6_line,
+                    tooltip: '删除摊销计划',
+                    onPressed: () => _confirmDeletePlan(context, ref),
                   ),
                 ],
               ),
@@ -142,6 +153,19 @@ class AmortizationDetailPage extends ConsumerWidget {
                                 money: state.plan.refunds[index].amount,
                                 semantic: MoneySemantic.income,
                               ),
+                              trailing: IconButton(
+                                tooltip: '修改退款',
+                                onPressed:
+                                    state.plan.status ==
+                                        AmortizationStatus.terminated
+                                    ? null
+                                    : () => _showRefundSheet(
+                                        context,
+                                        state,
+                                        refund: state.plan.refunds[index],
+                                      ),
+                                icon: const Icon(RemixIcons.edit_line),
+                              ),
                             ),
                         ],
                       ),
@@ -170,13 +194,15 @@ class AmortizationDetailPage extends ConsumerWidget {
 
   Future<void> _showRefundSheet(
     BuildContext context,
-    AmortizationDetailState state,
-  ) async {
+    AmortizationDetailState state, {
+    AmortizationRefund? refund,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _RefundSheet(planId: planId, state: state),
+      builder: (context) =>
+          _RefundSheet(planId: planId, state: state, refund: refund),
     );
   }
 
@@ -191,13 +217,90 @@ class AmortizationDetailPage extends ConsumerWidget {
       builder: (context) => _TerminationSheet(planId: planId, state: state),
     );
   }
+
+  Future<void> _confirmUndoTermination(
+    BuildContext context,
+    WidgetRef ref,
+    AmortizationDetailState state,
+  ) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('撤销终止'),
+            content: const Text('将删除终止确认和终止退还交易，并立即补齐终止日之后已到期的摊销期次。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('确认撤销'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !context.mounted) return;
+    final outcome = await ref
+        .read(amortizationDetailViewModelProvider(state.plan.id).notifier)
+        .undoTermination();
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionSuccess():
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('终止已撤销并补齐到期期次')));
+      case UiActionFailure(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
+  Future<void> _confirmDeletePlan(BuildContext context, WidgetRef ref) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('删除摊销计划'),
+            content: const Text('将删除该计划及全部关联账务交易，且无法恢复。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('确认删除'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !context.mounted) return;
+    final outcome = await ref
+        .read(amortizationDetailViewModelProvider(planId).notifier)
+        .deletePlan();
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionSuccess():
+        Navigator.of(context).pop();
+      case UiActionFailure(:final error):
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
 }
 
 class _RefundSheet extends ConsumerStatefulWidget {
-  const _RefundSheet({required this.planId, required this.state});
+  const _RefundSheet({required this.planId, required this.state, this.refund});
 
   final String planId;
   final AmortizationDetailState state;
+  final AmortizationRefund? refund;
 
   @override
   ConsumerState<_RefundSheet> createState() => _RefundSheetState();
@@ -207,19 +310,42 @@ class _RefundSheetState extends ConsumerState<_RefundSheet> {
   final _formKey = GlobalKey<FormState>();
   var _occurredAt = DateTime.now();
   var _categoryAllocations = <AccountAmountAllocation>[];
-  late var _settlementAllocations = <AccountAmountAllocation>[
-    if (widget.state.settlementAccounts.firstOrNull case final account?)
-      AccountAmountAllocation(accountId: account.id, amount: Money.zero()),
-  ];
+  late var _settlementAllocations = <AccountAmountAllocation>[];
   bool _submitting = false;
 
+  bool get _isEditing => widget.refund != null;
+
+  List<AccountAmountAllocation> get _availableCategoryAllocations =>
+      switch (widget.refund) {
+        final refund? => widget.state.plan.categoryAllocationsExcludingRefund(
+          refund.id,
+        ),
+        null => widget.state.plan.currentCategoryAllocations,
+      };
+
   List<TransactionAllocationOption> get _categoryOptions => [
-    for (final allocation in widget.state.plan.currentCategoryAllocations)
+    for (final allocation in _availableCategoryAllocations)
       _categoryOption(allocation.accountId, widget.state.categoryAccounts),
   ];
 
   List<TransactionAllocationOption> get _settlementOptions =>
       transactionAllocationOptionsForAccounts(widget.state.settlementAccounts);
+
+  @override
+  void initState() {
+    super.initState();
+    final refund = widget.refund;
+    _categoryAllocations = refund?.categoryAllocations ?? const [];
+    _settlementAllocations =
+        refund?.settlementAllocations ??
+        [
+          if (widget.state.settlementAccounts.firstOrNull case final account?)
+            AccountAmountAllocation(
+              accountId: account.id,
+              amount: Money.zero(),
+            ),
+        ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,23 +363,27 @@ class _RefundSheetState extends ConsumerState<_RefundSheet> {
           child: ListView(
             shrinkWrap: true,
             children: [
-              Text('摊销退款', style: context.appTextStyles.subsectionTitle),
-              const SizedBox(height: AppSpacing.space12),
-              _dateRow(
-                context,
-                label: '退款日期',
-                value: _occurredAt,
-                onChanged: (value) => setState(() => _occurredAt = value),
+              Text(
+                _isEditing ? '修改摊销退款' : '摊销退款',
+                style: context.appTextStyles.subsectionTitle,
               ),
               const SizedBox(height: AppSpacing.space12),
+              if (!_isEditing) ...[
+                _dateRow(
+                  context,
+                  label: '退款日期',
+                  value: _occurredAt,
+                  onChanged: (value) => setState(() => _occurredAt = value),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+              ],
               TransactionAllocationAmountFields(
                 title: '退款分类',
                 allocations: _categoryAllocations,
                 options: _categoryOptions,
                 maximumByAccountId: transactionAllocationMaximums(
                   options: _categoryOptions,
-                  availableAllocations:
-                      widget.state.plan.currentCategoryAllocations,
+                  availableAllocations: _availableCategoryAllocations,
                 ),
                 onChanged: (value) =>
                     setState(() => _categoryAllocations = value),
@@ -283,7 +413,7 @@ class _RefundSheetState extends ConsumerState<_RefundSheet> {
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('确认退款'),
+                    : Text(_isEditing ? '保存修改' : '确认退款'),
               ),
             ],
           ),
@@ -301,13 +431,20 @@ class _RefundSheetState extends ConsumerState<_RefundSheet> {
       return;
     }
     setState(() => _submitting = true);
-    final outcome = await ref
-        .read(amortizationDetailViewModelProvider(widget.planId).notifier)
-        .refund(
-          occurredAt: _occurredAt,
-          categoryAllocations: _categoryAllocations,
-          settlementAllocations: _settlementAllocations,
-        );
+    final viewModel = ref.read(
+      amortizationDetailViewModelProvider(widget.planId).notifier,
+    );
+    final outcome = _isEditing
+        ? await viewModel.editRefund(
+            refundId: widget.refund!.id,
+            categoryAllocations: _categoryAllocations,
+            settlementAllocations: _settlementAllocations,
+          )
+        : await viewModel.refund(
+            occurredAt: _occurredAt,
+            categoryAllocations: _categoryAllocations,
+            settlementAllocations: _settlementAllocations,
+          );
     if (!mounted) return;
     setState(() => _submitting = false);
     _handleOutcome(outcome);
@@ -540,10 +677,11 @@ class _PeriodRow extends StatelessWidget {
 }
 
 class _ValueRow extends StatelessWidget {
-  const _ValueRow({required this.label, required this.value});
+  const _ValueRow({required this.label, required this.value, this.trailing});
 
   final String label;
   final Widget value;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -559,6 +697,10 @@ class _ValueRow extends StatelessWidget {
               child: value,
             ),
           ),
+          if (trailing case final trailing?) ...[
+            const SizedBox(width: AppSpacing.space8),
+            trailing,
+          ],
         ],
       ),
     );
