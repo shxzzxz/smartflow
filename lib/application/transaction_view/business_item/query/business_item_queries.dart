@@ -94,7 +94,8 @@ final class BusinessItemAnchorCandidate {
 /// 单个来源的一页锚点结果。
 ///
 /// [anchors] 必须已按 `(anchorAt DESC, itemKey DESC)` 排序，且不能超过请求
-/// limit + 1。来源需要额外读取一条候选来判断本来源是否还有下一页。
+/// limit + 1。来源需要额外读取并返回一条候选来判断本来源是否还有下一页；
+/// 因此 `hasMore == true` 时 [anchors] 必须恰好包含 limit + 1 条。
 final class BusinessItemSourcePage {
   BusinessItemSourcePage({
     required Iterable<BusinessItemAnchorCandidate> anchors,

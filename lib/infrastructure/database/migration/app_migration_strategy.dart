@@ -306,6 +306,14 @@ Future<void> _upgrade(
           );
         }
       },
+      from56To57: (migration, schema) async {
+        await migration.database.customStatement(
+          'CREATE INDEX transactions_top_level_owner_occurred_idx '
+          'ON transactions '
+          '(owner_type, occurred_at DESC, owner_id DESC, id DESC) '
+          'WHERE parent_transaction_id IS NULL AND owner_type IS NOT NULL',
+        );
+      },
     )(migrator, from, to);
   });
 }

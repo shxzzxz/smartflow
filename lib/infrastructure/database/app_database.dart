@@ -93,7 +93,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 56;
+  int get schemaVersion => 57;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

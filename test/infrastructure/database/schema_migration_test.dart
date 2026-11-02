@@ -14,6 +14,7 @@ import '../../generated_migrations/schema_v52.dart' as v52;
 import '../../generated_migrations/schema_v53.dart' as v53;
 import '../../generated_migrations/schema_v54.dart' as v54;
 import '../../generated_migrations/schema_v55.dart' as v55;
+import '../../generated_migrations/schema_v56.dart' as v56;
 
 void main() {
   late SchemaVerifier verifier;
@@ -93,7 +94,7 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 56,
+      newVersion: 57,
     );
   });
 
@@ -134,7 +135,7 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 56,
+      newVersion: 57,
     );
   });
 
@@ -173,7 +174,7 @@ void main() {
         expect(indexes, hasLength(1));
       },
       oldVersion: 52,
-      newVersion: 56,
+      newVersion: 57,
     );
   });
 
@@ -379,10 +380,33 @@ void main() {
           );
         },
         oldVersion: 55,
-        newVersion: 56,
+        newVersion: 57,
       );
     },
   );
+
+  test('migrates v56 to current with business-item indexes', () async {
+    await verifier.testWithDataIntegrity<v56.DatabaseAtV56, AppDatabase>(
+      createOld: v56.DatabaseAtV56.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {},
+      validateItems: (db) async {
+        final indexes = await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'index' "
+              "AND name = 'transactions_top_level_owner_occurred_idx'",
+            )
+            .get();
+        expect(
+          indexes.map((row) => row.read<String>('name')),
+          contains('transactions_top_level_owner_occurred_idx'),
+        );
+      },
+      oldVersion: 56,
+      newVersion: 57,
+    );
+  });
 
   test(
     'migrates v51 installment sources and generated contract links',
