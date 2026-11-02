@@ -2726,7 +2726,162 @@ final class BusinessItemQueryServiceProvider
 }
 
 String _$businessItemQueryServiceHash() =>
-    r'25aff96fed750daabd43ba05c98f0102c0c58b8b';
+    r'87b932e6561bb0c59015e54207376c4cd01c2943';
+
+@ProviderFor(advanceTransactionViewQueryService)
+final advanceTransactionViewQueryServiceProvider =
+    AdvanceTransactionViewQueryServiceProvider._();
+
+final class AdvanceTransactionViewQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AdvanceTransactionViewQueryService,
+          AdvanceTransactionViewQueryService,
+          AdvanceTransactionViewQueryService
+        >
+    with $Provider<AdvanceTransactionViewQueryService> {
+  AdvanceTransactionViewQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'advanceTransactionViewQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$advanceTransactionViewQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AdvanceTransactionViewQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AdvanceTransactionViewQueryService create(Ref ref) {
+    return advanceTransactionViewQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AdvanceTransactionViewQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AdvanceTransactionViewQueryService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$advanceTransactionViewQueryServiceHash() =>
+    r'013644d2d182dca0cbe87ce0f8e03e87ea6af541';
+
+@ProviderFor(amortizationTransactionViewQueryService)
+final amortizationTransactionViewQueryServiceProvider =
+    AmortizationTransactionViewQueryServiceProvider._();
+
+final class AmortizationTransactionViewQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AmortizationTransactionViewQueryService,
+          AmortizationTransactionViewQueryService,
+          AmortizationTransactionViewQueryService
+        >
+    with $Provider<AmortizationTransactionViewQueryService> {
+  AmortizationTransactionViewQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'amortizationTransactionViewQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$amortizationTransactionViewQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AmortizationTransactionViewQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AmortizationTransactionViewQueryService create(Ref ref) {
+    return amortizationTransactionViewQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AmortizationTransactionViewQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<AmortizationTransactionViewQueryService>(value),
+    );
+  }
+}
+
+String _$amortizationTransactionViewQueryServiceHash() =>
+    r'415e2a2b79d944340ef5078072ed80871295efa5';
+
+@ProviderFor(creditTransactionViewQueryService)
+final creditTransactionViewQueryServiceProvider =
+    CreditTransactionViewQueryServiceProvider._();
+
+final class CreditTransactionViewQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          CreditTransactionViewQueryService,
+          CreditTransactionViewQueryService,
+          CreditTransactionViewQueryService
+        >
+    with $Provider<CreditTransactionViewQueryService> {
+  CreditTransactionViewQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'creditTransactionViewQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$creditTransactionViewQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CreditTransactionViewQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CreditTransactionViewQueryService create(Ref ref) {
+    return creditTransactionViewQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CreditTransactionViewQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CreditTransactionViewQueryService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$creditTransactionViewQueryServiceHash() =>
+    r'a83aebfb8f1c5900fe533aebca306338ebe9971e';
 
 @ProviderFor(transactionDetailContextQuery)
 final transactionDetailContextQueryProvider =
@@ -2777,7 +2932,7 @@ final class TransactionDetailContextQueryProvider
 }
 
 String _$transactionDetailContextQueryHash() =>
-    r'2c4ad0d10e867859b7b2aea359f61e9e12123429';
+    r'92d9ef9e9ab2d0487187bd41c621aff895570cce';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

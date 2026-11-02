@@ -8,12 +8,16 @@ class AmortizationPlanQueryService {
 
   Future<AmortizationPlan?> findById(String id) => _repository.findById(id);
 
+  Future<List<AmortizationPlan>> findByIds(Set<String> ids) =>
+      _repository.findByIds(ids);
+
   Future<List<AmortizationPlan>> findAll({String? deferralAccountId}) =>
       _repository.findAll(deferralAccountId: deferralAccountId);
 
   Stream<List<AmortizationPlan>> watchAll({String? deferralAccountId}) =>
       _repository.watchAll(deferralAccountId: deferralAccountId);
 
-  Stream<AmortizationPlan?> watchById(String id) =>
-      watchAll().map((plans) => plans.where((plan) => plan.id == id).firstOrNull);
+  Stream<AmortizationPlan?> watchById(String id) => watchAll().map(
+    (plans) => plans.where((plan) => plan.id == id).firstOrNull,
+  );
 }

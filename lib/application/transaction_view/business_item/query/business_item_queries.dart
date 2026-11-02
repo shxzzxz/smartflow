@@ -49,12 +49,14 @@ final class BusinessItemPageQuery {
     required this.occurredUntil,
     this.before,
     this.limit = 20,
+    Set<String>? itemTypes,
     Set<String>? categoryAccountIds,
     Set<String>? settlementAccountIds,
     Set<String>? tagIds,
     this.untaggedOnly = false,
     this.counterpartyId,
-  }) : categoryAccountIds = _immutableSet(categoryAccountIds),
+  }) : itemTypes = _immutableSet(itemTypes),
+       categoryAccountIds = _immutableSet(categoryAccountIds),
        settlementAccountIds = _immutableSet(settlementAccountIds),
        tagIds = _immutableSet(tagIds),
        assert(occurredUntil.isAfter(occurredFrom)),
@@ -65,6 +67,9 @@ final class BusinessItemPageQuery {
   final DateTime occurredUntil;
   final BusinessItemCursor? before;
   final int limit;
+
+  /// 业务事项稳定类型；`null` 表示全部来源，空集合表示没有可匹配来源。
+  final Set<String>? itemTypes;
 
   /// 已由 application 展开并校验的物理分类账户 ID。
   final Set<String>? categoryAccountIds;

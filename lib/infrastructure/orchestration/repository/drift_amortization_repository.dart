@@ -17,10 +17,16 @@ class DriftAmortizationRepository implements AmortizationRepository {
 
   @override
   Future<AmortizationPlan?> findById(String id) async {
-    final row = await (_database.select(
+    return (await findByIds({id})).firstOrNull;
+  }
+
+  @override
+  Future<List<AmortizationPlan>> findByIds(Set<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final rows = await (_database.select(
       _database.amortizationPlans,
-    )..where((table) => table.id.equals(id))).getSingleOrNull();
-    return row == null ? null : _loadPlan(row);
+    )..where((table) => table.id.isIn(ids))).get();
+    return _loadPlans(rows);
   }
 
   @override
@@ -30,7 +36,7 @@ class DriftAmortizationRepository implements AmortizationRepository {
     if (deferralAccountId != null) {
       query.where((table) => table.deferralAccountId.equals(deferralAccountId));
     }
-    return Future.wait((await query.get()).map(_loadPlan));
+    return _loadPlans(await query.get());
   }
 
   @override
@@ -40,7 +46,19 @@ class DriftAmortizationRepository implements AmortizationRepository {
     if (deferralAccountId != null) {
       query.where((table) => table.deferralAccountId.equals(deferralAccountId));
     }
-    return query.watch().asyncMap((rows) => Future.wait(rows.map(_loadPlan)));
+    return _database
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _database.amortizationPlans,
+            _database.amortizationPeriods,
+            _database.amortizationRefunds,
+            _database.amortizationTerminations,
+            _database.amortizationAllocations,
+          },
+        )
+        .watch()
+        .asyncMap((_) async => _loadPlans(await query.get()));
   }
 
   @override
@@ -211,22 +229,35 @@ class DriftAmortizationRepository implements AmortizationRepository {
     )..where((table) => table.id.equals(id))).go();
   }
 
-  Future<AmortizationPlan> _loadPlan(AmortizationPlanRow row) async {
-    final periodRows =
-        await (_database.select(_database.amortizationPeriods)
-              ..where((table) => table.planId.equals(row.id))
-              ..orderBy([(table) => OrderingTerm.asc(table.sequenceNo)]))
-            .get();
-    final refundRows =
-        await (_database.select(_database.amortizationRefunds)
-              ..where((table) => table.planId.equals(row.id))
-              ..orderBy([(table) => OrderingTerm.asc(table.createdAt)]))
-            .get();
-    final terminationRows = await (_database.select(
-      _database.amortizationTerminations,
-    )..where((table) => table.planId.equals(row.id))).get();
+  Future<List<AmortizationPlan>> _loadPlans(
+    List<AmortizationPlanRow> rows,
+  ) async {
+    if (rows.isEmpty) return const [];
+    final planIds = {for (final row in rows) row.id};
+    final (periodRows, refundRows, terminationRows) = await (
+      (_database.select(_database.amortizationPeriods)
+            ..where((table) => table.planId.isIn(planIds))
+            ..orderBy([
+              (table) => OrderingTerm.asc(table.planId),
+              (table) => OrderingTerm.asc(table.sequenceNo),
+            ]))
+          .get(),
+      (_database.select(_database.amortizationRefunds)
+            ..where((table) => table.planId.isIn(planIds))
+            ..orderBy([
+              (table) => OrderingTerm.asc(table.planId),
+              (table) => OrderingTerm.asc(table.createdAt),
+            ]))
+          .get(),
+      (_database.select(
+        _database.amortizationTerminations,
+      )..where((table) => table.planId.isIn(planIds))).get(),
+    ).wait;
+    final periodsByPlan = _groupByPlan(periodRows);
+    final refundsByPlan = _groupByPlan(refundRows);
+    final terminationsByPlan = _groupByPlan(terminationRows);
     final subjectIds = {
-      row.id,
+      ...planIds,
       for (final period in periodRows) period.id,
       for (final refund in refundRows) refund.id,
       for (final termination in terminationRows) termination.id,
@@ -243,6 +274,29 @@ class DriftAmortizationRepository implements AmortizationRepository {
                 ]))
               .get();
     final allocations = _groupAllocations(allocationRows);
+    return [
+      for (final row in rows)
+        _mapPlan(
+          row,
+          periodRows: periodsByPlan[row.id] ?? const [],
+          refundRows: refundsByPlan[row.id] ?? const [],
+          terminationRows: terminationsByPlan[row.id] ?? const [],
+          allocations: allocations,
+        ),
+    ];
+  }
+
+  AmortizationPlan _mapPlan(
+    AmortizationPlanRow row, {
+    required List<AmortizationPeriodRow> periodRows,
+    required List<AmortizationRefundRow> refundRows,
+    required List<AmortizationTerminationRow> terminationRows,
+    required Map<
+      (AmortizationSubjectType, String, AmortizationAllocationDimension),
+      List<AccountAmountAllocation>
+    >
+    allocations,
+  }) {
     final planFunding =
         allocations[(
           AmortizationSubjectType.plan,
@@ -339,6 +393,20 @@ class DriftAmortizationRepository implements AmortizationRepository {
       refunds: refunds,
       termination: termination,
     );
+  }
+
+  Map<String, List<T>> _groupByPlan<T>(List<T> rows) {
+    final result = <String, List<T>>{};
+    for (final row in rows) {
+      final planId = switch (row) {
+        AmortizationPeriodRow value => value.planId,
+        AmortizationRefundRow value => value.planId,
+        AmortizationTerminationRow value => value.planId,
+        _ => throw ArgumentError.value(row, 'row', 'Unknown amortization row'),
+      };
+      result.putIfAbsent(planId, () => []).add(row);
+    }
+    return result;
   }
 
   List<AmortizationAllocationsCompanion> _planAllocationRows(

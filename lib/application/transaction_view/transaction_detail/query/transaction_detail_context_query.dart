@@ -1,17 +1,9 @@
 import 'dart:async';
 
-import '../../../../core/money/money.dart';
-import '../../../../domain/credit/port/repayment_repository.dart';
-import '../../../../domain/credit/valobj/installment_enums.dart';
-import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../../domain/ledger/valobj/transaction_ownership.dart';
-import '../../../../domain/orchestration/valobj/advance_enums.dart';
-import '../../../../domain/orchestration/valobj/amortization_enums.dart';
-import '../../../credit/installment/query/installment_query_service.dart';
 import '../../../ledger/transaction/query/transaction_query_service.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../../orchestration/advance/query/advance_case_query_service.dart';
-import '../../../orchestration/amortization/query/amortization_plan_query_service.dart';
+import 'port/transaction_detail_owner_query.dart';
 import 'transaction_detail_context_read_models.dart';
 
 /// Loads all ledger and owner facts needed to compose a transaction detail.
@@ -26,23 +18,14 @@ abstract interface class TransactionDetailContextQuery {
 
 final class TransactionDetailContextQueryImpl
     implements TransactionDetailContextQuery {
-  const TransactionDetailContextQueryImpl({
+  TransactionDetailContextQueryImpl({
     required TransactionQueryService transactions,
-    required AdvanceCaseQueryService advances,
-    required InstallmentQueryService installments,
-    required AmortizationPlanQueryService amortizations,
-    required RepaymentRepository repaymentRepository,
+    required Iterable<TransactionDetailOwnerQuery> ownerQueries,
   }) : _transactions = transactions,
-       _advances = advances,
-       _installments = installments,
-       _amortizations = amortizations,
-       _repaymentRepository = repaymentRepository;
+       _ownerQueries = List.unmodifiable(ownerQueries);
 
   final TransactionQueryService _transactions;
-  final AdvanceCaseQueryService _advances;
-  final InstallmentQueryService _installments;
-  final AmortizationPlanQueryService _amortizations;
-  final RepaymentRepository _repaymentRepository;
+  final List<TransactionDetailOwnerQuery> _ownerQueries;
 
   @override
   Future<TransactionDetailContext?> findById(String transactionId) async {
@@ -54,12 +37,97 @@ final class TransactionDetailContextQueryImpl
 
   @override
   Stream<TransactionDetailContext?> watchById(String transactionId) {
-    return _transactions.watchTransactionDetail(transactionId).asyncMap((
-      transaction,
-    ) {
-      if (transaction == null) return null;
-      return _assemble(transaction);
-    });
+    late StreamController<TransactionDetailContext?> controller;
+    StreamSubscription<TransactionReadModel?>? transactionSubscription;
+    StreamSubscription<TransactionDetailOwnerContext?>? ownerSubscription;
+    TransactionReadModel? latestTransaction;
+    var revision = 0;
+    var ownerRevision = 0;
+    var closed = false;
+
+    Future<void> cancelOwner() async {
+      await ownerSubscription?.cancel();
+      ownerSubscription = null;
+    }
+
+    Future<void> handleOwnerChange(
+      int transactionRevision,
+      int currentOwnerRevision,
+    ) async {
+      if (closed ||
+          transactionRevision != revision ||
+          currentOwnerRevision != ownerRevision) {
+        return;
+      }
+      final transaction = latestTransaction;
+      if (transaction == null) return;
+      try {
+        final context = await _assemble(transaction);
+        if (!closed &&
+            transactionRevision == revision &&
+            currentOwnerRevision == ownerRevision) {
+          controller.add(context);
+        }
+      } catch (error, stackTrace) {
+        if (!closed &&
+            transactionRevision == revision &&
+            currentOwnerRevision == ownerRevision) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    Future<void> handleTransaction(TransactionReadModel? transaction) async {
+      final currentRevision = ++revision;
+      latestTransaction = transaction;
+      await cancelOwner();
+      if (closed) return;
+      if (transaction == null) {
+        controller.add(null);
+        return;
+      }
+      try {
+        final context = await _assemble(transaction);
+        if (closed || currentRevision != revision) return;
+        controller.add(context);
+        final ownership =
+            context.transaction.ownership ??
+            context.currentGroup.anchor.ownership;
+        if (ownership == null) return;
+        final ownerQuery = _ownerQueryFor(ownership.ownerType);
+        if (ownerQuery == null) return;
+        ownerSubscription = ownerQuery.watch(ownership).skip(1).listen((_) {
+          final requestRevision = ++ownerRevision;
+          unawaited(handleOwnerChange(currentRevision, requestRevision));
+        }, onError: controller.addError);
+      } catch (error, stackTrace) {
+        if (!closed && currentRevision == revision) {
+          controller.addError(error, stackTrace);
+        }
+      }
+    }
+
+    controller = StreamController<TransactionDetailContext?>(
+      onListen: () {
+        transactionSubscription = _transactions
+            .watchTransactionDetail(transactionId)
+            .listen(
+              (transaction) => unawaited(handleTransaction(transaction)),
+              onError: controller.addError,
+              onDone: () async {
+                closed = true;
+                await cancelOwner();
+                await controller.close();
+              },
+            );
+      },
+      onCancel: () async {
+        closed = true;
+        await transactionSubscription?.cancel();
+        await cancelOwner();
+      },
+    );
+    return controller.stream;
   }
 
   Future<TransactionDetailContext> _assemble(
@@ -78,7 +146,7 @@ final class TransactionDetailContextQueryImpl
         : TransactionDetailGroup(anchor: parent, children: parent.children);
 
     final ownership = transaction.ownership ?? currentGroup.anchor.ownership;
-    final owner = await _loadOwner(currentGroup.anchor, ownership);
+    final owner = await _loadOwner(ownership);
     final anchorId = switch (owner) {
       AmortizationTransactionDetailOwnerContext(:final initialTransactionId) =>
         initialTransactionId,
@@ -112,19 +180,11 @@ final class TransactionDetailContextQueryImpl
   }
 
   Future<TransactionDetailOwnerContext?> _loadOwner(
-    TransactionReadModel anchor,
     TransactionOwnership? ownership,
   ) async {
     if (ownership == null) return null;
-    final loaded = await switch (ownership.ownerType) {
-      orchestrationAdvanceOwnerType => _loadAdvance(anchor, ownership),
-      installmentOwnerType => _loadInstallment(ownership.ownerId),
-      creditRepaymentOwnerType => _loadRepayment(ownership.ownerId),
-      orchestrationAmortizationOwnerType => _loadAmortization(
-        ownership.ownerId,
-      ),
-      _ => Future<TransactionDetailOwnerContext?>.value(null),
-    };
+    final query = _ownerQueryFor(ownership.ownerType);
+    final loaded = query == null ? null : await query.find(ownership);
     return loaded ??
         UnknownTransactionDetailOwnerContext(
           ownerType: ownership.ownerType,
@@ -132,96 +192,10 @@ final class TransactionDetailContextQueryImpl
         );
   }
 
-  Future<TransactionDetailOwnerContext?> _loadAdvance(
-    TransactionReadModel anchor,
-    TransactionOwnership ownership,
-  ) async {
-    final advance = await _advances.findById(ownership.ownerId);
-    if (advance == null) return null;
-    final summary = anchor.advanceSummary;
-    return AdvanceTransactionDetailOwnerContext(
-      ownerType: ownership.ownerType,
-      ownerId: ownership.ownerId,
-      scenario: advance.scenario,
-      trackingMode: advance.trackingMode,
-      advanceAmount: summary?.advanceAmount ?? anchor.primaryAmount,
-      receivedAmount: summary?.receivedAmount ?? Money.zero(),
-      outstanding: summary?.outstanding ?? anchor.primaryAmount,
-      isClosed: summary?.isClosed ?? false,
-      aaPeopleCount: advance.aaPeopleCount,
-    );
-  }
-
-  Future<TransactionDetailOwnerContext?> _loadInstallment(
-    String contractId,
-  ) async {
-    final contractFuture = _installments.findContract(contractId);
-    final schedulesFuture = _installments.listSchedules(contractId);
-    final contract = await contractFuture;
-    if (contract == null) return null;
-    final schedules = await schedulesFuture;
-    final paidPeriodCount = schedules
-        .where((schedule) => schedule.status == InstallmentScheduleStatus.paid)
-        .length;
-    var remainingPrincipalMinor = 0;
-    for (final schedule in schedules) {
-      if (schedule.status == InstallmentScheduleStatus.pending ||
-          schedule.status == InstallmentScheduleStatus.partiallyPaid) {
-        remainingPrincipalMinor += schedule.expectedPrincipal.minorUnits;
-      }
+  TransactionDetailOwnerQuery? _ownerQueryFor(String ownerType) {
+    for (final query in _ownerQueries) {
+      if (query.supportedOwnerTypes.contains(ownerType)) return query;
     }
-    return InstallmentTransactionDetailOwnerContext(
-      ownerType: installmentOwnerType,
-      ownerId: contractId,
-      installmentType: contract.installmentType,
-      status: contract.status,
-      principal: contract.principal,
-      remainingPrincipal: Money(minorUnits: remainingPrincipalMinor),
-      paidPeriodCount: paidPeriodCount,
-      totalPeriodCount: schedules.length,
-    );
-  }
-
-  Future<TransactionDetailOwnerContext?> _loadRepayment(
-    String repaymentId,
-  ) async {
-    final repayment = await _repaymentRepository.findRepayment(repaymentId);
-    if (repayment == null) return null;
-    return RepaymentTransactionDetailOwnerContext(
-      ownerType: creditRepaymentOwnerType,
-      ownerId: repaymentId,
-      repaymentType: repayment.repaymentType,
-      targetType: repayment.targetType,
-      targetId: repayment.targetId,
-    );
-  }
-
-  Future<TransactionDetailOwnerContext?> _loadAmortization(
-    String planId,
-  ) async {
-    final plan = await _amortizations.findById(planId);
-    if (plan == null) return null;
-    final postedPeriods = plan.periods.where((period) => period.isPosted);
-    final pendingPeriods = plan.periods.where(
-      (period) => period.isPending && period.amount.minorUnits > 0,
-    );
-    final current = plan.status == AmortizationStatus.terminated
-        ? null
-        : pendingPeriods.firstOrNull;
-    return AmortizationTransactionDetailOwnerContext(
-      ownerType: orchestrationAmortizationOwnerType,
-      ownerId: plan.id,
-      initialTransactionId: plan.initialTransactionId,
-      kind: plan.kind,
-      status: plan.status,
-      originalAmount: plan.originalAmount,
-      recognizedAmount: plan.recognizedAmount,
-      remainingAmount: plan.remainingAmount,
-      postedPeriodCount: postedPeriods.length,
-      totalPeriodCount: plan.periods.length,
-      currentPeriodSequence: current?.sequenceNo,
-      currentPeriodDueAt: current?.dueAt,
-      currentPeriodAmount: current?.amount,
-    );
+    return null;
   }
 }

@@ -1,9 +1,9 @@
-part of 'transaction_detail_action_dispatcher.dart';
+part of 'transaction_detail_view_model.dart';
 
 Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
   Future<void> Function() action,
 ) {
-  return guardUiAction(_logger, 'Transaction detail action', action);
+  return guardUiAction(_actionLogger, 'Transaction detail action', action);
 }
 
 UiActionOutcome<void> detailNotEditable(String message) {

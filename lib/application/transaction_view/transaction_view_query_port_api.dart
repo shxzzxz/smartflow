@@ -1,4 +1,4 @@
-/// 业务事项来源实现所需的 application port API。
+/// 业务事项 source adapter 编排所需的 application API。
 library;
 
 export 'business_item/query/business_item_queries.dart';

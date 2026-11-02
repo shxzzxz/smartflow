@@ -8,6 +8,7 @@ import '../../../../application/ledger/ledger_query_api.dart';
 import '../../../../application/orchestration/orchestration_command_api.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/money/money.dart';
+import '../../../../core/patch/patch.dart';
 import '../../../../core/text/text_normalizer.dart';
 import '../../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../amortization/presentation/amortization_configuration_draft.dart';
@@ -20,7 +21,6 @@ import '../../presentation/transaction_form_presentation.dart';
 import 'transaction_account_options.dart';
 import 'transaction_form_helpers.dart';
 import 'transaction_form_state.dart';
-import 'workflow/transaction_form_workflow.dart';
 
 export 'transaction_form_state.dart';
 
@@ -28,6 +28,12 @@ part 'transaction_form_common_interactions.dart';
 part 'transaction_form_expense_scene_interactions.dart';
 part 'transaction_form_installment_interactions.dart';
 part 'transaction_form_ledger_interactions.dart';
+part 'workflow/transaction_form_workflow.dart';
+part 'workflow/transaction_form_command_support.dart';
+part 'workflow/transaction_ledger_workflow.dart';
+part 'workflow/expense_scene_workflow.dart';
+part 'workflow/consumption_installment_workflow.dart';
+part 'workflow/amortization_form_workflow.dart';
 part 'transaction_form_view_model.g.dart';
 
 final _logger = Logger('feature.transaction.form');
@@ -203,7 +209,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Transaction form submit', () async {
-        final workflow = TransactionFormWorkflowDispatcher(
+        final workflow = _TransactionFormWorkflowDispatcher(
           postingService: ref.read(transactionPostingAppServiceProvider),
           editService: ref.read(transactionEditAppServiceProvider),
           advanceService: ref.read(advanceOrchestrationAppServiceProvider),

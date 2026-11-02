@@ -1,7 +1,7 @@
-part of 'transaction_detail_action_dispatcher.dart';
+part of 'transaction_detail_view_model.dart';
 
 final class _AdvanceActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _AdvanceActionDispatcher({
     required this.transaction,
     required this.owner,
@@ -12,7 +12,7 @@ final class _AdvanceActionDispatcher
   final TransactionReadModel transaction;
   final AdvanceTransactionDetailOwnerContext owner;
   final AdvanceOrchestrationAppService advanceAppService;
-  final TransactionDetailActionDispatcher fallback;
+  final _TransactionDetailActionDispatcher fallback;
 
   @override
   Future<UiActionOutcome<void>> delete() => fallback.delete();

@@ -33,3 +33,5 @@ export 'installment/query/contract_metrics_read_model.dart';
 export 'installment/query/contract_activity_query.dart';
 export 'repayment/query/repayment_owner_query.dart' show RepaymentOwnerQuery;
 export 'repayment/repayment_amount_dto.dart';
+export 'transaction_view/query/credit_transaction_view_query_service.dart';
+export 'transaction_view/query/credit_transaction_view_read_models.dart';

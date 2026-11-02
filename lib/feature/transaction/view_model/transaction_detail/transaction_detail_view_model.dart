@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -9,7 +10,9 @@ import '../../../../application/orchestration/orchestration_command_api.dart';
 import '../../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/money/money.dart';
+import '../../../../core/patch/patch.dart';
 import '../../../../core/text/text_normalizer.dart';
+import '../../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../../shared/account_profile/account_selection_policy.dart';
 import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -17,13 +20,45 @@ import '../../../shared/provider/ledger_query_providers.dart';
 import '../../../shared/view_model/action_guard.dart';
 import '../../../shared/view_model/ui_action_outcome.dart';
 import '../../../credit/provider/installment_query_providers.dart';
-import 'transaction_detail_action_dispatcher.dart';
 import 'transaction_detail_state.dart';
 import 'transaction_detail_state_builder.dart';
 
+part 'transaction_detail_action_dispatcher.dart';
+part 'transaction_detail_action_support.dart';
+part 'transaction_detail_advance_actions.dart';
+part 'transaction_detail_amortization_actions.dart';
+part 'transaction_detail_credit_repayment_actions.dart';
+part 'transaction_detail_installment_actions.dart';
 part 'transaction_detail_view_model.g.dart';
 
 final _logger = Logger('feature.transaction.detail');
+
+@visibleForTesting
+Object createTransactionDetailActionDispatcherForTesting({
+  required TransactionDetailContext context,
+  required TransactionEditAppService editService,
+  required TransactionUpdateAppService updateService,
+  required InstallmentContractAppService installmentAppService,
+  required DisbursementInstallmentAppService disbursementInstallmentAppService,
+  required ConsumptionInstallmentAppService consumptionInstallmentAppService,
+  required BillRepaymentAppService billRepaymentAppService,
+  required InstallmentPrepaymentAppService installmentPrepaymentAppService,
+  required AccountRepaymentAppService accountRepaymentAppService,
+  AdvanceOrchestrationAppService? advanceAppService,
+}) {
+  return _createTransactionDetailActionDispatcher(
+    context: context,
+    editService: editService,
+    updateService: updateService,
+    installmentAppService: installmentAppService,
+    disbursementInstallmentAppService: disbursementInstallmentAppService,
+    consumptionInstallmentAppService: consumptionInstallmentAppService,
+    billRepaymentAppService: billRepaymentAppService,
+    installmentPrepaymentAppService: installmentPrepaymentAppService,
+    accountRepaymentAppService: accountRepaymentAppService,
+    advanceAppService: advanceAppService,
+  );
+}
 
 @riverpod
 class TransactionDetailViewModel extends _$TransactionDetailViewModel {
@@ -227,10 +262,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
     });
   }
 
-  TransactionDetailActionDispatcher _actionDispatcherFor(
+  _TransactionDetailActionDispatcher _actionDispatcherFor(
     TransactionDetailContext context,
   ) {
-    return createTransactionDetailActionDispatcher(
+    return _createTransactionDetailActionDispatcher(
       context: context,
       editService: ref.read(transactionEditAppServiceProvider),
       updateService: ref.read(transactionUpdateAppServiceProvider),

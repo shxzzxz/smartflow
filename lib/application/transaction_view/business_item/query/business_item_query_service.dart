@@ -28,28 +28,31 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
 
   @override
   Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
-    if (_sources.isEmpty) {
+    final sources = _sourcesFor(query);
+    if (sources.isEmpty) {
       return BusinessItemPage(items: const [], hasMore: false);
     }
     final pages = await Future.wait(
-      _sources.map((source) => source.findAnchorPage(query)),
+      sources.map((source) => source.findAnchorPage(query)),
     );
-    return _assemblePage(query, pages);
+    return _assemblePage(query, sources, pages);
   }
 
   @override
   Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
-    if (_sources.isEmpty) {
+    final sources = _sourcesFor(query);
+    if (sources.isEmpty) {
       return Stream.value(BusinessItemPage(items: const [], hasMore: false));
     }
-    final streams = _sources.map((source) => source.watchAnchorPage(query));
+    final streams = sources.map((source) => source.watchAnchorPage(query));
     return _combineLatest(
       streams,
-    ).asyncMap((pages) => _assemblePage(query, pages));
+    ).asyncMap((pages) => _assemblePage(query, sources, pages));
   }
 
   Future<BusinessItemPage> _assemblePage(
     BusinessItemPageQuery query,
+    List<BusinessItemSource> sources,
     List<BusinessItemSourcePage> pages,
   ) async {
     final merged = <_SourcedCandidate>[];
@@ -57,13 +60,13 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
       final page = pages[sourceIndex];
       if (page.anchors.length > query.limit + 1) {
         throw StateError(
-          'Source ${_sources[sourceIndex].sourceKey} returned more than '
+          'Source ${sources[sourceIndex].sourceKey} returned more than '
           'limit + 1 anchors.',
         );
       }
       if (page.hasMore != (page.anchors.length > query.limit)) {
         throw StateError(
-          'Source ${_sources[sourceIndex].sourceKey} returned an inconsistent '
+          'Source ${sources[sourceIndex].sourceKey} returned an inconsistent '
           'hasMore flag.',
         );
       }
@@ -94,9 +97,9 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
           .add(candidate.candidate.itemKey);
     }
     final summaryFutures = [
-      for (var sourceIndex = 0; sourceIndex < _sources.length; sourceIndex++)
+      for (var sourceIndex = 0; sourceIndex < sources.length; sourceIndex++)
         if (keysBySource[sourceIndex] case final keys?)
-          _sources[sourceIndex].findSummaries(keys)
+          sources[sourceIndex].findSummaries(keys)
         else
           Future.value(const <BusinessItemKey, BusinessItemSummary>{}),
     ];
@@ -159,6 +162,16 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     final byTime = right.candidate.anchorAt.compareTo(left.candidate.anchorAt);
     if (byTime != 0) return byTime;
     return right.candidate.itemKey.compareTo(left.candidate.itemKey);
+  }
+
+  List<BusinessItemSource> _sourcesFor(BusinessItemPageQuery query) {
+    final itemTypes = query.itemTypes;
+    if (itemTypes == null) return _sources;
+    return List.unmodifiable(
+      _sources.where(
+        (source) => source.supportedItemTypes.any(itemTypes.contains),
+      ),
+    );
   }
 }
 

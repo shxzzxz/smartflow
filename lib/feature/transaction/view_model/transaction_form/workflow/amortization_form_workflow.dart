@@ -1,4 +1,4 @@
-part of 'transaction_form_workflow.dart';
+part of '../transaction_form_view_model.dart';
 
 final class _AmortizationFormWorkflow {
   const _AmortizationFormWorkflow(this._service);

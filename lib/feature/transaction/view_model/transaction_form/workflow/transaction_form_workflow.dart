@@ -1,23 +1,7 @@
-import '../../../../../application/credit/credit_command_api.dart';
-import '../../../../../application/ledger/ledger_command_api.dart';
-import '../../../../../application/orchestration/orchestration_command_api.dart';
-import '../../../../../core/error/app_exception.dart';
-import '../../../../../core/money/money.dart';
-import '../../../../../core/patch/patch.dart';
-import '../../../../../domain/ledger/valobj/ledger_error_code.dart';
-import '../../../../amortization/presentation/amortization_configuration_draft.dart';
-import '../../../presentation/transaction_form_presentation.dart';
-import '../transaction_form_helpers.dart';
-import '../transaction_form_state.dart';
+part of '../transaction_form_view_model.dart';
 
-part 'transaction_form_command_support.dart';
-part 'transaction_ledger_workflow.dart';
-part 'expense_scene_workflow.dart';
-part 'consumption_installment_workflow.dart';
-part 'amortization_form_workflow.dart';
-
-final class TransactionFormWorkflowDispatcher {
-  TransactionFormWorkflowDispatcher({
+final class _TransactionFormWorkflowDispatcher {
+  _TransactionFormWorkflowDispatcher({
     required TransactionPostingAppService postingService,
     required TransactionEditAppService editService,
     required AdvanceOrchestrationAppService advanceService,

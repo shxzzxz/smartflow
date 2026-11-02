@@ -31,6 +31,7 @@ import '../domain/credit/port/installment_product_repository.dart';
 import '../application/credit/product/installment_product_app_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/credit/installment_statistics_change_source.dart';
+import '../infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
@@ -41,11 +42,10 @@ import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dar
 import '../infrastructure/ledger/repository/drift_counterparty_repository.dart';
 import '../infrastructure/orchestration/advance_ledger_port.dart';
 import '../infrastructure/orchestration/amortization_ledger_port.dart';
+import '../infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
+import '../infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
-import '../infrastructure/transaction_view/business_item/drift_advance_business_item_source.dart';
-import '../infrastructure/transaction_view/business_item/drift_amortization_business_item_source.dart';
-import '../infrastructure/transaction_view/business_item/drift_credit_business_item_source.dart';
 import '../infrastructure/transaction_view/business_item/drift_ledger_business_item_source.dart';
 import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
@@ -59,10 +59,19 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import '../application/transaction_view/transaction_view_query_api.dart';
+import '../application/transaction_view/business_item/source/advance_business_item_source.dart';
+import '../application/transaction_view/business_item/source/amortization_business_item_source.dart';
+import '../application/transaction_view/business_item/source/credit_business_item_source.dart';
+import '../application/transaction_view/transaction_detail/source/advance_detail_owner_query.dart';
+import '../application/transaction_view/transaction_detail/source/amortization_detail_owner_query.dart';
+import '../application/transaction_view/transaction_detail/source/installment_detail_owner_query.dart';
+import '../application/transaction_view/transaction_detail/source/repayment_detail_owner_query.dart';
 import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import '../application/orchestration/advance/query/advance_case_query_service.dart';
+import '../application/orchestration/advance/query/advance_transaction_view_query_service.dart';
 import '../application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import '../application/orchestration/amortization/query/amortization_plan_query_service.dart';
+import '../application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
 import '../application/orchestration/task/amortization_generation_task.dart';
 import '../application/import/import_plan_app_service.dart';
 import '../application/import/import_parser_registry.dart';
@@ -565,11 +574,44 @@ BusinessItemQueryService businessItemQueryService(Ref ref) {
   return BusinessItemQueryServiceImpl(
     sources: [
       DriftLedgerBusinessItemSource(database),
-      DriftAdvanceBusinessItemSource(database),
-      DriftAmortizationBusinessItemSource(database),
-      DriftCreditBusinessItemSource(database),
+      AdvanceBusinessItemSource(
+        ref.watch(advanceTransactionViewQueryServiceProvider),
+      ),
+      AmortizationBusinessItemSource(
+        ref.watch(amortizationTransactionViewQueryServiceProvider),
+      ),
+      CreditBusinessItemSource(
+        ref.watch(creditTransactionViewQueryServiceProvider),
+      ),
     ],
     transactionQuery: ref.watch(transactionQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AdvanceTransactionViewQueryService advanceTransactionViewQueryService(Ref ref) {
+  return AdvanceTransactionViewQueryServiceImpl(
+    DriftAdvanceTransactionViewSource(ref.watch(appDatabaseProvider)),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AmortizationTransactionViewQueryService amortizationTransactionViewQueryService(
+  Ref ref,
+) {
+  return AmortizationTransactionViewQueryServiceImpl(
+    source: DriftAmortizationTransactionViewSource(
+      ref.watch(appDatabaseProvider),
+    ),
+    plans: ref.watch(amortizationPlanQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditTransactionViewQueryService creditTransactionViewQueryService(Ref ref) {
+  return CreditTransactionViewQueryServiceImpl(
+    source: DriftCreditTransactionViewSource(ref.watch(appDatabaseProvider)),
+    changes: ref.watch(installmentStatisticsChangeSourceProvider),
   );
 }
 
@@ -577,10 +619,20 @@ BusinessItemQueryService businessItemQueryService(Ref ref) {
 TransactionDetailContextQuery transactionDetailContextQuery(Ref ref) {
   return TransactionDetailContextQueryImpl(
     transactions: ref.watch(transactionQueryServiceProvider),
-    advances: ref.watch(advanceCaseQueryServiceProvider),
-    installments: ref.watch(installmentQueryServiceProvider),
-    amortizations: ref.watch(amortizationPlanQueryServiceProvider),
-    repaymentRepository: ref.watch(repaymentRepositoryProvider),
+    ownerQueries: [
+      AdvanceDetailOwnerQuery(
+        ref.watch(advanceTransactionViewQueryServiceProvider),
+      ),
+      InstallmentDetailOwnerQuery(
+        ref.watch(creditTransactionViewQueryServiceProvider),
+      ),
+      RepaymentDetailOwnerQuery(
+        ref.watch(creditTransactionViewQueryServiceProvider),
+      ),
+      AmortizationDetailOwnerQuery(
+        ref.watch(amortizationTransactionViewQueryServiceProvider),
+      ),
+    ],
   );
 }
 

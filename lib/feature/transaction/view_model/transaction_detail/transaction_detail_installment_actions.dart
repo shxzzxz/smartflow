@@ -1,7 +1,7 @@
-part of 'transaction_detail_action_dispatcher.dart';
+part of 'transaction_detail_view_model.dart';
 
 final class _InstallmentRefundActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _InstallmentRefundActionDispatcher({
     required this.transaction,
     required this.consumptionInstallmentAppService,
@@ -57,7 +57,7 @@ final class _InstallmentRefundActionDispatcher
 }
 
 final class _InstallmentActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _InstallmentActionDispatcher({
     required this.transaction,
     required this.installmentAppService,

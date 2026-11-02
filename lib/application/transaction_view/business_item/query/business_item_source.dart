@@ -9,6 +9,9 @@ abstract interface class BusinessItemSource {
   /// 稳定的来源标识，仅用于装配、诊断和测试。
   String get sourceKey;
 
+  /// 当前来源能够产生的事项类型，用于公共查询跳过无关来源。
+  Set<String> get supportedItemTypes;
+
   Future<BusinessItemSourcePage> findAnchorPage(BusinessItemPageQuery query);
 
   Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query);

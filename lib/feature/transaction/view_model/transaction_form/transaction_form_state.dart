@@ -35,7 +35,7 @@ class TransactionFormState {
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
     required List<CounterpartyView> counterparties,
-    this.selectedTagIds = const {},
+    Set<String> selectedTagIds = const {},
     this.counterpartyId,
     this.expenseCategoryId,
     this.expenseRootId,
@@ -58,6 +58,7 @@ class TransactionFormState {
        incomeTree = List.unmodifiable(incomeTree),
        tags = List.unmodifiable(tags),
        counterparties = List.unmodifiable(counterparties),
+       selectedTagIds = Set.unmodifiable(selectedTagIds),
        categoryAllocations = List.unmodifiable(categoryAllocations),
        settlementAllocations = List.unmodifiable(settlementAllocations);
 

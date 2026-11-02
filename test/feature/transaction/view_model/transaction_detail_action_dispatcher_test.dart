@@ -7,7 +7,7 @@ import 'package:smartflow/application/orchestration/orchestration_command_api.da
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
-import 'package:smartflow/feature/transaction/view_model/transaction_detail/transaction_detail_action_dispatcher.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_detail/transaction_detail_view_model.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 
 class _MockTransactionEditAppService extends Mock
@@ -107,30 +107,32 @@ void main() {
         () => advanceAppService.editAdvance(any()),
       ).thenAnswer((_) async => 'advance');
 
-      final dispatcher = createTransactionDetailActionDispatcher(
-        context: _context(
-          transaction,
-          owner: AdvanceTransactionDetailOwnerContext(
-            ownerType: orchestrationAdvanceOwnerType,
-            ownerId: 'advance',
-            scenario: AdvanceScenario.aa,
-            trackingMode: AdvanceTrackingMode.itemized,
-            advanceAmount: transaction.primaryAmount,
-            receivedAmount: Money.zero(),
-            outstanding: transaction.primaryAmount,
-            isClosed: false,
-          ),
-        ),
-        editService: editService,
-        updateService: updateService,
-        installmentAppService: installmentAppService,
-        disbursementInstallmentAppService: disbursementInstallmentAppService,
-        consumptionInstallmentAppService: consumptionInstallmentAppService,
-        billRepaymentAppService: billRepaymentAppService,
-        installmentPrepaymentAppService: installmentPrepaymentAppService,
-        accountRepaymentAppService: accountRepaymentAppService,
-        advanceAppService: advanceAppService,
-      );
+      final dynamic dispatcher =
+          createTransactionDetailActionDispatcherForTesting(
+            context: _context(
+              transaction,
+              owner: AdvanceTransactionDetailOwnerContext(
+                ownerType: orchestrationAdvanceOwnerType,
+                ownerId: 'advance',
+                scenario: AdvanceScenario.aa,
+                trackingMode: AdvanceTrackingMode.itemized,
+                advanceAmount: transaction.primaryAmount,
+                receivedAmount: Money.zero(),
+                outstanding: transaction.primaryAmount,
+                isClosed: false,
+              ),
+            ),
+            editService: editService,
+            updateService: updateService,
+            installmentAppService: installmentAppService,
+            disbursementInstallmentAppService:
+                disbursementInstallmentAppService,
+            consumptionInstallmentAppService: consumptionInstallmentAppService,
+            billRepaymentAppService: billRepaymentAppService,
+            installmentPrepaymentAppService: installmentPrepaymentAppService,
+            accountRepaymentAppService: accountRepaymentAppService,
+            advanceAppService: advanceAppService,
+          );
       final outcome = await dispatcher.changeSettlementAccount('cash');
 
       expect(outcome, isA<UiActionSuccess<void>>());
@@ -155,31 +157,32 @@ void main() {
       (_) async =>
           const PostedTransactionResult(transactionId: 'amortization-entry'),
     );
-    final dispatcher = createTransactionDetailActionDispatcher(
-      context: _context(
-        transaction,
-        owner: AmortizationTransactionDetailOwnerContext(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan',
-          initialTransactionId: 'amortization-entry',
-          kind: AmortizationKind.prepaidExpense,
-          status: AmortizationStatus.active,
-          originalAmount: transaction.primaryAmount,
-          recognizedAmount: Money.zero(),
-          remainingAmount: transaction.primaryAmount,
-          postedPeriodCount: 0,
-          totalPeriodCount: 3,
-        ),
-      ),
-      editService: editService,
-      updateService: updateService,
-      installmentAppService: installmentAppService,
-      disbursementInstallmentAppService: disbursementInstallmentAppService,
-      consumptionInstallmentAppService: consumptionInstallmentAppService,
-      billRepaymentAppService: billRepaymentAppService,
-      installmentPrepaymentAppService: installmentPrepaymentAppService,
-      accountRepaymentAppService: accountRepaymentAppService,
-    );
+    final dynamic dispatcher =
+        createTransactionDetailActionDispatcherForTesting(
+          context: _context(
+            transaction,
+            owner: AmortizationTransactionDetailOwnerContext(
+              ownerType: orchestrationAmortizationOwnerType,
+              ownerId: 'plan',
+              initialTransactionId: 'amortization-entry',
+              kind: AmortizationKind.prepaidExpense,
+              status: AmortizationStatus.active,
+              originalAmount: transaction.primaryAmount,
+              recognizedAmount: Money.zero(),
+              remainingAmount: transaction.primaryAmount,
+              postedPeriodCount: 0,
+              totalPeriodCount: 3,
+            ),
+          ),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+        );
 
     expect(
       await dispatcher.changeNote('updated note'),
@@ -224,30 +227,32 @@ void main() {
         () => advanceAppService.editRefund(any()),
       ).thenAnswer((_) async => 'refund');
 
-      final dispatcher = createTransactionDetailActionDispatcher(
-        context: _context(
-          transaction,
-          owner: AdvanceTransactionDetailOwnerContext(
-            ownerType: orchestrationAdvanceOwnerType,
-            ownerId: 'advance',
-            scenario: AdvanceScenario.aa,
-            trackingMode: AdvanceTrackingMode.itemized,
-            advanceAmount: transaction.primaryAmount,
-            receivedAmount: Money.zero(),
-            outstanding: transaction.primaryAmount,
-            isClosed: false,
-          ),
-        ),
-        editService: editService,
-        updateService: updateService,
-        installmentAppService: installmentAppService,
-        disbursementInstallmentAppService: disbursementInstallmentAppService,
-        consumptionInstallmentAppService: consumptionInstallmentAppService,
-        billRepaymentAppService: billRepaymentAppService,
-        installmentPrepaymentAppService: installmentPrepaymentAppService,
-        accountRepaymentAppService: accountRepaymentAppService,
-        advanceAppService: advanceAppService,
-      );
+      final dynamic dispatcher =
+          createTransactionDetailActionDispatcherForTesting(
+            context: _context(
+              transaction,
+              owner: AdvanceTransactionDetailOwnerContext(
+                ownerType: orchestrationAdvanceOwnerType,
+                ownerId: 'advance',
+                scenario: AdvanceScenario.aa,
+                trackingMode: AdvanceTrackingMode.itemized,
+                advanceAmount: transaction.primaryAmount,
+                receivedAmount: Money.zero(),
+                outstanding: transaction.primaryAmount,
+                isClosed: false,
+              ),
+            ),
+            editService: editService,
+            updateService: updateService,
+            installmentAppService: installmentAppService,
+            disbursementInstallmentAppService:
+                disbursementInstallmentAppService,
+            consumptionInstallmentAppService: consumptionInstallmentAppService,
+            billRepaymentAppService: billRepaymentAppService,
+            installmentPrepaymentAppService: installmentPrepaymentAppService,
+            accountRepaymentAppService: accountRepaymentAppService,
+            advanceAppService: advanceAppService,
+          );
       final outcome = await dispatcher.changeSettlementAccount('cash');
 
       expect(outcome, isA<UiActionSuccess<void>>());
@@ -268,17 +273,18 @@ void main() {
       (_) async =>
           const PostedTransactionResult(transactionId: 'repayment-transaction'),
     );
-    final dispatcher = createTransactionDetailActionDispatcher(
-      context: _context(transaction),
-      editService: editService,
-      updateService: updateService,
-      installmentAppService: installmentAppService,
-      disbursementInstallmentAppService: disbursementInstallmentAppService,
-      consumptionInstallmentAppService: consumptionInstallmentAppService,
-      billRepaymentAppService: billRepaymentAppService,
-      installmentPrepaymentAppService: installmentPrepaymentAppService,
-      accountRepaymentAppService: accountRepaymentAppService,
-    );
+    final dynamic dispatcher =
+        createTransactionDetailActionDispatcherForTesting(
+          context: _context(transaction),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+        );
 
     expect(
       await dispatcher.changeSettlementAccount('cash'),
@@ -291,20 +297,21 @@ void main() {
     when(
       () => billRepaymentAppService.deleteRepayment(any()),
     ).thenAnswer((_) async {});
-    final dispatcher = createTransactionDetailActionDispatcher(
-      context: _context(
-        _creditRepaymentTransaction('repayment-1'),
-        owner: _repaymentOwner(RepaymentType.bill),
-      ),
-      editService: editService,
-      updateService: updateService,
-      installmentAppService: installmentAppService,
-      disbursementInstallmentAppService: disbursementInstallmentAppService,
-      consumptionInstallmentAppService: consumptionInstallmentAppService,
-      billRepaymentAppService: billRepaymentAppService,
-      installmentPrepaymentAppService: installmentPrepaymentAppService,
-      accountRepaymentAppService: accountRepaymentAppService,
-    );
+    final dynamic dispatcher =
+        createTransactionDetailActionDispatcherForTesting(
+          context: _context(
+            _creditRepaymentTransaction('repayment-1'),
+            owner: _repaymentOwner(RepaymentType.bill),
+          ),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+        );
 
     expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
     verify(() => billRepaymentAppService.deleteRepayment(any())).called(1);
@@ -318,20 +325,22 @@ void main() {
       when(
         () => installmentPrepaymentAppService.editRepaymentTransaction(any()),
       ).thenAnswer((_) async {});
-      final dispatcher = createTransactionDetailActionDispatcher(
-        context: _context(
-          _creditRepaymentTransaction('repayment-1'),
-          owner: _repaymentOwner(RepaymentType.prepayment),
-        ),
-        editService: editService,
-        updateService: updateService,
-        installmentAppService: installmentAppService,
-        disbursementInstallmentAppService: disbursementInstallmentAppService,
-        consumptionInstallmentAppService: consumptionInstallmentAppService,
-        billRepaymentAppService: billRepaymentAppService,
-        installmentPrepaymentAppService: installmentPrepaymentAppService,
-        accountRepaymentAppService: accountRepaymentAppService,
-      );
+      final dynamic dispatcher =
+          createTransactionDetailActionDispatcherForTesting(
+            context: _context(
+              _creditRepaymentTransaction('repayment-1'),
+              owner: _repaymentOwner(RepaymentType.prepayment),
+            ),
+            editService: editService,
+            updateService: updateService,
+            installmentAppService: installmentAppService,
+            disbursementInstallmentAppService:
+                disbursementInstallmentAppService,
+            consumptionInstallmentAppService: consumptionInstallmentAppService,
+            billRepaymentAppService: billRepaymentAppService,
+            installmentPrepaymentAppService: installmentPrepaymentAppService,
+            accountRepaymentAppService: accountRepaymentAppService,
+          );
 
       expect(
         await dispatcher.changeNote('updated'),
@@ -355,20 +364,22 @@ void main() {
       when(
         () => accountRepaymentAppService.editRepaymentTransaction(any()),
       ).thenAnswer((_) async {});
-      final dispatcher = createTransactionDetailActionDispatcher(
-        context: _context(
-          _creditRepaymentTransaction('repayment-1'),
-          owner: _repaymentOwner(RepaymentType.unattributed),
-        ),
-        editService: editService,
-        updateService: updateService,
-        installmentAppService: installmentAppService,
-        disbursementInstallmentAppService: disbursementInstallmentAppService,
-        consumptionInstallmentAppService: consumptionInstallmentAppService,
-        billRepaymentAppService: billRepaymentAppService,
-        installmentPrepaymentAppService: installmentPrepaymentAppService,
-        accountRepaymentAppService: accountRepaymentAppService,
-      );
+      final dynamic dispatcher =
+          createTransactionDetailActionDispatcherForTesting(
+            context: _context(
+              _creditRepaymentTransaction('repayment-1'),
+              owner: _repaymentOwner(RepaymentType.unattributed),
+            ),
+            editService: editService,
+            updateService: updateService,
+            installmentAppService: installmentAppService,
+            disbursementInstallmentAppService:
+                disbursementInstallmentAppService,
+            consumptionInstallmentAppService: consumptionInstallmentAppService,
+            billRepaymentAppService: billRepaymentAppService,
+            installmentPrepaymentAppService: installmentPrepaymentAppService,
+            accountRepaymentAppService: accountRepaymentAppService,
+          );
 
       expect(
         await dispatcher.changeSettlementAccount('cash'),

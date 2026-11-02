@@ -1,7 +1,7 @@
-part of 'transaction_detail_action_dispatcher.dart';
+part of 'transaction_detail_view_model.dart';
 
 final class _CreditRepaymentActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _CreditRepaymentActionDispatcher({
     required this.transaction,
     required this.billRepaymentAppService,

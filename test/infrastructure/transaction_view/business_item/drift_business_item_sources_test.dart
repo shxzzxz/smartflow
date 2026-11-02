@@ -3,17 +3,24 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/orchestration/advance/query/advance_transaction_view_query_service.dart';
+import 'package:smartflow/application/orchestration/amortization/query/amortization_plan_query_service.dart';
+import 'package:smartflow/application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
-import 'package:smartflow/infrastructure/transaction_view/business_item/drift_advance_business_item_source.dart';
-import 'package:smartflow/infrastructure/transaction_view/business_item/drift_amortization_business_item_source.dart';
-import 'package:smartflow/infrastructure/transaction_view/business_item/drift_credit_business_item_source.dart';
+import 'package:smartflow/infrastructure/credit/installment_statistics_change_source.dart';
+import 'package:smartflow/infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
+import 'package:smartflow/infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
+import 'package:smartflow/infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
+import 'package:smartflow/infrastructure/orchestration/repository/drift_amortization_repository.dart';
+import 'package:smartflow/application/transaction_view/business_item/source/advance_business_item_source.dart';
+import 'package:smartflow/application/transaction_view/business_item/source/amortization_business_item_source.dart';
+import 'package:smartflow/application/transaction_view/business_item/source/credit_business_item_source.dart';
 import 'package:smartflow/infrastructure/transaction_view/business_item/drift_ledger_business_item_source.dart';
 
 import '../../../helper/test_app_database.dart';
@@ -147,7 +154,7 @@ void main() {
     );
   });
 
-  group('DriftAdvanceBusinessItemSource', () {
+  group('AdvanceBusinessItemSource', () {
     test(
       'anchors the top-level advance and batches its outstanding facts',
       () async {
@@ -216,7 +223,7 @@ void main() {
           amountMinor: 4000,
         );
 
-        final source = DriftAdvanceBusinessItemSource(db);
+        final source = AdvanceBusinessItemSource(_advanceQuery(db));
         final page = await source.findAnchorPage(_query());
 
         expect(page.anchors, hasLength(1));
@@ -239,7 +246,7 @@ void main() {
     );
   });
 
-  group('DriftAmortizationBusinessItemSource', () {
+  group('AmortizationBusinessItemSource', () {
     test(
       'uses the initial transaction and original plan categories as anchor facts',
       () async {
@@ -276,12 +283,12 @@ void main() {
             .into(db.amortizationPeriods)
             .insert(
               AmortizationPeriodsCompanion.insert(
-                id: 'period-1',
+                id: 'plan-1:1',
                 planId: 'plan-1',
                 sequenceNo: 1,
                 dueAt: DateTime(2026, 11),
-                amountMinor: 10000,
-                status: AmortizationPeriodStatus.pending,
+                amountMinor: 0,
+                status: AmortizationPeriodStatus.zero,
               ),
             );
         await db
@@ -293,6 +300,15 @@ void main() {
                 transferTransactionId: 'plan-refund',
               ),
             );
+        await _insertAmortizationAllocation(
+          db,
+          id: 'plan-funding',
+          subjectType: AmortizationSubjectType.plan,
+          subjectId: 'plan-1',
+          dimension: AmortizationAllocationDimension.funding,
+          accountId: 'cash',
+          amountMinor: 10000,
+        );
         await _insertAmortizationAllocation(
           db,
           id: 'plan-category',
@@ -311,8 +327,17 @@ void main() {
           accountId: 'software',
           amountMinor: 10000,
         );
+        await _insertAmortizationAllocation(
+          db,
+          id: 'refund-settlement',
+          subjectType: AmortizationSubjectType.refund,
+          subjectId: 'refund-1',
+          dimension: AmortizationAllocationDimension.settlement,
+          accountId: 'cash',
+          amountMinor: 10000,
+        );
 
-        final source = DriftAmortizationBusinessItemSource(db);
+        final source = AmortizationBusinessItemSource(_amortizationQuery(db));
         final page = await source.findAnchorPage(
           _query(categoryAccountIds: const {'software'}),
         );
@@ -331,7 +356,7 @@ void main() {
     );
   });
 
-  group('DriftCreditBusinessItemSource', () {
+  group('CreditBusinessItemSource', () {
     test(
       'excludes record-only installments and transactionless repayments',
       () async {
@@ -426,7 +451,7 @@ void main() {
               ),
             );
 
-        final source = DriftCreditBusinessItemSource(db);
+        final source = CreditBusinessItemSource(_creditQuery(db));
         final firstPage = await source.findAnchorPage(_query(limit: 2));
         expect(
           firstPage.anchors.take(2).map((anchor) => anchor.anchorTransactionId),
@@ -469,6 +494,132 @@ void main() {
         ]);
       },
     );
+
+    test('deducts allocated principal from partially paid schedules', () async {
+      await _insertTransaction(
+        db,
+        id: 'purchase-tx',
+        occurredAt: DateTime(2026, 10, 4),
+        ownerType: installmentOwnerType,
+        ownerId: 'contract-1',
+      );
+      await _insertContract(
+        db,
+        id: 'contract-1',
+        type: InstallmentType.purchase,
+        sourceRefId: 'purchase-tx',
+        principalMinor: 100000,
+      );
+      await db
+          .into(db.installmentSchedules)
+          .insert(
+            InstallmentSchedulesCompanion.insert(
+              id: 'schedule-1',
+              contractId: 'contract-1',
+              periodNo: 1,
+              expectedRepaymentDate: DateTime(2026, 11),
+              expectedPrincipalMinor: const Value(100000),
+              status: InstallmentScheduleStatus.partiallyPaid,
+            ),
+          );
+      await db
+          .into(db.bills)
+          .insert(
+            BillsCompanion.insert(
+              id: 'bill-1',
+              accountId: 'credit-account',
+              period: 202610,
+              status: BillStatus.billed,
+            ),
+          );
+      await db
+          .into(db.billItems)
+          .insert(
+            BillItemsCompanion.insert(
+              id: 'bill-item-1',
+              billId: 'bill-1',
+              itemType: BillItemType.installment,
+              contractId: const Value('contract-1'),
+              scheduleId: const Value('schedule-1'),
+              repaymentDate: DateTime(2026, 11),
+              expectedPrincipalMinor: 100000,
+              expectedInterestMinor: 0,
+              expectedFeeMinor: 0,
+              status: BillItemStatus.partiallyPaid,
+            ),
+          );
+      await db
+          .into(db.repayments)
+          .insert(
+            RepaymentsCompanion.insert(
+              id: 'repayment-1',
+              repaymentType: RepaymentType.unattributed.code,
+              targetType: RepaymentTargetType.account.code,
+              targetId: 'credit-account',
+              repaymentDate: DateTime(2026, 10, 20),
+            ),
+          );
+      await db
+          .into(db.repaymentItems)
+          .insert(
+            RepaymentItemsCompanion.insert(
+              id: 'repayment-item-1',
+              repaymentId: 'repayment-1',
+              billItemId: const Value('bill-item-1'),
+              allocatedPrincipalMinor: 40000,
+              allocatedInterestMinor: 0,
+              allocatedFeeMinor: 0,
+              allocatedDiscountMinor: 0,
+            ),
+          );
+
+      final source = CreditBusinessItemSource(_creditQuery(db));
+      final key = const BusinessItemKey(
+        type: installmentOwnerType,
+        id: 'contract-1',
+      );
+      final summary =
+          (await source.findSummaries({key}))[key]
+              as InstallmentBusinessItemSummary;
+
+      expect(summary.remainingPrincipal, const Money(minorUnits: 60000));
+    });
+
+    test('watches repayment table changes independently', () async {
+      await _insertTransaction(
+        db,
+        id: 'repayment-tx',
+        occurredAt: DateTime(2026, 10, 4),
+        businessPurpose: BusinessPurpose.debtRepayment,
+        ownerType: creditRepaymentOwnerType,
+        ownerId: 'repayment-1',
+      );
+      final source = CreditBusinessItemSource(_creditQuery(db));
+      final iterator = StreamIterator(source.watchAnchorPage(_query()));
+
+      expect(await iterator.moveNext(), isTrue);
+      expect(iterator.current.anchors, isEmpty);
+
+      await db
+          .into(db.repayments)
+          .insert(
+            RepaymentsCompanion.insert(
+              id: 'repayment-1',
+              repaymentType: RepaymentType.unattributed.code,
+              targetType: RepaymentTargetType.account.code,
+              targetId: 'credit-account',
+              transactionId: const Value('repayment-tx'),
+              repaymentDate: DateTime(2026, 10, 4),
+            ),
+          );
+
+      expect(await iterator.moveNext(), isTrue);
+      expect(
+        iterator.current.anchors.single.anchorTransactionId,
+        'repayment-tx',
+      );
+      await iterator.cancel();
+    });
   });
 
   test('query service merges sources with one stable cursor chain', () async {
@@ -531,7 +682,7 @@ void main() {
         .into(db.amortizationPeriods)
         .insert(
           AmortizationPeriodsCompanion.insert(
-            id: 'period-1',
+            id: 'plan-1:1',
             planId: 'plan-1',
             sequenceNo: 1,
             dueAt: DateTime(2026, 11),
@@ -539,6 +690,33 @@ void main() {
             status: AmortizationPeriodStatus.pending,
           ),
         );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'merge-plan-funding',
+      subjectType: AmortizationSubjectType.plan,
+      subjectId: 'plan-1',
+      dimension: AmortizationAllocationDimension.funding,
+      accountId: 'cash',
+      amountMinor: 3000,
+    );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'merge-plan-category',
+      subjectType: AmortizationSubjectType.plan,
+      subjectId: 'plan-1',
+      dimension: AmortizationAllocationDimension.category,
+      accountId: 'software',
+      amountMinor: 3000,
+    );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'merge-period-category',
+      subjectType: AmortizationSubjectType.period,
+      subjectId: 'plan-1:1',
+      dimension: AmortizationAllocationDimension.category,
+      accountId: 'software',
+      amountMinor: 3000,
+    );
     await _insertTransaction(
       db,
       id: 'repayment-tx',
@@ -563,9 +741,9 @@ void main() {
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        DriftAdvanceBusinessItemSource(db),
-        DriftAmortizationBusinessItemSource(db),
-        DriftCreditBusinessItemSource(db),
+        AdvanceBusinessItemSource(_advanceQuery(db)),
+        AmortizationBusinessItemSource(_amortizationQuery(db)),
+        CreditBusinessItemSource(_creditQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -610,10 +788,49 @@ void main() {
             initialTransactionId: 'amortization-tx',
           ),
         );
+    await db
+        .into(db.amortizationPeriods)
+        .insert(
+          AmortizationPeriodsCompanion.insert(
+            id: 'plan-1:1',
+            planId: 'plan-1',
+            sequenceNo: 1,
+            dueAt: DateTime(2026, 11),
+            amountMinor: 3000,
+            status: AmortizationPeriodStatus.pending,
+          ),
+        );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'watch-plan-funding',
+      subjectType: AmortizationSubjectType.plan,
+      subjectId: 'plan-1',
+      dimension: AmortizationAllocationDimension.funding,
+      accountId: 'cash',
+      amountMinor: 3000,
+    );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'watch-plan-category',
+      subjectType: AmortizationSubjectType.plan,
+      subjectId: 'plan-1',
+      dimension: AmortizationAllocationDimension.category,
+      accountId: 'software',
+      amountMinor: 3000,
+    );
+    await _insertAmortizationAllocation(
+      db,
+      id: 'watch-period-category',
+      subjectType: AmortizationSubjectType.period,
+      subjectId: 'plan-1:1',
+      dimension: AmortizationAllocationDimension.category,
+      accountId: 'software',
+      amountMinor: 3000,
+    );
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        DriftAmortizationBusinessItemSource(db),
+        AmortizationBusinessItemSource(_amortizationQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -623,27 +840,25 @@ void main() {
     final initialSummary =
         iterator.current.items.single.summary
             as AmortizationBusinessItemSummary;
-    expect(initialSummary.totalPeriodCount, 0);
+    expect(initialSummary.totalPeriodCount, 1);
+    expect(initialSummary.currentPeriodSequence, 1);
 
-    await db
-        .into(db.amortizationPeriods)
-        .insert(
-          AmortizationPeriodsCompanion.insert(
-            id: 'period-1',
-            planId: 'plan-1',
-            sequenceNo: 1,
-            dueAt: DateTime(2026, 11),
-            amountMinor: 3000,
-            status: AmortizationPeriodStatus.pending,
-          ),
-        );
+    await (db.update(
+      db.amortizationPeriods,
+    )..where((row) => row.id.equals('plan-1:1'))).write(
+      const AmortizationPeriodsCompanion(
+        status: Value(AmortizationPeriodStatus.posted),
+        transactionId: Value('recognition-tx'),
+      ),
+    );
 
     expect(await iterator.moveNext(), isTrue);
     final updatedSummary =
         iterator.current.items.single.summary
             as AmortizationBusinessItemSummary;
     expect(updatedSummary.totalPeriodCount, 1);
-    expect(updatedSummary.currentPeriodSequence, 1);
+    expect(updatedSummary.currentPeriodSequence, null);
+    expect(updatedSummary.status, AmortizationStatus.completed);
     await iterator.cancel();
   });
 
@@ -716,7 +931,7 @@ LIMIT 21
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        DriftAdvanceBusinessItemSource(db),
+        AdvanceBusinessItemSource(_advanceQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -729,6 +944,26 @@ LIMIT 21
     expect(page.hasMore, isTrue);
     expect(stopwatch.elapsed, lessThan(const Duration(seconds: 2)));
   });
+}
+
+AdvanceTransactionViewQueryService _advanceQuery(AppDatabase db) {
+  return AdvanceTransactionViewQueryServiceImpl(
+    DriftAdvanceTransactionViewSource(db),
+  );
+}
+
+AmortizationTransactionViewQueryService _amortizationQuery(AppDatabase db) {
+  return AmortizationTransactionViewQueryServiceImpl(
+    source: DriftAmortizationTransactionViewSource(db),
+    plans: AmortizationPlanQueryService(DriftAmortizationRepository(db)),
+  );
+}
+
+CreditTransactionViewQueryService _creditQuery(AppDatabase db) {
+  return CreditTransactionViewQueryServiceImpl(
+    source: DriftCreditTransactionViewSource(db),
+    changes: DriftInstallmentStatisticsChangeSource(db),
+  );
 }
 
 final class _TransactionBatchQuery implements TransactionBatchQueryService {

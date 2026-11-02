@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
   group('BusinessItemPageQuery', () {
@@ -9,12 +11,14 @@ void main() {
       final categories = {'food'};
       final settlements = {'cash'};
       final tags = {'travel'};
+      final itemTypes = {ledgerTransactionGroupItemType};
       final from = DateTime(2026, 10);
       final until = DateTime(2026, 11);
 
       final query = BusinessItemPageQuery(
         occurredFrom: from,
         occurredUntil: until,
+        itemTypes: itemTypes,
         categoryAccountIds: categories,
         settlementAccountIds: settlements,
         tagIds: tags,
@@ -24,9 +28,11 @@ void main() {
       categories.add('housing');
       settlements.add('credit');
       tags.add('work');
+      itemTypes.add(installmentOwnerType);
 
       expect(query.occurredFrom, from);
       expect(query.occurredUntil, until);
+      expect(query.itemTypes, {ledgerTransactionGroupItemType});
       expect(query.categoryAccountIds, {'food'});
       expect(query.settlementAccountIds, {'cash'});
       expect(query.tagIds, {'travel'});
@@ -42,6 +48,27 @@ void main() {
         throwsA(isA<AssertionError>()),
       );
     });
+  });
+
+  test('query service skips sources with no requested item type', () async {
+    final ledger = _Source('ledger', {ledgerTransactionGroupItemType});
+    final credit = _Source('credit', {installmentOwnerType});
+    final service = BusinessItemQueryServiceImpl(
+      sources: [ledger, credit],
+      transactionQuery: const _EmptyTransactionQuery(),
+    );
+
+    final page = await service.findPage(
+      BusinessItemPageQuery(
+        occurredFrom: DateTime(2026, 10),
+        occurredUntil: DateTime(2026, 11),
+        itemTypes: const {ledgerTransactionGroupItemType},
+      ),
+    );
+
+    expect(page.items, isEmpty);
+    expect(ledger.findCalls, 1);
+    expect(credit.findCalls, 0);
   });
 
   group('BusinessItemReadModel', () {
@@ -135,6 +162,49 @@ void main() {
       const BusinessItemKey.transactionGroup('tx-1'),
     );
   });
+}
+
+final class _Source implements BusinessItemSource {
+  _Source(this.sourceKey, this.supportedItemTypes);
+
+  @override
+  final String sourceKey;
+
+  @override
+  final Set<String> supportedItemTypes;
+
+  var findCalls = 0;
+
+  @override
+  Future<BusinessItemSourcePage> findAnchorPage(
+    BusinessItemPageQuery query,
+  ) async {
+    findCalls += 1;
+    return BusinessItemSourcePage(anchors: const [], hasMore: false);
+  }
+
+  @override
+  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+    return const Stream.empty();
+  }
+
+  @override
+  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
+    Set<BusinessItemKey> itemKeys,
+  ) async {
+    return const {};
+  }
+}
+
+final class _EmptyTransactionQuery implements TransactionBatchQueryService {
+  const _EmptyTransactionQuery();
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(
+    Set<String> ids,
+  ) async {
+    return const [];
+  }
 }
 
 TransactionReadModel _transaction({

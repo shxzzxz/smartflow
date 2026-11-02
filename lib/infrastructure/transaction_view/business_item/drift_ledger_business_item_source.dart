@@ -14,6 +14,9 @@ final class DriftLedgerBusinessItemSource implements BusinessItemSource {
   String get sourceKey => 'ledger';
 
   @override
+  Set<String> get supportedItemTypes => const {ledgerTransactionGroupItemType};
+
+  @override
   Future<BusinessItemSourcePage> findAnchorPage(
     BusinessItemPageQuery query,
   ) async {

@@ -561,6 +561,11 @@ class _MemoryRepository implements AmortizationRepository {
   Future<AmortizationPlan?> findById(String id) async => _plans[id];
 
   @override
+  Future<List<AmortizationPlan>> findByIds(Set<String> ids) async {
+    return [for (final id in ids) ?_plans[id]];
+  }
+
+  @override
   Future<List<AmortizationPlan>> findAll({String? deferralAccountId}) async {
     return [
       for (final plan in _plans.values)

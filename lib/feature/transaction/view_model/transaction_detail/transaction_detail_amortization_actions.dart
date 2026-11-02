@@ -1,7 +1,7 @@
-part of 'transaction_detail_action_dispatcher.dart';
+part of 'transaction_detail_view_model.dart';
 
 final class _AmortizationActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _AmortizationActionDispatcher(
     this.transaction, {
     required this.updateService,

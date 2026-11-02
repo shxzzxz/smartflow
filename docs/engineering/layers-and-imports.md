@@ -91,7 +91,7 @@ application/ledger + domain/ledger + infrastructure/ledger
 application/credit + domain/credit + infrastructure/credit
 ```
 
-`application/transaction_view` 是跨域读侧能力而不是业务域。各业务事项来源可以依赖所属领域的 query/port 和对应基础设施读查询，并自行完成锚点、筛选与分页；公共查询层只合并来源结果，不能让账务核心或其他提供域反向依赖该模块。
+`application/transaction_view` 是跨域读侧能力而不是业务域。`BusinessItemSource` 是其内部编排 seam；consumer-side source adapter 位于 `application/transaction_view/business_item/source/`，调用各业务域 application query 并映射业务域 read model。各业务域 application query 拥有锚点分页、摘要批量加载和 scoped change stream，由本域 infrastructure 实现，但不依赖 `transaction_view`；公共查询层只选择来源、合并结果和装配统一读模型。
 
 薄域允许先保持轻量结构；当长出复杂不变量、状态机或跨用例规则，再拆完整分层。
 
@@ -198,6 +198,8 @@ lib/infrastructure/database/table/*
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
 - `application/transaction_view` 的交易详情上下文查询统一加载当前交易、当前/锚点交易组与可选 owner 摘要；feature 只消费该上下文，不自行组合 owner 查询来推断详情能力。
+- `application/transaction_view` 的 source adapter 只做业务域查询结果到统一业务事项读模型的映射；业务筛选、锚点规则、摘要计算和变更监听由所属业务域 application query 提供。
+- 业务域 application query 不得导入 `application/transaction_view` 的读模型或 source 接口。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
 - application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。

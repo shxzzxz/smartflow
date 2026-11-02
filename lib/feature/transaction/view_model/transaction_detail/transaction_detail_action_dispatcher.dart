@@ -1,23 +1,8 @@
-import 'package:logging/logging.dart';
-import '../../../../application/credit/credit_command_api.dart';
-import '../../../../application/ledger/ledger_command_api.dart';
-import '../../../../application/ledger/ledger_query_api.dart';
-import '../../../../application/orchestration/orchestration_command_api.dart';
-import '../../../../application/transaction_view/transaction_view_query_api.dart';
-import '../../../../core/patch/patch.dart';
-import '../../../../domain/ledger/valobj/ledger_error_code.dart';
-import '../../../shared/view_model/action_guard.dart';
-import '../../../shared/view_model/ui_action_outcome.dart';
+part of 'transaction_detail_view_model.dart';
 
-part 'transaction_detail_action_support.dart';
-part 'transaction_detail_advance_actions.dart';
-part 'transaction_detail_amortization_actions.dart';
-part 'transaction_detail_credit_repayment_actions.dart';
-part 'transaction_detail_installment_actions.dart';
+final _actionLogger = Logger('feature.transaction.detail_action');
 
-final _logger = Logger('feature.transaction.detail_action');
-
-abstract interface class TransactionDetailActionDispatcher {
+abstract interface class _TransactionDetailActionDispatcher {
   Future<UiActionOutcome<void>> delete();
 
   Future<UiActionOutcome<void>> changeNote(String? value);
@@ -32,7 +17,7 @@ abstract interface class TransactionDetailActionDispatcher {
   });
 }
 
-TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
+_TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   required TransactionDetailContext context,
   required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
@@ -114,7 +99,7 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
 }
 
 final class _DefaultActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _DefaultActionDispatcher({
     required this.transaction,
     required this.editService,
@@ -318,7 +303,7 @@ final class _DefaultActionDispatcher
 }
 
 final class _UnknownActionDispatcher
-    implements TransactionDetailActionDispatcher {
+    implements _TransactionDetailActionDispatcher {
   const _UnknownActionDispatcher({
     required this.transaction,
     required this.updateService,
