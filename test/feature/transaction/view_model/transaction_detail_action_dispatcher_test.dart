@@ -7,7 +7,7 @@ import 'package:smartflow/application/orchestration/orchestration_command_api.da
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
-import 'package:smartflow/feature/transaction/view_model/transaction_detail_action_dispatcher.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_detail/transaction_detail_action_dispatcher.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 
 class _MockTransactionEditAppService extends Mock

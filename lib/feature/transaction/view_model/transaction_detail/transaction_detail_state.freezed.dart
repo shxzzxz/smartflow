@@ -472,7 +472,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditTags {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
   });
@@ -481,7 +481,7 @@ $DetailEditPermissionCopyWith<$Res> get canEditTags {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get deletePermission {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.deletePermission, (value) {
     return _then(_self.copyWith(deletePermission: value));
   });
@@ -741,13 +741,12 @@ $DetailEditPermissionCopyWith<$Res> get canEditTags {
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
   });
-}
-/// Create a copy of DetailBehaviorConfig
+}/// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get deletePermission {
-
+  
   return $DetailEditPermissionCopyWith<$Res>(_self.deletePermission, (value) {
     return _then(_self.copyWith(deletePermission: value));
   });
@@ -2042,7 +2041,7 @@ return link(_that.key,_that.title,_that.summary,_that.route);case _:
 
 class DetailBusinessLinkModule implements DetailBusinessModule {
   const DetailBusinessLinkModule({required this.key, required this.title, required this.summary, this.route});
-
+  
 
 @override final  String key;
 @override final  String title;

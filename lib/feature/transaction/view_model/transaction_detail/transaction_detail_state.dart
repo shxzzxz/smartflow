@@ -1,12 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/transaction_view/transaction_view_query_api.dart';
-import '../../../core/money/money.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
+import '../../../../application/ledger/ledger_query_api.dart';
+import '../../../../application/transaction_view/transaction_view_query_api.dart';
+import '../../../../core/money/money.dart';
+import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
-import '../presentation/transaction_detail_presentation.dart';
+import '../../presentation/transaction_detail_presentation.dart';
 
 part 'transaction_detail_state.freezed.dart';
 

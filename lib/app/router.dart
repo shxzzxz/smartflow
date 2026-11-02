@@ -63,7 +63,7 @@ import '../feature/transaction/page/receivable_payable_form_pages.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
 import '../feature/transaction/page/filtered_transactions_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
-import '../feature/transaction/view_model/filtered_transactions_view_model.dart';
+import '../feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
 
 final appRouter = GoRouter(
   routes: [

@@ -1,14 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../app/provider.dart';
-import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/transaction_view/transaction_view_query_api.dart';
-import '../../shared/provider/counterparty_providers.dart';
-import '../../shared/presentation/account_lookup.dart';
-import '../../shared/presentation/transaction_list_presentation.dart';
-import '../../shared/provider/ledger_query_providers.dart';
-import '../../shared/provider/tag_providers.dart';
+import '../../../../app/provider.dart';
+import '../../../../application/ledger/ledger_command_api.dart';
+import '../../../../application/ledger/ledger_query_api.dart';
+import '../../../../application/transaction_view/transaction_view_query_api.dart';
+import '../../../shared/provider/counterparty_providers.dart';
+import '../../../shared/presentation/account_lookup.dart';
+import '../../../shared/presentation/transaction_list_presentation.dart';
+import '../../../shared/provider/ledger_query_providers.dart';
+import '../../../shared/provider/tag_providers.dart';
 
 part 'filtered_transactions_view_model.g.dart';
 

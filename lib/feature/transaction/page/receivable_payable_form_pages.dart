@@ -11,7 +11,7 @@ import '../../../widget/business/account/account_picker_sheet.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
-import '../view_model/receivable_payable_form_view_model.dart';
+import '../view_model/transaction_form/receivable_payable/receivable_payable_form_view_model.dart';
 
 class ReceivableCollectionFormPage extends StatelessWidget {
   const ReceivableCollectionFormPage({

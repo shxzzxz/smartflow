@@ -1,12 +1,12 @@
-import '../../../../application/credit/credit_command_api.dart';
-import '../../../../application/ledger/ledger_command_api.dart';
-import '../../../../application/orchestration/orchestration_command_api.dart';
-import '../../../../core/error/app_exception.dart';
-import '../../../../core/money/money.dart';
-import '../../../../core/patch/patch.dart';
-import '../../../../domain/ledger/valobj/ledger_error_code.dart';
-import '../../../amortization/presentation/amortization_configuration_draft.dart';
-import '../../presentation/transaction_form_presentation.dart';
+import '../../../../../application/credit/credit_command_api.dart';
+import '../../../../../application/ledger/ledger_command_api.dart';
+import '../../../../../application/orchestration/orchestration_command_api.dart';
+import '../../../../../core/error/app_exception.dart';
+import '../../../../../core/money/money.dart';
+import '../../../../../core/patch/patch.dart';
+import '../../../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../../amortization/presentation/amortization_configuration_draft.dart';
+import '../../../presentation/transaction_form_presentation.dart';
 import '../transaction_form_helpers.dart';
 import '../transaction_form_state.dart';
 

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
-import 'package:smartflow/feature/transaction/view_model/transaction_account_options.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_account_options.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {

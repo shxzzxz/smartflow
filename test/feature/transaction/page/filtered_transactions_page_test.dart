@@ -8,7 +8,7 @@ import 'package:smartflow/widget/business/transaction/transaction_batch_action_b
 import 'package:smartflow/widget/business/transaction/transaction_feed.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/feature/transaction/page/filtered_transactions_page.dart';
-import 'package:smartflow/feature/transaction/view_model/filtered_transactions_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 void main() {

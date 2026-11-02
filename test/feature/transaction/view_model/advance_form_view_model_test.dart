@@ -10,7 +10,7 @@ import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/page/advance_form_page.dart';
-import 'package:smartflow/feature/transaction/view_model/advance_form_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_form/advance/advance_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 import '../../../helper/advance_ownership_fixtures.dart';

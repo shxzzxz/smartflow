@@ -37,7 +37,7 @@ import '../../credit/page/loan_configuration_page.dart';
 import '../../credit/view_model/installment_terms_draft.dart';
 import '../../credit/view_model/loan_configuration_view_model.dart';
 import '../presentation/transaction_form_presentation.dart';
-import '../view_model/transaction_form_view_model.dart';
+import '../view_model/transaction_form/transaction_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
 
 part 'transaction_form_chrome.dart';

@@ -12,7 +12,7 @@ import '../../../widget/business/tag/tag_multi_select_sheet.dart';
 import '../../../widget/business/transaction/transaction_batch_action_bar.dart';
 import '../../../widget/business/transaction/transaction_batch_tag_action_sheet.dart';
 import '../../../widget/business/transaction/transaction_feed.dart';
-import '../view_model/filtered_transactions_view_model.dart';
+import '../view_model/filtered_transactions/filtered_transactions_view_model.dart';
 
 final _logger = Logger('feature.transaction');
 

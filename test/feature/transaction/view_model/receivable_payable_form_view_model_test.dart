@@ -7,7 +7,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
-import 'package:smartflow/feature/transaction/view_model/receivable_payable_form_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/transaction_form/receivable_payable/receivable_payable_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {

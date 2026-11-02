@@ -10,7 +10,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
-import 'package:smartflow/feature/transaction/view_model/filtered_transactions_view_model.dart';
+import 'package:smartflow/feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
 
 void main() {
   test('category business items include child category filters', () async {

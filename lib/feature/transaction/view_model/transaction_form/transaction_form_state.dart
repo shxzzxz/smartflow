@@ -1,12 +1,12 @@
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/ledger/tag/query/tag_read_models.dart';
-import '../../../application/orchestration/advance/command/advance_share.dart';
-import '../../../core/money/money.dart';
-import '../../../domain/credit/valobj/installment_contract_terms.dart';
-import '../../../domain/orchestration/valobj/advance_enums.dart';
-import '../../../domain/orchestration/valobj/amortization_enums.dart';
-import '../../../shared/account_profile/account_profile_kind.dart';
-import '../presentation/transaction_form_presentation.dart';
+import '../../../../application/ledger/ledger_query_api.dart';
+import '../../../../application/ledger/tag/query/tag_read_models.dart';
+import '../../../../application/orchestration/advance/command/advance_share.dart';
+import '../../../../core/money/money.dart';
+import '../../../../domain/credit/valobj/installment_contract_terms.dart';
+import '../../../../domain/orchestration/valobj/advance_enums.dart';
+import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../../../shared/account_profile/account_profile_kind.dart';
+import '../../presentation/transaction_form_presentation.dart';
 import 'transaction_account_options.dart';
 
 enum TransactionEntryMode { normal, allocated }

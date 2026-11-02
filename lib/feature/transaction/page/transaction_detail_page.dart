@@ -21,8 +21,8 @@ import 'package:smartflow/widget/business/transaction/transaction_avatar.dart';
 import '../../shared/provider/tag_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_detail_presentation.dart';
-import '../view_model/transaction_detail_state.dart';
-import '../view_model/transaction_detail_view_model.dart';
+import '../view_model/transaction_detail/transaction_detail_state.dart';
+import '../view_model/transaction_detail/transaction_detail_view_model.dart';
 
 class TransactionDetailPage extends ConsumerWidget {
   const TransactionDetailPage({required this.transactionId, super.key});

@@ -1,13 +1,13 @@
 import 'package:logging/logging.dart';
-import '../../../application/credit/credit_command_api.dart';
-import '../../../application/ledger/ledger_command_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
-import '../../../application/orchestration/orchestration_command_api.dart';
-import '../../../application/transaction_view/transaction_view_query_api.dart';
-import '../../../core/patch/patch.dart';
-import '../../../domain/ledger/valobj/ledger_error_code.dart';
-import '../../shared/view_model/action_guard.dart';
-import '../../shared/view_model/ui_action_outcome.dart';
+import '../../../../application/credit/credit_command_api.dart';
+import '../../../../application/ledger/ledger_command_api.dart';
+import '../../../../application/ledger/ledger_query_api.dart';
+import '../../../../application/orchestration/orchestration_command_api.dart';
+import '../../../../application/transaction_view/transaction_view_query_api.dart';
+import '../../../../core/patch/patch.dart';
+import '../../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../shared/view_model/action_guard.dart';
+import '../../../shared/view_model/ui_action_outcome.dart';
 
 part 'transaction_detail_action_support.dart';
 part 'transaction_detail_advance_actions.dart';
