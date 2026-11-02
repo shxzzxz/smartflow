@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart' show Override;
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
@@ -13,6 +15,7 @@ import 'package:smartflow/design_system/widget/app_plain_form_row.dart';
 import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_field.dart';
 import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart';
@@ -43,9 +46,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            transactionDetailProvider(
-              'purpose-icon',
-            ).overrideWith((ref) => Stream.value(detail)),
+            _detailContextOverride('purpose-icon', detail),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
             ),
@@ -103,9 +104,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'lending',
-          ).overrideWith((ref) => Stream.value(detail)),
+          _detailContextOverride('lending', detail),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(
               AccountLookup({
@@ -151,9 +150,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'tx-1',
-          ).overrideWith((ref) => Stream.value(_detail())),
+          _detailContextOverride('tx-1', _detail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -233,9 +230,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'tx-advance',
-          ).overrideWith((ref) => Stream.value(_combinedAdvanceDetail())),
+          _detailContextOverride('tx-advance', _combinedAdvanceDetail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -260,9 +255,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'transfer',
-          ).overrideWith((ref) => Stream.value(_transferDetail())),
+          _detailContextOverride('transfer', _transferDetail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -284,6 +277,68 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('amortization module opens plan and blocks direct deletion', (
+    tester,
+  ) async {
+    final detail = TransactionReadModel(
+      id: 'amortization-entry',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 10, 17),
+      primaryAmount: const Money(minorUnits: 10000),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+      ownership: const TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan-1',
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          _detailContextOverride(
+            'amortization-entry',
+            detail,
+            owner: const AmortizationTransactionDetailOwnerContext(
+              ownerType: orchestrationAmortizationOwnerType,
+              ownerId: 'plan-1',
+              initialTransactionId: 'anchor',
+              kind: AmortizationKind.prepaidExpense,
+              status: AmortizationStatus.active,
+              originalAmount: Money(minorUnits: 10000),
+              recognizedAmount: Money(minorUnits: 2000),
+              remainingAmount: Money(minorUnits: 8000),
+              postedPeriodCount: 1,
+              totalPeriodCount: 5,
+            ),
+          ),
+          accountLookupProvider.overrideWith(
+            (ref) => Stream.value(AccountLookup(_accounts)),
+          ),
+          tagListProvider.overrideWithValue(const AsyncData([])),
+          transactionTagIdsProvider(
+            'amortization-entry',
+          ).overrideWithValue(const AsyncData({})),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const TransactionDetailPage(
+            transactionId: 'amortization-entry',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('摊销计划'), findsOneWidget);
+    expect(find.text('预付费用 · 进行中 · 已确认 1/5'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('更多'));
+    await tester.pump();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('请在摊销计划中终止，不能单独删除计划交易'), findsOneWidget);
   });
 
   testWidgets(
@@ -308,9 +363,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            transactionDetailProvider(
-              'tx-multi',
-            ).overrideWith((ref) => Stream.value(_multiDetail())),
+            _detailContextOverride('tx-multi', _multiDetail()),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
             ),
@@ -444,9 +497,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'tx-many',
-          ).overrideWith((ref) => Stream.value(_multiDetail(many: true))),
+          _detailContextOverride('tx-many', _multiDetail(many: true)),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -545,12 +596,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            transactionDetailProvider(
-              'child',
-            ).overrideWith((ref) => Stream.value(child)),
-            transactionDetailProvider(
-              'parent',
-            ).overrideWith((ref) => Stream.value(parent)),
+            _detailContextOverride('child', child, parent: parent),
             accountLookupProvider.overrideWith(
               (ref) => Stream.value(AccountLookup(_accounts)),
             ),
@@ -586,9 +632,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transactionDetailProvider(
-            'tx-1',
-          ).overrideWith((ref) => Stream.value(_detail())),
+          _detailContextOverride('tx-1', _detail()),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
           ),
@@ -652,6 +696,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          _detailContextOverride('tx-advance', _advanceDetail()),
           transactionDetailProvider(
             'tx-advance',
           ).overrideWith((ref) => Stream.value(_advanceDetail())),
@@ -757,6 +802,52 @@ void main() {
     expect(tester.widget<Switch>(formSwitch).value, isTrue);
     expect(tester.widget<Text>(dateText).data, initialDateText);
   });
+}
+
+Override _detailContextOverride(
+  String transactionId,
+  TransactionReadModel detail, {
+  TransactionReadModel? parent,
+  TransactionDetailOwnerContext? owner,
+}) {
+  final anchor = parent ?? detail;
+  final group = TransactionDetailGroup(
+    anchor: anchor,
+    children: anchor.children,
+  );
+  final ownership = detail.ownership;
+  final resolvedOwner =
+      owner ??
+      (ownership?.ownerType == orchestrationAdvanceOwnerType
+          ? AdvanceTransactionDetailOwnerContext(
+              ownerType: ownership!.ownerType,
+              ownerId: ownership.ownerId,
+              scenario: AdvanceScenario.reimbursement,
+              trackingMode: AdvanceTrackingMode.itemized,
+              advanceAmount:
+                  detail.advanceSummary?.advanceAmount ?? detail.primaryAmount,
+              receivedAmount:
+                  detail.advanceSummary?.receivedAmount ?? Money.zero(),
+              outstanding:
+                  detail.advanceSummary?.outstanding ?? detail.primaryAmount,
+              isClosed: detail.advanceSummary?.isClosed ?? false,
+            )
+          : ownership == null
+          ? null
+          : UnknownTransactionDetailOwnerContext(
+              ownerType: ownership.ownerType,
+              ownerId: ownership.ownerId,
+            ));
+  final context = TransactionDetailContext(
+    transaction: detail,
+    parentTransaction: parent,
+    currentGroup: group,
+    anchorGroup: group,
+    owner: resolvedOwner,
+  );
+  return transactionDetailContextProvider(
+    transactionId,
+  ).overrideWith((ref) => Stream.value(context));
 }
 
 class _FakeAccountQueryService implements AccountQueryService {

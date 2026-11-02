@@ -6,6 +6,7 @@ import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/orchestration/orchestration_command_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
@@ -888,13 +889,9 @@ ProviderContainer _container({
   };
   final container = ProviderContainer(
     overrides: [
-      transactionDetailProvider(
+      transactionDetailContextProvider(
         'tx-1',
-      ).overrideWith((ref) => Stream.value(detail)),
-      if (detail.parentTransactionId != null)
-        transactionDetailProvider(
-          detail.parentTransactionId!,
-        ).overrideWith((ref) => Stream.value(_detail())),
+      ).overrideWith((ref) => Stream.value(_contextForDetail(detail))),
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
@@ -942,6 +939,73 @@ ProviderContainer _container({
   );
   addTearDown(container.dispose);
   return container;
+}
+
+TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
+  final parent = detail.parentTransactionId == null ? null : _detail();
+  final anchor = parent ?? detail;
+  final ownership = detail.ownership;
+  final owner = switch (ownership?.ownerType) {
+    installmentOwnerType => InstallmentTransactionDetailOwnerContext(
+      ownerType: ownership!.ownerType,
+      ownerId: ownership.ownerId,
+      installmentType: InstallmentType.disbursement,
+      status: InstallmentContractStatus.active,
+      principal: detail.primaryAmount,
+      remainingPrincipal: detail.primaryAmount,
+      paidPeriodCount: 0,
+      totalPeriodCount: 3,
+    ),
+    creditRepaymentOwnerType => RepaymentTransactionDetailOwnerContext(
+      ownerType: ownership!.ownerType,
+      ownerId: ownership.ownerId,
+      repaymentType: RepaymentType.bill,
+      targetType: RepaymentTargetType.bill,
+      targetId: 'bill-1',
+    ),
+    orchestrationAdvanceOwnerType => AdvanceTransactionDetailOwnerContext(
+      ownerType: ownership!.ownerType,
+      ownerId: ownership.ownerId,
+      scenario: AdvanceScenario.reimbursement,
+      trackingMode: AdvanceTrackingMode.itemized,
+      advanceAmount:
+          detail.advanceSummary?.advanceAmount ?? detail.primaryAmount,
+      receivedAmount: detail.advanceSummary?.receivedAmount ?? Money.zero(),
+      outstanding: detail.advanceSummary?.outstanding ?? detail.primaryAmount,
+      isClosed: detail.advanceSummary?.isClosed ?? false,
+    ),
+    orchestrationAmortizationOwnerType =>
+      AmortizationTransactionDetailOwnerContext(
+        ownerType: ownership!.ownerType,
+        ownerId: ownership.ownerId,
+        initialTransactionId: detail.id,
+        kind: AmortizationKind.prepaidExpense,
+        status: AmortizationStatus.active,
+        originalAmount: detail.primaryAmount,
+        recognizedAmount: Money.zero(),
+        remainingAmount: detail.primaryAmount,
+        postedPeriodCount: 0,
+        totalPeriodCount: 3,
+      ),
+    final String ownerType => UnknownTransactionDetailOwnerContext(
+      ownerType: ownerType,
+      ownerId: ownership!.ownerId,
+    ),
+    null => null,
+  };
+  return TransactionDetailContext(
+    transaction: detail,
+    parentTransaction: parent,
+    currentGroup: TransactionDetailGroup(
+      anchor: anchor,
+      children: anchor.children,
+    ),
+    anchorGroup: TransactionDetailGroup(
+      anchor: anchor,
+      children: anchor.children,
+    ),
+    owner: owner,
+  );
 }
 
 Future<TransactionDetailUiState> _readState(ProviderContainer container) {

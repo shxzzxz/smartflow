@@ -1,15 +1,19 @@
 import 'package:logging/logging.dart';
 import '../../../application/credit/credit_command_api.dart';
-import '../../../application/credit/credit_query_api.dart'
-    show RepaymentOwnerQuery;
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
-import '../../../core/error/app_exception.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/patch/patch.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+
+part 'transaction_detail_action_support.dart';
+part 'transaction_detail_advance_actions.dart';
+part 'transaction_detail_amortization_actions.dart';
+part 'transaction_detail_credit_repayment_actions.dart';
+part 'transaction_detail_installment_actions.dart';
 
 final _logger = Logger('feature.transaction.detail_action');
 
@@ -29,7 +33,7 @@ abstract interface class TransactionDetailActionDispatcher {
 }
 
 TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
-  required TransactionReadModel transaction,
+  required TransactionDetailContext context,
   required TransactionEditAppService editService,
   required TransactionUpdateAppService updateService,
   required InstallmentContractAppService installmentAppService,
@@ -38,12 +42,11 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   required BillRepaymentAppService billRepaymentAppService,
   required InstallmentPrepaymentAppService installmentPrepaymentAppService,
   required AccountRepaymentAppService accountRepaymentAppService,
-  required RepaymentOwnerQuery repaymentOwnerQuery,
   AdvanceOrchestrationAppService? advanceAppService,
-  AdvanceCaseQueryService? advanceCaseQuery,
 }) {
-  final ownership = transaction.ownership;
-  if (ownership == null) {
+  final transaction = context.transaction;
+  final owner = context.owner;
+  if (owner == null) {
     return _DefaultActionDispatcher(
       transaction: transaction,
       editService: editService,
@@ -52,21 +55,21 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
   }
 
   if (transaction.businessPurpose == BusinessPurpose.refund &&
-      ownership.ownerType == installmentOwnerType) {
+      owner is InstallmentTransactionDetailOwnerContext) {
     return _InstallmentRefundActionDispatcher(
       transaction: transaction,
       consumptionInstallmentAppService: consumptionInstallmentAppService,
     );
   }
 
-  if (ownership.ownerType == orchestrationAdvanceOwnerType) {
-    if (advanceAppService == null || advanceCaseQuery == null) {
+  if (owner is AdvanceTransactionDetailOwnerContext) {
+    if (advanceAppService == null) {
       throw StateError('Advance orchestration services are not configured.');
     }
     return _AdvanceActionDispatcher(
       transaction: transaction,
+      owner: owner,
       advanceAppService: advanceAppService,
-      advanceCaseQuery: advanceCaseQuery,
       fallback: _DefaultActionDispatcher(
         transaction: transaction,
         editService: editService,
@@ -75,33 +78,32 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     );
   }
 
-  if (ownership.ownerType == orchestrationAmortizationOwnerType) {
+  if (owner is AmortizationTransactionDetailOwnerContext) {
     return _AmortizationActionDispatcher(
       transaction,
       updateService: updateService,
     );
   }
 
-  if (ownership.ownerType == installmentOwnerType) {
+  if (owner is InstallmentTransactionDetailOwnerContext) {
     return _InstallmentActionDispatcher(
       transaction: transaction,
       installmentAppService: installmentAppService,
       disbursementInstallmentAppService: disbursementInstallmentAppService,
       consumptionInstallmentAppService: consumptionInstallmentAppService,
       updateService: updateService,
-      contractId: ownership.ownerId,
+      contractId: owner.ownerId,
     );
   }
 
-  if (ownership.ownerType == creditRepaymentOwnerType) {
+  if (owner is RepaymentTransactionDetailOwnerContext) {
     return _CreditRepaymentActionDispatcher(
       transaction: transaction,
       billRepaymentAppService: billRepaymentAppService,
       installmentPrepaymentAppService: installmentPrepaymentAppService,
       accountRepaymentAppService: accountRepaymentAppService,
-      repaymentOwnerQuery: repaymentOwnerQuery,
       updateService: updateService,
-      repaymentId: ownership.ownerId,
+      owner: owner,
     );
   }
 
@@ -109,262 +111,6 @@ TransactionDetailActionDispatcher createTransactionDetailActionDispatcher({
     transaction: transaction,
     updateService: updateService,
   );
-}
-
-final class _InstallmentRefundActionDispatcher
-    implements TransactionDetailActionDispatcher {
-  const _InstallmentRefundActionDispatcher({
-    required this.transaction,
-    required this.consumptionInstallmentAppService,
-  });
-
-  final TransactionReadModel transaction;
-  final ConsumptionInstallmentAppService consumptionInstallmentAppService;
-
-  @override
-  Future<UiActionOutcome<void>> delete() {
-    return detailVoidOutcomeFromAction(
-      () => consumptionInstallmentAppService.deleteRefund(
-        DeleteConsumptionInstallmentRefundCommand(
-          transactionId: transaction.id,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeNote(String? value) async =>
-      detailNotEditable('请在退款编辑页修改备注');
-
-  @override
-  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async =>
-      detailNotEditable('请在退款编辑页修改退款时间');
-
-  @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
-    final ownership = transaction.ownership;
-    final parentTransactionId = transaction.parentTransactionId;
-    if (ownership?.ownerType != installmentOwnerType ||
-        parentTransactionId == null) {
-      return Future.value(detailInvalidCommand('无法定位消费分期退款'));
-    }
-    return detailVoidOutcomeFromAction(() async {
-      await consumptionInstallmentAppService.editRefund(
-        EditConsumptionInstallmentRefundCommand(
-          transactionId: transaction.id,
-          contractId: ownership!.ownerId,
-          parentTransactionId: parentTransactionId,
-          postedAt: value,
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId, {
-    String? currentAccountId,
-  }) async => detailNotEditable('请在退款编辑页修改到账分配');
-}
-
-Future<UiActionOutcome<void>> detailVoidOutcomeFromAction(
-  Future<void> Function() action,
-) {
-  return guardUiAction(_logger, 'Transaction detail action', action);
-}
-
-UiActionOutcome<void> detailNotEditable(String message) {
-  return UiActionOutcome.failure(
-    UiError(
-      code: LedgerErrorCode.transactionNotEditable.code,
-      message: message,
-    ),
-  );
-}
-
-UiActionOutcome<void> detailInvalidCommand(String message) {
-  return UiActionOutcome.failure(
-    UiError(
-      code: LedgerErrorCode.transactionInvalidCommand.code,
-      message: message,
-    ),
-  );
-}
-
-Patch<String?> _nullableStringPatch(String? value) {
-  return value == null ? const Patch<String?>.clear() : Patch.set(value);
-}
-
-Future<UiActionOutcome<void>> _changePostedAt({
-  required TransactionReadModel transaction,
-  required TransactionUpdateAppService updateService,
-  required DateTime value,
-}) {
-  return detailVoidOutcomeFromAction(() {
-    return updateService.updateBasicInfo(
-      UpdateTransactionBasicInfoCommand(
-        transactionId: transaction.id,
-        postedAt: value,
-      ),
-    );
-  });
-}
-
-final class _AdvanceActionDispatcher
-    implements TransactionDetailActionDispatcher {
-  const _AdvanceActionDispatcher({
-    required this.transaction,
-    required this.advanceAppService,
-    required this.advanceCaseQuery,
-    required this.fallback,
-  });
-
-  final TransactionReadModel transaction;
-  final AdvanceOrchestrationAppService advanceAppService;
-  final AdvanceCaseQueryService advanceCaseQuery;
-  final TransactionDetailActionDispatcher fallback;
-
-  @override
-  Future<UiActionOutcome<void>> delete() => fallback.delete();
-
-  @override
-  Future<UiActionOutcome<void>> changeNote(String? value) =>
-      fallback.changeNote(value);
-
-  @override
-  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) =>
-      fallback.changeOccurredAt(value);
-
-  @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) =>
-      fallback.changePostedAt(value);
-
-  @override
-  Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId, {
-    String? currentAccountId,
-  }) async {
-    final allocations = singleAllocation(
-      accountId: accountId,
-      amount: transaction.amountOf(TransactionRole.settlementIn),
-    );
-    switch (transaction.businessPurpose) {
-      case BusinessPurpose.advance:
-        final ownership = transaction.ownership;
-        final advanceCase = ownership == null
-            ? null
-            : await advanceCaseQuery.findById(ownership.ownerId);
-        if (advanceCase == null) {
-          return detailInvalidCommand('无法定位垫付编排实例');
-        }
-        await advanceAppService.editAdvance(
-          EditAdvanceWorkflowCommand(
-            transactionId: transaction.id,
-            scenario: advanceCase.scenario,
-            settlementAllocations: singleAllocation(
-              accountId: accountId,
-              amount: transaction.primaryAmount,
-            ),
-          ),
-        );
-        return const UiActionOutcome.success(null);
-      case BusinessPurpose.advanceCollection:
-        await advanceAppService.editCollection(
-          EditAdvanceCollectionWorkflowCommand(
-            transactionId: transaction.id,
-            settlementAllocations: allocations,
-          ),
-        );
-        return const UiActionOutcome.success(null);
-      case BusinessPurpose.advanceSettlement:
-        await advanceAppService.editSettlement(
-          EditAdvanceSettlementWorkflowCommand(
-            transactionId: transaction.id,
-            settlementAllocations: allocations,
-          ),
-        );
-        return const UiActionOutcome.success(null);
-      case BusinessPurpose.refund:
-        await advanceAppService.editRefund(
-          EditAdvanceRefundWorkflowCommand(
-            transactionId: transaction.id,
-            amount: transaction.primaryAmount,
-            categoryAllocations: [
-              for (final line in transaction.linesOf(
-                TransactionRole.advanceExpenseCategory,
-              ))
-                if (line.accountId != null)
-                  AccountAmountAllocation(
-                    accountId: line.accountId!,
-                    amount: line.amount,
-                  ),
-            ],
-            settlementAllocations: allocations,
-            occurredAt: transaction.occurredAt,
-          ),
-        );
-        return const UiActionOutcome.success(null);
-      default:
-        return fallback.changeSettlementAccount(
-          accountId,
-          currentAccountId: currentAccountId,
-        );
-    }
-  }
-}
-
-final class _AmortizationActionDispatcher
-    implements TransactionDetailActionDispatcher {
-  const _AmortizationActionDispatcher(
-    this.transaction, {
-    required this.updateService,
-  });
-
-  final TransactionReadModel transaction;
-  final TransactionUpdateAppService updateService;
-
-  @override
-  Future<UiActionOutcome<void>> delete() async =>
-      detailNotEditable('请在摊销计划中终止，不能单独删除计划交易');
-
-  @override
-  Future<UiActionOutcome<void>> changeNote(String? value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          note: _nullableStringPatch(value),
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          occurredAt: value,
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return _changePostedAt(
-      transaction: transaction,
-      updateService: updateService,
-      value: value,
-    );
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId, {
-    String? currentAccountId,
-  }) async => detailNotEditable('摊销计划账户由计划控制');
 }
 
 final class _DefaultActionDispatcher
@@ -567,222 +313,6 @@ final class _DefaultActionDispatcher
       case BusinessPurpose.badDebt:
       case BusinessPurpose.debtRelief:
         return detailInvalidCommand('当前交易不支持在详情页修改账户');
-    }
-  }
-}
-
-final class _InstallmentActionDispatcher
-    implements TransactionDetailActionDispatcher {
-  const _InstallmentActionDispatcher({
-    required this.transaction,
-    required this.installmentAppService,
-    required this.disbursementInstallmentAppService,
-    required this.consumptionInstallmentAppService,
-    required this.updateService,
-    required this.contractId,
-  });
-
-  final TransactionReadModel transaction;
-  final InstallmentContractAppService installmentAppService;
-  final DisbursementInstallmentAppService disbursementInstallmentAppService;
-  final ConsumptionInstallmentAppService consumptionInstallmentAppService;
-  final TransactionUpdateAppService updateService;
-  final String contractId;
-
-  @override
-  Future<UiActionOutcome<void>> delete() async {
-    return detailVoidOutcomeFromAction(() {
-      if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
-        return consumptionInstallmentAppService.delete(
-          DeleteInstallmentCommand(contractId: contractId),
-        );
-      }
-      if (transaction.businessPurpose == BusinessPurpose.borrowing) {
-        return disbursementInstallmentAppService.delete(
-          DeleteInstallmentCommand(contractId: contractId),
-        );
-      }
-      return installmentAppService.deleteContract(
-        DeleteContractCommand(contractId: contractId),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeNote(String? value) async {
-    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
-      return detailVoidOutcomeFromAction(() {
-        return updateService.updateBasicInfo(
-          UpdateTransactionBasicInfoCommand(
-            transactionId: transaction.id,
-            note: _nullableStringPatch(value),
-          ),
-        );
-      });
-    }
-    return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContractDetails(
-        UpdateContractDetailsCommand(
-          contractId: contractId,
-          note: value == null
-              ? const Patch<String>.clear()
-              : Patch<String>.set(value),
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      return updateService.updateBasicInfo(
-        UpdateTransactionBasicInfoCommand(
-          transactionId: transaction.id,
-          occurredAt: value,
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return _changePostedAt(
-      transaction: transaction,
-      updateService: updateService,
-      value: value,
-    );
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId, {
-    String? currentAccountId,
-  }) async {
-    if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
-      return detailNotEditable('消费分期的成交价和结算分配不能直接修改');
-    }
-    return detailVoidOutcomeFromAction(() {
-      return installmentAppService.updateContractDetails(
-        UpdateContractDetailsCommand(
-          contractId: contractId,
-          disbursementAccountId: accountId,
-        ),
-      );
-    });
-  }
-}
-
-final class _CreditRepaymentActionDispatcher
-    implements TransactionDetailActionDispatcher {
-  const _CreditRepaymentActionDispatcher({
-    required this.transaction,
-    required this.billRepaymentAppService,
-    required this.installmentPrepaymentAppService,
-    required this.accountRepaymentAppService,
-    required this.repaymentOwnerQuery,
-    required this.updateService,
-    required this.repaymentId,
-  });
-
-  final TransactionReadModel transaction;
-  final BillRepaymentAppService billRepaymentAppService;
-  final InstallmentPrepaymentAppService installmentPrepaymentAppService;
-  final AccountRepaymentAppService accountRepaymentAppService;
-  final RepaymentOwnerQuery repaymentOwnerQuery;
-  final TransactionUpdateAppService updateService;
-  final String repaymentId;
-
-  @override
-  Future<UiActionOutcome<void>> delete() async {
-    return detailVoidOutcomeFromAction(() {
-      return _dispatch(
-        bill: (service) => service.deleteRepayment(
-          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
-        ),
-        prepayment: (service) => service.deleteRepayment(
-          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
-        ),
-        account: (service) => service.deleteRepayment(
-          DeleteCreditRepaymentCommand(repaymentId: repaymentId),
-        ),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeNote(String? value) async {
-    return detailVoidOutcomeFromAction(() {
-      final command = EditCreditRepaymentTransactionCommand(
-        repaymentId: repaymentId,
-        note: _nullableStringPatch(value),
-      );
-      return _dispatch(
-        bill: (service) => service.editRepaymentTransaction(command),
-        prepayment: (service) => service.editRepaymentTransaction(command),
-        account: (service) => service.editRepaymentTransaction(command),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) async {
-    return detailVoidOutcomeFromAction(() {
-      final command = EditCreditRepaymentTransactionCommand(
-        repaymentId: repaymentId,
-        occurredAt: value,
-      );
-      return _dispatch(
-        bill: (service) => service.editRepaymentTransaction(command),
-        prepayment: (service) => service.editRepaymentTransaction(command),
-        account: (service) => service.editRepaymentTransaction(command),
-      );
-    });
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changePostedAt(DateTime value) async {
-    return _changePostedAt(
-      transaction: transaction,
-      updateService: updateService,
-      value: value,
-    );
-  }
-
-  @override
-  Future<UiActionOutcome<void>> changeSettlementAccount(
-    String accountId, {
-    String? currentAccountId,
-  }) async {
-    return detailVoidOutcomeFromAction(() {
-      final command = EditCreditRepaymentTransactionCommand(
-        repaymentId: repaymentId,
-        paidFromAccountId: accountId,
-      );
-      return _dispatch(
-        bill: (service) => service.editRepaymentTransaction(command),
-        prepayment: (service) => service.editRepaymentTransaction(command),
-        account: (service) => service.editRepaymentTransaction(command),
-      );
-    });
-  }
-
-  Future<void> _dispatch({
-    required Future<void> Function(BillRepaymentAppService service) bill,
-    required Future<void> Function(InstallmentPrepaymentAppService service)
-    prepayment,
-    required Future<void> Function(AccountRepaymentAppService service) account,
-  }) async {
-    final type = await repaymentOwnerQuery.findType(repaymentId);
-    if (type == null) {
-      throw BusinessException(CreditErrorCode.repaymentNotFound);
-    }
-    switch (type) {
-      case RepaymentType.bill || RepaymentType.installment:
-        return bill(billRepaymentAppService);
-      case RepaymentType.prepayment:
-        return prepayment(installmentPrepaymentAppService);
-      case RepaymentType.unattributed:
-        return account(accountRepaymentAppService);
     }
   }
 }

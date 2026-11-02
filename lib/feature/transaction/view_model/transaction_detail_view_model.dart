@@ -6,6 +6,7 @@ import '../../../application/credit/credit_command_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
@@ -28,37 +29,17 @@ final _logger = Logger('feature.transaction.detail');
 class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   @override
   Future<TransactionDetailUiState> build(String transactionId) async {
-    final detail = await ref.watch(
-      transactionDetailProvider(transactionId).future,
+    final context = await ref.watch(
+      transactionDetailContextProvider(transactionId).future,
     );
-    if (detail == null) {
+    if (context == null) {
       return const TransactionDetailUiState.notFound();
     }
-    final parentDetail = detail.parentTransactionId == null
-        ? null
-        : await ref.watch(
-            transactionDetailProvider(detail.parentTransactionId!).future,
-          );
 
     final accountLookup = await ref.watch(accountLookupProvider.future);
-    final ownership = detail.ownership;
-    final advanceCase = ownership?.ownerType == orchestrationAdvanceOwnerType
-        ? await ref
-              .read(advanceCaseQueryServiceProvider)
-              .findById(ownership!.ownerId)
-        : null;
-    final creditRepaymentType = ownership?.ownerType == creditRepaymentOwnerType
-        ? await ref
-              .read(repaymentOwnerQueryProvider)
-              .findType(ownership!.ownerId)
-        : null;
     return buildTransactionDetailLoadedState(
-      transactionId: transactionId,
-      detail: detail,
-      parentDetail: parentDetail,
+      context: context,
       accountLookup: accountLookup,
-      advanceCase: advanceCase,
-      creditRepaymentType: creditRepaymentType,
     );
   }
 
@@ -74,14 +55,14 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> delete() {
     return _runAction((loaded) {
-      return _actionDispatcherFor(loaded.detail).delete();
+      return _actionDispatcherFor(loaded.context).delete();
     });
   }
 
   Future<UiActionOutcome<void>> changeNote(String? value) {
     final normalized = value == null ? null : trimToNull(value);
     return _runAction((loaded) {
-      return _actionDispatcherFor(loaded.detail).changeNote(normalized);
+      return _actionDispatcherFor(loaded.context).changeNote(normalized);
     });
   }
 
@@ -108,13 +89,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
 
   Future<UiActionOutcome<void>> changeOccurredAt(DateTime value) {
     return _runAction((loaded) {
-      return _actionDispatcherFor(loaded.detail).changeOccurredAt(value);
+      return _actionDispatcherFor(loaded.context).changeOccurredAt(value);
     });
   }
 
   Future<UiActionOutcome<void>> changePostedAt(DateTime value) {
     return _runAction((loaded) {
-      return _actionDispatcherFor(loaded.detail).changePostedAt(value);
+      return _actionDispatcherFor(loaded.context).changePostedAt(value);
     });
   }
 
@@ -129,19 +110,13 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         case AccountSelectionPurpose.expenseSettlement:
         case AccountSelectionPurpose.fund:
         case AccountSelectionPurpose.repaymentSource:
-          return _actionDispatcherFor(loaded.detail).changeSettlementAccount(
+          return _actionDispatcherFor(loaded.context).changeSettlementAccount(
             accountId,
             currentAccountId: currentAccountId,
           );
         case AccountSelectionPurpose.advanceReceivable:
-          final ownership = loaded.detail.ownership;
-          if (ownership?.ownerType != orchestrationAdvanceOwnerType) {
-            return detailInvalidCommand('无法定位垫付编排实例');
-          }
-          final advanceCase = await ref
-              .read(advanceCaseQueryServiceProvider)
-              .findById(ownership!.ownerId);
-          if (advanceCase == null) {
+          final advance = loaded.context.owner;
+          if (advance is! AdvanceTransactionDetailOwnerContext) {
             return detailInvalidCommand('无法定位垫付编排实例');
           }
           await ref
@@ -149,7 +124,7 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
               .editAdvance(
                 EditAdvanceWorkflowCommand(
                   transactionId: loaded.detail.id,
-                  scenario: advanceCase.scenario,
+                  scenario: advance.scenario,
                   receivableAccountId: accountId,
                 ),
               );
@@ -253,12 +228,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   }
 
   TransactionDetailActionDispatcher _actionDispatcherFor(
-    TransactionReadModel transaction,
+    TransactionDetailContext context,
   ) {
-    final isAdvance =
-        transaction.ownership?.ownerType == orchestrationAdvanceOwnerType;
     return createTransactionDetailActionDispatcher(
-      transaction: transaction,
+      context: context,
       editService: ref.read(transactionEditAppServiceProvider),
       updateService: ref.read(transactionUpdateAppServiceProvider),
       installmentAppService: ref.read(installmentContractAppServiceProvider),
@@ -273,12 +246,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         installmentPrepaymentAppServiceProvider,
       ),
       accountRepaymentAppService: ref.read(accountRepaymentAppServiceProvider),
-      repaymentOwnerQuery: ref.read(repaymentOwnerQueryProvider),
-      advanceAppService: isAdvance
+      advanceAppService: context.owner is AdvanceTransactionDetailOwnerContext
           ? ref.read(advanceOrchestrationAppServiceProvider)
-          : null,
-      advanceCaseQuery: isAdvance
-          ? ref.read(advanceCaseQueryServiceProvider)
           : null,
     );
   }

@@ -831,3 +831,82 @@ final class TransactionDetailFamily extends $Family
   @override
   String toString() => r'transactionDetailProvider';
 }
+
+@ProviderFor(transactionDetailContext)
+final transactionDetailContextProvider = TransactionDetailContextFamily._();
+
+final class TransactionDetailContextProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<TransactionDetailContext?>,
+          TransactionDetailContext?,
+          Stream<TransactionDetailContext?>
+        >
+    with
+        $FutureModifier<TransactionDetailContext?>,
+        $StreamProvider<TransactionDetailContext?> {
+  TransactionDetailContextProvider._({
+    required TransactionDetailContextFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'transactionDetailContextProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionDetailContextHash();
+
+  @override
+  String toString() {
+    return r'transactionDetailContextProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<TransactionDetailContext?> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<TransactionDetailContext?> create(Ref ref) {
+    final argument = this.argument as String;
+    return transactionDetailContext(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransactionDetailContextProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$transactionDetailContextHash() =>
+    r'0c472d4f45328447dcd69d891eef59ea47a924f2';
+
+final class TransactionDetailContextFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<TransactionDetailContext?>, String> {
+  TransactionDetailContextFamily._()
+    : super(
+        retry: null,
+        name: r'transactionDetailContextProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  TransactionDetailContextProvider call(String transactionId) =>
+      TransactionDetailContextProvider._(argument: transactionId, from: this);
+
+  @override
+  String toString() => r'transactionDetailContextProvider';
+}

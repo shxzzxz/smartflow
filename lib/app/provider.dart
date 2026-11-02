@@ -574,6 +574,17 @@ BusinessItemQueryService businessItemQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionDetailContextQuery transactionDetailContextQuery(Ref ref) {
+  return TransactionDetailContextQueryImpl(
+    transactions: ref.watch(transactionQueryServiceProvider),
+    advances: ref.watch(advanceCaseQueryServiceProvider),
+    installments: ref.watch(installmentQueryServiceProvider),
+    amortizations: ref.watch(amortizationPlanQueryServiceProvider),
+    repaymentRepository: ref.watch(repaymentRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 FinancialMetricsService financialMetricsService(Ref ref) {
   return FinancialMetricsServiceImpl(
     metricsSource: ref.watch(ledgerMetricsSourceProvider),

@@ -120,10 +120,10 @@ return notFound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult Function()?  notFound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return orElse();
 
@@ -142,10 +142,10 @@ return notFound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)  loaded,required TResult Function()  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded():
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound():
 return notFound();}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -160,10 +160,10 @@ return notFound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String transactionId,  TransactionDetailContext context,  TransactionReadModel detail,  DetailBehaviorConfig behavior,  DetailHero hero,  List<DetailAllocationBreakdown> allocationBreakdowns,  String occurredAtText,  String postedAtText,  String createdAtText,  List<DetailAccountRow> accountRows,  DetailRefund? refund,  DetailAdvance? advance,  List<DetailBusinessModule> businessModules,  bool canEditReportingFlags,  bool showExcludeStats,  bool showExcludeBudget,  bool excludeStats,  bool excludeBudget,  List<DetailActionButton> actionButtons,  bool submitting,  String? noteText)?  loaded,TResult? Function()?  notFound,}) {final _that = this;
 switch (_that) {
 case TransactionDetailLoaded() when loaded != null:
-return loaded(_that.transactionId,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
+return loaded(_that.transactionId,_that.context,_that.detail,_that.behavior,_that.hero,_that.allocationBreakdowns,_that.occurredAtText,_that.postedAtText,_that.createdAtText,_that.accountRows,_that.refund,_that.advance,_that.businessModules,_that.canEditReportingFlags,_that.showExcludeStats,_that.showExcludeBudget,_that.excludeStats,_that.excludeBudget,_that.actionButtons,_that.submitting,_that.noteText);case TransactionDetailNotFound() when notFound != null:
 return notFound();case _:
   return null;
 
@@ -176,10 +176,11 @@ return notFound();case _:
 
 
 class TransactionDetailLoaded implements TransactionDetailUiState {
-  const TransactionDetailLoaded({required this.transactionId, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.advance, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_actionButtons = actionButtons;
+  const TransactionDetailLoaded({required this.transactionId, required this.context, required this.detail, required this.behavior, required this.hero, required  List<DetailAllocationBreakdown> allocationBreakdowns, required this.occurredAtText, required this.postedAtText, required this.createdAtText, required  List<DetailAccountRow> accountRows, required this.refund, required this.advance, required  List<DetailBusinessModule> businessModules, this.canEditReportingFlags = true, required this.showExcludeStats, required this.showExcludeBudget, required this.excludeStats, required this.excludeBudget, required  List<DetailActionButton> actionButtons, required this.submitting, this.noteText}): _allocationBreakdowns = allocationBreakdowns,_accountRows = accountRows,_businessModules = businessModules,_actionButtons = actionButtons;
   
 
  final  String transactionId;
+ final  TransactionDetailContext context;
  final  TransactionReadModel detail;
  final  DetailBehaviorConfig behavior;
  final  DetailHero hero;
@@ -202,6 +203,13 @@ class TransactionDetailLoaded implements TransactionDetailUiState {
 
  final  DetailRefund? refund;
  final  DetailAdvance? advance;
+ final  List<DetailBusinessModule> _businessModules;
+ List<DetailBusinessModule> get businessModules {
+  if (_businessModules is EqualUnmodifiableListView) return _businessModules;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_businessModules);
+}
+
 @JsonKey() final  bool canEditReportingFlags;
  final  bool showExcludeStats;
  final  bool showExcludeBudget;
@@ -227,16 +235,16 @@ $TransactionDetailLoadedCopyWith<TransactionDetailLoaded> get copyWith => _$Tran
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.advance, advance) || other.advance == advance)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.noteText, noteText) || other.noteText == noteText));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransactionDetailLoaded&&(identical(other.transactionId, transactionId) || other.transactionId == transactionId)&&(identical(other.context, context) || other.context == context)&&(identical(other.detail, detail) || other.detail == detail)&&(identical(other.behavior, behavior) || other.behavior == behavior)&&(identical(other.hero, hero) || other.hero == hero)&&const DeepCollectionEquality().equals(other._allocationBreakdowns, _allocationBreakdowns)&&(identical(other.occurredAtText, occurredAtText) || other.occurredAtText == occurredAtText)&&(identical(other.postedAtText, postedAtText) || other.postedAtText == postedAtText)&&(identical(other.createdAtText, createdAtText) || other.createdAtText == createdAtText)&&const DeepCollectionEquality().equals(other._accountRows, _accountRows)&&(identical(other.refund, refund) || other.refund == refund)&&(identical(other.advance, advance) || other.advance == advance)&&const DeepCollectionEquality().equals(other._businessModules, _businessModules)&&(identical(other.canEditReportingFlags, canEditReportingFlags) || other.canEditReportingFlags == canEditReportingFlags)&&(identical(other.showExcludeStats, showExcludeStats) || other.showExcludeStats == showExcludeStats)&&(identical(other.showExcludeBudget, showExcludeBudget) || other.showExcludeBudget == showExcludeBudget)&&(identical(other.excludeStats, excludeStats) || other.excludeStats == excludeStats)&&(identical(other.excludeBudget, excludeBudget) || other.excludeBudget == excludeBudget)&&const DeepCollectionEquality().equals(other._actionButtons, _actionButtons)&&(identical(other.submitting, submitting) || other.submitting == submitting)&&(identical(other.noteText, noteText) || other.noteText == noteText));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,transactionId,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,advance,canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,noteText]);
+int get hashCode => Object.hashAll([runtimeType,transactionId,context,detail,behavior,hero,const DeepCollectionEquality().hash(_allocationBreakdowns),occurredAtText,postedAtText,createdAtText,const DeepCollectionEquality().hash(_accountRows),refund,advance,const DeepCollectionEquality().hash(_businessModules),canEditReportingFlags,showExcludeStats,showExcludeBudget,excludeStats,excludeBudget,const DeepCollectionEquality().hash(_actionButtons),submitting,noteText]);
 
 @override
 String toString() {
-  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, advance: $advance, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, noteText: $noteText)';
+  return 'TransactionDetailUiState.loaded(transactionId: $transactionId, context: $context, detail: $detail, behavior: $behavior, hero: $hero, allocationBreakdowns: $allocationBreakdowns, occurredAtText: $occurredAtText, postedAtText: $postedAtText, createdAtText: $createdAtText, accountRows: $accountRows, refund: $refund, advance: $advance, businessModules: $businessModules, canEditReportingFlags: $canEditReportingFlags, showExcludeStats: $showExcludeStats, showExcludeBudget: $showExcludeBudget, excludeStats: $excludeStats, excludeBudget: $excludeBudget, actionButtons: $actionButtons, submitting: $submitting, noteText: $noteText)';
 }
 
 
@@ -247,7 +255,7 @@ abstract mixin class $TransactionDetailLoadedCopyWith<$Res> implements $Transact
   factory $TransactionDetailLoadedCopyWith(TransactionDetailLoaded value, $Res Function(TransactionDetailLoaded) _then) = _$TransactionDetailLoadedCopyWithImpl;
 @useResult
 $Res call({
- String transactionId, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailAdvance? advance, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
+ String transactionId, TransactionDetailContext context, TransactionReadModel detail, DetailBehaviorConfig behavior, DetailHero hero, List<DetailAllocationBreakdown> allocationBreakdowns, String occurredAtText, String postedAtText, String createdAtText, List<DetailAccountRow> accountRows, DetailRefund? refund, DetailAdvance? advance, List<DetailBusinessModule> businessModules, bool canEditReportingFlags, bool showExcludeStats, bool showExcludeBudget, bool excludeStats, bool excludeBudget, List<DetailActionButton> actionButtons, bool submitting, String? noteText
 });
 
 
@@ -264,10 +272,11 @@ class _$TransactionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of TransactionDetailUiState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? advance = freezed,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? noteText = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? transactionId = null,Object? context = null,Object? detail = null,Object? behavior = null,Object? hero = null,Object? allocationBreakdowns = null,Object? occurredAtText = null,Object? postedAtText = null,Object? createdAtText = null,Object? accountRows = null,Object? refund = freezed,Object? advance = freezed,Object? businessModules = null,Object? canEditReportingFlags = null,Object? showExcludeStats = null,Object? showExcludeBudget = null,Object? excludeStats = null,Object? excludeBudget = null,Object? actionButtons = null,Object? submitting = null,Object? noteText = freezed,}) {
   return _then(TransactionDetailLoaded(
 transactionId: null == transactionId ? _self.transactionId : transactionId // ignore: cast_nullable_to_non_nullable
-as String,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
+as String,context: null == context ? _self.context : context // ignore: cast_nullable_to_non_nullable
+as TransactionDetailContext,detail: null == detail ? _self.detail : detail // ignore: cast_nullable_to_non_nullable
 as TransactionReadModel,behavior: null == behavior ? _self.behavior : behavior // ignore: cast_nullable_to_non_nullable
 as DetailBehaviorConfig,hero: null == hero ? _self.hero : hero // ignore: cast_nullable_to_non_nullable
 as DetailHero,allocationBreakdowns: null == allocationBreakdowns ? _self._allocationBreakdowns : allocationBreakdowns // ignore: cast_nullable_to_non_nullable
@@ -277,7 +286,8 @@ as String,createdAtText: null == createdAtText ? _self.createdAtText : createdAt
 as String,accountRows: null == accountRows ? _self._accountRows : accountRows // ignore: cast_nullable_to_non_nullable
 as List<DetailAccountRow>,refund: freezed == refund ? _self.refund : refund // ignore: cast_nullable_to_non_nullable
 as DetailRefund?,advance: freezed == advance ? _self.advance : advance // ignore: cast_nullable_to_non_nullable
-as DetailAdvance?,canEditReportingFlags: null == canEditReportingFlags ? _self.canEditReportingFlags : canEditReportingFlags // ignore: cast_nullable_to_non_nullable
+as DetailAdvance?,businessModules: null == businessModules ? _self._businessModules : businessModules // ignore: cast_nullable_to_non_nullable
+as List<DetailBusinessModule>,canEditReportingFlags: null == canEditReportingFlags ? _self.canEditReportingFlags : canEditReportingFlags // ignore: cast_nullable_to_non_nullable
 as bool,showExcludeStats: null == showExcludeStats ? _self.showExcludeStats : showExcludeStats // ignore: cast_nullable_to_non_nullable
 as bool,showExcludeBudget: null == showExcludeBudget ? _self.showExcludeBudget : showExcludeBudget // ignore: cast_nullable_to_non_nullable
 as bool,excludeStats: null == excludeStats ? _self.excludeStats : excludeStats // ignore: cast_nullable_to_non_nullable
@@ -360,7 +370,7 @@ String toString() {
 /// @nodoc
 mixin _$DetailBehaviorConfig {
 
- DetailEditPermission get canEditOccurredAt; DetailEditPermission get canEditPostedAt; DetailEditPermission get canEditNote; DetailEditPermission get canEditSettlementAccount; DetailEditPermission get canEditTags; String get deleteMessage; String? get editRoute;
+ DetailEditPermission get canEditOccurredAt; DetailEditPermission get canEditPostedAt; DetailEditPermission get canEditNote; DetailEditPermission get canEditSettlementAccount; DetailEditPermission get canEditTags; DetailEditPermission get deletePermission; String get deleteMessage; String? get editRoute;
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -371,16 +381,16 @@ $DetailBehaviorConfigCopyWith<DetailBehaviorConfig> get copyWith => _$DetailBeha
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.deleteMessage, deleteMessage) || other.deleteMessage == deleteMessage)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.deletePermission, deletePermission) || other.deletePermission == deletePermission)&&(identical(other.deleteMessage, deleteMessage) || other.deleteMessage == deleteMessage)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,deleteMessage,editRoute);
+int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,deletePermission,deleteMessage,editRoute);
 
 @override
 String toString() {
-  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, deleteMessage: $deleteMessage, editRoute: $editRoute)';
+  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, deletePermission: $deletePermission, deleteMessage: $deleteMessage, editRoute: $editRoute)';
 }
 
 
@@ -391,11 +401,11 @@ abstract mixin class $DetailBehaviorConfigCopyWith<$Res>  {
   factory $DetailBehaviorConfigCopyWith(DetailBehaviorConfig value, $Res Function(DetailBehaviorConfig) _then) = _$DetailBehaviorConfigCopyWithImpl;
 @useResult
 $Res call({
- DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, String deleteMessage, String? editRoute
+ DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, DetailEditPermission deletePermission, String deleteMessage, String? editRoute
 });
 
 
-$DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;$DetailEditPermissionCopyWith<$Res> get canEditPostedAt;$DetailEditPermissionCopyWith<$Res> get canEditNote;$DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;$DetailEditPermissionCopyWith<$Res> get canEditTags;
+$DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;$DetailEditPermissionCopyWith<$Res> get canEditPostedAt;$DetailEditPermissionCopyWith<$Res> get canEditNote;$DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;$DetailEditPermissionCopyWith<$Res> get canEditTags;$DetailEditPermissionCopyWith<$Res> get deletePermission;
 
 }
 /// @nodoc
@@ -408,13 +418,14 @@ class _$DetailBehaviorConfigCopyWithImpl<$Res>
 
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? deleteMessage = null,Object? editRoute = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? deletePermission = null,Object? deleteMessage = null,Object? editRoute = freezed,}) {
   return _then(DetailBehaviorConfig(
 canEditOccurredAt: null == canEditOccurredAt ? _self.canEditOccurredAt : canEditOccurredAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditPostedAt: null == canEditPostedAt ? _self.canEditPostedAt : canEditPostedAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditNote: null == canEditNote ? _self.canEditNote : canEditNote // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditSettlementAccount: null == canEditSettlementAccount ? _self.canEditSettlementAccount : canEditSettlementAccount // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditTags: null == canEditTags ? _self.canEditTags : canEditTags // ignore: cast_nullable_to_non_nullable
+as DetailEditPermission,deletePermission: null == deletePermission ? _self.deletePermission : deletePermission // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,deleteMessage: null == deleteMessage ? _self.deleteMessage : deleteMessage // ignore: cast_nullable_to_non_nullable
 as String,editRoute: freezed == editRoute ? _self.editRoute : editRoute // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -461,9 +472,18 @@ $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount {
 @override
 @pragma('vm:prefer-inline')
 $DetailEditPermissionCopyWith<$Res> get canEditTags {
-  
+
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
+  });
+}/// Create a copy of DetailBehaviorConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DetailEditPermissionCopyWith<$Res> get deletePermission {
+
+  return $DetailEditPermissionCopyWith<$Res>(_self.deletePermission, (value) {
+    return _then(_self.copyWith(deletePermission: value));
   });
 }
 }
@@ -547,10 +567,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String deleteMessage,  String? editRoute)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  DetailEditPermission deletePermission,  String deleteMessage,  String? editRoute)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig() when $default != null:
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deleteMessage,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deletePermission,_that.deleteMessage,_that.editRoute);case _:
   return orElse();
 
 }
@@ -568,10 +588,10 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String deleteMessage,  String? editRoute)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  DetailEditPermission deletePermission,  String deleteMessage,  String? editRoute)  $default,) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig():
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deleteMessage,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deletePermission,_that.deleteMessage,_that.editRoute);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -588,10 +608,10 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  String deleteMessage,  String? editRoute)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( DetailEditPermission canEditOccurredAt,  DetailEditPermission canEditPostedAt,  DetailEditPermission canEditNote,  DetailEditPermission canEditSettlementAccount,  DetailEditPermission canEditTags,  DetailEditPermission deletePermission,  String deleteMessage,  String? editRoute)?  $default,) {final _that = this;
 switch (_that) {
 case _DetailBehaviorConfig() when $default != null:
-return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deleteMessage,_that.editRoute);case _:
+return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,_that.canEditSettlementAccount,_that.canEditTags,_that.deletePermission,_that.deleteMessage,_that.editRoute);case _:
   return null;
 
 }
@@ -603,7 +623,7 @@ return $default(_that.canEditOccurredAt,_that.canEditPostedAt,_that.canEditNote,
 
 
 class _DetailBehaviorConfig implements DetailBehaviorConfig {
-  const _DetailBehaviorConfig({required this.canEditOccurredAt, required this.canEditPostedAt, required this.canEditNote, required this.canEditSettlementAccount, required this.canEditTags, this.deleteMessage = '删除后交易及其账务记录将无法恢复。', this.editRoute});
+  const _DetailBehaviorConfig({required this.canEditOccurredAt, required this.canEditPostedAt, required this.canEditNote, required this.canEditSettlementAccount, required this.canEditTags, this.deletePermission = const DetailEditPermission.allowed(), this.deleteMessage = '删除后交易及其账务记录将无法恢复。', this.editRoute});
   
 
 @override final  DetailEditPermission canEditOccurredAt;
@@ -611,6 +631,7 @@ class _DetailBehaviorConfig implements DetailBehaviorConfig {
 @override final  DetailEditPermission canEditNote;
 @override final  DetailEditPermission canEditSettlementAccount;
 @override final  DetailEditPermission canEditTags;
+@override@JsonKey() final  DetailEditPermission deletePermission;
 @override@JsonKey() final  String deleteMessage;
 @override final  String? editRoute;
 
@@ -624,16 +645,16 @@ _$DetailBehaviorConfigCopyWith<_DetailBehaviorConfig> get copyWith => __$DetailB
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.deleteMessage, deleteMessage) || other.deleteMessage == deleteMessage)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DetailBehaviorConfig&&(identical(other.canEditOccurredAt, canEditOccurredAt) || other.canEditOccurredAt == canEditOccurredAt)&&(identical(other.canEditPostedAt, canEditPostedAt) || other.canEditPostedAt == canEditPostedAt)&&(identical(other.canEditNote, canEditNote) || other.canEditNote == canEditNote)&&(identical(other.canEditSettlementAccount, canEditSettlementAccount) || other.canEditSettlementAccount == canEditSettlementAccount)&&(identical(other.canEditTags, canEditTags) || other.canEditTags == canEditTags)&&(identical(other.deletePermission, deletePermission) || other.deletePermission == deletePermission)&&(identical(other.deleteMessage, deleteMessage) || other.deleteMessage == deleteMessage)&&(identical(other.editRoute, editRoute) || other.editRoute == editRoute));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,deleteMessage,editRoute);
+int get hashCode => Object.hash(runtimeType,canEditOccurredAt,canEditPostedAt,canEditNote,canEditSettlementAccount,canEditTags,deletePermission,deleteMessage,editRoute);
 
 @override
 String toString() {
-  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, deleteMessage: $deleteMessage, editRoute: $editRoute)';
+  return 'DetailBehaviorConfig(canEditOccurredAt: $canEditOccurredAt, canEditPostedAt: $canEditPostedAt, canEditNote: $canEditNote, canEditSettlementAccount: $canEditSettlementAccount, canEditTags: $canEditTags, deletePermission: $deletePermission, deleteMessage: $deleteMessage, editRoute: $editRoute)';
 }
 
 
@@ -644,11 +665,11 @@ abstract mixin class _$DetailBehaviorConfigCopyWith<$Res> implements $DetailBeha
   factory _$DetailBehaviorConfigCopyWith(_DetailBehaviorConfig value, $Res Function(_DetailBehaviorConfig) _then) = __$DetailBehaviorConfigCopyWithImpl;
 @override @useResult
 $Res call({
- DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, String deleteMessage, String? editRoute
+ DetailEditPermission canEditOccurredAt, DetailEditPermission canEditPostedAt, DetailEditPermission canEditNote, DetailEditPermission canEditSettlementAccount, DetailEditPermission canEditTags, DetailEditPermission deletePermission, String deleteMessage, String? editRoute
 });
 
 
-@override $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;@override $DetailEditPermissionCopyWith<$Res> get canEditPostedAt;@override $DetailEditPermissionCopyWith<$Res> get canEditNote;@override $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;@override $DetailEditPermissionCopyWith<$Res> get canEditTags;
+@override $DetailEditPermissionCopyWith<$Res> get canEditOccurredAt;@override $DetailEditPermissionCopyWith<$Res> get canEditPostedAt;@override $DetailEditPermissionCopyWith<$Res> get canEditNote;@override $DetailEditPermissionCopyWith<$Res> get canEditSettlementAccount;@override $DetailEditPermissionCopyWith<$Res> get canEditTags;@override $DetailEditPermissionCopyWith<$Res> get deletePermission;
 
 }
 /// @nodoc
@@ -661,13 +682,14 @@ class __$DetailBehaviorConfigCopyWithImpl<$Res>
 
 /// Create a copy of DetailBehaviorConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? deleteMessage = null,Object? editRoute = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? canEditOccurredAt = null,Object? canEditPostedAt = null,Object? canEditNote = null,Object? canEditSettlementAccount = null,Object? canEditTags = null,Object? deletePermission = null,Object? deleteMessage = null,Object? editRoute = freezed,}) {
   return _then(_DetailBehaviorConfig(
 canEditOccurredAt: null == canEditOccurredAt ? _self.canEditOccurredAt : canEditOccurredAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditPostedAt: null == canEditPostedAt ? _self.canEditPostedAt : canEditPostedAt // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditNote: null == canEditNote ? _self.canEditNote : canEditNote // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditSettlementAccount: null == canEditSettlementAccount ? _self.canEditSettlementAccount : canEditSettlementAccount // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,canEditTags: null == canEditTags ? _self.canEditTags : canEditTags // ignore: cast_nullable_to_non_nullable
+as DetailEditPermission,deletePermission: null == deletePermission ? _self.deletePermission : deletePermission // ignore: cast_nullable_to_non_nullable
 as DetailEditPermission,deleteMessage: null == deleteMessage ? _self.deleteMessage : deleteMessage // ignore: cast_nullable_to_non_nullable
 as String,editRoute: freezed == editRoute ? _self.editRoute : editRoute // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -718,6 +740,16 @@ $DetailEditPermissionCopyWith<$Res> get canEditTags {
   
   return $DetailEditPermissionCopyWith<$Res>(_self.canEditTags, (value) {
     return _then(_self.copyWith(canEditTags: value));
+  });
+}
+/// Create a copy of DetailBehaviorConfig
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DetailEditPermissionCopyWith<$Res> get deletePermission {
+
+  return $DetailEditPermissionCopyWith<$Res>(_self.deletePermission, (value) {
+    return _then(_self.copyWith(deletePermission: value));
   });
 }
 }
@@ -1811,6 +1843,266 @@ as bool,isClosed: null == isClosed ? _self.isClosed : isClosed // ignore: cast_n
 as bool,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<DetailSheetItem>,outstanding: freezed == outstanding ? _self.outstanding : outstanding // ignore: cast_nullable_to_non_nullable
 as Money?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$DetailBusinessModule {
+
+ String get key; String get title; String get summary; String? get route;
+/// Create a copy of DetailBusinessModule
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DetailBusinessModuleCopyWith<DetailBusinessModule> get copyWith => _$DetailBusinessModuleCopyWithImpl<DetailBusinessModule>(this as DetailBusinessModule, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBusinessModule&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.route, route) || other.route == route));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,key,title,summary,route);
+
+@override
+String toString() {
+  return 'DetailBusinessModule(key: $key, title: $title, summary: $summary, route: $route)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $DetailBusinessModuleCopyWith<$Res>  {
+  factory $DetailBusinessModuleCopyWith(DetailBusinessModule value, $Res Function(DetailBusinessModule) _then) = _$DetailBusinessModuleCopyWithImpl;
+@useResult
+$Res call({
+ String key, String title, String summary, String? route
+});
+
+
+
+
+}
+/// @nodoc
+class _$DetailBusinessModuleCopyWithImpl<$Res>
+    implements $DetailBusinessModuleCopyWith<$Res> {
+  _$DetailBusinessModuleCopyWithImpl(this._self, this._then);
+
+  final DetailBusinessModule _self;
+  final $Res Function(DetailBusinessModule) _then;
+
+/// Create a copy of DetailBusinessModule
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? key = null,Object? title = null,Object? summary = null,Object? route = freezed,}) {
+  return _then(DetailBusinessModule.link(
+key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String,summary: null == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String,route: freezed == route ? _self.route : route // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [DetailBusinessModule].
+extension DetailBusinessModulePatterns on DetailBusinessModule {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( DetailBusinessLinkModule value)?  link,required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule() when link != null:
+return link(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( DetailBusinessLinkModule value)  link,}){
+final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule():
+return link(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( DetailBusinessLinkModule value)?  link,}){
+final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule() when link != null:
+return link(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String key,  String title,  String summary,  String? route)?  link,required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule() when link != null:
+return link(_that.key,_that.title,_that.summary,_that.route);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String key,  String title,  String summary,  String? route)  link,}) {final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule():
+return link(_that.key,_that.title,_that.summary,_that.route);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String key,  String title,  String summary,  String? route)?  link,}) {final _that = this;
+switch (_that) {
+case DetailBusinessLinkModule() when link != null:
+return link(_that.key,_that.title,_that.summary,_that.route);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class DetailBusinessLinkModule implements DetailBusinessModule {
+  const DetailBusinessLinkModule({required this.key, required this.title, required this.summary, this.route});
+
+
+@override final  String key;
+@override final  String title;
+@override final  String summary;
+@override final  String? route;
+
+/// Create a copy of DetailBusinessModule
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$DetailBusinessLinkModuleCopyWith<DetailBusinessLinkModule> get copyWith => _$DetailBusinessLinkModuleCopyWithImpl<DetailBusinessLinkModule>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DetailBusinessLinkModule&&(identical(other.key, key) || other.key == key)&&(identical(other.title, title) || other.title == title)&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.route, route) || other.route == route));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,key,title,summary,route);
+
+@override
+String toString() {
+  return 'DetailBusinessModule.link(key: $key, title: $title, summary: $summary, route: $route)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $DetailBusinessLinkModuleCopyWith<$Res> implements $DetailBusinessModuleCopyWith<$Res> {
+  factory $DetailBusinessLinkModuleCopyWith(DetailBusinessLinkModule value, $Res Function(DetailBusinessLinkModule) _then) = _$DetailBusinessLinkModuleCopyWithImpl;
+@override @useResult
+$Res call({
+ String key, String title, String summary, String? route
+});
+
+
+
+
+}
+/// @nodoc
+class _$DetailBusinessLinkModuleCopyWithImpl<$Res>
+    implements $DetailBusinessLinkModuleCopyWith<$Res> {
+  _$DetailBusinessLinkModuleCopyWithImpl(this._self, this._then);
+
+  final DetailBusinessLinkModule _self;
+  final $Res Function(DetailBusinessLinkModule) _then;
+
+/// Create a copy of DetailBusinessModule
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? key = null,Object? title = null,Object? summary = null,Object? route = freezed,}) {
+  return _then(DetailBusinessLinkModule(
+key: null == key ? _self.key : key // ignore: cast_nullable_to_non_nullable
+as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String,summary: null == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String,route: freezed == route ? _self.route : route // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

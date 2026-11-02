@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail_state.dart';
@@ -7,6 +8,8 @@ import 'package:smartflow/feature/transaction/view_model/transaction_detail_stat
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 
 void main() {
@@ -435,6 +438,73 @@ void main() {
 
     expect(state.accountRows, isEmpty);
   });
+
+  test('composes installment facts into a business module', () {
+    final state = _build(
+      purpose: BusinessPurpose.dailyExpense,
+      parentTransactionId: null,
+      businessOwner: const InstallmentTransactionDetailOwnerContext(
+        ownerType: installmentOwnerType,
+        ownerId: 'contract-1',
+        installmentType: InstallmentType.purchase,
+        status: InstallmentContractStatus.active,
+        principal: Money(minorUnits: 10000),
+        remainingPrincipal: Money(minorUnits: 6000),
+        paidPeriodCount: 1,
+        totalPeriodCount: 3,
+      ),
+    );
+
+    final module = state.businessModules.single as DetailBusinessLinkModule;
+    expect(module.title, '分期合同');
+    expect(module.summary, '消费分期 · 已还 1/3 · 剩余本金 60.00');
+    expect(module.route, '/installments/contract-1');
+  });
+
+  test(
+    'amortization business module opens the plan and blocks ledger delete',
+    () {
+      final state = _build(
+        purpose: BusinessPurpose.dailyExpense,
+        parentTransactionId: null,
+        businessOwner: const AmortizationTransactionDetailOwnerContext(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: 'plan-1',
+          initialTransactionId: 'child',
+          kind: AmortizationKind.prepaidExpense,
+          status: AmortizationStatus.active,
+          originalAmount: Money(minorUnits: 10000),
+          recognizedAmount: Money(minorUnits: 2000),
+          remainingAmount: Money(minorUnits: 8000),
+          postedPeriodCount: 1,
+          totalPeriodCount: 5,
+        ),
+      );
+
+      final module = state.businessModules.single as DetailBusinessLinkModule;
+      expect(module.route, '/amortizations/plan-1');
+      expect(module.summary, '预付费用 · 进行中 · 已确认 1/5');
+      expect(state.behavior.deletePermission, isA<DetailEditDenied>());
+    },
+  );
+
+  test('credit repayment business module opens its stable target', () {
+    final state = _build(
+      purpose: BusinessPurpose.debtRepayment,
+      parentTransactionId: null,
+      businessOwner: const RepaymentTransactionDetailOwnerContext(
+        ownerType: creditRepaymentOwnerType,
+        ownerId: 'repayment-1',
+        repaymentType: RepaymentType.bill,
+        targetType: RepaymentTargetType.bill,
+        targetId: 'bill-1',
+      ),
+    );
+
+    final module = state.businessModules.single as DetailBusinessLinkModule;
+    expect(module.summary, '账单还款 · 账单');
+    expect(module.route, '/bills/bill-1');
+  });
 }
 
 TransactionDetailLoaded _build({
@@ -447,6 +517,7 @@ TransactionDetailLoaded _build({
   Iterable<TransactionLine> additionalLines = const [],
   TransactionOwnership? ownership,
   AdvanceCase? advanceCase,
+  TransactionDetailOwnerContext? businessOwner,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -547,20 +618,60 @@ TransactionDetailLoaded _build({
       balance: Money.zero(),
     ),
   };
+  final resolvedAdvanceCase =
+      advanceCase ??
+      (purpose == BusinessPurpose.advance
+          ? const AdvanceCase(
+              id: 'default-case',
+              scenario: AdvanceScenario.reimbursement,
+              trackingMode: AdvanceTrackingMode.itemized,
+            )
+          : null);
+  final owner =
+      businessOwner ??
+      (resolvedAdvanceCase != null
+          ? AdvanceTransactionDetailOwnerContext(
+              ownerType: orchestrationAdvanceOwnerType,
+              ownerId: resolvedAdvanceCase.id,
+              scenario: resolvedAdvanceCase.scenario,
+              trackingMode: resolvedAdvanceCase.trackingMode,
+              advanceAmount:
+                  advanceSummary?.advanceAmount ?? detail.primaryAmount,
+              receivedAmount: advanceSummary?.receivedAmount ?? Money.zero(),
+              outstanding: advanceSummary?.outstanding ?? detail.primaryAmount,
+              isClosed: advanceSummary?.isClosed ?? false,
+              aaPeopleCount: resolvedAdvanceCase.aaPeopleCount,
+            )
+          : ownership?.ownerType == orchestrationAmortizationOwnerType
+          ? AmortizationTransactionDetailOwnerContext(
+              ownerType: ownership!.ownerType,
+              ownerId: ownership.ownerId,
+              initialTransactionId: detail.id,
+              kind: AmortizationKind.prepaidExpense,
+              status: AmortizationStatus.active,
+              originalAmount: detail.primaryAmount,
+              recognizedAmount: Money.zero(),
+              remainingAmount: detail.primaryAmount,
+              postedPeriodCount: 0,
+              totalPeriodCount: 3,
+            )
+          : null);
+  final context = TransactionDetailContext(
+    transaction: detail,
+    parentTransaction: parentDetail,
+    currentGroup: TransactionDetailGroup(
+      anchor: parentDetail ?? detail,
+      children: (parentDetail ?? detail).children,
+    ),
+    anchorGroup: TransactionDetailGroup(
+      anchor: parentDetail ?? detail,
+      children: (parentDetail ?? detail).children,
+    ),
+    owner: owner,
+  );
   return buildTransactionDetailLoadedState(
-        transactionId: 'child',
-        detail: detail,
-        parentDetail: parentDetail,
+        context: context,
         accountLookup: AccountLookup(accounts),
-        advanceCase:
-            advanceCase ??
-            (purpose == BusinessPurpose.advance
-                ? const AdvanceCase(
-                    id: 'default-case',
-                    scenario: AdvanceScenario.reimbursement,
-                    trackingMode: AdvanceTrackingMode.itemized,
-                  )
-                : null),
       )
       as TransactionDetailLoaded;
 }

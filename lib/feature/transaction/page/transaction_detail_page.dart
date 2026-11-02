@@ -79,6 +79,10 @@ class TransactionDetailPage extends ConsumerWidget {
         .read(transactionDetailViewModelProvider(transactionId))
         .value;
     if (loaded is! TransactionDetailLoaded) return;
+    if (loaded.behavior.deletePermission case DetailEditDenied(:final reason)) {
+      _showMessage(context, reason);
+      return;
+    }
     final message = loaded.behavior.deleteMessage;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -140,6 +144,10 @@ class _DetailBody extends ConsumerWidget {
                 onAccountTap: (row) => _handleAccountTap(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
+              if (state.businessModules.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _BusinessModulesCard(modules: state.businessModules),
+              ],
               if (state.allocationBreakdowns.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _AllocationBreakdownCard(
@@ -481,6 +489,31 @@ class _RefundAdvanceCard extends StatelessWidget {
       );
     }
     return _RowCard(rows: rows);
+  }
+}
+
+class _BusinessModulesCard extends StatelessWidget {
+  const _BusinessModulesCard({required this.modules});
+
+  final List<DetailBusinessModule> modules;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RowCard(
+      rows: [
+        for (final module in modules)
+          switch (module) {
+            DetailBusinessLinkModule() => AppPlainValueRow(
+              key: ValueKey('detail-business-module-${module.key}'),
+              label: module.title,
+              value: module.summary,
+              onTap: module.route == null
+                  ? null
+                  : () => context.push(module.route!),
+            ),
+          },
+      ],
+    );
   }
 }
 

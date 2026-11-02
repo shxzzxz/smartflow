@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../core/money/money.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
@@ -13,6 +14,7 @@ part 'transaction_detail_state.freezed.dart';
 sealed class TransactionDetailUiState with _$TransactionDetailUiState {
   const factory TransactionDetailUiState.loaded({
     required String transactionId,
+    required TransactionDetailContext context,
     required TransactionReadModel detail,
     required DetailBehaviorConfig behavior,
     required DetailHero hero,
@@ -23,6 +25,7 @@ sealed class TransactionDetailUiState with _$TransactionDetailUiState {
     required List<DetailAccountRow> accountRows,
     required DetailRefund? refund,
     required DetailAdvance? advance,
+    required List<DetailBusinessModule> businessModules,
     @Default(true) bool canEditReportingFlags,
     required bool showExcludeStats,
     required bool showExcludeBudget,
@@ -44,6 +47,8 @@ abstract class DetailBehaviorConfig with _$DetailBehaviorConfig {
     required DetailEditPermission canEditNote,
     required DetailEditPermission canEditSettlementAccount,
     required DetailEditPermission canEditTags,
+    @Default(DetailEditPermission.allowed())
+    DetailEditPermission deletePermission,
     @Default('删除后交易及其账务记录将无法恢复。') String deleteMessage,
     String? editRoute,
   }) = _DetailBehaviorConfig;
@@ -86,6 +91,16 @@ abstract class DetailAdvance with _$DetailAdvance {
     required List<DetailSheetItem> items,
     Money? outstanding,
   }) = _DetailAdvance;
+}
+
+@freezed
+sealed class DetailBusinessModule with _$DetailBusinessModule {
+  const factory DetailBusinessModule.link({
+    required String key,
+    required String title,
+    required String summary,
+    String? route,
+  }) = DetailBusinessLinkModule;
 }
 
 @freezed

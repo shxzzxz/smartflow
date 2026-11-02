@@ -2728,6 +2728,57 @@ final class BusinessItemQueryServiceProvider
 String _$businessItemQueryServiceHash() =>
     r'25aff96fed750daabd43ba05c98f0102c0c58b8b';
 
+@ProviderFor(transactionDetailContextQuery)
+final transactionDetailContextQueryProvider =
+    TransactionDetailContextQueryProvider._();
+
+final class TransactionDetailContextQueryProvider
+    extends
+        $FunctionalProvider<
+          TransactionDetailContextQuery,
+          TransactionDetailContextQuery,
+          TransactionDetailContextQuery
+        >
+    with $Provider<TransactionDetailContextQuery> {
+  TransactionDetailContextQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionDetailContextQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionDetailContextQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionDetailContextQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionDetailContextQuery create(Ref ref) {
+    return transactionDetailContextQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionDetailContextQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionDetailContextQuery>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$transactionDetailContextQueryHash() =>
+    r'2c4ad0d10e867859b7b2aea359f61e9e12123429';
+
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();
 

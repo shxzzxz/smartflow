@@ -197,6 +197,7 @@ lib/infrastructure/database/table/*
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
+- `application/transaction_view` 的交易详情上下文查询统一加载当前交易、当前/锚点交易组与可选 owner 摘要；feature 只消费该上下文，不自行组合 owner 查询来推断详情能力。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
 - application facade 不 export domain service / port；feature provider 不通过装配层 repository provider 执行领域规则。
