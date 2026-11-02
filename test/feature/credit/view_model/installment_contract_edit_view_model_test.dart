@@ -47,7 +47,7 @@ void main() {
       final state = await _readState(container);
 
       final loaded = state as InstallmentContractEditLoaded;
-      expect(loaded.contract.id, 'contract-1');
+      expect(loaded.installment.id, 'contract-1');
       expect(loaded.stageDraft.stages, hasLength(1));
       expect(loaded.draft.map((row) => row.periodNo), [1, 2]);
       expect(
@@ -325,12 +325,18 @@ ProviderContainer _container(
           unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
         );
       }),
-      installmentContractProvider.overrideWith(
+      installmentProvider.overrideWith(
         (ref, contractId) async => service.contract,
       ),
-      installmentSchedulesProvider.overrideWith(
-        (ref, contractId) async => service.schedules,
-      ),
+      installmentDetailProvider.overrideWith((ref, contractId) async {
+        final contract = service.contract;
+        return contract == null
+            ? null
+            : InstallmentDetailDTO(
+                installment: contract,
+                schedules: service.schedules,
+              );
+      }),
       installmentContractAppServiceProvider.overrideWithValue(service),
       installmentContractEditAppServiceProvider.overrideWithValue(service),
       installmentPlanAppServiceProvider.overrideWithValue(service.planService),
@@ -363,9 +369,10 @@ InstallmentContractDraftRow _scheduleRow(
   return loaded.draft.singleWhere((row) => row.periodNo == periodNo);
 }
 
-InstallmentContractReadModel _contract() {
-  return InstallmentContractReadModel(
+InstallmentDTO _contract() {
+  return InstallmentDTO(
     id: 'contract-1',
+    name: '家庭贷款',
     liabilityAccountId: 'loan',
     installmentType: InstallmentType.disbursement,
     disbursementAccountId: 'bank',
@@ -374,6 +381,12 @@ InstallmentContractReadModel _contract() {
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 0,
+      totalPeriodCount: 2,
+      remainingPrincipal: Money(minorUnits: 10000),
+      repaid: RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 2,
@@ -388,11 +401,11 @@ InstallmentContractReadModel _contract() {
   );
 }
 
-InstallmentScheduleReadModel _schedule(
+InstallmentScheduleDTO _schedule(
   int periodNo, {
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentScheduleReadModel(
+  return InstallmentScheduleDTO(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,
@@ -418,8 +431,8 @@ class _FakeInstallmentContractAppService
     planService.previewResults = previewResults;
   }
 
-  final InstallmentContractReadModel? contract;
-  final List<InstallmentScheduleReadModel> schedules;
+  final InstallmentDTO? contract;
+  final List<InstallmentScheduleDTO> schedules;
   final Object? updateException;
   final planService = _FakeInstallmentPlanAppService();
   final updateCommands = <UpdateContractCommand>[];

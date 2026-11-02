@@ -23,9 +23,15 @@ void main() {
     adjustments = RecordingInterestAdjustments();
     container = ProviderContainer(
       overrides: [
-        installmentContractProvider(
+        installmentProvider(
           'loan',
         ).overrideWith((ref) async => operationsContract()),
+        installmentRepricingProvider(
+          'loan',
+        ).overrideWith((ref) async => operationsRepricing()),
+        installmentInterestAdjustmentProvider(
+          'loan',
+        ).overrideWith((ref) async => operationsInterestAdjustments()),
         installmentRepricingAppServiceProvider.overrideWithValue(repricing),
         installmentInterestAdjustmentAppServiceProvider.overrideWithValue(
           adjustments,

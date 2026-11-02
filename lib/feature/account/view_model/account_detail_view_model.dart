@@ -245,7 +245,7 @@ AccountContractsState _contractsStateFor(Ref ref, AccountView account) {
     return const AccountContractsState.notApplicable();
   }
 
-  return switch (ref.watch(installmentContractsByAccountProvider(account.id))) {
+  return switch (ref.watch(installmentsByAccountProvider(account.id))) {
     AsyncData(value: final contracts) => AccountContractsState.loaded(
       contracts: contracts,
     ),
@@ -352,7 +352,7 @@ sealed class AccountContractsState {
       AccountContractsError;
 
   const factory AccountContractsState.loaded({
-    required List<InstallmentContractReadModel> contracts,
+    required List<InstallmentDTO> contracts,
   }) = AccountContractsLoaded;
 }
 
@@ -373,7 +373,7 @@ final class AccountContractsError extends AccountContractsState {
 final class AccountContractsLoaded extends AccountContractsState {
   const AccountContractsLoaded({required this.contracts});
 
-  final List<InstallmentContractReadModel> contracts;
+  final List<InstallmentDTO> contracts;
 }
 
 sealed class AccountBillsState {

@@ -25,7 +25,7 @@ export 'bill/query/bill_query_service.dart';
 export 'calculator/query/loan_calculator_query.dart';
 export 'calculator/query/loan_calculator_read_model.dart';
 export 'installment/query/installment_query_service.dart';
-export 'installment/query/installment_read_models.dart';
+export 'installment/query/installment_dtos.dart';
 export 'installment/query/installment_statistics_query.dart';
 export 'installment/query/installment_statistics_read_models.dart';
 export 'installment/query/contract_metrics_query.dart';

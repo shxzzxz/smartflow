@@ -9,11 +9,15 @@ import 'package:smartflow/application/orchestration/amortization/query/amortizat
 import 'package:smartflow/application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
+import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
+import 'package:smartflow/infrastructure/credit/query/drift_installment_progress_source.dart';
 import 'package:smartflow/infrastructure/credit/installment_statistics_change_source.dart';
+import 'package:smartflow/infrastructure/credit/mapper/installment_stage_mapper.dart';
 import 'package:smartflow/infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
 import 'package:smartflow/infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
 import 'package:smartflow/infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
@@ -451,7 +455,10 @@ void main() {
               ),
             );
 
-        final source = CreditBusinessItemSource(_creditQuery(db));
+        final source = CreditBusinessItemSource(
+          _creditQuery(db),
+          _installmentQuery(db),
+        );
         final firstPage = await source.findAnchorPage(_query(limit: 2));
         expect(
           firstPage.anchors.take(2).map((anchor) => anchor.anchorTransactionId),
@@ -553,9 +560,9 @@ void main() {
           .insert(
             RepaymentsCompanion.insert(
               id: 'repayment-1',
-              repaymentType: RepaymentType.unattributed.code,
-              targetType: RepaymentTargetType.account.code,
-              targetId: 'credit-account',
+              repaymentType: RepaymentType.bill.code,
+              targetType: RepaymentTargetType.bill.code,
+              targetId: 'bill-1',
               repaymentDate: DateTime(2026, 10, 20),
             ),
           );
@@ -573,7 +580,10 @@ void main() {
             ),
           );
 
-      final source = CreditBusinessItemSource(_creditQuery(db));
+      final source = CreditBusinessItemSource(
+        _creditQuery(db),
+        _installmentQuery(db),
+      );
       final key = const BusinessItemKey(
         type: installmentOwnerType,
         id: 'contract-1',
@@ -585,6 +595,161 @@ void main() {
       expect(summary.remainingPrincipal, const Money(minorUnits: 60000));
     });
 
+    test(
+      'merges allocations when one schedule projects to multiple bills',
+      () async {
+        await _insertTransaction(
+          db,
+          id: 'purchase-tx',
+          occurredAt: DateTime(2026, 10, 4),
+          ownerType: installmentOwnerType,
+          ownerId: 'contract-1',
+        );
+        await _insertContract(
+          db,
+          id: 'contract-1',
+          type: InstallmentType.purchase,
+          sourceRefId: 'purchase-tx',
+          principalMinor: 100000,
+        );
+        await db
+            .into(db.installmentSchedules)
+            .insert(
+              InstallmentSchedulesCompanion.insert(
+                id: 'schedule-1',
+                contractId: 'contract-1',
+                periodNo: 1,
+                expectedRepaymentDate: DateTime(2026, 11),
+                expectedPrincipalMinor: const Value(100000),
+                status: InstallmentScheduleStatus.partiallyPaid,
+              ),
+            );
+        for (final suffix in ['a', 'b']) {
+          final billId = 'bill-$suffix';
+          await db
+              .into(db.bills)
+              .insert(
+                BillsCompanion.insert(
+                  id: billId,
+                  accountId: 'credit-account',
+                  period: suffix == 'a' ? 202610 : 202611,
+                  status: BillStatus.billed,
+                ),
+              );
+          await db
+              .into(db.billItems)
+              .insert(
+                BillItemsCompanion.insert(
+                  id: 'bill-item-$suffix',
+                  billId: billId,
+                  itemType: BillItemType.installment,
+                  contractId: const Value('contract-1'),
+                  scheduleId: const Value('schedule-1'),
+                  repaymentDate: DateTime(2026, 11),
+                  expectedPrincipalMinor: 100000,
+                  expectedInterestMinor: 0,
+                  expectedFeeMinor: 0,
+                  status: BillItemStatus.partiallyPaid,
+                ),
+              );
+        }
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'repayment-a',
+                repaymentType: RepaymentType.bill.code,
+                targetType: RepaymentTargetType.bill.code,
+                targetId: 'bill-a',
+                repaymentDate: DateTime(2026, 10, 20),
+              ),
+            );
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'repayment-b',
+                repaymentType: RepaymentType.bill.code,
+                targetType: RepaymentTargetType.bill.code,
+                targetId: 'bill-b',
+                repaymentDate: DateTime(2026, 10, 21),
+              ),
+            );
+        await db
+            .into(db.repaymentItems)
+            .insert(
+              RepaymentItemsCompanion.insert(
+                id: 'repayment-item-a',
+                repaymentId: 'repayment-a',
+                billItemId: const Value('bill-item-a'),
+                allocatedPrincipalMinor: 30000,
+                allocatedInterestMinor: 0,
+                allocatedFeeMinor: 0,
+                allocatedDiscountMinor: 0,
+              ),
+            );
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'repayment-direct',
+                repaymentType: RepaymentType.prepayment.code,
+                targetType: RepaymentTargetType.contract.code,
+                targetId: 'contract-1',
+                repaymentDate: DateTime(2026, 10, 22),
+              ),
+            );
+        await db
+            .into(db.repaymentItems)
+            .insert(
+              RepaymentItemsCompanion.insert(
+                id: 'repayment-item-direct',
+                repaymentId: 'repayment-direct',
+                allocatedPrincipalMinor: 5000,
+                allocatedInterestMinor: 100,
+                allocatedFeeMinor: 20,
+                allocatedDiscountMinor: 0,
+              ),
+            );
+        await db
+            .into(db.repaymentItems)
+            .insert(
+              RepaymentItemsCompanion.insert(
+                id: 'repayment-item-b',
+                repaymentId: 'repayment-b',
+                billItemId: const Value('bill-item-b'),
+                allocatedPrincipalMinor: 40000,
+                allocatedInterestMinor: 0,
+                allocatedFeeMinor: 0,
+                allocatedDiscountMinor: 0,
+              ),
+            );
+
+        final source = CreditBusinessItemSource(
+          _creditQuery(db),
+          _installmentQuery(db),
+        );
+        final key = const BusinessItemKey(
+          type: installmentOwnerType,
+          id: 'contract-1',
+        );
+        final summary =
+            (await source.findSummaries({key}))[key]
+                as InstallmentBusinessItemSummary;
+
+        expect(summary.totalPeriodCount, 1);
+        expect(summary.paidPeriodCount, 0);
+        expect(summary.remainingPrincipal, const Money(minorUnits: 30000));
+        final installment = await _installmentQuery(
+          db,
+        ).findInstallment('contract-1');
+        expect(
+          installment!.repaymentProgress.repaid.principal,
+          const Money(minorUnits: 75000),
+        );
+      },
+    );
+
     test('watches repayment table changes independently', () async {
       await _insertTransaction(
         db,
@@ -594,7 +759,10 @@ void main() {
         ownerType: creditRepaymentOwnerType,
         ownerId: 'repayment-1',
       );
-      final source = CreditBusinessItemSource(_creditQuery(db));
+      final source = CreditBusinessItemSource(
+        _creditQuery(db),
+        _installmentQuery(db),
+      );
       final iterator = StreamIterator(source.watchAnchorPage(_query()));
 
       expect(await iterator.moveNext(), isTrue);
@@ -743,7 +911,7 @@ void main() {
         DriftLedgerBusinessItemSource(db),
         AdvanceBusinessItemSource(_advanceQuery(db)),
         AmortizationBusinessItemSource(_amortizationQuery(db)),
-        CreditBusinessItemSource(_creditQuery(db)),
+        CreditBusinessItemSource(_creditQuery(db), _installmentQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -966,6 +1134,15 @@ CreditTransactionViewQueryService _creditQuery(AppDatabase db) {
   );
 }
 
+InstallmentQueryService _installmentQuery(AppDatabase db) {
+  final changes = DriftInstallmentStatisticsChangeSource(db);
+  return InstallmentQueryServiceImpl(
+    repository: DriftInstallmentRepository(db),
+    progress: DriftInstallmentProgressSource(db),
+    changes: changes,
+  );
+}
+
 final class _TransactionBatchQuery implements TransactionBatchQueryService {
   const _TransactionBatchQuery(this._db);
 
@@ -1070,20 +1247,32 @@ Future<void> _insertContract(
   required InstallmentType type,
   required int principalMinor,
   String? sourceRefId,
-}) {
-  return db
-      .into(db.installmentContracts)
-      .insert(
-        InstallmentContractsCompanion.insert(
-          id: id,
-          liabilityAccountId: 'credit-account',
-          installmentType: type,
-          sourceRefId: Value(sourceRefId),
-          principalMinor: principalMinor,
-          borrowingDate: DateTime(2026, 10),
-          status: InstallmentContractStatus.active,
-        ),
-      );
+}) async {
+  final terms = InstallmentContractTerms.singleStage(
+    id: '$id:stage:1',
+    totalPeriods: 1,
+    firstDate: DateTime(2026, 11),
+    method: InstallmentRepaymentMethod.equalPrincipal,
+    accrual: InterestAccrualMethod.monthly,
+  );
+  await db.transaction(() async {
+    await db
+        .into(db.installmentContracts)
+        .insert(
+          InstallmentContractsCompanion.insert(
+            id: id,
+            liabilityAccountId: 'credit-account',
+            installmentType: type,
+            sourceRefId: Value(sourceRefId),
+            principalMinor: principalMinor,
+            borrowingDate: DateTime(2026, 10),
+            status: InstallmentContractStatus.active,
+          ),
+        );
+    await db
+        .into(db.installmentStageConfigs)
+        .insert(encodeContractStage(terms.stages.single, id, 0));
+  });
 }
 
 Future<void> _insertAmortizationAllocation(

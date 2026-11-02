@@ -34,11 +34,14 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          installmentContractProvider('loan').overrideWith(
-            (ref) async => operationsContract(
-              withRecords: records,
-              multipleStages: multipleStages,
-            ),
+          installmentProvider('loan').overrideWith(
+            (ref) async => operationsContract(multipleStages: multipleStages),
+          ),
+          installmentRepricingProvider('loan').overrideWith(
+            (ref) async => operationsRepricing(withRecords: records),
+          ),
+          installmentInterestAdjustmentProvider('loan').overrideWith(
+            (ref) async => operationsInterestAdjustments(withRecords: records),
           ),
           installmentRepricingAppServiceProvider.overrideWithValue(repricing),
           installmentInterestAdjustmentAppServiceProvider.overrideWithValue(

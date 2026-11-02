@@ -161,7 +161,7 @@ class BillConversionInstallmentFormViewModel
     ref.invalidate(billDetailProvider(billId));
     ref.invalidate(billSummariesByAccountProvider(accountId));
     ref.invalidate(creditAccountOverviewProvider(accountId));
-    ref.invalidate(installmentContractsByAccountProvider(accountId));
+    ref.invalidate(installmentsByAccountProvider(accountId));
   }
 
   BillConversionInstallmentLoaded? _loadedOrNull() {

@@ -17,20 +17,21 @@ final _logger = Logger('feature.credit.installment_detail');
 class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
   @override
   Future<InstallmentDetailState> build(String contractId) async {
-    final contract = await ref.watch(
-      installmentContractProvider(contractId).future,
+    final detail = await ref.watch(
+      installmentDetailProvider(contractId).future,
     );
-    if (contract == null) return const InstallmentDetailNotFound();
+    if (detail == null) return const InstallmentDetailNotFound();
 
-    final schedules = await ref.watch(
-      installmentSchedulesProvider(contractId).future,
+    final repricing = await ref.watch(
+      installmentRepricingProvider(contractId).future,
     );
     final activities = await ref.watch(
       installmentActivitiesProvider(contractId).future,
     );
     return InstallmentDetailLoaded(
-      contract: contract,
-      schedules: schedules,
+      installment: detail.installment,
+      schedules: detail.schedules,
+      repricing: repricing,
       activities: activities,
     );
   }
@@ -39,8 +40,10 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('分期尚未加载');
     return guardUiAction(_logger, 'Installment delete', () async {
-      final command = DeleteInstallmentCommand(contractId: loaded.contract.id);
-      switch (loaded.contract.installmentType) {
+      final command = DeleteInstallmentCommand(
+        contractId: loaded.installment.id,
+      );
+      switch (loaded.installment.installmentType) {
         case InstallmentType.disbursement:
           await ref
               .read(disbursementInstallmentAppServiceProvider)
@@ -55,17 +58,15 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
           await ref
               .read(installmentContractAppServiceProvider)
               .deleteContract(
-                DeleteContractCommand(contractId: loaded.contract.id),
+                DeleteContractCommand(contractId: loaded.installment.id),
               );
           break;
       }
       ref.invalidate(
-        installmentContractsByAccountProvider(
-          loaded.contract.liabilityAccountId,
-        ),
+        installmentsByAccountProvider(loaded.installment.liabilityAccountId),
       );
       ref.invalidate(
-        creditAccountOverviewProvider(loaded.contract.liabilityAccountId),
+        creditAccountOverviewProvider(loaded.installment.liabilityAccountId),
       );
     });
   }
@@ -81,10 +82,12 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
             .read(installmentRepricingAppServiceProvider)
             .confirm(
               contractId,
-              loaded.contract.unconfirmedRepricingIds.toSet(),
+              loaded.repricing?.unconfirmedRecordIds.toSet() ?? const {},
             );
         if (!ref.mounted) return;
-        ref.invalidate(installmentContractProvider(contractId));
+        ref
+          ..invalidate(installmentProvider(contractId))
+          ..invalidate(installmentRepricingProvider(contractId));
       });
     } finally {
       if (ref.mounted) _setConfirmingRepricing(false);
@@ -96,8 +99,9 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (loaded == null) return;
     state = AsyncData(
       InstallmentDetailLoaded(
-        contract: loaded.contract,
+        installment: loaded.installment,
         schedules: loaded.schedules,
+        repricing: loaded.repricing,
         activities: loaded.activities,
         confirmingRepricing: value,
       ),
@@ -130,7 +134,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     if (delete == null) return _invalidAction('账户还款不属于当前分期');
     return guardUiAction(_logger, 'Contract repayment revert', () async {
       await delete();
-      _invalidateContract(loaded.contract);
+      _invalidateInstallment(loaded.installment);
     });
   }
 
@@ -142,11 +146,11 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
           .read(installmentPlanAppServiceProvider)
           .skipSchedule(
             SkipInstallmentScheduleCommand(
-              contractId: loaded.contract.id,
+              contractId: loaded.installment.id,
               scheduleId: scheduleId,
             ),
           );
-      _invalidateContract(loaded.contract);
+      _invalidateInstallment(loaded.installment);
     });
   }
 
@@ -158,11 +162,11 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
           .read(installmentPlanAppServiceProvider)
           .restoreSchedule(
             RestoreInstallmentScheduleCommand(
-              contractId: loaded.contract.id,
+              contractId: loaded.installment.id,
               scheduleId: scheduleId,
             ),
           );
-      _invalidateContract(loaded.contract);
+      _invalidateInstallment(loaded.installment);
     });
   }
 
@@ -180,8 +184,8 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     return guardUiAction(_logger, 'Contract status validation', () async {
       final result = await ref
           .read(installmentStatusRepairAppServiceProvider)
-          .validateAndRepair(loaded.contract.id);
-      _invalidateContract(loaded.contract);
+          .validateAndRepair(loaded.installment.id);
+      _invalidateInstallment(loaded.installment);
       return result;
     });
   }
@@ -191,16 +195,19 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     return current is InstallmentDetailLoaded ? current : null;
   }
 
-  void _invalidateContract(InstallmentContractReadModel contract) {
+  void _invalidateInstallment(InstallmentDTO installment) {
     ref
-      ..invalidate(installmentContractProvider(contract.id))
-      ..invalidate(installmentSchedulesProvider(contract.id))
-      ..invalidate(installmentActivitiesProvider(contract.id))
-      ..invalidate(installmentMetricsProvider(contract.id))
+      ..invalidate(installmentProvider(installment.id))
+      ..invalidate(installmentDetailProvider(installment.id))
+      ..invalidate(installmentRepricingProvider(installment.id))
+      ..invalidate(installmentActivitiesProvider(installment.id))
+      ..invalidate(installmentMetricsProvider(installment.id))
       ..invalidate(
-        installmentContractsByAccountProvider(contract.liabilityAccountId),
+        installmentsByAccountProvider(installment.liabilityAccountId),
       )
-      ..invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
+      ..invalidate(
+        creditAccountOverviewProvider(installment.liabilityAccountId),
+      );
   }
 
   UiActionOutcome<void> _invalidAction(String message) {
@@ -223,14 +230,16 @@ class InstallmentDetailNotFound extends InstallmentDetailState {
 
 class InstallmentDetailLoaded extends InstallmentDetailState {
   const InstallmentDetailLoaded({
-    required this.contract,
+    required this.installment,
     required this.schedules,
+    required this.repricing,
     required this.activities,
     this.confirmingRepricing = false,
   });
 
-  final InstallmentContractReadModel contract;
-  final List<InstallmentScheduleReadModel> schedules;
+  final InstallmentDTO installment;
+  final List<InstallmentScheduleDTO> schedules;
+  final InstallmentRepricingDTO? repricing;
   final List<ContractActivity> activities;
   final bool confirmingRepricing;
 
@@ -247,37 +256,6 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
         },
       ),
   ];
-
-  int get remainingPrincipalMinor {
-    final remaining = schedules
-        .where(
-          (s) =>
-              s.status == InstallmentScheduleStatus.pending ||
-              s.status == InstallmentScheduleStatus.partiallyPaid,
-        )
-        .fold<int>(0, (sum, schedule) {
-          return sum + schedule.expectedPrincipal.minorUnits;
-        });
-    return remaining < 0 ? 0 : remaining;
-  }
-
-  int get paidInterestMinor {
-    return activities.whereType<ContractRepaymentActivity>().fold<int>(0, (
-      sum,
-      repayment,
-    ) {
-      return sum + repayment.interest.minorUnits;
-    });
-  }
-
-  int get paidFeeMinor {
-    return activities.whereType<ContractRepaymentActivity>().fold<int>(0, (
-      sum,
-      repayment,
-    ) {
-      return sum + repayment.fee.minorUnits;
-    });
-  }
 }
 
 enum InstallmentScheduleAction { skip, restore }
@@ -288,6 +266,6 @@ class InstallmentScheduleItemState {
     required this.action,
   });
 
-  final InstallmentScheduleReadModel schedule;
+  final InstallmentScheduleDTO schedule;
   final InstallmentScheduleAction? action;
 }

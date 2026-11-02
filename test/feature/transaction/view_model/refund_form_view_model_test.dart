@@ -168,11 +168,13 @@ void main() {
         return const [];
       },
     );
-    final provider = installmentSchedulesProvider('purchase-contract');
+    final provider = installmentDetailProvider('purchase-contract');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     expect(
-      (await container.read(provider.future)).single.expectedPrincipal,
+      (await container.read(
+        provider.future,
+      ))!.schedules.single.expectedPrincipal,
       const Money(minorUnits: 10000),
     );
     final activitiesProvider = installmentActivitiesProvider(
@@ -200,7 +202,9 @@ void main() {
 
     expect(outcome, isA<SubmitSuccess>());
     expect(
-      (await container.read(provider.future)).single.expectedPrincipal,
+      (await container.read(
+        provider.future,
+      ))!.schedules.single.expectedPrincipal,
       Money.zero(),
     );
     await container.read(activitiesProvider.future);
@@ -358,7 +362,7 @@ ProviderContainer _container({
   bool purchaseParent = false,
   _FakeAdvanceOrchestrationService? orchestration,
   _FakeConsumptionInstallmentService? consumptionRefunds,
-  Future<List<InstallmentScheduleReadModel>> Function(String contractId)?
+  Future<List<InstallmentScheduleDTO>> Function(String contractId)?
   scheduleLoader,
   Future<List<ContractActivity>> Function(String contractId)? activityLoader,
 }) {
@@ -406,9 +410,17 @@ ProviderContainer _container({
           consumptionRefunds ?? _FakeConsumptionInstallmentService(),
         ),
       if (scheduleLoader != null)
-        installmentSchedulesProvider.overrideWith(
-          (ref, contractId) => scheduleLoader(contractId),
-        ),
+        installmentDetailProvider.overrideWith((ref, contractId) async {
+          final schedules = await scheduleLoader(contractId);
+          final installment = await _FakeInstallmentQueryService()
+              .findInstallment(contractId);
+          return installment == null
+              ? null
+              : InstallmentDetailDTO(
+                  installment: installment,
+                  schedules: schedules,
+                );
+        }),
       if (activityLoader != null)
         installmentActivitiesProvider.overrideWith(
           (ref, contractId) => activityLoader(contractId),
@@ -503,16 +515,23 @@ class _FakeConsumptionInstallmentService
 
 class _FakeInstallmentQueryService implements InstallmentQueryService {
   @override
-  Future<InstallmentContractReadModel?> findContract(String contractId) async {
+  Future<InstallmentDTO?> findInstallment(String contractId) async {
     if (contractId != 'purchase-contract') return null;
-    return InstallmentContractReadModel(
+    return InstallmentDTO(
       id: 'purchase-contract',
+      name: '消费分期',
       liabilityAccountId: 'credit',
       installmentType: InstallmentType.purchase,
       principal: const Money(minorUnits: 10000),
       borrowingDate: DateTime(2026, 6, 1),
       status: InstallmentContractStatus.active,
       createdAt: DateTime(2026, 6, 1),
+      repaymentProgress: const InstallmentRepaymentProgressDTO(
+        paidPeriodCount: 0,
+        totalPeriodCount: 12,
+        remainingPrincipal: Money(minorUnits: 10000),
+        repaid: RepaymentAmountBreakdown.zero,
+      ),
       stageTerms: InstallmentContractTerms.singleStage(
         id: 'stage',
         totalPeriods: 12,
@@ -704,8 +723,8 @@ Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
 }
 
-InstallmentScheduleReadModel _schedule({required int principal}) {
-  return InstallmentScheduleReadModel(
+InstallmentScheduleDTO _schedule({required int principal}) {
+  return InstallmentScheduleDTO(
     id: 'schedule-1',
     contractId: 'purchase-contract',
     periodNo: 1,

@@ -22,14 +22,11 @@ class InstallmentContractEditViewModel
     extends _$InstallmentContractEditViewModel {
   @override
   Future<InstallmentContractEditState> build(String contractId) async {
-    final contract = await ref.watch(
-      installmentContractProvider(contractId).future,
+    final detail = await ref.watch(
+      installmentDetailProvider(contractId).future,
     );
-    if (contract == null) return const InstallmentContractEditState.notFound();
-
-    final schedules = await ref.watch(
-      installmentSchedulesProvider(contractId).future,
-    );
+    if (detail == null) return const InstallmentContractEditState.notFound();
+    final installment = detail.installment;
     ContractMetrics? metrics;
     try {
       metrics = await ref.watch(installmentMetricsProvider(contractId).future);
@@ -38,10 +35,10 @@ class InstallmentContractEditViewModel
     }
     return InstallmentContractEditState.loaded(
       metrics: metrics,
-      contract: contract,
-      stageDraft: InstallmentTermsDraft.contract(contract.stageTerms),
+      installment: installment,
+      stageDraft: InstallmentTermsDraft.contract(installment.stageTerms),
       draft: [
-        for (final schedule in schedules)
+        for (final schedule in detail.schedules)
           InstallmentContractDraftRow(
             scheduleId: schedule.id,
             periodNo: schedule.periodNo,
@@ -142,7 +139,9 @@ class InstallmentContractEditViewModel
               ),
             );
         _setLoaded(loaded.copyWith(submitting: false));
-        _invalidateCreditContractProviders(loaded.contract.liabilityAccountId);
+        _invalidateCreditContractProviders(
+          loaded.installment.liabilityAccountId,
+        );
       });
     } finally {
       final latest = _loadedOrNull();
@@ -208,11 +207,13 @@ class InstallmentContractEditViewModel
 
   void _invalidateCreditContractProviders(String liabilityAccountId) {
     ref
-      ..invalidate(installmentContractProvider(contractId))
-      ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentProvider(contractId))
+      ..invalidate(installmentDetailProvider(contractId))
+      ..invalidate(installmentRepricingProvider(contractId))
+      ..invalidate(installmentInterestAdjustmentProvider(contractId))
       ..invalidate(installmentActivitiesProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId))
-      ..invalidate(installmentContractsByAccountProvider(liabilityAccountId))
+      ..invalidate(installmentsByAccountProvider(liabilityAccountId))
       ..invalidate(creditAccountOverviewProvider(liabilityAccountId));
   }
 

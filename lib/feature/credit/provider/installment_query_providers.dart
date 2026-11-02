@@ -6,29 +6,44 @@ import '../../../application/credit/credit_query_api.dart';
 part 'installment_query_providers.g.dart';
 
 @riverpod
-Future<List<InstallmentContractReadModel>> installmentContractsByAccount(
+Future<List<InstallmentDTO>> installmentsByAccount(Ref ref, String accountId) {
+  return ref
+      .watch(installmentQueryServiceProvider)
+      .listInstallmentsByLiabilityAccount(accountId);
+}
+
+@riverpod
+Future<InstallmentDTO?> installment(Ref ref, String installmentId) {
+  return ref
+      .watch(installmentQueryServiceProvider)
+      .findInstallment(installmentId);
+}
+
+@riverpod
+Future<InstallmentDetailDTO?> installmentDetail(Ref ref, String installmentId) {
+  return ref
+      .watch(installmentQueryServiceProvider)
+      .findInstallmentDetail(installmentId);
+}
+
+@riverpod
+Future<InstallmentRepricingDTO?> installmentRepricing(
   Ref ref,
-  String accountId,
+  String installmentId,
 ) {
   return ref
       .watch(installmentQueryServiceProvider)
-      .listContractsByLiabilityAccount(accountId);
+      .findInstallmentRepricing(installmentId);
 }
 
 @riverpod
-Future<InstallmentContractReadModel?> installmentContract(
+Future<InstallmentInterestAdjustmentDTO?> installmentInterestAdjustment(
   Ref ref,
-  String contractId,
+  String installmentId,
 ) {
-  return ref.watch(installmentQueryServiceProvider).findContract(contractId);
-}
-
-@riverpod
-Future<List<InstallmentScheduleReadModel>> installmentSchedules(
-  Ref ref,
-  String contractId,
-) {
-  return ref.watch(installmentQueryServiceProvider).listSchedules(contractId);
+  return ref
+      .watch(installmentQueryServiceProvider)
+      .findInstallmentInterestAdjustment(installmentId);
 }
 
 @riverpod

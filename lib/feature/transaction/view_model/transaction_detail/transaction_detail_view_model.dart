@@ -337,8 +337,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       return;
     }
     ref
-      ..invalidate(installmentContractProvider(contractId))
-      ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentProvider(contractId))
+      ..invalidate(installmentDetailProvider(contractId))
+      ..invalidate(installmentRepricingProvider(contractId))
+      ..invalidate(installmentInterestAdjustmentProvider(contractId))
       ..invalidate(installmentActivitiesProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId));
   }

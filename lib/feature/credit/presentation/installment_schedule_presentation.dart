@@ -59,8 +59,8 @@ String installmentScheduleStatusLabel(InstallmentScheduleStatus status) =>
     };
 
 List<InstallmentScheduleViewItem> contractScheduleItems(
-  InstallmentContractReadModel contract,
-  List<InstallmentScheduleReadModel> schedules,
+  InstallmentDTO contract,
+  List<InstallmentScheduleDTO> schedules,
 ) {
   final stageIndexes = {
     for (var i = 0; i < contract.stageTerms.stages.length; i++)

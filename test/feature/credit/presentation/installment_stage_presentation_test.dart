@@ -15,11 +15,11 @@ void main() {
     test(
       'current rate stays within its stage when repricing starts $effectiveDate',
       () {
-        InstallmentRepricingReadModel repricing(
+        InstallmentRepricingRecordDTO repricing(
           String stageId,
           DateTime date,
           int ratePpm,
-        ) => InstallmentRepricingReadModel(
+        ) => InstallmentRepricingRecordDTO(
           id: 'repricing-$stageId',
           stageId: stageId,
           status: InstallmentRepricingStatus.applied,
@@ -35,14 +35,21 @@ void main() {
             ),
           ),
         );
-        final contract = InstallmentContractReadModel(
+        final contract = InstallmentDTO(
           id: 'contract',
+          name: '家庭贷款',
           liabilityAccountId: 'loan',
           installmentType: InstallmentType.disbursement,
           principal: const Money(minorUnits: 100000),
           borrowingDate: DateTime(2026, 1, 1),
           status: InstallmentContractStatus.active,
           createdAt: DateTime(2026, 1, 1),
+          repaymentProgress: const InstallmentRepaymentProgressDTO(
+            paidPeriodCount: 0,
+            totalPeriodCount: 6,
+            remainingPrincipal: Money(minorUnits: 100000),
+            repaid: RepaymentAmountBreakdown.zero,
+          ),
           stageTerms: InstallmentContractTerms(
             stages: [
               InstallmentContractStage(
@@ -76,18 +83,40 @@ void main() {
               ),
             ],
           ),
-          repricings: [
+        );
+        final repricingHistory = InstallmentRepricingDTO(
+          installmentId: 'contract',
+          configurations: const [],
+          records: [
             repricing('first', DateTime(2026, 3, 1), 36000),
             repricing('second', effectiveDate, 18000),
           ],
         );
 
-        expect(installmentRateOn(contract, DateTime(2026, 3, 20))?.ppm, 36000);
         expect(
-          installmentRateOn(contract, DateTime(2026, 5, 20))?.ppm,
+          installmentRateOn(
+            contract,
+            repricingHistory,
+            DateTime(2026, 3, 20),
+          )?.ppm,
+          36000,
+        );
+        expect(
+          installmentRateOn(
+            contract,
+            repricingHistory,
+            DateTime(2026, 5, 20),
+          )?.ppm,
           secondStageRate,
         );
-        expect(installmentRateOn(contract, DateTime(2026, 6, 20))?.ppm, 18000);
+        expect(
+          installmentRateOn(
+            contract,
+            repricingHistory,
+            DateTime(2026, 6, 20),
+          )?.ppm,
+          18000,
+        );
       },
     );
   }

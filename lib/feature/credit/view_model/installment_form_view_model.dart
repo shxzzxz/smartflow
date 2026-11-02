@@ -150,9 +150,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
                   stageTerms: current.termsDraft.contractTerms(),
                 ),
               );
-          ref.invalidate(
-            installmentContractsByAccountProvider(current.liability.id),
-          );
+          ref.invalidate(installmentsByAccountProvider(current.liability.id));
           ref.invalidate(creditAccountOverviewProvider(current.liability.id));
           return result.contractId;
         },

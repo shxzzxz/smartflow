@@ -421,14 +421,12 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     state = AsyncData(update(current));
   }
 
-  Future<InstallmentContractReadModel?> _purchaseContract(
-    TransactionReadModel detail,
-  ) async {
+  Future<InstallmentDTO?> _purchaseContract(TransactionReadModel detail) async {
     final ownership = detail.ownership;
     if (ownership?.ownerType != installmentOwnerType) return null;
     final contract = await ref
         .read(installmentQueryServiceProvider)
-        .findContract(ownership!.ownerId);
+        .findInstallment(ownership!.ownerId);
     return contract?.installmentType == InstallmentType.purchase
         ? contract
         : null;
@@ -483,18 +481,18 @@ class RefundFormViewModel extends _$RefundFormViewModel {
 
   Future<void> _invalidateInstallmentPlan(String contractId) async {
     ref
-      ..invalidate(installmentContractProvider(contractId))
-      ..invalidate(installmentSchedulesProvider(contractId))
+      ..invalidate(installmentProvider(contractId))
+      ..invalidate(installmentDetailProvider(contractId))
+      ..invalidate(installmentRepricingProvider(contractId))
+      ..invalidate(installmentInterestAdjustmentProvider(contractId))
       ..invalidate(installmentActivitiesProvider(contractId))
       ..invalidate(installmentMetricsProvider(contractId));
     final contract = await ref
         .read(installmentQueryServiceProvider)
-        .findContract(contractId);
+        .findInstallment(contractId);
     if (contract == null) return;
     ref
-      ..invalidate(
-        installmentContractsByAccountProvider(contract.liabilityAccountId),
-      )
+      ..invalidate(installmentsByAccountProvider(contract.liabilityAccountId))
       ..invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
   }
 

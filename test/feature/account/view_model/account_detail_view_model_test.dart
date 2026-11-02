@@ -178,7 +178,7 @@ void main() {
           creditLiabilityAccountsByAccountIdProvider.overrideWith(
             (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
           ),
-          installmentContractsByAccountProvider(
+          installmentsByAccountProvider(
             'card',
           ).overrideWith((ref) async => [_contract()]),
           billSummariesByAccountProvider('card').overrideWith(
@@ -198,9 +198,7 @@ void main() {
       addTearDown(sub.close);
       await container.read(accountListProvider.future);
       await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-      await container.read(
-        installmentContractsByAccountProvider('card').future,
-      );
+      await container.read(installmentsByAccountProvider('card').future);
       await container.pump();
       await _flush();
 
@@ -433,15 +431,22 @@ BillSummaryReadModel _bill({required int year, required int month}) {
   );
 }
 
-InstallmentContractReadModel _contract() {
-  return InstallmentContractReadModel(
+InstallmentDTO _contract() {
+  return InstallmentDTO(
     id: 'contract-1',
+    name: '账单分期',
     liabilityAccountId: 'card',
     installmentType: InstallmentType.billConversion,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 1,
+      totalPeriodCount: 3,
+      remainingPrincipal: Money(minorUnits: 6000),
+      repaid: RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 3,

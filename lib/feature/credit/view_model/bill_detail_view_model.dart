@@ -70,7 +70,7 @@ class BillDetailViewModel extends _$BillDetailViewModel {
       ..invalidate(billDetailProvider(billId))
       ..invalidate(billSummariesByAccountProvider(accountId))
       ..invalidate(creditAccountOverviewProvider(accountId))
-      ..invalidate(installmentContractsByAccountProvider(accountId));
+      ..invalidate(installmentsByAccountProvider(accountId));
   }
 
   UiActionOutcome<void> _notLoaded() {

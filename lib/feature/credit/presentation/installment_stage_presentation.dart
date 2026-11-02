@@ -7,10 +7,11 @@ import '../view_model/installment_terms_draft.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
 
 InterestRate? installmentRateOn(
-  InstallmentContractReadModel contract,
+  InstallmentDTO installment,
+  InstallmentRepricingDTO? repricing,
   DateTime date,
 ) {
-  final stages = contract.stageTerms.stages
+  final stages = installment.stageTerms.stages
       .where((stage) => stage.terms is AmortizingStage)
       .toList();
   final currentStage =
@@ -28,7 +29,7 @@ InterestRate? installmentRateOn(
     return null;
   }
   final changes =
-      contract.repricings
+      (repricing?.records ?? const <InstallmentRepricingRecordDTO>[])
           .where(
             (record) =>
                 record.stageId == currentStage.id &&

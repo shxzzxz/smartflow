@@ -77,8 +77,16 @@ class InterestAdjustmentInput extends InstallmentOperationInput {
 }
 
 class InstallmentOperationsState {
-  const InstallmentOperationsState({required this.contract, this.busy = false});
-  final InstallmentContractReadModel? contract;
+  const InstallmentOperationsState({
+    required this.installment,
+    required this.repricing,
+    required this.interestAdjustment,
+    this.busy = false,
+  });
+
+  final InstallmentDTO? installment;
+  final InstallmentRepricingDTO? repricing;
+  final InstallmentInterestAdjustmentDTO? interestAdjustment;
   final bool busy;
 }
 
@@ -87,12 +95,20 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
   static final _logger = Logger('feature.credit.installment_operations');
 
   @override
-  Future<InstallmentOperationsState> build(String contractId) async =>
-      InstallmentOperationsState(
-        contract: await ref.watch(
-          installmentContractProvider(contractId).future,
-        ),
-      );
+  Future<InstallmentOperationsState> build(String contractId) async {
+    final installment = await ref.watch(installmentProvider(contractId).future);
+    final repricing = await ref.watch(
+      installmentRepricingProvider(contractId).future,
+    );
+    final interestAdjustment = await ref.watch(
+      installmentInterestAdjustmentProvider(contractId).future,
+    );
+    return InstallmentOperationsState(
+      installment: installment,
+      repricing: repricing,
+      interestAdjustment: interestAdjustment,
+    );
+  }
 
   Future<UiActionOutcome<void>> submit(InstallmentOperationInput input) async {
     switch (input) {
@@ -191,7 +207,7 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
 
   Future<UiActionOutcome<void>> _run(Future<void> Function() action) async {
     final loaded = state.asData?.value;
-    if (loaded?.contract == null || loaded!.busy) {
+    if (loaded?.installment == null || loaded!.busy) {
       return UiActionOutcome.failure(
         UiError(
           code: CreditErrorCode.contractInvalidCommand.code,
@@ -200,7 +216,12 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
       );
     }
     state = AsyncData(
-      InstallmentOperationsState(contract: loaded.contract, busy: true),
+      InstallmentOperationsState(
+        installment: loaded.installment,
+        repricing: loaded.repricing,
+        interestAdjustment: loaded.interestAdjustment,
+        busy: true,
+      ),
     );
     try {
       return await guardUiAction(
@@ -210,17 +231,18 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
           await action();
           if (!ref.mounted) return;
           ref
-            ..invalidate(installmentContractProvider(contractId))
-            ..invalidate(installmentSchedulesProvider(contractId))
+            ..invalidate(installmentProvider(contractId))
+            ..invalidate(installmentRepricingProvider(contractId))
+            ..invalidate(installmentInterestAdjustmentProvider(contractId))
             ..invalidate(installmentMetricsProvider(contractId))
             ..invalidate(
-              installmentContractsByAccountProvider(
-                loaded.contract!.liabilityAccountId,
+              installmentsByAccountProvider(
+                loaded.installment!.liabilityAccountId,
               ),
             )
             ..invalidate(
               creditAccountOverviewProvider(
-                loaded.contract!.liabilityAccountId,
+                loaded.installment!.liabilityAccountId,
               ),
             );
         },
@@ -230,7 +252,11 @@ class InstallmentOperationsViewModel extends _$InstallmentOperationsViewModel {
         final current = state.asData?.value;
         if (current != null) {
           state = AsyncData(
-            InstallmentOperationsState(contract: current.contract),
+            InstallmentOperationsState(
+              installment: current.installment,
+              repricing: current.repricing,
+              interestAdjustment: current.interestAdjustment,
+            ),
           );
         }
       }

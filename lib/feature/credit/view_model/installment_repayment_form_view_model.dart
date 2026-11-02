@@ -27,10 +27,7 @@ class InstallmentRepaymentFormViewModel
     InstallmentRepaymentFormArgs args,
   ) async {
     final contract = await ref.watch(
-      installmentContractProvider(args.contractId).future,
-    );
-    final schedules = await ref.watch(
-      installmentSchedulesProvider(args.contractId).future,
+      installmentProvider(args.contractId).future,
     );
     final accounts = await ref.watch(
       accountsForSelectionPurposeProvider(
@@ -39,10 +36,7 @@ class InstallmentRepaymentFormViewModel
     );
 
     if (contract == null) {
-      return InstallmentRepaymentFormState.notFound(
-        schedules: schedules,
-        accounts: accounts,
-      );
+      return InstallmentRepaymentFormState.notFound(accounts: accounts);
     }
 
     final paidFromAccountId =
@@ -53,9 +47,8 @@ class InstallmentRepaymentFormViewModel
 
     return InstallmentRepaymentFormState.loaded(
       contract: contract,
-      schedules: schedules,
       accounts: accounts,
-      principalText: _defaultPrincipalText(contract, schedules),
+      principalText: contract.repaymentProgress.remainingPrincipal.format(),
       occurredAt: DateTime.now(),
       paidFromAccountId: paidFromAccountId,
     );
@@ -136,13 +129,13 @@ class InstallmentRepaymentFormViewModel
     }
   }
 
-  void _invalidate(InstallmentContractReadModel contract) {
-    ref.invalidate(installmentContractProvider(contract.id));
-    ref.invalidate(installmentSchedulesProvider(contract.id));
+  void _invalidate(InstallmentDTO contract) {
+    ref.invalidate(installmentProvider(contract.id));
+    ref.invalidate(installmentDetailProvider(contract.id));
+    ref.invalidate(installmentRepricingProvider(contract.id));
+    ref.invalidate(installmentInterestAdjustmentProvider(contract.id));
     ref.invalidate(installmentActivitiesProvider(contract.id));
-    ref.invalidate(
-      installmentContractsByAccountProvider(contract.liabilityAccountId),
-    );
+    ref.invalidate(installmentsByAccountProvider(contract.liabilityAccountId));
     ref.invalidate(creditAccountOverviewProvider(contract.liabilityAccountId));
     ref.invalidate(
       accountsForSelectionPurposeProvider(
@@ -190,7 +183,6 @@ enum InstallmentRepaymentFormStatus { loaded, notFound }
 class InstallmentRepaymentFormState {
   const InstallmentRepaymentFormState({
     required this.status,
-    required this.schedules,
     required this.accounts,
     required this.principalText,
     required this.interestText,
@@ -205,8 +197,7 @@ class InstallmentRepaymentFormState {
   });
 
   factory InstallmentRepaymentFormState.loaded({
-    required InstallmentContractReadModel contract,
-    required List<InstallmentScheduleReadModel> schedules,
+    required InstallmentDTO contract,
     required List<Account> accounts,
     required DateTime occurredAt,
     String principalText = '',
@@ -219,7 +210,6 @@ class InstallmentRepaymentFormState {
     return InstallmentRepaymentFormState(
       status: InstallmentRepaymentFormStatus.loaded,
       contract: contract,
-      schedules: schedules,
       accounts: accounts,
       principalText: principalText,
       interestText: interestText,
@@ -234,12 +224,10 @@ class InstallmentRepaymentFormState {
   }
 
   factory InstallmentRepaymentFormState.notFound({
-    required List<InstallmentScheduleReadModel> schedules,
     required List<Account> accounts,
   }) {
     return InstallmentRepaymentFormState(
       status: InstallmentRepaymentFormStatus.notFound,
-      schedules: schedules,
       accounts: accounts,
       principalText: '',
       interestText: '',
@@ -253,8 +241,7 @@ class InstallmentRepaymentFormState {
   }
 
   final InstallmentRepaymentFormStatus status;
-  final InstallmentContractReadModel? contract;
-  final List<InstallmentScheduleReadModel> schedules;
+  final InstallmentDTO? contract;
   final List<Account> accounts;
   final String principalText;
   final String interestText;
@@ -285,8 +272,7 @@ class InstallmentRepaymentFormState {
       status: status ?? this.status,
       contract: contract == _sentinel
           ? this.contract
-          : contract as InstallmentContractReadModel?,
-      schedules: schedules,
+          : contract as InstallmentDTO?,
       accounts: accounts,
       principalText: principalText ?? this.principalText,
       interestText: interestText ?? this.interestText,
@@ -301,17 +287,6 @@ class InstallmentRepaymentFormState {
       submitting: submitting ?? this.submitting,
     );
   }
-}
-
-String _defaultPrincipalText(
-  InstallmentContractReadModel contract,
-  List<InstallmentScheduleReadModel> schedules,
-) {
-  final paidPrincipalSum = schedules
-      .where((s) => s.status == InstallmentScheduleStatus.paid)
-      .fold<int>(0, (sum, s) => sum + s.expectedPrincipal.minorUnits);
-  final remaining = contract.principal.minorUnits - paidPrincipalSum;
-  return Money(minorUnits: remaining < 0 ? 0 : remaining).format();
 }
 
 String? _selectedId(String? id, List<Account> accounts) {

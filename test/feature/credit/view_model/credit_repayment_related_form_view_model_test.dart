@@ -983,14 +983,19 @@ ProviderContainer _container({
       creditAccountOverviewProvider.overrideWith(
         (ref, id) async => creditOverview ?? _creditOverview(),
       ),
-      installmentContractProvider.overrideWith((ref, id) async => _contract()),
-      installmentSchedulesProvider.overrideWith(
-        (ref, id) async => [_schedule()],
+      installmentProvider.overrideWith((ref, id) async => _contract()),
+      installmentDetailProvider.overrideWith(
+        (ref, id) async => credit_query.InstallmentDetailDTO(
+          installment: _contract(),
+          schedules: [_schedule()],
+        ),
+      ),
+      installmentRepricingProvider.overrideWith((ref, id) async => null),
+      installmentInterestAdjustmentProvider.overrideWith(
+        (ref, id) async => null,
       ),
       installmentActivitiesProvider.overrideWith((ref, id) async => const []),
-      installmentContractsByAccountProvider.overrideWith(
-        (ref, id) async => const [],
-      ),
+      installmentsByAccountProvider.overrideWith((ref, id) async => const []),
       installmentContractAppServiceProvider.overrideWithValue(
         installmentAppService ?? _FakeInstallmentContractAppService(),
       ),
@@ -1261,10 +1266,11 @@ TransactionReadModel _repaymentDetail({String liabilityAccountId = 'payable'}) {
   );
 }
 
-credit_query.InstallmentContractReadModel _contract() {
+credit_query.InstallmentDTO _contract() {
   final now = DateTime(2026);
-  return credit_query.InstallmentContractReadModel(
+  return credit_query.InstallmentDTO(
     id: 'contract',
+    name: '家庭贷款',
     liabilityAccountId: 'loan',
     disbursementAccountId: 'cash',
     installmentType: credit.InstallmentType.disbursement,
@@ -1272,6 +1278,12 @@ credit_query.InstallmentContractReadModel _contract() {
     borrowingDate: now,
     status: credit.InstallmentContractStatus.active,
     createdAt: now,
+    repaymentProgress: const credit_query.InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 0,
+      totalPeriodCount: 10,
+      remainingPrincipal: Money(minorUnits: 10000),
+      repaid: credit.RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract:stage:1',
       totalPeriods: 10,
@@ -1284,9 +1296,9 @@ credit_query.InstallmentContractReadModel _contract() {
   );
 }
 
-credit_query.InstallmentScheduleReadModel _schedule() {
+credit_query.InstallmentScheduleDTO _schedule() {
   final now = DateTime(2026);
-  return credit_query.InstallmentScheduleReadModel(
+  return credit_query.InstallmentScheduleDTO(
     id: 'schedule',
     contractId: 'contract',
     periodNo: 1,

@@ -10,9 +10,6 @@ abstract interface class CreditTransactionViewSource {
     CreditTransactionViewQuery query,
   );
 
-  Future<Map<String, CreditInstallmentSummarySource>>
-  findInstallmentSummarySources(Set<String> contractIds);
-
   Future<Map<String, CreditRepaymentBusinessItemSummary>>
   findRepaymentSummaries(Set<String> repaymentIds);
 }

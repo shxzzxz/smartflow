@@ -5,7 +5,6 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 
-import '../../../core/money/money.dart';
 import '../../../core/time/date_label.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
@@ -192,11 +191,13 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final contract = loaded.contract;
+    final installment = loaded.installment;
     final scheduleItems = {
       for (final item in loaded.scheduleItems) item.schedule.id: item,
     };
     final activities = loaded.activities;
+    final unconfirmedRepricingIds =
+        loaded.repricing?.unconfirmedRecordIds ?? const <String>[];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -206,15 +207,10 @@ class _Body extends StatelessWidget {
         AppSpacing.space16,
       ),
       children: [
-        _Header(
-          contract: contract,
-          remainingPrincipalMinor: loaded.remainingPrincipalMinor,
-          paidInterestMinor: loaded.paidInterestMinor,
-          paidFeeMinor: loaded.paidFeeMinor,
-        ),
+        _Header(installment: installment, repricing: loaded.repricing),
         const SizedBox(height: AppSpacing.space8),
-        _ActionBar(contract: contract, onValidate: onValidate),
-        if (contract.unconfirmedRepricingIds.isNotEmpty) ...[
+        _ActionBar(contract: installment, onValidate: onValidate),
+        if (unconfirmedRepricingIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.space12),
           AppStatusBanner(
             message: '分期已执行重定价，请查看后确认',
@@ -229,9 +225,9 @@ class _Body extends StatelessWidget {
         Text('还款计划', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
         InstallmentScheduleView(
-          items: contractScheduleItems(contract, loaded.schedules),
+          items: contractScheduleItems(installment, loaded.schedules),
           rowWrapper: (context, row, child) => _ScheduleActions(
-            contract: contract,
+            contract: installment,
             item: scheduleItems[row.id]!,
             child: child,
           ),
@@ -253,7 +249,7 @@ class _Body extends StatelessWidget {
                 for (var i = 0; i < activities.length; i++) ...[
                   _ContractActivityRow(
                     activity: activities[i],
-                    contract: contract,
+                    contract: installment,
                   ),
                 ],
               ],
@@ -265,76 +261,74 @@ class _Body extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({
-    required this.contract,
-    required this.remainingPrincipalMinor,
-    required this.paidInterestMinor,
-    required this.paidFeeMinor,
-  });
+  const _Header({required this.installment, required this.repricing});
 
-  final InstallmentContractReadModel contract;
-  final int remainingPrincipalMinor;
-  final int paidInterestMinor;
-  final int paidFeeMinor;
+  final InstallmentDTO installment;
+  final InstallmentRepricingDTO? repricing;
 
   @override
   Widget build(BuildContext context) {
-    final currentRate = installmentRateOn(contract, DateTime.now());
+    final progress = installment.repaymentProgress;
+    final currentRate = installmentRateOn(
+      installment,
+      repricing,
+      DateTime.now(),
+    );
     return AppDetailSummaryCard(
-      title: contract.name,
+      title: installment.name,
       headerTrailing: AppStatusBadge(
-        presentation: contractStatusBadgePresentation(contract.status),
+        presentation: contractStatusBadgePresentation(installment.status),
       ),
       mainItems: [
         AppDetailSummaryCardItem(
           label: '待还本金',
-          value: Money(minorUnits: remainingPrincipalMinor).format(),
+          value: progress.remainingPrincipal.format(),
         ),
         AppDetailSummaryCardItem(
           label: '已还利息',
-          value: Money(minorUnits: paidInterestMinor).format(),
+          value: progress.repaid.interest.format(),
         ),
         AppDetailSummaryCardItem(
           label: '已还手续费',
-          value: Money(minorUnits: paidFeeMinor).format(),
+          value: progress.repaid.fee.format(),
         ),
       ],
       supportingItems: [
         AppDetailSummaryCardItem(
           label: '分期方式',
-          value: contract.stageTerms.stages.length > 1
-              ? contract.stageTerms.stages
+          value: installment.stageTerms.stages.length > 1
+              ? installment.stageTerms.stages
                     .map(
                       (s) => s.terms is DefermentStage
                           ? '免还期'
                           : _methodLabel((s.terms as AmortizingStage).method),
                     )
                     .join(' → ')
-              : _methodLabel(contract.stageTerms.repayments.first.method),
+              : _methodLabel(installment.stageTerms.repayments.first.method),
         ),
         AppDetailSummaryCardItem(
           label: '本金',
-          value: contract.principal.format(),
+          value: installment.principal.format(),
         ),
         AppDetailSummaryCardItem(
           label: '借款日期',
-          value: formatDateLabel(contract.borrowingDate),
+          value: formatDateLabel(installment.borrowingDate),
         ),
         AppDetailSummaryCardItem(
           label: '期数',
-          value: '${contract.totalPeriods} 期',
+          value: '${installment.repaymentProgress.totalPeriodCount} 期',
         ),
         AppDetailSummaryCardItem(
           label: '计息方式',
-          value: contract.stageTerms.stages.length > 1
+          value: installment.stageTerms.stages.length > 1
               ? '按各阶段条款'
               : _accrualMethodLabel(
-                  contract.stageTerms.repayments.first.accrual,
+                  installment.stageTerms.repayments.first.accrual,
                 ),
         ),
         AppDetailSummaryCardItem(
           label: '利率',
-          value: contract.stageTerms.stages.length > 1
+          value: installment.stageTerms.stages.length > 1
               ? '按各阶段条款'
               : _formatRate(currentRate?.period, currentRate?.ppm),
         ),
@@ -346,7 +340,7 @@ class _Header extends StatelessWidget {
 class _ActionBar extends StatelessWidget {
   const _ActionBar({required this.contract, required this.onValidate});
 
-  final InstallmentContractReadModel contract;
+  final InstallmentDTO contract;
   final VoidCallback onValidate;
 
   @override
@@ -400,10 +394,10 @@ class _ScheduleActions extends ConsumerWidget {
     required this.item,
     required this.child,
   });
-  final InstallmentContractReadModel contract;
+  final InstallmentDTO contract;
   final InstallmentScheduleItemState item;
   final Widget child;
-  InstallmentScheduleReadModel get schedule => item.schedule;
+  InstallmentScheduleDTO get schedule => item.schedule;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final row = child;
@@ -488,7 +482,7 @@ class _ContractActivityRow extends ConsumerWidget {
   const _ContractActivityRow({required this.activity, required this.contract});
 
   final ContractActivity activity;
-  final InstallmentContractReadModel contract;
+  final InstallmentDTO contract;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

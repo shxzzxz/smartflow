@@ -6,7 +6,7 @@ import '../query/transaction_detail_context_read_models.dart';
 final class InstallmentDetailOwnerQuery implements TransactionDetailOwnerQuery {
   const InstallmentDetailOwnerQuery(this._query);
 
-  final CreditTransactionViewQueryService _query;
+  final InstallmentQueryService _query;
 
   @override
   Set<String> get supportedOwnerTypes => const {installmentOwnerType};
@@ -15,33 +15,30 @@ final class InstallmentDetailOwnerQuery implements TransactionDetailOwnerQuery {
   Future<TransactionDetailOwnerContext?> find(
     TransactionOwnership ownership,
   ) async {
-    final summaries = await _query.findInstallmentSummaries({
-      ownership.ownerId,
-    });
-    return _map(ownership, summaries[ownership.ownerId]);
+    return _map(ownership, await _query.findInstallment(ownership.ownerId));
   }
 
   @override
   Stream<TransactionDetailOwnerContext?> watch(TransactionOwnership ownership) {
     return _query
-        .watchInstallmentSummary(ownership.ownerId)
-        .map((summary) => _map(ownership, summary));
+        .watchInstallment(ownership.ownerId)
+        .map((installment) => _map(ownership, installment));
   }
 
   TransactionDetailOwnerContext? _map(
     TransactionOwnership ownership,
-    CreditInstallmentBusinessItemSummary? summary,
+    InstallmentDTO? installment,
   ) {
-    if (summary == null) return null;
+    if (installment == null) return null;
     return InstallmentTransactionDetailOwnerContext(
       ownerType: installmentOwnerType,
       ownerId: ownership.ownerId,
-      installmentType: summary.installmentType,
-      status: summary.status,
-      principal: summary.principal,
-      remainingPrincipal: summary.remainingPrincipal,
-      paidPeriodCount: summary.paidPeriodCount,
-      totalPeriodCount: summary.totalPeriodCount,
+      installmentType: installment.installmentType,
+      status: installment.status,
+      principal: installment.principal,
+      remainingPrincipal: installment.repaymentProgress.remainingPrincipal,
+      paidPeriodCount: installment.repaymentProgress.paidPeriodCount,
+      totalPeriodCount: installment.repaymentProgress.totalPeriodCount,
     );
   }
 }

@@ -8,90 +8,110 @@ import 'package:smartflow/domain/credit/valobj/installment_plan_operation.dart';
 import 'package:smartflow/domain/credit/valobj/reference_rate.dart';
 import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 
-InstallmentContractReadModel operationsContract({
-  bool withRecords = false,
-  bool multipleStages = false,
-}) => InstallmentContractReadModel(
-  id: 'loan',
-  liabilityAccountId: 'account',
-  installmentType: InstallmentType.disbursement,
-  principal: const Money(minorUnits: 10000000),
-  borrowingDate: DateTime(2026, 8, 8),
-  createdAt: DateTime(2026, 8, 8),
-  status: InstallmentContractStatus.active,
-  stageTerms: InstallmentContractTerms(
-    stages: [
-      InstallmentContractStage(
-        id: 'stage',
-        terms: AmortizingStage(
-          method: InstallmentRepaymentMethod.interestFirst,
-          dates: IntervalRepaymentDates(
-            firstDate: DateTime(2026, 9, 8),
-            count: 12,
-          ),
-        ),
+InstallmentDTO operationsContract({bool multipleStages = false}) =>
+    InstallmentDTO(
+      id: 'loan',
+      name: '家庭贷款',
+      liabilityAccountId: 'account',
+      installmentType: InstallmentType.disbursement,
+      principal: const Money(minorUnits: 10000000),
+      borrowingDate: DateTime(2026, 8, 8),
+      createdAt: DateTime(2026, 8, 8),
+      status: InstallmentContractStatus.active,
+      repaymentProgress: InstallmentRepaymentProgressDTO(
+        paidPeriodCount: 0,
+        totalPeriodCount: multipleStages ? 24 : 12,
+        remainingPrincipal: const Money(minorUnits: 10000000),
+        repaid: RepaymentAmountBreakdown.zero,
       ),
-      if (multipleStages)
-        InstallmentContractStage(
-          id: 'second',
-          terms: AmortizingStage(
-            method: InstallmentRepaymentMethod.interestFirst,
-            dates: IntervalRepaymentDates(
-              firstDate: DateTime(2027, 9, 8),
-              count: 12,
-            ),
-          ),
-        ),
-    ],
-  ),
-  repricings: withRecords
-      ? [
-          InstallmentRepricingReadModel(
-            id: 'rate',
-            stageId: 'stage',
-            status: InstallmentRepricingStatus.applied,
-            change: ReferenceRateChange(
-              resetDate: DateTime(2026, 8, 20),
-              effectiveDate: DateTime(2026, 8, 20),
-              referenceRate: ReferenceRate(
-                type: InterestRateType.lprOneYear,
-                date: DateTime(2026, 8, 19),
-                ratePpm: 18000,
-                source: 'fixture',
+      stageTerms: InstallmentContractTerms(
+        stages: [
+          InstallmentContractStage(
+            id: 'stage',
+            terms: AmortizingStage(
+              method: InstallmentRepaymentMethod.interestFirst,
+              dates: IntervalRepaymentDates(
+                firstDate: DateTime(2026, 9, 8),
+                count: 12,
               ),
-              spreadBp: -10,
             ),
           ),
-        ]
-      : [],
-  repricingConfigurations: withRecords
-      ? [
-          InstallmentRepricingConfigurationReadModel(
-            id: 'configuration',
-            stageId: 'stage',
-            effectiveFrom: DateTime(2026, 8, 8),
-            rule: FloatingRateRule(
-              referenceRateType: InterestRateType.lprOneYear,
-              spreadBp: -10,
-              firstResetDate: DateTime(2026, 8, 20),
-              firstEffectiveDate: DateTime(2026, 8, 20),
+          if (multipleStages)
+            InstallmentContractStage(
+              id: 'second',
+              terms: AmortizingStage(
+                method: InstallmentRepaymentMethod.interestFirst,
+                dates: IntervalRepaymentDates(
+                  firstDate: DateTime(2027, 9, 8),
+                  count: 12,
+                ),
+              ),
             ),
-          ),
-        ]
-      : [],
-  interestAdjustments: withRecords
-      ? [
-          InstallmentInterestAdjustmentReadModel(
-            id: 'adjustment',
-            adjustment: InterestAdjustment(
-              start: DateTime(2026, 8, 15),
-              end: DateTime(2026, 8, 25),
-              ratioPpm: 500000,
+        ],
+      ),
+    );
+
+InstallmentRepricingDTO operationsRepricing({bool withRecords = false}) {
+  return InstallmentRepricingDTO(
+    installmentId: 'loan',
+    records: withRecords
+        ? [
+            InstallmentRepricingRecordDTO(
+              id: 'rate',
+              stageId: 'stage',
+              status: InstallmentRepricingStatus.applied,
+              change: ReferenceRateChange(
+                resetDate: DateTime(2026, 8, 20),
+                effectiveDate: DateTime(2026, 8, 20),
+                referenceRate: ReferenceRate(
+                  type: InterestRateType.lprOneYear,
+                  date: DateTime(2026, 8, 19),
+                  ratePpm: 18000,
+                  source: 'fixture',
+                ),
+                spreadBp: -10,
+              ),
             ),
-          ),
-        ]
-      : [],
-);
+          ]
+        : [],
+    configurations: withRecords
+        ? [
+            InstallmentRepricingConfigurationDTO(
+              id: 'configuration',
+              stageId: 'stage',
+              effectiveFrom: DateTime(2026, 8, 8),
+              generationCompleted: false,
+              rule: FloatingRateRule(
+                referenceRateType: InterestRateType.lprOneYear,
+                spreadBp: -10,
+                firstResetDate: DateTime(2026, 8, 20),
+                firstEffectiveDate: DateTime(2026, 8, 20),
+              ),
+            ),
+          ]
+        : [],
+  );
+}
+
+InstallmentInterestAdjustmentDTO operationsInterestAdjustments({
+  bool withRecords = false,
+}) {
+  return InstallmentInterestAdjustmentDTO(
+    installmentId: 'loan',
+    adjustments: withRecords
+        ? [
+            InstallmentInterestAdjustmentItemDTO(
+              id: 'adjustment',
+              adjustment: InterestAdjustment(
+                start: DateTime(2026, 8, 15),
+                end: DateTime(2026, 8, 25),
+                ratioPpm: 500000,
+              ),
+            ),
+          ]
+        : [],
+  );
+}
 
 class RecordingRepricingService implements InstallmentRepricingAppService {
   final directCreated =

@@ -37,7 +37,7 @@ String _billRepaymentLabel(DateTime repaymentDate) {
 }
 
 FinanceSummaryRowPresentation installmentAccountCreditSummary(
-  InstallmentContractReadModel contract, {
+  InstallmentDTO contract, {
   required AccountProfileKind accountKind,
 }) {
   return FinanceSummaryRowPresentation(
@@ -51,7 +51,7 @@ FinanceSummaryRowPresentation installmentAccountCreditSummary(
           accountKind: accountKind,
         ),
       ),
-      AppSupportingText('${contract.totalPeriods} 期'),
+      AppSupportingText('${contract.repaymentProgress.totalPeriodCount} 期'),
       AppSupportingText(
         contract.stageTerms.stages.length > 1
             ? '${contract.stageTerms.stages.length} 个阶段'

@@ -1,152 +1,243 @@
 import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
+import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
-import '../../../../domain/credit/port/installment_repricing_repository.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_repayment_progress_service.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import '../../../../domain/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 
-import 'installment_read_models.dart';
+import 'installment_dtos.dart';
+import 'port/installment_progress_source.dart';
+import 'port/installment_statistics_change_source.dart';
 
 abstract interface class InstallmentQueryService {
-  Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
+  /// 分期基本信息与当前履约进度，不返回完整还款计划。
+  Future<List<InstallmentDTO>> listInstallmentsByLiabilityAccount(
     String liabilityAccountId,
   );
 
-  Future<InstallmentContractReadModel?> findContract(String contractId);
+  /// 单条分期查询，不返回完整还款计划。
+  Future<InstallmentDTO?> findInstallment(String installmentId);
 
-  Future<List<InstallmentScheduleReadModel>> listSchedules(String contractId);
+  /// 批量加载业务事项摘要所需的单条分期查询。
+  Future<Map<String, InstallmentDTO>> findInstallments(
+    Set<String> installmentIds,
+  );
 
-  /// 该负债账户上所有 active 分期合同的未还本金合计（minor units）。
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId);
+  Stream<InstallmentDTO?> watchInstallment(String installmentId);
+
+  /// 分期基本信息与完整还款计划。
+  Future<InstallmentDetailDTO?> findInstallmentDetail(String installmentId);
+
+  /// 重定价配置与已应用记录。
+  Future<InstallmentRepricingDTO?> findInstallmentRepricing(
+    String installmentId,
+  );
+
+  /// 合同级利息调整记录。
+  Future<InstallmentInterestAdjustmentDTO?> findInstallmentInterestAdjustment(
+    String installmentId,
+  );
 }
 
 class InstallmentQueryServiceImpl implements InstallmentQueryService {
   const InstallmentQueryServiceImpl({
     required InstallmentRepository repository,
-    required InstallmentRepricingRepository repricings,
+    required InstallmentProgressSource progress,
+    required InstallmentStatisticsChangeSource changes,
     CreditLedgerPort? ledger,
+    InstallmentRepaymentProgressService repaymentProgress =
+        const InstallmentRepaymentProgressService(),
   }) : _repository = repository,
-       _repricings = repricings,
-       _ledger = ledger;
+       _progress = progress,
+       _changes = changes,
+       _ledger = ledger,
+       _repaymentProgress = repaymentProgress;
 
   final InstallmentRepository _repository;
-  final InstallmentRepricingRepository _repricings;
+  final InstallmentProgressSource _progress;
+  final InstallmentStatisticsChangeSource _changes;
   final CreditLedgerPort? _ledger;
+  final InstallmentRepaymentProgressService _repaymentProgress;
 
   @override
-  Future<List<InstallmentContractReadModel>> listContractsByLiabilityAccount(
+  Future<List<InstallmentDTO>> listInstallmentsByLiabilityAccount(
     String liabilityAccountId,
   ) async {
-    final values = await _repository.listContractsByLiabilityAccount(
-      liabilityAccountId,
-    );
-    return Future.wait(values.map(_contractReadModel));
-  }
-
-  @override
-  Future<InstallmentContractReadModel?> findContract(String contractId) async {
-    final value = await _repository.findContract(contractId);
-    return value == null ? null : _contractReadModel(value);
-  }
-
-  @override
-  Future<List<InstallmentScheduleReadModel>> listSchedules(
-    String contractId,
-  ) async {
-    final contract = await _repository.findContract(contractId);
-    final values = contract?.schedules ?? const <InstallmentSchedule>[];
-    return values.map(_scheduleReadModel).toList();
-  }
-
-  @override
-  Future<int> unpaidInstallmentPrincipalMinor(String liabilityAccountId) async {
     final contracts = await _repository.listContractsByLiabilityAccount(
       liabilityAccountId,
     );
-    var sum = 0;
-    for (final contract in contracts) {
-      if (contract.status != InstallmentContractStatus.active) continue;
-      sum += contract.schedules
-          .where(
-            (schedule) =>
-                schedule.status == InstallmentScheduleStatus.pending ||
-                schedule.status == InstallmentScheduleStatus.partiallyPaid,
-          )
-          .fold<int>(
-            0,
-            (total, schedule) => total + schedule.expectedPrincipal.minorUnits,
-          );
-    }
-    return sum;
+    return _loadInstallments(contracts);
   }
 
-  Future<InstallmentContractReadModel> _contractReadModel(
-    InstallmentContract value,
+  @override
+  Future<InstallmentDTO?> findInstallment(String installmentId) async {
+    final contract = await _repository.findContract(installmentId);
+    if (contract == null) return null;
+    final loaded = await _loadInstallments([contract]);
+    return loaded.single;
+  }
+
+  @override
+  Future<Map<String, InstallmentDTO>> findInstallments(
+    Set<String> installmentIds,
   ) async {
-    final repricings = await _repricings.list(value.id);
-    final sourceTransaction =
-        value.installmentType == InstallmentType.disbursement &&
-            value.sourceRefId != null
-        ? await _ledger?.findParentTransaction(value.sourceRefId!)
-        : null;
-    return InstallmentContractReadModel(
-      id: value.id,
-      name: value.name,
-      liabilityAccountId: value.liabilityAccountId,
-      installmentType: value.installmentType,
-      sourceRefId: value.sourceRefId,
-      disbursementAccountId: sourceTransaction?.settlementInAccountId,
-      principal: value.principal,
-      borrowingDate: value.borrowingDate,
-      status: value.status,
-      note: value.note,
-      createdAt: value.createdAt,
-      stageTerms: value.stageTerms,
-      repricingConfigurations: List.unmodifiable([
-        for (final config in value.repricingConfigurations)
-          InstallmentRepricingConfigurationReadModel(
-            id: config.id,
-            stageId: config.stageId,
-            effectiveFrom: config.effectiveFrom,
-            rule: config.rule,
+    if (installmentIds.isEmpty) return const {};
+    final contracts = await Future.wait(
+      installmentIds.map(_repository.findContract),
+    );
+    final values = await _loadInstallments(
+      contracts.whereType<InstallmentContract>(),
+    );
+    return {for (final value in values) value.id: value};
+  }
+
+  @override
+  Stream<InstallmentDTO?> watchInstallment(String installmentId) {
+    return _changes.watchChanges().asyncMap(
+      (_) => findInstallment(installmentId),
+    );
+  }
+
+  @override
+  Future<InstallmentDetailDTO?> findInstallmentDetail(
+    String installmentId,
+  ) async {
+    final contract = await _repository.findContract(installmentId);
+    if (contract == null) return null;
+    final installment = (await _loadInstallments([contract])).single;
+    return InstallmentDetailDTO(
+      installment: installment,
+      schedules: contract.schedules.map(_scheduleDTO),
+    );
+  }
+
+  @override
+  Future<InstallmentRepricingDTO?> findInstallmentRepricing(
+    String installmentId,
+  ) async {
+    final contract = await _repository.findContract(installmentId);
+    if (contract == null) return null;
+    return InstallmentRepricingDTO(
+      installmentId: contract.id,
+      configurations: [
+        for (final configuration in contract.repricingConfigurations)
+          InstallmentRepricingConfigurationDTO(
+            id: configuration.id,
+            stageId: configuration.stageId,
+            effectiveFrom: configuration.effectiveFrom,
+            rule: configuration.rule,
+            lastGeneratedDate: configuration.lastGeneratedDate,
+            generationCompleted: configuration.generationCompleted,
           ),
-      ]),
-      repricings: List.unmodifiable([
-        for (final record in value.repricings)
-          InstallmentRepricingReadModel(
+      ],
+      records: [
+        for (final record in contract.repricings)
+          InstallmentRepricingRecordDTO(
             id: record.id,
             stageId: record.stageId,
             change: record.change,
             status: record.status,
           ),
-      ]),
-      interestAdjustments: List.unmodifiable([
-        for (final record in value.interestAdjustments)
-          InstallmentInterestAdjustmentReadModel(
-            id: record.id,
-            adjustment: record.adjustment,
-          ),
-      ]),
-      unconfirmedRepricingIds: List.unmodifiable([
-        for (final record in repricings)
-          if (record.status == InstallmentRepricingStatus.applied) record.id,
-      ]),
+      ],
     );
   }
 
-  InstallmentScheduleReadModel _scheduleReadModel(InstallmentSchedule value) {
-    return InstallmentScheduleReadModel(
-      id: value.id,
-      contractId: value.contractId,
-      stageId: value.stageId,
-      periodNo: value.periodNo,
-      expectedRepaymentDate: value.expectedRepaymentDate,
-      expectedPrincipal: value.expectedPrincipal,
-      expectedInterest: value.expectedInterest,
-      expectedFee: value.expectedFee,
-      status: value.status,
-      note: value.note,
-      createdAt: value.createdAt,
+  @override
+  Future<InstallmentInterestAdjustmentDTO?> findInstallmentInterestAdjustment(
+    String installmentId,
+  ) async {
+    final contract = await _repository.findContract(installmentId);
+    if (contract == null) return null;
+    return InstallmentInterestAdjustmentDTO(
+      installmentId: contract.id,
+      adjustments: [
+        for (final record in contract.interestAdjustments)
+          InstallmentInterestAdjustmentItemDTO(
+            id: record.id,
+            adjustment: record.adjustment,
+          ),
+      ],
+    );
+  }
+
+  Future<List<InstallmentDTO>> _loadInstallments(
+    Iterable<InstallmentContract> contracts,
+  ) async {
+    final values = contracts.toList();
+    if (values.isEmpty) return const [];
+    final factsByContract = await _progress.findRepaymentFacts({
+      for (final contract in values) contract.id,
+    });
+    return Future.wait([
+      for (final contract in values)
+        _mapInstallment(
+          contract,
+          repaymentFacts: factsByContract[contract.id] ?? const [],
+        ),
+    ]);
+  }
+
+  Future<InstallmentDTO> _mapInstallment(
+    InstallmentContract contract, {
+    required List<InstallmentRepaymentAllocationFact> repaymentFacts,
+  }) async {
+    final scheduleIds = {
+      for (final schedule in contract.schedules) schedule.id,
+    };
+    final allocatedByScheduleId = <String, RepaymentAmountBreakdown>{};
+    for (final fact in repaymentFacts) {
+      final scheduleId = fact.scheduleId;
+      if (scheduleId == null || !scheduleIds.contains(scheduleId)) continue;
+      allocatedByScheduleId[scheduleId] =
+          (allocatedByScheduleId[scheduleId] ?? RepaymentAmountBreakdown.zero) +
+          fact.allocated;
+    }
+    final progress = _repaymentProgress.project(
+      installment: contract,
+      allocatedByScheduleId: allocatedByScheduleId,
+      repayments: repaymentFacts.map((fact) => fact.allocated),
+    );
+    final sourceTransaction =
+        contract.installmentType == InstallmentType.disbursement &&
+            contract.sourceRefId != null
+        ? await _ledger?.findParentTransaction(contract.sourceRefId!)
+        : null;
+    return InstallmentDTO(
+      id: contract.id,
+      name: contract.name,
+      liabilityAccountId: contract.liabilityAccountId,
+      installmentType: contract.installmentType,
+      sourceRefId: contract.sourceRefId,
+      disbursementAccountId: sourceTransaction?.settlementInAccountId,
+      principal: contract.principal,
+      borrowingDate: contract.borrowingDate,
+      status: contract.status,
+      note: contract.note,
+      createdAt: contract.createdAt,
+      stageTerms: contract.stageTerms,
+      repaymentProgress: InstallmentRepaymentProgressDTO(
+        paidPeriodCount: progress.paidPeriodCount,
+        totalPeriodCount: progress.totalPeriodCount,
+        remainingPrincipal: progress.remainingPrincipal,
+        repaid: progress.repaid,
+      ),
+    );
+  }
+
+  InstallmentScheduleDTO _scheduleDTO(InstallmentSchedule schedule) {
+    return InstallmentScheduleDTO(
+      id: schedule.id,
+      contractId: schedule.contractId,
+      stageId: schedule.stageId,
+      periodNo: schedule.periodNo,
+      expectedRepaymentDate: schedule.expectedRepaymentDate,
+      expectedPrincipal: schedule.expectedPrincipal,
+      expectedInterest: schedule.expectedInterest,
+      expectedFee: schedule.expectedFee,
+      status: schedule.status,
+      note: schedule.note,
+      createdAt: schedule.createdAt,
     );
   }
 }

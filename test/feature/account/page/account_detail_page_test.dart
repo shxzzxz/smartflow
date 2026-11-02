@@ -34,7 +34,7 @@ void main() {
       final account = _account(kind: AccountProfileKind.loan);
       final contracts = [
         for (var i = 1; i <= 3; i++)
-          InstallmentContractReadModel(
+          InstallmentDTO(
             id: 'contract-$i',
             name: '合同 $i',
             liabilityAccountId: account.id,
@@ -43,6 +43,12 @@ void main() {
             borrowingDate: DateTime(2026, 1, 1),
             createdAt: DateTime(2026, 1, i),
             status: InstallmentContractStatus.active,
+            repaymentProgress: const InstallmentRepaymentProgressDTO(
+              paidPeriodCount: 0,
+              totalPeriodCount: 1,
+              remainingPrincipal: Money(minorUnits: 100000),
+              repaid: RepaymentAmountBreakdown.zero,
+            ),
             stageTerms: InstallmentContractTerms.singleStage(
               id: 'stage-$i',
               totalPeriods: 1,
@@ -94,7 +100,7 @@ void main() {
             accountViewProvider(
               account.id,
             ).overrideWith((ref) => AsyncData(account)),
-            installmentContractsByAccountProvider(
+            installmentsByAccountProvider(
               account.id,
             ).overrideWith((ref) async => contracts),
           ],

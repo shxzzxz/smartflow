@@ -27,10 +27,16 @@ void main() {
       );
 
       final loaded = state as InstallmentDetailLoaded;
-      expect(loaded.contract.id, 'contract-1');
-      expect(loaded.remainingPrincipalMinor, 6000);
-      expect(loaded.paidInterestMinor, 200);
-      expect(loaded.paidFeeMinor, 30);
+      expect(loaded.installment.id, 'contract-1');
+      expect(
+        loaded.installment.repaymentProgress.remainingPrincipal.minorUnits,
+        6000,
+      );
+      expect(
+        loaded.installment.repaymentProgress.repaid.interest.minorUnits,
+        200,
+      );
+      expect(loaded.installment.repaymentProgress.repaid.fee.minorUnits, 30);
     });
 
     test('derives schedule actions for contract detail rows', () async {
@@ -282,8 +288,8 @@ void main() {
 }
 
 ProviderContainer _container({
-  required InstallmentContractReadModel? contract,
-  List<InstallmentScheduleReadModel> schedules = const [],
+  required InstallmentDTO? contract,
+  List<InstallmentScheduleDTO> schedules = const [],
   List<ContractActivity> activities = const [],
   _FakeInstallmentContractAppService? service,
   _FakeDisbursementInstallmentAppService? disbursement,
@@ -297,11 +303,14 @@ ProviderContainer _container({
       installmentStatusRepairAppServiceProvider.overrideWithValue(
         statusRepair ?? _FakeStatusRepairAppService(),
       ),
-      installmentContractProvider.overrideWith(
-        (ref, contractId) async => contract,
+      installmentProvider.overrideWith((ref, contractId) async => contract),
+      installmentDetailProvider.overrideWith(
+        (ref, contractId) async => contract == null
+            ? null
+            : InstallmentDetailDTO(installment: contract, schedules: schedules),
       ),
-      installmentSchedulesProvider.overrideWith(
-        (ref, contractId) async => schedules,
+      installmentRepricingProvider.overrideWith(
+        (ref, contractId) async => null,
       ),
       installmentActivitiesProvider.overrideWith(
         (ref, contractId) async => activities,
@@ -325,12 +334,13 @@ ProviderContainer _container({
   return container;
 }
 
-InstallmentContractReadModel _contract({
+InstallmentDTO _contract({
   InstallmentType type = InstallmentType.disbursement,
   String? sourceRefId,
 }) {
-  return InstallmentContractReadModel(
+  return InstallmentDTO(
     id: 'contract-1',
+    name: '家庭贷款',
     liabilityAccountId: 'loan',
     installmentType: type,
     sourceRefId: sourceRefId,
@@ -339,6 +349,17 @@ InstallmentContractReadModel _contract({
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 1,
+      totalPeriodCount: 2,
+      remainingPrincipal: Money(minorUnits: 6000),
+      repaid: RepaymentAmountBreakdown(
+        principal: Money(minorUnits: 4000),
+        interest: Money(minorUnits: 200),
+        fee: Money(minorUnits: 30),
+        discount: Money(minorUnits: 0),
+      ),
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 2,
@@ -351,12 +372,12 @@ InstallmentContractReadModel _contract({
   );
 }
 
-InstallmentScheduleReadModel _schedule(
+InstallmentScheduleDTO _schedule(
   int periodNo, {
   Money principal = const Money(minorUnits: 4000),
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentScheduleReadModel(
+  return InstallmentScheduleDTO(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,

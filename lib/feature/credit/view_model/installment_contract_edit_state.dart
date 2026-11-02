@@ -11,7 +11,7 @@ part 'installment_contract_edit_state.freezed.dart';
 @freezed
 sealed class InstallmentContractEditState with _$InstallmentContractEditState {
   const factory InstallmentContractEditState.loaded({
-    required InstallmentContractReadModel contract,
+    required InstallmentDTO installment,
     ContractMetrics? metrics,
     required List<InstallmentContractDraftRow> draft,
     @Default({}) Set<int> manualPatchedPeriodNos,

@@ -6,7 +6,6 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
-import 'package:smartflow/domain/credit/valobj/floating_rate.dart';
 import 'package:smartflow/feature/credit/page/installment_contract_edit_page.dart';
 import 'package:smartflow/feature/credit/page/loan_configuration_page.dart';
 import 'package:smartflow/feature/credit/widget/installment_terms_editor.dart';
@@ -21,11 +20,14 @@ void main() {
       final service = _FailingInstallmentContractAppService();
       final container = ProviderContainer(
         overrides: [
-          installmentContractProvider.overrideWith(
+          installmentProvider.overrideWith(
             (ref, contractId) async => _contract(floating: true),
           ),
-          installmentSchedulesProvider.overrideWith(
-            (ref, contractId) async => [_schedule()],
+          installmentDetailProvider.overrideWith(
+            (ref, contractId) async => InstallmentDetailDTO(
+              installment: _contract(floating: true),
+              schedules: [_schedule()],
+            ),
           ),
           installmentMetricsProvider.overrideWith(
             (ref, contractId) async => _metrics,
@@ -48,7 +50,7 @@ void main() {
 
       expect(find.byType(InstallmentTermsEditor), findsNothing);
       expect(
-        tester.getTopLeft(find.text('20260101').first).dy,
+        tester.getTopLeft(find.text('家庭贷款').first).dy,
         lessThan(tester.getTopLeft(find.text('分期基本信息')).dy),
       );
       expect(
@@ -130,19 +132,23 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final container = ProviderContainer(
         overrides: [
-          installmentContractProvider.overrideWith(
-            (ref, id) async => _contract(),
-          ),
-          installmentSchedulesProvider.overrideWith(
-            (ref, id) async => [
-              _schedule(),
-              _schedule(
-                periodNo: 2,
-                status: InstallmentScheduleStatus.partiallyPaid,
-              ),
-              _schedule(periodNo: 3, status: InstallmentScheduleStatus.paid),
-              _schedule(periodNo: 4, status: InstallmentScheduleStatus.skipped),
-            ],
+          installmentProvider.overrideWith((ref, id) async => _contract()),
+          installmentDetailProvider.overrideWith(
+            (ref, id) async => InstallmentDetailDTO(
+              installment: _contract(),
+              schedules: [
+                _schedule(),
+                _schedule(
+                  periodNo: 2,
+                  status: InstallmentScheduleStatus.partiallyPaid,
+                ),
+                _schedule(periodNo: 3, status: InstallmentScheduleStatus.paid),
+                _schedule(
+                  periodNo: 4,
+                  status: InstallmentScheduleStatus.skipped,
+                ),
+              ],
+            ),
           ),
           installmentMetricsProvider.overrideWith((ref, id) async => _metrics),
         ],
@@ -187,9 +193,10 @@ const _metrics = ContractMetrics(
   unavailableReason: ContractMetricsUnavailableReason.noRateSolution,
 );
 
-InstallmentContractReadModel _contract({bool floating = false}) {
-  return InstallmentContractReadModel(
+InstallmentDTO _contract({bool floating = false}) {
+  return InstallmentDTO(
     id: 'contract-1',
+    name: '家庭贷款',
     liabilityAccountId: 'loan',
     installmentType: InstallmentType.disbursement,
     disbursementAccountId: 'bank',
@@ -198,20 +205,12 @@ InstallmentContractReadModel _contract({bool floating = false}) {
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
-    repricingConfigurations: [
-      if (floating)
-        InstallmentRepricingConfigurationReadModel(
-          id: 'configuration',
-          stageId: 'contract-1:stage:1',
-          effectiveFrom: DateTime.utc(2026, 1, 1),
-          rule: FloatingRateRule(
-            referenceRateType: InterestRateType.lprFiveYearPlus,
-            spreadBp: -30,
-            firstResetDate: DateTime.utc(2026, 1, 20),
-            firstEffectiveDate: DateTime.utc(2026, 1, 25),
-          ),
-        ),
-    ],
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 0,
+      totalPeriodCount: 1,
+      remainingPrincipal: Money(minorUnits: 5000),
+      repaid: RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 1,
@@ -228,11 +227,11 @@ InstallmentContractReadModel _contract({bool floating = false}) {
   );
 }
 
-InstallmentScheduleReadModel _schedule({
+InstallmentScheduleDTO _schedule({
   int periodNo = 1,
   InstallmentScheduleStatus status = InstallmentScheduleStatus.pending,
 }) {
-  return InstallmentScheduleReadModel(
+  return InstallmentScheduleDTO(
     id: 'schedule-$periodNo',
     contractId: 'contract-1',
     periodNo: periodNo,

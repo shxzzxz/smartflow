@@ -138,15 +138,22 @@ class CreditDebtBucketService {
     BillItem item, {
     required int allocatedPrincipalMinor,
   }) {
-    return remainingAmountsForBillItem(
-      item,
-      allocated: RepaymentAmountBreakdown(
-        principal: Money(minorUnits: allocatedPrincipalMinor),
-        interest: Money.zero(),
-        fee: Money.zero(),
-        discount: Money.zero(),
-      ),
-    ).principalMinor;
+    if (!_isOutstandingItem(item)) return 0;
+    return remainingPrincipalMinor(
+      expectedPrincipalMinor: item.expectedPrincipal.minorUnits,
+      allocatedPrincipalMinor: allocatedPrincipalMinor,
+    );
+  }
+
+  /// 计划期次或账单明细在给定本金分摊下的剩余本金，结果下限为 0。
+  int remainingPrincipalMinor({
+    required int expectedPrincipalMinor,
+    required int allocatedPrincipalMinor,
+  }) {
+    return _remainingNonNegative(
+      expectedMinor: expectedPrincipalMinor,
+      allocatedMinor: allocatedPrincipalMinor,
+    );
   }
 
   /// 明细待还总额：本息费各自剩余之和再扣减优惠，整体下限为 0。

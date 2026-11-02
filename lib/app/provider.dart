@@ -30,6 +30,7 @@ import '../infrastructure/credit/repository/drift_installment_product_repository
 import '../domain/credit/port/installment_product_repository.dart';
 import '../application/credit/product/installment_product_app_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
+import '../infrastructure/credit/query/drift_installment_progress_source.dart';
 import '../infrastructure/credit/installment_statistics_change_source.dart';
 import '../infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
@@ -582,6 +583,7 @@ BusinessItemQueryService businessItemQueryService(Ref ref) {
       ),
       CreditBusinessItemSource(
         ref.watch(creditTransactionViewQueryServiceProvider),
+        ref.watch(installmentQueryServiceProvider),
       ),
     ],
     transactionQuery: ref.watch(transactionQueryServiceProvider),
@@ -623,9 +625,7 @@ TransactionDetailContextQuery transactionDetailContextQuery(Ref ref) {
       AdvanceDetailOwnerQuery(
         ref.watch(advanceTransactionViewQueryServiceProvider),
       ),
-      InstallmentDetailOwnerQuery(
-        ref.watch(creditTransactionViewQueryServiceProvider),
-      ),
+      InstallmentDetailOwnerQuery(ref.watch(installmentQueryServiceProvider)),
       RepaymentDetailOwnerQuery(
         ref.watch(creditTransactionViewQueryServiceProvider),
       ),
@@ -847,9 +847,8 @@ InstallmentStatusRepairAppService installmentStatusRepairAppService(Ref ref) {
 InstallmentQueryService installmentQueryService(Ref ref) {
   return InstallmentQueryServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
-    repricings: DriftInstallmentRepricingRepository(
-      ref.watch(appDatabaseProvider),
-    ),
+    progress: DriftInstallmentProgressSource(ref.watch(appDatabaseProvider)),
+    changes: ref.watch(installmentStatisticsChangeSourceProvider),
     ledger: ref.watch(creditLedgerPortProvider),
   );
 }

@@ -2,11 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../application/credit/transaction_view/query/credit_transaction_view_read_models.dart';
 import '../../../application/credit/transaction_view/query/port/credit_transaction_view_source.dart';
-import '../../../core/money/money.dart';
-import '../../../domain/credit/entity/bill.dart';
-import '../../../domain/credit/valobj/bill_enums.dart';
 import '../../../domain/credit/valobj/installment_enums.dart';
-import '../../../domain/credit/valobj/repayment_amount_breakdown.dart';
 import '../../../domain/credit/valobj/repayment_enums.dart';
 import '../../database/app_database.dart';
 
@@ -30,137 +26,6 @@ final class DriftCreditTransactionViewSource
     return _anchorSelect(
       query,
     ).watch().map((rows) => _pageFromRows(rows, query.limit));
-  }
-
-  @override
-  Future<Map<String, CreditInstallmentSummarySource>>
-  findInstallmentSummarySources(Set<String> contractIds) async {
-    if (contractIds.isEmpty) return const {};
-    final ids = contractIds.toList()..sort();
-    final variables = _variables(ids);
-    final placeholders = _placeholders(ids.length);
-    final results = await Future.wait([
-      _db
-          .customSelect(
-            '''
-SELECT id, installment_type, status, principal_minor
-FROM installment_contracts
-WHERE id IN ($placeholders)
-''',
-            variables: variables,
-            readsFrom: {_db.installmentContracts},
-          )
-          .get(),
-      _db
-          .customSelect(
-            '''
-SELECT
-  schedule.contract_id AS schedule_contract_id,
-  schedule.status AS schedule_status,
-  schedule.expected_principal_minor AS schedule_principal_minor,
-  bill.id AS bill_item_id,
-  bill.bill_id,
-  bill.item_type,
-  bill.repayment_date,
-  bill.expected_principal_minor,
-  bill.expected_interest_minor,
-  bill.expected_fee_minor,
-  bill.status AS bill_item_status,
-  bill.billing_state,
-  bill.contract_id AS bill_contract_id,
-  bill.schedule_id AS bill_schedule_id,
-  bill.created_at AS bill_created_at,
-  COALESCE(SUM(allocation.allocated_principal_minor), 0)
-    AS allocated_principal_minor
-FROM installment_schedules schedule
-LEFT JOIN bill_items bill ON bill.schedule_id = schedule.id
-LEFT JOIN repayment_items allocation ON allocation.bill_item_id = bill.id
-WHERE schedule.contract_id IN ($placeholders)
-GROUP BY
-  schedule.id,
-  bill.id
-ORDER BY schedule.contract_id, schedule.period_no, bill.id
-''',
-            variables: variables,
-            readsFrom: {
-              _db.installmentSchedules,
-              _db.bills,
-              _db.billItems,
-              _db.repaymentItems,
-            },
-          )
-          .get(),
-    ]);
-
-    final schedulesByContract =
-        <String, List<CreditInstallmentScheduleSummarySource>>{};
-    for (final row in results[1]) {
-      final contractId = row.read<String>('schedule_contract_id');
-      final billItemId = row.read<String?>('bill_item_id');
-      schedulesByContract
-          .putIfAbsent(contractId, () => [])
-          .add(
-            CreditInstallmentScheduleSummarySource(
-              status: InstallmentScheduleStatus.values.byName(
-                row.read<String>('schedule_status'),
-              ),
-              expectedPrincipal: Money(
-                minorUnits: row.read<int>('schedule_principal_minor'),
-              ),
-              allocated: RepaymentAmountBreakdown(
-                principal: Money(
-                  minorUnits: row.read<int>('allocated_principal_minor'),
-                ),
-                interest: Money.zero(),
-                fee: Money.zero(),
-                discount: Money.zero(),
-              ),
-              billItem: billItemId == null
-                  ? null
-                  : BillItem(
-                      id: billItemId,
-                      billId: row.read<String>('bill_id'),
-                      itemType: BillItemType.values.byName(
-                        row.read<String>('item_type'),
-                      ),
-                      repaymentDate: row.read<DateTime>('repayment_date'),
-                      expectedPrincipal: Money(
-                        minorUnits: row.read<int>('expected_principal_minor'),
-                      ),
-                      expectedInterest: Money(
-                        minorUnits: row.read<int>('expected_interest_minor'),
-                      ),
-                      expectedFee: Money(
-                        minorUnits: row.read<int>('expected_fee_minor'),
-                      ),
-                      status: BillItemStatus.values.byName(
-                        row.read<String>('bill_item_status'),
-                      ),
-                      billingState: BillItemBillingState.values.byName(
-                        row.read<String>('billing_state'),
-                      ),
-                      contractId: row.read<String?>('bill_contract_id'),
-                      scheduleId: row.read<String?>('bill_schedule_id'),
-                      createdAt: row.read<DateTime?>('bill_created_at'),
-                    ),
-            ),
-          );
-    }
-
-    return {
-      for (final row in results[0])
-        row.read<String>('id'): CreditInstallmentSummarySource(
-          contractId: row.read<String>('id'),
-          installmentType: InstallmentType.values.byName(
-            row.read<String>('installment_type'),
-          ),
-          status: InstallmentContractStatus.values.byName(
-            row.read<String>('status'),
-          ),
-          principal: Money(minorUnits: row.read<int>('principal_minor')),
-          schedules: schedulesByContract[row.read<String>('id')] ?? const [],
-        ),
-    };
   }
 
   @override

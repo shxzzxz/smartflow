@@ -14,7 +14,7 @@ class AccountInstallmentsState {
   });
 
   final AccountProfileKind accountKind;
-  final List<InstallmentContractReadModel> contracts;
+  final List<InstallmentDTO> contracts;
 }
 
 @riverpod
@@ -23,7 +23,7 @@ AsyncValue<AccountInstallmentsState?> accountInstallmentsViewModel(
   String accountId,
 ) {
   final account = ref.watch(accountViewProvider(accountId));
-  final contracts = ref.watch(installmentContractsByAccountProvider(accountId));
+  final contracts = ref.watch(installmentsByAccountProvider(accountId));
   if (account case AsyncError(:final error, :final stackTrace)) {
     return AsyncError(error, stackTrace);
   }

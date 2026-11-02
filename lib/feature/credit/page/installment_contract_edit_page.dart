@@ -70,9 +70,9 @@ class _InstallmentContractEditPageState
   }
 
   Widget _buildBody(InstallmentContractEditLoaded loaded) {
-    final contract = loaded.contract;
+    final installment = loaded.installment;
     final nameController = _nameController ??= TextEditingController(
-      text: contract.name,
+      text: installment.name,
     );
 
     return Form(
@@ -87,9 +87,9 @@ class _InstallmentContractEditPageState
         children: [
           if (loaded.metrics case final metrics?)
             InstallmentPlanSummaryCard(
-              title: contract.name,
+              title: installment.name,
               metrics: metrics,
-              contractStatus: contract.status,
+              contractStatus: installment.status,
             )
           else
             const Text('已保存分期指标加载失败，请稍后重试'),
@@ -105,12 +105,12 @@ class _InstallmentContractEditPageState
               ),
               AppPlainValueRow(
                 label: '借款日期',
-                value: formatDateLabel(contract.borrowingDate),
+                value: formatDateLabel(installment.borrowingDate),
                 valueAlignment: AppPlainRowValueAlignment.start,
               ),
               AppPlainValueRow(
                 label: '分期类型',
-                value: switch (contract.installmentType) {
+                value: switch (installment.installmentType) {
                   InstallmentType.billConversion => '账单分期',
                   InstallmentType.purchase => '消费分期',
                   InstallmentType.disbursement => '放款分期',
@@ -119,7 +119,7 @@ class _InstallmentContractEditPageState
               ),
               AppPlainValueRow(
                 label: '本金',
-                value: contract.principal.format(),
+                value: installment.principal.format(),
                 valueAlignment: AppPlainRowValueAlignment.start,
               ),
               AppPlainSelectFormRow<String>(
@@ -153,10 +153,10 @@ class _InstallmentContractEditPageState
   Future<void> _configure(InstallmentContractEditLoaded loaded) async {
     _formKey.currentState!.save();
     FocusScope.of(context).unfocus();
-    final contract = loaded.contract;
+    final installment = loaded.installment;
     final initial = InstallmentConfigurationDraft(
-      principal: contract.principal,
-      borrowingDate: contract.borrowingDate,
+      principal: installment.principal,
+      borrowingDate: installment.borrowingDate,
       terms: loaded.stageDraft,
       basicInfoReadOnly: true,
     );

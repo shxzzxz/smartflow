@@ -13,6 +13,7 @@ import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_detail_summary_card.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 
@@ -140,7 +141,7 @@ void main() {
 
     expect(find.byType(AppDetailSummaryCard), findsOneWidget);
     expect(find.text('分期详情'), findsOneWidget);
-    expect(find.text('20260101'), findsOneWidget);
+    expect(find.textContaining('借款日期 2026-01-01'), findsOneWidget);
     expect(find.text('待还本金'), findsOneWidget);
     expect(find.text('已还利息'), findsOneWidget);
     expect(find.text('已还手续费'), findsOneWidget);
@@ -298,17 +299,38 @@ Widget _app({
       installmentStatusRepairAppServiceProvider.overrideWithValue(
         statusRepair ?? _FakeStatusRepairAppService(),
       ),
-      installmentContractProvider.overrideWith(
-        (ref, contractId) async => _contract(
-          status: contractStatus,
-          unconfirmedRepricingIds: unconfirmedRepricingIds?.call() ?? const [],
+      installmentProvider.overrideWith(
+        (ref, contractId) async => _contract(status: contractStatus),
+      ),
+      installmentDetailProvider.overrideWith(
+        (ref, contractId) async => InstallmentDetailDTO(
+          installment: _contract(status: contractStatus),
+          schedules: [
+            for (var period = 1; period <= scheduleCount; period++)
+              _schedule(scheduleStatus, period: period),
+          ],
         ),
       ),
-      installmentSchedulesProvider.overrideWith(
-        (ref, contractId) async => [
-          for (var period = 1; period <= scheduleCount; period++)
-            _schedule(scheduleStatus, period: period),
-        ],
+      installmentRepricingProvider.overrideWith(
+        (ref, contractId) async => InstallmentRepricingDTO(
+          installmentId: 'contract-1',
+          records: [
+            for (final id in unconfirmedRepricingIds?.call() ?? const [])
+              InstallmentRepricingRecordDTO(
+                id: id,
+                stageId: 'contract-1:stage:1',
+                status: InstallmentRepricingStatus.applied,
+                change: DirectRateChange(
+                  effectiveDate: DateTime(2026, 2, 1),
+                  rate: const InterestRate(
+                    ppm: 120000,
+                    period: InterestRatePeriod.annual,
+                  ),
+                ),
+              ),
+          ],
+          configurations: const [],
+        ),
       ),
       installmentActivitiesProvider.overrideWith(
         (ref, contractId) async => activities,
@@ -333,13 +355,12 @@ Widget _app({
   );
 }
 
-InstallmentContractReadModel _contract({
+InstallmentDTO _contract({
   InstallmentContractStatus status = InstallmentContractStatus.active,
-  List<String> unconfirmedRepricingIds = const [],
 }) {
-  return InstallmentContractReadModel(
+  return InstallmentDTO(
     id: 'contract-1',
-    unconfirmedRepricingIds: unconfirmedRepricingIds,
+    name: '家庭贷款',
     liabilityAccountId: 'loan',
     installmentType: InstallmentType.disbursement,
     disbursementAccountId: 'cash',
@@ -347,6 +368,12 @@ InstallmentContractReadModel _contract({
     borrowingDate: DateTime(2026, 1, 1),
     status: status,
     createdAt: DateTime(2026, 1, 1),
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 0,
+      totalPeriodCount: 1,
+      remainingPrincipal: Money(minorUnits: 10000),
+      repaid: RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract-1:stage:1',
       totalPeriods: 1,
@@ -359,11 +386,11 @@ InstallmentContractReadModel _contract({
   );
 }
 
-InstallmentScheduleReadModel _schedule(
+InstallmentScheduleDTO _schedule(
   InstallmentScheduleStatus status, {
   int period = 1,
 }) {
-  return InstallmentScheduleReadModel(
+  return InstallmentScheduleDTO(
     id: 'schedule-$period',
     contractId: 'contract-1',
     periodNo: period,

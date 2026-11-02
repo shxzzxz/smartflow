@@ -1,7 +1,3 @@
-import '../../../../core/money/money.dart';
-import '../../../../domain/credit/entity/bill.dart';
-import '../../../../domain/credit/valobj/installment_enums.dart';
-import '../../../../domain/credit/valobj/repayment_amount_breakdown.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 
 /// Credit-owned business item kinds exposed to the transaction view.
@@ -84,24 +80,6 @@ final class CreditTransactionViewAnchorPage {
   final bool hasMore;
 }
 
-final class CreditInstallmentBusinessItemSummary {
-  const CreditInstallmentBusinessItemSummary({
-    required this.installmentType,
-    required this.status,
-    required this.principal,
-    required this.remainingPrincipal,
-    required this.paidPeriodCount,
-    required this.totalPeriodCount,
-  });
-
-  final InstallmentType installmentType;
-  final InstallmentContractStatus status;
-  final Money principal;
-  final Money remainingPrincipal;
-  final int paidPeriodCount;
-  final int totalPeriodCount;
-}
-
 final class CreditRepaymentBusinessItemSummary {
   const CreditRepaymentBusinessItemSummary({
     required this.repaymentType,
@@ -112,37 +90,6 @@ final class CreditRepaymentBusinessItemSummary {
   final RepaymentType repaymentType;
   final RepaymentTargetType targetType;
   final String targetId;
-}
-
-/// Raw installment facts consumed by the credit application projection.
-final class CreditInstallmentSummarySource {
-  CreditInstallmentSummarySource({
-    required this.contractId,
-    required this.installmentType,
-    required this.status,
-    required this.principal,
-    required Iterable<CreditInstallmentScheduleSummarySource> schedules,
-  }) : schedules = List.unmodifiable(schedules);
-
-  final String contractId;
-  final InstallmentType installmentType;
-  final InstallmentContractStatus status;
-  final Money principal;
-  final List<CreditInstallmentScheduleSummarySource> schedules;
-}
-
-final class CreditInstallmentScheduleSummarySource {
-  const CreditInstallmentScheduleSummarySource({
-    required this.status,
-    required this.expectedPrincipal,
-    required this.allocated,
-    this.billItem,
-  });
-
-  final InstallmentScheduleStatus status;
-  final Money expectedPrincipal;
-  final RepaymentAmountBreakdown allocated;
-  final BillItem? billItem;
 }
 
 Set<String>? _immutableStrings(Set<String>? values) =>

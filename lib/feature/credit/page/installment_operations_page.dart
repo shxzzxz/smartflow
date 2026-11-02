@@ -51,7 +51,7 @@ class _InstallmentOperationsPage extends ConsumerWidget {
             Expanded(
               child: switch (value) {
                 AsyncData(:final value) =>
-                  value.contract == null
+                  value.installment == null
                       ? const Center(child: Text('分期不存在'))
                       : _body(context, ref, value),
                 AsyncError() => Center(
@@ -76,14 +76,16 @@ class _InstallmentOperationsPage extends ConsumerWidget {
     WidgetRef ref,
     InstallmentOperationsState state,
   ) {
-    final contract = state.contract!;
+    final installment = state.installment!;
+    final repricing = state.repricing;
+    final interestAdjustment = state.interestAdjustment;
     final notifier = ref.read(
       installmentOperationsViewModelProvider(contractId).notifier,
     );
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.space16),
       children: [
-        if (contract.stageTerms.isCustom) ...[
+        if (installment.stageTerms.isCustom) ...[
           const Text('自定义分期的还款计划由你手动维护，以下记录不会自动修改计划。'),
           const SizedBox(height: AppSpacing.space12),
         ],
@@ -91,13 +93,15 @@ class _InstallmentOperationsPage extends ConsumerWidget {
           AppFormSection(
             title: '重定价配置',
             children: [
-              if (contract.repricingConfigurations.isEmpty)
+              if (repricing?.configurations.isEmpty ?? true)
                 const Text('尚未设置重定价配置'),
-              for (final configuration in contract.repricingConfigurations)
+              for (final configuration
+                  in repricing?.configurations ??
+                      const <InstallmentRepricingConfigurationDTO>[])
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    '${_stageLabel(contract, configuration.stageId)} · ${formatDateLabel(configuration.effectiveFrom)} 起生效',
+                    '${_stageLabel(installment, configuration.stageId)} · ${formatDateLabel(configuration.effectiveFrom)} 起生效',
                   ),
                   subtitle: Text(
                     '${referenceRateTypeLabel(configuration.rule.referenceRateType)} · ${configuration.rule.spreadBp} BP · 每 ${configuration.rule.cycleMonths} 个月\n'
@@ -125,7 +129,8 @@ class _InstallmentOperationsPage extends ConsumerWidget {
                     : () => _edit(
                         context,
                         ref,
-                        contract,
+                        installment,
+                        repricing,
                         _OperationKind.configuration,
                       ),
               ),
@@ -135,12 +140,14 @@ class _InstallmentOperationsPage extends ConsumerWidget {
           AppFormSection(
             title: '重定价记录',
             children: [
-              if (contract.repricings.isEmpty) const Text('暂无重定价记录'),
-              for (final record in contract.repricings)
+              if (repricing?.records.isEmpty ?? true) const Text('暂无重定价记录'),
+              for (final record
+                  in repricing?.records ??
+                      const <InstallmentRepricingRecordDTO>[])
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    '${_stageLabel(contract, record.stageId)} · ${formatDateLabel(record.change.effectiveDate)} 起 · ${repricingRateLabel(record.change)}',
+                    '${_stageLabel(installment, record.stageId)} · ${formatDateLabel(record.change.effectiveDate)} 起 · ${repricingRateLabel(record.change)}',
                   ),
                   subtitle: Text(repricingBasisLabel(record.change)),
                   trailing: IconButton(
@@ -164,7 +171,8 @@ class _InstallmentOperationsPage extends ConsumerWidget {
                     : () => _edit(
                         context,
                         ref,
-                        contract,
+                        installment,
+                        repricing,
                         _OperationKind.repricing,
                       ),
               ),
@@ -175,12 +183,14 @@ class _InstallmentOperationsPage extends ConsumerWidget {
           AppFormSection(
             title: '利息调整记录',
             children: [
-              if (contract.interestAdjustments.isEmpty)
+              if (interestAdjustment?.adjustments.isEmpty ?? true)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: AppSpacing.space12),
                   child: Text('暂无利息调整'),
                 ),
-              for (final record in contract.interestAdjustments)
+              for (final record
+                  in interestAdjustment?.adjustments ??
+                      const <InstallmentInterestAdjustmentItemDTO>[])
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -194,7 +204,8 @@ class _InstallmentOperationsPage extends ConsumerWidget {
                       : () => _edit(
                           context,
                           ref,
-                          contract,
+                          installment,
+                          repricing,
                           _OperationKind.adjustment,
                           adjustment: record,
                         ),
@@ -219,7 +230,8 @@ class _InstallmentOperationsPage extends ConsumerWidget {
                     : () => _edit(
                         context,
                         ref,
-                        contract,
+                        installment,
+                        repricing,
                         _OperationKind.adjustment,
                       ),
               ),
@@ -244,13 +256,15 @@ class _InstallmentOperationsPage extends ConsumerWidget {
   Future<void> _edit(
     BuildContext context,
     WidgetRef ref,
-    InstallmentContractReadModel contract,
+    InstallmentDTO installment,
+    InstallmentRepricingDTO? repricing,
     _OperationKind kind, {
-    InstallmentInterestAdjustmentReadModel? adjustment,
+    InstallmentInterestAdjustmentItemDTO? adjustment,
   }) => showDialog<void>(
     context: context,
     builder: (_) => _OperationDialog(
-      contract: contract,
+      installment: installment,
+      repricing: repricing,
       kind: kind,
       adjustment: adjustment,
       submit: (input) => ref
@@ -296,14 +310,17 @@ enum _OperationKind { configuration, repricing, adjustment }
 
 class _OperationDialog extends StatefulWidget {
   const _OperationDialog({
-    required this.contract,
+    required this.installment,
+    required this.repricing,
     required this.kind,
     required this.submit,
     this.adjustment,
   });
-  final InstallmentContractReadModel contract;
+
+  final InstallmentDTO installment;
+  final InstallmentRepricingDTO? repricing;
   final _OperationKind kind;
-  final InstallmentInterestAdjustmentReadModel? adjustment;
+  final InstallmentInterestAdjustmentItemDTO? adjustment;
   final Future<UiActionOutcome<void>> Function(InstallmentOperationInput)
   submit;
 
@@ -327,13 +344,14 @@ class _OperationDialogState extends State<_OperationDialog> {
   @override
   void initState() {
     super.initState();
-    final contract = widget.contract;
-    _stageId = contract.stageTerms.stages
+    final installment = widget.installment;
+    _stageId = installment.stageTerms.stages
         .firstWhere((stage) => stage.terms is AmortizingStage)
         .id;
-    _start = widget.adjustment?.adjustment.start ?? contract.borrowingDate;
-    _end = widget.adjustment?.adjustment.end ?? contract.firstRepaymentDate;
-    _reset = contract.borrowingDate;
+    _start = widget.adjustment?.adjustment.start ?? installment.borrowingDate;
+    _end =
+        widget.adjustment?.adjustment.end ?? installment.stageTerms.firstDate;
+    _reset = installment.borrowingDate;
     final number = widget.kind == _OperationKind.adjustment
         ? _percent(widget.adjustment?.adjustment.ratioPpm ?? 1000000)
         : '0';
@@ -343,14 +361,16 @@ class _OperationDialogState extends State<_OperationDialog> {
 
   void _selectStage(String stageId) {
     _stageId = stageId;
-    final contract = widget.contract;
-    final range = contract.stageTerms.repaymentRange(
+    final installment = widget.installment;
+    final range = installment.stageTerms.repaymentRange(
       stageId,
-      contract.borrowingDate,
+      installment.borrowingDate,
     );
-    final config = contract.repricingConfigurations
-        .where((value) => value.stageId == stageId)
-        .lastOrNull;
+    final config =
+        (widget.repricing?.configurations ??
+                const <InstallmentRepricingConfigurationDTO>[])
+            .where((value) => value.stageId == stageId)
+            .lastOrNull;
     final now = referenceDate(DateTime.now());
     _start =
         config != null && !now.isBefore(range.start) && now.isBefore(range.end)
@@ -362,7 +382,7 @@ class _OperationDialogState extends State<_OperationDialog> {
     _cycle = config?.rule.cycleMonths ?? 12;
     _number.text = '${config?.rule.spreadBp ?? 0}';
     final stage =
-        contract.stageTerms.stages
+        installment.stageTerms.stages
                 .firstWhere((stage) => stage.id == stageId)
                 .terms
             as AmortizingStage;
@@ -404,11 +424,11 @@ class _OperationDialogState extends State<_OperationDialog> {
                   label: '所属阶段',
                   value: _stageId,
                   options: [
-                    for (final stage in widget.contract.stageTerms.stages)
+                    for (final stage in widget.installment.stageTerms.stages)
                       if (stage.terms is AmortizingStage)
                         AppSelectOption(
                           value: stage.id,
-                          label: _stageLabel(widget.contract, stage.id),
+                          label: _stageLabel(widget.installment, stage.id),
                         ),
                   ],
                   onChanged: _selectStage,
@@ -681,5 +701,5 @@ String? _validatePercent(String? value, {String label = '利息比例'}) {
 String _percent(int ppm) =>
     (Decimal.fromInt(ppm) * Decimal.parse('0.0001')).toString();
 
-String _stageLabel(InstallmentContractReadModel contract, String stageId) =>
-    '阶段 ${contract.stageTerms.stages.indexWhere((stage) => stage.id == stageId) + 1}';
+String _stageLabel(InstallmentDTO installment, String stageId) =>
+    '阶段 ${installment.stageTerms.stages.indexWhere((stage) => stage.id == stageId) + 1}';

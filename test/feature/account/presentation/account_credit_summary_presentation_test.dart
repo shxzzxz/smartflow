@@ -53,13 +53,13 @@ void main() {
   });
 
   group('installmentAccountCreditSummary', () {
-    test('uses borrowing date as title and exposes supporting information', () {
+    test('uses the installment name and exposes supporting information', () {
       final presentation = installmentAccountCreditSummary(
         _contract(),
         accountKind: AccountProfileKind.credit,
       );
 
-      expect(presentation.title, '20260510');
+      expect(presentation.title, '家庭贷款');
       expect(presentation.amount.minorUnits, 1200000);
       expect(presentation.supportingTexts.map((item) => item.text), [
         '现金分期',
@@ -104,17 +104,24 @@ BillSummaryReadModel _bill({
   );
 }
 
-InstallmentContractReadModel _contract({
+InstallmentDTO _contract({
   InstallmentContractStatus status = InstallmentContractStatus.active,
 }) {
-  return InstallmentContractReadModel(
+  return InstallmentDTO(
     id: 'contract',
+    name: '家庭贷款',
     liabilityAccountId: 'account',
     installmentType: InstallmentType.disbursement,
     principal: const Money(minorUnits: 1200000),
     borrowingDate: DateTime(2026, 5, 10),
     status: status,
     createdAt: DateTime(2026, 5, 10),
+    repaymentProgress: const InstallmentRepaymentProgressDTO(
+      paidPeriodCount: 2,
+      totalPeriodCount: 12,
+      remainingPrincipal: Money(minorUnits: 1000000),
+      repaid: RepaymentAmountBreakdown.zero,
+    ),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'contract:stage:1',
       totalPeriods: 12,

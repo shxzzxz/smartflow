@@ -31,6 +31,8 @@ import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart'
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repricing_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repository.dart';
+import 'package:smartflow/infrastructure/credit/installment_statistics_change_source.dart';
+import 'package:smartflow/infrastructure/credit/query/drift_installment_progress_source.dart';
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -690,11 +692,13 @@ void main() {
       );
       final query = InstallmentQueryServiceImpl(
         repository: f.installments,
-        repricings: f.records,
+        progress: DriftInstallmentProgressSource(f.db),
+        changes: DriftInstallmentStatisticsChangeSource(f.db),
       );
-      expect((await query.findContract('loan'))!.unconfirmedRepricingIds, [
-        record.id,
-      ]);
+      expect(
+        (await query.findInstallmentRepricing('loan'))!.unconfirmedRecordIds,
+        [record.id],
+      );
     },
   );
 
@@ -860,11 +864,12 @@ void main() {
       expect(await task.run(f.currentDate), AppTaskOutcome.completed);
       final query = InstallmentQueryServiceImpl(
         repository: f.installments,
-        repricings: f.records,
+        progress: DriftInstallmentProgressSource(f.db),
+        changes: DriftInstallmentStatisticsChangeSource(f.db),
       );
-      final loaded = (await query.findContract(
+      final loaded = (await query.findInstallmentRepricing(
         'loan',
-      ))!.unconfirmedRepricingIds.toSet();
+      ))!.unconfirmedRecordIds.toSet();
       expect(loaded, hasLength(3));
       expect(await task.run(f.currentDate), AppTaskOutcome.completed);
       f.currentDate = DateTime(2026, 9, 20);
@@ -877,9 +882,9 @@ void main() {
         InstallmentRepricingStatus.userConfirmed,
         InstallmentRepricingStatus.applied,
       ]);
-      final remaining = (await query.findContract(
+      final remaining = (await query.findInstallmentRepricing(
         'loan',
-      ))!.unconfirmedRepricingIds;
+      ))!.unconfirmedRecordIds;
       expect(remaining, hasLength(1));
       expect(loaded.contains(remaining.single), isFalse);
       expect(
@@ -987,11 +992,13 @@ void main() {
       ]);
       final query = InstallmentQueryServiceImpl(
         repository: f.installments,
-        repricings: f.records,
+        progress: DriftInstallmentProgressSource(f.db),
+        changes: DriftInstallmentStatisticsChangeSource(f.db),
       );
-      expect((await query.findContract('loan'))!.unconfirmedRepricingIds, [
-        all.last.id,
-      ]);
+      expect(
+        (await query.findInstallmentRepricing('loan'))!.unconfirmedRecordIds,
+        [all.last.id],
+      );
       BackupService.validateSnapshot(snapshot);
       final target = createTestDatabase();
       addTearDown(target.close);
@@ -1013,7 +1020,7 @@ void main() {
       );
       await f.service.confirm('loan', {all.last.id});
       expect(
-        (await query.findContract('loan'))!.unconfirmedRepricingIds,
+        (await query.findInstallmentRepricing('loan'))!.unconfirmedRecordIds,
         isEmpty,
       );
     },

@@ -9,56 +9,364 @@ part of 'installment_query_providers.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(installmentContractsByAccount)
-final installmentContractsByAccountProvider =
-    InstallmentContractsByAccountFamily._();
+@ProviderFor(installmentsByAccount)
+final installmentsByAccountProvider = InstallmentsByAccountFamily._();
 
-final class InstallmentContractsByAccountProvider
+final class InstallmentsByAccountProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<InstallmentContractReadModel>>,
-          List<InstallmentContractReadModel>,
-          FutureOr<List<InstallmentContractReadModel>>
+          AsyncValue<List<InstallmentDTO>>,
+          List<InstallmentDTO>,
+          FutureOr<List<InstallmentDTO>>
         >
     with
-        $FutureModifier<List<InstallmentContractReadModel>>,
-        $FutureProvider<List<InstallmentContractReadModel>> {
-  InstallmentContractsByAccountProvider._({
-    required InstallmentContractsByAccountFamily super.from,
+        $FutureModifier<List<InstallmentDTO>>,
+        $FutureProvider<List<InstallmentDTO>> {
+  InstallmentsByAccountProvider._({
+    required InstallmentsByAccountFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
-         name: r'installmentContractsByAccountProvider',
+         name: r'installmentsByAccountProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$installmentContractsByAccountHash();
+  String debugGetCreateSourceHash() => _$installmentsByAccountHash();
 
   @override
   String toString() {
-    return r'installmentContractsByAccountProvider'
+    return r'installmentsByAccountProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $FutureProviderElement<List<InstallmentContractReadModel>> $createElement(
+  $FutureProviderElement<List<InstallmentDTO>> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<InstallmentContractReadModel>> create(Ref ref) {
+  FutureOr<List<InstallmentDTO>> create(Ref ref) {
     final argument = this.argument as String;
-    return installmentContractsByAccount(ref, argument);
+    return installmentsByAccount(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is InstallmentContractsByAccountProvider &&
+    return other is InstallmentsByAccountProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentsByAccountHash() =>
+    r'4e19878f25de856abd6a73e9bdf1693e05f21e2a';
+
+final class InstallmentsByAccountFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<InstallmentDTO>>, String> {
+  InstallmentsByAccountFamily._()
+    : super(
+        retry: null,
+        name: r'installmentsByAccountProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  InstallmentsByAccountProvider call(String accountId) =>
+      InstallmentsByAccountProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'installmentsByAccountProvider';
+}
+
+@ProviderFor(installment)
+final installmentProvider = InstallmentFamily._();
+
+final class InstallmentProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InstallmentDTO?>,
+          InstallmentDTO?,
+          FutureOr<InstallmentDTO?>
+        >
+    with $FutureModifier<InstallmentDTO?>, $FutureProvider<InstallmentDTO?> {
+  InstallmentProvider._({
+    required InstallmentFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentHash();
+
+  @override
+  String toString() {
+    return r'installmentProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<InstallmentDTO?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<InstallmentDTO?> create(Ref ref) {
+    final argument = this.argument as String;
+    return installment(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentHash() => r'093478a443a52b06a34990c76aee1719affb02eb';
+
+final class InstallmentFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<InstallmentDTO?>, String> {
+  InstallmentFamily._()
+    : super(
+        retry: null,
+        name: r'installmentProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  InstallmentProvider call(String installmentId) =>
+      InstallmentProvider._(argument: installmentId, from: this);
+
+  @override
+  String toString() => r'installmentProvider';
+}
+
+@ProviderFor(installmentDetail)
+final installmentDetailProvider = InstallmentDetailFamily._();
+
+final class InstallmentDetailProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InstallmentDetailDTO?>,
+          InstallmentDetailDTO?,
+          FutureOr<InstallmentDetailDTO?>
+        >
+    with
+        $FutureModifier<InstallmentDetailDTO?>,
+        $FutureProvider<InstallmentDetailDTO?> {
+  InstallmentDetailProvider._({
+    required InstallmentDetailFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentDetailProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentDetailHash();
+
+  @override
+  String toString() {
+    return r'installmentDetailProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<InstallmentDetailDTO?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<InstallmentDetailDTO?> create(Ref ref) {
+    final argument = this.argument as String;
+    return installmentDetail(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentDetailProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentDetailHash() => r'80883b1a157e1e6ee864059c945e9e0c97eddb26';
+
+final class InstallmentDetailFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<InstallmentDetailDTO?>, String> {
+  InstallmentDetailFamily._()
+    : super(
+        retry: null,
+        name: r'installmentDetailProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  InstallmentDetailProvider call(String installmentId) =>
+      InstallmentDetailProvider._(argument: installmentId, from: this);
+
+  @override
+  String toString() => r'installmentDetailProvider';
+}
+
+@ProviderFor(installmentRepricing)
+final installmentRepricingProvider = InstallmentRepricingFamily._();
+
+final class InstallmentRepricingProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InstallmentRepricingDTO?>,
+          InstallmentRepricingDTO?,
+          FutureOr<InstallmentRepricingDTO?>
+        >
+    with
+        $FutureModifier<InstallmentRepricingDTO?>,
+        $FutureProvider<InstallmentRepricingDTO?> {
+  InstallmentRepricingProvider._({
+    required InstallmentRepricingFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentRepricingProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentRepricingHash();
+
+  @override
+  String toString() {
+    return r'installmentRepricingProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<InstallmentRepricingDTO?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<InstallmentRepricingDTO?> create(Ref ref) {
+    final argument = this.argument as String;
+    return installmentRepricing(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentRepricingProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentRepricingHash() =>
+    r'5705ec31e02bc5cadcaf5d7219f0fa339176889d';
+
+final class InstallmentRepricingFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<InstallmentRepricingDTO?>, String> {
+  InstallmentRepricingFamily._()
+    : super(
+        retry: null,
+        name: r'installmentRepricingProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  InstallmentRepricingProvider call(String installmentId) =>
+      InstallmentRepricingProvider._(argument: installmentId, from: this);
+
+  @override
+  String toString() => r'installmentRepricingProvider';
+}
+
+@ProviderFor(installmentInterestAdjustment)
+final installmentInterestAdjustmentProvider =
+    InstallmentInterestAdjustmentFamily._();
+
+final class InstallmentInterestAdjustmentProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InstallmentInterestAdjustmentDTO?>,
+          InstallmentInterestAdjustmentDTO?,
+          FutureOr<InstallmentInterestAdjustmentDTO?>
+        >
+    with
+        $FutureModifier<InstallmentInterestAdjustmentDTO?>,
+        $FutureProvider<InstallmentInterestAdjustmentDTO?> {
+  InstallmentInterestAdjustmentProvider._({
+    required InstallmentInterestAdjustmentFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentInterestAdjustmentProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentInterestAdjustmentHash();
+
+  @override
+  String toString() {
+    return r'installmentInterestAdjustmentProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<InstallmentInterestAdjustmentDTO?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<InstallmentInterestAdjustmentDTO?> create(Ref ref) {
+    final argument = this.argument as String;
+    return installmentInterestAdjustment(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentInterestAdjustmentProvider &&
         other.argument == argument;
   }
 
@@ -68,193 +376,32 @@ final class InstallmentContractsByAccountProvider
   }
 }
 
-String _$installmentContractsByAccountHash() =>
-    r'35d6f7f2c53a4b64802036e27e294876cc1be7d9';
+String _$installmentInterestAdjustmentHash() =>
+    r'9ed227a93cc1138f07a908617e93c2c3926a1c8f';
 
-final class InstallmentContractsByAccountFamily extends $Family
+final class InstallmentInterestAdjustmentFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          FutureOr<List<InstallmentContractReadModel>>,
+          FutureOr<InstallmentInterestAdjustmentDTO?>,
           String
         > {
-  InstallmentContractsByAccountFamily._()
+  InstallmentInterestAdjustmentFamily._()
     : super(
         retry: null,
-        name: r'installmentContractsByAccountProvider',
+        name: r'installmentInterestAdjustmentProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  InstallmentContractsByAccountProvider call(String accountId) =>
-      InstallmentContractsByAccountProvider._(argument: accountId, from: this);
-
-  @override
-  String toString() => r'installmentContractsByAccountProvider';
-}
-
-@ProviderFor(installmentContract)
-final installmentContractProvider = InstallmentContractFamily._();
-
-final class InstallmentContractProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<InstallmentContractReadModel?>,
-          InstallmentContractReadModel?,
-          FutureOr<InstallmentContractReadModel?>
-        >
-    with
-        $FutureModifier<InstallmentContractReadModel?>,
-        $FutureProvider<InstallmentContractReadModel?> {
-  InstallmentContractProvider._({
-    required InstallmentContractFamily super.from,
-    required String super.argument,
-  }) : super(
-         retry: null,
-         name: r'installmentContractProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$installmentContractHash();
-
-  @override
-  String toString() {
-    return r'installmentContractProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<InstallmentContractReadModel?> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<InstallmentContractReadModel?> create(Ref ref) {
-    final argument = this.argument as String;
-    return installmentContract(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is InstallmentContractProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$installmentContractHash() =>
-    r'87d89acb8e0102dbcde94a3bc9e0793855315bb2';
-
-final class InstallmentContractFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<InstallmentContractReadModel?>,
-          String
-        > {
-  InstallmentContractFamily._()
-    : super(
-        retry: null,
-        name: r'installmentContractProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
+  InstallmentInterestAdjustmentProvider call(String installmentId) =>
+      InstallmentInterestAdjustmentProvider._(
+        argument: installmentId,
+        from: this,
       );
 
-  InstallmentContractProvider call(String contractId) =>
-      InstallmentContractProvider._(argument: contractId, from: this);
-
   @override
-  String toString() => r'installmentContractProvider';
-}
-
-@ProviderFor(installmentSchedules)
-final installmentSchedulesProvider = InstallmentSchedulesFamily._();
-
-final class InstallmentSchedulesProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<InstallmentScheduleReadModel>>,
-          List<InstallmentScheduleReadModel>,
-          FutureOr<List<InstallmentScheduleReadModel>>
-        >
-    with
-        $FutureModifier<List<InstallmentScheduleReadModel>>,
-        $FutureProvider<List<InstallmentScheduleReadModel>> {
-  InstallmentSchedulesProvider._({
-    required InstallmentSchedulesFamily super.from,
-    required String super.argument,
-  }) : super(
-         retry: null,
-         name: r'installmentSchedulesProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$installmentSchedulesHash();
-
-  @override
-  String toString() {
-    return r'installmentSchedulesProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<List<InstallmentScheduleReadModel>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<InstallmentScheduleReadModel>> create(Ref ref) {
-    final argument = this.argument as String;
-    return installmentSchedules(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is InstallmentSchedulesProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$installmentSchedulesHash() =>
-    r'd1ab5c406ecac7411558f5874d81451b1243cec1';
-
-final class InstallmentSchedulesFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<List<InstallmentScheduleReadModel>>,
-          String
-        > {
-  InstallmentSchedulesFamily._()
-    : super(
-        retry: null,
-        name: r'installmentSchedulesProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  InstallmentSchedulesProvider call(String contractId) =>
-      InstallmentSchedulesProvider._(argument: contractId, from: this);
-
-  @override
-  String toString() => r'installmentSchedulesProvider';
+  String toString() => r'installmentInterestAdjustmentProvider';
 }
 
 @ProviderFor(installmentActivities)

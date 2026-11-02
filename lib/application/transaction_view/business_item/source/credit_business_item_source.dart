@@ -1,11 +1,12 @@
 import '../../../credit/credit_query_api.dart';
 import '../../transaction_view_query_port_api.dart';
 
-/// Consumer-side adapter over the credit-owned transaction view query.
+/// Consumer-side adapter over credit-owned anchor and installment queries.
 final class CreditBusinessItemSource implements BusinessItemSource {
-  const CreditBusinessItemSource(this._query);
+  const CreditBusinessItemSource(this._query, this._installments);
 
   final CreditTransactionViewQueryService _query;
+  final InstallmentQueryService _installments;
 
   @override
   String get sourceKey => 'credit';
@@ -40,7 +41,7 @@ final class CreditBusinessItemSource implements BusinessItemSource {
       for (final key in itemKeys)
         if (key.type == creditRepaymentOwnerType) key.id,
     };
-    final installmentSummaries = await _query.findInstallmentSummaries(
+    final installmentSummaries = await _installments.findInstallments(
       contractIds,
     );
     final repaymentSummaries = await _query.findRepaymentSummaries(
@@ -55,9 +56,9 @@ final class CreditBusinessItemSource implements BusinessItemSource {
           installmentType: entry.value.installmentType,
           status: entry.value.status,
           principal: entry.value.principal,
-          remainingPrincipal: entry.value.remainingPrincipal,
-          paidPeriodCount: entry.value.paidPeriodCount,
-          totalPeriodCount: entry.value.totalPeriodCount,
+          remainingPrincipal: entry.value.repaymentProgress.remainingPrincipal,
+          paidPeriodCount: entry.value.repaymentProgress.paidPeriodCount,
+          totalPeriodCount: entry.value.repaymentProgress.totalPeriodCount,
         ),
       for (final entry in repaymentSummaries.entries)
         BusinessItemKey(
