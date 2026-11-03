@@ -2780,53 +2780,54 @@ final class TransactionFeedQueryServiceProvider
 String _$transactionFeedQueryServiceHash() =>
     r'2a3ccd575f4877adad57d035d484eeb798a0810f';
 
-@ProviderFor(businessItemQueryService)
-final businessItemQueryServiceProvider = BusinessItemQueryServiceProvider._();
+@ProviderFor(businessActivityQueryService)
+final businessActivityQueryServiceProvider =
+    BusinessActivityQueryServiceProvider._();
 
-final class BusinessItemQueryServiceProvider
+final class BusinessActivityQueryServiceProvider
     extends
         $FunctionalProvider<
-          BusinessItemQueryService,
-          BusinessItemQueryService,
-          BusinessItemQueryService
+          BusinessActivityQueryService,
+          BusinessActivityQueryService,
+          BusinessActivityQueryService
         >
-    with $Provider<BusinessItemQueryService> {
-  BusinessItemQueryServiceProvider._()
+    with $Provider<BusinessActivityQueryService> {
+  BusinessActivityQueryServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'businessItemQueryServiceProvider',
+        name: r'businessActivityQueryServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$businessItemQueryServiceHash();
+  String debugGetCreateSourceHash() => _$businessActivityQueryServiceHash();
 
   @$internal
   @override
-  $ProviderElement<BusinessItemQueryService> $createElement(
+  $ProviderElement<BusinessActivityQueryService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  BusinessItemQueryService create(Ref ref) {
-    return businessItemQueryService(ref);
+  BusinessActivityQueryService create(Ref ref) {
+    return businessActivityQueryService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(BusinessItemQueryService value) {
+  Override overrideWithValue(BusinessActivityQueryService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<BusinessItemQueryService>(value),
+      providerOverride: $SyncValueProvider<BusinessActivityQueryService>(value),
     );
   }
 }
 
-String _$businessItemQueryServiceHash() =>
-    r'eaed6ca6165bc51ad8d5f639ea164fc460e82100';
+String _$businessActivityQueryServiceHash() =>
+    r'239521998bb9e33f55d35b368270e11e700672f1';
 
 @ProviderFor(advanceTransactionViewQueryService)
 final advanceTransactionViewQueryServiceProvider =

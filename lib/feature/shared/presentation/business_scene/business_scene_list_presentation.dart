@@ -7,14 +7,18 @@ import 'installment_business_scene_presentation.dart';
 import 'ledger_business_scene_presentation.dart';
 import 'repayment_business_scene_presentation.dart';
 
-BusinessItemRowContent presentBusinessSceneRowContent(
-  BusinessItemReadModel item,
+BusinessActivityRowContent presentBusinessSceneRowContent(
+  BusinessActivityReadModel item,
 ) {
-  return switch (businessSceneKindForBusinessItem(item)) {
-    BusinessSceneKind.ledger => presentLedgerBusinessItemRow(item),
-    BusinessSceneKind.advance => presentAdvanceBusinessItemRow(item),
-    BusinessSceneKind.installment => presentInstallmentBusinessItemRow(item),
-    BusinessSceneKind.repayment => presentRepaymentBusinessItemRow(item),
-    BusinessSceneKind.amortization => presentAmortizationBusinessItemRow(item),
+  return switch (businessSceneKindForBusinessActivity(item)) {
+    BusinessSceneKind.ledger => presentLedgerBusinessActivityRow(item),
+    BusinessSceneKind.advance => presentAdvanceBusinessActivityRow(item),
+    BusinessSceneKind.installment => presentInstallmentBusinessActivityRow(
+      item,
+    ),
+    BusinessSceneKind.repayment => presentRepaymentBusinessActivityRow(item),
+    BusinessSceneKind.amortization => presentAmortizationBusinessActivityRow(
+      item,
+    ),
   };
 }

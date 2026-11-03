@@ -27,7 +27,7 @@ class FilteredTransactionPaging extends _$FilteredTransactionPaging {
 }
 
 @riverpod
-Stream<BusinessItemPage> filteredBusinessItems(
+Stream<BusinessActivityPage> filteredBusinessActivities(
   Ref ref,
   FilteredTransactionTarget target,
   String targetId,
@@ -44,9 +44,9 @@ Stream<BusinessItemPage> filteredBusinessItems(
   };
 
   yield* ref
-      .watch(businessItemQueryServiceProvider)
+      .watch(businessActivityQueryServiceProvider)
       .watchPage(
-        BusinessItemPageQuery(
+        BusinessActivityPageQuery(
           occurredFrom: DateTime.utc(1),
           occurredUntil: DateTime.utc(9999, 12, 31),
           categoryAccountIds: categoryIds,
@@ -61,7 +61,7 @@ Stream<BusinessItemPage> filteredBusinessItems(
 
 @riverpod
 class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
-  List<BusinessItemReadModel> _previousItems = const [];
+  List<BusinessActivityReadModel> _previousItems = const [];
   var _batch = const FilteredTransactionBatchState();
 
   @override
@@ -74,7 +74,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     );
     final limit = pageCount * filteredTransactionPageSize;
     final transactions = ref.watch(
-      filteredBusinessItemsProvider(target, targetId, limit),
+      filteredBusinessActivitiesProvider(target, targetId, limit),
     );
     final accountLookup = ref.watch(accountLookupProvider);
     final tags = target == FilteredTransactionTarget.tag
@@ -269,7 +269,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
           filteredTransactionPagingProvider(target, targetId),
         );
         ref.invalidate(
-          filteredBusinessItemsProvider(
+          filteredBusinessActivitiesProvider(
             target,
             targetId,
             pageCount * filteredTransactionPageSize,
@@ -285,7 +285,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
 
   FilteredTransactionsLoaded _loaded({
     required _FilteredTransactionMetadata metadata,
-    required List<BusinessItemReadModel> items,
+    required List<BusinessActivityReadModel> items,
     required AccountLookup accountLookup,
     required TransactionListDisplayMode displayMode,
     required bool hasMore,
@@ -296,7 +296,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
       title: metadata.title,
       subtitle: metadata.subtitle,
       emptyMessage: metadata.emptyMessage,
-      groups: groupBusinessItemsByDay(
+      groups: groupBusinessActivitiesByDay(
         items: items,
         accountLookup: accountLookup,
         displayMode: displayMode,

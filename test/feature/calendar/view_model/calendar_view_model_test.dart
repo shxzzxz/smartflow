@@ -15,7 +15,7 @@ void main() {
     test(
       'combines streams and updates selected date within same month',
       () async {
-        final businessService = _FakeBusinessItemQueryService();
+        final businessService = _FakeBusinessActivityQueryService();
         final metricsService = _FakeFinancialMetricsService();
         final accountService = _FakeAccountQueryService(
           accountsById: const <String, Account>{},
@@ -27,9 +27,10 @@ void main() {
           metricsService,
           accountService,
           overrides: [
-            calendarBusinessItemsProvider(selectedDate).overrideWith(
-              (ref) =>
-                  Stream.value(_page([_businessItem(DateTime(2026, 1, 2, 8))])),
+            calendarBusinessActivitiesProvider(selectedDate).overrideWith(
+              (ref) => Stream.value(
+                _page([_businessActivity(DateTime(2026, 1, 2, 8))]),
+              ),
             ),
             calendarCashflowComparisonProvider(
               visibleMonth,
@@ -64,7 +65,7 @@ void main() {
         );
         addTearDown(contentSub.close);
         await container.read(
-          calendarBusinessItemsProvider(selectedDate).future,
+          calendarBusinessActivitiesProvider(selectedDate).future,
         );
         await container.read(
           calendarCashflowComparisonProvider(visibleMonth).future,
@@ -93,7 +94,7 @@ void main() {
     );
 
     test('queries only the selected day and keeps the page limit', () {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService();
       final container = _container(
@@ -123,11 +124,11 @@ void main() {
       final query = businessService.queries.last;
       expect(query.occurredFrom, DateTime(2026, 1, 14));
       expect(query.occurredUntil, DateTime(2026, 1, 15));
-      expect(query.limit, calendarBusinessItemPageSize);
+      expect(query.limit, calendarBusinessActivityPageSize);
     });
 
     test('keeps the month grid visible while the day feed loads', () async {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService(
         accountsById: const <String, Account>{},
@@ -174,24 +175,24 @@ void main() {
     });
 
     test('appends the next page from the last loaded cursor', () async {
-      final businessService = _FakeBusinessItemQueryService(
+      final businessService = _FakeBusinessActivityQueryService(
         nextPage: _page([
-          _businessItem(DateTime(2026, 1, 15, 6), id: 'tx-older'),
+          _businessActivity(DateTime(2026, 1, 15, 6), id: 'tx-older'),
         ]),
       );
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService();
       final selectedDate = DateTime(2026, 1, 15);
       final firstPage = [
-        for (var index = 0; index < calendarBusinessItemPageSize; index++)
-          _businessItem(DateTime(2026, 1, 15, 9), id: 'tx-$index'),
+        for (var index = 0; index < calendarBusinessActivityPageSize; index++)
+          _businessActivity(DateTime(2026, 1, 15, 9), id: 'tx-$index'),
       ];
       final container = _container(
         businessService,
         metricsService,
         accountService,
         overrides: [
-          calendarBusinessItemsProvider(selectedDate).overrideWith(
+          calendarBusinessActivitiesProvider(selectedDate).overrideWith(
             (ref) => Stream.value(_page(firstPage, hasMore: true)),
           ),
         ],
@@ -200,7 +201,9 @@ void main() {
       final feed = calendarTransactionFeedViewModelProvider(selectedDate);
       final feedSub = container.listen(feed, (_, _) {});
       addTearDown(feedSub.close);
-      await container.read(calendarBusinessItemsProvider(selectedDate).future);
+      await container.read(
+        calendarBusinessActivitiesProvider(selectedDate).future,
+      );
       await container.pump();
       await _flush();
 
@@ -211,21 +214,21 @@ void main() {
       await container.read(feed.notifier).loadMore();
 
       final loaded = container.read(feed) as CalendarTransactionFeedLoaded;
-      expect(loaded.items, hasLength(calendarBusinessItemPageSize + 1));
+      expect(loaded.items, hasLength(calendarBusinessActivityPageSize + 1));
       expect(loaded.hasMore, false);
       expect(loaded.isLoadingMore, false);
       final cursor = businessService.queries.last.before;
       expect(
         cursor?.itemKey,
-        BusinessItemKey.transactionGroup(
-          'tx-${calendarBusinessItemPageSize - 1}',
+        BusinessActivityKey.transactionGroup(
+          'tx-${calendarBusinessActivityPageSize - 1}',
         ),
       );
       expect(cursor?.anchorAt, DateTime(2026, 1, 15, 9));
     });
 
     test('shifts month and clamps selected date', () {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService();
       final container = _container(
@@ -261,7 +264,7 @@ void main() {
     });
 
     test('toggle lunar does not restart month queries', () {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService();
       final container = _container(
@@ -293,7 +296,7 @@ void main() {
 }
 
 ProviderContainer _container(
-  _FakeBusinessItemQueryService businessService,
+  _FakeBusinessActivityQueryService businessService,
   _FakeFinancialMetricsService metricsService,
   _FakeAccountQueryService accountService, {
   DateTime? now,
@@ -304,7 +307,7 @@ ProviderContainer _container(
       currentDateTimeProvider.overrideWith(
         (ref) => now ?? DateTime(2026, 1, 15, 9),
       ),
-      businessItemQueryServiceProvider.overrideWithValue(businessService),
+      businessActivityQueryServiceProvider.overrideWithValue(businessService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
       accountQueryServiceProvider.overrideWithValue(accountService),
       creditAccountQueryServiceProvider.overrideWithValue(
@@ -337,24 +340,27 @@ TransactionReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
   );
 }
 
-BusinessItemReadModel _businessItem(DateTime occurredAt, {String id = 'tx-1'}) {
+BusinessActivityReadModel _businessActivity(
+  DateTime occurredAt, {
+  String id = 'tx-1',
+}) {
   final transaction = _item(occurredAt, id: id);
-  return BusinessItemReadModel.fromCandidate(
-    candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(transaction.id),
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      itemKey: BusinessActivityKey.transactionGroup(transaction.id),
       anchorTransactionId: transaction.id,
       anchorAt: transaction.occurredAt,
     ),
     anchorTransaction: transaction,
-    summary: const LedgerBusinessItemSummary(),
+    summary: const LedgerBusinessActivitySummary(),
   );
 }
 
-BusinessItemPage _page(
-  List<BusinessItemReadModel> items, {
+BusinessActivityPage _page(
+  List<BusinessActivityReadModel> items, {
   bool hasMore = false,
 }) {
-  return BusinessItemPage(items: items, hasMore: hasMore);
+  return BusinessActivityPage(items: items, hasMore: hasMore);
 }
 
 CashflowComparison _comparison() {
@@ -374,29 +380,30 @@ CashflowComparison _comparison() {
   );
 }
 
-class _FakeBusinessItemQueryService implements BusinessItemQueryService {
-  _FakeBusinessItemQueryService({BusinessItemPage? nextPage})
+class _FakeBusinessActivityQueryService
+    implements BusinessActivityQueryService {
+  _FakeBusinessActivityQueryService({BusinessActivityPage? nextPage})
     : _nextPage = nextPage ?? _page(const []);
 
-  final BusinessItemPage _nextPage;
-  final queries = <BusinessItemPageQuery>[];
-  final _streams = <_ReplayStream<BusinessItemPage>>[];
+  final BusinessActivityPage _nextPage;
+  final queries = <BusinessActivityPageQuery>[];
+  final _streams = <_ReplayStream<BusinessActivityPage>>[];
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
     queries.add(query);
-    final stream = _ReplayStream<BusinessItemPage>();
+    final stream = _ReplayStream<BusinessActivityPage>();
     _streams.add(stream);
     return stream.watch();
   }
 
   @override
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     queries.add(query);
     return _nextPage;
   }
 
-  void emit(BusinessItemPage page) {
+  void emit(BusinessActivityPage page) {
     _streams.last.add(page);
   }
 

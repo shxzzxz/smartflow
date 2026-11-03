@@ -4,11 +4,11 @@ import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'business_scene_presentation.dart';
 import 'transaction_adjustment_presentation.dart';
 
-BusinessItemRowContent presentRepaymentBusinessItemRow(
-  BusinessItemReadModel item,
+BusinessActivityRowContent presentRepaymentBusinessActivityRow(
+  BusinessActivityReadModel item,
 ) {
-  final summary = item.summary as RepaymentBusinessItemSummary;
-  return BusinessItemRowContent(
+  final summary = item.summary as RepaymentBusinessActivitySummary;
+  return BusinessActivityRowContent(
     standardSummary: [
       _repaymentTypeLabel(summary.repaymentType),
       _repaymentTargetLabel(summary.targetType),

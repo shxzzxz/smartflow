@@ -2,8 +2,8 @@ import '../../../credit/credit_query_api.dart';
 import '../../transaction_view_query_port_api.dart';
 
 /// Consumer-side adapter over credit-owned anchor and installment queries.
-final class CreditBusinessItemSource implements BusinessItemSource {
-  const CreditBusinessItemSource(this._query, this._installments);
+final class CreditBusinessActivitySource implements BusinessActivitySource {
+  const CreditBusinessActivitySource(this._query, this._installments);
 
   final CreditTransactionViewQueryService _query;
   final InstallmentQueryService _installments;
@@ -18,20 +18,22 @@ final class CreditBusinessItemSource implements BusinessItemSource {
   };
 
   @override
-  Future<BusinessItemSourcePage> findAnchorPage(
-    BusinessItemPageQuery query,
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _query.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) {
     return _query.watchAnchorPage(_queryFor(query)).map(_mapPage);
   }
 
   @override
-  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Iterable<BusinessItemAnchorCandidate> anchors,
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     final contractIds = {
       for (final anchor in anchors)
@@ -49,10 +51,10 @@ final class CreditBusinessItemSource implements BusinessItemSource {
     );
     return {
       for (final entry in installmentSummaries.entries)
-        BusinessItemKey(
+        BusinessActivityKey(
           type: installmentOwnerType,
           id: entry.key,
-        ): InstallmentBusinessItemSummary(
+        ): InstallmentBusinessActivitySummary(
           installmentType: entry.value.installmentType,
           status: entry.value.status,
           principal: entry.value.principal,
@@ -61,17 +63,17 @@ final class CreditBusinessItemSource implements BusinessItemSource {
           totalPeriodCount: entry.value.repaymentProgress.totalPeriodCount,
         ),
       for (final entry in repaymentSummaries.entries)
-        BusinessItemKey(
+        BusinessActivityKey(
           type: creditRepaymentOwnerType,
           id: entry.key,
-        ): RepaymentBusinessItemSummary(
+        ): RepaymentBusinessActivitySummary(
           repaymentType: entry.value.repaymentType,
           targetType: entry.value.targetType,
         ),
     };
   }
 
-  CreditTransactionViewQuery _queryFor(BusinessItemPageQuery query) {
+  CreditTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
     final itemTypes = query.itemTypes;
     return CreditTransactionViewQuery(
       occurredFrom: query.occurredFrom,
@@ -96,13 +98,13 @@ final class CreditBusinessItemSource implements BusinessItemSource {
     );
   }
 
-  BusinessItemSourcePage _mapPage(CreditTransactionViewAnchorPage page) {
-    return BusinessItemSourcePage(
+  BusinessActivitySourcePage _mapPage(CreditTransactionViewAnchorPage page) {
+    return BusinessActivitySourcePage(
       hasMore: page.hasMore,
       anchors: [
         for (final anchor in page.anchors)
-          BusinessItemAnchorCandidate(
-            itemKey: BusinessItemKey(
+          BusinessActivityAnchorCandidate(
+            itemKey: BusinessActivityKey(
               type: anchor.itemType.code,
               id: anchor.itemId,
             ),

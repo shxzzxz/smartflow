@@ -91,7 +91,7 @@ Stream<List<TransactionFeedEntry>> transactionFeed(
   return ref
       .watch(transactionFeedQueryServiceProvider)
       .watchTransactions(
-        LedgerImpactFeedQuery(
+        TransactionFeedQuery(
           match: TransactionImpactMatch(
             settlementAccountIds: settlementAccountId == null
                 ? null

@@ -385,7 +385,7 @@ void main() {
     },
   );
 
-  test('migrates v56 to current with business-item indexes', () async {
+  test('migrates v56 to current with business-activity indexes', () async {
     await verifier.testWithDataIntegrity<v56.DatabaseAtV56, AppDatabase>(
       createOld: v56.DatabaseAtV56.new,
       createNew: AppDatabase.new,

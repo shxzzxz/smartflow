@@ -13,11 +13,11 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
 
 void main() {
-  test('category business items include child category filters', () async {
-    final service = _RecordingBusinessItemQueryService();
+  test('category business activities include child category filters', () async {
+    final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
-        businessItemQueryServiceProvider.overrideWithValue(service),
+        businessActivityQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -25,7 +25,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final provider = filteredBusinessItemsProvider(
+    final provider = filteredBusinessActivitiesProvider(
       FilteredTransactionTarget.category,
       'food',
       filteredTransactionPageSize,
@@ -41,10 +41,10 @@ void main() {
   });
 
   test('tag feed applies the selected tag filter', () async {
-    final service = _RecordingBusinessItemQueryService();
+    final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
-        businessItemQueryServiceProvider.overrideWithValue(service),
+        businessActivityQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -52,7 +52,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final provider = filteredBusinessItemsProvider(
+    final provider = filteredBusinessActivitiesProvider(
       FilteredTransactionTarget.tag,
       'travel',
       filteredTransactionPageSize,
@@ -67,10 +67,10 @@ void main() {
   });
 
   test('counterparty feed applies the selected counterparty filter', () async {
-    final service = _RecordingBusinessItemQueryService();
+    final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
-        businessItemQueryServiceProvider.overrideWithValue(service),
+        businessActivityQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -78,7 +78,7 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final provider = filteredBusinessItemsProvider(
+    final provider = filteredBusinessActivitiesProvider(
       FilteredTransactionTarget.counterparty,
       'ziroom',
       filteredTransactionPageSize,
@@ -93,10 +93,10 @@ void main() {
   });
 
   test('counterparty feed labels the current vocabulary name', () async {
-    final service = _RecordingBusinessItemQueryService();
+    final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
-        businessItemQueryServiceProvider.overrideWithValue(service),
+        businessActivityQueryServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -278,7 +278,7 @@ Account _category(String id, String name, {String? parentId}) {
   );
 }
 
-BusinessItemReadModel _businessItem(String id) {
+BusinessActivityReadModel _businessActivity(String id) {
   final transaction = TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyExpense,
@@ -287,31 +287,32 @@ BusinessItemReadModel _businessItem(String id) {
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
   );
-  return BusinessItemReadModel.fromCandidate(
-    candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(id),
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      itemKey: BusinessActivityKey.transactionGroup(id),
       anchorTransactionId: id,
       anchorAt: transaction.occurredAt,
     ),
     anchorTransaction: transaction,
-    summary: const LedgerBusinessItemSummary(),
+    summary: const LedgerBusinessActivitySummary(),
   );
 }
 
-BusinessItemPage _page(List<BusinessItemReadModel> items, int limit) {
-  return BusinessItemPage(
+BusinessActivityPage _page(List<BusinessActivityReadModel> items, int limit) {
+  return BusinessActivityPage(
     items: items.take(limit),
     hasMore: items.length > limit,
   );
 }
 
-class _RecordingBusinessItemQueryService implements BusinessItemQueryService {
-  final queries = <BusinessItemPageQuery>[];
+class _RecordingBusinessActivityQueryService
+    implements BusinessActivityQueryService {
+  final queries = <BusinessActivityPageQuery>[];
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
     queries.add(query);
-    return Stream.value(BusinessItemPage(items: const [], hasMore: false));
+    return Stream.value(BusinessActivityPage(items: const [], hasMore: false));
   }
 
   @override
@@ -339,7 +340,7 @@ class _BatchFixture {
     final service = _RecordingBatchService();
     final container = ProviderContainer(
       overrides: [
-        businessItemQueryServiceProvider.overrideWithValue(query),
+        businessActivityQueryServiceProvider.overrideWithValue(query),
         transactionBatchOperationAppServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
@@ -365,21 +366,23 @@ class _BatchFixture {
   }
 }
 
-class _BatchQueryService implements BusinessItemQueryService {
+class _BatchQueryService implements BusinessActivityQueryService {
   _BatchQueryService(int count)
-    : items = [for (var i = 0; i < count; i++) _businessItem('tx-$i')];
+    : items = [for (var i = 0; i < count; i++) _businessActivity('tx-$i')];
 
-  List<BusinessItemReadModel> items;
-  final changes = StreamController<List<BusinessItemReadModel>>.broadcast();
+  List<BusinessActivityReadModel> items;
+  final changes = StreamController<List<BusinessActivityReadModel>>.broadcast();
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) async* {
+  Stream<BusinessActivityPage> watchPage(
+    BusinessActivityPageQuery query,
+  ) async* {
     yield _page(items, query.limit);
     yield* changes.stream.map((items) => _page(items, query.limit));
   }
 
   @override
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     return _page(items, query.limit);
   }
 

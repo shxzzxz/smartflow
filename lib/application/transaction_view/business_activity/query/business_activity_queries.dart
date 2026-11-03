@@ -1,50 +1,50 @@
-/// 普通交易组业务事项的稳定类型标识。
+/// 普通交易组业务活动的稳定类型标识。
 const String ledgerTransactionGroupItemType = 'ledger.transaction_group';
 
-/// 业务事项的稳定身份。
+/// 业务活动的稳定身份。
 ///
 /// owner 型事项使用 `(ownerType, ownerId)`，无 owner 的普通交易组使用
 /// [ledgerTransactionGroupItemType] 和顶层交易组 ID。
-final class BusinessItemKey {
-  const BusinessItemKey({required this.type, required this.id})
+final class BusinessActivityKey {
+  const BusinessActivityKey({required this.type, required this.id})
     : assert(type != ''),
       assert(id != '');
 
-  const BusinessItemKey.transactionGroup(String id)
+  const BusinessActivityKey.transactionGroup(String id)
     : this(type: ledgerTransactionGroupItemType, id: id);
 
   final String type;
   final String id;
 
-  int compareTo(BusinessItemKey other) {
+  int compareTo(BusinessActivityKey other) {
     final typeOrder = type.compareTo(other.type);
     return typeOrder != 0 ? typeOrder : id.compareTo(other.id);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is BusinessItemKey && other.type == type && other.id == id;
+    return other is BusinessActivityKey && other.type == type && other.id == id;
   }
 
   @override
   int get hashCode => Object.hash(type, id);
 }
 
-/// 业务事项流的排他游标；排序方向为 `(anchorAt DESC, itemKey DESC)`。
-final class BusinessItemCursor {
-  const BusinessItemCursor({required this.anchorAt, required this.itemKey});
+/// 业务活动视图的排他游标；排序方向为 `(anchorAt DESC, itemKey DESC)`。
+final class BusinessActivityCursor {
+  const BusinessActivityCursor({required this.anchorAt, required this.itemKey});
 
   final DateTime anchorAt;
-  final BusinessItemKey itemKey;
+  final BusinessActivityKey itemKey;
 }
 
-/// 业务事项来源统一使用的分页与筛选条件。
+/// 业务活动来源统一使用的分页与筛选条件。
 ///
 /// `occurredUntil` 是排他端点。各来源必须在执行 `LIMIT` 前完成全部筛选和
 /// 游标判断；公共查询层不补做业务过滤。集合为 `null` 表示不筛选，空集合
 /// 表示条件已启用但没有可匹配项。
-final class BusinessItemPageQuery {
-  BusinessItemPageQuery({
+final class BusinessActivityPageQuery {
+  BusinessActivityPageQuery({
     required this.occurredFrom,
     required this.occurredUntil,
     this.before,
@@ -65,10 +65,10 @@ final class BusinessItemPageQuery {
 
   final DateTime occurredFrom;
   final DateTime occurredUntil;
-  final BusinessItemCursor? before;
+  final BusinessActivityCursor? before;
   final int limit;
 
-  /// 业务事项稳定类型；`null` 表示全部来源，空集合表示没有可匹配来源。
+  /// 业务活动稳定类型；`null` 表示全部来源，空集合表示没有可匹配来源。
   final Set<String>? itemTypes;
 
   /// 已由 application 展开并校验的物理分类账户 ID。
@@ -84,14 +84,14 @@ final class BusinessItemPageQuery {
 }
 
 /// 来源返回给公共归并层的锚点候选。
-final class BusinessItemAnchorCandidate {
-  const BusinessItemAnchorCandidate({
+final class BusinessActivityAnchorCandidate {
+  const BusinessActivityAnchorCandidate({
     required this.itemKey,
     required this.anchorTransactionId,
     required this.anchorAt,
   }) : assert(anchorTransactionId != '');
 
-  final BusinessItemKey itemKey;
+  final BusinessActivityKey itemKey;
   final String anchorTransactionId;
   final DateTime anchorAt;
 }
@@ -101,13 +101,13 @@ final class BusinessItemAnchorCandidate {
 /// [anchors] 必须已按 `(anchorAt DESC, itemKey DESC)` 排序，且不能超过请求
 /// limit + 1。来源需要额外读取并返回一条候选来判断本来源是否还有下一页；
 /// 因此 `hasMore == true` 时 [anchors] 必须恰好包含 limit + 1 条。
-final class BusinessItemSourcePage {
-  BusinessItemSourcePage({
-    required Iterable<BusinessItemAnchorCandidate> anchors,
+final class BusinessActivitySourcePage {
+  BusinessActivitySourcePage({
+    required Iterable<BusinessActivityAnchorCandidate> anchors,
     required this.hasMore,
   }) : anchors = List.unmodifiable(anchors);
 
-  final List<BusinessItemAnchorCandidate> anchors;
+  final List<BusinessActivityAnchorCandidate> anchors;
   final bool hasMore;
 }
 

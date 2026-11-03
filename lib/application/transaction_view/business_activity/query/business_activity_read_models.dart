@@ -4,22 +4,22 @@ import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import 'business_item_queries.dart';
+import 'business_activity_queries.dart';
 
-/// 业务事项列表所需的有限业务摘要。
+/// 业务活动列表所需的有限业务摘要。
 ///
 /// 摘要承载业务事实，不在 application 层生成标题、图标或展示文案。
-sealed class BusinessItemSummary {
-  const BusinessItemSummary();
+sealed class BusinessActivitySummary {
+  const BusinessActivitySummary();
 }
 
 /// 没有额外业务进度的普通账务事项。
-final class LedgerBusinessItemSummary extends BusinessItemSummary {
-  const LedgerBusinessItemSummary();
+final class LedgerBusinessActivitySummary extends BusinessActivitySummary {
+  const LedgerBusinessActivitySummary();
 }
 
-final class AdvanceBusinessItemSummary extends BusinessItemSummary {
-  const AdvanceBusinessItemSummary({
+final class AdvanceBusinessActivitySummary extends BusinessActivitySummary {
+  const AdvanceBusinessActivitySummary({
     required this.scenario,
     required this.trackingMode,
     required this.outstanding,
@@ -34,8 +34,8 @@ final class AdvanceBusinessItemSummary extends BusinessItemSummary {
   final int? aaPeopleCount;
 }
 
-final class InstallmentBusinessItemSummary extends BusinessItemSummary {
-  const InstallmentBusinessItemSummary({
+final class InstallmentBusinessActivitySummary extends BusinessActivitySummary {
+  const InstallmentBusinessActivitySummary({
     required this.installmentType,
     required this.status,
     required this.principal,
@@ -53,8 +53,8 @@ final class InstallmentBusinessItemSummary extends BusinessItemSummary {
   final int totalPeriodCount;
 }
 
-final class RepaymentBusinessItemSummary extends BusinessItemSummary {
-  const RepaymentBusinessItemSummary({
+final class RepaymentBusinessActivitySummary extends BusinessActivitySummary {
+  const RepaymentBusinessActivitySummary({
     required this.repaymentType,
     required this.targetType,
   });
@@ -63,8 +63,9 @@ final class RepaymentBusinessItemSummary extends BusinessItemSummary {
   final RepaymentTargetType targetType;
 }
 
-final class AmortizationBusinessItemSummary extends BusinessItemSummary {
-  const AmortizationBusinessItemSummary({
+final class AmortizationBusinessActivitySummary
+    extends BusinessActivitySummary {
+  const AmortizationBusinessActivitySummary({
     required this.kind,
     required this.status,
     required this.originalAmount,
@@ -92,12 +93,12 @@ final class AmortizationBusinessItemSummary extends BusinessItemSummary {
   final Money? currentPeriodAmount;
 }
 
-/// 业务事项的统一读模型。
+/// 业务活动的统一读模型。
 ///
 /// 锚点交易是该事项在交易列表和交易详情中的默认入口。`anchorAt` 不单独
 /// 持久化，始终等于锚点交易的 `occurredAt`。
-final class BusinessItemReadModel {
-  BusinessItemReadModel._({
+final class BusinessActivityReadModel {
+  BusinessActivityReadModel._({
     required this.itemKey,
     required this.ownerType,
     required this.ownerId,
@@ -105,16 +106,16 @@ final class BusinessItemReadModel {
     required this.summary,
   });
 
-  factory BusinessItemReadModel.fromCandidate({
-    required BusinessItemAnchorCandidate candidate,
+  factory BusinessActivityReadModel.fromCandidate({
+    required BusinessActivityAnchorCandidate candidate,
     required TransactionReadModel anchorTransaction,
-    required BusinessItemSummary summary,
+    required BusinessActivitySummary summary,
   }) {
     if (anchorTransaction.parentTransactionId != null) {
       throw ArgumentError.value(
         anchorTransaction.id,
         'anchorTransaction',
-        'A business item anchor must be a top-level transaction.',
+        'A business activity anchor must be a top-level transaction.',
       );
     }
     if (anchorTransaction.id != candidate.anchorTransactionId) {
@@ -138,7 +139,7 @@ final class BusinessItemReadModel {
         throw ArgumentError.value(
           candidate.itemKey,
           'candidate.itemKey',
-          'An ownerless business item must use the transaction-group type.',
+          'An ownerless business activity must use the transaction-group type.',
         );
       }
     } else if (candidate.itemKey.type != ownership.ownerType ||
@@ -150,7 +151,7 @@ final class BusinessItemReadModel {
       );
     }
 
-    return BusinessItemReadModel._(
+    return BusinessActivityReadModel._(
       itemKey: candidate.itemKey,
       ownerType: ownership?.ownerType,
       ownerId: ownership?.ownerId,
@@ -159,30 +160,33 @@ final class BusinessItemReadModel {
     );
   }
 
-  final BusinessItemKey itemKey;
+  final BusinessActivityKey itemKey;
   final String? ownerType;
   final String? ownerId;
   final TransactionReadModel anchorTransaction;
-  final BusinessItemSummary summary;
+  final BusinessActivitySummary summary;
 
   String get anchorTransactionId => anchorTransaction.id;
 
   DateTime get anchorAt => anchorTransaction.occurredAt;
 }
 
-/// 公共业务事项查询返回的一页结果。
-final class BusinessItemPage {
-  BusinessItemPage({
-    required Iterable<BusinessItemReadModel> items,
+/// 公共业务活动查询返回的一页结果。
+final class BusinessActivityPage {
+  BusinessActivityPage({
+    required Iterable<BusinessActivityReadModel> items,
     required this.hasMore,
   }) : items = List.unmodifiable(items);
 
-  final List<BusinessItemReadModel> items;
+  final List<BusinessActivityReadModel> items;
   final bool hasMore;
 
-  BusinessItemCursor? get nextCursor {
+  BusinessActivityCursor? get nextCursor {
     if (!hasMore || items.isEmpty) return null;
     final last = items.last;
-    return BusinessItemCursor(anchorAt: last.anchorAt, itemKey: last.itemKey);
+    return BusinessActivityCursor(
+      anchorAt: last.anchorAt,
+      itemKey: last.itemKey,
+    );
   }
 }

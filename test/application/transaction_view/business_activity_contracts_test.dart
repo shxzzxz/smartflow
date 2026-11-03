@@ -6,7 +6,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 
 void main() {
-  group('BusinessItemPageQuery', () {
+  group('BusinessActivityPageQuery', () {
     test('freezes filter sets and carries the exclusive time window', () {
       final categories = {'food'};
       final settlements = {'cash'};
@@ -15,7 +15,7 @@ void main() {
       final from = DateTime(2026, 10);
       final until = DateTime(2026, 11);
 
-      final query = BusinessItemPageQuery(
+      final query = BusinessActivityPageQuery(
         occurredFrom: from,
         occurredUntil: until,
         itemTypes: itemTypes,
@@ -41,7 +41,7 @@ void main() {
 
     test('requires a positive, ordered time window', () {
       expect(
-        () => BusinessItemPageQuery(
+        () => BusinessActivityPageQuery(
           occurredFrom: DateTime(2026, 11),
           occurredUntil: DateTime(2026, 11),
         ),
@@ -53,13 +53,13 @@ void main() {
   test('query service skips sources with no requested item type', () async {
     final ledger = _Source('ledger', {ledgerTransactionGroupItemType});
     final credit = _Source('credit', {installmentOwnerType});
-    final service = BusinessItemQueryServiceImpl(
+    final service = BusinessActivityQueryServiceImpl(
       sources: [ledger, credit],
       transactionQuery: const _EmptyTransactionQuery(),
     );
 
     final page = await service.findPage(
-      BusinessItemPageQuery(
+      BusinessActivityPageQuery(
         occurredFrom: DateTime(2026, 10),
         occurredUntil: DateTime(2026, 11),
         itemTypes: const {ledgerTransactionGroupItemType},
@@ -71,7 +71,7 @@ void main() {
     expect(credit.findCalls, 0);
   });
 
-  group('BusinessItemReadModel', () {
+  group('BusinessActivityReadModel', () {
     test('derives anchor identity and time from the loaded transaction', () {
       final occurredAt = DateTime(2026, 10, 12, 9, 30);
       final transaction = _transaction(
@@ -82,9 +82,9 @@ void main() {
           ownerId: 'plan-1',
         ),
       );
-      final item = BusinessItemReadModel.fromCandidate(
-        candidate: BusinessItemAnchorCandidate(
-          itemKey: const BusinessItemKey(
+      final item = BusinessActivityReadModel.fromCandidate(
+        candidate: BusinessActivityAnchorCandidate(
+          itemKey: const BusinessActivityKey(
             type: 'orchestration.amortization',
             id: 'plan-1',
           ),
@@ -92,7 +92,7 @@ void main() {
           anchorAt: occurredAt,
         ),
         anchorTransaction: transaction,
-        summary: const LedgerBusinessItemSummary(),
+        summary: const LedgerBusinessActivitySummary(),
       );
 
       expect(item.anchorTransactionId, 'tx-anchor');
@@ -108,14 +108,14 @@ void main() {
       );
 
       expect(
-        () => BusinessItemReadModel.fromCandidate(
-          candidate: BusinessItemAnchorCandidate(
-            itemKey: const BusinessItemKey.transactionGroup('tx-anchor'),
+        () => BusinessActivityReadModel.fromCandidate(
+          candidate: BusinessActivityAnchorCandidate(
+            itemKey: const BusinessActivityKey.transactionGroup('tx-anchor'),
             anchorTransactionId: 'tx-anchor',
             anchorAt: DateTime(2026, 10, 13),
           ),
           anchorTransaction: transaction,
-          summary: const LedgerBusinessItemSummary(),
+          summary: const LedgerBusinessActivitySummary(),
         ),
         throwsArgumentError,
       );
@@ -130,41 +130,47 @@ void main() {
       );
 
       expect(
-        () => BusinessItemReadModel.fromCandidate(
-          candidate: BusinessItemAnchorCandidate(
-            itemKey: const BusinessItemKey.transactionGroup('tx-parent'),
+        () => BusinessActivityReadModel.fromCandidate(
+          candidate: BusinessActivityAnchorCandidate(
+            itemKey: const BusinessActivityKey.transactionGroup('tx-parent'),
             anchorTransactionId: 'tx-child',
             anchorAt: occurredAt,
           ),
           anchorTransaction: transaction,
-          summary: const LedgerBusinessItemSummary(),
+          summary: const LedgerBusinessActivitySummary(),
         ),
         throwsArgumentError,
       );
     });
   });
 
-  test('BusinessItemPage returns a cursor only when another page exists', () {
-    final occurredAt = DateTime(2026, 10, 12);
-    final item = BusinessItemReadModel.fromCandidate(
-      candidate: BusinessItemAnchorCandidate(
-        itemKey: const BusinessItemKey.transactionGroup('tx-1'),
-        anchorTransactionId: 'tx-1',
-        anchorAt: occurredAt,
-      ),
-      anchorTransaction: _transaction(id: 'tx-1', occurredAt: occurredAt),
-      summary: const LedgerBusinessItemSummary(),
-    );
+  test(
+    'BusinessActivityPage returns a cursor only when another page exists',
+    () {
+      final occurredAt = DateTime(2026, 10, 12);
+      final item = BusinessActivityReadModel.fromCandidate(
+        candidate: BusinessActivityAnchorCandidate(
+          itemKey: const BusinessActivityKey.transactionGroup('tx-1'),
+          anchorTransactionId: 'tx-1',
+          anchorAt: occurredAt,
+        ),
+        anchorTransaction: _transaction(id: 'tx-1', occurredAt: occurredAt),
+        summary: const LedgerBusinessActivitySummary(),
+      );
 
-    expect(BusinessItemPage(items: [item], hasMore: false).nextCursor, isNull);
-    expect(
-      BusinessItemPage(items: [item], hasMore: true).nextCursor?.itemKey,
-      const BusinessItemKey.transactionGroup('tx-1'),
-    );
-  });
+      expect(
+        BusinessActivityPage(items: [item], hasMore: false).nextCursor,
+        isNull,
+      );
+      expect(
+        BusinessActivityPage(items: [item], hasMore: true).nextCursor?.itemKey,
+        const BusinessActivityKey.transactionGroup('tx-1'),
+      );
+    },
+  );
 }
 
-final class _Source implements BusinessItemSource {
+final class _Source implements BusinessActivitySource {
   _Source(this.sourceKey, this.supportedItemTypes);
 
   @override
@@ -176,21 +182,23 @@ final class _Source implements BusinessItemSource {
   var findCalls = 0;
 
   @override
-  Future<BusinessItemSourcePage> findAnchorPage(
-    BusinessItemPageQuery query,
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
   ) async {
     findCalls += 1;
-    return BusinessItemSourcePage(anchors: const [], hasMore: false);
+    return BusinessActivitySourcePage(anchors: const [], hasMore: false);
   }
 
   @override
-  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) {
     return const Stream.empty();
   }
 
   @override
-  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Iterable<BusinessItemAnchorCandidate> anchors,
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     return const {};
   }

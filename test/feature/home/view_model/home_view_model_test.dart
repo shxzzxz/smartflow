@@ -15,7 +15,7 @@ import 'package:smartflow/feature/shared/provider/current_date_time_provider.dar
 void main() {
   group('HomeViewModel', () {
     test('combines month streams into loaded page state', () async {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService(
         accountsById: const <String, Account>{},
@@ -26,9 +26,9 @@ void main() {
         metricsService,
         accountService,
         overrides: [
-          homeBusinessItemsProvider(
+          homeBusinessActivitiesProvider(
             visibleMonth,
-          ).overrideWith((ref) => Stream.value(_page([_businessItem()]))),
+          ).overrideWith((ref) => Stream.value(_page([_businessActivity()]))),
           homeCashflowComparisonProvider(
             visibleMonth,
           ).overrideWith((ref) => Stream.value(_comparison())),
@@ -52,7 +52,7 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessItemsProvider(visibleMonth).future);
+      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
       await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
         homeDailyCashflowSummariesProvider(visibleMonth).future,
@@ -72,7 +72,7 @@ void main() {
     });
 
     test('captions income and expense by the selected period metric', () async {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService(
         accountsById: const <String, Account>{},
@@ -88,9 +88,9 @@ void main() {
           ),
         ),
         overrides: [
-          homeBusinessItemsProvider(
+          homeBusinessActivitiesProvider(
             visibleMonth,
-          ).overrideWith((ref) => Stream.value(_page([_businessItem()]))),
+          ).overrideWith((ref) => Stream.value(_page([_businessActivity()]))),
           homeCashflowComparisonProvider(
             visibleMonth,
           ).overrideWith((ref) => Stream.value(_comparison())),
@@ -111,7 +111,7 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessItemsProvider(visibleMonth).future);
+      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
       await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
         homeDailyCashflowSummariesProvider(visibleMonth).future,
@@ -127,7 +127,7 @@ void main() {
     });
 
     test('builds compact business rows from the display setting', () async {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService(
         accountsById: {
@@ -163,9 +163,9 @@ void main() {
           ),
         ],
       );
-      final item = _businessItem(
+      final item = _businessActivity(
         transaction: transaction,
-        summary: const AmortizationBusinessItemSummary(
+        summary: const AmortizationBusinessActivitySummary(
           kind: AmortizationKind.prepaidExpense,
           status: AmortizationStatus.active,
           originalAmount: Money(minorUnits: 12000),
@@ -185,7 +185,7 @@ void main() {
           ),
         ),
         overrides: [
-          homeBusinessItemsProvider(
+          homeBusinessActivitiesProvider(
             visibleMonth,
           ).overrideWith((ref) => Stream.value(_page([item]))),
           homeCashflowComparisonProvider(
@@ -208,7 +208,7 @@ void main() {
         (_, _) {},
       );
       addTearDown(contentSub.close);
-      await container.read(homeBusinessItemsProvider(visibleMonth).future);
+      await container.read(homeBusinessActivitiesProvider(visibleMonth).future);
       await container.read(homeCashflowComparisonProvider(visibleMonth).future);
       await container.read(
         homeDailyCashflowSummariesProvider(visibleMonth).future,
@@ -226,7 +226,7 @@ void main() {
     });
 
     test('restarts queries when shifting month', () {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService();
       final container = _container(
@@ -260,33 +260,36 @@ void main() {
       expect(metricsService.comparisonQueries.last.asOfDate, isNull);
     });
 
-    test('queries the first page of business items in the visible month', () {
-      final businessService = _FakeBusinessItemQueryService();
-      final metricsService = _FakeFinancialMetricsService();
-      final accountService = _FakeAccountQueryService();
-      final container = _container(
-        businessService,
-        metricsService,
-        accountService,
-      );
-      final visibleMonth = DateTime(2026, 1);
-      final contentSub = container.listen(
-        homeContentProvider(visibleMonth),
-        (_, _) {},
-      );
-      addTearDown(contentSub.close);
+    test(
+      'queries the first page of business activities in the visible month',
+      () {
+        final businessService = _FakeBusinessActivityQueryService();
+        final metricsService = _FakeFinancialMetricsService();
+        final accountService = _FakeAccountQueryService();
+        final container = _container(
+          businessService,
+          metricsService,
+          accountService,
+        );
+        final visibleMonth = DateTime(2026, 1);
+        final contentSub = container.listen(
+          homeContentProvider(visibleMonth),
+          (_, _) {},
+        );
+        addTearDown(contentSub.close);
 
-      final query = businessService.queries.single;
+        final query = businessService.queries.single;
 
-      expect(query.limit, homeBusinessItemPageSize);
-      expect(query.occurredFrom, DateTime(2026, 1));
-      expect(query.occurredUntil, DateTime(2026, 2));
-    });
+        expect(query.limit, homeBusinessActivityPageSize);
+        expect(query.occurredFrom, DateTime(2026, 1));
+        expect(query.occurredUntil, DateTime(2026, 2));
+      },
+    );
 
     test(
-      'applies category and account filters to the business-item query',
+      'applies category and account filters to the business-activity query',
       () async {
-        final businessService = _FakeBusinessItemQueryService();
+        final businessService = _FakeBusinessActivityQueryService();
         final metricsService = _FakeFinancialMetricsService();
         final accountService = _FakeAccountQueryService();
         final container = _container(
@@ -318,9 +321,9 @@ void main() {
     );
 
     test(
-      'loads the next month page with an exclusive business-item cursor',
+      'loads the next month page with an exclusive business-activity cursor',
       () async {
-        final businessService = _FakeBusinessItemQueryService();
+        final businessService = _FakeBusinessActivityQueryService();
         final metricsService = _FakeFinancialMetricsService();
         final accountService = _FakeAccountQueryService(
           accountsById: const <String, Account>{},
@@ -343,8 +346,8 @@ void main() {
         );
         addTearDown(sub.close);
         final firstPage = [
-          for (var i = 0; i < homeBusinessItemPageSize; i++)
-            _businessItem(
+          for (var i = 0; i < homeBusinessActivityPageSize; i++)
+            _businessActivity(
               id: 'tx-$i',
               occurredAt: DateTime(
                 2026,
@@ -352,32 +355,32 @@ void main() {
                 2,
                 8,
                 0,
-                homeBusinessItemPageSize - i,
+                homeBusinessActivityPageSize - i,
               ),
             ),
         ];
         businessService.emit(_page(firstPage, hasMore: true));
         await _flush();
-        businessService.nextPage = _page([_businessItem(id: 'tx-next')]);
+        businessService.nextPage = _page([_businessActivity(id: 'tx-next')]);
 
         await container
             .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
             .loadMore();
 
         final query = businessService.queries.last;
-        expect(query.limit, homeBusinessItemPageSize);
+        expect(query.limit, homeBusinessActivityPageSize);
         expect(query.categoryAccountIds, {'cat-food'});
         expect(query.settlementAccountIds, {'acc-cash'});
         expect(
           query.before?.itemKey,
-          const BusinessItemKey.transactionGroup('tx-49'),
+          const BusinessActivityKey.transactionGroup('tx-49'),
         );
         final state = container.read(
           homeTransactionFeedViewModelProvider(visibleMonth),
         );
         expect(state, isA<HomeTransactionFeedLoaded>());
         final loaded = state as HomeTransactionFeedLoaded;
-        expect(loaded.items, hasLength(homeBusinessItemPageSize + 1));
+        expect(loaded.items, hasLength(homeBusinessActivityPageSize + 1));
         expect(loaded.hasMore, isFalse);
       },
     );
@@ -385,7 +388,7 @@ void main() {
     test(
       'keeps loaded pages in place until the user refreshes changed data',
       () async {
-        final businessService = _FakeBusinessItemQueryService();
+        final businessService = _FakeBusinessActivityQueryService();
         final metricsService = _FakeFinancialMetricsService();
         final accountService = _FakeAccountQueryService(
           accountsById: const <String, Account>{},
@@ -402,23 +405,23 @@ void main() {
         );
         addTearDown(sub.close);
         final firstPage = [
-          for (var i = 0; i < homeBusinessItemPageSize; i++)
-            _businessItem(id: 'initial-$i'),
+          for (var i = 0; i < homeBusinessActivityPageSize; i++)
+            _businessActivity(id: 'initial-$i'),
         ];
         businessService.emit(_page(firstPage, hasMore: true));
         await _flush();
-        businessService.nextPage = _page([_businessItem(id: 'older')]);
+        businessService.nextPage = _page([_businessActivity(id: 'older')]);
         await container
             .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
             .loadMore();
 
-        businessService.emit(_page([_businessItem(id: 'newer')]));
+        businessService.emit(_page([_businessActivity(id: 'newer')]));
         await _flush();
 
         var loaded =
             container.read(homeTransactionFeedViewModelProvider(visibleMonth))
                 as HomeTransactionFeedLoaded;
-        expect(loaded.items, hasLength(homeBusinessItemPageSize + 1));
+        expect(loaded.items, hasLength(homeBusinessActivityPageSize + 1));
         expect(loaded.items.first.anchorTransactionId, 'initial-0');
         expect(loaded.hasPendingRefresh, isTrue);
 
@@ -426,7 +429,7 @@ void main() {
             .read(homeTransactionFeedViewModelProvider(visibleMonth).notifier)
             .refresh();
         await container.pump();
-        businessService.emit(_page([_businessItem(id: 'newer')]));
+        businessService.emit(_page([_businessActivity(id: 'newer')]));
         await _flush();
 
         loaded =
@@ -439,7 +442,7 @@ void main() {
     );
 
     test('ignores an old in-flight page after the filter changes', () async {
-      final businessService = _FakeBusinessItemQueryService();
+      final businessService = _FakeBusinessActivityQueryService();
       final metricsService = _FakeFinancialMetricsService();
       final accountService = _FakeAccountQueryService(
         accountsById: const <String, Account>{},
@@ -457,12 +460,12 @@ void main() {
       addTearDown(sub.close);
       businessService.emit(
         _page([
-          for (var i = 0; i < homeBusinessItemPageSize; i++)
-            _businessItem(id: 'old-$i'),
+          for (var i = 0; i < homeBusinessActivityPageSize; i++)
+            _businessActivity(id: 'old-$i'),
         ], hasMore: true),
       );
       await _flush();
-      final oldPage = Completer<BusinessItemPage>();
+      final oldPage = Completer<BusinessActivityPage>();
       businessService.nextPageFuture = oldPage.future;
 
       final loadMore = container
@@ -475,9 +478,9 @@ void main() {
             settlementAccountIds: null,
           );
       await container.pump();
-      oldPage.complete(_page([_businessItem(id: 'old-next')]));
+      oldPage.complete(_page([_businessActivity(id: 'old-next')]));
       await loadMore;
-      businessService.emit(_page([_businessItem(id: 'new-filter')]));
+      businessService.emit(_page([_businessActivity(id: 'new-filter')]));
       await _flush();
 
       final state =
@@ -507,7 +510,7 @@ void main() {
 }
 
 ProviderContainer _container(
-  _FakeBusinessItemQueryService businessService,
+  _FakeBusinessActivityQueryService businessService,
   _FakeFinancialMetricsService metricsService,
   _FakeAccountQueryService accountService, {
   List<dynamic> overrides = const [],
@@ -516,7 +519,7 @@ ProviderContainer _container(
   final container = ProviderContainer(
     overrides: [
       currentDateTimeProvider.overrideWith((ref) => DateTime(2026, 1, 15, 9)),
-      businessItemQueryServiceProvider.overrideWithValue(businessService),
+      businessActivityQueryServiceProvider.overrideWithValue(businessService),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
       accountQueryServiceProvider.overrideWithValue(accountService),
       budgetQueryServiceProvider.overrideWithValue(
@@ -577,19 +580,22 @@ TransactionReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
   );
 }
 
-BusinessItemReadModel _businessItem({
+BusinessActivityReadModel _businessActivity({
   String id = 'tx-1',
   DateTime? occurredAt,
   TransactionReadModel? transaction,
-  BusinessItemSummary summary = const LedgerBusinessItemSummary(),
+  BusinessActivitySummary summary = const LedgerBusinessActivitySummary(),
 }) {
   final anchor = transaction ?? _item(id: id, occurredAt: occurredAt);
   final ownership = anchor.ownership;
-  return BusinessItemReadModel.fromCandidate(
-    candidate: BusinessItemAnchorCandidate(
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
       itemKey: ownership == null
-          ? BusinessItemKey.transactionGroup(anchor.id)
-          : BusinessItemKey(type: ownership.ownerType, id: ownership.ownerId),
+          ? BusinessActivityKey.transactionGroup(anchor.id)
+          : BusinessActivityKey(
+              type: ownership.ownerType,
+              id: ownership.ownerId,
+            ),
       anchorTransactionId: anchor.id,
       anchorAt: anchor.occurredAt,
     ),
@@ -598,11 +604,11 @@ BusinessItemReadModel _businessItem({
   );
 }
 
-BusinessItemPage _page(
-  List<BusinessItemReadModel> items, {
+BusinessActivityPage _page(
+  List<BusinessActivityReadModel> items, {
   bool hasMore = false,
 }) {
-  return BusinessItemPage(items: items, hasMore: hasMore);
+  return BusinessActivityPage(items: items, hasMore: hasMore);
 }
 
 CashflowComparison _comparison() {
@@ -622,28 +628,29 @@ CashflowComparison _comparison() {
   );
 }
 
-class _FakeBusinessItemQueryService implements BusinessItemQueryService {
-  final queries = <BusinessItemPageQuery>[];
-  final _streams = <_ReplayStream<BusinessItemPage>>[];
-  BusinessItemPage? nextPage;
-  Future<BusinessItemPage>? nextPageFuture;
+class _FakeBusinessActivityQueryService
+    implements BusinessActivityQueryService {
+  final queries = <BusinessActivityPageQuery>[];
+  final _streams = <_ReplayStream<BusinessActivityPage>>[];
+  BusinessActivityPage? nextPage;
+  Future<BusinessActivityPage>? nextPageFuture;
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
     queries.add(query);
-    final stream = _ReplayStream<BusinessItemPage>();
+    final stream = _ReplayStream<BusinessActivityPage>();
     _streams.add(stream);
     return stream.watch();
   }
 
   @override
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     queries.add(query);
     if (nextPageFuture case final future?) return future;
     return nextPage ?? _page(const []);
   }
 
-  void emit(BusinessItemPage page) {
+  void emit(BusinessActivityPage page) {
     _streams.last.add(page);
   }
 

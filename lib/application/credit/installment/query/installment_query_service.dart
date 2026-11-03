@@ -19,7 +19,7 @@ abstract interface class InstallmentQueryService {
   /// 单条分期查询，不返回完整还款计划。
   Future<InstallmentDTO?> findInstallment(String installmentId);
 
-  /// 批量加载业务事项摘要所需的单条分期查询。
+  /// 批量加载业务活动摘要所需的单条分期查询。
   Future<Map<String, InstallmentDTO>> findInstallments(
     Set<String> installmentIds,
   );

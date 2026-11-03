@@ -302,8 +302,8 @@ List<TransactionDayGroup> groupTransactionFeedEntriesByDay({
   ];
 }
 
-List<TransactionDayGroup> groupBusinessItemsByDay({
-  required List<BusinessItemReadModel> items,
+List<TransactionDayGroup> groupBusinessActivitiesByDay({
+  required List<BusinessActivityReadModel> items,
   required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
   TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
@@ -314,7 +314,7 @@ List<TransactionDayGroup> groupBusinessItemsByDay({
     groups
         .putIfAbsent(date, () => [])
         .add(
-          buildBusinessItemRowPresentation(
+          buildBusinessActivityRowPresentation(
             item: item,
             accountLookup: accountLookup,
             displayMode: displayMode,
@@ -364,9 +364,9 @@ TransactionDayGroup transactionGroupForDate({
   );
 }
 
-TransactionDayGroup businessItemGroupForDate({
+TransactionDayGroup businessActivityGroupForDate({
   required DateTime date,
-  required List<BusinessItemReadModel> items,
+  required List<BusinessActivityReadModel> items,
   required List<DailyCashflowSummary> dailySummaries,
   required AccountLookup accountLookup,
   TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
@@ -381,7 +381,7 @@ TransactionDayGroup businessItemGroupForDate({
     date: normalized,
     rows: [
       for (final item in dayItems)
-        buildBusinessItemRowPresentation(
+        buildBusinessActivityRowPresentation(
           item: item,
           accountLookup: accountLookup,
           displayMode: displayMode,
@@ -501,8 +501,8 @@ TransactionRowPresentation buildTransactionRowPresentation({
   );
 }
 
-FinancialFeedRowPresentation buildBusinessItemRowPresentation({
-  required BusinessItemReadModel item,
+FinancialFeedRowPresentation buildBusinessActivityRowPresentation({
+  required BusinessActivityReadModel item,
   required AccountLookup accountLookup,
   TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
 }) {

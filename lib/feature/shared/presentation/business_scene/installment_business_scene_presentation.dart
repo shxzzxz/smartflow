@@ -6,14 +6,14 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import '../transaction_badge_presentation.dart';
 import 'business_scene_presentation.dart';
 
-BusinessItemRowContent presentInstallmentBusinessItemRow(
-  BusinessItemReadModel item,
+BusinessActivityRowContent presentInstallmentBusinessActivityRow(
+  BusinessActivityReadModel item,
 ) {
-  final summary = item.summary as InstallmentBusinessItemSummary;
+  final summary = item.summary as InstallmentBusinessActivitySummary;
   final usesCategoryArtwork =
       summary.installmentType == InstallmentType.purchase ||
       summary.installmentType == InstallmentType.billConversion;
-  return BusinessItemRowContent(
+  return BusinessActivityRowContent(
     titleOverride: summary.installmentType == InstallmentType.disbursement
         ? '放款分期'
         : null,
@@ -32,7 +32,7 @@ BusinessItemRowContent presentInstallmentBusinessItemRow(
   );
 }
 
-String _standardSummary(InstallmentBusinessItemSummary summary) {
+String _standardSummary(InstallmentBusinessActivitySummary summary) {
   final typeLabel = switch (summary.installmentType) {
     InstallmentType.purchase => '消费分期',
     InstallmentType.disbursement => '放款分期',

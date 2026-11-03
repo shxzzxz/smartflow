@@ -27,10 +27,10 @@ import 'package:smartflow/infrastructure/orchestration/advance/transaction_view/
 import 'package:smartflow/infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_amortization_repository.dart';
-import 'package:smartflow/application/transaction_view/business_item/source/advance_business_item_source.dart';
-import 'package:smartflow/application/transaction_view/business_item/source/amortization_business_item_source.dart';
-import 'package:smartflow/application/transaction_view/business_item/source/credit_business_item_source.dart';
-import 'package:smartflow/infrastructure/transaction_view/business_item/drift_ledger_business_item_source.dart';
+import 'package:smartflow/application/transaction_view/business_activity/source/advance_business_activity_source.dart';
+import 'package:smartflow/application/transaction_view/business_activity/source/amortization_business_activity_source.dart';
+import 'package:smartflow/application/transaction_view/business_activity/source/credit_business_activity_source.dart';
+import 'package:smartflow/infrastructure/transaction_view/business_activity/drift_ledger_business_activity_source.dart';
 
 import '../../../helper/test_app_database.dart';
 
@@ -43,7 +43,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  group('DriftLedgerBusinessItemSource', () {
+  group('DriftLedgerBusinessActivitySource', () {
     test(
       'returns only ownerless top-level anchors with filters and limits',
       () async {
@@ -110,7 +110,7 @@ void main() {
           parentTransactionId: 'ledger-new',
         );
 
-        final source = DriftLedgerBusinessItemSource(db);
+        final source = DriftLedgerBusinessActivitySource(db);
         final firstPage = await source.findAnchorPage(
           _query(limit: 1, occurredUntil: DateTime(2026, 11)),
         );
@@ -120,9 +120,9 @@ void main() {
         final secondPage = await source.findAnchorPage(
           _query(
             limit: 1,
-            before: BusinessItemCursor(
+            before: BusinessActivityCursor(
               anchorAt: DateTime(2026, 10, 3),
-              itemKey: const BusinessItemKey.transactionGroup('ledger-new'),
+              itemKey: const BusinessActivityKey.transactionGroup('ledger-new'),
             ),
           ),
         );
@@ -163,7 +163,7 @@ void main() {
     );
   });
 
-  group('AdvanceBusinessItemSource', () {
+  group('AdvanceBusinessActivitySource', () {
     test(
       'anchors the top-level advance and batches its outstanding facts',
       () async {
@@ -232,7 +232,7 @@ void main() {
           amountMinor: 4000,
         );
 
-        final source = AdvanceBusinessItemSource(
+        final source = AdvanceBusinessActivitySource(
           _advanceQuery(db),
           _advanceCases(db),
           _TransactionBatchQuery(db),
@@ -243,14 +243,17 @@ void main() {
         expect(page.anchors.single.anchorTransactionId, 'advance-parent');
         expect(
           page.anchors.single.itemKey,
-          const BusinessItemKey(type: 'orchestration.advance', id: 'advance-1'),
+          const BusinessActivityKey(
+            type: 'orchestration.advance',
+            id: 'advance-1',
+          ),
         );
         final summary =
             (await _findSummaries(
                   source,
                   page.anchors,
                 ))[page.anchors.single.itemKey]
-                as AdvanceBusinessItemSummary;
+                as AdvanceBusinessActivitySummary;
         expect(summary.scenario, AdvanceScenario.aa);
         expect(summary.trackingMode, AdvanceTrackingMode.itemized);
         expect(summary.aaPeopleCount, 3);
@@ -260,7 +263,7 @@ void main() {
     );
   });
 
-  group('AmortizationBusinessItemSource', () {
+  group('AmortizationBusinessActivitySource', () {
     test(
       'uses the initial transaction and original plan categories as anchor facts',
       () async {
@@ -351,7 +354,7 @@ void main() {
           amountMinor: 10000,
         );
 
-        final source = AmortizationBusinessItemSource(
+        final source = AmortizationBusinessActivitySource(
           _amortizationQuery(db),
           _amortizationPlans(db),
         );
@@ -364,7 +367,7 @@ void main() {
         final key = page.anchors.single.itemKey;
         final summary =
             (await _findSummaries(source, page.anchors))[key]
-                as AmortizationBusinessItemSummary;
+                as AmortizationBusinessActivitySummary;
         expect(summary.status, AmortizationStatus.completed);
         expect(summary.originalAmount, const Money(minorUnits: 10000));
         expect(summary.remainingAmount, Money.zero());
@@ -374,7 +377,7 @@ void main() {
     );
   });
 
-  group('CreditBusinessItemSource', () {
+  group('CreditBusinessActivitySource', () {
     test(
       'excludes record-only installments and transactionless repayments',
       () async {
@@ -469,7 +472,7 @@ void main() {
               ),
             );
 
-        final source = CreditBusinessItemSource(
+        final source = CreditBusinessActivitySource(
           _creditQuery(db),
           _installmentQuery(db),
         );
@@ -482,7 +485,7 @@ void main() {
         final contractKey = firstPage.anchors.first.itemKey;
         final creditSummary =
             (await _findSummariesForKeys(source, {contractKey}))[contractKey]
-                as InstallmentBusinessItemSummary;
+                as InstallmentBusinessActivitySummary;
         expect(creditSummary.installmentType, InstallmentType.purchase);
         expect(creditSummary.paidPeriodCount, 1);
         expect(creditSummary.totalPeriodCount, 2);
@@ -493,17 +496,17 @@ void main() {
         final summaries = await _findSummariesForKeys(source, allKeys);
         expect(summaries.keys, containsAll(allKeys));
         expect(
-          summaries[const BusinessItemKey(
+          summaries[const BusinessActivityKey(
             type: creditRepaymentOwnerType,
             id: 'repayment-1',
           )],
-          isA<RepaymentBusinessItemSummary>(),
+          isA<RepaymentBusinessActivitySummary>(),
         );
 
         final secondPage = await source.findAnchorPage(
           _query(
             limit: 2,
-            before: BusinessItemCursor(
+            before: BusinessActivityCursor(
               anchorAt: firstPage.anchors[1].anchorAt,
               itemKey: firstPage.anchors[1].itemKey,
             ),
@@ -594,17 +597,17 @@ void main() {
             ),
           );
 
-      final source = CreditBusinessItemSource(
+      final source = CreditBusinessActivitySource(
         _creditQuery(db),
         _installmentQuery(db),
       );
-      final key = const BusinessItemKey(
+      final key = const BusinessActivityKey(
         type: installmentOwnerType,
         id: 'contract-1',
       );
       final summary =
           (await _findSummariesForKeys(source, {key}))[key]
-              as InstallmentBusinessItemSummary;
+              as InstallmentBusinessActivitySummary;
 
       expect(summary.remainingPrincipal, const Money(minorUnits: 60000));
     });
@@ -739,17 +742,17 @@ void main() {
               ),
             );
 
-        final source = CreditBusinessItemSource(
+        final source = CreditBusinessActivitySource(
           _creditQuery(db),
           _installmentQuery(db),
         );
-        final key = const BusinessItemKey(
+        final key = const BusinessActivityKey(
           type: installmentOwnerType,
           id: 'contract-1',
         );
         final summary =
             (await _findSummariesForKeys(source, {key}))[key]
-                as InstallmentBusinessItemSummary;
+                as InstallmentBusinessActivitySummary;
 
         expect(summary.totalPeriodCount, 1);
         expect(summary.paidPeriodCount, 0);
@@ -773,7 +776,7 @@ void main() {
         ownerType: creditRepaymentOwnerType,
         ownerId: 'repayment-1',
       );
-      final source = CreditBusinessItemSource(
+      final source = CreditBusinessActivitySource(
         _creditQuery(db),
         _installmentQuery(db),
       );
@@ -920,19 +923,19 @@ void main() {
           ),
         );
 
-    final service = BusinessItemQueryServiceImpl(
+    final service = BusinessActivityQueryServiceImpl(
       sources: [
-        DriftLedgerBusinessItemSource(db),
-        AdvanceBusinessItemSource(
+        DriftLedgerBusinessActivitySource(db),
+        AdvanceBusinessActivitySource(
           _advanceQuery(db),
           _advanceCases(db),
           _TransactionBatchQuery(db),
         ),
-        AmortizationBusinessItemSource(
+        AmortizationBusinessActivitySource(
           _amortizationQuery(db),
           _amortizationPlans(db),
         ),
-        CreditBusinessItemSource(_creditQuery(db), _installmentQuery(db)),
+        CreditBusinessActivitySource(_creditQuery(db), _installmentQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -1016,10 +1019,10 @@ void main() {
       accountId: 'software',
       amountMinor: 3000,
     );
-    final service = BusinessItemQueryServiceImpl(
+    final service = BusinessActivityQueryServiceImpl(
       sources: [
-        DriftLedgerBusinessItemSource(db),
-        AmortizationBusinessItemSource(
+        DriftLedgerBusinessActivitySource(db),
+        AmortizationBusinessActivitySource(
           _amortizationQuery(db),
           _amortizationPlans(db),
         ),
@@ -1031,7 +1034,7 @@ void main() {
     expect(await iterator.moveNext(), isTrue);
     final initialSummary =
         iterator.current.items.single.summary
-            as AmortizationBusinessItemSummary;
+            as AmortizationBusinessActivitySummary;
     expect(initialSummary.totalPeriodCount, 1);
     expect(initialSummary.currentPeriodSequence, 1);
 
@@ -1047,14 +1050,14 @@ void main() {
     expect(await iterator.moveNext(), isTrue);
     final updatedSummary =
         iterator.current.items.single.summary
-            as AmortizationBusinessItemSummary;
+            as AmortizationBusinessActivitySummary;
     expect(updatedSummary.totalPeriodCount, 1);
     expect(updatedSummary.currentPeriodSequence, null);
     expect(updatedSummary.status, AmortizationStatus.completed);
     await iterator.cancel();
   });
 
-  test('uses business-item indexes for bounded anchor queries', () async {
+  test('uses business-activity indexes for bounded anchor queries', () async {
     final ownerPlan = await db.customSelect('''
 EXPLAIN QUERY PLAN
 SELECT anchor.id
@@ -1122,10 +1125,10 @@ LIMIT 21
           ),
       ]);
     });
-    final service = BusinessItemQueryServiceImpl(
+    final service = BusinessActivityQueryServiceImpl(
       sources: [
-        DriftLedgerBusinessItemSource(db),
-        AdvanceBusinessItemSource(
+        DriftLedgerBusinessActivitySource(db),
+        AdvanceBusinessActivitySource(
           _advanceQuery(db),
           _advanceCases(db),
           _TransactionBatchQuery(db),
@@ -1180,20 +1183,20 @@ InstallmentQueryService _installmentQuery(AppDatabase db) {
   );
 }
 
-Future<Map<BusinessItemKey, BusinessItemSummary>> _findSummaries(
-  BusinessItemSource source,
-  Iterable<BusinessItemAnchorCandidate> anchors,
+Future<Map<BusinessActivityKey, BusinessActivitySummary>> _findSummaries(
+  BusinessActivitySource source,
+  Iterable<BusinessActivityAnchorCandidate> anchors,
 ) {
   return source.findSummaries(anchors);
 }
 
-Future<Map<BusinessItemKey, BusinessItemSummary>> _findSummariesForKeys(
-  BusinessItemSource source,
-  Set<BusinessItemKey> keys,
+Future<Map<BusinessActivityKey, BusinessActivitySummary>> _findSummariesForKeys(
+  BusinessActivitySource source,
+  Set<BusinessActivityKey> keys,
 ) {
   return _findSummaries(source, [
     for (final key in keys)
-      BusinessItemAnchorCandidate(
+      BusinessActivityAnchorCandidate(
         itemKey: key,
         anchorTransactionId: key.id,
         anchorAt: DateTime(2026, 10),
@@ -1271,17 +1274,17 @@ final class _TransactionBatchQuery implements TransactionBatchQueryService {
   }
 }
 
-BusinessItemPageQuery _query({
+BusinessActivityPageQuery _query({
   int limit = 20,
   DateTime? occurredUntil,
-  BusinessItemCursor? before,
+  BusinessActivityCursor? before,
   Set<String>? categoryAccountIds,
   Set<String>? settlementAccountIds,
   Set<String>? tagIds,
   bool untaggedOnly = false,
   String? counterpartyId,
 }) {
-  return BusinessItemPageQuery(
+  return BusinessActivityPageQuery(
     occurredFrom: DateTime(2026, 10),
     occurredUntil: occurredUntil ?? DateTime(2026, 11),
     before: before,

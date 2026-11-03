@@ -897,8 +897,8 @@ void main() {
     });
 
     test('amortization uses category identity and standard summary copy', () {
-      final item = _businessItem(
-        summary: const AmortizationBusinessItemSummary(
+      final item = _businessActivity(
+        summary: const AmortizationBusinessActivitySummary(
           kind: AmortizationKind.prepaidExpense,
           status: AmortizationStatus.active,
           originalAmount: Money(minorUnits: 10000),
@@ -909,7 +909,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -921,13 +921,13 @@ void main() {
     });
 
     test('amortization uses plan categories when the anchor has no lines', () {
-      final item = _businessItem(
+      final item = _businessActivity(
         transaction: _item(
           businessPurpose: BusinessPurpose.transfer,
           categoryAccountId: null,
           impactsByAccountId: const {},
         ),
-        summary: const AmortizationBusinessItemSummary(
+        summary: const AmortizationBusinessActivitySummary(
           kind: AmortizationKind.prepaidExpense,
           status: AmortizationStatus.active,
           originalAmount: Money(minorUnits: 10000),
@@ -939,7 +939,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -950,8 +950,8 @@ void main() {
     });
 
     test('installments use category identity and remaining principal copy', () {
-      final item = _businessItem(
-        summary: const InstallmentBusinessItemSummary(
+      final item = _businessActivity(
+        summary: const InstallmentBusinessActivitySummary(
           installmentType: InstallmentType.purchase,
           status: InstallmentContractStatus.active,
           principal: Money(minorUnits: 12000),
@@ -961,7 +961,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -971,8 +971,8 @@ void main() {
     });
 
     test('compact mode moves one business summary into badges', () {
-      final item = _businessItem(
-        summary: const InstallmentBusinessItemSummary(
+      final item = _businessActivity(
+        summary: const InstallmentBusinessActivitySummary(
           installmentType: InstallmentType.purchase,
           status: InstallmentContractStatus.active,
           principal: Money(minorUnits: 12000),
@@ -982,7 +982,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
         displayMode: TransactionListDisplayMode.compact,
@@ -1032,9 +1032,9 @@ void main() {
           ),
         ],
       );
-      final item = _businessItem(
+      final item = _businessActivity(
         transaction: transaction,
-        summary: const AdvanceBusinessItemSummary(
+        summary: const AdvanceBusinessActivitySummary(
           scenario: AdvanceScenario.aa,
           trackingMode: AdvanceTrackingMode.itemized,
           outstanding: Money(minorUnits: 6000),
@@ -1043,11 +1043,11 @@ void main() {
         ),
       );
 
-      final standard = buildBusinessItemRowPresentation(
+      final standard = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
-      final compact = buildBusinessItemRowPresentation(
+      final compact = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
         displayMode: TransactionListDisplayMode.compact,
@@ -1077,9 +1077,9 @@ void main() {
           ),
         ],
       );
-      final item = _businessItem(
+      final item = _businessActivity(
         transaction: transaction,
-        summary: const AdvanceBusinessItemSummary(
+        summary: const AdvanceBusinessActivitySummary(
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.itemized,
           outstanding: Money(minorUnits: 10000),
@@ -1087,11 +1087,11 @@ void main() {
         ),
       );
 
-      final standard = buildBusinessItemRowPresentation(
+      final standard = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
-      final compact = buildBusinessItemRowPresentation(
+      final compact = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
         displayMode: TransactionListDisplayMode.compact,
@@ -1121,9 +1121,9 @@ void main() {
           ),
         ],
       );
-      final item = _businessItem(
+      final item = _businessActivity(
         transaction: transaction,
-        summary: const AdvanceBusinessItemSummary(
+        summary: const AdvanceBusinessActivitySummary(
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.itemized,
           outstanding: Money(minorUnits: 30000),
@@ -1131,11 +1131,11 @@ void main() {
         ),
       );
 
-      final standard = buildBusinessItemRowPresentation(
+      final standard = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
-      final compact = buildBusinessItemRowPresentation(
+      final compact = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
         displayMode: TransactionListDisplayMode.compact,
@@ -1146,8 +1146,8 @@ void main() {
     });
 
     test('account-tracked AA keeps participant count in a fallback badge', () {
-      final item = _businessItem(
-        summary: const AdvanceBusinessItemSummary(
+      final item = _businessActivity(
+        summary: const AdvanceBusinessActivitySummary(
           scenario: AdvanceScenario.aa,
           trackingMode: AdvanceTrackingMode.account,
           outstanding: Money(minorUnits: 8000),
@@ -1156,7 +1156,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -1166,8 +1166,8 @@ void main() {
     });
 
     test('account-tracked advances do not reserve a supporting line', () {
-      final item = _businessItem(
-        summary: const AdvanceBusinessItemSummary(
+      final item = _businessActivity(
+        summary: const AdvanceBusinessActivitySummary(
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.account,
           outstanding: Money(minorUnits: 8000),
@@ -1175,7 +1175,7 @@ void main() {
         ),
       );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -1184,9 +1184,11 @@ void main() {
     });
 
     test('ordinary ledger items do not reserve a supporting line', () {
-      final item = _businessItem(summary: const LedgerBusinessItemSummary());
+      final item = _businessActivity(
+        summary: const LedgerBusinessActivitySummary(),
+      );
 
-      final row = buildBusinessItemRowPresentation(
+      final row = buildBusinessActivityRowPresentation(
         item: item,
         accountLookup: _lookup,
       );
@@ -1368,14 +1370,14 @@ TransactionReadModel _item({
   );
 }
 
-BusinessItemReadModel _businessItem({
-  required BusinessItemSummary summary,
+BusinessActivityReadModel _businessActivity({
+  required BusinessActivitySummary summary,
   TransactionReadModel? transaction,
 }) {
   final anchor = transaction ?? _item();
-  return BusinessItemReadModel.fromCandidate(
-    candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(anchor.id),
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      itemKey: BusinessActivityKey.transactionGroup(anchor.id),
       anchorTransactionId: anchor.id,
       anchorAt: anchor.occurredAt,
     ),

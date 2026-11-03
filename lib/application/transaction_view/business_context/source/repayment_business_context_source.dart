@@ -39,7 +39,7 @@ final class RepaymentBusinessContextSource
 
   TransactionDetailOwnerContext? _map(
     String? ownerId,
-    CreditRepaymentBusinessItemSummary? summary,
+    CreditRepaymentBusinessActivitySummary? summary,
   ) {
     if (ownerId == null || summary == null) return null;
     return RepaymentTransactionDetailOwnerContext(

@@ -8,8 +8,8 @@ import '../../../orchestration/advance/query/advance_transaction_view_read_model
 import '../../transaction_view_query_port_api.dart';
 
 /// Consumer-side adapter over advance metadata and ledger-owned facts.
-final class AdvanceBusinessItemSource implements BusinessItemSource {
-  const AdvanceBusinessItemSource(
+final class AdvanceBusinessActivitySource implements BusinessActivitySource {
+  const AdvanceBusinessActivitySource(
     this._anchors,
     this._cases,
     this._transactions,
@@ -26,20 +26,22 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
   Set<String> get supportedItemTypes => const {orchestrationAdvanceOwnerType};
 
   @override
-  Future<BusinessItemSourcePage> findAnchorPage(
-    BusinessItemPageQuery query,
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _anchors.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) {
     return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
   }
 
   @override
-  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Iterable<BusinessItemAnchorCandidate> anchors,
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     final values = anchors.toList();
     final (cases, transactions) = await (
@@ -57,15 +59,15 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
     };
   }
 
-  AdvanceBusinessItemSummary _summaryFor(
-    BusinessItemAnchorCandidate anchor,
+  AdvanceBusinessActivitySummary _summaryFor(
+    BusinessActivityAnchorCandidate anchor,
     Map<String, AdvanceCase> cases,
     Map<String, TransactionReadModel> transactionsById,
   ) {
     final advanceCase = cases[anchor.itemKey.id];
     if (advanceCase == null) {
       throw StateError(
-        'Advance case ${anchor.itemKey.id} for business item was not found.',
+        'Advance case ${anchor.itemKey.id} for business activity was not found.',
       );
     }
     final facts = transactionsById[anchor.anchorTransactionId]?.advanceSummary;
@@ -75,7 +77,7 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
         'were not found.',
       );
     }
-    return AdvanceBusinessItemSummary(
+    return AdvanceBusinessActivitySummary(
       scenario: advanceCase.scenario,
       trackingMode: advanceCase.trackingMode,
       outstanding: facts.outstanding,
@@ -84,7 +86,7 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
     );
   }
 
-  AdvanceTransactionViewQuery _queryFor(BusinessItemPageQuery query) {
+  AdvanceTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
     return AdvanceTransactionViewQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
@@ -105,13 +107,13 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
     );
   }
 
-  BusinessItemSourcePage _mapPage(AdvanceTransactionViewAnchorPage page) {
-    return BusinessItemSourcePage(
+  BusinessActivitySourcePage _mapPage(AdvanceTransactionViewAnchorPage page) {
+    return BusinessActivitySourcePage(
       hasMore: page.hasMore,
       anchors: [
         for (final anchor in page.anchors)
-          BusinessItemAnchorCandidate(
-            itemKey: BusinessItemKey(
+          BusinessActivityAnchorCandidate(
+            itemKey: BusinessActivityKey(
               type: orchestrationAdvanceOwnerType,
               id: anchor.ownerId,
             ),

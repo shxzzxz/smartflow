@@ -1,12 +1,12 @@
 import '../../../ledger/ledger_query_api.dart';
 
-/// 账务影响流的应用查询语义。
+/// 交易明细视图的应用查询语义。
 ///
 /// 该查询只包含 [TransactionImpactMatch]，结果单位是一笔实际交易。默认
 /// 包含父交易和子交易；需要顶层汇总时可显式关闭子交易。实际数据访问继续
 /// 复用 [TransactionQueryService]，不复制仓储或 SQL。
-final class LedgerImpactFeedQuery {
-  LedgerImpactFeedQuery({
+final class TransactionFeedQuery {
+  TransactionFeedQuery({
     this.match = const TransactionImpactMatch(),
     this.occurredFrom,
     this.occurredUntil,

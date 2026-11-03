@@ -40,7 +40,7 @@ final class TransactionDetailContext {
   /// The group containing [transaction].
   final TransactionDetailGroup currentGroup;
 
-  /// The group containing the business-item anchor transaction.
+  /// The group containing the business-activity anchor transaction.
   ///
   /// This differs from [currentGroup] for amortization recognition entries:
   /// the anchor remains the plan's initial transaction.

@@ -12,10 +12,10 @@ abstract interface class CreditTransactionViewQueryService {
     CreditTransactionViewQuery query,
   );
 
-  Future<Map<String, CreditRepaymentBusinessItemSummary>>
+  Future<Map<String, CreditRepaymentBusinessActivitySummary>>
   findRepaymentSummaries(Set<String> repaymentIds);
 
-  Stream<CreditRepaymentBusinessItemSummary?> watchRepaymentSummary(
+  Stream<CreditRepaymentBusinessActivitySummary?> watchRepaymentSummary(
     String repaymentId,
   );
 }
@@ -42,13 +42,13 @@ final class CreditTransactionViewQueryServiceImpl
   ) => _source.watchAnchorPage(query);
 
   @override
-  Future<Map<String, CreditRepaymentBusinessItemSummary>>
+  Future<Map<String, CreditRepaymentBusinessActivitySummary>>
   findRepaymentSummaries(Set<String> repaymentIds) {
     return _source.findRepaymentSummaries(repaymentIds);
   }
 
   @override
-  Stream<CreditRepaymentBusinessItemSummary?> watchRepaymentSummary(
+  Stream<CreditRepaymentBusinessActivitySummary?> watchRepaymentSummary(
     String repaymentId,
   ) {
     return _changes.watchChanges().asyncMap((_) async {

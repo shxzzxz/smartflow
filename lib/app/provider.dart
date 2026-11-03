@@ -47,7 +47,7 @@ import '../infrastructure/orchestration/advance/transaction_view/drift_advance_t
 import '../infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
-import '../infrastructure/transaction_view/business_item/drift_ledger_business_item_source.dart';
+import '../infrastructure/transaction_view/business_activity/drift_ledger_business_activity_source.dart';
 import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
 import '../application/ledger/tag/query/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
@@ -60,9 +60,9 @@ import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
 import '../application/transaction_view/transaction_view_query_api.dart';
-import '../application/transaction_view/business_item/source/advance_business_item_source.dart';
-import '../application/transaction_view/business_item/source/amortization_business_item_source.dart';
-import '../application/transaction_view/business_item/source/credit_business_item_source.dart';
+import '../application/transaction_view/business_activity/source/advance_business_activity_source.dart';
+import '../application/transaction_view/business_activity/source/amortization_business_activity_source.dart';
+import '../application/transaction_view/business_activity/source/credit_business_activity_source.dart';
 import '../application/transaction_view/business_context/source/advance_business_context_source.dart';
 import '../application/transaction_view/business_context/source/amortization_business_context_source.dart';
 import '../application/transaction_view/business_context/source/installment_business_context_source.dart';
@@ -587,21 +587,21 @@ TransactionFeedQueryService transactionFeedQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-BusinessItemQueryService businessItemQueryService(Ref ref) {
+BusinessActivityQueryService businessActivityQueryService(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
-  return BusinessItemQueryServiceImpl(
+  return BusinessActivityQueryServiceImpl(
     sources: [
-      DriftLedgerBusinessItemSource(database),
-      AdvanceBusinessItemSource(
+      DriftLedgerBusinessActivitySource(database),
+      AdvanceBusinessActivitySource(
         ref.watch(advanceTransactionViewQueryServiceProvider),
         ref.watch(advanceCaseQueryServiceProvider),
         ref.watch(transactionQueryServiceProvider),
       ),
-      AmortizationBusinessItemSource(
+      AmortizationBusinessActivitySource(
         ref.watch(amortizationTransactionViewQueryServiceProvider),
         ref.watch(amortizationPlanQueryServiceProvider),
       ),
-      CreditBusinessItemSource(
+      CreditBusinessActivitySource(
         ref.watch(creditTransactionViewQueryServiceProvider),
         ref.watch(installmentQueryServiceProvider),
       ),

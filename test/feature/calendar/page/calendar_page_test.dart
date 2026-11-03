@@ -27,7 +27,7 @@ void main() {
     await _pumpCalendar(
       tester,
       dayTransactions: [
-        _businessItem(_selectedDate.add(const Duration(hours: 9))),
+        _businessActivity(_selectedDate.add(const Duration(hours: 9))),
       ],
     );
 
@@ -182,17 +182,20 @@ void main() {
   testWidgets('loads the next day page when scrolled to the end', (
     tester,
   ) async {
-    final service = _FakeBusinessItemQueryService(
+    final service = _FakeBusinessActivityQueryService(
       nextPage: _page([
-        _businessItem(_selectedDate.add(const Duration(hours: 1)), id: 'older'),
+        _businessActivity(
+          _selectedDate.add(const Duration(hours: 1)),
+          id: 'older',
+        ),
       ]),
     );
     await _pumpCalendar(
       tester,
       transactionService: service,
       dayTransactions: [
-        for (var index = 0; index < calendarBusinessItemPageSize; index++)
-          _businessItem(
+        for (var index = 0; index < calendarBusinessActivityPageSize; index++)
+          _businessActivity(
             _selectedDate.add(const Duration(hours: 9)),
             id: 'tx-$index',
           ),
@@ -211,8 +214,8 @@ void main() {
 
 Future<void> _pumpCalendar(
   WidgetTester tester, {
-  required List<BusinessItemReadModel> dayTransactions,
-  _FakeBusinessItemQueryService? transactionService,
+  required List<BusinessActivityReadModel> dayTransactions,
+  _FakeBusinessActivityQueryService? transactionService,
   AppSettingsStore? settingsStore,
   List<CreditDueCalendarItemReadModel> dueItems = const [],
   List<MonthlyBillSummaryReadModel> monthlyBills = const [],
@@ -231,8 +234,8 @@ Future<void> _pumpCalendar(
         currentDateTimeProvider.overrideWith(
           (ref) => _selectedDate.add(const Duration(hours: 9)),
         ),
-        businessItemQueryServiceProvider.overrideWithValue(
-          transactionService ?? _FakeBusinessItemQueryService(),
+        businessActivityQueryServiceProvider.overrideWithValue(
+          transactionService ?? _FakeBusinessActivityQueryService(),
         ),
         creditAccountQueryServiceProvider.overrideWithValue(
           _FakeCreditAccountQueryService(
@@ -243,11 +246,12 @@ Future<void> _pumpCalendar(
         accountQueryServiceProvider.overrideWithValue(
           _FakeAccountQueryService(),
         ),
-        calendarBusinessItemsProvider(_selectedDate).overrideWith(
+        calendarBusinessActivitiesProvider(_selectedDate).overrideWith(
           (ref) => Stream.value(
             _page(
               dayTransactions,
-              hasMore: dayTransactions.length >= calendarBusinessItemPageSize,
+              hasMore:
+                  dayTransactions.length >= calendarBusinessActivityPageSize,
             ),
           ),
         ),
@@ -363,24 +367,27 @@ TransactionReadModel _item(DateTime occurredAt, {String id = 'tx-1'}) {
   );
 }
 
-BusinessItemReadModel _businessItem(DateTime occurredAt, {String id = 'tx-1'}) {
+BusinessActivityReadModel _businessActivity(
+  DateTime occurredAt, {
+  String id = 'tx-1',
+}) {
   final transaction = _item(occurredAt, id: id);
-  return BusinessItemReadModel.fromCandidate(
-    candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(id),
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      itemKey: BusinessActivityKey.transactionGroup(id),
       anchorTransactionId: id,
       anchorAt: transaction.occurredAt,
     ),
     anchorTransaction: transaction,
-    summary: const LedgerBusinessItemSummary(),
+    summary: const LedgerBusinessActivitySummary(),
   );
 }
 
-BusinessItemPage _page(
-  List<BusinessItemReadModel> items, {
+BusinessActivityPage _page(
+  List<BusinessActivityReadModel> items, {
   bool hasMore = false,
 }) {
-  return BusinessItemPage(items: items, hasMore: hasMore);
+  return BusinessActivityPage(items: items, hasMore: hasMore);
 }
 
 CashflowComparison _comparison() {
@@ -414,21 +421,22 @@ class _InMemoryAppSettingsStore implements AppSettingsStore {
   }
 }
 
-class _FakeBusinessItemQueryService implements BusinessItemQueryService {
-  _FakeBusinessItemQueryService({BusinessItemPage? nextPage})
+class _FakeBusinessActivityQueryService
+    implements BusinessActivityQueryService {
+  _FakeBusinessActivityQueryService({BusinessActivityPage? nextPage})
     : _nextPage = nextPage ?? _page(const []);
 
-  final BusinessItemPage _nextPage;
-  final queries = <BusinessItemPageQuery>[];
+  final BusinessActivityPage _nextPage;
+  final queries = <BusinessActivityPageQuery>[];
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
     queries.add(query);
     return const Stream.empty();
   }
 
   @override
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     queries.add(query);
     return _nextPage;
   }

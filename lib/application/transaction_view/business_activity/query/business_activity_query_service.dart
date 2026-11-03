@@ -1,36 +1,37 @@
 import 'dart:async';
 
 import '../../../ledger/ledger_query_api.dart';
-import 'business_item_queries.dart';
-import 'business_item_read_models.dart';
-import 'business_item_source.dart';
+import 'business_activity_queries.dart';
+import 'business_activity_read_models.dart';
+import 'business_activity_source.dart';
 
-/// 跨业务来源的业务事项查询用例。
+/// 跨业务来源的业务活动查询用例。
 ///
 /// 实现负责合并各来源锚点、确定全局 `hasMore`、批量加载摘要和校验锚点
 /// 交易。来源查询已经完成全部筛选和游标条件，本服务不得补做业务过滤。
-abstract interface class BusinessItemQueryService {
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query);
+abstract interface class BusinessActivityQueryService {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query);
 
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query);
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query);
 }
 
 /// Merges bounded source pages and loads only the resulting page in batches.
-final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
-  BusinessItemQueryServiceImpl({
-    required Iterable<BusinessItemSource> sources,
+final class BusinessActivityQueryServiceImpl
+    implements BusinessActivityQueryService {
+  BusinessActivityQueryServiceImpl({
+    required Iterable<BusinessActivitySource> sources,
     required TransactionBatchQueryService transactionQuery,
   }) : _sources = List.unmodifiable(sources),
        _transactionQuery = transactionQuery;
 
-  final List<BusinessItemSource> _sources;
+  final List<BusinessActivitySource> _sources;
   final TransactionBatchQueryService _transactionQuery;
 
   @override
-  Future<BusinessItemPage> findPage(BusinessItemPageQuery query) async {
+  Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     final sources = _sourcesFor(query);
     if (sources.isEmpty) {
-      return BusinessItemPage(items: const [], hasMore: false);
+      return BusinessActivityPage(items: const [], hasMore: false);
     }
     final pages = await Future.wait(
       sources.map((source) => source.findAnchorPage(query)),
@@ -39,10 +40,12 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
   }
 
   @override
-  Stream<BusinessItemPage> watchPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query) {
     final sources = _sourcesFor(query);
     if (sources.isEmpty) {
-      return Stream.value(BusinessItemPage(items: const [], hasMore: false));
+      return Stream.value(
+        BusinessActivityPage(items: const [], hasMore: false),
+      );
     }
     final streams = sources.map((source) => source.watchAnchorPage(query));
     return _combineLatest(
@@ -50,10 +53,10 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     ).asyncMap((pages) => _assemblePage(query, sources, pages));
   }
 
-  Future<BusinessItemPage> _assemblePage(
-    BusinessItemPageQuery query,
-    List<BusinessItemSource> sources,
-    List<BusinessItemSourcePage> pages,
+  Future<BusinessActivityPage> _assemblePage(
+    BusinessActivityPageQuery query,
+    List<BusinessActivitySource> sources,
+    List<BusinessActivitySourcePage> pages,
   ) async {
     final merged = <_SourcedCandidate>[];
     for (var sourceIndex = 0; sourceIndex < pages.length; sourceIndex++) {
@@ -78,7 +81,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     merged.sort(_compareCandidates);
 
     final unique = <_SourcedCandidate>[];
-    final seenKeys = <BusinessItemKey>{};
+    final seenKeys = <BusinessActivityKey>{};
     for (final candidate in merged) {
       if (seenKeys.add(candidate.candidate.itemKey)) {
         unique.add(candidate);
@@ -87,10 +90,10 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     final hasMore = unique.length > query.limit;
     final selected = hasMore ? unique.take(query.limit).toList() : unique;
     if (selected.isEmpty) {
-      return BusinessItemPage(items: const [], hasMore: false);
+      return BusinessActivityPage(items: const [], hasMore: false);
     }
 
-    final anchorsBySource = <int, List<BusinessItemAnchorCandidate>>{};
+    final anchorsBySource = <int, List<BusinessActivityAnchorCandidate>>{};
     for (final candidate in selected) {
       anchorsBySource
           .putIfAbsent(candidate.sourceIndex, () => [])
@@ -104,7 +107,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
         if (anchorsBySource[sourceIndex] case final anchors?)
           sources[sourceIndex].findSummaries(anchors)
         else
-          Future.value(const <BusinessItemKey, BusinessItemSummary>{}),
+          Future.value(const <BusinessActivityKey, BusinessActivitySummary>{}),
     ];
     final summariesFuture = Future.wait(summaryFutures);
     final transactions = await transactionFuture;
@@ -113,7 +116,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     };
     final summariesBySource = await summariesFuture;
 
-    return BusinessItemPage(
+    return BusinessActivityPage(
       hasMore: hasMore,
       items: [
         for (final sourced in selected)
@@ -126,9 +129,9 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     );
   }
 
-  BusinessItemReadModel _buildReadModel(
+  BusinessActivityReadModel _buildReadModel(
     _SourcedCandidate sourced,
-    Map<BusinessItemKey, BusinessItemSummary> summaries,
+    Map<BusinessActivityKey, BusinessActivitySummary> summaries,
     Map<String, TransactionReadModel> transactionsById,
   ) {
     final candidate = sourced.candidate;
@@ -141,11 +144,11 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     final summary = summaries[candidate.itemKey];
     if (summary == null) {
       throw StateError(
-        'Summary for business item ${candidate.itemKey.type}:'
+        'Summary for business activity ${candidate.itemKey.type}:'
         '${candidate.itemKey.id} was not found.',
       );
     }
-    return BusinessItemReadModel.fromCandidate(
+    return BusinessActivityReadModel.fromCandidate(
       candidate: candidate,
       anchorTransaction: transaction,
       summary: summary,
@@ -158,7 +161,7 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
     return right.candidate.itemKey.compareTo(left.candidate.itemKey);
   }
 
-  List<BusinessItemSource> _sourcesFor(BusinessItemPageQuery query) {
+  List<BusinessActivitySource> _sourcesFor(BusinessActivityPageQuery query) {
     final itemTypes = query.itemTypes;
     if (itemTypes == null) return _sources;
     return List.unmodifiable(
@@ -173,7 +176,7 @@ final class _SourcedCandidate {
   const _SourcedCandidate({required this.sourceIndex, required this.candidate});
 
   final int sourceIndex;
-  final BusinessItemAnchorCandidate candidate;
+  final BusinessActivityAnchorCandidate candidate;
 }
 
 Stream<List<T>> _combineLatest<T>(Iterable<Stream<T>> streams) {

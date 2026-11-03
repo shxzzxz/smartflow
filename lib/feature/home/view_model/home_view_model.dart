@@ -15,7 +15,7 @@ import '../../shared/view_model/app_settings_view_model.dart';
 
 part 'home_view_model.g.dart';
 
-const homeBusinessItemPageSize = 50;
+const homeBusinessActivityPageSize = 50;
 final _logger = Logger('feature.home');
 
 @riverpod
@@ -95,22 +95,25 @@ class HomeBatchMode extends _$HomeBatchMode {
 }
 
 @riverpod
-Stream<BusinessItemPage> homeBusinessItems(Ref ref, DateTime visibleMonth) {
+Stream<BusinessActivityPage> homeBusinessActivities(
+  Ref ref,
+  DateTime visibleMonth,
+) {
   final filter = ref.watch(
     homeViewModelProvider.select((state) => state.transactionFilter),
   );
   return ref
-      .watch(businessItemQueryServiceProvider)
-      .watchPage(_homeBusinessItemQuery(visibleMonth, filter));
+      .watch(businessActivityQueryServiceProvider)
+      .watchPage(_homeBusinessActivityQuery(visibleMonth, filter));
 }
 
-BusinessItemPageQuery _homeBusinessItemQuery(
+BusinessActivityPageQuery _homeBusinessActivityQuery(
   DateTime visibleMonth,
   HomeTransactionFilter filter, {
-  BusinessItemCursor? before,
+  BusinessActivityCursor? before,
 }) {
   final month = MonthKey(year: visibleMonth.year, month: visibleMonth.month);
-  return BusinessItemPageQuery(
+  return BusinessActivityPageQuery(
     categoryAccountIds: filter.categoryAccountIds,
     settlementAccountIds: filter.settlementAccountIds,
     tagIds: filter.tagIds,
@@ -118,7 +121,7 @@ BusinessItemPageQuery _homeBusinessItemQuery(
     occurredFrom: month.start,
     occurredUntil: month.nextMonthStart,
     before: before,
-    limit: homeBusinessItemPageSize,
+    limit: homeBusinessActivityPageSize,
   );
 }
 
@@ -139,7 +142,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
       _refreshRequested = false;
     }
     _activeFilter = filter;
-    final provider = homeBusinessItemsProvider(visibleMonth);
+    final provider = homeBusinessActivitiesProvider(visibleMonth);
     final items = ref.read(provider);
     ref.listen(provider, (_, next) => _applyFirstPage(next));
     return switch (items) {
@@ -155,7 +158,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     };
   }
 
-  void _applyFirstPage(AsyncValue<BusinessItemPage> next) {
+  void _applyFirstPage(AsyncValue<BusinessActivityPage> next) {
     final current = state;
     switch (next) {
       case AsyncData(:final value):
@@ -169,11 +172,11 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
 
   void _applyFirstPageData(
     HomeTransactionFeedState current,
-    BusinessItemPage page,
+    BusinessActivityPage page,
   ) {
     if (_refreshRequested ||
         current is! HomeTransactionFeedLoaded ||
-        current.items.length <= homeBusinessItemPageSize) {
+        current.items.length <= homeBusinessActivityPageSize) {
       _refreshRequested = false;
       _requestGeneration += 1;
       state = HomeTransactionFeedState.loaded(
@@ -221,9 +224,9 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     try {
       final filter = ref.read(homeViewModelProvider).transactionFilter;
       final nextPage = await ref
-          .read(businessItemQueryServiceProvider)
+          .read(businessActivityQueryServiceProvider)
           .findPage(
-            _homeBusinessItemQuery(
+            _homeBusinessActivityQuery(
               visibleMonth,
               filter,
               before: current.nextCursor,
@@ -252,7 +255,7 @@ class HomeTransactionFeedViewModel extends _$HomeTransactionFeedViewModel {
     _requestGeneration += 1;
     _refreshRequested = true;
     state = current.copyWith(hasPendingRefresh: false, isRefreshing: true);
-    ref.invalidate(homeBusinessItemsProvider(visibleMonth));
+    ref.invalidate(homeBusinessActivitiesProvider(visibleMonth));
   }
 }
 
@@ -371,7 +374,7 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
       totalBudget: budgetReportValue.totalBudget,
       metric: cashflowPeriodMetric,
     ),
-    groups: groupBusinessItemsByDay(
+    groups: groupBusinessActivitiesByDay(
       items: transactionValues.items,
       accountLookup: lookup,
       dailySummaries: dailySummaryValues,
@@ -538,9 +541,9 @@ sealed class HomeTransactionFeedState {
       HomeTransactionFeedError;
 
   const factory HomeTransactionFeedState.loaded({
-    required List<BusinessItemReadModel> items,
+    required List<BusinessActivityReadModel> items,
     required bool hasMore,
-    BusinessItemCursor? nextCursor,
+    BusinessActivityCursor? nextCursor,
     bool isLoadingMore,
     String? loadMoreErrorMessage,
     bool hasPendingRefresh,
@@ -571,9 +574,9 @@ final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
     this.refreshErrorMessage,
   });
 
-  final List<BusinessItemReadModel> items;
+  final List<BusinessActivityReadModel> items;
   final bool hasMore;
-  final BusinessItemCursor? nextCursor;
+  final BusinessActivityCursor? nextCursor;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
   final bool hasPendingRefresh;
@@ -581,9 +584,9 @@ final class HomeTransactionFeedLoaded extends HomeTransactionFeedState {
   final String? refreshErrorMessage;
 
   HomeTransactionFeedLoaded copyWith({
-    List<BusinessItemReadModel>? items,
+    List<BusinessActivityReadModel>? items,
     bool? hasMore,
-    BusinessItemCursor? nextCursor,
+    BusinessActivityCursor? nextCursor,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
     bool? hasPendingRefresh,

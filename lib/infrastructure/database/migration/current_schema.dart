@@ -56,10 +56,10 @@ Future<void> createCurrentSchema(
     'CREATE INDEX amortization_allocations_subject_idx '
     'ON amortization_allocations (subject_type, subject_id, dimension)',
   );
-  await _createBusinessItemIndexes(database);
+  await _createBusinessActivityIndexes(database);
 }
 
-Future<void> _createBusinessItemIndexes(AppDatabase database) async {
+Future<void> _createBusinessActivityIndexes(AppDatabase database) async {
   await database.customStatement(
     'CREATE INDEX IF NOT EXISTS transactions_top_level_owner_occurred_idx '
     'ON transactions (owner_type, occurred_at DESC, owner_id DESC, id DESC) '

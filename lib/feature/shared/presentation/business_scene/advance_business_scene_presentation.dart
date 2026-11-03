@@ -9,11 +9,11 @@ import '../transaction_badge_presentation.dart';
 import 'business_scene_presentation.dart';
 import 'transaction_adjustment_presentation.dart';
 
-BusinessItemRowContent presentAdvanceBusinessItemRow(
-  BusinessItemReadModel item,
+BusinessActivityRowContent presentAdvanceBusinessActivityRow(
+  BusinessActivityReadModel item,
 ) {
-  final summary = item.summary as AdvanceBusinessItemSummary;
-  return BusinessItemRowContent(
+  final summary = item.summary as AdvanceBusinessActivitySummary;
+  return BusinessActivityRowContent(
     preferCategoryArtwork: item.anchorTransaction.categoryLines.isNotEmpty,
     standardSummary: _standardSummary(item, summary),
     standardBadges: _standardFallbackBadges(summary),
@@ -22,8 +22,8 @@ BusinessItemRowContent presentAdvanceBusinessItemRow(
 }
 
 String? _standardSummary(
-  BusinessItemReadModel item,
-  AdvanceBusinessItemSummary summary,
+  BusinessActivityReadModel item,
+  AdvanceBusinessActivitySummary summary,
 ) {
   if (summary.trackingMode == AdvanceTrackingMode.account) {
     return null;
@@ -51,8 +51,8 @@ String? _standardSummary(
 }
 
 String? _compactBadgeLabel(
-  BusinessItemReadModel item,
-  AdvanceBusinessItemSummary summary,
+  BusinessActivityReadModel item,
+  AdvanceBusinessActivitySummary summary,
 ) {
   final scenarioLabel = _scenarioLabel(summary);
   if (summary.scenario == AdvanceScenario.aa ||
@@ -72,7 +72,7 @@ String? _compactBadgeLabel(
 
 ({Money received, Money currentReceivable})? _advanceProgress(
   TransactionReadModel transaction,
-  AdvanceBusinessItemSummary summary,
+  AdvanceBusinessActivitySummary summary,
 ) {
   final received = transaction.advanceSummary?.receivedAmount ?? Money.zero();
   final currentReceivable = received + summary.outstanding;
@@ -80,7 +80,7 @@ String? _compactBadgeLabel(
   return (received: received, currentReceivable: currentReceivable);
 }
 
-String _scenarioLabel(AdvanceBusinessItemSummary summary) {
+String _scenarioLabel(AdvanceBusinessActivitySummary summary) {
   return switch (summary.scenario) {
     AdvanceScenario.aa => switch (summary.aaPeopleCount) {
       final count? => 'AA $count人',
@@ -103,7 +103,7 @@ List<String> _gapParts(TransactionReadModel transaction) {
 }
 
 List<TransactionBadgePresentation> _standardFallbackBadges(
-  AdvanceBusinessItemSummary summary,
+  AdvanceBusinessActivitySummary summary,
 ) {
   if (summary.trackingMode == AdvanceTrackingMode.account &&
       summary.scenario == AdvanceScenario.aa &&
@@ -119,8 +119,8 @@ List<TransactionBadgePresentation> _standardFallbackBadges(
 }
 
 TransactionBadgePresentation? _compactBadgePresentation(
-  BusinessItemReadModel item,
-  AdvanceBusinessItemSummary summary,
+  BusinessActivityReadModel item,
+  AdvanceBusinessActivitySummary summary,
 ) {
   final label = _compactBadgeLabel(item, summary);
   return label == null

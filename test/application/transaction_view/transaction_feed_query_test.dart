@@ -1,73 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
-import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
-
-class _MockTransactionQueryService extends Mock
-    implements TransactionQueryService {}
-
-class _MockBusinessContextQuery extends Mock
-    implements TransactionBusinessContextQuery {}
 
 void main() {
-  test('composes ledger transactions with batched business context', () async {
-    final transactions = _MockTransactionQueryService();
-    final contexts = _MockBusinessContextQuery();
-    final amortization = _transaction(
-      'recognition',
-      ownerType: orchestrationAmortizationOwnerType,
+  test('reuses ledger query semantics with all transaction hierarchy', () {
+    final before = TransactionListCursor(
+      occurredAt: DateTime(2026, 10, 12),
+      id: 'tx-2',
     );
-    final ordinary = _transaction('ordinary');
-    const query = TransactionListQuery();
-    when(
-      () => transactions.findTransactions(query),
-    ).thenAnswer((_) async => [amortization, ordinary]);
-    when(() => contexts.findContexts(any())).thenAnswer(
-      (_) async => {
-        'recognition': const AmortizationTransactionDetailOwnerContext(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan',
-          initialTransactionId: 'initial',
-          kind: AmortizationKind.prepaidExpense,
-          status: AmortizationStatus.active,
-          originalAmount: Money(minorUnits: 1200),
-          recognizedAmount: Money(minorUnits: 100),
-          remainingAmount: Money(minorUnits: 1100),
-          postedPeriodCount: 1,
-          totalPeriodCount: 12,
-          categoryAccountIds: ['membership'],
-          factKind: AmortizationTransactionFactKind.recognition,
-        ),
-      },
-    );
-    final service = TransactionFeedQueryServiceImpl(
-      transactions: transactions,
-      businessContexts: contexts,
+    final query = TransactionFeedQuery(
+      match: const TransactionImpactMatch(
+        categoryAccountIds: {'food'},
+        settlementAccountIds: {'cash'},
+      ),
+      occurredFrom: DateTime(2026, 10),
+      occurredUntil: DateTime(2026, 11),
+      limit: 20,
+      before: before,
+      tagIds: const {'travel'},
     );
 
-    final entries = await service.findTransactions(query);
+    final result = query.toTransactionListQuery();
 
-    expect(entries.map((entry) => entry.transaction.id), [
-      'recognition',
-      'ordinary',
-    ]);
-    expect(entries.first.businessContext, isNotNull);
-    expect(entries.last.businessContext, isNull);
+    expect(result.match, isA<TransactionImpactMatch>());
+    expect(result.match.categoryAccountIds, {'food'});
+    expect(result.match.settlementAccountIds, {'cash'});
+    expect(result.topLevelOnly, isFalse);
+    expect(result.limit, 20);
+    expect(result.before, same(before));
+    expect(result.tagIds, {'travel'});
   });
-}
 
-TransactionReadModel _transaction(String id, {String? ownerType}) {
-  return TransactionReadModel(
-    id: id,
-    businessPurpose: BusinessPurpose.dailyExpense,
-    occurredAt: DateTime(2026, 1),
-    primaryAmount: const Money(minorUnits: 100),
-    ownership: ownerType == null
-        ? null
-        : TransactionOwnership(ownerType: ownerType, ownerId: 'plan'),
-    isExcludedFromStats: false,
-    isExcludedFromBudget: false,
-  );
+  test('supports an explicit top-level ledger impact view', () {
+    final query = TransactionFeedQuery(includeChildTransactions: false);
+
+    expect(query.toTransactionListQuery().topLevelOnly, isTrue);
+  });
 }

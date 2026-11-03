@@ -2,11 +2,12 @@ import 'package:drift/drift.dart';
 
 import '../../../application/transaction_view/transaction_view_query_port_api.dart';
 import '../../database/app_database.dart';
-import 'business_item_query_support.dart';
+import 'business_activity_query_support.dart';
 
-/// Ownerless top-level transactions are ordinary ledger business items.
-final class DriftLedgerBusinessItemSource implements BusinessItemSource {
-  const DriftLedgerBusinessItemSource(this._db);
+/// Ownerless top-level transactions are ordinary ledger business activities.
+final class DriftLedgerBusinessActivitySource
+    implements BusinessActivitySource {
+  const DriftLedgerBusinessActivitySource(this._db);
 
   final AppDatabase _db;
 
@@ -17,35 +18,37 @@ final class DriftLedgerBusinessItemSource implements BusinessItemSource {
   Set<String> get supportedItemTypes => const {ledgerTransactionGroupItemType};
 
   @override
-  Future<BusinessItemSourcePage> findAnchorPage(
-    BusinessItemPageQuery query,
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
   ) async {
-    return businessItemSourcePageFromRows(
+    return businessActivitySourcePageFromRows(
       await _select(query).get(),
       limit: query.limit,
     );
   }
 
   @override
-  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) {
     return _select(query).watch().map(
-      (rows) => businessItemSourcePageFromRows(rows, limit: query.limit),
+      (rows) => businessActivitySourcePageFromRows(rows, limit: query.limit),
     );
   }
 
   @override
-  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Iterable<BusinessItemAnchorCandidate> anchors,
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     return {
       for (final anchor in anchors)
         if (anchor.itemKey.type == ledgerTransactionGroupItemType)
-          anchor.itemKey: const LedgerBusinessItemSummary(),
+          anchor.itemKey: const LedgerBusinessActivitySummary(),
     };
   }
 
-  Selectable<QueryRow> _select(BusinessItemPageQuery query) {
-    final sql = BusinessItemAnchorSql(
+  Selectable<QueryRow> _select(BusinessActivityPageQuery query) {
+    final sql = BusinessActivityAnchorSql(
       transactionAlias: 'anchor',
       itemType: ledgerTransactionGroupItemType,
       itemIdExpression: 'anchor.id',

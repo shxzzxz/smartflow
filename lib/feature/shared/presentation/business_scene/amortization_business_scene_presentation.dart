@@ -6,12 +6,12 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 import '../transaction_badge_presentation.dart';
 import 'business_scene_presentation.dart';
 
-BusinessItemRowContent presentAmortizationBusinessItemRow(
-  BusinessItemReadModel item,
+BusinessActivityRowContent presentAmortizationBusinessActivityRow(
+  BusinessActivityReadModel item,
 ) {
-  final summary = item.summary as AmortizationBusinessItemSummary;
+  final summary = item.summary as AmortizationBusinessActivitySummary;
   final isTerminated = summary.status == AmortizationStatus.terminated;
-  return BusinessItemRowContent(
+  return BusinessActivityRowContent(
     preferCategoryArtwork:
         item.anchorTransaction.categoryLines.isNotEmpty ||
         summary.categoryAccountIds.isNotEmpty,
@@ -28,7 +28,7 @@ BusinessItemRowContent presentAmortizationBusinessItemRow(
   );
 }
 
-String _standardSummary(AmortizationBusinessItemSummary summary) {
+String _standardSummary(AmortizationBusinessActivitySummary summary) {
   final kindLabel = switch (summary.kind) {
     AmortizationKind.prepaidExpense => '摊销预付',
     AmortizationKind.deferredIncome => '摊销预收',

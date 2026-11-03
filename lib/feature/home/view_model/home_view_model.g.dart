@@ -113,53 +113,56 @@ abstract class _$HomeBatchMode extends $Notifier<bool> {
   }
 }
 
-@ProviderFor(homeBusinessItems)
-final homeBusinessItemsProvider = HomeBusinessItemsFamily._();
+@ProviderFor(homeBusinessActivities)
+final homeBusinessActivitiesProvider = HomeBusinessActivitiesFamily._();
 
-final class HomeBusinessItemsProvider
+final class HomeBusinessActivitiesProvider
     extends
         $FunctionalProvider<
-          AsyncValue<BusinessItemPage>,
-          BusinessItemPage,
-          Stream<BusinessItemPage>
+          AsyncValue<BusinessActivityPage>,
+          BusinessActivityPage,
+          Stream<BusinessActivityPage>
         >
-    with $FutureModifier<BusinessItemPage>, $StreamProvider<BusinessItemPage> {
-  HomeBusinessItemsProvider._({
-    required HomeBusinessItemsFamily super.from,
+    with
+        $FutureModifier<BusinessActivityPage>,
+        $StreamProvider<BusinessActivityPage> {
+  HomeBusinessActivitiesProvider._({
+    required HomeBusinessActivitiesFamily super.from,
     required DateTime super.argument,
   }) : super(
          retry: null,
-         name: r'homeBusinessItemsProvider',
+         name: r'homeBusinessActivitiesProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$homeBusinessItemsHash();
+  String debugGetCreateSourceHash() => _$homeBusinessActivitiesHash();
 
   @override
   String toString() {
-    return r'homeBusinessItemsProvider'
+    return r'homeBusinessActivitiesProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $StreamProviderElement<BusinessItemPage> $createElement(
+  $StreamProviderElement<BusinessActivityPage> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<BusinessItemPage> create(Ref ref) {
+  Stream<BusinessActivityPage> create(Ref ref) {
     final argument = this.argument as DateTime;
-    return homeBusinessItems(ref, argument);
+    return homeBusinessActivities(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is HomeBusinessItemsProvider && other.argument == argument;
+    return other is HomeBusinessActivitiesProvider &&
+        other.argument == argument;
   }
 
   @override
@@ -168,24 +171,25 @@ final class HomeBusinessItemsProvider
   }
 }
 
-String _$homeBusinessItemsHash() => r'fccc6ec43ba53f98ef0d559d840f8cb8fcf565ba';
+String _$homeBusinessActivitiesHash() =>
+    r'b1e38e954972fd680be7690a0c2df796919f4455';
 
-final class HomeBusinessItemsFamily extends $Family
-    with $FunctionalFamilyOverride<Stream<BusinessItemPage>, DateTime> {
-  HomeBusinessItemsFamily._()
+final class HomeBusinessActivitiesFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<BusinessActivityPage>, DateTime> {
+  HomeBusinessActivitiesFamily._()
     : super(
         retry: null,
-        name: r'homeBusinessItemsProvider',
+        name: r'homeBusinessActivitiesProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  HomeBusinessItemsProvider call(DateTime visibleMonth) =>
-      HomeBusinessItemsProvider._(argument: visibleMonth, from: this);
+  HomeBusinessActivitiesProvider call(DateTime visibleMonth) =>
+      HomeBusinessActivitiesProvider._(argument: visibleMonth, from: this);
 
   @override
-  String toString() => r'homeBusinessItemsProvider';
+  String toString() => r'homeBusinessActivitiesProvider';
 }
 
 @ProviderFor(HomeTransactionFeedViewModel)
@@ -244,7 +248,7 @@ final class HomeTransactionFeedViewModelProvider
 }
 
 String _$homeTransactionFeedViewModelHash() =>
-    r'7cbc6c806ad85dec9fb1db1a8de7f53293991c9c';
+    r'537c78e9ff770c18c0ad5483afb0339a69cfce06';
 
 final class HomeTransactionFeedViewModelFamily extends $Family
     with
@@ -568,7 +572,7 @@ final class HomeContentProvider
   }
 }
 
-String _$homeContentHash() => r'f59b4c7a008e06f1bcd0830ce557592c628ea350';
+String _$homeContentHash() => r'615b018037fe2c283e2cc09579a86b40ccd3dba5';
 
 final class HomeContentFamily extends $Family
     with $FunctionalFamilyOverride<HomeContentState, DateTime> {

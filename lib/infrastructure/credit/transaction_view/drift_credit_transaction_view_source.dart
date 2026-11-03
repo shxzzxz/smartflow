@@ -29,7 +29,7 @@ final class DriftCreditTransactionViewSource
   }
 
   @override
-  Future<Map<String, CreditRepaymentBusinessItemSummary>>
+  Future<Map<String, CreditRepaymentBusinessActivitySummary>>
   findRepaymentSummaries(Set<String> repaymentIds) async {
     if (repaymentIds.isEmpty) return const {};
     final ids = repaymentIds.toList()..sort();
@@ -46,7 +46,7 @@ WHERE id IN (${_placeholders(ids.length)})
         .get();
     return {
       for (final row in rows)
-        row.read<String>('id'): CreditRepaymentBusinessItemSummary(
+        row.read<String>('id'): CreditRepaymentBusinessActivitySummary(
           repaymentType: RepaymentType.fromCode(
             row.read<String>('repayment_type'),
           ),

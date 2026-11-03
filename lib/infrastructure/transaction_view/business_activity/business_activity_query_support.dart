@@ -1,14 +1,14 @@
 import 'package:drift/drift.dart';
 
-import '../../../application/transaction_view/business_item/query/business_item_queries.dart';
+import '../../../application/transaction_view/business_activity/query/business_activity_queries.dart';
 
-/// Builds the common anchor predicate used by business-item sources.
+/// Builds the common anchor predicate used by business-activity sources.
 ///
 /// Source implementations provide the item identity and any owner/plan join
 /// predicate. All business filters, time bounds and the cursor are appended
 /// here so every source applies them before its own `LIMIT`.
-final class BusinessItemAnchorSql {
-  BusinessItemAnchorSql({
+final class BusinessActivityAnchorSql {
+  BusinessActivityAnchorSql({
     required this.transactionAlias,
     required this.itemType,
     required this.itemIdExpression,
@@ -29,7 +29,7 @@ final class BusinessItemAnchorSql {
     _conditions.add('($condition)');
   }
 
-  void apply(BusinessItemPageQuery query) {
+  void apply(BusinessActivityPageQuery query) {
     addCondition(
       '$transactionAlias.occurred_at >= ? AND '
       '$transactionAlias.occurred_at < ?',
@@ -53,7 +53,7 @@ final class BusinessItemAnchorSql {
       _applyTransactionLineFilter(
         settlementAccountIds,
         roles: const {'settlementIn', 'settlementOut'},
-        subqueryAlias: 'business_item_settlement_lines',
+        subqueryAlias: 'business_activity_settlement_lines',
       );
     }
 
@@ -86,7 +86,7 @@ final class BusinessItemAnchorSql {
   String get whereClause =>
       _conditions.isEmpty ? '1 = 1' : _conditions.join(' AND ');
 
-  void _applyCursor(BusinessItemCursor before) {
+  void _applyCursor(BusinessActivityCursor before) {
     final typeComparison = itemType.compareTo(before.itemKey.type);
     if (typeComparison < 0) {
       addCondition('$transactionAlias.occurred_at <= ?');
@@ -129,7 +129,7 @@ final class BusinessItemAnchorSql {
     _applyTransactionLineFilter(
       accountIds,
       roles: const {'category', 'advanceExpenseCategory', 'advanceSelfBorne'},
-      subqueryAlias: 'business_item_category_lines',
+      subqueryAlias: 'business_activity_category_lines',
     );
   }
 
@@ -169,17 +169,17 @@ final class BusinessItemAnchorSql {
   }
 }
 
-BusinessItemSourcePage businessItemSourcePageFromRows(
+BusinessActivitySourcePage businessActivitySourcePageFromRows(
   List<QueryRow> rows, {
   required int limit,
 }) {
   final hasMore = rows.length > limit;
-  return BusinessItemSourcePage(
+  return BusinessActivitySourcePage(
     hasMore: hasMore,
     anchors: [
       for (final row in rows.take(limit + 1))
-        BusinessItemAnchorCandidate(
-          itemKey: BusinessItemKey(
+        BusinessActivityAnchorCandidate(
+          itemKey: BusinessActivityKey(
             type: row.read<String>('item_type'),
             id: row.read<String>('item_id'),
           ),
@@ -190,10 +190,12 @@ BusinessItemSourcePage businessItemSourcePageFromRows(
   );
 }
 
-List<Variable<String>> businessItemStringVariables(Iterable<String> values) {
+List<Variable<String>> businessActivityStringVariables(
+  Iterable<String> values,
+) {
   final sorted = values.toSet().toList()..sort();
   return [for (final value in sorted) Variable<String>(value)];
 }
 
-String businessItemPlaceholders(int count) =>
+String businessActivityPlaceholders(int count) =>
     List.filled(count, '?').join(', ');

@@ -4,13 +4,15 @@ import '../transaction_badge_presentation.dart';
 
 enum BusinessSceneKind { ledger, advance, installment, repayment, amortization }
 
-BusinessSceneKind businessSceneKindForBusinessItem(BusinessItemReadModel item) {
+BusinessSceneKind businessSceneKindForBusinessActivity(
+  BusinessActivityReadModel item,
+) {
   return switch (item.summary) {
-    LedgerBusinessItemSummary() => BusinessSceneKind.ledger,
-    AdvanceBusinessItemSummary() => BusinessSceneKind.advance,
-    InstallmentBusinessItemSummary() => BusinessSceneKind.installment,
-    RepaymentBusinessItemSummary() => BusinessSceneKind.repayment,
-    AmortizationBusinessItemSummary() => BusinessSceneKind.amortization,
+    LedgerBusinessActivitySummary() => BusinessSceneKind.ledger,
+    AdvanceBusinessActivitySummary() => BusinessSceneKind.advance,
+    InstallmentBusinessActivitySummary() => BusinessSceneKind.installment,
+    RepaymentBusinessActivitySummary() => BusinessSceneKind.repayment,
+    AmortizationBusinessActivitySummary() => BusinessSceneKind.amortization,
   };
 }
 
@@ -25,8 +27,8 @@ BusinessSceneKind businessSceneKindForDetail(TransactionDetailContext context) {
   };
 }
 
-class BusinessItemRowContent {
-  const BusinessItemRowContent({
+class BusinessActivityRowContent {
+  const BusinessActivityRowContent({
     this.titleOverride,
     this.preferCategoryArtwork = false,
     this.categoryAccountIds = const [],

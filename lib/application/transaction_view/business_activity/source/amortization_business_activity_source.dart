@@ -6,8 +6,9 @@ import '../../../orchestration/amortization/query/amortization_transaction_view_
 import '../../transaction_view_query_port_api.dart';
 
 /// Consumer-side adapter over amortization anchors and reusable plan queries.
-final class AmortizationBusinessItemSource implements BusinessItemSource {
-  const AmortizationBusinessItemSource(this._anchors, this._plans);
+final class AmortizationBusinessActivitySource
+    implements BusinessActivitySource {
+  const AmortizationBusinessActivitySource(this._anchors, this._plans);
 
   final AmortizationTransactionViewQueryService _anchors;
   final AmortizationPlanQueryService _plans;
@@ -21,20 +22,22 @@ final class AmortizationBusinessItemSource implements BusinessItemSource {
   };
 
   @override
-  Future<BusinessItemSourcePage> findAnchorPage(
-    BusinessItemPageQuery query,
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _anchors.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) {
     return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
   }
 
   @override
-  Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Iterable<BusinessItemAnchorCandidate> anchors,
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     final plans = await _plans.findByIds({
       for (final anchor in anchors) anchor.itemKey.id,
@@ -46,19 +49,19 @@ final class AmortizationBusinessItemSource implements BusinessItemSource {
     };
   }
 
-  AmortizationBusinessItemSummary _summaryFor(
-    BusinessItemAnchorCandidate anchor,
+  AmortizationBusinessActivitySummary _summaryFor(
+    BusinessActivityAnchorCandidate anchor,
     Map<String, AmortizationPlan> plansById,
   ) {
     final plan = plansById[anchor.itemKey.id];
     if (plan == null) {
       throw StateError(
-        'Amortization plan ${anchor.itemKey.id} for business item was not '
+        'Amortization plan ${anchor.itemKey.id} for business activity was not '
         'found.',
       );
     }
     final current = plan.currentPendingPeriod;
-    return AmortizationBusinessItemSummary(
+    return AmortizationBusinessActivitySummary(
       kind: plan.kind,
       status: plan.status,
       originalAmount: plan.originalAmount,
@@ -75,7 +78,7 @@ final class AmortizationBusinessItemSource implements BusinessItemSource {
     );
   }
 
-  AmortizationTransactionViewQuery _queryFor(BusinessItemPageQuery query) {
+  AmortizationTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
     return AmortizationTransactionViewQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
@@ -96,13 +99,15 @@ final class AmortizationBusinessItemSource implements BusinessItemSource {
     );
   }
 
-  BusinessItemSourcePage _mapPage(AmortizationTransactionViewAnchorPage page) {
-    return BusinessItemSourcePage(
+  BusinessActivitySourcePage _mapPage(
+    AmortizationTransactionViewAnchorPage page,
+  ) {
+    return BusinessActivitySourcePage(
       hasMore: page.hasMore,
       anchors: [
         for (final anchor in page.anchors)
-          BusinessItemAnchorCandidate(
-            itemKey: BusinessItemKey(
+          BusinessActivityAnchorCandidate(
+            itemKey: BusinessActivityKey(
               type: orchestrationAmortizationOwnerType,
               id: anchor.planId,
             ),

@@ -1,6 +1,6 @@
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 
-/// Credit-owned business item kinds exposed to the transaction view.
+/// Credit-owned business activity kinds exposed to the transaction view.
 enum CreditTransactionViewItemType {
   installment('credit.installment_contract'),
   repayment('credit.repayment');
@@ -80,8 +80,8 @@ final class CreditTransactionViewAnchorPage {
   final bool hasMore;
 }
 
-final class CreditRepaymentBusinessItemSummary {
-  const CreditRepaymentBusinessItemSummary({
+final class CreditRepaymentBusinessActivitySummary {
+  const CreditRepaymentBusinessActivitySummary({
     required this.repaymentType,
     required this.targetType,
     required this.targetId,

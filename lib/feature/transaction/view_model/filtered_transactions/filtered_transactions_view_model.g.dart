@@ -114,53 +114,61 @@ abstract class _$FilteredTransactionPaging extends $Notifier<int> {
   }
 }
 
-@ProviderFor(filteredBusinessItems)
-final filteredBusinessItemsProvider = FilteredBusinessItemsFamily._();
+@ProviderFor(filteredBusinessActivities)
+final filteredBusinessActivitiesProvider = FilteredBusinessActivitiesFamily._();
 
-final class FilteredBusinessItemsProvider
+final class FilteredBusinessActivitiesProvider
     extends
         $FunctionalProvider<
-          AsyncValue<BusinessItemPage>,
-          BusinessItemPage,
-          Stream<BusinessItemPage>
+          AsyncValue<BusinessActivityPage>,
+          BusinessActivityPage,
+          Stream<BusinessActivityPage>
         >
-    with $FutureModifier<BusinessItemPage>, $StreamProvider<BusinessItemPage> {
-  FilteredBusinessItemsProvider._({
-    required FilteredBusinessItemsFamily super.from,
+    with
+        $FutureModifier<BusinessActivityPage>,
+        $StreamProvider<BusinessActivityPage> {
+  FilteredBusinessActivitiesProvider._({
+    required FilteredBusinessActivitiesFamily super.from,
     required (FilteredTransactionTarget, String, int) super.argument,
   }) : super(
          retry: null,
-         name: r'filteredBusinessItemsProvider',
+         name: r'filteredBusinessActivitiesProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$filteredBusinessItemsHash();
+  String debugGetCreateSourceHash() => _$filteredBusinessActivitiesHash();
 
   @override
   String toString() {
-    return r'filteredBusinessItemsProvider'
+    return r'filteredBusinessActivitiesProvider'
         ''
         '$argument';
   }
 
   @$internal
   @override
-  $StreamProviderElement<BusinessItemPage> $createElement(
+  $StreamProviderElement<BusinessActivityPage> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<BusinessItemPage> create(Ref ref) {
+  Stream<BusinessActivityPage> create(Ref ref) {
     final argument = this.argument as (FilteredTransactionTarget, String, int);
-    return filteredBusinessItems(ref, argument.$1, argument.$2, argument.$3);
+    return filteredBusinessActivities(
+      ref,
+      argument.$1,
+      argument.$2,
+      argument.$3,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is FilteredBusinessItemsProvider && other.argument == argument;
+    return other is FilteredBusinessActivitiesProvider &&
+        other.argument == argument;
   }
 
   @override
@@ -169,35 +177,35 @@ final class FilteredBusinessItemsProvider
   }
 }
 
-String _$filteredBusinessItemsHash() =>
-    r'6a72241e7cbf830ec8ef9f07d6ab87b37325373f';
+String _$filteredBusinessActivitiesHash() =>
+    r'7daf245bb64b39d9337a51f0c48a3a2c94b7d77d';
 
-final class FilteredBusinessItemsFamily extends $Family
+final class FilteredBusinessActivitiesFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<BusinessItemPage>,
+          Stream<BusinessActivityPage>,
           (FilteredTransactionTarget, String, int)
         > {
-  FilteredBusinessItemsFamily._()
+  FilteredBusinessActivitiesFamily._()
     : super(
         retry: null,
-        name: r'filteredBusinessItemsProvider',
+        name: r'filteredBusinessActivitiesProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  FilteredBusinessItemsProvider call(
+  FilteredBusinessActivitiesProvider call(
     FilteredTransactionTarget target,
     String targetId,
     int limit,
-  ) => FilteredBusinessItemsProvider._(
+  ) => FilteredBusinessActivitiesProvider._(
     argument: (target, targetId, limit),
     from: this,
   );
 
   @override
-  String toString() => r'filteredBusinessItemsProvider';
+  String toString() => r'filteredBusinessActivitiesProvider';
 }
 
 @ProviderFor(FilteredTransactionsViewModel)
@@ -256,7 +264,7 @@ final class FilteredTransactionsViewModelProvider
 }
 
 String _$filteredTransactionsViewModelHash() =>
-    r'31b79623c5d76a2477a36c4f901a781e2dbbc4da';
+    r'80e2dd310ec1fea9cdf4fc59dba7a9fd5744c879';
 
 final class FilteredTransactionsViewModelFamily extends $Family
     with
