@@ -8,6 +8,14 @@ enum AmortizationStatus { active, completed, terminated }
 
 enum AmortizationPeriodStatus { pending, posted, zero, canceled }
 
+enum AmortizationTransactionFactKind {
+  initial,
+  recognition,
+  refund,
+  terminationRecognition,
+  terminationReturn,
+}
+
 enum AmortizationSubjectType { plan, period, refund, termination }
 
 enum AmortizationAllocationDimension { funding, category, settlement }

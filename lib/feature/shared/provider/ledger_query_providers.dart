@@ -82,14 +82,14 @@ Stream<MonthlyBudgetReport> monthlyBudgetReport(Ref ref, DateTime month) {
 }
 
 @riverpod
-Stream<List<TransactionReadModel>> transactionList(
+Stream<List<TransactionFeedEntry>> transactionFeed(
   Ref ref, {
   String? settlementAccountId,
   int limit = 50,
   int offset = 0,
 }) {
   return ref
-      .watch(transactionQueryServiceProvider)
+      .watch(transactionFeedQueryServiceProvider)
       .watchTransactions(
         LedgerImpactFeedQuery(
           match: TransactionImpactMatch(

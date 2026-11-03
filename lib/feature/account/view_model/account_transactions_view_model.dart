@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../application/ledger/ledger_query_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/ledger_query_providers.dart';
@@ -19,14 +19,14 @@ class AccountTransactionPaging extends _$AccountTransactionPaging {
 
 @riverpod
 class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
-  List<TransactionReadModel> _previousItems = const [];
+  List<TransactionFeedEntry> _previousItems = const [];
 
   @override
   AccountTransactionsState build(String accountId) {
     final pageCount = ref.watch(accountTransactionPagingProvider(accountId));
     final limit = pageCount * accountTransactionPageSize;
     final transactions = ref.watch(
-      transactionListProvider(settlementAccountId: accountId, limit: limit),
+      transactionFeedProvider(settlementAccountId: accountId, limit: limit),
     );
     final accountLookup = ref.watch(accountLookupProvider);
 
@@ -59,21 +59,21 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
         _previousItems.isEmpty
             ? const AccountTransactionsState.error(message: '加载失败，请稍后重试')
             : _loaded(
-              items: _previousItems,
-              accountLookup: lookup,
-              hasMore: true,
-              isLoadingMore: false,
-              loadMoreErrorMessage: '加载更多交易失败，请重试',
-            ),
+                items: _previousItems,
+                accountLookup: lookup,
+                hasMore: true,
+                isLoadingMore: false,
+                loadMoreErrorMessage: '加载更多交易失败，请重试',
+              ),
       AsyncLoading() =>
         _previousItems.isEmpty
             ? const AccountTransactionsState.loading()
             : _loaded(
-              items: _previousItems,
-              accountLookup: lookup,
-              hasMore: true,
-              isLoadingMore: true,
-            ),
+                items: _previousItems,
+                accountLookup: lookup,
+                hasMore: true,
+                isLoadingMore: true,
+              ),
     };
   }
 
@@ -86,7 +86,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
       if (loadMoreErrorMessage != null) {
         final pageCount = ref.read(accountTransactionPagingProvider(accountId));
         ref.invalidate(
-          transactionListProvider(
+          transactionFeedProvider(
             settlementAccountId: accountId,
             limit: pageCount * accountTransactionPageSize,
           ),
@@ -98,15 +98,15 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
   }
 
   AccountTransactionsLoaded _loaded({
-    required List<TransactionReadModel> items,
+    required List<TransactionFeedEntry> items,
     required AccountLookup accountLookup,
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
   }) {
     return AccountTransactionsLoaded(
-      groups: groupTransactionsByDay(
-        items: items,
+      groups: groupTransactionFeedEntriesByDay(
+        entries: items,
         accountLookup: accountLookup,
         amountSource: TransactionAccountImpactAmountSource(accountId),
       ),

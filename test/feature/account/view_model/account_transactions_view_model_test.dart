@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/account/view_model/account_transactions_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -12,32 +13,18 @@ import 'package:smartflow/widget/business/finance/finance_tone.dart';
 void main() {
   group('AccountTransactionsViewModel', () {
     test('builds controlled day groups in account ledger mode', () async {
-      final transactionService = _FakeTransactionQueryService();
+      final transactionService = _FakeTransactionFeedQueryService();
       final accountService = _FakeAccountQueryService(accountsById: _accounts);
-      final container = _container(
-        transactionService,
-        accountService,
-        overrides: [
-          transactionListProvider(
-            settlementAccountId: 'cash',
-            limit: accountTransactionPageSize,
-          ).overrideWith((ref) => Stream.value([_item('tx-1')])),
-        ],
-      );
+      final container = _container(transactionService, accountService);
 
       final sub = container.listen(
         accountTransactionsViewModelProvider('cash'),
         (_, _) {},
       );
       addTearDown(sub.close);
-      await container.read(
-        transactionListProvider(
-          settlementAccountId: 'cash',
-          limit: accountTransactionPageSize,
-        ).future,
-      );
       await container.read(accountLookupProvider.future);
       await container.pump();
+      transactionService.emit([_entry('tx-1')]);
       await _flush();
 
       final state = container.read(
@@ -55,30 +42,21 @@ void main() {
     test(
       'shows parent and child rows with actual account net impact',
       () async {
-        final transactionService = _FakeTransactionQueryService();
+        final transactionService = _FakeTransactionFeedQueryService();
         final accountService = _FakeAccountQueryService(
           accountsById: _accounts,
         );
-        final parent = _item(
+        final parent = _entry(
           'parent',
           occurredAt: DateTime(2026, 1, 2, 9),
           settlementDeltaMinor: -1000,
         );
-        final child = _item(
+        final child = _entry(
           'child',
           occurredAt: DateTime(2026, 1, 2, 8),
           settlementDeltaMinor: -200,
         );
-        final container = _container(
-          transactionService,
-          accountService,
-          overrides: [
-            transactionListProvider(
-              settlementAccountId: 'cash',
-              limit: accountTransactionPageSize,
-            ).overrideWith((ref) => Stream.value([parent, child])),
-          ],
-        );
+        final container = _container(transactionService, accountService);
 
         final sub = container.listen(
           accountTransactionsViewModelProvider('cash'),
@@ -87,6 +65,7 @@ void main() {
         addTearDown(sub.close);
         await container.read(accountLookupProvider.future);
         await container.pump();
+        transactionService.emit([parent, child]);
         await _flush();
 
         final loaded =
@@ -103,13 +82,13 @@ void main() {
     test(
       'loads a larger prefix once and stops at the end of the feed',
       () async {
-        final transactionService = _FakeTransactionQueryService();
+        final transactionService = _FakeTransactionFeedQueryService();
         final accountService = _FakeAccountQueryService(
           accountsById: _accounts,
         );
         final firstPage = [
           for (var i = 0; i < accountTransactionPageSize; i++)
-            _item('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
+            _entry('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
         ];
         final container = _container(transactionService, accountService);
 
@@ -143,7 +122,7 @@ void main() {
 
         transactionService.emit([
           ...firstPage,
-          _item('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
+          _entry('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
         ]);
         await _flush();
 
@@ -166,13 +145,13 @@ void main() {
     test(
       'preserves rows and retries the same prefix after load-more failure',
       () async {
-        final transactionService = _FakeTransactionQueryService();
+        final transactionService = _FakeTransactionFeedQueryService();
         final accountService = _FakeAccountQueryService(
           accountsById: _accounts,
         );
         final firstPage = [
           for (var i = 0; i < accountTransactionPageSize; i++)
-            _item('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
+            _entry('tx-$i', occurredAt: DateTime(2026, 1, 2, 8, i)),
         ];
         final container = _container(transactionService, accountService);
 
@@ -219,7 +198,7 @@ void main() {
 
         transactionService.emit([
           ...firstPage,
-          _item('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
+          _entry('tx-next', occurredAt: DateTime(2026, 1, 1, 8)),
         ]);
         await _flush();
         final recovered =
@@ -233,13 +212,13 @@ void main() {
 }
 
 ProviderContainer _container(
-  _FakeTransactionQueryService transactionService,
+  _FakeTransactionFeedQueryService transactionService,
   _FakeAccountQueryService accountService, {
   List<dynamic> overrides = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
-      transactionQueryServiceProvider.overrideWithValue(transactionService),
+      transactionFeedQueryServiceProvider.overrideWithValue(transactionService),
       accountQueryServiceProvider.overrideWithValue(accountService),
       ...overrides,
     ],
@@ -305,6 +284,20 @@ TransactionReadModel _item(
   );
 }
 
+TransactionFeedEntry _entry(
+  String id, {
+  DateTime? occurredAt,
+  int settlementDeltaMinor = -1234,
+}) {
+  return TransactionFeedEntry(
+    transaction: _item(
+      id,
+      occurredAt: occurredAt,
+      settlementDeltaMinor: settlementDeltaMinor,
+    ),
+  );
+}
+
 Account _account(
   String id,
   String name, {
@@ -320,21 +313,28 @@ Account _account(
   );
 }
 
-class _FakeTransactionQueryService implements TransactionQueryService {
+class _FakeTransactionFeedQueryService implements TransactionFeedQueryService {
   final queries = <TransactionListQuery>[];
-  final _streams = <_ReplayStream<List<TransactionReadModel>>>[];
+  final _streams = <_ReplayStream<List<TransactionFeedEntry>>>[];
 
   @override
-  Stream<List<TransactionReadModel>> watchTransactions(
+  Stream<List<TransactionFeedEntry>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
-    final stream = _ReplayStream<List<TransactionReadModel>>();
+    final stream = _ReplayStream<List<TransactionFeedEntry>>();
     _streams.add(stream);
     return stream.watch();
   }
 
-  void emit(List<TransactionReadModel> items) {
+  @override
+  Future<List<TransactionFeedEntry>> findTransactions(
+    TransactionListQuery query,
+  ) {
+    throw UnsupportedError('Only stream queries are used by this test.');
+  }
+
+  void emit(List<TransactionFeedEntry> items) {
     _streams.last.add(items);
   }
 

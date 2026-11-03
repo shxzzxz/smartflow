@@ -266,6 +266,42 @@ List<TransactionDayGroup> groupTransactionsByDay({
   ];
 }
 
+List<TransactionDayGroup> groupTransactionFeedEntriesByDay({
+  required List<TransactionFeedEntry> entries,
+  required AccountLookup accountLookup,
+  List<DailyCashflowSummary> dailySummaries = const [],
+  TransactionListAmountSource amountSource =
+      const TransactionGroupAmountSource(),
+}) {
+  final groups = <DateTime, List<TransactionRowPresentation>>{};
+  for (final entry in entries) {
+    final transaction = entry.transaction;
+    final date = normalizeDate(transaction.occurredAt);
+    groups
+        .putIfAbsent(date, () => [])
+        .add(
+          buildTransactionRowPresentation(
+            item: transaction,
+            businessContext: entry.businessContext,
+            accountLookup: accountLookup,
+            amountSource: amountSource,
+          ),
+        );
+  }
+
+  final totalsByDate = _dailySummariesByDate(dailySummaries);
+  final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [
+    for (final date in dates)
+      TransactionDayGroup(
+        date: date,
+        rows: groups[date] ?? const [],
+        incomeMinor: totalsByDate[date]?.income.minorUnits ?? 0,
+        expenseMinor: totalsByDate[date]?.expense.minorUnits ?? 0,
+      ),
+  ];
+}
+
 List<TransactionDayGroup> groupBusinessItemsByDay({
   required List<BusinessItemReadModel> items,
   required AccountLookup accountLookup,
@@ -359,6 +395,7 @@ TransactionDayGroup businessItemGroupForDate({
 TransactionRowPresentation buildTransactionRowPresentation({
   required TransactionReadModel item,
   required AccountLookup accountLookup,
+  TransactionDetailOwnerContext? businessContext,
   TransactionListAmountSource amountSource =
       const TransactionGroupAmountSource(),
 }) {
@@ -411,12 +448,32 @@ TransactionRowPresentation buildTransactionRowPresentation({
     );
   }
 
+  final contextCategoryIds = switch (businessContext) {
+    AmortizationTransactionDetailOwnerContext(:final categoryAccountIds) =>
+      categoryAccountIds,
+    _ => const <String>[],
+  };
+  final contextCategory =
+      item.categoryLines.isEmpty && contextCategoryIds.isNotEmpty
+      ? resolveTransactionCategoryIdentity(
+          transactionAccountIds: const {},
+          supplementalAccountIds: contextCategoryIds,
+          accountLookup: accountLookup,
+        )
+      : null;
+  final hasMultipleCategories =
+      _businessCategoryAccountIds(item).length > 1 ||
+      contextCategory?.hasMultiple == true;
+
   return TransactionRowPresentation(
     transactionId: item.id,
     businessPurpose: item.businessPurpose,
-    hasMultipleCategories: _businessCategoryAccountIds(item).length > 1,
-    iconKey: resolveCategoryIconKey(item, accountLookup),
-    title: transactionPrimaryLabel(item, accountLookup),
+    hasMultipleCategories: hasMultipleCategories,
+    iconKey:
+        contextCategory?.iconKey ?? resolveCategoryIconKey(item, accountLookup),
+    title: contextCategory?.hasMultiple == true
+        ? '多类别'
+        : contextCategory?.name ?? transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
     amount: AdaptiveMoneyTextPresentation(
       preciseText: formatPrimaryAmount(MoneyFormatStyle.plain),
@@ -439,6 +496,8 @@ TransactionRowPresentation buildTransactionRowPresentation({
     accountFlow: resolveAccountFlow(item, accountLookup),
     badges: buildTransactionBadges(item),
     canQuickEdit: canQuickEditTransaction(item),
+    supportingText: _businessContextSupportingText(businessContext),
+    preferCategoryArtwork: contextCategory != null,
   );
 }
 
@@ -835,6 +894,29 @@ bool canQuickEditTransaction(TransactionReadModel item) {
 
 Set<String> _businessCategoryAccountIds(TransactionReadModel item) {
   return {for (final line in item.categoryLines) ?line.accountId};
+}
+
+String? _businessContextSupportingText(TransactionDetailOwnerContext? context) {
+  if (context is! AmortizationTransactionDetailOwnerContext) return null;
+  final planLabel = switch (context.kind) {
+    AmortizationKind.prepaidExpense => '摊销预付',
+    AmortizationKind.deferredIncome => '摊销预收',
+  };
+  final action = switch (context.factKind) {
+    AmortizationTransactionFactKind.initial =>
+      context.kind == AmortizationKind.prepaidExpense ? '初始充值' : '初始收款',
+    AmortizationTransactionFactKind.recognition
+        when context.occurrencePeriodSequence != null =>
+      '第 ${context.occurrencePeriodSequence}/${context.totalPeriodCount} 期确认',
+    AmortizationTransactionFactKind.recognition => '摊销确认',
+    AmortizationTransactionFactKind.refund => '退款',
+    AmortizationTransactionFactKind.terminationRecognition => '终止确认',
+    AmortizationTransactionFactKind.terminationReturn => '终止退还',
+    null => null,
+  };
+  return action == null
+      ? '$planLabel · 已确认 ${context.postedPeriodCount}/${context.totalPeriodCount}'
+      : '$planLabel · $action';
 }
 
 bool _isAmortizationTransaction(TransactionReadModel item) =>

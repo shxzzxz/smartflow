@@ -8,6 +8,7 @@ import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
@@ -343,6 +344,9 @@ ProviderContainer _container(
   final container = ProviderContainer(
     overrides: [
       transactionQueryServiceProvider.overrideWithValue(transactionService),
+      transactionFeedQueryServiceProvider.overrideWithValue(
+        const _EmptyTransactionFeedQueryService(),
+      ),
       accountQueryServiceProvider.overrideWithValue(accountService),
       creditAccountQueryServiceProvider.overrideWithValue(
         const _FakeCreditAccountQueryService(),
@@ -461,6 +465,21 @@ InstallmentDTO _contract() {
       feeMinor: 0,
     ),
   );
+}
+
+final class _EmptyTransactionFeedQueryService
+    implements TransactionFeedQueryService {
+  const _EmptyTransactionFeedQueryService();
+
+  @override
+  Future<List<TransactionFeedEntry>> findTransactions(
+    TransactionListQuery query,
+  ) async => const [];
+
+  @override
+  Stream<List<TransactionFeedEntry>> watchTransactions(
+    TransactionListQuery query,
+  ) => Stream.value(const []);
 }
 
 class _FakeTransactionQueryService implements TransactionQueryService {

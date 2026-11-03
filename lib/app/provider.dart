@@ -63,15 +63,16 @@ import '../application/transaction_view/transaction_view_query_api.dart';
 import '../application/transaction_view/business_item/source/advance_business_item_source.dart';
 import '../application/transaction_view/business_item/source/amortization_business_item_source.dart';
 import '../application/transaction_view/business_item/source/credit_business_item_source.dart';
-import '../application/transaction_view/transaction_detail/source/advance_detail_owner_query.dart';
-import '../application/transaction_view/transaction_detail/source/amortization_detail_owner_query.dart';
-import '../application/transaction_view/transaction_detail/source/installment_detail_owner_query.dart';
-import '../application/transaction_view/transaction_detail/source/repayment_detail_owner_query.dart';
+import '../application/transaction_view/business_context/source/advance_business_context_source.dart';
+import '../application/transaction_view/business_context/source/amortization_business_context_source.dart';
+import '../application/transaction_view/business_context/source/installment_business_context_source.dart';
+import '../application/transaction_view/business_context/source/repayment_business_context_source.dart';
 import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import '../application/orchestration/advance/query/advance_case_query_service.dart';
 import '../application/orchestration/advance/query/advance_transaction_view_query_service.dart';
 import '../application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import '../application/orchestration/amortization/query/amortization_plan_query_service.dart';
+import '../application/orchestration/amortization/query/amortization_transaction_context_query.dart';
 import '../application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
 import '../application/orchestration/task/amortization_generation_task.dart';
 import '../application/import/import_plan_app_service.dart';
@@ -473,6 +474,14 @@ AmortizationPlanQueryService amortizationPlanQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+AmortizationTransactionContextQueryService
+amortizationTransactionContextQueryService(Ref ref) {
+  return AmortizationTransactionContextQueryService(
+    ref.watch(amortizationPlanQueryServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 AdvanceCaseQueryService advanceCaseQueryService(Ref ref) {
   return AdvanceCaseQueryService(
     repository: ref.watch(advanceCaseRepositoryProvider),
@@ -570,6 +579,14 @@ TransactionQueryService transactionQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionFeedQueryService transactionFeedQueryService(Ref ref) {
+  return TransactionFeedQueryServiceImpl(
+    transactions: ref.watch(transactionQueryServiceProvider),
+    businessContexts: ref.watch(transactionBusinessContextQueryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 BusinessItemQueryService businessItemQueryService(Ref ref) {
   final database = ref.watch(appDatabaseProvider);
   return BusinessItemQueryServiceImpl(
@@ -618,19 +635,28 @@ CreditTransactionViewQueryService creditTransactionViewQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+TransactionBusinessContextQuery transactionBusinessContextQuery(Ref ref) {
+  return TransactionBusinessContextQueryImpl(
+    sources: [
+      AdvanceBusinessContextSource(ref.watch(advanceCaseQueryServiceProvider)),
+      InstallmentBusinessContextSource(
+        ref.watch(installmentQueryServiceProvider),
+      ),
+      RepaymentBusinessContextSource(
+        ref.watch(creditTransactionViewQueryServiceProvider),
+      ),
+      AmortizationBusinessContextSource(
+        ref.watch(amortizationTransactionContextQueryServiceProvider),
+      ),
+    ],
+  );
+}
+
+@Riverpod(keepAlive: true)
 TransactionDetailContextQuery transactionDetailContextQuery(Ref ref) {
   return TransactionDetailContextQueryImpl(
     transactions: ref.watch(transactionQueryServiceProvider),
-    ownerQueries: [
-      AdvanceDetailOwnerQuery(ref.watch(advanceCaseQueryServiceProvider)),
-      InstallmentDetailOwnerQuery(ref.watch(installmentQueryServiceProvider)),
-      RepaymentDetailOwnerQuery(
-        ref.watch(creditTransactionViewQueryServiceProvider),
-      ),
-      AmortizationDetailOwnerQuery(
-        ref.watch(amortizationPlanQueryServiceProvider),
-      ),
-    ],
+    businessContexts: ref.watch(transactionBusinessContextQueryProvider),
   );
 }
 

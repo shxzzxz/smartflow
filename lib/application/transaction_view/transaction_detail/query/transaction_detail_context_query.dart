@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import '../../../../domain/ledger/valobj/transaction_ownership.dart';
 import '../../../ledger/transaction/query/transaction_query_service.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import 'port/transaction_detail_owner_query.dart';
+import '../../business_context/query/transaction_business_context_query.dart';
 import 'transaction_detail_context_read_models.dart';
 
 /// Loads all ledger and owner facts needed to compose a transaction detail.
@@ -20,12 +19,12 @@ final class TransactionDetailContextQueryImpl
     implements TransactionDetailContextQuery {
   TransactionDetailContextQueryImpl({
     required TransactionQueryService transactions,
-    required Iterable<TransactionDetailOwnerQuery> ownerQueries,
+    required TransactionBusinessContextQuery businessContexts,
   }) : _transactions = transactions,
-       _ownerQueries = List.unmodifiable(ownerQueries);
+       _businessContexts = businessContexts;
 
   final TransactionQueryService _transactions;
-  final List<TransactionDetailOwnerQuery> _ownerQueries;
+  final TransactionBusinessContextQuery _businessContexts;
 
   @override
   Future<TransactionDetailContext?> findById(String transactionId) async {
@@ -39,8 +38,11 @@ final class TransactionDetailContextQueryImpl
   Stream<TransactionDetailContext?> watchById(String transactionId) {
     late StreamController<TransactionDetailContext?> controller;
     StreamSubscription<TransactionReadModel?>? transactionSubscription;
-    StreamSubscription<TransactionDetailOwnerContext?>? ownerSubscription;
+    StreamSubscription<Map<String, TransactionDetailOwnerContext>>?
+    ownerSubscription;
     TransactionReadModel? latestTransaction;
+    Map<String, TransactionDetailOwnerContext> latestBusinessContexts =
+        const {};
     var revision = 0;
     var ownerRevision = 0;
     var closed = false;
@@ -62,7 +64,10 @@ final class TransactionDetailContextQueryImpl
       final transaction = latestTransaction;
       if (transaction == null) return;
       try {
-        final context = await _assemble(transaction);
+        final context = await _assemble(
+          transaction,
+          businessContexts: latestBusinessContexts,
+        );
         if (!closed &&
             transactionRevision == revision &&
             currentOwnerRevision == ownerRevision) {
@@ -88,18 +93,16 @@ final class TransactionDetailContextQueryImpl
       }
       try {
         final context = await _assemble(transaction);
+        latestBusinessContexts = await _businessContexts.findContexts(
+          context.currentGroup.transactions,
+        );
         if (closed || currentRevision != revision) return;
         controller.add(context);
-        final ownership =
-            context.transaction.ownership ??
-            context.currentGroup.anchor.ownership;
-        if (ownership == null) return;
-        final ownerQuery = _ownerQueryFor(ownership.ownerType);
-        if (ownerQuery == null) return;
-        ownerSubscription = ownerQuery
-            .watch(ownership, context.currentGroup.anchor)
+        ownerSubscription = _businessContexts
+            .watchContexts(context.currentGroup.transactions)
             .skip(1)
-            .listen((_) {
+            .listen((contexts) {
+              latestBusinessContexts = contexts;
               final requestRevision = ++ownerRevision;
               unawaited(handleOwnerChange(currentRevision, requestRevision));
             }, onError: controller.addError);
@@ -134,8 +137,9 @@ final class TransactionDetailContextQueryImpl
   }
 
   Future<TransactionDetailContext> _assemble(
-    TransactionReadModel transaction,
-  ) async {
+    TransactionReadModel transaction, {
+    Map<String, TransactionDetailOwnerContext>? businessContexts,
+  }) async {
     final parent = transaction.parentTransactionId == null
         ? null
         : await _transactions.findTransactionDetail(
@@ -148,8 +152,10 @@ final class TransactionDetailContextQueryImpl
           )
         : TransactionDetailGroup(anchor: parent, children: parent.children);
 
-    final ownership = transaction.ownership ?? currentGroup.anchor.ownership;
-    final owner = await _loadOwner(ownership, currentGroup.anchor);
+    final contexts =
+        businessContexts ??
+        await _businessContexts.findContexts(currentGroup.transactions);
+    final owner = contexts[transaction.id] ?? contexts[currentGroup.anchor.id];
     final anchorId = switch (owner) {
       AmortizationTransactionDetailOwnerContext(:final initialTransactionId) =>
         initialTransactionId,
@@ -180,28 +186,5 @@ final class TransactionDetailContextQueryImpl
       );
     }
     return TransactionDetailGroup(anchor: anchor, children: anchor.children);
-  }
-
-  Future<TransactionDetailOwnerContext?> _loadOwner(
-    TransactionOwnership? ownership,
-    TransactionReadModel anchorTransaction,
-  ) async {
-    if (ownership == null) return null;
-    final query = _ownerQueryFor(ownership.ownerType);
-    final loaded = query == null
-        ? null
-        : await query.find(ownership, anchorTransaction);
-    return loaded ??
-        UnknownTransactionDetailOwnerContext(
-          ownerType: ownership.ownerType,
-          ownerId: ownership.ownerId,
-        );
-  }
-
-  TransactionDetailOwnerQuery? _ownerQueryFor(String ownerType) {
-    for (final query in _ownerQueries) {
-      if (query.supportedOwnerTypes.contains(ownerType)) return query;
-    }
-    return null;
   }
 }

@@ -146,6 +146,8 @@ final class AmortizationTransactionDetailOwnerContext
     required this.postedPeriodCount,
     required this.totalPeriodCount,
     this.categoryAccountIds = const [],
+    this.occurrencePeriodSequence,
+    this.occurrencePeriodDueAt,
     this.currentPeriodSequence,
     this.currentPeriodDueAt,
     this.currentPeriodAmount,
@@ -163,20 +165,14 @@ final class AmortizationTransactionDetailOwnerContext
   final int postedPeriodCount;
   final int totalPeriodCount;
   final List<String> categoryAccountIds;
+  final int? occurrencePeriodSequence;
+  final DateTime? occurrencePeriodDueAt;
   final int? currentPeriodSequence;
   final DateTime? currentPeriodDueAt;
   final Money? currentPeriodAmount;
   final AmortizationTransactionFactKind? factKind;
   final String? refundId;
   final String? terminationId;
-}
-
-enum AmortizationTransactionFactKind {
-  initial,
-  recognition,
-  refund,
-  terminationRecognition,
-  terminationReturn,
 }
 
 final class UnknownTransactionDetailOwnerContext

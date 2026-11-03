@@ -538,52 +538,52 @@ final class MonthlyBudgetReportFamily extends $Family
   String toString() => r'monthlyBudgetReportProvider';
 }
 
-@ProviderFor(transactionList)
-final transactionListProvider = TransactionListFamily._();
+@ProviderFor(transactionFeed)
+final transactionFeedProvider = TransactionFeedFamily._();
 
-final class TransactionListProvider
+final class TransactionFeedProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<TransactionReadModel>>,
-          List<TransactionReadModel>,
-          Stream<List<TransactionReadModel>>
+          AsyncValue<List<TransactionFeedEntry>>,
+          List<TransactionFeedEntry>,
+          Stream<List<TransactionFeedEntry>>
         >
     with
-        $FutureModifier<List<TransactionReadModel>>,
-        $StreamProvider<List<TransactionReadModel>> {
-  TransactionListProvider._({
-    required TransactionListFamily super.from,
+        $FutureModifier<List<TransactionFeedEntry>>,
+        $StreamProvider<List<TransactionFeedEntry>> {
+  TransactionFeedProvider._({
+    required TransactionFeedFamily super.from,
     required ({String? settlementAccountId, int limit, int offset})
     super.argument,
   }) : super(
          retry: null,
-         name: r'transactionListProvider',
+         name: r'transactionFeedProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionListHash();
+  String debugGetCreateSourceHash() => _$transactionFeedHash();
 
   @override
   String toString() {
-    return r'transactionListProvider'
+    return r'transactionFeedProvider'
         ''
         '$argument';
   }
 
   @$internal
   @override
-  $StreamProviderElement<List<TransactionReadModel>> $createElement(
+  $StreamProviderElement<List<TransactionFeedEntry>> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<List<TransactionReadModel>> create(Ref ref) {
+  Stream<List<TransactionFeedEntry>> create(Ref ref) {
     final argument =
         this.argument as ({String? settlementAccountId, int limit, int offset});
-    return transactionList(
+    return transactionFeed(
       ref,
       settlementAccountId: argument.settlementAccountId,
       limit: argument.limit,
@@ -593,7 +593,7 @@ final class TransactionListProvider
 
   @override
   bool operator ==(Object other) {
-    return other is TransactionListProvider && other.argument == argument;
+    return other is TransactionFeedProvider && other.argument == argument;
   }
 
   @override
@@ -602,28 +602,28 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'4791a5bf730c8197871d4247d33d5119a355927d';
+String _$transactionFeedHash() => r'11b99b8d82b61b22757c5433fa0362bf2c72731a';
 
-final class TransactionListFamily extends $Family
+final class TransactionFeedFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<List<TransactionReadModel>>,
+          Stream<List<TransactionFeedEntry>>,
           ({String? settlementAccountId, int limit, int offset})
         > {
-  TransactionListFamily._()
+  TransactionFeedFamily._()
     : super(
         retry: null,
-        name: r'transactionListProvider',
+        name: r'transactionFeedProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  TransactionListProvider call({
+  TransactionFeedProvider call({
     String? settlementAccountId,
     int limit = 50,
     int offset = 0,
-  }) => TransactionListProvider._(
+  }) => TransactionFeedProvider._(
     argument: (
       settlementAccountId: settlementAccountId,
       limit: limit,
@@ -633,7 +633,7 @@ final class TransactionListFamily extends $Family
   );
 
   @override
-  String toString() => r'transactionListProvider';
+  String toString() => r'transactionFeedProvider';
 }
 
 @ProviderFor(balanceSheetComparison)

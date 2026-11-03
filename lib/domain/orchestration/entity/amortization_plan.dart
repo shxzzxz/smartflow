@@ -234,6 +234,27 @@ class AmortizationPlan {
         .firstOrNull;
   }
 
+  AmortizationTransactionFactKind? transactionFactKind(String transactionId) {
+    if (transactionId == initialTransactionId) {
+      return AmortizationTransactionFactKind.initial;
+    }
+    if (periods.any((period) => period.transactionId == transactionId)) {
+      return AmortizationTransactionFactKind.recognition;
+    }
+    if (refunds.any(
+      (refund) => refund.transferTransactionId == transactionId,
+    )) {
+      return AmortizationTransactionFactKind.refund;
+    }
+    if (termination?.recognitionTransactionId == transactionId) {
+      return AmortizationTransactionFactKind.terminationRecognition;
+    }
+    if (termination?.returnTransactionId == transactionId) {
+      return AmortizationTransactionFactKind.terminationReturn;
+    }
+    return null;
+  }
+
   DateTime get lastRecognitionAt => periods.last.dueAt;
 
   Money get recognizedAmount => periods

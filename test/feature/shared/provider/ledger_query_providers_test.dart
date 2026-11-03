@@ -2,20 +2,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 
 void main() {
   test('account feed uses ledger impact semantics with child transactions', () {
-    final service = _CapturingTransactionQueryService();
+    final service = _CapturingTransactionFeedQueryService();
     final container = ProviderContainer(
-      overrides: [transactionQueryServiceProvider.overrideWithValue(service)],
+      overrides: [
+        transactionFeedQueryServiceProvider.overrideWithValue(service),
+      ],
     );
     addTearDown(container.dispose);
 
     final subscription = container.listen(
-      transactionListProvider(settlementAccountId: 'cash', limit: 20),
+      transactionFeedProvider(settlementAccountId: 'cash', limit: 20),
       (_, _) {},
     );
     addTearDown(subscription.close);
@@ -87,15 +90,23 @@ class _CapturingFinancialMetricsService implements FinancialMetricsService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _CapturingTransactionQueryService implements TransactionQueryService {
+class _CapturingTransactionFeedQueryService
+    implements TransactionFeedQueryService {
   final queries = <TransactionListQuery>[];
 
   @override
-  Stream<List<TransactionReadModel>> watchTransactions(
+  Stream<List<TransactionFeedEntry>> watchTransactions(
     TransactionListQuery query,
   ) {
     queries.add(query);
     return Stream.value(const []);
+  }
+
+  @override
+  Future<List<TransactionFeedEntry>> findTransactions(
+    TransactionListQuery query,
+  ) {
+    throw UnsupportedError('Only stream queries are used by this test.');
   }
 
   @override

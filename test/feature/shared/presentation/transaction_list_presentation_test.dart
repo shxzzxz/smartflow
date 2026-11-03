@@ -143,6 +143,39 @@ void main() {
       expect(row.canQuickEdit, isFalse);
     });
 
+    test('amortization transaction context supplies category and action', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.dailyExpense,
+          categoryAccountId: null,
+          ownership: const TransactionOwnership(
+            ownerType: orchestrationAmortizationOwnerType,
+            ownerId: 'plan',
+          ),
+        ),
+        businessContext: const AmortizationTransactionDetailOwnerContext(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: 'plan',
+          initialTransactionId: 'initial',
+          kind: AmortizationKind.prepaidExpense,
+          status: AmortizationStatus.active,
+          originalAmount: Money(minorUnits: 12000),
+          recognizedAmount: Money(minorUnits: 4000),
+          remainingAmount: Money(minorUnits: 8000),
+          postedPeriodCount: 2,
+          totalPeriodCount: 6,
+          categoryAccountIds: ['food'],
+          occurrencePeriodSequence: 2,
+          factKind: AmortizationTransactionFactKind.recognition,
+        ),
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '餐饮');
+      expect(row.supportingText, '摊销预付 · 第 2/6 期确认');
+      expect(row.iconKey, 'meal');
+    });
+
     test('groups transactions with daily summaries by descending date', () {
       final jan1 = DateTime(2026, 1, 1, 8);
       final jan2 = DateTime(2026, 1, 2, 9);
