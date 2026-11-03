@@ -91,7 +91,7 @@ application/ledger + domain/ledger + infrastructure/ledger
 application/credit + domain/credit + infrastructure/credit
 ```
 
-`application/transaction_view` 是跨域读侧能力而不是业务域。`BusinessItemSource` 是其内部编排 seam；consumer-side source adapter 位于 `application/transaction_view/business_item/source/`，调用各业务域通用 application query。需要账务摘要的来源再调用通用账务查询，并在 adapter 中把业务域 read model 与账务核心已有事实映射为统一摘要。各业务域 application query 拥有锚点分页、业务筛选和 scoped change stream，由本域 infrastructure 实现，但不依赖 `transaction_view`，也不为 transaction view 另造摘要投影。公共查询层只选择来源、合并结果、批量加载锚点交易和装配统一读模型。
+`application/transaction_view` 是跨域读侧能力而不是业务域。`BusinessActivitySource` 是其内部编排 seam；consumer-side source adapter 位于 `application/transaction_view/business_activity/source/`，调用各业务域通用 application query。需要账务摘要的来源再调用通用账务查询，并在 adapter 中把业务域 read model 与账务核心已有事实映射为统一摘要。各业务域 application query 拥有锚点分页、业务筛选和 scoped change stream，由本域 infrastructure 实现，但不依赖 `transaction_view`，也不为 transaction view 另造摘要投影。公共查询层只选择来源、合并结果、批量加载锚点交易和装配统一读模型。
 
 薄域允许先保持轻量结构；当长出复杂不变量、状态机或跨用例规则，再拆完整分层。
 
@@ -112,8 +112,8 @@ lib/
 │   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
 │   │           └── port/                # 读侧 application port；无 port 时可省略
 │   ├── transaction_view/                # 跨域用户交易读视图；不是业务域
-│   │   ├── business_item/query/         # 业务事项来源与统一读模型
-│   │   └── impact_feed/query/           # 账务影响流语义封装
+│   │   ├── business_activity/query/     # 业务活动来源与统一读模型
+│   │   └── transaction_feed/query/      # 交易明细视图语义封装
 │   └── shared/                          # 事务执行抽象等 application 共享能力
 │       └── task/                        # Task 定义、调度器、重试策略分别存放
 ├── domain/                               # 领域层：按业务域分子目录
@@ -198,7 +198,8 @@ lib/infrastructure/database/table/*
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
 - `application/transaction_view` 的交易详情上下文查询统一加载当前交易、当前/锚点交易组与可选 owner 摘要；feature 只消费该上下文，不自行组合 owner 查询来推断详情能力。
-- `application/transaction_view` 的 source adapter 只做业务域查询结果与账务核心已有事实到统一业务事项读模型的映射；业务筛选、锚点规则、业务事实和变更监听由所属业务域 application query 提供，不得复制账务聚合或为单一消费方定义专用摘要 DTO。
+- `application/transaction_view` 的 source adapter 只做业务域查询结果与账务核心已有事实到统一业务活动读模型的映射；业务筛选、锚点规则、业务事实和变更监听由所属业务域 application query 提供，不得复制账务聚合或为单一消费方定义专用摘要 DTO。
+- 交易明细视图先取得账务核心的交易页，再按 owner 类型和业务活动 ID 批量请求命中交易的业务上下文；所属业务域只返回请求交易的发生含义和去重的活动摘要，`transaction_view` 不读取 owner 内部结构并自行判断交易含义。
 - 业务域 application query 不得导入 `application/transaction_view` 的读模型或 source 接口。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。
