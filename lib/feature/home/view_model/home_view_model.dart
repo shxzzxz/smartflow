@@ -326,6 +326,12 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
   final cashflowPeriodMetric =
       ref.watch(appSettingsViewModelProvider).value?.cashflowPeriodMetric ??
       const AppSettings().cashflowPeriodMetric;
+  final transactionListDisplayMode =
+      ref
+          .watch(appSettingsViewModelProvider)
+          .value
+          ?.transactionListDisplayMode ??
+      const AppSettings().transactionListDisplayMode;
 
   if (comparison case AsyncError()) {
     return const HomeContentState.error(message: '加载失败，请稍后重试。');
@@ -369,6 +375,7 @@ HomeContentState homeContent(Ref ref, DateTime visibleMonth) {
       items: transactionValues.items,
       accountLookup: lookup,
       dailySummaries: dailySummaryValues,
+      displayMode: transactionListDisplayMode,
     ),
     hasMore: transactionValues.hasMore,
     isLoadingMore: transactionValues.isLoadingMore,

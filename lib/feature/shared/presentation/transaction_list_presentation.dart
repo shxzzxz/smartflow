@@ -3,13 +3,18 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 import 'account_lookup.dart';
+import 'business_scene/business_scene_list_presentation.dart';
+import 'business_scene/transaction_adjustment_presentation.dart';
+import 'transaction_badge_presentation.dart';
+import 'transaction_category_identity.dart';
+
+export 'transaction_badge_presentation.dart';
+export 'business_scene/transaction_adjustment_presentation.dart';
 
 const _noAccountLabel = '无账户';
 
@@ -76,16 +81,15 @@ class FinancialFeedRowPresentation {
     required this.iconKey,
     required this.title,
     required this.subtitle,
-    required this.amountText,
+    required this.amount,
     required this.amountTone,
     required this.accountFlow,
     required this.badges,
     required this.canQuickEdit,
     this.businessPurpose = BusinessPurpose.dailyExpense,
     this.hasMultipleCategories = false,
-    this.compactAmountText,
+    this.preferCategoryArtwork = false,
     this.originalAmountText,
-    this.originalCompactAmountText,
     this.selectable = false,
     this.selected = false,
     this.dimmed = false,
@@ -95,13 +99,12 @@ class FinancialFeedRowPresentation {
   final String transactionId;
   final BusinessPurpose businessPurpose;
   final bool hasMultipleCategories;
+  final bool preferCategoryArtwork;
   final String? iconKey;
   final String title;
   final String subtitle;
-  final String amountText;
-  final String? compactAmountText;
+  final AdaptiveMoneyTextPresentation amount;
   final String? originalAmountText;
-  final String? originalCompactAmountText;
   final FinanceTone amountTone;
   final TransactionAccountFlowPresentation accountFlow;
   final List<TransactionBadgePresentation> badges;
@@ -116,24 +119,29 @@ class FinancialFeedRowPresentation {
   bool get hasBadges => badges.isNotEmpty;
 
   FinancialFeedRowPresentation copyWith({
+    AdaptiveMoneyTextPresentation? amount,
     String? title,
     List<TransactionBadgePresentation>? badges,
     String? supportingText,
     bool? selectable,
     bool? selected,
     bool? dimmed,
+    bool? preferCategoryArtwork,
+    String? iconKey,
+    bool? hasMultipleCategories,
   }) {
     return FinancialFeedRowPresentation(
       transactionId: transactionId,
       businessPurpose: businessPurpose,
-      hasMultipleCategories: hasMultipleCategories,
-      iconKey: iconKey,
+      hasMultipleCategories:
+          hasMultipleCategories ?? this.hasMultipleCategories,
+      preferCategoryArtwork:
+          preferCategoryArtwork ?? this.preferCategoryArtwork,
+      iconKey: iconKey ?? this.iconKey,
       title: title ?? this.title,
       subtitle: subtitle,
-      amountText: amountText,
-      compactAmountText: compactAmountText,
+      amount: amount ?? this.amount,
       originalAmountText: originalAmountText,
-      originalCompactAmountText: originalCompactAmountText,
       amountTone: amountTone,
       accountFlow: accountFlow,
       badges: badges ?? this.badges,
@@ -147,6 +155,16 @@ class FinancialFeedRowPresentation {
 }
 
 typedef TransactionRowPresentation = FinancialFeedRowPresentation;
+
+class AdaptiveMoneyTextPresentation {
+  const AdaptiveMoneyTextPresentation({
+    required this.preciseText,
+    required this.compactText,
+  });
+
+  final String preciseText;
+  final String compactText;
+}
 
 class TransactionAccountFlowPresentation {
   const TransactionAccountFlowPresentation({
@@ -188,34 +206,6 @@ class AccountEndpointPresentation {
 
   final String label;
   final String? iconKey;
-}
-
-class TransactionBadgePresentation {
-  const TransactionBadgePresentation({required this.label, required this.tone});
-
-  final String label;
-  final FinanceTone tone;
-}
-
-enum TransactionAdjustmentKind {
-  transferFee,
-  refund,
-  advanceReceived,
-  receivableCollectionPrincipal,
-  receivableCollectionInterest,
-  repaymentInterest,
-  repaymentFee,
-  repaymentDiscount,
-  advanceCompensationIncome,
-  advanceSelfBorne,
-  advanceBadDebt,
-}
-
-class TransactionAdjustment {
-  const TransactionAdjustment({required this.kind, required this.amount});
-
-  final TransactionAdjustmentKind kind;
-  final Money amount;
 }
 
 class CashflowSummaryPresentation {
@@ -280,6 +270,7 @@ List<TransactionDayGroup> groupBusinessItemsByDay({
   required List<BusinessItemReadModel> items,
   required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
+  TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
 }) {
   final groups = <DateTime, List<FinancialFeedRowPresentation>>{};
   for (final item in items) {
@@ -290,6 +281,7 @@ List<TransactionDayGroup> groupBusinessItemsByDay({
           buildBusinessItemRowPresentation(
             item: item,
             accountLookup: accountLookup,
+            displayMode: displayMode,
           ),
         );
   }
@@ -341,6 +333,7 @@ TransactionDayGroup businessItemGroupForDate({
   required List<BusinessItemReadModel> items,
   required List<DailyCashflowSummary> dailySummaries,
   required AccountLookup accountLookup,
+  TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
 }) {
   final normalized = normalizeDate(date);
   final dayItems = [
@@ -355,6 +348,7 @@ TransactionDayGroup businessItemGroupForDate({
         buildBusinessItemRowPresentation(
           item: item,
           accountLookup: accountLookup,
+          displayMode: displayMode,
         ),
     ],
     incomeMinor: summary?.income.minorUnits ?? 0,
@@ -402,6 +396,21 @@ TransactionRowPresentation buildTransactionRowPresentation({
       ? transactionAmountComparison(item)
       : null;
   final transactionAmount = categoryAmount ?? comparison?.actual;
+
+  String formatPrimaryAmount(MoneyFormatStyle style) {
+    if (cashflowDelta != null) {
+      return formatAccountDelta(cashflowDelta, style: style);
+    }
+    if (accountDelta != null) {
+      return formatAccountDelta(accountDelta, style: style);
+    }
+    return formatTransactionAmount(
+      item,
+      amount: transactionAmount,
+      style: style,
+    );
+  }
+
   return TransactionRowPresentation(
     transactionId: item.id,
     businessPurpose: item.businessPurpose,
@@ -409,32 +418,11 @@ TransactionRowPresentation buildTransactionRowPresentation({
     iconKey: resolveCategoryIconKey(item, accountLookup),
     title: transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
-    amountText: cashflowDelta != null
-        ? formatAccountDelta(cashflowDelta, style: MoneyFormatStyle.plain)
-        : accountDelta == null
-        ? formatTransactionAmount(
-            item,
-            amount: transactionAmount,
-            style: MoneyFormatStyle.plain,
-          )
-        : formatAccountDelta(accountDelta, style: MoneyFormatStyle.plain),
-    compactAmountText: cashflowDelta != null
-        ? formatAccountDelta(cashflowDelta, style: MoneyFormatStyle.compact)
-        : accountDelta == null
-        ? formatTransactionAmount(
-            item,
-            amount: transactionAmount,
-            style: MoneyFormatStyle.compact,
-          )
-        : formatAccountDelta(accountDelta, style: MoneyFormatStyle.compact),
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: formatPrimaryAmount(MoneyFormatStyle.plain),
+      compactText: formatPrimaryAmount(MoneyFormatStyle.compact),
+    ),
     originalAmountText: comparison == null
-        ? null
-        : formatTransactionAmount(
-            item,
-            amount: comparison.original,
-            style: MoneyFormatStyle.plain,
-          ),
-    originalCompactAmountText: comparison == null
         ? null
         : formatTransactionAmount(
             item,
@@ -457,113 +445,37 @@ TransactionRowPresentation buildTransactionRowPresentation({
 FinancialFeedRowPresentation buildBusinessItemRowPresentation({
   required BusinessItemReadModel item,
   required AccountLookup accountLookup,
+  TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
 }) {
   final transaction = item.anchorTransaction;
   final base = buildTransactionRowPresentation(
     item: transaction,
     accountLookup: accountLookup,
   );
+  final content = presentBusinessSceneRowContent(item);
+  final categoryIdentity = content.categoryAccountIds.isEmpty
+      ? null
+      : resolveTransactionCategoryIdentity(
+          transactionAccountIds: _businessCategoryAccountIds(transaction),
+          supplementalAccountIds: content.categoryAccountIds,
+          accountLookup: accountLookup,
+        );
+  final modeBadges = displayMode == TransactionListDisplayMode.compact
+      ? content.compactBadges
+      : content.standardBadges;
+  final badges = <TransactionBadgePresentation>[...modeBadges, ...base.badges];
   return base.copyWith(
-    title: _businessItemTitle(item, base.title),
-    badges: [...base.badges, ..._businessStatusBadges(item.summary)],
-    supportingText: _businessItemSupportingText(item.summary),
+    title: categoryIdentity?.hasMultiple == true
+        ? '多类别'
+        : categoryIdentity?.name ?? content.titleOverride ?? base.title,
+    iconKey: categoryIdentity?.iconKey,
+    hasMultipleCategories: categoryIdentity?.hasMultiple,
+    badges: badges,
+    supportingText: displayMode == TransactionListDisplayMode.compact
+        ? null
+        : content.standardSummary,
+    preferCategoryArtwork: content.preferCategoryArtwork,
   );
-}
-
-String _businessItemTitle(BusinessItemReadModel item, String fallback) {
-  return switch (item.summary) {
-    LedgerBusinessItemSummary() => fallback,
-    AdvanceBusinessItemSummary() => fallback,
-    InstallmentBusinessItemSummary(:final installmentType) =>
-      switch (installmentType) {
-        InstallmentType.purchase => '消费分期',
-        InstallmentType.disbursement => '放款分期',
-        InstallmentType.billConversion => fallback,
-      },
-    RepaymentBusinessItemSummary() => fallback,
-    AmortizationBusinessItemSummary(:final kind) => switch (kind) {
-      AmortizationKind.prepaidExpense => '预付摊销',
-      AmortizationKind.deferredIncome => '预收摊销',
-    },
-  };
-}
-
-String? _businessItemSupportingText(BusinessItemSummary summary) {
-  return switch (summary) {
-    LedgerBusinessItemSummary() => null,
-    AdvanceBusinessItemSummary(:final outstanding, :final isClosed) =>
-      isClosed
-          ? '垫付已结清'
-          : '剩余应收 ${formatMoney(outstanding, style: MoneyFormatStyle.compact)}',
-    InstallmentBusinessItemSummary(
-      :final paidPeriodCount,
-      :final totalPeriodCount,
-      :final remainingPrincipal,
-    ) =>
-      '已还 $paidPeriodCount/$totalPeriodCount · '
-          '剩余本金 ${formatMoney(remainingPrincipal, style: MoneyFormatStyle.compact)}',
-    RepaymentBusinessItemSummary(:final repaymentType, :final targetType) =>
-      '${_repaymentTypeLabel(repaymentType)} · '
-          '${_repaymentTargetLabel(targetType)}',
-    AmortizationBusinessItemSummary(
-      :final postedPeriodCount,
-      :final totalPeriodCount,
-      :final remainingAmount,
-    ) =>
-      '已确认 $postedPeriodCount/$totalPeriodCount · '
-          '剩余 ${formatMoney(remainingAmount, style: MoneyFormatStyle.compact)}',
-  };
-}
-
-List<TransactionBadgePresentation> _businessStatusBadges(
-  BusinessItemSummary summary,
-) {
-  return switch (summary) {
-    LedgerBusinessItemSummary() || RepaymentBusinessItemSummary() => const [],
-    AdvanceBusinessItemSummary(:final isClosed) => [
-      TransactionBadgePresentation(
-        label: isClosed ? '已结清' : '未结清',
-        tone: isClosed ? FinanceTone.info : FinanceTone.equity,
-      ),
-    ],
-    InstallmentBusinessItemSummary(:final status) => [
-      TransactionBadgePresentation(
-        label: status == InstallmentContractStatus.settled ? '已结清' : '进行中',
-        tone: status == InstallmentContractStatus.settled
-            ? FinanceTone.info
-            : FinanceTone.equity,
-      ),
-    ],
-    AmortizationBusinessItemSummary(:final status) => [
-      TransactionBadgePresentation(
-        label: switch (status) {
-          AmortizationStatus.active => '进行中',
-          AmortizationStatus.completed => '已完成',
-          AmortizationStatus.terminated => '已终止',
-        },
-        tone: status == AmortizationStatus.terminated
-            ? FinanceTone.equity
-            : FinanceTone.info,
-      ),
-    ],
-  };
-}
-
-String _repaymentTypeLabel(RepaymentType type) {
-  return switch (type) {
-    RepaymentType.bill => '账单还款',
-    RepaymentType.installment => '分期还款',
-    RepaymentType.prepayment => '提前还款',
-    RepaymentType.unattributed => '未归属还款',
-  };
-}
-
-String _repaymentTargetLabel(RepaymentTargetType type) {
-  return switch (type) {
-    RepaymentTargetType.bill => '账单',
-    RepaymentTargetType.contract => '合同',
-    RepaymentTargetType.account => '账户',
-  };
 }
 
 String? _flowAccountId(
@@ -661,16 +573,10 @@ TransactionAccountFlowPresentation resolveAccountFlow(
   };
 }
 
-/// 调整摘要的展示顺序与语义色固定由 kind 决定，金额恒为正。
 List<TransactionBadgePresentation> buildTransactionBadges(
   TransactionReadModel item,
 ) {
-  final badges = <TransactionBadgePresentation>[
-    for (final adjustment in transactionAdjustments(item))
-      if (adjustment.kind !=
-          TransactionAdjustmentKind.receivableCollectionPrincipal)
-        _adjustmentBadge(adjustment),
-  ];
+  final badges = <TransactionBadgePresentation>[];
 
   if (item.isExcludedFromStats) {
     badges.add(
@@ -690,64 +596,6 @@ List<TransactionBadgePresentation> buildTransactionBadges(
   }
 
   return badges;
-}
-
-TransactionBadgePresentation _adjustmentBadge(
-  TransactionAdjustment adjustment,
-) {
-  final presentation = _adjustmentPresentation(adjustment.kind);
-  return TransactionBadgePresentation(
-    label: '${presentation.label} ${formatCompactMoney(adjustment.amount)}',
-    tone: presentation.tone,
-  );
-}
-
-({String label, FinanceTone tone}) _adjustmentPresentation(
-  TransactionAdjustmentKind kind,
-) {
-  return switch (kind) {
-    TransactionAdjustmentKind.transferFee => (
-      label: '费',
-      tone: FinanceTone.expense,
-    ),
-    TransactionAdjustmentKind.refund => (label: '退', tone: FinanceTone.income),
-    TransactionAdjustmentKind.advanceReceived => (
-      label: '报',
-      tone: FinanceTone.info,
-    ),
-    TransactionAdjustmentKind.receivableCollectionPrincipal => (
-      label: '本金',
-      tone: FinanceTone.info,
-    ),
-    TransactionAdjustmentKind.receivableCollectionInterest => (
-      label: '利息',
-      tone: FinanceTone.income,
-    ),
-    TransactionAdjustmentKind.repaymentInterest => (
-      label: '利',
-      tone: FinanceTone.expense,
-    ),
-    TransactionAdjustmentKind.repaymentFee => (
-      label: '费',
-      tone: FinanceTone.expense,
-    ),
-    TransactionAdjustmentKind.repaymentDiscount => (
-      label: '优',
-      tone: FinanceTone.income,
-    ),
-    TransactionAdjustmentKind.advanceCompensationIncome => (
-      label: '补偿',
-      tone: FinanceTone.income,
-    ),
-    TransactionAdjustmentKind.advanceSelfBorne => (
-      label: '差支',
-      tone: FinanceTone.expense,
-    ),
-    TransactionAdjustmentKind.advanceBadDebt => (
-      label: '坏账',
-      tone: FinanceTone.expense,
-    ),
-  };
 }
 
 CashflowSummaryPresentation buildMonthlySummaryPresentation(
@@ -794,6 +642,9 @@ String? resolveCategoryIconKey(
   final category = categoryIds.length == 1
       ? accountLookup.find(categoryIds.single)
       : null;
+  if (_isAmortizationTransaction(item)) {
+    return category?.iconKey;
+  }
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.dailyIncome ||
@@ -810,6 +661,10 @@ String transactionPrimaryLabel(
   final category = categoryIds.length == 1
       ? accountLookup.find(categoryIds.single)
       : null;
+  if (_isAmortizationTransaction(item)) {
+    if (categoryIds.length > 1) return '多类别';
+    return _cleanText(category?.name) ?? '摊销';
+  }
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
       categoryIds.length > 1
@@ -984,91 +839,6 @@ Set<String> _businessCategoryAccountIds(TransactionReadModel item) {
 
 bool _isAmortizationTransaction(TransactionReadModel item) =>
     item.ownership?.ownerType == orchestrationAmortizationOwnerType;
-
-Money? adjustmentAmount(
-  TransactionReadModel item,
-  TransactionAdjustmentKind kind,
-) {
-  for (final adjustment in transactionAdjustments(item)) {
-    if (adjustment.kind == kind) return adjustment.amount;
-  }
-  return null;
-}
-
-List<TransactionAdjustment> transactionAdjustments(TransactionReadModel item) {
-  if (item.parentTransactionId != null) return const [];
-  final result = <TransactionAdjustment>[];
-  void add(TransactionAdjustmentKind kind, Money amount) {
-    if (amount.minorUnits > 0) {
-      result.add(TransactionAdjustment(kind: kind, amount: amount));
-    }
-  }
-
-  switch (item.businessPurpose) {
-    case BusinessPurpose.transfer:
-      add(
-        TransactionAdjustmentKind.transferFee,
-        item.amountOf(TransactionRole.fee),
-      );
-    case BusinessPurpose.dailyExpense:
-      add(
-        TransactionAdjustmentKind.refund,
-        item.refundSummary?.refundedTotal ?? Money.zero(),
-      );
-    case BusinessPurpose.advance:
-      add(
-        TransactionAdjustmentKind.refund,
-        item.refundSummary?.refundedTotal ?? Money.zero(),
-      );
-      add(
-        TransactionAdjustmentKind.advanceReceived,
-        item.advanceSummary?.receivedAmount ?? Money.zero(),
-      );
-      for (final child in item.children) {
-        add(
-          TransactionAdjustmentKind.advanceCompensationIncome,
-          child.amountOf(TransactionRole.advanceCompensationIncome),
-        );
-        add(
-          TransactionAdjustmentKind.advanceSelfBorne,
-          child.amountOf(TransactionRole.advanceSelfBorne),
-        );
-        add(
-          TransactionAdjustmentKind.advanceBadDebt,
-          child.amountOf(TransactionRole.advanceBadDebtExpense),
-        );
-      }
-    case BusinessPurpose.debtRepayment:
-      add(
-        TransactionAdjustmentKind.repaymentInterest,
-        item.amountOf(TransactionRole.interest),
-      );
-      add(
-        TransactionAdjustmentKind.repaymentFee,
-        item.amountOf(TransactionRole.fee),
-      );
-      add(
-        TransactionAdjustmentKind.repaymentDiscount,
-        item.amountOf(TransactionRole.discount),
-      );
-    case BusinessPurpose.receivableCollection:
-      add(
-        TransactionAdjustmentKind.receivableCollectionPrincipal,
-        item.amountOf(TransactionRole.receivable),
-      );
-      add(
-        TransactionAdjustmentKind.receivableCollectionInterest,
-        item.amountOf(TransactionRole.interest),
-      );
-    default:
-      break;
-  }
-  return List.unmodifiable(result);
-}
-
-String formatCompactMoney(Money money) {
-  return formatMoney(money.abs(), style: MoneyFormatStyle.compact);
-}
 
 /// 按用户选择的展示口径格式化收入/支出的同期比较文案。
 String formatPeriodChangeCaption(

@@ -6,7 +6,10 @@ import '../../../../core/money/money.dart';
 import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
+import '../../../shared/presentation/business_scene/transaction_detail_business_presentation.dart';
 import '../../presentation/transaction_detail_presentation.dart';
+
+export '../../../shared/presentation/business_scene/transaction_detail_business_presentation.dart';
 
 part 'transaction_detail_state.freezed.dart';
 
@@ -80,27 +83,6 @@ abstract class DetailRefund with _$DetailRefund {
     required List<DetailSheetItem> items,
     Money? refundedTotal,
   }) = _DetailRefund;
-}
-
-@freezed
-abstract class DetailAdvance with _$DetailAdvance {
-  const factory DetailAdvance({
-    required String summaryText,
-    required bool hasActivity,
-    required bool isClosed,
-    required List<DetailSheetItem> items,
-    Money? outstanding,
-  }) = _DetailAdvance;
-}
-
-@freezed
-sealed class DetailBusinessModule with _$DetailBusinessModule {
-  const factory DetailBusinessModule.link({
-    required String key,
-    required String title,
-    required String summary,
-    String? route,
-  }) = DetailBusinessLinkModule;
 }
 
 @freezed

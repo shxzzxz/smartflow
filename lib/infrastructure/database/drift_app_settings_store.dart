@@ -16,6 +16,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
   static const _calendarHeatmapEnabledKey = 'settings.calendar_heatmap_enabled';
   static const _calendarHeatMetricKey = 'settings.calendar_heat_metric';
   static const _cashflowPeriodMetricKey = 'settings.cashflow_period_metric';
+  static const _transactionListDisplayModeKey =
+      'settings.transaction_list_display_mode';
   static const _accountIconStyleKey = 'settings.account_icon_style';
   static const _categoryIconStyleKey = 'settings.category_icon_style';
 
@@ -34,6 +36,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
                 _calendarHeatmapEnabledKey,
                 _calendarHeatMetricKey,
                 _cashflowPeriodMetricKey,
+                _transactionListDisplayModeKey,
                 _accountIconStyleKey,
                 _categoryIconStyleKey,
               ]),
@@ -76,6 +79,11 @@ class DriftAppSettingsStore implements AppSettingsStore {
             values[_cashflowPeriodMetricKey],
           ) ??
           defaults.cashflowPeriodMetric,
+      transactionListDisplayMode:
+          TransactionListDisplayMode.fromStorageValue(
+            values[_transactionListDisplayModeKey],
+          ) ??
+          defaults.transactionListDisplayMode,
     );
   }
 
@@ -107,6 +115,10 @@ class DriftAppSettingsStore implements AppSettingsStore {
         _entry(
           _cashflowPeriodMetricKey,
           settings.cashflowPeriodMetric.storageValue,
+        ),
+        _entry(
+          _transactionListDisplayModeKey,
+          settings.transactionListDisplayMode.storageValue,
         ),
       ]);
     });

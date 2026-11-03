@@ -62,8 +62,7 @@ class AdaptiveMoneyText extends StatelessWidget {
 
 class ComparedMoneyText extends StatelessWidget {
   const ComparedMoneyText({
-    required this.originalPreciseText,
-    required this.originalCompactText,
+    required this.originalText,
     required this.actualPreciseText,
     required this.actualCompactText,
     required this.originalStyle,
@@ -72,8 +71,7 @@ class ComparedMoneyText extends StatelessWidget {
     super.key,
   });
 
-  final String originalPreciseText;
-  final String originalCompactText;
+  final String originalText;
   final String actualPreciseText;
   final String actualCompactText;
   final TextStyle originalStyle;
@@ -82,16 +80,12 @@ class ComparedMoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final candidates = [
-      (original: originalPreciseText, actual: actualPreciseText),
-      (original: originalCompactText, actual: actualPreciseText),
-      (original: originalCompactText, actual: actualCompactText),
-    ];
+    final candidates = [actualPreciseText, actualCompactText];
     final selected = candidates.firstWhere(
-      (candidate) => _fits(context, candidate.original, candidate.actual),
+      (candidate) => _fits(context, originalText, candidate),
       orElse: () => candidates.last,
     );
-    final shouldConstrain = !_fits(context, selected.original, selected.actual);
+    final shouldConstrain = !_fits(context, originalText, selected);
 
     Widget amountText(String text, TextStyle textStyle) => Text(
       text,
@@ -108,20 +102,20 @@ class ComparedMoneyText extends StatelessWidget {
         if (shouldConstrain)
           Flexible(
             child: amountText(
-              selected.original,
+              originalText,
               originalStyle.copyWith(decoration: TextDecoration.lineThrough),
             ),
           )
         else
           amountText(
-            selected.original,
+            originalText,
             originalStyle.copyWith(decoration: TextDecoration.lineThrough),
           ),
         const SizedBox(width: AppSpacing.space4),
         if (shouldConstrain)
-          Flexible(child: amountText(selected.actual, actualStyle))
+          Flexible(child: amountText(selected, actualStyle))
         else
-          amountText(selected.actual, actualStyle),
+          amountText(selected, actualStyle),
       ],
     );
   }

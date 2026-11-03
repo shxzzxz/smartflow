@@ -350,8 +350,10 @@ TransactionRowPresentation _buildImportPreviewRow(
     },
     title: _previewTitle(review, groupReview, draft),
     subtitle: _timeFormat.format(draft.occurredAt),
-    amountText: '$amountPrefix$amount',
-    compactAmountText: '$amountPrefix$compactAmount',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '$amountPrefix$amount',
+      compactText: '$amountPrefix$compactAmount',
+    ),
     amountTone: _isIncomeDraft(draft)
         ? FinanceTone.income
         : _isExpenseDraft(draft)

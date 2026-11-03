@@ -320,6 +320,7 @@ class _HeroCard extends StatelessWidget {
             TransactionAvatar(
               businessPurpose: hero.businessPurpose,
               hasMultipleCategories: hero.hasMultipleCategories,
+              preferCategoryArtwork: hero.preferCategoryArtwork,
               iconKey: hero.iconKey,
               iconSize: AppSpacing.space28,
             ),

@@ -13,6 +13,7 @@ class DetailHero {
     required this.amount,
     required this.semantic,
     required this.showSign,
+    this.preferCategoryArtwork = false,
     this.subtitle,
     this.iconKey,
   });
@@ -25,6 +26,7 @@ class DetailHero {
   final Money amount;
   final MoneySemantic semantic;
   final bool showSign;
+  final bool preferCategoryArtwork;
 }
 
 class DetailAllocationBreakdown {
@@ -74,14 +76,19 @@ class DetailSheetItem {
 DetailHero transactionDetailHero({
   required TransactionReadModel detail,
   required AccountLookup accountLookup,
+  Iterable<String> categoryAccountIds = const [],
 }) {
   final transaction = detail;
   final semantic = semanticForTransactionPurpose(transaction.businessPurpose);
-  final categories = detail.categoryLines.toList();
-  final hasMultipleCategories = categories.length > 1;
-  final category = categories.length == 1
-      ? accountLookup.find(categories.single.accountId!)
-      : _resolveCategoryAccount(detail, accountLookup);
+  final categoryIds = {
+    for (final line in detail.categoryLines)
+      if (line.accountId != null) line.accountId!,
+    ...categoryAccountIds,
+  }.toList(growable: false);
+  final hasMultipleCategories = categoryIds.length > 1;
+  final category = categoryIds.length == 1
+      ? accountLookup.find(categoryIds.single)
+      : null;
   final title = hasMultipleCategories
       ? '多分类'
       : category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
@@ -96,6 +103,7 @@ DetailHero transactionDetailHero({
     title: title,
     subtitle: subtitle,
     iconKey: hasMultipleCategories ? null : category?.iconKey,
+    preferCategoryArtwork: categoryIds.isNotEmpty,
     amount: signedAmountForSemantic(transaction.primaryAmount, semantic),
     semantic: semantic,
     showSign: semantic == MoneySemantic.income,
@@ -212,14 +220,6 @@ DetailSheetItem _listItemToSheetItem(TransactionReadModel item) {
     semantic: semantic,
     showSign: semantic == MoneySemantic.income,
   );
-}
-
-Account? _resolveCategoryAccount(
-  TransactionReadModel detail,
-  AccountLookup accountLookup,
-) {
-  final categoryId = detail.categoryLines.firstOrNull?.accountId;
-  return categoryId == null ? null : accountLookup.find(categoryId);
 }
 
 DetailAllocationItem _allocationItem(

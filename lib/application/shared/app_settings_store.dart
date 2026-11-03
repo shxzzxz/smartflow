@@ -79,6 +79,24 @@ enum CashflowPeriodMetric {
   }
 }
 
+/// 流水列表的信息密度。
+enum TransactionListDisplayMode {
+  standard(storageValue: 'standard'),
+  compact(storageValue: 'compact');
+
+  const TransactionListDisplayMode({required this.storageValue});
+
+  final String storageValue;
+
+  static TransactionListDisplayMode? fromStorageValue(String? value) {
+    return switch (value) {
+      'standard' => TransactionListDisplayMode.standard,
+      'compact' => TransactionListDisplayMode.compact,
+      _ => null,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     this.showAddTransactionFab = true,
@@ -89,6 +107,7 @@ class AppSettings {
     this.calendarHeatmapEnabled = false,
     this.calendarHeatMetric = CalendarHeatMetric.expense,
     this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
+    this.transactionListDisplayMode = TransactionListDisplayMode.standard,
     this.accountIconStyle = '',
     this.categoryIconStyle = '',
   });
@@ -101,6 +120,7 @@ class AppSettings {
   final bool calendarHeatmapEnabled;
   final CalendarHeatMetric calendarHeatMetric;
   final CashflowPeriodMetric cashflowPeriodMetric;
+  final TransactionListDisplayMode transactionListDisplayMode;
   // Empty selects the first style declared in that type's manifest.
   final String accountIconStyle;
   final String categoryIconStyle;
@@ -114,6 +134,7 @@ class AppSettings {
     bool? calendarHeatmapEnabled,
     CalendarHeatMetric? calendarHeatMetric,
     CashflowPeriodMetric? cashflowPeriodMetric,
+    TransactionListDisplayMode? transactionListDisplayMode,
     String? accountIconStyle,
     String? categoryIconStyle,
   }) {
@@ -131,6 +152,8 @@ class AppSettings {
           calendarHeatmapEnabled ?? this.calendarHeatmapEnabled,
       calendarHeatMetric: calendarHeatMetric ?? this.calendarHeatMetric,
       cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
+      transactionListDisplayMode:
+          transactionListDisplayMode ?? this.transactionListDisplayMode,
       accountIconStyle: accountIconStyle ?? this.accountIconStyle,
       categoryIconStyle: categoryIconStyle ?? this.categoryIconStyle,
     );

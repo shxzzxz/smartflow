@@ -599,8 +599,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: 'meal',
     title: '餐饮',
     subtitle: '12:30',
-    amountText: '-68.00',
-    compactAmountText: '-68',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '-68',
+      compactText: '-68',
+    ),
     amountTone: FinanceTone.expense,
     accountFlow: TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(label: '现金账户', iconKey: 'cash'),
@@ -616,8 +618,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: 'salary',
     title: '工资',
     subtitle: '09:00',
-    amountText: '+8,000.00',
-    compactAmountText: '+8千',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '+8000',
+      compactText: '+8000',
+    ),
     amountTone: FinanceTone.income,
     accountFlow: TransactionAccountFlowPresentation(
       in_: AccountEndpointPresentation(label: '工资卡', iconKey: 'boc_debit_card'),
@@ -631,7 +635,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: null,
     title: '转账',
     subtitle: '10:00',
-    amountText: '1,000',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '1000',
+      compactText: '1000',
+    ),
     amountTone: FinanceTone.neutral,
     accountFlow: TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(label: '现金账户', iconKey: 'cash'),
@@ -647,7 +654,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: null,
     title: '多类别',
     subtitle: '10:30',
-    amountText: '-120',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '-120',
+      compactText: '-120',
+    ),
     amountTone: FinanceTone.expense,
     accountFlow: TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(label: '现金账户', iconKey: 'cash'),
@@ -661,7 +671,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: null,
     title: '应收增加',
     subtitle: '11:00',
-    amountText: '500',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '500',
+      compactText: '500',
+    ),
     amountTone: FinanceTone.neutral,
     accountFlow: TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(label: '现金账户', iconKey: 'cash'),
@@ -676,7 +689,10 @@ const _sampleTransactionRows = <TransactionRowPresentation>[
     iconKey: null,
     title: '还款',
     subtitle: '12:00',
-    amountText: '2,000',
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: '2000',
+      compactText: '2000',
+    ),
     amountTone: FinanceTone.neutral,
     accountFlow: TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(label: '银行卡', iconKey: 'boc_debit_card'),
@@ -2283,8 +2299,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           inline: true,
           label: '原价与实付对比',
           child: ComparedMoneyText(
-            originalPreciseText: '128.00',
-            originalCompactText: '128',
+            originalText: '128',
             actualPreciseText: '96.00',
             actualCompactText: '96',
             originalStyle: textStyles.transactionSupporting,

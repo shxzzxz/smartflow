@@ -435,7 +435,10 @@ void main() {
                 iconKey: null,
                 title: '测试交易',
                 subtitle: '08:00',
-                amountText: '-10.00',
+                amount: AdaptiveMoneyTextPresentation(
+                  preciseText: '-10.00',
+                  compactText: '-10',
+                ),
                 amountTone: FinanceTone.expense,
                 accountFlow: TransactionAccountFlowPresentation(
                   fallbackLabel: '现金',

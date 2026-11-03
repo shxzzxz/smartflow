@@ -13,7 +13,11 @@ _buildTransactionDetailLedger(
 ) {
   final detail = context.transaction;
   return (
-    hero: transactionDetailHero(detail: detail, accountLookup: accountLookup),
+    hero: transactionDetailHero(
+      detail: detail,
+      accountLookup: accountLookup,
+      categoryAccountIds: context.categoryAccountIds,
+    ),
     allocationBreakdowns: transactionDetailAllocationBreakdowns(
       detail: detail,
       accountLookup: accountLookup,

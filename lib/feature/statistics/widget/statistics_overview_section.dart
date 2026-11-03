@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/spacing.dart';
@@ -185,7 +186,7 @@ class _OverviewMetric extends StatelessWidget {
 String _overviewChangeAmount(PeriodChange change) {
   if (change.isFlat) return '持平';
   if (change.previous.minorUnits == 0 && change.current.minorUnits > 0) {
-    return '新增 ${formatCompactMoney(change.current)}';
+    return '新增 ${formatMoney(change.current.abs(), style: MoneyFormatStyle.compact)}';
   }
   return formatSignedCompactAmount(change.delta.minorUnits);
 }

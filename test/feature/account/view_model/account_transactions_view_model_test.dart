@@ -47,7 +47,7 @@ void main() {
       final loaded = state as AccountTransactionsLoaded;
       final row = loaded.groups.single.rows.single;
       expect(row.transactionId, 'tx-1');
-      expect(row.amountText, '-12.34');
+      expect(row.amount.preciseText, '-12.34');
       expect(row.amountTone, FinanceTone.neutral);
       expect(loaded.hasMore, isFalse);
     });
@@ -96,7 +96,7 @@ void main() {
           'parent',
           'child',
         ]);
-        expect(loaded.rows.map((row) => row.amountText), ['-10', '-2']);
+        expect(loaded.rows.map((row) => row.amount.preciseText), ['-10', '-2']);
       },
     );
 

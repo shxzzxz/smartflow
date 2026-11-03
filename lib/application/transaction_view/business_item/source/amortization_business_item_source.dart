@@ -66,6 +66,9 @@ final class AmortizationBusinessItemSource implements BusinessItemSource {
       remainingAmount: plan.remainingAmount,
       postedPeriodCount: plan.postedPeriodCount,
       totalPeriodCount: plan.periods.length,
+      categoryAccountIds: [
+        for (final allocation in plan.categoryAllocations) allocation.accountId,
+      ],
       currentPeriodSequence: current?.sequenceNo,
       currentPeriodDueAt: current?.dueAt,
       currentPeriodAmount: current?.amount,

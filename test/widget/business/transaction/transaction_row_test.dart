@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/transaction.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -42,6 +43,55 @@ void main() {
       tester.getSize(find.byType(TransactionRow)).height,
       AppTransactionTokens.rowHeightWithSupporting,
     );
+    final summaryFinder = find.byKey(
+      const ValueKey('transaction-business-summary-badge-row'),
+    );
+    final summary = tester.widget<Container>(summaryFinder);
+    final summaryDecoration = summary.decoration! as BoxDecoration;
+    final colors = Theme.of(tester.element(summaryFinder)).colorScheme;
+    expect(
+      tester.getSize(summaryFinder).height,
+      AppTransactionTokens.summaryHeight,
+    );
+    expect(
+      summary.padding,
+      const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
+    );
+    expect(
+      summaryDecoration.color,
+      colors.primary.withValues(
+        alpha: AppTransactionTokens.summaryContainerOpacity,
+      ),
+    );
+    expect(summaryDecoration.color, isNot(colors.surfaceContainer));
+    expect(summaryDecoration.color, isNot(colors.surfaceContainerLowest));
+    expect(
+      summaryDecoration.borderRadius,
+      BorderRadius.circular(AppRadius.radiusMd),
+    );
+    expect(summaryDecoration.border, isNull);
+    expect(summaryDecoration.boxShadow, isNull);
+  });
+
+  testWidgets('places business summary after time and account context', (
+    tester,
+  ) async {
+    final presentation = _presentationWithBadges(
+      0,
+    ).copyWith(supportingText: '消费分期 · 已还 2/12');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(body: TransactionRow(presentation: presentation)),
+      ),
+    );
+
+    final timeTop = tester.getTopLeft(find.text('08:30')).dy;
+    final accountTop = tester.getTopLeft(find.text('招商银行储蓄卡长名称')).dy;
+    final summaryTop = tester.getTopLeft(find.text('消费分期 · 已还 2/12')).dy;
+
+    expect(timeTop, lessThan(summaryTop));
+    expect(accountTop, lessThan(summaryTop));
   });
 
   for (final purpose in [
@@ -59,7 +109,7 @@ void main() {
       expect(row.hasMultipleCategories, isTrue);
       expect(row.iconKey, isNull);
       expect(row.title, '多类别');
-      expect(row.amountText, switch (purpose) {
+      expect(row.amount.preciseText, switch (purpose) {
         BusinessPurpose.dailyIncome => '+12.34',
         BusinessPurpose.dailyExpense => '-12.34',
         _ => '12.34',
@@ -75,7 +125,7 @@ void main() {
       expect(find.text('多类别'), findsOneWidget);
       expect(find.byIcon(RemixIcons.layout_grid_line), findsOneWidget);
       expect(find.byType(CategoryAvatar), findsNothing);
-      expect(find.text(row.amountText), findsOneWidget);
+      expect(find.text(row.amount.preciseText), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(
@@ -90,6 +140,41 @@ void main() {
       expect(find.byIcon(RemixIcons.layout_grid_line), findsNothing);
     });
   }
+
+  testWidgets('can prefer category artwork over a fixed purpose icon', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(
+            presentation: TransactionRowPresentation(
+              transactionId: 'category-artwork',
+              businessPurpose: BusinessPurpose.transfer,
+              iconKey: 'meal',
+              title: '餐饮',
+              subtitle: '08:30',
+              amount: const AdaptiveMoneyTextPresentation(
+                preciseText: '12.34',
+                compactText: '12.34',
+              ),
+              amountTone: FinanceTone.neutral,
+              accountFlow: const TransactionAccountFlowPresentation(
+                out: AccountEndpointPresentation(label: '现金'),
+              ),
+              badges: const [],
+              canQuickEdit: false,
+              preferCategoryArtwork: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CategoryAvatar), findsOneWidget);
+    expect(find.byIcon(RemixIcons.arrow_left_right_line), findsNothing);
+  });
 
   for (final scenario in [
     (BusinessPurpose.transfer, RemixIcons.arrow_left_right_line, '现金', '银行卡'),
@@ -120,7 +205,10 @@ void main() {
                       iconKey: null,
                       title: '交易',
                       subtitle: '08:30',
-                      amountText: '100',
+                      amount: const AdaptiveMoneyTextPresentation(
+                        preciseText: '100',
+                        compactText: '100',
+                      ),
                       amountTone: FinanceTone.neutral,
                       accountFlow: TransactionAccountFlowPresentation(
                         out: AccountEndpointPresentation(label: scenario.$3),
@@ -422,7 +510,6 @@ void main() {
                 title: '人情社交',
                 amountText: '-37',
                 originalAmountText: '-39',
-                originalCompactAmountText: '-39',
               ),
               onTap: () {},
               enableQuickEdit: false,
@@ -517,7 +604,6 @@ void main() {
               amountText: '-80',
               compactAmountText: '-80',
               originalAmountText: '-100',
-              originalCompactAmountText: '-100',
             ),
             onTap: () {},
             enableQuickEdit: false,
@@ -569,17 +655,17 @@ TransactionRowPresentation _presentationWithBadges(
   String amountText = '-1.24万',
   String? compactAmountText,
   String? originalAmountText,
-  String? originalCompactAmountText,
 }) {
   return TransactionRowPresentation(
     transactionId: 'badge-row',
     iconKey: 'meal',
     title: '超长分类名称',
     subtitle: '08:30',
-    amountText: amountText,
-    compactAmountText: compactAmountText,
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: amountText,
+      compactText: compactAmountText ?? amountText,
+    ),
     originalAmountText: originalAmountText,
-    originalCompactAmountText: originalCompactAmountText,
     amountTone: FinanceTone.expense,
     accountFlow: const TransactionAccountFlowPresentation(
       out: AccountEndpointPresentation(
@@ -600,23 +686,19 @@ TransactionRowPresentation _presentationWithBadgeLabels(
   String title = '超长分类名称',
   String? amountText,
   String? originalAmountText,
-  String? originalCompactAmountText,
 }) {
   final presentation = _presentationWithBadges(
     0,
     amountText: amountText ?? '-1.24万',
     originalAmountText: originalAmountText,
-    originalCompactAmountText: originalCompactAmountText,
   );
   return TransactionRowPresentation(
     transactionId: presentation.transactionId,
     iconKey: presentation.iconKey,
     title: title,
     subtitle: presentation.subtitle,
-    amountText: presentation.amountText,
-    compactAmountText: presentation.compactAmountText,
+    amount: presentation.amount,
     originalAmountText: presentation.originalAmountText,
-    originalCompactAmountText: presentation.originalCompactAmountText,
     amountTone: presentation.amountTone,
     accountFlow: presentation.accountFlow,
     badges: [

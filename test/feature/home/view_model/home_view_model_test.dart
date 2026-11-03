@@ -8,6 +8,7 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/home/view_model/home_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 
@@ -123,6 +124,105 @@ void main() {
               as HomeContentLoaded;
       expect(loaded.summary.metrics.first.caption, '已达上月 100%');
       expect(loaded.summary.metrics[1].caption, '已达上月 63%');
+    });
+
+    test('builds compact business rows from the display setting', () async {
+      final businessService = _FakeBusinessItemQueryService();
+      final metricsService = _FakeFinancialMetricsService();
+      final accountService = _FakeAccountQueryService(
+        accountsById: {
+          'food': Account(
+            id: 'food',
+            name: '餐饮',
+            type: AccountType.expense,
+            balance: Money.zero(),
+            iconKey: 'meal',
+          ),
+        },
+      );
+      final visibleMonth = DateTime(2026, 1);
+      final transaction = TransactionReadModel(
+        id: 'amortization',
+        businessPurpose: BusinessPurpose.transfer,
+        occurredAt: DateTime(2026, 1, 1, 8),
+        primaryAmount: const Money(minorUnits: 12000),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+        ownership: const TransactionOwnership(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: 'plan-1',
+        ),
+        lines: const [
+          TransactionLine(
+            id: 'amortization-category',
+            transactionId: 'amortization',
+            lineNo: 1,
+            role: TransactionRole.category,
+            accountId: 'food',
+            amount: Money(minorUnits: 12000),
+          ),
+        ],
+      );
+      final item = _businessItem(
+        transaction: transaction,
+        summary: const AmortizationBusinessItemSummary(
+          kind: AmortizationKind.prepaidExpense,
+          status: AmortizationStatus.active,
+          originalAmount: Money(minorUnits: 12000),
+          recognizedAmount: Money(minorUnits: 2400),
+          remainingAmount: Money(minorUnits: 9600),
+          postedPeriodCount: 2,
+          totalPeriodCount: 10,
+        ),
+      );
+      final container = _container(
+        businessService,
+        metricsService,
+        accountService,
+        settingsStore: _MemorySettingsStore(
+          const AppSettings(
+            transactionListDisplayMode: TransactionListDisplayMode.compact,
+          ),
+        ),
+        overrides: [
+          homeBusinessItemsProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(_page([item]))),
+          homeCashflowComparisonProvider(
+            visibleMonth,
+          ).overrideWith((ref) => Stream.value(_comparison())),
+          homeDailyCashflowSummariesProvider(visibleMonth).overrideWith(
+            (ref) => Stream.value([
+              DailyCashflowSummary(
+                date: DateTime(2026, 1, 1),
+                income: Money.zero(),
+                expense: Money.zero(),
+              ),
+            ]),
+          ),
+        ],
+      );
+
+      final contentSub = container.listen(
+        homeContentProvider(visibleMonth),
+        (_, _) {},
+      );
+      addTearDown(contentSub.close);
+      await container.read(homeBusinessItemsProvider(visibleMonth).future);
+      await container.read(homeCashflowComparisonProvider(visibleMonth).future);
+      await container.read(
+        homeDailyCashflowSummariesProvider(visibleMonth).future,
+      );
+      await container.pump();
+      await _flush();
+
+      final loaded =
+          container.read(homeContentProvider(visibleMonth))
+              as HomeContentLoaded;
+      final row = loaded.groups.single.rows.single;
+      expect(row.title, '餐饮');
+      expect(row.supportingText, isNull);
+      expect(row.badges.map((badge) => badge.label), ['摊销 2/10']);
     });
 
     test('restarts queries when shifting month', () {
@@ -480,16 +580,21 @@ TransactionReadModel _item({String id = 'tx-1', DateTime? occurredAt}) {
 BusinessItemReadModel _businessItem({
   String id = 'tx-1',
   DateTime? occurredAt,
+  TransactionReadModel? transaction,
+  BusinessItemSummary summary = const LedgerBusinessItemSummary(),
 }) {
-  final transaction = _item(id: id, occurredAt: occurredAt);
+  final anchor = transaction ?? _item(id: id, occurredAt: occurredAt);
+  final ownership = anchor.ownership;
   return BusinessItemReadModel.fromCandidate(
     candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(transaction.id),
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      itemKey: ownership == null
+          ? BusinessItemKey.transactionGroup(anchor.id)
+          : BusinessItemKey(type: ownership.ownerType, id: ownership.ownerId),
+      anchorTransactionId: anchor.id,
+      anchorAt: anchor.occurredAt,
     ),
-    anchorTransaction: transaction,
-    summary: const LedgerBusinessItemSummary(),
+    anchorTransaction: anchor,
+    summary: summary,
   );
 }
 

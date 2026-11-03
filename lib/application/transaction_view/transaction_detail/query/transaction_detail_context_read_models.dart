@@ -51,6 +51,12 @@ final class TransactionDetailContext {
   TransactionReadModel get anchorTransaction => anchorGroup.anchor;
 
   bool get isChild => transaction.parentTransactionId != null;
+
+  Iterable<String> get categoryAccountIds => switch (owner) {
+    AmortizationTransactionDetailOwnerContext(:final categoryAccountIds) =>
+      categoryAccountIds,
+    _ => const [],
+  };
 }
 
 /// Business facts associated with the transaction owner.
@@ -139,6 +145,7 @@ final class AmortizationTransactionDetailOwnerContext
     required this.remainingAmount,
     required this.postedPeriodCount,
     required this.totalPeriodCount,
+    this.categoryAccountIds = const [],
     this.currentPeriodSequence,
     this.currentPeriodDueAt,
     this.currentPeriodAmount,
@@ -152,6 +159,7 @@ final class AmortizationTransactionDetailOwnerContext
   final Money remainingAmount;
   final int postedPeriodCount;
   final int totalPeriodCount;
+  final List<String> categoryAccountIds;
   final int? currentPeriodSequence;
   final DateTime? currentPeriodDueAt;
   final Money? currentPeriodAmount;

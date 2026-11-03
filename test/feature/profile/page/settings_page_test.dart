@@ -64,10 +64,12 @@ void main() {
     expect(find.text('下拉灵敏度'), findsOneWidget);
     expect(find.text('下拉新增交易灵敏度'), findsNothing);
     expect(find.text('经典样式'), findsOneWidget);
-    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(2));
+    expect(find.text('流水列表信息'), findsOneWidget);
+    expect(find.text('标准'), findsWidgets);
+    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(3));
     expect(
       tester.getCenter(find.text('下拉灵敏度')).dx,
-      lessThan(tester.getCenter(find.text('标准')).dx),
+      lessThan(tester.getCenter(find.text('标准').first).dx),
     );
 
     await tester.tap(find.text('下拉灵敏度'));
@@ -88,6 +90,16 @@ void main() {
     expect(
       (await store.read()).bottomNavigationStyle,
       BottomNavigationStyle.frostedGlass,
+    );
+
+    await tester.tap(find.text('流水列表信息'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('紧凑'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await store.read()).transactionListDisplayMode,
+      TransactionListDisplayMode.compact,
     );
 
     final beforeToggle = await store.read();

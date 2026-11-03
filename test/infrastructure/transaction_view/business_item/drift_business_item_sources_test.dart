@@ -369,6 +369,7 @@ void main() {
         expect(summary.originalAmount, const Money(minorUnits: 10000));
         expect(summary.remainingAmount, Money.zero());
         expect(summary.totalPeriodCount, 1);
+        expect(summary.categoryAccountIds, ['software']);
       },
     );
   });

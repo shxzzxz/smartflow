@@ -41,6 +41,26 @@ void main() {
     expect(hero.amount.minorUnits, -10000);
   });
 
+  test('uses supplemental plan categories for the detail hero', () {
+    final hero = transactionDetailHero(
+      detail: _detail(BusinessPurpose.transfer),
+      categoryAccountIds: const ['insurance'],
+      accountLookup: AccountLookup({
+        'insurance': Account(
+          id: 'insurance',
+          name: '保险',
+          type: AccountType.expense,
+          iconKey: 'shield',
+          balance: Money.zero(),
+        ),
+      }),
+    );
+
+    expect(hero.title, '保险');
+    expect(hero.iconKey, 'shield');
+    expect(hero.hasMultipleCategories, isFalse);
+  });
+
   test('builds separately priced category breakdown items', () {
     final detail = _detail(BusinessPurpose.dailyExpense, const [
       TransactionLine(

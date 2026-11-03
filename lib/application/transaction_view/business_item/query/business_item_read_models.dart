@@ -72,6 +72,7 @@ final class AmortizationBusinessItemSummary extends BusinessItemSummary {
     required this.remainingAmount,
     required this.postedPeriodCount,
     required this.totalPeriodCount,
+    this.categoryAccountIds = const [],
     this.currentPeriodSequence,
     this.currentPeriodDueAt,
     this.currentPeriodAmount,
@@ -85,6 +86,7 @@ final class AmortizationBusinessItemSummary extends BusinessItemSummary {
   final Money remainingAmount;
   final int postedPeriodCount;
   final int totalPeriodCount;
+  final List<String> categoryAccountIds;
   final int? currentPeriodSequence;
   final DateTime? currentPeriodDueAt;
   final Money? currentPeriodAmount;

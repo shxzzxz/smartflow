@@ -97,7 +97,7 @@ void main() {
       preview.single.rows.single.businessPurpose,
       BusinessPurpose.transfer,
     );
-    expect(preview.single.rows.single.amountText, '10.00');
+    expect(preview.single.rows.single.amount.preciseText, '10.00');
     expect(preview.single.rows.single.accountFlow.out?.label, '资产 / 现金');
     expect(takeImportPreviewRows(preview, 1).single.rows, hasLength(1));
     expect(takeImportPreviewRows(preview, 0), isEmpty);

@@ -45,14 +45,16 @@ class _ProfileGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
-        final gap = AppSpacing.space4;
+        final minCrossAxisSpacing = AppSpacing.space4;
         final minTileWidth =
             AppComponentTokens.profileGridMinTileWidth *
             textScale.clamp(1, 1.5);
-        final maxByWidth = ((constraints.maxWidth + gap) / (minTileWidth + gap))
-            .floor()
-            .clamp(3, 5)
-            .toInt();
+        final maxByWidth =
+            ((constraints.maxWidth + minCrossAxisSpacing) /
+                    (minTileWidth + minCrossAxisSpacing))
+                .floor()
+                .clamp(1, entries.length)
+                .toInt();
         final columns = profileGridColumnCount(
           entryCount: entries.length,
           maxColumns: maxByWidth,
@@ -65,9 +67,10 @@ class _ProfileGrid extends StatelessWidget {
             )
             .toDouble();
         final rows = (entries.length / columns).ceil();
-        final cellWidth =
-            (constraints.maxWidth - (columns - 1) * gap) / columns;
-        final height = rows * tileHeight + (rows - 1) * gap;
+        final tileWidth =
+            (constraints.maxWidth - (columns - 1) * minCrossAxisSpacing) /
+            columns;
+        final height = rows * tileHeight + (rows - 1) * minCrossAxisSpacing;
 
         return SizedBox(
           height: height,
@@ -79,26 +82,26 @@ class _ProfileGrid extends StatelessWidget {
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
               mainAxisExtent: tileHeight,
-              mainAxisSpacing: gap,
-              crossAxisSpacing: gap,
+              mainAxisSpacing: minCrossAxisSpacing,
+              crossAxisSpacing: minCrossAxisSpacing,
             ),
             itemBuilder: (context, index) {
               final entry = entries[index];
               return Semantics(
+                key: ValueKey('profile-grid-entry-${entry.title}'),
                 button: true,
                 label: entry.title,
                 child: BusinessIconTile(
-                  extent: cellWidth,
+                  extent: tileWidth,
+                  minHeight: tileHeight,
+                  alignment: Alignment.topCenter,
                   onTap: entry.onTap,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space4,
-                      vertical: AppSpacing.space8,
-                    ),
+                    padding: const EdgeInsets.only(top: AppSpacing.space4),
                     child: BusinessIconBubble(
                       size: AppSpacing.space40,
                       label: entry.title,
-                      labelSpacing: AppSpacing.space8,
+                      labelSpacing: AppSpacing.space6,
                       bubbleColor: Theme.of(context).colorScheme.primary
                           .withValues(
                             alpha: AppComponentTokens.selectedContainerOpacity,

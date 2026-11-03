@@ -70,6 +70,28 @@ riverpod_lint 暂无对应 lint，此规则依赖评审约束，已列为 custom
 
 presentation 的输出优先使用展示语义而不是具体 Flutter 视觉值。例如返回 `income / expense / neutral` 这类语义 tone、图标 key、文案或格式化金额；具体 `Color`、`TextStyle` 与 Theme 映射由 View 或业务组件完成。既有代码中直接返回 `Color` 的纯函数可作为过渡保留，新代码避免继续扩散。
 
+### 业务场景展示
+
+同一业务场景同时出现在多个展示面时，按场景聚合展示知识，按展示面拆分输出：
+
+- 页面 ViewModel 负责查询、加载状态、页面意图，并持有最终展示数据。
+- 业务场景 presenter 是无状态的 presentation adapter，不查询数据、不持有状态、不执行命令。
+- 列表和详情分别定义窄输出接口，不强制使用同一个大而全展示对象。
+- 场景解析集中在一个稳定身份上；具体文案、进度、状态和 badge 规则放在对应场景模块内。
+- 通用列表或详情组件不按业务场景分发，只消费已经准备好的展示数据。
+- 操作权限与命令分发保持独立策略；可以复用业务场景身份，但不要与展示 presenter 合并为巨型场景类。
+
+调用方向为：
+
+```text
+read model / context
+  -> 页面 ViewModel
+  -> 场景 presenter
+  -> surface-specific presentation
+  -> ViewModel state
+  -> common widget
+```
+
 ## 交互模式
 
 feature 与 ViewModel 的交互模式分三类：

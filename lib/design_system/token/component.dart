@@ -15,8 +15,8 @@ abstract final class AppComponentTokens {
   static const double iconChoiceGridTileExtent = 72;
   static const double choiceGridMinItemWidth = 88;
   static const double choiceGridItemMainExtent = 64;
-  static const double profileGridMinTileWidth = 60;
-  static const double profileGridTileMainExtent = 104;
+  static const double profileGridMinTileWidth = 64;
+  static const double profileGridTileMainExtent = 80;
   static const double menuElevation = 8;
   static const double menuMinWidth = 180;
   static const double outlineWidth = 1;

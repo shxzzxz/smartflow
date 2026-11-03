@@ -3,12 +3,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../app/provider.dart';
 import '../../../../application/ledger/ledger_command_api.dart';
 import '../../../../application/ledger/ledger_query_api.dart';
+import '../../../../application/shared/app_settings_store.dart';
 import '../../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../shared/provider/counterparty_providers.dart';
 import '../../../shared/presentation/account_lookup.dart';
 import '../../../shared/presentation/transaction_list_presentation.dart';
 import '../../../shared/provider/ledger_query_providers.dart';
 import '../../../shared/provider/tag_providers.dart';
+import '../../../shared/view_model/app_settings_view_model.dart';
 
 part 'filtered_transactions_view_model.g.dart';
 
@@ -81,6 +83,12 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     final counterparties = target == FilteredTransactionTarget.counterparty
         ? ref.watch(counterpartyListProvider)
         : null;
+    final displayMode =
+        ref
+            .watch(appSettingsViewModelProvider)
+            .value
+            ?.transactionListDisplayMode ??
+        const AppSettings().transactionListDisplayMode;
 
     if (accountLookup case AsyncError()) {
       return const FilteredTransactionsState.error(message: '加载失败，请稍后重试');
@@ -121,6 +129,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
         metadata: metadata,
         items: _previousItems,
         accountLookup: lookup,
+        displayMode: displayMode,
         hasMore: true,
         isLoadingMore: true,
       );
@@ -131,6 +140,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
         metadata: metadata,
         items: _previousItems = value.items,
         accountLookup: lookup,
+        displayMode: displayMode,
         hasMore: value.hasMore,
         isLoadingMore: false,
       ),
@@ -141,6 +151,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
                 metadata: metadata,
                 items: _previousItems,
                 accountLookup: lookup,
+                displayMode: displayMode,
                 hasMore: true,
                 isLoadingMore: false,
                 loadMoreErrorMessage: '加载更多交易失败，请重试',
@@ -276,6 +287,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
     required _FilteredTransactionMetadata metadata,
     required List<BusinessItemReadModel> items,
     required AccountLookup accountLookup,
+    required TransactionListDisplayMode displayMode,
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
@@ -287,6 +299,7 @@ class FilteredTransactionsViewModel extends _$FilteredTransactionsViewModel {
       groups: groupBusinessItemsByDay(
         items: items,
         accountLookup: accountLookup,
+        displayMode: displayMode,
       ),
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,

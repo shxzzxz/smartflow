@@ -22,13 +22,12 @@ void main() {
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         themeMode: ThemeMode.dark,
-        builder:
-            (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: const TextScaler.linear(2)),
-              child: child!,
-            ),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
         home: Scaffold(
           body: TransactionFeedScrollView(
             groups: [_group(0, title: '周末家庭聚餐与日常生活用品采购')],
@@ -129,12 +128,11 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder:
-              (context, state) => Scaffold(
-                body: TransactionFeedScrollView(
-                  groups: [_group(0, canQuickEdit: true)],
-                ),
-              ),
+          builder: (context, state) => Scaffold(
+            body: TransactionFeedScrollView(
+              groups: [_group(0, canQuickEdit: true)],
+            ),
+          ),
         ),
         GoRoute(
           path: '/transaction/:id/edit',
@@ -204,7 +202,10 @@ TransactionDayGroup _group(
         iconKey: null,
         title: title ?? '测试交易 $index',
         subtitle: '08:00',
-        amountText: '-10.00',
+        amount: const AdaptiveMoneyTextPresentation(
+          preciseText: '-10.00',
+          compactText: '-10',
+        ),
         amountTone: FinanceTone.expense,
         accountFlow: const TransactionAccountFlowPresentation(
           fallbackLabel: '现金',

@@ -30,7 +30,10 @@ void main() {
               iconKey: 'meal',
               title: '餐饮',
               subtitle: '12:30',
-              amountText: '-12.34',
+              amount: AdaptiveMoneyTextPresentation(
+                preciseText: '-12.34',
+                compactText: '-12.34',
+              ),
               amountTone: FinanceTone.expense,
               accountFlow: TransactionAccountFlowPresentation(
                 fallbackLabel: '现金',
@@ -284,7 +287,10 @@ class _CategoryViewModel extends FilteredTransactionsViewModel {
                 iconKey: 'meal',
                 title: '交易 $i',
                 subtitle: '12:30',
-                amountText: '-12.34',
+                amount: const AdaptiveMoneyTextPresentation(
+                  preciseText: '-12.34',
+                  compactText: '-12.34',
+                ),
                 amountTone: FinanceTone.expense,
                 accountFlow: const TransactionAccountFlowPresentation(
                   fallbackLabel: '现金',

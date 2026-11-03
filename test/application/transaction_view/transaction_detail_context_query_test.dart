@@ -58,6 +58,7 @@ void main() {
       remainingAmount: const Money(minorUnits: 10000),
       postedPeriodCount: 1,
       totalPeriodCount: 3,
+      categoryAccountIds: const ['insurance'],
     );
     final recognition = _transaction(
       id: 'recognition',
@@ -91,6 +92,7 @@ void main() {
     expect(context!.transaction.id, 'recognition');
     expect(context.anchorTransaction.id, 'anchor');
     expect(context.owner, isA<AmortizationTransactionDetailOwnerContext>());
+    expect(context.categoryAccountIds, ['insurance']);
   });
 
   test('missing owner query is represented as unknown owner', () async {

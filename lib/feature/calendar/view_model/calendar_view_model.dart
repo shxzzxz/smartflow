@@ -10,6 +10,7 @@ import '../../../core/time/month_key.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/provider/ledger_query_providers.dart';
+import '../../shared/view_model/app_settings_view_model.dart';
 import '../presentation/calendar_month_presentation.dart';
 
 part 'calendar_view_model.g.dart';
@@ -234,6 +235,12 @@ CalendarContentState calendarContent(
     calendarMonthlyBillSummariesProvider(visibleMonth),
   );
   final accountLookup = ref.watch(accountLookupProvider);
+  final transactionListDisplayMode =
+      ref
+          .watch(appSettingsViewModelProvider)
+          .value
+          ?.transactionListDisplayMode ??
+      const AppSettings().transactionListDisplayMode;
   final feed = ref.watch(
     calendarTransactionFeedViewModelProvider(selectedDate),
   );
@@ -288,6 +295,7 @@ CalendarContentState calendarContent(
         items: loadedFeed?.items ?? const [],
         dailySummaries: dailySummaryValues,
         accountLookup: lookup,
+        displayMode: transactionListDisplayMode,
       ),
       dueBillItems: [
         for (final item in creditDueItemValues)

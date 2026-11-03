@@ -42,6 +42,10 @@ void main() {
         );
         expect(settings.copyPreviousMonthBudgetsOnOpen, isFalse);
         expect(settings.cashflowPeriodMetric, CashflowPeriodMetric.periodDelta);
+        expect(
+          settings.transactionListDisplayMode,
+          TransactionListDisplayMode.standard,
+        );
       },
     );
 
@@ -114,6 +118,24 @@ void main() {
       expect(
         settings.cashflowPeriodMetric,
         CashflowPeriodMetric.previousMonthRatio,
+      );
+    });
+
+    test('save then read round-trips transaction list display mode', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final store = DriftAppSettingsStore(database);
+
+      await store.save(
+        const AppSettings(
+          transactionListDisplayMode: TransactionListDisplayMode.compact,
+        ),
+      );
+
+      final settings = await store.read();
+      expect(
+        settings.transactionListDisplayMode,
+        TransactionListDisplayMode.compact,
       );
     });
   });

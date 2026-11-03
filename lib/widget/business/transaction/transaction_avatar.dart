@@ -14,6 +14,7 @@ class TransactionAvatar extends StatelessWidget {
     this.size = 32,
     this.iconSize,
     this.hasMultipleCategories = false,
+    this.preferCategoryArtwork = false,
   });
 
   final BusinessPurpose businessPurpose;
@@ -21,9 +22,25 @@ class TransactionAvatar extends StatelessWidget {
   final double size;
   final double? iconSize;
   final bool hasMultipleCategories;
+  final bool preferCategoryArtwork;
 
   @override
   Widget build(BuildContext context) {
+    if (preferCategoryArtwork) {
+      if (hasMultipleCategories) {
+        return BusinessIconBubble(
+          size: size,
+          child: Icon(
+            RemixIcons.layout_grid_line,
+            size: iconSize ?? size * 0.7,
+          ),
+        );
+      }
+      if (iconKey != null) {
+        return CategoryAvatar(iconKey: iconKey, size: size, iconSize: iconSize);
+      }
+    }
+
     final icon = switch (businessPurpose) {
       BusinessPurpose.dailyExpense ||
       BusinessPurpose.dailyIncome ||

@@ -62,6 +62,12 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return _save((settings) => settings.copyWith(cashflowPeriodMetric: value));
   }
 
+  Future<void> setTransactionListDisplayMode(TransactionListDisplayMode value) {
+    return _save(
+      (settings) => settings.copyWith(transactionListDisplayMode: value),
+    );
+  }
+
   Future<UiActionOutcome<void>> setAccountIconStyle(String value) =>
       guardUiAction(
         _logger,

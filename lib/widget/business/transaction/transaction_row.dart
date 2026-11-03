@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/component.dart';
+import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/transaction.dart';
 import 'package:smartflow/design_system/widget/app_swipe_action.dart';
@@ -84,6 +85,7 @@ class TransactionRow extends StatelessWidget {
                     TransactionAvatar(
                       businessPurpose: presentation.businessPurpose,
                       hasMultipleCategories: presentation.hasMultipleCategories,
+                      preferCategoryArtwork: presentation.preferCategoryArtwork,
                       iconKey: presentation.iconKey,
                       size: AppSpacing.space32,
                     ),
@@ -98,13 +100,8 @@ class TransactionRow extends StatelessWidget {
                           child: _PrimaryLine(
                             title: presentation.title,
                             titleStyle: textStyles.transactionTitle,
-                            amount: presentation.amountText,
-                            compactAmount:
-                                presentation.compactAmountText ??
-                                presentation.amountText,
+                            amount: presentation.amount,
                             originalAmount: presentation.originalAmountText,
-                            originalCompactAmount:
-                                presentation.originalCompactAmountText,
                             amountStyle: textStyles.transactionAmount.copyWith(
                               color: amountColor,
                             ),
@@ -113,19 +110,6 @@ class TransactionRow extends StatelessWidget {
                             badges: presentation.badges,
                           ),
                         ),
-                        if (presentation.supportingText case final text?) ...[
-                          const SizedBox(height: AppSpacing.space2),
-                          SizedBox(
-                            width: double.infinity,
-                            height: AppSpacing.space16,
-                            child: Text(
-                              text,
-                              style: textStyles.transactionSupporting,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
                         const SizedBox(height: AppSpacing.space2),
                         SizedBox(
                           width: double.infinity,
@@ -147,6 +131,36 @@ class TransactionRow extends StatelessWidget {
                             ],
                           ),
                         ),
+                        if (presentation.supportingText case final text?) ...[
+                          const SizedBox(height: AppSpacing.space2),
+                          Container(
+                            key: ValueKey(
+                              'transaction-business-summary-'
+                              '${presentation.transactionId}',
+                            ),
+                            width: double.infinity,
+                            height: AppTransactionTokens.summaryHeight,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.space8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.primary.withValues(
+                                alpha: AppTransactionTokens
+                                    .summaryContainerOpacity,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.radiusMd,
+                              ),
+                            ),
+                            child: Text(
+                              text,
+                              style: textStyles.transactionSupporting,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -184,9 +198,7 @@ class _PrimaryLine extends StatelessWidget {
     required this.title,
     required this.titleStyle,
     required this.amount,
-    required this.compactAmount,
     required this.originalAmount,
-    required this.originalCompactAmount,
     required this.amountStyle,
     required this.originalAmountStyle,
     required this.badges,
@@ -194,10 +206,8 @@ class _PrimaryLine extends StatelessWidget {
 
   final String title;
   final TextStyle titleStyle;
-  final String amount;
-  final String compactAmount;
+  final AdaptiveMoneyTextPresentation amount;
   final String? originalAmount;
-  final String? originalCompactAmount;
   final TextStyle amountStyle;
   final TextStyle originalAmountStyle;
   final List<TransactionBadgePresentation> badges;
@@ -247,10 +257,9 @@ class _PrimaryLine extends StatelessWidget {
               maxWidth: AppTransactionTokens.comparedAmountMaxWidth,
             ),
             child: ComparedMoneyText(
-              originalPreciseText: originalAmount!,
-              originalCompactText: originalCompactAmount ?? originalAmount!,
-              actualPreciseText: amount,
-              actualCompactText: compactAmount,
+              originalText: originalAmount!,
+              actualPreciseText: amount.preciseText,
+              actualCompactText: amount.compactText,
               originalStyle: originalAmountStyle,
               actualStyle: amountStyle,
               maxWidth: AppTransactionTokens.comparedAmountMaxWidth,
@@ -262,8 +271,8 @@ class _PrimaryLine extends StatelessWidget {
               maxWidth: AppTransactionTokens.amountMaxWidth,
             ),
             child: AdaptiveMoneyText(
-              preciseText: amount,
-              compactText: compactAmount,
+              preciseText: amount.preciseText,
+              compactText: amount.compactText,
               style: amountStyle,
               maxWidth: AppTransactionTokens.amountMaxWidth,
             ),

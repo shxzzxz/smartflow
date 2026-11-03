@@ -12,6 +12,7 @@ class BusinessIconTile extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.extent = 64,
+    this.minHeight,
     this.borderRadius = AppRadius.radiusLg,
     this.alignment = Alignment.center,
   });
@@ -20,6 +21,7 @@ class BusinessIconTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final double extent;
+  final double? minHeight;
   final double borderRadius;
   final AlignmentGeometry alignment;
 
@@ -28,8 +30,8 @@ class BusinessIconTile extends StatelessWidget {
     final content = SizedBox(
       width: extent,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: extent),
-        child: Center(child: child),
+        constraints: BoxConstraints(minHeight: minHeight ?? extent),
+        child: Align(alignment: alignment, child: child),
       ),
     );
 

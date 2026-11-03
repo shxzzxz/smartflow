@@ -4,6 +4,7 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -26,7 +27,7 @@ void main() {
 
       expect(groups, hasLength(1));
       expect(groups.single.rows.single.transactionId, 'tx-1');
-      expect(groups.single.rows.single.amountText, '-12.34');
+      expect(groups.single.rows.single.amount.preciseText, '-12.34');
     });
 
     for (final purpose in [
@@ -55,7 +56,7 @@ void main() {
           accountLookup: _lookup,
           amountSource: const TransactionCashflowImpactAmountSource({'food'}),
         );
-        expect(row.amountText, '-5');
+        expect(row.amount.preciseText, '-5');
         expect(row.amountTone, FinanceTone.expense);
         expect(row.originalAmountText, isNull);
         final budget = budgetTransactionGroups(
@@ -63,7 +64,7 @@ void main() {
           accountLookup: _lookup,
           categoryId: 'food',
         );
-        expect(budget.single.rows.single.amountText, '-5');
+        expect(budget.single.rows.single.amount.preciseText, '-5');
       });
     }
 
@@ -102,8 +103,8 @@ void main() {
             'discount',
           }),
         );
-        expect(expense.amountText, '-5');
-        expect(income.amountText, '+1');
+        expect(expense.amount.preciseText, '-5');
+        expect(income.amount.preciseText, '+1');
       },
     );
 
@@ -123,7 +124,7 @@ void main() {
         accountLookup: _lookup,
         amountSource: const TransactionCashflowImpactAmountSource({'food'}),
       );
-      expect(row.amountText, '+5');
+      expect(row.amount.preciseText, '+5');
     });
 
     test('amortization ownership disables quick edit', () {
@@ -233,13 +234,39 @@ void main() {
       expect(row.title, '餐饮');
       expect(row.transactionId, 'tx-1');
       expect(row.subtitle, '08:30');
-      expect(row.amountText, '-10.04');
+      expect(row.amount.preciseText, '-10.04');
       expect(row.originalAmountText, '-12.34');
       expect(row.amountTone, FinanceTone.expense);
       expect(row.iconKey, 'meal');
       expect(row.accountFlow.out?.label, '现金');
-      expect(row.badges.map((badge) => badge.label), ['退 2.3', '不计统计']);
+      expect(row.badges.map((badge) => badge.label), ['不计统计']);
       expect(row.canQuickEdit, true);
+    });
+
+    test('keeps precise and compact candidates for the primary amount', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(primaryAmount: const Money(minorUnits: 123456789)),
+        accountLookup: _lookup,
+      );
+
+      expect(row.amount.preciseText, '-1234567.89');
+      expect(row.amount.compactText, '-123.46万');
+      expect(row.amount.preciseText, isNot(contains('¥')));
+      expect(row.amount.compactText, isNot(contains('¥')));
+    });
+
+    test('keeps comparison original amounts compact', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          primaryAmount: const Money(minorUnits: 123456789),
+          refundedTotal: const Money(minorUnits: 100000),
+        ),
+        accountLookup: _lookup,
+      );
+
+      expect(row.amount.preciseText, '-1233567.89');
+      expect(row.amount.compactText, '-123.36万');
+      expect(row.originalAmountText, '-123.46万');
     });
 
     for (final scenario in [
@@ -345,7 +372,7 @@ void main() {
           lookup.find(scenario.$5)!.iconKey,
         );
         expect(flow.separator, '->');
-        expect(row.amountText, '100');
+        expect(row.amount.preciseText, '100');
         expect(row.iconKey, isNull);
         expect(row.copyWith(selected: true).businessPurpose, scenario.$1);
       });
@@ -475,13 +502,13 @@ void main() {
         accountLookup: _lookup,
       );
 
-      expect(badDebt.amountText, '-12.34');
+      expect(badDebt.amount.preciseText, '-12.34');
       expect(badDebt.amountTone, FinanceTone.expense);
-      expect(debtRelief.amountText, '+12.34');
+      expect(debtRelief.amount.preciseText, '+12.34');
       expect(debtRelief.amountTone, FinanceTone.income);
     });
 
-    test('shows a transfer fee badge', () {
+    test('keeps transaction adjustments out of badges', () {
       final row = buildTransactionRowPresentation(
         item: _item(
           businessPurpose: BusinessPurpose.transfer,
@@ -495,30 +522,27 @@ void main() {
         accountLookup: _lookup,
       );
 
-      expect(row.badges.map((badge) => badge.label), ['费 3']);
+      expect(row.badges, isEmpty);
     });
 
-    test(
-      'shows refund and advance badges while refund adjusts advance amount',
-      () {
-        final row = buildTransactionRowPresentation(
-          accountLookup: _lookup,
-          item: _item(
-            businessPurpose: BusinessPurpose.advance,
-            primaryAmount: const Money(minorUnits: 10000),
-            refundedTotal: const Money(minorUnits: 2000),
-            advanceCollectedTotal: const Money(minorUnits: 4000),
-          ),
-        );
+    test('refund still adjusts the displayed advance amount', () {
+      final row = buildTransactionRowPresentation(
+        accountLookup: _lookup,
+        item: _item(
+          businessPurpose: BusinessPurpose.advance,
+          primaryAmount: const Money(minorUnits: 10000),
+          refundedTotal: const Money(minorUnits: 2000),
+          advanceCollectedTotal: const Money(minorUnits: 4000),
+        ),
+      );
 
-        expect(row.badges.map((badge) => badge.label), ['退 20', '报 40']);
-        expect(row.originalAmountText, '100');
-        expect(row.amountText, '80');
-        expect(row.amountTone, FinanceTone.neutral);
-      },
-    );
+      expect(row.badges, isEmpty);
+      expect(row.originalAmountText, '100');
+      expect(row.amount.preciseText, '80');
+      expect(row.amountTone, FinanceTone.neutral);
+    });
 
-    test('labels advance compensation badge as compensation', () {
+    test('keeps advance compensation out of badges', () {
       final row = buildTransactionRowPresentation(
         accountLookup: _lookup,
         item: _item(
@@ -548,10 +572,10 @@ void main() {
         ),
       );
 
-      expect(row.badges.map((badge) => badge.label), ['补偿 10']);
+      expect(row.badges, isEmpty);
     });
 
-    test('hides collection principal badge and keeps interest badge', () {
+    test('keeps receivable collection adjustments out of badges', () {
       final row = buildTransactionRowPresentation(
         accountLookup: _lookup,
         item: _item(
@@ -569,7 +593,7 @@ void main() {
         ),
       );
 
-      expect(row.badges.map((badge) => badge.label), ['利息 5']);
+      expect(row.badges, isEmpty);
     });
 
     test('uses account balance delta in account ledger mode', () {
@@ -579,7 +603,7 @@ void main() {
         amountSource: const TransactionAccountImpactAmountSource('cash'),
       );
 
-      expect(row.amountText, '-12.34');
+      expect(row.amount.preciseText, '-12.34');
       expect(row.amountTone, FinanceTone.neutral);
     });
 
@@ -656,10 +680,10 @@ void main() {
           )
           .toList();
 
-      expect(groupRow.amountText, '-18');
+      expect(groupRow.amount.preciseText, '-18');
       expect(groupRow.originalAmountText, '-20');
-      expect(accountRows.map((row) => row.amountText), ['-20', '+2']);
-      expect(categoryRows.map((row) => row.amountText), ['-20', '+2']);
+      expect(accountRows.map((row) => row.amount.preciseText), ['-20', '+2']);
+      expect(categoryRows.map((row) => row.amount.preciseText), ['-20', '+2']);
       expect(categoryRows.first.originalAmountText, isNull);
     });
 
@@ -839,7 +863,7 @@ void main() {
       expect(budget.caption, '120%/1000');
     });
 
-    test('business items add one business supporting line', () {
+    test('amortization uses category identity and standard summary copy', () {
       final item = _businessItem(
         summary: const AmortizationBusinessItemSummary(
           kind: AmortizationKind.prepaidExpense,
@@ -857,12 +881,42 @@ void main() {
         accountLookup: _lookup,
       );
 
-      expect(row.title, '预付摊销');
-      expect(row.supportingText, '已确认 2/5 · 剩余 80');
-      expect(row.badges.map((badge) => badge.label), contains('进行中'));
+      expect(row.title, '餐饮');
+      expect(row.preferCategoryArtwork, isTrue);
+      expect(row.supportingText, '摊销预付 · 已确认 2/5 · 待摊 80');
+      expect(row.badges, isEmpty);
     });
 
-    test('installments show paid periods and remaining principal', () {
+    test('amortization uses plan categories when the anchor has no lines', () {
+      final item = _businessItem(
+        transaction: _item(
+          businessPurpose: BusinessPurpose.transfer,
+          categoryAccountId: null,
+          impactsByAccountId: const {},
+        ),
+        summary: const AmortizationBusinessItemSummary(
+          kind: AmortizationKind.prepaidExpense,
+          status: AmortizationStatus.active,
+          originalAmount: Money(minorUnits: 10000),
+          recognizedAmount: Money(minorUnits: 2000),
+          remainingAmount: Money(minorUnits: 8000),
+          postedPeriodCount: 2,
+          totalPeriodCount: 5,
+          categoryAccountIds: ['food'],
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '餐饮');
+      expect(row.iconKey, 'meal');
+      expect(row.preferCategoryArtwork, isTrue);
+    });
+
+    test('installments use category identity and remaining principal copy', () {
       final item = _businessItem(
         summary: const InstallmentBusinessItemSummary(
           installmentType: InstallmentType.purchase,
@@ -879,8 +933,221 @@ void main() {
         accountLookup: _lookup,
       );
 
-      expect(row.title, '消费分期');
-      expect(row.supportingText, '已还 1/2 · 剩余本金 60');
+      expect(row.title, '餐饮');
+      expect(row.supportingText, '消费分期 · 已还 1/2 · 待还本金 60');
+    });
+
+    test('compact mode moves one business summary into badges', () {
+      final item = _businessItem(
+        summary: const InstallmentBusinessItemSummary(
+          installmentType: InstallmentType.purchase,
+          status: InstallmentContractStatus.active,
+          principal: Money(minorUnits: 12000),
+          remainingPrincipal: Money(minorUnits: 6000),
+          paidPeriodCount: 1,
+          totalPeriodCount: 2,
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+        displayMode: TransactionListDisplayMode.compact,
+      );
+
+      expect(row.title, '餐饮');
+      expect(row.supportingText, isNull);
+      expect(row.badges.map((badge) => badge.label), ['分期 1/2']);
+    });
+
+    test('AA summaries include participant count in both display modes', () {
+      final base = _item(
+        businessPurpose: BusinessPurpose.advance,
+        primaryAmount: const Money(minorUnits: 10000),
+        advanceCollectedTotal: const Money(minorUnits: 2000),
+        additionalChildren: [
+          TransactionReadModel(
+            id: 'self-borne',
+            parentTransactionId: 'tx-1',
+            businessPurpose: BusinessPurpose.advanceSettlement,
+            occurredAt: DateTime(2026, 1, 2),
+            primaryAmount: const Money(minorUnits: 2000),
+            isExcludedFromStats: false,
+            isExcludedFromBudget: false,
+            lines: const [
+              TransactionLine(
+                id: 'self-borne-category',
+                transactionId: 'self-borne',
+                lineNo: 1,
+                role: TransactionRole.advanceSelfBorne,
+                amount: Money(minorUnits: 2000),
+              ),
+            ],
+          ),
+        ],
+      );
+      final transaction = base.copyWith(
+        lines: [
+          ...base.lines,
+          const TransactionLine(
+            id: 'advance-receivable',
+            transactionId: 'tx-1',
+            lineNo: 9,
+            role: TransactionRole.receivable,
+            accountId: 'receivable',
+            amount: Money(minorUnits: 8000),
+          ),
+        ],
+      );
+      final item = _businessItem(
+        transaction: transaction,
+        summary: const AdvanceBusinessItemSummary(
+          scenario: AdvanceScenario.aa,
+          trackingMode: AdvanceTrackingMode.itemized,
+          outstanding: Money(minorUnits: 6000),
+          isClosed: false,
+          aaPeopleCount: 4,
+        ),
+      );
+
+      final standard = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+      final compact = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+        displayMode: TransactionListDisplayMode.compact,
+      );
+
+      expect(standard.supportingText, 'AA 4人 · 已到账 20/80 · 自承担 20');
+      expect(compact.badges.map((badge) => badge.label), ['AA 4人']);
+      expect(compact.supportingText, isNull);
+    });
+
+    test('reimbursement uses received over total copy', () {
+      final base = _item(
+        businessPurpose: BusinessPurpose.advance,
+        primaryAmount: const Money(minorUnits: 30000),
+        advanceCollectedTotal: const Money(minorUnits: 10000),
+      );
+      final transaction = base.copyWith(
+        lines: [
+          ...base.lines,
+          const TransactionLine(
+            id: 'reimbursement-receivable',
+            transactionId: 'tx-1',
+            lineNo: 9,
+            role: TransactionRole.receivable,
+            accountId: 'receivable',
+            amount: Money(minorUnits: 20000),
+          ),
+        ],
+      );
+      final item = _businessItem(
+        transaction: transaction,
+        summary: const AdvanceBusinessItemSummary(
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.itemized,
+          outstanding: Money(minorUnits: 10000),
+          isClosed: false,
+        ),
+      );
+
+      final standard = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+      final compact = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+        displayMode: TransactionListDisplayMode.compact,
+      );
+
+      expect(standard.supportingText, '报销 100/200');
+      expect(compact.badges.map((badge) => badge.label), ['报销 100/200']);
+    });
+
+    test('refund reduces the advance receivable shown in progress copy', () {
+      final base = _item(
+        businessPurpose: BusinessPurpose.advance,
+        primaryAmount: const Money(minorUnits: 60000),
+        refundedTotal: const Money(minorUnits: 30000),
+        advanceCollectedTotal: Money.zero(),
+      );
+      final transaction = base.copyWith(
+        lines: [
+          ...base.lines,
+          const TransactionLine(
+            id: 'refunded-receivable',
+            transactionId: 'tx-1',
+            lineNo: 9,
+            role: TransactionRole.receivable,
+            accountId: 'receivable',
+            amount: Money(minorUnits: 60000),
+          ),
+        ],
+      );
+      final item = _businessItem(
+        transaction: transaction,
+        summary: const AdvanceBusinessItemSummary(
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.itemized,
+          outstanding: Money(minorUnits: 30000),
+          isClosed: false,
+        ),
+      );
+
+      final standard = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+      final compact = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+        displayMode: TransactionListDisplayMode.compact,
+      );
+
+      expect(standard.supportingText, '报销 0/300');
+      expect(compact.badges.map((badge) => badge.label), ['报销 0/300']);
+    });
+
+    test('account-tracked AA keeps participant count in a fallback badge', () {
+      final item = _businessItem(
+        summary: const AdvanceBusinessItemSummary(
+          scenario: AdvanceScenario.aa,
+          trackingMode: AdvanceTrackingMode.account,
+          outstanding: Money(minorUnits: 8000),
+          isClosed: false,
+          aaPeopleCount: 4,
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.supportingText, isNull);
+      expect(row.badges.map((badge) => badge.label), ['AA 4人']);
+    });
+
+    test('account-tracked advances do not reserve a supporting line', () {
+      final item = _businessItem(
+        summary: const AdvanceBusinessItemSummary(
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.account,
+          outstanding: Money(minorUnits: 8000),
+          isClosed: false,
+        ),
+      );
+
+      final row = buildBusinessItemRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+
+      expect(row.supportingText, isNull);
     });
 
     test('ordinary ledger items do not reserve a supporting line', () {
@@ -1068,15 +1335,18 @@ TransactionReadModel _item({
   );
 }
 
-BusinessItemReadModel _businessItem({required BusinessItemSummary summary}) {
-  final transaction = _item();
+BusinessItemReadModel _businessItem({
+  required BusinessItemSummary summary,
+  TransactionReadModel? transaction,
+}) {
+  final anchor = transaction ?? _item();
   return BusinessItemReadModel.fromCandidate(
     candidate: BusinessItemAnchorCandidate(
-      itemKey: BusinessItemKey.transactionGroup(transaction.id),
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      itemKey: BusinessItemKey.transactionGroup(anchor.id),
+      anchorTransactionId: anchor.id,
+      anchorAt: anchor.occurredAt,
     ),
-    anchorTransaction: transaction,
+    anchorTransaction: anchor,
     summary: summary,
   );
 }

@@ -403,7 +403,7 @@ class _ImportRowDetailsSheet extends StatelessWidget {
             Text(row.title, style: context.appTextStyles.listTitle),
             const SizedBox(height: AppSpacing.space4),
             Text(
-              '${row.subtitle} · ${row.amountText}',
+              '${row.subtitle} · ${row.amount.preciseText}',
               style: context.appTextStyles.pageSubtitle,
             ),
             const SizedBox(height: AppSpacing.space8),

@@ -22,6 +22,7 @@ import 'package:smartflow/feature/transaction/page/transaction_detail_page.dart'
 import 'package:smartflow/feature/transaction/page/advance_form_page.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import '../../../helper/advance_ownership_fixtures.dart';
 import '../../../helper/fake_advance_case_repository.dart';
@@ -284,7 +285,7 @@ void main() {
   ) async {
     final detail = TransactionReadModel(
       id: 'amortization-entry',
-      businessPurpose: BusinessPurpose.dailyExpense,
+      businessPurpose: BusinessPurpose.transfer,
       occurredAt: DateTime(2026, 10, 17),
       primaryAmount: const Money(minorUnits: 10000),
       isExcludedFromStats: false,
@@ -311,6 +312,7 @@ void main() {
               remainingAmount: Money(minorUnits: 8000),
               postedPeriodCount: 1,
               totalPeriodCount: 5,
+              categoryAccountIds: ['shopping'],
             ),
           ),
           accountLookupProvider.overrideWith(
@@ -333,6 +335,9 @@ void main() {
 
     expect(find.text('摊销计划'), findsOneWidget);
     expect(find.text('预付费用 · 进行中 · 已确认 1/5'), findsOneWidget);
+    expect(find.text('购物'), findsOneWidget);
+    expect(find.byType(CategoryAvatar), findsOneWidget);
+    expect(find.byIcon(RemixIcons.arrow_left_right_line), findsNothing);
 
     await tester.tap(find.byTooltip('更多'));
     await tester.pump();

@@ -478,6 +478,7 @@ void main() {
           remainingAmount: Money(minorUnits: 8000),
           postedPeriodCount: 1,
           totalPeriodCount: 5,
+          categoryAccountIds: ['insurance'],
         ),
       );
 
@@ -485,6 +486,8 @@ void main() {
       expect(module.route, '/amortizations/plan-1');
       expect(module.summary, '预付费用 · 进行中 · 已确认 1/5');
       expect(state.behavior.deletePermission, isA<DetailEditDenied>());
+      expect(state.hero.title, '保险');
+      expect(state.hero.iconKey, 'shield');
     },
   );
 
@@ -615,6 +618,13 @@ TransactionDetailLoaded _build({
       id: 'expense',
       name: '支出',
       type: AccountType.expense,
+      balance: Money.zero(),
+    ),
+    'insurance': Account(
+      id: 'insurance',
+      name: '保险',
+      type: AccountType.expense,
+      iconKey: 'shield',
       balance: Money.zero(),
     ),
   };

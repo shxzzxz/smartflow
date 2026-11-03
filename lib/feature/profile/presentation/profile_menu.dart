@@ -26,14 +26,13 @@ class ProfileMenuGroup {
   final List<ProfileMenuEntry> entries;
 }
 
-/// 在 3-5 列范围内选择更均衡的布局，并优先减少行数。
+/// 在可用容量内选择更均衡的布局，并优先减少行数。
 ///
 /// 例如 14 个入口在允许 5 列时渲染为 5 列 3 行，而不是 3 列 5 行。
 int profileGridColumnCount({required int entryCount, required int maxColumns}) {
-  if (entryCount <= 0) return 0;
-  final upperBound = maxColumns.clamp(3, 5);
-  if (entryCount <= 3) return 3;
+  if (entryCount <= 0 || maxColumns <= 0) return 0;
+  final upperBound = maxColumns < entryCount ? maxColumns : entryCount;
   if (entryCount <= upperBound) return entryCount;
   final rowCount = (entryCount / upperBound).ceil();
-  return (entryCount / rowCount).ceil().clamp(3, upperBound);
+  return (entryCount / rowCount).ceil().clamp(1, upperBound);
 }

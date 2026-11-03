@@ -2,18 +2,16 @@ import '../../../../application/ledger/ledger_query_api.dart';
 import '../../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../../core/money/money.dart';
 import '../../../../shared/account_profile/account_selection_purpose.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
-import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/business_scene/business_scene_detail_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
 import '../../presentation/transaction_detail_presentation.dart';
 import 'transaction_detail_state.dart';
 
 part 'transaction_detail_behavior_builder.dart';
-part 'transaction_detail_business_builder.dart';
 part 'transaction_detail_ledger_builder.dart';
 part 'transaction_detail_shell_builder.dart';
 
@@ -30,7 +28,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     accountLookup,
     behavior,
   );
-  final business = _buildTransactionDetailBusiness(context);
+  final business = presentBusinessSceneDetailContent(context);
 
   return TransactionDetailUiState.loaded(
     transactionId: context.transaction.id,
