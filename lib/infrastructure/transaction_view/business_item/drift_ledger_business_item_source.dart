@@ -35,12 +35,12 @@ final class DriftLedgerBusinessItemSource implements BusinessItemSource {
 
   @override
   Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Set<BusinessItemKey> itemKeys,
+    Iterable<BusinessItemAnchorCandidate> anchors,
   ) async {
     return {
-      for (final key in itemKeys)
-        if (key.type == ledgerTransactionGroupItemType)
-          key: const LedgerBusinessItemSummary(),
+      for (final anchor in anchors)
+        if (anchor.itemKey.type == ledgerTransactionGroupItemType)
+          anchor.itemKey: const LedgerBusinessItemSummary(),
     };
   }
 

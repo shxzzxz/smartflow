@@ -577,9 +577,12 @@ BusinessItemQueryService businessItemQueryService(Ref ref) {
       DriftLedgerBusinessItemSource(database),
       AdvanceBusinessItemSource(
         ref.watch(advanceTransactionViewQueryServiceProvider),
+        ref.watch(advanceCaseQueryServiceProvider),
+        ref.watch(transactionQueryServiceProvider),
       ),
       AmortizationBusinessItemSource(
         ref.watch(amortizationTransactionViewQueryServiceProvider),
+        ref.watch(amortizationPlanQueryServiceProvider),
       ),
       CreditBusinessItemSource(
         ref.watch(creditTransactionViewQueryServiceProvider),
@@ -602,10 +605,7 @@ AmortizationTransactionViewQueryService amortizationTransactionViewQueryService(
   Ref ref,
 ) {
   return AmortizationTransactionViewQueryServiceImpl(
-    source: DriftAmortizationTransactionViewSource(
-      ref.watch(appDatabaseProvider),
-    ),
-    plans: ref.watch(amortizationPlanQueryServiceProvider),
+    DriftAmortizationTransactionViewSource(ref.watch(appDatabaseProvider)),
   );
 }
 
@@ -622,15 +622,13 @@ TransactionDetailContextQuery transactionDetailContextQuery(Ref ref) {
   return TransactionDetailContextQueryImpl(
     transactions: ref.watch(transactionQueryServiceProvider),
     ownerQueries: [
-      AdvanceDetailOwnerQuery(
-        ref.watch(advanceTransactionViewQueryServiceProvider),
-      ),
+      AdvanceDetailOwnerQuery(ref.watch(advanceCaseQueryServiceProvider)),
       InstallmentDetailOwnerQuery(ref.watch(installmentQueryServiceProvider)),
       RepaymentDetailOwnerQuery(
         ref.watch(creditTransactionViewQueryServiceProvider),
       ),
       AmortizationDetailOwnerQuery(
-        ref.watch(amortizationTransactionViewQueryServiceProvider),
+        ref.watch(amortizationPlanQueryServiceProvider),
       ),
     ],
   );

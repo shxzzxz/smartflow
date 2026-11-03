@@ -1,6 +1,3 @@
-import '../../../../core/money/money.dart';
-import '../../../../domain/orchestration/valobj/amortization_enums.dart';
-
 final class AmortizationTransactionViewQuery {
   AmortizationTransactionViewQuery({
     required this.occurredFrom,
@@ -62,34 +59,6 @@ final class AmortizationTransactionViewAnchorPage {
 
   final List<AmortizationTransactionViewAnchorCandidate> anchors;
   final bool hasMore;
-}
-
-final class AmortizationTransactionViewSummary {
-  const AmortizationTransactionViewSummary({
-    required this.initialTransactionId,
-    required this.kind,
-    required this.status,
-    required this.originalAmount,
-    required this.recognizedAmount,
-    required this.remainingAmount,
-    required this.postedPeriodCount,
-    required this.totalPeriodCount,
-    this.currentPeriodSequence,
-    this.currentPeriodDueAt,
-    this.currentPeriodAmount,
-  });
-
-  final String initialTransactionId;
-  final AmortizationKind kind;
-  final AmortizationStatus status;
-  final Money originalAmount;
-  final Money recognizedAmount;
-  final Money remainingAmount;
-  final int postedPeriodCount;
-  final int totalPeriodCount;
-  final int? currentPeriodSequence;
-  final DateTime? currentPeriodDueAt;
-  final Money? currentPeriodAmount;
 }
 
 Set<String>? _immutableStrings(Set<String>? values) =>

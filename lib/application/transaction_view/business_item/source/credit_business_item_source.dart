@@ -31,15 +31,15 @@ final class CreditBusinessItemSource implements BusinessItemSource {
 
   @override
   Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Set<BusinessItemKey> itemKeys,
+    Iterable<BusinessItemAnchorCandidate> anchors,
   ) async {
     final contractIds = {
-      for (final key in itemKeys)
-        if (key.type == installmentOwnerType) key.id,
+      for (final anchor in anchors)
+        if (anchor.itemKey.type == installmentOwnerType) anchor.itemKey.id,
     };
     final repaymentIds = {
-      for (final key in itemKeys)
-        if (key.type == creditRepaymentOwnerType) key.id,
+      for (final anchor in anchors)
+        if (anchor.itemKey.type == creditRepaymentOwnerType) anchor.itemKey.id,
     };
     final installmentSummaries = await _installments.findInstallments(
       contractIds,

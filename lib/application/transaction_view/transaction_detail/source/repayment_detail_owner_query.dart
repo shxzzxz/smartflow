@@ -1,5 +1,6 @@
 import '../../../../domain/ledger/valobj/transaction_ownership.dart';
 import '../../../credit/credit_query_api.dart';
+import '../../../ledger/transaction/query/transaction_read_models.dart';
 import '../query/port/transaction_detail_owner_query.dart';
 import '../query/transaction_detail_context_read_models.dart';
 
@@ -14,13 +15,17 @@ final class RepaymentDetailOwnerQuery implements TransactionDetailOwnerQuery {
   @override
   Future<TransactionDetailOwnerContext?> find(
     TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
   ) async {
     final summaries = await _query.findRepaymentSummaries({ownership.ownerId});
     return _map(ownership, summaries[ownership.ownerId]);
   }
 
   @override
-  Stream<TransactionDetailOwnerContext?> watch(TransactionOwnership ownership) {
+  Stream<TransactionDetailOwnerContext?> watch(
+    TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
+  ) {
     return _query
         .watchRepaymentSummary(ownership.ownerId)
         .map((summary) => _map(ownership, summary));

@@ -8,4 +8,9 @@ class AdvanceCaseQueryService {
   final AdvanceCaseRepository _repository;
 
   Future<AdvanceCase?> findById(String id) => _repository.findById(id);
+
+  Future<Map<String, AdvanceCase>> findByIds(Set<String> ids) =>
+      _repository.findByIds(ids);
+
+  Stream<AdvanceCase?> watchById(String id) => _repository.watchById(id);
 }

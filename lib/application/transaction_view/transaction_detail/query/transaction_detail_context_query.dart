@@ -96,10 +96,13 @@ final class TransactionDetailContextQueryImpl
         if (ownership == null) return;
         final ownerQuery = _ownerQueryFor(ownership.ownerType);
         if (ownerQuery == null) return;
-        ownerSubscription = ownerQuery.watch(ownership).skip(1).listen((_) {
-          final requestRevision = ++ownerRevision;
-          unawaited(handleOwnerChange(currentRevision, requestRevision));
-        }, onError: controller.addError);
+        ownerSubscription = ownerQuery
+            .watch(ownership, context.currentGroup.anchor)
+            .skip(1)
+            .listen((_) {
+              final requestRevision = ++ownerRevision;
+              unawaited(handleOwnerChange(currentRevision, requestRevision));
+            }, onError: controller.addError);
       } catch (error, stackTrace) {
         if (!closed && currentRevision == revision) {
           controller.addError(error, stackTrace);
@@ -146,7 +149,7 @@ final class TransactionDetailContextQueryImpl
         : TransactionDetailGroup(anchor: parent, children: parent.children);
 
     final ownership = transaction.ownership ?? currentGroup.anchor.ownership;
-    final owner = await _loadOwner(ownership);
+    final owner = await _loadOwner(ownership, currentGroup.anchor);
     final anchorId = switch (owner) {
       AmortizationTransactionDetailOwnerContext(:final initialTransactionId) =>
         initialTransactionId,
@@ -181,10 +184,13 @@ final class TransactionDetailContextQueryImpl
 
   Future<TransactionDetailOwnerContext?> _loadOwner(
     TransactionOwnership? ownership,
+    TransactionReadModel anchorTransaction,
   ) async {
     if (ownership == null) return null;
     final query = _ownerQueryFor(ownership.ownerType);
-    final loaded = query == null ? null : await query.find(ownership);
+    final loaded = query == null
+        ? null
+        : await query.find(ownership, anchorTransaction);
     return loaded ??
         UnknownTransactionDetailOwnerContext(
           ownerType: ownership.ownerType,

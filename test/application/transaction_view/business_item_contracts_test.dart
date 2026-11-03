@@ -190,7 +190,7 @@ final class _Source implements BusinessItemSource {
 
   @override
   Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Set<BusinessItemKey> itemKeys,
+    Iterable<BusinessItemAnchorCandidate> anchors,
   ) async {
     return const {};
   }

@@ -13,6 +13,19 @@ class FakeAdvanceCaseRepository implements AdvanceCaseRepository {
   Future<AdvanceCase?> findById(String id) async => _cases[id];
 
   @override
+  Future<Map<String, AdvanceCase>> findByIds(Set<String> ids) async {
+    return {
+      for (final advanceCase in _cases.values)
+        if (ids.contains(advanceCase.id)) advanceCase.id: advanceCase,
+    };
+  }
+
+  @override
+  Stream<AdvanceCase?> watchById(String id) async* {
+    yield _cases[id];
+  }
+
+  @override
   Future<void> save(AdvanceCase advanceCase) async {
     advanceCase.validate();
     _cases[advanceCase.id] = advanceCase;

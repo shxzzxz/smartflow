@@ -1,13 +1,23 @@
+import '../../../../domain/orchestration/entity/advance_case.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
+import '../../../ledger/transaction/query/transaction_read_models.dart';
+import '../../../ledger/transaction/query/transaction_query_service.dart';
+import '../../../orchestration/advance/query/advance_case_query_service.dart';
 import '../../../orchestration/advance/query/advance_transaction_view_query_service.dart';
 import '../../../orchestration/advance/query/advance_transaction_view_read_models.dart';
 import '../../transaction_view_query_port_api.dart';
 
-/// Consumer-side adapter over the advance-owned transaction view query.
+/// Consumer-side adapter over advance metadata and ledger-owned facts.
 final class AdvanceBusinessItemSource implements BusinessItemSource {
-  const AdvanceBusinessItemSource(this._query);
+  const AdvanceBusinessItemSource(
+    this._anchors,
+    this._cases,
+    this._transactions,
+  );
 
-  final AdvanceTransactionViewQueryService _query;
+  final AdvanceTransactionViewQueryService _anchors;
+  final AdvanceCaseQueryService _cases;
+  final TransactionBatchQueryService _transactions;
 
   @override
   String get sourceKey => 'advance';
@@ -19,36 +29,59 @@ final class AdvanceBusinessItemSource implements BusinessItemSource {
   Future<BusinessItemSourcePage> findAnchorPage(
     BusinessItemPageQuery query,
   ) async {
-    return _mapPage(await _query.findAnchorPage(_queryFor(query)));
+    return _mapPage(await _anchors.findAnchorPage(_queryFor(query)));
   }
 
   @override
   Stream<BusinessItemSourcePage> watchAnchorPage(BusinessItemPageQuery query) {
-    return _query.watchAnchorPage(_queryFor(query)).map(_mapPage);
+    return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
   }
 
   @override
   Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Set<BusinessItemKey> itemKeys,
+    Iterable<BusinessItemAnchorCandidate> anchors,
   ) async {
-    final ownerIds = {
-      for (final key in itemKeys)
-        if (key.type == orchestrationAdvanceOwnerType) key.id,
+    final values = anchors.toList();
+    final (cases, transactions) = await (
+      _cases.findByIds({for (final anchor in values) anchor.itemKey.id}),
+      _transactions.findTransactionsByIds({
+        for (final anchor in values) anchor.anchorTransactionId,
+      }),
+    ).wait;
+    final transactionsById = {
+      for (final transaction in transactions) transaction.id: transaction,
     };
-    final summaries = await _query.findSummaries(ownerIds);
     return {
-      for (final entry in summaries.entries)
-        BusinessItemKey(
-          type: orchestrationAdvanceOwnerType,
-          id: entry.key,
-        ): AdvanceBusinessItemSummary(
-          scenario: entry.value.scenario,
-          trackingMode: entry.value.trackingMode,
-          outstanding: entry.value.outstanding,
-          isClosed: entry.value.isClosed,
-          aaPeopleCount: entry.value.aaPeopleCount,
-        ),
+      for (final anchor in values)
+        anchor.itemKey: _summaryFor(anchor, cases, transactionsById),
     };
+  }
+
+  AdvanceBusinessItemSummary _summaryFor(
+    BusinessItemAnchorCandidate anchor,
+    Map<String, AdvanceCase> cases,
+    Map<String, TransactionReadModel> transactionsById,
+  ) {
+    final advanceCase = cases[anchor.itemKey.id];
+    if (advanceCase == null) {
+      throw StateError(
+        'Advance case ${anchor.itemKey.id} for business item was not found.',
+      );
+    }
+    final facts = transactionsById[anchor.anchorTransactionId]?.advanceSummary;
+    if (facts == null) {
+      throw StateError(
+        'Advance facts for anchor transaction ${anchor.anchorTransactionId} '
+        'were not found.',
+      );
+    }
+    return AdvanceBusinessItemSummary(
+      scenario: advanceCase.scenario,
+      trackingMode: advanceCase.trackingMode,
+      outstanding: facts.outstanding,
+      isClosed: facts.isClosed,
+      aaPeopleCount: advanceCase.aaPeopleCount,
+    );
   }
 
   AdvanceTransactionViewQuery _queryFor(BusinessItemPageQuery query) {

@@ -1,7 +1,8 @@
 import '../../../../domain/ledger/valobj/transaction_ownership.dart';
+import '../../../../domain/orchestration/entity/amortization_plan.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
-import '../../../orchestration/amortization/query/amortization_transaction_view_query_service.dart';
-import '../../../orchestration/amortization/query/amortization_transaction_view_read_models.dart';
+import '../../../ledger/transaction/query/transaction_read_models.dart';
+import '../../../orchestration/amortization/query/amortization_plan_query_service.dart';
 import '../query/port/transaction_detail_owner_query.dart';
 import '../query/transaction_detail_context_read_models.dart';
 
@@ -9,7 +10,7 @@ final class AmortizationDetailOwnerQuery
     implements TransactionDetailOwnerQuery {
   const AmortizationDetailOwnerQuery(this._query);
 
-  final AmortizationTransactionViewQueryService _query;
+  final AmortizationPlanQueryService _query;
 
   @override
   Set<String> get supportedOwnerTypes => const {
@@ -19,37 +20,41 @@ final class AmortizationDetailOwnerQuery
   @override
   Future<TransactionDetailOwnerContext?> find(
     TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
   ) async {
-    final summaries = await _query.findSummaries({ownership.ownerId});
-    return _map(ownership, summaries[ownership.ownerId]);
+    return _map(ownership, await _query.findById(ownership.ownerId));
   }
 
   @override
-  Stream<TransactionDetailOwnerContext?> watch(TransactionOwnership ownership) {
+  Stream<TransactionDetailOwnerContext?> watch(
+    TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
+  ) {
     return _query
-        .watchSummary(ownership.ownerId)
-        .map((summary) => _map(ownership, summary));
+        .watchById(ownership.ownerId)
+        .map((plan) => _map(ownership, plan));
   }
 
   TransactionDetailOwnerContext? _map(
     TransactionOwnership ownership,
-    AmortizationTransactionViewSummary? summary,
+    AmortizationPlan? plan,
   ) {
-    if (summary == null) return null;
+    if (plan == null) return null;
+    final current = plan.currentPendingPeriod;
     return AmortizationTransactionDetailOwnerContext(
       ownerType: orchestrationAmortizationOwnerType,
       ownerId: ownership.ownerId,
-      initialTransactionId: summary.initialTransactionId,
-      kind: summary.kind,
-      status: summary.status,
-      originalAmount: summary.originalAmount,
-      recognizedAmount: summary.recognizedAmount,
-      remainingAmount: summary.remainingAmount,
-      postedPeriodCount: summary.postedPeriodCount,
-      totalPeriodCount: summary.totalPeriodCount,
-      currentPeriodSequence: summary.currentPeriodSequence,
-      currentPeriodDueAt: summary.currentPeriodDueAt,
-      currentPeriodAmount: summary.currentPeriodAmount,
+      initialTransactionId: plan.initialTransactionId,
+      kind: plan.kind,
+      status: plan.status,
+      originalAmount: plan.originalAmount,
+      recognizedAmount: plan.recognizedAmount,
+      remainingAmount: plan.remainingAmount,
+      postedPeriodCount: plan.postedPeriodCount,
+      totalPeriodCount: plan.periods.length,
+      currentPeriodSequence: current?.sequenceNo,
+      currentPeriodDueAt: current?.dueAt,
+      currentPeriodAmount: current?.amount,
     );
   }
 }

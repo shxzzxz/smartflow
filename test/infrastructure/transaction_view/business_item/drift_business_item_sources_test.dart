@@ -4,15 +4,19 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/orchestration/advance/query/advance_case_query_service.dart';
 import 'package:smartflow/application/orchestration/advance/query/advance_transaction_view_query_service.dart';
 import 'package:smartflow/application/orchestration/amortization/query/amortization_plan_query_service.dart';
 import 'package:smartflow/application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
+import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/domain/ledger/entity/transaction_group.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_line_read_repository.dart';
 import 'package:smartflow/infrastructure/ledger/repository/drift_transaction_read_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
 import 'package:smartflow/infrastructure/credit/query/drift_installment_progress_source.dart';
@@ -21,6 +25,7 @@ import 'package:smartflow/infrastructure/credit/mapper/installment_stage_mapper.
 import 'package:smartflow/infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
 import 'package:smartflow/infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
 import 'package:smartflow/infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
+import 'package:smartflow/infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_amortization_repository.dart';
 import 'package:smartflow/application/transaction_view/business_item/source/advance_business_item_source.dart';
 import 'package:smartflow/application/transaction_view/business_item/source/amortization_business_item_source.dart';
@@ -227,7 +232,11 @@ void main() {
           amountMinor: 4000,
         );
 
-        final source = AdvanceBusinessItemSource(_advanceQuery(db));
+        final source = AdvanceBusinessItemSource(
+          _advanceQuery(db),
+          _advanceCases(db),
+          _TransactionBatchQuery(db),
+        );
         final page = await source.findAnchorPage(_query());
 
         expect(page.anchors, hasLength(1));
@@ -237,9 +246,10 @@ void main() {
           const BusinessItemKey(type: 'orchestration.advance', id: 'advance-1'),
         );
         final summary =
-            (await source.findSummaries({
-                  page.anchors.single.itemKey,
-                }))[page.anchors.single.itemKey]
+            (await _findSummaries(
+                  source,
+                  page.anchors,
+                ))[page.anchors.single.itemKey]
                 as AdvanceBusinessItemSummary;
         expect(summary.scenario, AdvanceScenario.aa);
         expect(summary.trackingMode, AdvanceTrackingMode.itemized);
@@ -341,7 +351,10 @@ void main() {
           amountMinor: 10000,
         );
 
-        final source = AmortizationBusinessItemSource(_amortizationQuery(db));
+        final source = AmortizationBusinessItemSource(
+          _amortizationQuery(db),
+          _amortizationPlans(db),
+        );
         final page = await source.findAnchorPage(
           _query(categoryAccountIds: const {'software'}),
         );
@@ -350,7 +363,7 @@ void main() {
         expect(page.anchors.single.anchorTransactionId, 'plan-initial');
         final key = page.anchors.single.itemKey;
         final summary =
-            (await source.findSummaries({key}))[key]
+            (await _findSummaries(source, page.anchors))[key]
                 as AmortizationBusinessItemSummary;
         expect(summary.status, AmortizationStatus.completed);
         expect(summary.originalAmount, const Money(minorUnits: 10000));
@@ -467,7 +480,7 @@ void main() {
         expect(firstPage.hasMore, isTrue);
         final contractKey = firstPage.anchors.first.itemKey;
         final creditSummary =
-            (await source.findSummaries({contractKey}))[contractKey]
+            (await _findSummariesForKeys(source, {contractKey}))[contractKey]
                 as InstallmentBusinessItemSummary;
         expect(creditSummary.installmentType, InstallmentType.purchase);
         expect(creditSummary.paidPeriodCount, 1);
@@ -476,7 +489,7 @@ void main() {
         final allKeys = {
           for (final anchor in firstPage.anchors) anchor.itemKey,
         };
-        final summaries = await source.findSummaries(allKeys);
+        final summaries = await _findSummariesForKeys(source, allKeys);
         expect(summaries.keys, containsAll(allKeys));
         expect(
           summaries[const BusinessItemKey(
@@ -589,7 +602,7 @@ void main() {
         id: 'contract-1',
       );
       final summary =
-          (await source.findSummaries({key}))[key]
+          (await _findSummariesForKeys(source, {key}))[key]
               as InstallmentBusinessItemSummary;
 
       expect(summary.remainingPrincipal, const Money(minorUnits: 60000));
@@ -734,7 +747,7 @@ void main() {
           id: 'contract-1',
         );
         final summary =
-            (await source.findSummaries({key}))[key]
+            (await _findSummariesForKeys(source, {key}))[key]
                 as InstallmentBusinessItemSummary;
 
         expect(summary.totalPeriodCount, 1);
@@ -909,8 +922,15 @@ void main() {
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        AdvanceBusinessItemSource(_advanceQuery(db)),
-        AmortizationBusinessItemSource(_amortizationQuery(db)),
+        AdvanceBusinessItemSource(
+          _advanceQuery(db),
+          _advanceCases(db),
+          _TransactionBatchQuery(db),
+        ),
+        AmortizationBusinessItemSource(
+          _amortizationQuery(db),
+          _amortizationPlans(db),
+        ),
         CreditBusinessItemSource(_creditQuery(db), _installmentQuery(db)),
       ],
       transactionQuery: _TransactionBatchQuery(db),
@@ -998,7 +1018,10 @@ void main() {
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        AmortizationBusinessItemSource(_amortizationQuery(db)),
+        AmortizationBusinessItemSource(
+          _amortizationQuery(db),
+          _amortizationPlans(db),
+        ),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -1074,7 +1097,9 @@ LIMIT 21
         for (var index = 0; index < 6000; index++)
           TransactionsCompanion.insert(
             id: 'tx-$index',
-            businessPurpose: BusinessPurpose.dailyExpense,
+            businessPurpose: index.isEven
+                ? BusinessPurpose.advance
+                : BusinessPurpose.dailyExpense,
             occurredAt: start.add(Duration(minutes: index)),
             postedAt: start.add(Duration(minutes: index)),
             primaryAmountMinor: 100,
@@ -1099,7 +1124,11 @@ LIMIT 21
     final service = BusinessItemQueryServiceImpl(
       sources: [
         DriftLedgerBusinessItemSource(db),
-        AdvanceBusinessItemSource(_advanceQuery(db)),
+        AdvanceBusinessItemSource(
+          _advanceQuery(db),
+          _advanceCases(db),
+          _TransactionBatchQuery(db),
+        ),
       ],
       transactionQuery: _TransactionBatchQuery(db),
     );
@@ -1122,9 +1151,16 @@ AdvanceTransactionViewQueryService _advanceQuery(AppDatabase db) {
 
 AmortizationTransactionViewQueryService _amortizationQuery(AppDatabase db) {
   return AmortizationTransactionViewQueryServiceImpl(
-    source: DriftAmortizationTransactionViewSource(db),
-    plans: AmortizationPlanQueryService(DriftAmortizationRepository(db)),
+    DriftAmortizationTransactionViewSource(db),
   );
+}
+
+AdvanceCaseQueryService _advanceCases(AppDatabase db) {
+  return AdvanceCaseQueryService(repository: DriftAdvanceCaseRepository(db));
+}
+
+AmortizationPlanQueryService _amortizationPlans(AppDatabase db) {
+  return AmortizationPlanQueryService(DriftAmortizationRepository(db));
 }
 
 CreditTransactionViewQueryService _creditQuery(AppDatabase db) {
@@ -1143,6 +1179,27 @@ InstallmentQueryService _installmentQuery(AppDatabase db) {
   );
 }
 
+Future<Map<BusinessItemKey, BusinessItemSummary>> _findSummaries(
+  BusinessItemSource source,
+  Iterable<BusinessItemAnchorCandidate> anchors,
+) {
+  return source.findSummaries(anchors);
+}
+
+Future<Map<BusinessItemKey, BusinessItemSummary>> _findSummariesForKeys(
+  BusinessItemSource source,
+  Set<BusinessItemKey> keys,
+) {
+  return _findSummaries(source, [
+    for (final key in keys)
+      BusinessItemAnchorCandidate(
+        itemKey: key,
+        anchorTransactionId: key.id,
+        anchorAt: DateTime(2026, 10),
+      ),
+  ]);
+}
+
 final class _TransactionBatchQuery implements TransactionBatchQueryService {
   const _TransactionBatchQuery(this._db);
 
@@ -1152,16 +1209,63 @@ final class _TransactionBatchQuery implements TransactionBatchQueryService {
   Future<List<TransactionReadModel>> findTransactionsByIds(
     Set<String> ids,
   ) async {
-    final transactions = await DriftTransactionReadRepository(
-      _db,
-    ).findByIds(ids);
-    final byId = {
+    if (ids.isEmpty) return const [];
+    final transactionRead = DriftTransactionReadRepository(_db);
+    final lineRead = DriftTransactionLineReadRepository(_db);
+    final transactions = await transactionRead.findByIds(ids);
+    final parentIds = {
+      for (final transaction in transactions)
+        if (transaction.parentTransactionId == null) transaction.id,
+    };
+    final childrenByParent = await transactionRead.findChildrenByParentIds(
+      parentIds,
+    );
+    final allTransactions = {
+      for (final transaction in transactions) transaction.id: transaction,
+      for (final children in childrenByParent.values)
+        for (final child in children) child.id: child,
+    };
+    final transactionsById = {
       for (final transaction in transactions) transaction.id: transaction,
     };
+    final linesByTransaction = await lineRead.findByTransactionIds(
+      allTransactions.keys.toSet(),
+    );
+
+    TransactionReadModel build(
+      Transaction transaction, {
+      List<Transaction> childTransactions = const [],
+    }) {
+      final transactionWithLines = transaction.copyWith(
+        lines: linesByTransaction[transaction.id] ?? const [],
+      );
+      final childModels = [for (final child in childTransactions) build(child)];
+      final group = transaction.parentTransactionId == null
+          ? TransactionGroup(
+              parentTransaction: transactionWithLines,
+              childTransactions: [
+                for (final child in childTransactions)
+                  child.copyWith(
+                    lines: linesByTransaction[child.id] ?? const [],
+                  ),
+              ],
+            )
+          : null;
+      return TransactionReadModel.fromTransaction(
+        transaction: transactionWithLines,
+        children: childModels,
+        refundSummary: group?.refundSummary,
+        advanceSummary: group?.advanceSummary,
+      );
+    }
+
     return [
       for (final id in ids)
-        if (byId[id] case final transaction?)
-          TransactionReadModel.fromTransaction(transaction: transaction),
+        if (transactionsById[id] case final transaction?)
+          build(
+            transaction,
+            childTransactions: childrenByParent[id] ?? const [],
+          ),
     ];
   }
 }

@@ -8,12 +8,4 @@ abstract interface class AdvanceTransactionViewSource {
   Stream<AdvanceTransactionViewAnchorPage> watchAnchorPage(
     AdvanceTransactionViewQuery query,
   );
-
-  Future<Map<String, AdvanceTransactionViewSummarySource>> findSummaries(
-    Set<String> ownerIds,
-  );
-
-  Stream<Map<String, AdvanceTransactionViewSummarySource>> watchSummaries(
-    Set<String> ownerIds,
-  );
 }

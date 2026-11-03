@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 
 import '../../../../application/orchestration/advance/query/advance_transaction_view_read_models.dart';
 import '../../../../application/orchestration/advance/query/port/advance_transaction_view_source.dart';
-import '../../../../core/money/money.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../database/app_database.dart';
 
@@ -26,23 +25,6 @@ final class DriftAdvanceTransactionViewSource
     return _anchorSelect(
       query,
     ).watch().map((rows) => _pageFromRows(rows, query.limit));
-  }
-
-  @override
-  Future<Map<String, AdvanceTransactionViewSummarySource>> findSummaries(
-    Set<String> ownerIds,
-  ) async {
-    return _summaryFromRows(await _summarySelect(ownerIds).get());
-  }
-
-  @override
-  Stream<Map<String, AdvanceTransactionViewSummarySource>> watchSummaries(
-    Set<String> ownerIds,
-  ) {
-    if (ownerIds.isEmpty) {
-      return Stream.value(const {});
-    }
-    return _summarySelect(ownerIds).watch().map(_summaryFromRows);
   }
 
   Selectable<QueryRow> _anchorSelect(AdvanceTransactionViewQuery query) {
@@ -72,87 +54,6 @@ LIMIT ?
         _db.advanceCases,
       },
     );
-  }
-
-  Selectable<QueryRow> _summarySelect(Set<String> ownerIds) {
-    final ids = ownerIds.toList()..sort();
-    final placeholders = List.filled(ids.length, '?').join(', ');
-    return _db.customSelect(
-      '''
-SELECT
-  advance_case.id AS owner_id,
-  advance_case.scenario,
-  advance_case.tracking_mode,
-  advance_case.aa_people_count,
-  COALESCE(SUM(
-    CASE
-      WHEN txn.parent_transaction_id IS NULL
-        AND line.role = 'receivable'
-      THEN line.amount_minor ELSE 0
-    END
-  ), 0) AS advance_amount,
-  COALESCE(SUM(
-    CASE
-      WHEN txn.parent_transaction_id IS NOT NULL
-        AND txn.business_purpose = 'refund'
-        AND line.role = 'receivable'
-      THEN line.amount_minor ELSE 0
-    END
-  ), 0) AS refunded_advance_amount,
-  COALESCE(SUM(
-    CASE
-      WHEN txn.parent_transaction_id IS NOT NULL
-        AND txn.business_purpose IN (
-          'advanceCollection',
-          'advanceSettlement'
-        )
-        AND line.role = 'settlementIn'
-      THEN line.amount_minor ELSE 0
-    END
-  ), 0) AS received_amount,
-  MAX(
-    CASE
-      WHEN txn.parent_transaction_id IS NOT NULL
-        AND txn.business_purpose = 'advanceSettlement'
-      THEN 1 ELSE 0
-    END
-  ) AS is_closed
-FROM advance_cases advance_case
-LEFT JOIN transactions txn
-  ON txn.owner_type = ?
-  AND txn.owner_id = advance_case.id
-LEFT JOIN transaction_lines line ON line.transaction_id = txn.id
-WHERE advance_case.id IN ($placeholders)
-GROUP BY advance_case.id
-''',
-      variables: [
-        const Variable<String>(orchestrationAdvanceOwnerType),
-        for (final id in ids) Variable<String>(id),
-      ],
-      readsFrom: {_db.advanceCases, _db.transactions, _db.transactionLines},
-    );
-  }
-
-  Map<String, AdvanceTransactionViewSummarySource> _summaryFromRows(
-    List<QueryRow> rows,
-  ) {
-    return {
-      for (final row in rows)
-        row.read<String>('owner_id'): AdvanceTransactionViewSummarySource(
-          ownerId: row.read<String>('owner_id'),
-          scenario: AdvanceScenario.values.byName(row.read<String>('scenario')),
-          trackingMode: AdvanceTrackingMode.values.byName(
-            row.read<String>('tracking_mode'),
-          ),
-          advanceAmount: Money(minorUnits: row.read<int>('advance_amount')),
-          refundedAdvanceAmount: Money(
-            minorUnits: row.read<int>('refunded_advance_amount'),
-          ),
-          receivedAmount: Money(minorUnits: row.read<int>('received_amount')),
-          isClosed: row.read<int>('is_closed') != 0,
-          aaPeopleCount: row.read<int?>('aa_people_count'),
-        ),
-    };
   }
 
   AdvanceTransactionViewAnchorPage _pageFromRows(

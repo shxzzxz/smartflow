@@ -18,8 +18,12 @@ abstract interface class BusinessItemSource {
 
   /// 批量加载这一页内属于当前来源的事项摘要。
   ///
-  /// 实现不得逐事项查询。返回结果应覆盖传入且属于该来源的全部 key。
+  /// [anchors] 是当前来源在合并后实际入选的事项。实现不得逐事项查询，也不得
+  /// 重复实现账务聚合；需要账务事实时调用账务核心的通用查询，并转换为统一的
+  /// [BusinessItemSummary]。
+  ///
+  /// 返回结果应覆盖 [anchors] 中的全部 key。
   Future<Map<BusinessItemKey, BusinessItemSummary>> findSummaries(
-    Set<BusinessItemKey> itemKeys,
+    Iterable<BusinessItemAnchorCandidate> anchors,
   );
 }

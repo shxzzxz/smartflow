@@ -1,6 +1,3 @@
-import '../../../../core/money/money.dart';
-import '../../../../domain/orchestration/valobj/advance_enums.dart';
-
 final class AdvanceTransactionViewQuery {
   AdvanceTransactionViewQuery({
     required this.occurredFrom,
@@ -62,48 +59,6 @@ final class AdvanceTransactionViewAnchorPage {
 
   final List<AdvanceTransactionViewAnchorCandidate> anchors;
   final bool hasMore;
-}
-
-final class AdvanceTransactionViewSummary {
-  const AdvanceTransactionViewSummary({
-    required this.scenario,
-    required this.trackingMode,
-    required this.advanceAmount,
-    required this.receivedAmount,
-    required this.outstanding,
-    required this.isClosed,
-    this.aaPeopleCount,
-  });
-
-  final AdvanceScenario scenario;
-  final AdvanceTrackingMode trackingMode;
-  final Money advanceAmount;
-  final Money receivedAmount;
-  final Money outstanding;
-  final bool isClosed;
-  final int? aaPeopleCount;
-}
-
-final class AdvanceTransactionViewSummarySource {
-  const AdvanceTransactionViewSummarySource({
-    required this.ownerId,
-    required this.scenario,
-    required this.trackingMode,
-    required this.advanceAmount,
-    required this.refundedAdvanceAmount,
-    required this.receivedAmount,
-    required this.isClosed,
-    this.aaPeopleCount,
-  });
-
-  final String ownerId;
-  final AdvanceScenario scenario;
-  final AdvanceTrackingMode trackingMode;
-  final Money advanceAmount;
-  final Money refundedAdvanceAmount;
-  final Money receivedAmount;
-  final bool isClosed;
-  final int? aaPeopleCount;
 }
 
 Set<String>? _immutableStrings(Set<String>? values) =>

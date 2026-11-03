@@ -18,6 +18,23 @@ class DriftAdvanceCaseRepository implements AdvanceCaseRepository {
   }
 
   @override
+  Future<Map<String, AdvanceCase>> findByIds(Set<String> ids) async {
+    if (ids.isEmpty) return const {};
+    final rows = await (_database.select(
+      _database.advanceCases,
+    )..where((table) => table.id.isIn(ids))).get();
+    return {for (final row in rows) row.id: _toDomain(row)};
+  }
+
+  @override
+  Stream<AdvanceCase?> watchById(String id) {
+    return (_database.select(_database.advanceCases)
+          ..where((table) => table.id.equals(id)))
+        .watchSingleOrNull()
+        .map((row) => row == null ? null : _toDomain(row));
+  }
+
+  @override
   Future<void> save(AdvanceCase advanceCase) async {
     advanceCase.validate();
     await _database

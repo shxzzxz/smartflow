@@ -90,34 +90,28 @@ final class BusinessItemQueryServiceImpl implements BusinessItemQueryService {
       return BusinessItemPage(items: const [], hasMore: false);
     }
 
-    final keysBySource = <int, Set<BusinessItemKey>>{};
+    final anchorsBySource = <int, List<BusinessItemAnchorCandidate>>{};
     for (final candidate in selected) {
-      keysBySource
-          .putIfAbsent(candidate.sourceIndex, () => <BusinessItemKey>{})
-          .add(candidate.candidate.itemKey);
+      anchorsBySource
+          .putIfAbsent(candidate.sourceIndex, () => [])
+          .add(candidate.candidate);
     }
-    final summaryFutures = [
-      for (var sourceIndex = 0; sourceIndex < sources.length; sourceIndex++)
-        if (keysBySource[sourceIndex] case final keys?)
-          sources[sourceIndex].findSummaries(keys)
-        else
-          Future.value(const <BusinessItemKey, BusinessItemSummary>{}),
-    ];
     final transactionFuture = _transactionQuery.findTransactionsByIds({
       for (final candidate in selected) candidate.candidate.anchorTransactionId,
     });
-    final results = await Future.wait<Object>([
-      ...summaryFutures,
-      transactionFuture,
-    ]);
-    final summariesBySource = [
-      for (var index = 0; index < summaryFutures.length; index++)
-        results[index] as Map<BusinessItemKey, BusinessItemSummary>,
+    final summaryFutures = [
+      for (var sourceIndex = 0; sourceIndex < sources.length; sourceIndex++)
+        if (anchorsBySource[sourceIndex] case final anchors?)
+          sources[sourceIndex].findSummaries(anchors)
+        else
+          Future.value(const <BusinessItemKey, BusinessItemSummary>{}),
     ];
+    final summariesFuture = Future.wait(summaryFutures);
+    final transactions = await transactionFuture;
     final transactionsById = {
-      for (final transaction in results.last as List<TransactionReadModel>)
-        transaction.id: transaction,
+      for (final transaction in transactions) transaction.id: transaction,
     };
+    final summariesBySource = await summariesFuture;
 
     return BusinessItemPage(
       hasMore: hasMore,

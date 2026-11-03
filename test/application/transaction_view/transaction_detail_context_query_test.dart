@@ -29,11 +29,13 @@ class _OwnerQuery implements TransactionDetailOwnerQuery {
   @override
   Future<TransactionDetailOwnerContext?> find(
     TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
   ) async => summary;
 
   @override
   Stream<TransactionDetailOwnerContext?> watch(
     TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
   ) => watchStream ?? const Stream.empty();
 }
 

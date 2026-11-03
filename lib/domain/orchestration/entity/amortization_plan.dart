@@ -111,6 +111,17 @@ class AmortizationPlan {
   AmortizationPeriod? get nextPendingPeriod =>
       periods.where((period) => period.isPending).firstOrNull;
 
+  int get postedPeriodCount =>
+      periods.where((period) => period.isPosted).length;
+
+  /// 当前待确认期次；终止计划不再有当前期次。
+  AmortizationPeriod? get currentPendingPeriod {
+    if (status == AmortizationStatus.terminated) return null;
+    return periods
+        .where((period) => period.isPending && period.amount.minorUnits > 0)
+        .firstOrNull;
+  }
+
   DateTime get lastRecognitionAt => periods.last.dueAt;
 
   Money get recognizedAmount => periods
