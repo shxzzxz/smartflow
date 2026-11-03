@@ -301,7 +301,7 @@ void main() {
           _detailContextOverride(
             'amortization-entry',
             detail,
-            owner: const AmortizationTransactionDetailOwnerContext(
+            owner: const AmortizationTransactionBusinessContext(
               ownerType: orchestrationAmortizationOwnerType,
               ownerId: 'plan-1',
               initialTransactionId: 'anchor',
@@ -818,7 +818,7 @@ Override _detailContextOverride(
   String transactionId,
   TransactionReadModel detail, {
   TransactionReadModel? parent,
-  TransactionDetailOwnerContext? owner,
+  TransactionBusinessContext? owner,
 }) {
   final anchor = parent ?? detail;
   final group = TransactionDetailGroup(
@@ -829,7 +829,7 @@ Override _detailContextOverride(
   final resolvedOwner =
       owner ??
       (ownership?.ownerType == orchestrationAdvanceOwnerType
-          ? AdvanceTransactionDetailOwnerContext(
+          ? AdvanceTransactionBusinessContext(
               ownerType: ownership!.ownerType,
               ownerId: ownership.ownerId,
               scenario: AdvanceScenario.reimbursement,
@@ -844,7 +844,7 @@ Override _detailContextOverride(
             )
           : ownership == null
           ? null
-          : UnknownTransactionDetailOwnerContext(
+          : UnknownTransactionBusinessContext(
               ownerType: ownership.ownerType,
               ownerId: ownership.ownerId,
             ));
@@ -853,7 +853,7 @@ Override _detailContextOverride(
     parentTransaction: parent,
     currentGroup: group,
     anchorGroup: group,
-    owner: resolvedOwner,
+    businessContext: resolvedOwner,
   );
   return transactionDetailContextProvider(
     transactionId,

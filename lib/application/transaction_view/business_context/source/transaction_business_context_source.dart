@@ -1,6 +1,6 @@
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
 import '../query/business_context_stream.dart';
+import '../query/transaction_business_context_read_models.dart';
 
 /// Business-domain adapter used by transaction detail and transaction feeds.
 ///
@@ -12,13 +12,13 @@ abstract class TransactionBusinessContextSource {
 
   Set<String> get supportedOwnerTypes;
 
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   );
 
   Stream<Object?> watchOwnerChanges(String ownerId);
 
-  Stream<Map<String, TransactionDetailOwnerContext>> watchContexts(
+  Stream<Map<String, TransactionBusinessContext>> watchContexts(
     Iterable<TransactionReadModel> transactions,
   ) {
     final values = transactions.toList();

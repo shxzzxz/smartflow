@@ -31,7 +31,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   AmortizationPlanAppService? amortizationAppService,
 }) {
   final transaction = context.transaction;
-  final owner = context.owner;
+  final owner = context.businessContext;
   if (owner == null) {
     return _DefaultActionDispatcher(
       transaction: transaction,
@@ -41,14 +41,14 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   }
 
   if (transaction.businessPurpose == BusinessPurpose.refund &&
-      owner is InstallmentTransactionDetailOwnerContext) {
+      owner is InstallmentTransactionBusinessContext) {
     return _InstallmentRefundActionDispatcher(
       transaction: transaction,
       consumptionInstallmentAppService: consumptionInstallmentAppService,
     );
   }
 
-  if (owner is AdvanceTransactionDetailOwnerContext) {
+  if (owner is AdvanceTransactionBusinessContext) {
     if (advanceAppService == null) {
       throw StateError('Advance orchestration services are not configured.');
     }
@@ -64,7 +64,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     );
   }
 
-  if (owner is AmortizationTransactionDetailOwnerContext) {
+  if (owner is AmortizationTransactionBusinessContext) {
     if (amortizationAppService == null) {
       throw StateError(
         'Amortization orchestration services are not configured.',
@@ -78,7 +78,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     );
   }
 
-  if (owner is InstallmentTransactionDetailOwnerContext) {
+  if (owner is InstallmentTransactionBusinessContext) {
     return _InstallmentActionDispatcher(
       transaction: transaction,
       installmentAppService: installmentAppService,
@@ -89,7 +89,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     );
   }
 
-  if (owner is RepaymentTransactionDetailOwnerContext) {
+  if (owner is RepaymentTransactionBusinessContext) {
     return _CreditRepaymentActionDispatcher(
       transaction: transaction,
       billRepaymentAppService: billRepaymentAppService,

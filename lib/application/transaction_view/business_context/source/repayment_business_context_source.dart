@@ -1,6 +1,6 @@
 import '../../../credit/credit_query_api.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
+import '../query/transaction_business_context_read_models.dart';
 import 'transaction_business_context_source.dart';
 
 final class RepaymentBusinessContextSource
@@ -13,7 +13,7 @@ final class RepaymentBusinessContextSource
   Set<String> get supportedOwnerTypes => const {creditRepaymentOwnerType};
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -37,12 +37,12 @@ final class RepaymentBusinessContextSource
       if (transaction.ownership case final ownership?) ownership.ownerId,
   };
 
-  TransactionDetailOwnerContext? _map(
+  TransactionBusinessContext? _map(
     String? ownerId,
     CreditRepaymentBusinessActivitySummary? summary,
   ) {
     if (ownerId == null || summary == null) return null;
-    return RepaymentTransactionDetailOwnerContext(
+    return RepaymentTransactionBusinessContext(
       ownerType: creditRepaymentOwnerType,
       ownerId: ownerId,
       repaymentType: summary.repaymentType,

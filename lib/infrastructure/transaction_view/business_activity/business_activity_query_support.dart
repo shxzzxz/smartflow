@@ -10,14 +10,14 @@ import '../../../application/transaction_view/business_activity/query/business_a
 final class BusinessActivityAnchorSql {
   BusinessActivityAnchorSql({
     required this.transactionAlias,
-    required this.itemType,
-    required this.itemIdExpression,
+    required this.activityType,
+    required this.activityIdExpression,
     this.amortizationPlanAlias,
   });
 
   final String transactionAlias;
-  final String itemType;
-  final String itemIdExpression;
+  final String activityType;
+  final String activityIdExpression;
   final String? amortizationPlanAlias;
 
   final List<String> _conditions = [];
@@ -87,7 +87,7 @@ final class BusinessActivityAnchorSql {
       _conditions.isEmpty ? '1 = 1' : _conditions.join(' AND ');
 
   void _applyCursor(BusinessActivityCursor before) {
-    final typeComparison = itemType.compareTo(before.itemKey.type);
+    final typeComparison = activityType.compareTo(before.activityKey.type);
     if (typeComparison < 0) {
       addCondition('$transactionAlias.occurred_at <= ?');
       _variables.add(Variable<DateTime>(before.anchorAt));
@@ -101,12 +101,12 @@ final class BusinessActivityAnchorSql {
     addCondition(
       '$transactionAlias.occurred_at < ? OR '
       '($transactionAlias.occurred_at = ? AND '
-      '$itemIdExpression < ?)',
+      '$activityIdExpression < ?)',
     );
     _variables
       ..add(Variable<DateTime>(before.anchorAt))
       ..add(Variable<DateTime>(before.anchorAt))
-      ..add(Variable<String>(before.itemKey.id));
+      ..add(Variable<String>(before.activityKey.id));
   }
 
   void _applyCategoryFilter(Set<String> accountIds) {
@@ -179,9 +179,9 @@ BusinessActivitySourcePage businessActivitySourcePageFromRows(
     anchors: [
       for (final row in rows.take(limit + 1))
         BusinessActivityAnchorCandidate(
-          itemKey: BusinessActivityKey(
-            type: row.read<String>('item_type'),
-            id: row.read<String>('item_id'),
+          activityKey: BusinessActivityKey(
+            type: row.read<String>('activity_type'),
+            id: row.read<String>('activity_id'),
           ),
           anchorTransactionId: row.read<String>('anchor_transaction_id'),
           anchorAt: row.read<DateTime>('anchor_at'),

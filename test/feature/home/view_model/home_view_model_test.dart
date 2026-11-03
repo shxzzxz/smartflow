@@ -372,7 +372,7 @@ void main() {
         expect(query.categoryAccountIds, {'cat-food'});
         expect(query.settlementAccountIds, {'acc-cash'});
         expect(
-          query.before?.itemKey,
+          query.before?.activityKey,
           const BusinessActivityKey.transactionGroup('tx-49'),
         );
         final state = container.read(
@@ -590,7 +590,7 @@ BusinessActivityReadModel _businessActivity({
   final ownership = anchor.ownership;
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
-      itemKey: ownership == null
+      activityKey: ownership == null
           ? BusinessActivityKey.transactionGroup(anchor.id)
           : BusinessActivityKey(
               type: ownership.ownerType,

@@ -1,14 +1,14 @@
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
 import '../source/transaction_business_context_source.dart';
 import 'business_context_stream.dart';
+import 'transaction_business_context_read_models.dart';
 
 abstract interface class TransactionBusinessContextQuery {
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   );
 
-  Stream<Map<String, TransactionDetailOwnerContext>> watchContexts(
+  Stream<Map<String, TransactionBusinessContext>> watchContexts(
     Iterable<TransactionReadModel> transactions,
   );
 }
@@ -22,7 +22,7 @@ final class TransactionBusinessContextQueryImpl
   final List<TransactionBusinessContextSource> _sources;
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -34,7 +34,7 @@ final class TransactionBusinessContextQueryImpl
   }
 
   @override
-  Stream<Map<String, TransactionDetailOwnerContext>> watchContexts(
+  Stream<Map<String, TransactionBusinessContext>> watchContexts(
     Iterable<TransactionReadModel> transactions,
   ) {
     final values = transactions.toList();
@@ -61,15 +61,15 @@ final class TransactionBusinessContextQueryImpl
     return groups;
   }
 
-  Map<String, TransactionDetailOwnerContext> _complete(
+  Map<String, TransactionBusinessContext> _complete(
     List<TransactionReadModel> transactions,
-    Iterable<Map<String, TransactionDetailOwnerContext>> loaded,
+    Iterable<Map<String, TransactionBusinessContext>> loaded,
   ) {
     final contexts = {for (final values in loaded) ...values};
     for (final transaction in transactions) {
       final ownership = transaction.ownership;
       if (ownership == null || contexts.containsKey(transaction.id)) continue;
-      contexts[transaction.id] = UnknownTransactionDetailOwnerContext(
+      contexts[transaction.id] = UnknownTransactionBusinessContext(
         ownerType: ownership.ownerType,
         ownerId: ownership.ownerId,
       );

@@ -153,7 +153,7 @@ void main() {
             ownerId: 'plan',
           ),
         ),
-        businessContext: const AmortizationTransactionDetailOwnerContext(
+        businessContext: const AmortizationTransactionBusinessContext(
           ownerType: orchestrationAmortizationOwnerType,
           ownerId: 'plan',
           initialTransactionId: 'initial',
@@ -1377,7 +1377,7 @@ BusinessActivityReadModel _businessActivity({
   final anchor = transaction ?? _item();
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
-      itemKey: BusinessActivityKey.transactionGroup(anchor.id),
+      activityKey: BusinessActivityKey.transactionGroup(anchor.id),
       anchorTransactionId: anchor.id,
       anchorAt: anchor.occurredAt,
     ),

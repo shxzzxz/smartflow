@@ -8,8 +8,8 @@ import 'transaction_detail_business_presentation.dart';
 TransactionDetailBusinessContent presentAdvanceDetailBusinessScene(
   TransactionDetailContext context,
 ) {
-  final owner = context.owner;
-  if (owner is! AdvanceTransactionDetailOwnerContext ||
+  final owner = context.businessContext;
+  if (owner is! AdvanceTransactionBusinessContext ||
       context.transaction.businessPurpose != BusinessPurpose.advance ||
       owner.trackingMode != AdvanceTrackingMode.itemized) {
     return const TransactionDetailBusinessContent();

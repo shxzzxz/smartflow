@@ -30,7 +30,7 @@ final class DriftAmortizationTransactionViewSource
   Selectable<QueryRow> _anchorSelect(AmortizationTransactionViewQuery query) {
     final sql = _AmortizationAnchorSql(
       transactionAlias: 'anchor',
-      itemIdExpression: 'plan.id',
+      activityIdExpression: 'plan.id',
       planAlias: 'plan',
     )..apply(query);
     return _db.customSelect(
@@ -38,7 +38,7 @@ final class DriftAmortizationTransactionViewSource
 SELECT
   anchor.id AS anchor_transaction_id,
   anchor.occurred_at AS anchor_at,
-  plan.id AS item_id
+  plan.id AS activity_id
 FROM amortization_plans plan
 JOIN transactions anchor ON anchor.id = plan.initial_transaction_id
 WHERE anchor.parent_transaction_id IS NULL
@@ -71,7 +71,7 @@ LIMIT ?
       anchors: [
         for (final row in rows.take(limit + 1))
           AmortizationTransactionViewAnchorCandidate(
-            planId: row.read<String>('item_id'),
+            planId: row.read<String>('activity_id'),
             anchorTransactionId: row.read<String>('anchor_transaction_id'),
             anchorAt: row.read<DateTime>('anchor_at'),
           ),
@@ -83,12 +83,12 @@ LIMIT ?
 final class _AmortizationAnchorSql {
   _AmortizationAnchorSql({
     required this.transactionAlias,
-    required this.itemIdExpression,
+    required this.activityIdExpression,
     required this.planAlias,
   });
 
   final String transactionAlias;
-  final String itemIdExpression;
+  final String activityIdExpression;
   final String planAlias;
   final List<String> _conditions = [];
   final List<Variable> _variables = [];
@@ -107,7 +107,7 @@ final class _AmortizationAnchorSql {
     final before = query.before;
     if (before != null) {
       final comparison = orchestrationAmortizationOwnerType.compareTo(
-        before.itemType,
+        before.activityType,
       );
       if (comparison < 0) {
         _conditions.add('$transactionAlias.occurred_at <= ?');
@@ -118,7 +118,7 @@ final class _AmortizationAnchorSql {
       } else {
         _conditions.add(
           '($transactionAlias.occurred_at < ? OR '
-          '($transactionAlias.occurred_at = ? AND $itemIdExpression < ?))',
+          '($transactionAlias.occurred_at = ? AND $activityIdExpression < ?))',
         );
         _variables
           ..add(Variable<DateTime>(before.anchorAt))

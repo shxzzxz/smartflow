@@ -10,7 +10,7 @@ abstract interface class BusinessActivitySource {
   String get sourceKey;
 
   /// 当前来源能够产生的事项类型，用于公共查询跳过无关来源。
-  Set<String> get supportedItemTypes;
+  Set<String> get supportedActivityTypes;
 
   Future<BusinessActivitySourcePage> findAnchorPage(
     BusinessActivityPageQuery query,

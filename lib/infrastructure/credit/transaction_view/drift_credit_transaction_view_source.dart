@@ -59,23 +59,25 @@ WHERE id IN (${_placeholders(ids.length)})
   }
 
   Selectable<QueryRow> _anchorSelect(CreditTransactionViewQuery query) {
-    final requestedTypes = query.itemTypes;
+    final requestedTypes = query.activityTypes;
     final branches = <String>[];
     final variables = <Variable>[];
 
     if (requestedTypes == null ||
-        requestedTypes.contains(CreditTransactionViewItemType.installment)) {
+        requestedTypes.contains(
+          CreditTransactionViewActivityType.installment,
+        )) {
       final sql = _AnchorSql(
         transactionAlias: 'anchor',
-        itemType: CreditTransactionViewItemType.installment.code,
-        itemIdExpression: 'contract.id',
+        activityType: CreditTransactionViewActivityType.installment.code,
+        activityIdExpression: 'contract.id',
       )..apply(query);
       branches.add('''
 SELECT
   anchor.id AS anchor_transaction_id,
   anchor.occurred_at AS anchor_at,
-  '${CreditTransactionViewItemType.installment.code}' AS item_type,
-  contract.id AS item_id
+  '${CreditTransactionViewActivityType.installment.code}' AS activity_type,
+  contract.id AS activity_id
 FROM installment_contracts contract
 JOIN transactions anchor ON anchor.id = contract.source_ref_id
 WHERE contract.source_ref_id IS NOT NULL
@@ -89,18 +91,18 @@ WHERE contract.source_ref_id IS NOT NULL
     }
 
     if (requestedTypes == null ||
-        requestedTypes.contains(CreditTransactionViewItemType.repayment)) {
+        requestedTypes.contains(CreditTransactionViewActivityType.repayment)) {
       final sql = _AnchorSql(
         transactionAlias: 'anchor',
-        itemType: CreditTransactionViewItemType.repayment.code,
-        itemIdExpression: 'repayment.id',
+        activityType: CreditTransactionViewActivityType.repayment.code,
+        activityIdExpression: 'repayment.id',
       )..apply(query);
       branches.add('''
 SELECT
   anchor.id AS anchor_transaction_id,
   anchor.occurred_at AS anchor_at,
-  '${CreditTransactionViewItemType.repayment.code}' AS item_type,
-  repayment.id AS item_id
+  '${CreditTransactionViewActivityType.repayment.code}' AS activity_type,
+  repayment.id AS activity_id
 FROM repayments repayment
 JOIN transactions anchor ON anchor.id = repayment.transaction_id
 WHERE anchor.parent_transaction_id IS NULL
@@ -114,7 +116,7 @@ WHERE anchor.parent_transaction_id IS NULL
     if (branches.isEmpty) {
       return _db.customSelect(
         'SELECT NULL AS anchor_transaction_id, NULL AS anchor_at, '
-        'NULL AS item_type, NULL AS item_id WHERE 0 = 1',
+        'NULL AS activity_type, NULL AS activity_id WHERE 0 = 1',
       );
     }
 
@@ -124,7 +126,7 @@ SELECT *
 FROM (
   ${branches.join('\nUNION ALL\n')}
 )
-ORDER BY anchor_at DESC, item_type DESC, item_id DESC
+ORDER BY anchor_at DESC, activity_type DESC, activity_id DESC
 LIMIT ?
 ''',
       variables: [...variables, Variable<int>(query.limit + 1)],
@@ -151,10 +153,10 @@ LIMIT ?
       anchors: [
         for (final row in rows.take(limit + 1))
           CreditTransactionViewAnchorCandidate(
-            itemType: CreditTransactionViewItemType.values.firstWhere(
-              (value) => value.code == row.read<String>('item_type'),
+            activityType: CreditTransactionViewActivityType.values.firstWhere(
+              (value) => value.code == row.read<String>('activity_type'),
             ),
-            itemId: row.read<String>('item_id'),
+            activityId: row.read<String>('activity_id'),
             anchorTransactionId: row.read<String>('anchor_transaction_id'),
             anchorAt: row.read<DateTime>('anchor_at'),
           ),
@@ -166,13 +168,13 @@ LIMIT ?
 final class _AnchorSql {
   _AnchorSql({
     required this.transactionAlias,
-    required this.itemType,
-    required this.itemIdExpression,
+    required this.activityType,
+    required this.activityIdExpression,
   });
 
   final String transactionAlias;
-  final String itemType;
-  final String itemIdExpression;
+  final String activityType;
+  final String activityIdExpression;
   final List<String> _conditions = [];
   final List<Variable> _variables = [];
 
@@ -238,7 +240,7 @@ final class _AnchorSql {
   String get whereClause => _conditions.join(' AND ');
 
   void _applyCursor(CreditTransactionViewCursor before) {
-    final comparison = itemType.compareTo(before.itemType);
+    final comparison = activityType.compareTo(before.activityType);
     if (comparison < 0) {
       _conditions.add('$transactionAlias.occurred_at <= ?');
       _variables.add(Variable<DateTime>(before.anchorAt));
@@ -248,12 +250,12 @@ final class _AnchorSql {
     } else {
       _conditions.add(
         '($transactionAlias.occurred_at < ? OR '
-        '($transactionAlias.occurred_at = ? AND $itemIdExpression < ?))',
+        '($transactionAlias.occurred_at = ? AND $activityIdExpression < ?))',
       );
       _variables
         ..add(Variable<DateTime>(before.anchorAt))
         ..add(Variable<DateTime>(before.anchorAt))
-        ..add(Variable<String>(before.itemId));
+        ..add(Variable<String>(before.activityId));
     }
   }
 

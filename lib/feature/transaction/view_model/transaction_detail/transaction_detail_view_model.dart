@@ -153,8 +153,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             currentAccountId: currentAccountId,
           );
         case AccountSelectionPurpose.advanceReceivable:
-          final advance = loaded.context.owner;
-          if (advance is! AdvanceTransactionDetailOwnerContext) {
+          final advance = loaded.context.businessContext;
+          if (advance is! AdvanceTransactionBusinessContext) {
             return detailInvalidCommand('无法定位垫付编排实例');
           }
           await ref
@@ -284,11 +284,12 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         installmentPrepaymentAppServiceProvider,
       ),
       accountRepaymentAppService: ref.read(accountRepaymentAppServiceProvider),
-      advanceAppService: context.owner is AdvanceTransactionDetailOwnerContext
+      advanceAppService:
+          context.businessContext is AdvanceTransactionBusinessContext
           ? ref.read(advanceOrchestrationAppServiceProvider)
           : null,
       amortizationAppService:
-          context.owner is AmortizationTransactionDetailOwnerContext
+          context.businessContext is AmortizationTransactionBusinessContext
           ? ref.read(amortizationPlanAppServiceProvider)
           : null,
     );
@@ -306,8 +307,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       final outcome = await body(loaded);
       if (outcome is UiActionSuccess<void>) {
         _invalidateInstallmentAfterRefundChange(loaded.detail);
-        final owner = loaded.context.owner;
-        if (owner is AmortizationTransactionDetailOwnerContext) {
+        final owner = loaded.context.businessContext;
+        if (owner is AmortizationTransactionBusinessContext) {
           ref
             ..invalidate(amortizationPlanProvider(owner.ownerId))
             ..invalidate(amortizationPlansProvider());

@@ -12,7 +12,7 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   String get sourceKey => 'credit';
 
   @override
-  Set<String> get supportedItemTypes => const {
+  Set<String> get supportedActivityTypes => const {
     installmentOwnerType,
     creditRepaymentOwnerType,
   };
@@ -37,11 +37,13 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   ) async {
     final contractIds = {
       for (final anchor in anchors)
-        if (anchor.itemKey.type == installmentOwnerType) anchor.itemKey.id,
+        if (anchor.activityKey.type == installmentOwnerType)
+          anchor.activityKey.id,
     };
     final repaymentIds = {
       for (final anchor in anchors)
-        if (anchor.itemKey.type == creditRepaymentOwnerType) anchor.itemKey.id,
+        if (anchor.activityKey.type == creditRepaymentOwnerType)
+          anchor.activityKey.id,
     };
     final installmentSummaries = await _installments.findInstallments(
       contractIds,
@@ -74,7 +76,7 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   }
 
   CreditTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
-    final itemTypes = query.itemTypes;
+    final activityTypes = query.activityTypes;
     return CreditTransactionViewQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
@@ -82,14 +84,14 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
         null => null,
         final cursor => CreditTransactionViewCursor(
           anchorAt: cursor.anchorAt,
-          itemType: cursor.itemKey.type,
-          itemId: cursor.itemKey.id,
+          activityType: cursor.activityKey.type,
+          activityId: cursor.activityKey.id,
         ),
       },
       limit: query.limit,
-      itemTypes: itemTypes == null
+      activityTypes: activityTypes == null
           ? null
-          : {for (final value in itemTypes) ?_tryItemType(value)},
+          : {for (final value in activityTypes) ?_tryActivityType(value)},
       categoryAccountIds: query.categoryAccountIds,
       settlementAccountIds: query.settlementAccountIds,
       tagIds: query.tagIds,
@@ -104,9 +106,9 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
       anchors: [
         for (final anchor in page.anchors)
           BusinessActivityAnchorCandidate(
-            itemKey: BusinessActivityKey(
-              type: anchor.itemType.code,
-              id: anchor.itemId,
+            activityKey: BusinessActivityKey(
+              type: anchor.activityType.code,
+              id: anchor.activityId,
             ),
             anchorTransactionId: anchor.anchorTransactionId,
             anchorAt: anchor.anchorAt,
@@ -115,10 +117,10 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
     );
   }
 
-  CreditTransactionViewItemType? _tryItemType(String itemType) {
-    return switch (itemType) {
-      installmentOwnerType => CreditTransactionViewItemType.installment,
-      creditRepaymentOwnerType => CreditTransactionViewItemType.repayment,
+  CreditTransactionViewActivityType? _tryActivityType(String activityType) {
+    return switch (activityType) {
+      installmentOwnerType => CreditTransactionViewActivityType.installment,
+      creditRepaymentOwnerType => CreditTransactionViewActivityType.repayment,
       _ => null,
     };
   }

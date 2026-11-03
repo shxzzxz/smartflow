@@ -6,7 +6,7 @@ import 'transaction_detail_business_presentation.dart';
 TransactionDetailBusinessContent presentRepaymentDetailBusinessScene(
   TransactionDetailContext context,
 ) {
-  final owner = context.owner as RepaymentTransactionDetailOwnerContext;
+  final owner = context.businessContext as RepaymentTransactionBusinessContext;
   final route = switch (owner.targetType) {
     RepaymentTargetType.bill => '/bills/${owner.targetId}',
     RepaymentTargetType.contract => '/installments/${owner.targetId}',

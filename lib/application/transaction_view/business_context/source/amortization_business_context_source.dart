@@ -1,7 +1,7 @@
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
 import '../../../orchestration/amortization/query/amortization_transaction_context_query.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
+import '../query/transaction_business_context_read_models.dart';
 import 'transaction_business_context_source.dart';
 
 final class AmortizationBusinessContextSource
@@ -16,7 +16,7 @@ final class AmortizationBusinessContextSource
   };
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final contexts = await _query.findForTransactions(
@@ -26,7 +26,7 @@ final class AmortizationBusinessContextSource
   }
 
   @override
-  Stream<Map<String, TransactionDetailOwnerContext>> watchContexts(
+  Stream<Map<String, TransactionBusinessContext>> watchContexts(
     Iterable<TransactionReadModel> transactions,
   ) {
     return _query
@@ -57,8 +57,8 @@ final class AmortizationBusinessContextSource
     return transactionIdsByPlanId;
   }
 
-  TransactionDetailOwnerContext _map(AmortizationTransactionContext context) {
-    return AmortizationTransactionDetailOwnerContext(
+  TransactionBusinessContext _map(AmortizationTransactionContext context) {
+    return AmortizationTransactionBusinessContext(
       ownerType: orchestrationAmortizationOwnerType,
       ownerId: context.planId,
       initialTransactionId: context.initialTransactionId,

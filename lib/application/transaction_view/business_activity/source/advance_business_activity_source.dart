@@ -23,7 +23,9 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   String get sourceKey => 'advance';
 
   @override
-  Set<String> get supportedItemTypes => const {orchestrationAdvanceOwnerType};
+  Set<String> get supportedActivityTypes => const {
+    orchestrationAdvanceOwnerType,
+  };
 
   @override
   Future<BusinessActivitySourcePage> findAnchorPage(
@@ -45,7 +47,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   ) async {
     final values = anchors.toList();
     final (cases, transactions) = await (
-      _cases.findByIds({for (final anchor in values) anchor.itemKey.id}),
+      _cases.findByIds({for (final anchor in values) anchor.activityKey.id}),
       _transactions.findTransactionsByIds({
         for (final anchor in values) anchor.anchorTransactionId,
       }),
@@ -55,7 +57,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
     };
     return {
       for (final anchor in values)
-        anchor.itemKey: _summaryFor(anchor, cases, transactionsById),
+        anchor.activityKey: _summaryFor(anchor, cases, transactionsById),
     };
   }
 
@@ -64,10 +66,10 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
     Map<String, AdvanceCase> cases,
     Map<String, TransactionReadModel> transactionsById,
   ) {
-    final advanceCase = cases[anchor.itemKey.id];
+    final advanceCase = cases[anchor.activityKey.id];
     if (advanceCase == null) {
       throw StateError(
-        'Advance case ${anchor.itemKey.id} for business activity was not found.',
+        'Advance case ${anchor.activityKey.id} for business activity was not found.',
       );
     }
     final facts = transactionsById[anchor.anchorTransactionId]?.advanceSummary;
@@ -94,8 +96,8 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
         null => null,
         final cursor => AdvanceTransactionViewCursor(
           anchorAt: cursor.anchorAt,
-          itemType: cursor.itemKey.type,
-          ownerId: cursor.itemKey.id,
+          activityType: cursor.activityKey.type,
+          ownerId: cursor.activityKey.id,
         ),
       },
       limit: query.limit,
@@ -113,7 +115,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
       anchors: [
         for (final anchor in page.anchors)
           BusinessActivityAnchorCandidate(
-            itemKey: BusinessActivityKey(
+            activityKey: BusinessActivityKey(
               type: orchestrationAdvanceOwnerType,
               id: anchor.ownerId,
             ),

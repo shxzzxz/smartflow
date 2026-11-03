@@ -1,11 +1,11 @@
 import '../../../../domain/credit/valobj/repayment_enums.dart';
 
 /// Credit-owned business activity kinds exposed to the transaction view.
-enum CreditTransactionViewItemType {
+enum CreditTransactionViewActivityType {
   installment('credit.installment_contract'),
   repayment('credit.repayment');
 
-  const CreditTransactionViewItemType(this.code);
+  const CreditTransactionViewActivityType(this.code);
 
   final String code;
 }
@@ -16,13 +16,13 @@ final class CreditTransactionViewQuery {
     required this.occurredUntil,
     this.before,
     this.limit = 20,
-    Set<CreditTransactionViewItemType>? itemTypes,
+    Set<CreditTransactionViewActivityType>? activityTypes,
     Set<String>? categoryAccountIds,
     Set<String>? settlementAccountIds,
     Set<String>? tagIds,
     this.untaggedOnly = false,
     this.counterpartyId,
-  }) : itemTypes = _immutableTypes(itemTypes),
+  }) : activityTypes = _immutableTypes(activityTypes),
        categoryAccountIds = _immutableStrings(categoryAccountIds),
        settlementAccountIds = _immutableStrings(settlementAccountIds),
        tagIds = _immutableStrings(tagIds),
@@ -34,7 +34,7 @@ final class CreditTransactionViewQuery {
   final DateTime occurredUntil;
   final CreditTransactionViewCursor? before;
   final int limit;
-  final Set<CreditTransactionViewItemType>? itemTypes;
+  final Set<CreditTransactionViewActivityType>? activityTypes;
   final Set<String>? categoryAccountIds;
   final Set<String>? settlementAccountIds;
   final Set<String>? tagIds;
@@ -45,27 +45,27 @@ final class CreditTransactionViewQuery {
 final class CreditTransactionViewCursor {
   const CreditTransactionViewCursor({
     required this.anchorAt,
-    required this.itemType,
-    required this.itemId,
+    required this.activityType,
+    required this.activityId,
   });
 
   final DateTime anchorAt;
 
   /// Stable global item type code, which may belong to another source.
-  final String itemType;
-  final String itemId;
+  final String activityType;
+  final String activityId;
 }
 
 final class CreditTransactionViewAnchorCandidate {
   const CreditTransactionViewAnchorCandidate({
-    required this.itemType,
-    required this.itemId,
+    required this.activityType,
+    required this.activityId,
     required this.anchorTransactionId,
     required this.anchorAt,
   });
 
-  final CreditTransactionViewItemType itemType;
-  final String itemId;
+  final CreditTransactionViewActivityType activityType;
+  final String activityId;
   final String anchorTransactionId;
   final DateTime anchorAt;
 }
@@ -95,6 +95,6 @@ final class CreditRepaymentBusinessActivitySummary {
 Set<String>? _immutableStrings(Set<String>? values) =>
     values == null ? null : Set.unmodifiable(values);
 
-Set<CreditTransactionViewItemType>? _immutableTypes(
-  Set<CreditTransactionViewItemType>? values,
+Set<CreditTransactionViewActivityType>? _immutableTypes(
+  Set<CreditTransactionViewActivityType>? values,
 ) => values == null ? null : Set.unmodifiable(values);

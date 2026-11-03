@@ -38,11 +38,10 @@ final class TransactionDetailContextQueryImpl
   Stream<TransactionDetailContext?> watchById(String transactionId) {
     late StreamController<TransactionDetailContext?> controller;
     StreamSubscription<TransactionReadModel?>? transactionSubscription;
-    StreamSubscription<Map<String, TransactionDetailOwnerContext>>?
+    StreamSubscription<Map<String, TransactionBusinessContext>>?
     ownerSubscription;
     TransactionReadModel? latestTransaction;
-    Map<String, TransactionDetailOwnerContext> latestBusinessContexts =
-        const {};
+    Map<String, TransactionBusinessContext> latestBusinessContexts = const {};
     var revision = 0;
     var ownerRevision = 0;
     var closed = false;
@@ -138,7 +137,7 @@ final class TransactionDetailContextQueryImpl
 
   Future<TransactionDetailContext> _assemble(
     TransactionReadModel transaction, {
-    Map<String, TransactionDetailOwnerContext>? businessContexts,
+    Map<String, TransactionBusinessContext>? businessContexts,
   }) async {
     final parent = transaction.parentTransactionId == null
         ? null
@@ -155,9 +154,10 @@ final class TransactionDetailContextQueryImpl
     final contexts =
         businessContexts ??
         await _businessContexts.findContexts(currentGroup.transactions);
-    final owner = contexts[transaction.id] ?? contexts[currentGroup.anchor.id];
-    final anchorId = switch (owner) {
-      AmortizationTransactionDetailOwnerContext(:final initialTransactionId) =>
+    final businessContext =
+        contexts[transaction.id] ?? contexts[currentGroup.anchor.id];
+    final anchorId = switch (businessContext) {
+      AmortizationTransactionBusinessContext(:final initialTransactionId) =>
         initialTransactionId,
       _ => currentGroup.anchor.id,
     };
@@ -169,7 +169,7 @@ final class TransactionDetailContextQueryImpl
       parentTransaction: parent,
       currentGroup: currentGroup,
       anchorGroup: anchorGroup,
-      owner: owner,
+      businessContext: businessContext,
     );
   }
 

@@ -1,13 +1,13 @@
 import '../../../ledger/ledger_query_api.dart';
 import '../../business_context/query/business_context_stream.dart';
 import '../../business_context/query/transaction_business_context_query.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
+import '../../business_context/query/transaction_business_context_read_models.dart';
 
 final class TransactionFeedEntry {
   const TransactionFeedEntry({required this.transaction, this.businessContext});
 
   final TransactionReadModel transaction;
-  final TransactionDetailOwnerContext? businessContext;
+  final TransactionBusinessContext? businessContext;
 }
 
 abstract interface class TransactionFeedQueryService {
@@ -54,7 +54,7 @@ final class TransactionFeedQueryServiceImpl
 
   List<TransactionFeedEntry> _entries(
     List<TransactionReadModel> transactions,
-    Map<String, TransactionDetailOwnerContext> contexts,
+    Map<String, TransactionBusinessContext> contexts,
   ) {
     return [
       for (final transaction in transactions)

@@ -34,7 +34,7 @@ List<DetailAccountRow> _accountRows(
 ) {
   final detail = context.transaction;
   final purpose = detail.businessPurpose;
-  final advance = context.owner;
+  final advance = context.businessContext;
 
   DetailAccountRow info(
     String label,
@@ -146,9 +146,7 @@ List<DetailAccountRow> _accountRows(
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       final receivables = detail.linesOf(TransactionRole.receivable).toList();
       final receivableLabel = _advanceReceivableAccountLabel(
-        advance is AdvanceTransactionDetailOwnerContext
-            ? advance.scenario
-            : null,
+        advance is AdvanceTransactionBusinessContext ? advance.scenario : null,
       );
       return [
         if (outgoing.length > 1)

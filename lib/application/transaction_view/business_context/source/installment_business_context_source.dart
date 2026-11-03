@@ -1,6 +1,6 @@
 import '../../../credit/credit_query_api.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
+import '../query/transaction_business_context_read_models.dart';
 import 'transaction_business_context_source.dart';
 
 final class InstallmentBusinessContextSource
@@ -13,7 +13,7 @@ final class InstallmentBusinessContextSource
   Set<String> get supportedOwnerTypes => const {installmentOwnerType};
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -34,9 +34,9 @@ final class InstallmentBusinessContextSource
       if (transaction.ownership case final ownership?) ownership.ownerId,
   };
 
-  TransactionDetailOwnerContext? _map(InstallmentDTO? installment) {
+  TransactionBusinessContext? _map(InstallmentDTO? installment) {
     if (installment == null) return null;
-    return InstallmentTransactionDetailOwnerContext(
+    return InstallmentTransactionBusinessContext(
       ownerType: installmentOwnerType,
       ownerId: installment.id,
       installmentType: installment.installmentType,

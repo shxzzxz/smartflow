@@ -14,16 +14,16 @@ class _MockTransactionQueryService extends Mock
 class _BusinessContextQuery implements TransactionBusinessContextQuery {
   _BusinessContextQuery({required this.summary, this.watchStream});
 
-  TransactionDetailOwnerContext? summary;
-  final Stream<Map<String, TransactionDetailOwnerContext>>? watchStream;
+  TransactionBusinessContext? summary;
+  final Stream<Map<String, TransactionBusinessContext>>? watchStream;
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async => {for (final transaction in transactions) transaction.id: ?summary};
 
   @override
-  Stream<Map<String, TransactionDetailOwnerContext>> watchContexts(
+  Stream<Map<String, TransactionBusinessContext>> watchContexts(
     Iterable<TransactionReadModel> transactions,
   ) => watchStream ?? const Stream.empty();
 }
@@ -38,7 +38,7 @@ void main() {
   test(
     'owns current and anchor groups through business context seam',
     () async {
-      final plan = AmortizationTransactionDetailOwnerContext(
+      final plan = AmortizationTransactionBusinessContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan-1',
         initialTransactionId: 'anchor',
@@ -77,7 +77,10 @@ void main() {
       expect(context, isNotNull);
       expect(context!.transaction.id, 'recognition');
       expect(context.anchorTransaction.id, 'anchor');
-      expect(context.owner, isA<AmortizationTransactionDetailOwnerContext>());
+      expect(
+        context.businessContext,
+        isA<AmortizationTransactionBusinessContext>(),
+      );
       expect(context.categoryAccountIds, ['insurance']);
     },
   );
@@ -99,7 +102,10 @@ void main() {
     final context = await query.findById('tx-1');
 
     expect(context, isNotNull);
-    expect(context!.owner, isA<UnknownTransactionDetailOwnerContext>());
+    expect(
+      context!.businessContext,
+      isA<UnknownTransactionBusinessContext>(),
+    );
   });
 
   test('business context changes produce a new detail context', () async {
@@ -110,7 +116,7 @@ void main() {
     );
     final ledgerChanges = StreamController<TransactionReadModel?>();
     final ownerChanges =
-        StreamController<Map<String, TransactionDetailOwnerContext>>();
+        StreamController<Map<String, TransactionBusinessContext>>();
     addTearDown(ledgerChanges.close);
     addTearDown(ownerChanges.close);
     when(
@@ -131,7 +137,7 @@ void main() {
     ledgerChanges.add(transaction);
     expect(await iterator.moveNext(), isTrue);
     expect(
-      (iterator.current!.owner as AdvanceTransactionDetailOwnerContext)
+      (iterator.current!.businessContext as AdvanceTransactionBusinessContext)
           .outstanding,
       const Money(minorUnits: 8000),
     );
@@ -142,7 +148,7 @@ void main() {
       ..add({'advance-tx': updatedOwner});
     expect(await iterator.moveNext(), isTrue);
     expect(
-      (iterator.current!.owner as AdvanceTransactionDetailOwnerContext)
+      (iterator.current!.businessContext as AdvanceTransactionBusinessContext)
           .outstanding,
       const Money(minorUnits: 5000),
     );
@@ -169,11 +175,11 @@ TransactionReadModel _transaction({
   );
 }
 
-TransactionDetailOwnerContext _advanceOwner({
+TransactionBusinessContext _advanceOwner({
   required int outstanding,
   required bool closed,
 }) {
-  return AdvanceTransactionDetailOwnerContext(
+  return AdvanceTransactionBusinessContext(
     ownerType: orchestrationAdvanceOwnerType,
     ownerId: 'owner-1',
     scenario: AdvanceScenario.reimbursement,

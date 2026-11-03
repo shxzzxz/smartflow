@@ -26,7 +26,7 @@ void main() {
     ).thenAnswer((_) async => [amortization, ordinary]);
     when(() => contexts.findContexts(any())).thenAnswer(
       (_) async => {
-        'recognition': const AmortizationTransactionDetailOwnerContext(
+        'recognition': const AmortizationTransactionBusinessContext(
           ownerType: orchestrationAmortizationOwnerType,
           ownerId: 'plan',
           initialTransactionId: 'initial',

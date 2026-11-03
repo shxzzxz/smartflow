@@ -1,17 +1,17 @@
 /// 普通交易组业务活动的稳定类型标识。
-const String ledgerTransactionGroupItemType = 'ledger.transaction_group';
+const String ledgerTransactionGroupActivityType = 'ledger.transaction_group';
 
 /// 业务活动的稳定身份。
 ///
 /// owner 型事项使用 `(ownerType, ownerId)`，无 owner 的普通交易组使用
-/// [ledgerTransactionGroupItemType] 和顶层交易组 ID。
+/// [ledgerTransactionGroupActivityType] 和顶层交易组 ID。
 final class BusinessActivityKey {
   const BusinessActivityKey({required this.type, required this.id})
     : assert(type != ''),
       assert(id != '');
 
   const BusinessActivityKey.transactionGroup(String id)
-    : this(type: ledgerTransactionGroupItemType, id: id);
+    : this(type: ledgerTransactionGroupActivityType, id: id);
 
   final String type;
   final String id;
@@ -30,12 +30,15 @@ final class BusinessActivityKey {
   int get hashCode => Object.hash(type, id);
 }
 
-/// 业务活动视图的排他游标；排序方向为 `(anchorAt DESC, itemKey DESC)`。
+/// 业务活动视图的排他游标；排序方向为 `(anchorAt DESC, activityKey DESC)`。
 final class BusinessActivityCursor {
-  const BusinessActivityCursor({required this.anchorAt, required this.itemKey});
+  const BusinessActivityCursor({
+    required this.anchorAt,
+    required this.activityKey,
+  });
 
   final DateTime anchorAt;
-  final BusinessActivityKey itemKey;
+  final BusinessActivityKey activityKey;
 }
 
 /// 业务活动来源统一使用的分页与筛选条件。
@@ -49,13 +52,13 @@ final class BusinessActivityPageQuery {
     required this.occurredUntil,
     this.before,
     this.limit = 20,
-    Set<String>? itemTypes,
+    Set<String>? activityTypes,
     Set<String>? categoryAccountIds,
     Set<String>? settlementAccountIds,
     Set<String>? tagIds,
     this.untaggedOnly = false,
     this.counterpartyId,
-  }) : itemTypes = _immutableSet(itemTypes),
+  }) : activityTypes = _immutableSet(activityTypes),
        categoryAccountIds = _immutableSet(categoryAccountIds),
        settlementAccountIds = _immutableSet(settlementAccountIds),
        tagIds = _immutableSet(tagIds),
@@ -69,7 +72,7 @@ final class BusinessActivityPageQuery {
   final int limit;
 
   /// 业务活动稳定类型；`null` 表示全部来源，空集合表示没有可匹配来源。
-  final Set<String>? itemTypes;
+  final Set<String>? activityTypes;
 
   /// 已由 application 展开并校验的物理分类账户 ID。
   final Set<String>? categoryAccountIds;
@@ -86,19 +89,19 @@ final class BusinessActivityPageQuery {
 /// 来源返回给公共归并层的锚点候选。
 final class BusinessActivityAnchorCandidate {
   const BusinessActivityAnchorCandidate({
-    required this.itemKey,
+    required this.activityKey,
     required this.anchorTransactionId,
     required this.anchorAt,
   }) : assert(anchorTransactionId != '');
 
-  final BusinessActivityKey itemKey;
+  final BusinessActivityKey activityKey;
   final String anchorTransactionId;
   final DateTime anchorAt;
 }
 
 /// 单个来源的一页锚点结果。
 ///
-/// [anchors] 必须已按 `(anchorAt DESC, itemKey DESC)` 排序，且不能超过请求
+/// [anchors] 必须已按 `(anchorAt DESC, activityKey DESC)` 排序，且不能超过请求
 /// limit + 1。来源需要额外读取并返回一条候选来判断本来源是否还有下一页；
 /// 因此 `hasMore == true` 时 [anchors] 必须恰好包含 limit + 1 条。
 final class BusinessActivitySourcePage {

@@ -29,9 +29,9 @@ void main() {
 
     expect(source.calls, 1);
     expect(source.requestedTransactionIds, {'first', 'second'});
-    expect(contexts['first'], isA<AdvanceTransactionDetailOwnerContext>());
-    expect(contexts['second'], isA<UnknownTransactionDetailOwnerContext>());
-    expect(contexts['unknown'], isA<UnknownTransactionDetailOwnerContext>());
+    expect(contexts['first'], isA<AdvanceTransactionBusinessContext>());
+    expect(contexts['second'], isA<UnknownTransactionBusinessContext>());
+    expect(contexts['unknown'], isA<UnknownTransactionBusinessContext>());
     expect(contexts, isNot(contains('ordinary')));
   });
 }
@@ -44,7 +44,7 @@ final class _ContextSource extends TransactionBusinessContextSource {
   Set<String> get supportedOwnerTypes => const {orchestrationAdvanceOwnerType};
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     calls += 1;
@@ -52,7 +52,7 @@ final class _ContextSource extends TransactionBusinessContextSource {
       for (final transaction in transactions) transaction.id,
     };
     return {
-      'first': const AdvanceTransactionDetailOwnerContext(
+      'first': const AdvanceTransactionBusinessContext(
         ownerType: orchestrationAdvanceOwnerType,
         ownerId: 'owner-1',
         scenario: AdvanceScenario.reimbursement,

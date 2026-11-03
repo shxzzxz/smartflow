@@ -395,7 +395,7 @@ TransactionDayGroup businessActivityGroupForDate({
 TransactionRowPresentation buildTransactionRowPresentation({
   required TransactionReadModel item,
   required AccountLookup accountLookup,
-  TransactionDetailOwnerContext? businessContext,
+  TransactionBusinessContext? businessContext,
   TransactionListAmountSource amountSource =
       const TransactionGroupAmountSource(),
 }) {
@@ -449,7 +449,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
   }
 
   final contextCategoryIds = switch (businessContext) {
-    AmortizationTransactionDetailOwnerContext(:final categoryAccountIds) =>
+    AmortizationTransactionBusinessContext(:final categoryAccountIds) =>
       categoryAccountIds,
     _ => const <String>[],
   };
@@ -896,8 +896,8 @@ Set<String> _businessCategoryAccountIds(TransactionReadModel item) {
   return {for (final line in item.categoryLines) ?line.accountId};
 }
 
-String? _businessContextSupportingText(TransactionDetailOwnerContext? context) {
-  if (context is! AmortizationTransactionDetailOwnerContext) return null;
+String? _businessContextSupportingText(TransactionBusinessContext? context) {
+  if (context is! AmortizationTransactionBusinessContext) return null;
   final planLabel = switch (context.kind) {
     AmortizationKind.prepaidExpense => '摊销预付',
     AmortizationKind.deferredIncome => '摊销预收',

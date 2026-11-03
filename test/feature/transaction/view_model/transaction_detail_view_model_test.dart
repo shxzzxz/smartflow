@@ -946,7 +946,7 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
   final anchor = parent ?? detail;
   final ownership = detail.ownership;
   final owner = switch (ownership?.ownerType) {
-    installmentOwnerType => InstallmentTransactionDetailOwnerContext(
+    installmentOwnerType => InstallmentTransactionBusinessContext(
       ownerType: ownership!.ownerType,
       ownerId: ownership.ownerId,
       installmentType: InstallmentType.disbursement,
@@ -956,14 +956,14 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
       paidPeriodCount: 0,
       totalPeriodCount: 3,
     ),
-    creditRepaymentOwnerType => RepaymentTransactionDetailOwnerContext(
+    creditRepaymentOwnerType => RepaymentTransactionBusinessContext(
       ownerType: ownership!.ownerType,
       ownerId: ownership.ownerId,
       repaymentType: RepaymentType.bill,
       targetType: RepaymentTargetType.bill,
       targetId: 'bill-1',
     ),
-    orchestrationAdvanceOwnerType => AdvanceTransactionDetailOwnerContext(
+    orchestrationAdvanceOwnerType => AdvanceTransactionBusinessContext(
       ownerType: ownership!.ownerType,
       ownerId: ownership.ownerId,
       scenario: AdvanceScenario.reimbursement,
@@ -975,7 +975,7 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
       isClosed: detail.advanceSummary?.isClosed ?? false,
     ),
     orchestrationAmortizationOwnerType =>
-      AmortizationTransactionDetailOwnerContext(
+      AmortizationTransactionBusinessContext(
         ownerType: ownership!.ownerType,
         ownerId: ownership.ownerId,
         initialTransactionId: detail.id,
@@ -987,7 +987,7 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         postedPeriodCount: 0,
         totalPeriodCount: 3,
       ),
-    final String ownerType => UnknownTransactionDetailOwnerContext(
+    final String ownerType => UnknownTransactionBusinessContext(
       ownerType: ownerType,
       ownerId: ownership!.ownerId,
     ),
@@ -1004,7 +1004,7 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
       anchor: anchor,
       children: anchor.children,
     ),
-    owner: owner,
+    businessContext: owner,
   );
 }
 

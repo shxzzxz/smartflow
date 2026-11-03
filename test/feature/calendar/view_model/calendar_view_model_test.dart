@@ -10,6 +10,8 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
 import 'package:smartflow/feature/shared/provider/current_date_time_provider.dart';
 
+import '../../../helper/memory_app_settings_store.dart';
+
 void main() {
   group('CalendarViewModel', () {
     test(
@@ -219,7 +221,7 @@ void main() {
       expect(loaded.isLoadingMore, false);
       final cursor = businessService.queries.last.before;
       expect(
-        cursor?.itemKey,
+        cursor?.activityKey,
         BusinessActivityKey.transactionGroup(
           'tx-${calendarBusinessActivityPageSize - 1}',
         ),
@@ -308,6 +310,9 @@ ProviderContainer _container(
         (ref) => now ?? DateTime(2026, 1, 15, 9),
       ),
       businessActivityQueryServiceProvider.overrideWithValue(businessService),
+      appSettingsStoreProvider.overrideWithValue(
+        const MemoryAppSettingsStore(),
+      ),
       financialMetricsServiceProvider.overrideWithValue(metricsService),
       accountQueryServiceProvider.overrideWithValue(accountService),
       creditAccountQueryServiceProvider.overrideWithValue(
@@ -347,7 +352,7 @@ BusinessActivityReadModel _businessActivity(
   final transaction = _item(occurredAt, id: id);
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
-      itemKey: BusinessActivityKey.transactionGroup(transaction.id),
+      activityKey: BusinessActivityKey.transactionGroup(transaction.id),
       anchorTransactionId: transaction.id,
       anchorAt: transaction.occurredAt,
     ),

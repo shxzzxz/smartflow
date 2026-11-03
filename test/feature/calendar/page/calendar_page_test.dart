@@ -374,7 +374,7 @@ BusinessActivityReadModel _businessActivity(
   final transaction = _item(occurredAt, id: id);
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
-      itemKey: BusinessActivityKey.transactionGroup(id),
+      activityKey: BusinessActivityKey.transactionGroup(id),
       anchorTransactionId: id,
       anchorAt: transaction.occurredAt,
     ),

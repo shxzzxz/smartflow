@@ -4,9 +4,9 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
   TransactionDetailContext context,
 ) {
   final transaction = context.transaction;
-  final owner = context.owner;
+  final owner = context.businessContext;
   const postedAtPermission = DetailEditPermission.allowed();
-  if (owner is AmortizationTransactionDetailOwnerContext) {
+  if (owner is AmortizationTransactionBusinessContext) {
     switch (owner.factKind) {
       case AmortizationTransactionFactKind.refund:
         return DetailBehaviorConfig(
@@ -41,7 +41,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
       transaction.businessPurpose == BusinessPurpose.advanceSettlement) {
     final installmentRefund =
         transaction.businessPurpose == BusinessPurpose.refund &&
-        owner is InstallmentTransactionDetailOwnerContext;
+        owner is InstallmentTransactionBusinessContext;
     return DetailBehaviorConfig(
       editRoute: switch (transaction.businessPurpose) {
         BusinessPurpose.refund => '/transaction/${transaction.id}/refund/edit',
@@ -108,7 +108,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
     );
   }
 
-  if (owner is InstallmentTransactionDetailOwnerContext) {
+  if (owner is InstallmentTransactionBusinessContext) {
     final purchase =
         transaction.businessPurpose == BusinessPurpose.dailyExpense;
     return DetailBehaviorConfig(
@@ -124,7 +124,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
     );
   }
 
-  if (owner is AmortizationTransactionDetailOwnerContext) {
+  if (owner is AmortizationTransactionBusinessContext) {
     return DetailBehaviorConfig(
       editRoute: '/transaction/${transaction.id}/edit',
       canEditOccurredAt: const DetailEditPermission.allowed(),
@@ -138,7 +138,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
     );
   }
 
-  if (owner is RepaymentTransactionDetailOwnerContext) {
+  if (owner is RepaymentTransactionBusinessContext) {
     return DetailBehaviorConfig(
       editRoute: owner.repaymentType == RepaymentType.bill
           ? '/repayments/${owner.ownerId}/edit'
@@ -167,11 +167,9 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
   );
 }
 
-DetailEditPermission _deletePermissionFor(
-  TransactionDetailOwnerContext? owner,
-) {
+DetailEditPermission _deletePermissionFor(TransactionBusinessContext? owner) {
   return switch (owner) {
-    UnknownTransactionDetailOwnerContext() => const DetailEditPermission.denied(
+    UnknownTransactionBusinessContext() => const DetailEditPermission.denied(
       reason: '未识别的业务来源不支持删除',
     ),
     _ => const DetailEditPermission.allowed(),
@@ -183,12 +181,12 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
   DetailBehaviorConfig behavior,
 ) {
   final transaction = context.transaction;
-  final owner = context.owner;
+  final owner = context.businessContext;
   final editLocked = _isEarlierAdvanceChildLocked(context);
   final result = <DetailActionButton>[];
   switch (transaction.businessPurpose) {
     case BusinessPurpose.dailyExpense:
-      if (owner is! AmortizationTransactionDetailOwnerContext) {
+      if (owner is! AmortizationTransactionBusinessContext) {
         result.add(
           DetailActionButton(
             kind: DetailActionKind.refund,
@@ -200,9 +198,7 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
         );
       }
     case BusinessPurpose.advance:
-      final advance = owner is AdvanceTransactionDetailOwnerContext
-          ? owner
-          : null;
+      final advance = owner is AdvanceTransactionBusinessContext ? owner : null;
       if (advance?.trackingMode == AdvanceTrackingMode.itemized) {
         if (!advance!.isClosed) {
           result.add(
@@ -240,7 +236,7 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
       break;
   }
 
-  if (owner is AmortizationTransactionDetailOwnerContext) {
+  if (owner is AmortizationTransactionBusinessContext) {
     final showsPlanActions =
         owner.factKind == null ||
         owner.factKind == AmortizationTransactionFactKind.initial ||
@@ -280,7 +276,7 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
       enabled:
           behavior.editRoute != null &&
           !editLocked &&
-          !(owner is AmortizationTransactionDetailOwnerContext &&
+          !(owner is AmortizationTransactionBusinessContext &&
               owner.status == AmortizationStatus.terminated &&
               owner.factKind !=
                   AmortizationTransactionFactKind.terminationRecognition &&
@@ -289,7 +285,7 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
       route: behavior.editRoute,
       deniedReason: editLocked
           ? _advanceSettledEditReason
-          : owner is AmortizationTransactionDetailOwnerContext &&
+          : owner is AmortizationTransactionBusinessContext &&
                 owner.status == AmortizationStatus.terminated &&
                 owner.factKind !=
                     AmortizationTransactionFactKind.terminationRecognition &&
@@ -367,25 +363,23 @@ const String _advanceSettledEditReason = '垫付已结清，请先删除垫付�
 
 String _transactionDetailDeleteMessage(TransactionDetailContext context) {
   final detail = context.transaction;
-  return switch (context.owner) {
-    InstallmentTransactionDetailOwnerContext()
+  return switch (context.businessContext) {
+    InstallmentTransactionBusinessContext()
         when detail.businessPurpose == BusinessPurpose.refund =>
       '此操作将删除退款交易、撤销退款还本并重新计算分期计划，无法恢复。',
-    InstallmentTransactionDetailOwnerContext() =>
-      '此操作将删除关联分期、还款计划及其关联账务记录，无法恢复。',
-    RepaymentTransactionDetailOwnerContext() =>
+    InstallmentTransactionBusinessContext() => '此操作将删除关联分期、还款计划及其关联账务记录，无法恢复。',
+    RepaymentTransactionBusinessContext() =>
       '此操作将删除还款记录及其关联交易，并重新计算相关账单与分期的还款状态，无法恢复。',
-    AmortizationTransactionDetailOwnerContext(
+    AmortizationTransactionBusinessContext(
       factKind: AmortizationTransactionFactKind.refund,
     ) =>
       '此操作将删除这笔摊销退款及其转账交易，并按剩余净额重算摊销期次，无法恢复。',
-    AmortizationTransactionDetailOwnerContext(
+    AmortizationTransactionBusinessContext(
       factKind: AmortizationTransactionFactKind.terminationRecognition ||
           AmortizationTransactionFactKind.terminationReturn,
     ) =>
       '此操作将删除该笔摊销终止及其关联交易，恢复并补齐摊销期次，无法恢复。',
-    AmortizationTransactionDetailOwnerContext() =>
-      '此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。',
+    AmortizationTransactionBusinessContext() => '此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。',
     _ =>
       detail.parentTransactionId == null
           ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'

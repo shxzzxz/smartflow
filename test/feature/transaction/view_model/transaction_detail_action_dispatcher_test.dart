@@ -128,7 +128,7 @@ void main() {
           createTransactionDetailActionDispatcherForTesting(
             context: _context(
               transaction,
-              owner: AdvanceTransactionDetailOwnerContext(
+              owner: AdvanceTransactionBusinessContext(
                 ownerType: orchestrationAdvanceOwnerType,
                 ownerId: 'advance',
                 scenario: AdvanceScenario.aa,
@@ -178,7 +178,7 @@ void main() {
         createTransactionDetailActionDispatcherForTesting(
           context: _context(
             transaction,
-            owner: AmortizationTransactionDetailOwnerContext(
+            owner: AmortizationTransactionBusinessContext(
               ownerType: orchestrationAmortizationOwnerType,
               ownerId: 'plan',
               initialTransactionId: 'amortization-entry',
@@ -244,7 +244,7 @@ void main() {
         createTransactionDetailActionDispatcherForTesting(
           context: _context(
             transaction,
-            owner: AmortizationTransactionDetailOwnerContext(
+            owner: AmortizationTransactionBusinessContext(
               ownerType: orchestrationAmortizationOwnerType,
               ownerId: 'plan',
               initialTransactionId: 'amortization-entry',
@@ -297,7 +297,7 @@ void main() {
         createTransactionDetailActionDispatcherForTesting(
           context: _context(
             transaction,
-            owner: AmortizationTransactionDetailOwnerContext(
+            owner: AmortizationTransactionBusinessContext(
               ownerType: orchestrationAmortizationOwnerType,
               ownerId: 'plan',
               initialTransactionId: 'initial',
@@ -356,7 +356,7 @@ void main() {
       dispatcher = createTransactionDetailActionDispatcherForTesting(
         context: _context(
           transaction,
-          owner: const AmortizationTransactionDetailOwnerContext(
+          owner: const AmortizationTransactionBusinessContext(
             ownerType: orchestrationAmortizationOwnerType,
             ownerId: 'plan',
             initialTransactionId: 'initial',
@@ -413,7 +413,7 @@ void main() {
           createTransactionDetailActionDispatcherForTesting(
             context: _context(
               transaction,
-              owner: AdvanceTransactionDetailOwnerContext(
+              owner: AdvanceTransactionBusinessContext(
                 ownerType: orchestrationAdvanceOwnerType,
                 ownerId: 'advance',
                 scenario: AdvanceScenario.aa,
@@ -582,7 +582,7 @@ void main() {
 
 TransactionDetailContext _context(
   TransactionReadModel transaction, {
-  TransactionDetailOwnerContext? owner,
+  TransactionBusinessContext? owner,
 }) {
   final group = TransactionDetailGroup(
     anchor: transaction,
@@ -592,12 +592,12 @@ TransactionDetailContext _context(
     transaction: transaction,
     currentGroup: group,
     anchorGroup: group,
-    owner: owner,
+    businessContext: owner,
   );
 }
 
-RepaymentTransactionDetailOwnerContext _repaymentOwner(RepaymentType type) {
-  return RepaymentTransactionDetailOwnerContext(
+RepaymentTransactionBusinessContext _repaymentOwner(RepaymentType type) {
+  return RepaymentTransactionBusinessContext(
     ownerType: creditRepaymentOwnerType,
     ownerId: 'repayment-1',
     repaymentType: type,

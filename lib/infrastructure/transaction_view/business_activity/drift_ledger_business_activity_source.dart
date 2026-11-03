@@ -15,7 +15,9 @@ final class DriftLedgerBusinessActivitySource
   String get sourceKey => 'ledger';
 
   @override
-  Set<String> get supportedItemTypes => const {ledgerTransactionGroupItemType};
+  Set<String> get supportedActivityTypes => const {
+    ledgerTransactionGroupActivityType,
+  };
 
   @override
   Future<BusinessActivitySourcePage> findAnchorPage(
@@ -42,24 +44,24 @@ final class DriftLedgerBusinessActivitySource
   ) async {
     return {
       for (final anchor in anchors)
-        if (anchor.itemKey.type == ledgerTransactionGroupItemType)
-          anchor.itemKey: const LedgerBusinessActivitySummary(),
+        if (anchor.activityKey.type == ledgerTransactionGroupActivityType)
+          anchor.activityKey: const LedgerBusinessActivitySummary(),
     };
   }
 
   Selectable<QueryRow> _select(BusinessActivityPageQuery query) {
     final sql = BusinessActivityAnchorSql(
       transactionAlias: 'anchor',
-      itemType: ledgerTransactionGroupItemType,
-      itemIdExpression: 'anchor.id',
+      activityType: ledgerTransactionGroupActivityType,
+      activityIdExpression: 'anchor.id',
     )..apply(query);
     return _db.customSelect(
       '''
 SELECT
   anchor.id AS anchor_transaction_id,
   anchor.occurred_at AS anchor_at,
-  '$ledgerTransactionGroupItemType' AS item_type,
-  anchor.id AS item_id
+  '$ledgerTransactionGroupActivityType' AS activity_type,
+  anchor.id AS activity_id
 FROM transactions anchor
 WHERE anchor.parent_transaction_id IS NULL
   AND anchor.owner_type IS NULL

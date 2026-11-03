@@ -2,7 +2,7 @@ import '../../../../domain/orchestration/entity/advance_case.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
 import '../../../orchestration/advance/query/advance_case_query_service.dart';
-import '../../transaction_detail/query/transaction_detail_context_read_models.dart';
+import '../query/transaction_business_context_read_models.dart';
 import 'transaction_business_context_source.dart';
 
 final class AdvanceBusinessContextSource
@@ -15,7 +15,7 @@ final class AdvanceBusinessContextSource
   Set<String> get supportedOwnerTypes => const {orchestrationAdvanceOwnerType};
 
   @override
-  Future<Map<String, TransactionDetailOwnerContext>> findContexts(
+  Future<Map<String, TransactionBusinessContext>> findContexts(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -39,14 +39,14 @@ final class AdvanceBusinessContextSource
       if (transaction.ownership case final ownership?) ownership.ownerId,
   };
 
-  TransactionDetailOwnerContext? _map(
+  TransactionBusinessContext? _map(
     TransactionReadModel transaction,
     AdvanceCase? advanceCase,
   ) {
     if (advanceCase == null) return null;
     final facts = transaction.advanceSummary;
     if (facts == null) return null;
-    return AdvanceTransactionDetailOwnerContext(
+    return AdvanceTransactionBusinessContext(
       ownerType: orchestrationAdvanceOwnerType,
       ownerId: advanceCase.id,
       scenario: advanceCase.scenario,

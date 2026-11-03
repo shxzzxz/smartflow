@@ -17,7 +17,7 @@ final class AmortizationBusinessActivitySource
   String get sourceKey => 'amortization';
 
   @override
-  Set<String> get supportedItemTypes => const {
+  Set<String> get supportedActivityTypes => const {
     orchestrationAmortizationOwnerType,
   };
 
@@ -40,12 +40,12 @@ final class AmortizationBusinessActivitySource
     Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
     final plans = await _plans.findByIds({
-      for (final anchor in anchors) anchor.itemKey.id,
+      for (final anchor in anchors) anchor.activityKey.id,
     });
     final plansById = {for (final plan in plans) plan.id: plan};
     return {
       for (final anchor in anchors)
-        anchor.itemKey: _summaryFor(anchor, plansById),
+        anchor.activityKey: _summaryFor(anchor, plansById),
     };
   }
 
@@ -53,10 +53,10 @@ final class AmortizationBusinessActivitySource
     BusinessActivityAnchorCandidate anchor,
     Map<String, AmortizationPlan> plansById,
   ) {
-    final plan = plansById[anchor.itemKey.id];
+    final plan = plansById[anchor.activityKey.id];
     if (plan == null) {
       throw StateError(
-        'Amortization plan ${anchor.itemKey.id} for business activity was not '
+        'Amortization plan ${anchor.activityKey.id} for business activity was not '
         'found.',
       );
     }
@@ -86,8 +86,8 @@ final class AmortizationBusinessActivitySource
         null => null,
         final cursor => AmortizationTransactionViewCursor(
           anchorAt: cursor.anchorAt,
-          itemType: cursor.itemKey.type,
-          planId: cursor.itemKey.id,
+          activityType: cursor.activityKey.type,
+          planId: cursor.activityKey.id,
         ),
       },
       limit: query.limit,
@@ -107,7 +107,7 @@ final class AmortizationBusinessActivitySource
       anchors: [
         for (final anchor in page.anchors)
           BusinessActivityAnchorCandidate(
-            itemKey: BusinessActivityKey(
+            activityKey: BusinessActivityKey(
               type: orchestrationAmortizationOwnerType,
               id: anchor.planId,
             ),

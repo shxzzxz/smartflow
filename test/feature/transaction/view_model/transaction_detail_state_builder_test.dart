@@ -97,7 +97,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionDetailOwnerContext(
+      businessOwner: AmortizationTransactionBusinessContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan',
         initialTransactionId: 'child',
@@ -134,7 +134,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.transfer,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionDetailOwnerContext(
+      businessOwner: AmortizationTransactionBusinessContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan',
         initialTransactionId: 'initial',
@@ -175,7 +175,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionDetailOwnerContext(
+      businessOwner: AmortizationTransactionBusinessContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan',
         initialTransactionId: 'initial',
@@ -542,7 +542,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: const InstallmentTransactionDetailOwnerContext(
+      businessOwner: const InstallmentTransactionBusinessContext(
         ownerType: installmentOwnerType,
         ownerId: 'contract-1',
         installmentType: InstallmentType.purchase,
@@ -566,7 +566,7 @@ void main() {
       final state = _build(
         purpose: BusinessPurpose.dailyExpense,
         parentTransactionId: null,
-        businessOwner: const AmortizationTransactionDetailOwnerContext(
+        businessOwner: const AmortizationTransactionBusinessContext(
           ownerType: orchestrationAmortizationOwnerType,
           ownerId: 'plan-1',
           initialTransactionId: 'child',
@@ -594,7 +594,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: const AmortizationTransactionDetailOwnerContext(
+      businessOwner: const AmortizationTransactionBusinessContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan-1',
         initialTransactionId: 'child',
@@ -620,7 +620,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.debtRepayment,
       parentTransactionId: null,
-      businessOwner: const RepaymentTransactionDetailOwnerContext(
+      businessOwner: const RepaymentTransactionBusinessContext(
         ownerType: creditRepaymentOwnerType,
         ownerId: 'repayment-1',
         repaymentType: RepaymentType.bill,
@@ -645,7 +645,7 @@ TransactionDetailLoaded _build({
   Iterable<TransactionLine> additionalLines = const [],
   TransactionOwnership? ownership,
   AdvanceCase? advanceCase,
-  TransactionDetailOwnerContext? businessOwner,
+  TransactionBusinessContext? businessOwner,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -765,7 +765,7 @@ TransactionDetailLoaded _build({
   final owner =
       businessOwner ??
       (resolvedAdvanceCase != null
-          ? AdvanceTransactionDetailOwnerContext(
+          ? AdvanceTransactionBusinessContext(
               ownerType: orchestrationAdvanceOwnerType,
               ownerId: resolvedAdvanceCase.id,
               scenario: resolvedAdvanceCase.scenario,
@@ -778,7 +778,7 @@ TransactionDetailLoaded _build({
               aaPeopleCount: resolvedAdvanceCase.aaPeopleCount,
             )
           : ownership?.ownerType == orchestrationAmortizationOwnerType
-          ? AmortizationTransactionDetailOwnerContext(
+          ? AmortizationTransactionBusinessContext(
               ownerType: ownership!.ownerType,
               ownerId: ownership.ownerId,
               initialTransactionId: detail.id,
@@ -802,7 +802,7 @@ TransactionDetailLoaded _build({
       anchor: parentDetail ?? detail,
       children: (parentDetail ?? detail).children,
     ),
-    owner: owner,
+    businessContext: owner,
   );
   return buildTransactionDetailLoadedState(
         context: context,

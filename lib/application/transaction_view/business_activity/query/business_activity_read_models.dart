@@ -99,7 +99,7 @@ final class AmortizationBusinessActivitySummary
 /// 持久化，始终等于锚点交易的 `occurredAt`。
 final class BusinessActivityReadModel {
   BusinessActivityReadModel._({
-    required this.itemKey,
+    required this.activityKey,
     required this.ownerType,
     required this.ownerId,
     required this.anchorTransaction,
@@ -135,24 +135,24 @@ final class BusinessActivityReadModel {
 
     final ownership = anchorTransaction.ownership;
     if (ownership == null) {
-      if (candidate.itemKey.type != ledgerTransactionGroupItemType) {
+      if (candidate.activityKey.type != ledgerTransactionGroupActivityType) {
         throw ArgumentError.value(
-          candidate.itemKey,
-          'candidate.itemKey',
+          candidate.activityKey,
+          'candidate.activityKey',
           'An ownerless business activity must use the transaction-group type.',
         );
       }
-    } else if (candidate.itemKey.type != ownership.ownerType ||
-        candidate.itemKey.id != ownership.ownerId) {
+    } else if (candidate.activityKey.type != ownership.ownerType ||
+        candidate.activityKey.id != ownership.ownerId) {
       throw ArgumentError.value(
-        candidate.itemKey,
-        'candidate.itemKey',
+        candidate.activityKey,
+        'candidate.activityKey',
         'The item key does not match the anchor transaction ownership.',
       );
     }
 
     return BusinessActivityReadModel._(
-      itemKey: candidate.itemKey,
+      activityKey: candidate.activityKey,
       ownerType: ownership?.ownerType,
       ownerId: ownership?.ownerId,
       anchorTransaction: anchorTransaction,
@@ -160,7 +160,7 @@ final class BusinessActivityReadModel {
     );
   }
 
-  final BusinessActivityKey itemKey;
+  final BusinessActivityKey activityKey;
   final String? ownerType;
   final String? ownerId;
   final TransactionReadModel anchorTransaction;
@@ -186,7 +186,7 @@ final class BusinessActivityPage {
     final last = items.last;
     return BusinessActivityCursor(
       anchorAt: last.anchorAt,
-      itemKey: last.itemKey,
+      activityKey: last.activityKey,
     );
   }
 }

@@ -11,14 +11,14 @@ void main() {
       final categories = {'food'};
       final settlements = {'cash'};
       final tags = {'travel'};
-      final itemTypes = {ledgerTransactionGroupItemType};
+      final activityTypes = {ledgerTransactionGroupActivityType};
       final from = DateTime(2026, 10);
       final until = DateTime(2026, 11);
 
       final query = BusinessActivityPageQuery(
         occurredFrom: from,
         occurredUntil: until,
-        itemTypes: itemTypes,
+        activityTypes: activityTypes,
         categoryAccountIds: categories,
         settlementAccountIds: settlements,
         tagIds: tags,
@@ -28,11 +28,11 @@ void main() {
       categories.add('housing');
       settlements.add('credit');
       tags.add('work');
-      itemTypes.add(installmentOwnerType);
+      activityTypes.add(installmentOwnerType);
 
       expect(query.occurredFrom, from);
       expect(query.occurredUntil, until);
-      expect(query.itemTypes, {ledgerTransactionGroupItemType});
+      expect(query.activityTypes, {ledgerTransactionGroupActivityType});
       expect(query.categoryAccountIds, {'food'});
       expect(query.settlementAccountIds, {'cash'});
       expect(query.tagIds, {'travel'});
@@ -51,7 +51,7 @@ void main() {
   });
 
   test('query service skips sources with no requested item type', () async {
-    final ledger = _Source('ledger', {ledgerTransactionGroupItemType});
+    final ledger = _Source('ledger', {ledgerTransactionGroupActivityType});
     final credit = _Source('credit', {installmentOwnerType});
     final service = BusinessActivityQueryServiceImpl(
       sources: [ledger, credit],
@@ -62,7 +62,7 @@ void main() {
       BusinessActivityPageQuery(
         occurredFrom: DateTime(2026, 10),
         occurredUntil: DateTime(2026, 11),
-        itemTypes: const {ledgerTransactionGroupItemType},
+        activityTypes: const {ledgerTransactionGroupActivityType},
       ),
     );
 
@@ -84,7 +84,7 @@ void main() {
       );
       final item = BusinessActivityReadModel.fromCandidate(
         candidate: BusinessActivityAnchorCandidate(
-          itemKey: const BusinessActivityKey(
+          activityKey: const BusinessActivityKey(
             type: 'orchestration.amortization',
             id: 'plan-1',
           ),
@@ -110,7 +110,9 @@ void main() {
       expect(
         () => BusinessActivityReadModel.fromCandidate(
           candidate: BusinessActivityAnchorCandidate(
-            itemKey: const BusinessActivityKey.transactionGroup('tx-anchor'),
+            activityKey: const BusinessActivityKey.transactionGroup(
+              'tx-anchor',
+            ),
             anchorTransactionId: 'tx-anchor',
             anchorAt: DateTime(2026, 10, 13),
           ),
@@ -132,7 +134,9 @@ void main() {
       expect(
         () => BusinessActivityReadModel.fromCandidate(
           candidate: BusinessActivityAnchorCandidate(
-            itemKey: const BusinessActivityKey.transactionGroup('tx-parent'),
+            activityKey: const BusinessActivityKey.transactionGroup(
+              'tx-parent',
+            ),
             anchorTransactionId: 'tx-child',
             anchorAt: occurredAt,
           ),
@@ -150,7 +154,7 @@ void main() {
       final occurredAt = DateTime(2026, 10, 12);
       final item = BusinessActivityReadModel.fromCandidate(
         candidate: BusinessActivityAnchorCandidate(
-          itemKey: const BusinessActivityKey.transactionGroup('tx-1'),
+          activityKey: const BusinessActivityKey.transactionGroup('tx-1'),
           anchorTransactionId: 'tx-1',
           anchorAt: occurredAt,
         ),
@@ -163,7 +167,10 @@ void main() {
         isNull,
       );
       expect(
-        BusinessActivityPage(items: [item], hasMore: true).nextCursor?.itemKey,
+        BusinessActivityPage(
+          items: [item],
+          hasMore: true,
+        ).nextCursor?.activityKey,
         const BusinessActivityKey.transactionGroup('tx-1'),
       );
     },
@@ -171,13 +178,13 @@ void main() {
 }
 
 final class _Source implements BusinessActivitySource {
-  _Source(this.sourceKey, this.supportedItemTypes);
+  _Source(this.sourceKey, this.supportedActivityTypes);
 
   @override
   final String sourceKey;
 
   @override
-  final Set<String> supportedItemTypes;
+  final Set<String> supportedActivityTypes;
 
   var findCalls = 0;
 

@@ -86,18 +86,18 @@ class TransactionDetailPage extends ConsumerWidget {
       return;
     }
     final message = loaded.behavior.deleteMessage;
-    final owner = loaded.context.owner;
+    final owner = loaded.context.businessContext;
     final title = switch (owner) {
-      AmortizationTransactionDetailOwnerContext(
+      AmortizationTransactionBusinessContext(
         factKind: AmortizationTransactionFactKind.refund,
       ) =>
         '删除摊销退款',
-      AmortizationTransactionDetailOwnerContext(
+      AmortizationTransactionBusinessContext(
         factKind: AmortizationTransactionFactKind.terminationRecognition ||
             AmortizationTransactionFactKind.terminationReturn,
       ) =>
         '删除摊销终止',
-      AmortizationTransactionDetailOwnerContext() => '删除摊销计划',
+      AmortizationTransactionBusinessContext() => '删除摊销计划',
       _ => '删除交易',
     };
     final confirmed = await showDialog<bool>(

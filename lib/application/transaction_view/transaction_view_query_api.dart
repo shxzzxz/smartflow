@@ -2,6 +2,7 @@
 library;
 
 export 'business_context/query/transaction_business_context_query.dart';
+export 'business_context/query/transaction_business_context_read_models.dart';
 export 'business_activity/query/business_activity_queries.dart';
 export 'business_activity/query/business_activity_query_service.dart';
 export 'business_activity/query/business_activity_read_models.dart';

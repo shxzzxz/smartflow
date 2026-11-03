@@ -83,7 +83,7 @@ final class BusinessActivityQueryServiceImpl
     final unique = <_SourcedCandidate>[];
     final seenKeys = <BusinessActivityKey>{};
     for (final candidate in merged) {
-      if (seenKeys.add(candidate.candidate.itemKey)) {
+      if (seenKeys.add(candidate.candidate.activityKey)) {
         unique.add(candidate);
       }
     }
@@ -141,11 +141,11 @@ final class BusinessActivityQueryServiceImpl
         'Anchor transaction ${candidate.anchorTransactionId} was not found.',
       );
     }
-    final summary = summaries[candidate.itemKey];
+    final summary = summaries[candidate.activityKey];
     if (summary == null) {
       throw StateError(
-        'Summary for business activity ${candidate.itemKey.type}:'
-        '${candidate.itemKey.id} was not found.',
+        'Summary for business activity ${candidate.activityKey.type}:'
+        '${candidate.activityKey.id} was not found.',
       );
     }
     return BusinessActivityReadModel.fromCandidate(
@@ -158,15 +158,15 @@ final class BusinessActivityQueryServiceImpl
   int _compareCandidates(_SourcedCandidate left, _SourcedCandidate right) {
     final byTime = right.candidate.anchorAt.compareTo(left.candidate.anchorAt);
     if (byTime != 0) return byTime;
-    return right.candidate.itemKey.compareTo(left.candidate.itemKey);
+    return right.candidate.activityKey.compareTo(left.candidate.activityKey);
   }
 
   List<BusinessActivitySource> _sourcesFor(BusinessActivityPageQuery query) {
-    final itemTypes = query.itemTypes;
-    if (itemTypes == null) return _sources;
+    final activityTypes = query.activityTypes;
+    if (activityTypes == null) return _sources;
     return List.unmodifiable(
       _sources.where(
-        (source) => source.supportedItemTypes.any(itemTypes.contains),
+        (source) => source.supportedActivityTypes.any(activityTypes.contains),
       ),
     );
   }

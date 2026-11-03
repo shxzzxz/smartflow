@@ -30,12 +30,12 @@ final class AdvanceTransactionViewQuery {
 final class AdvanceTransactionViewCursor {
   const AdvanceTransactionViewCursor({
     required this.anchorAt,
-    required this.itemType,
+    required this.activityType,
     required this.ownerId,
   });
 
   final DateTime anchorAt;
-  final String itemType;
+  final String activityType;
   final String ownerId;
 }
 

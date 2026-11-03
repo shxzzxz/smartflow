@@ -6,7 +6,8 @@ import 'transaction_detail_business_presentation.dart';
 TransactionDetailBusinessContent presentInstallmentDetailBusinessScene(
   TransactionDetailContext context,
 ) {
-  final owner = context.owner as InstallmentTransactionDetailOwnerContext;
+  final owner =
+      context.businessContext as InstallmentTransactionBusinessContext;
   final type = switch (owner.installmentType) {
     InstallmentType.disbursement => '放款分期',
     InstallmentType.billConversion => '账单分期',

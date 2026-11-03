@@ -122,7 +122,9 @@ void main() {
             limit: 1,
             before: BusinessActivityCursor(
               anchorAt: DateTime(2026, 10, 3),
-              itemKey: const BusinessActivityKey.transactionGroup('ledger-new'),
+              activityKey: const BusinessActivityKey.transactionGroup(
+                'ledger-new',
+              ),
             ),
           ),
         );
@@ -242,7 +244,7 @@ void main() {
         expect(page.anchors, hasLength(1));
         expect(page.anchors.single.anchorTransactionId, 'advance-parent');
         expect(
-          page.anchors.single.itemKey,
+          page.anchors.single.activityKey,
           const BusinessActivityKey(
             type: 'orchestration.advance',
             id: 'advance-1',
@@ -252,7 +254,7 @@ void main() {
             (await _findSummaries(
                   source,
                   page.anchors,
-                ))[page.anchors.single.itemKey]
+                ))[page.anchors.single.activityKey]
                 as AdvanceBusinessActivitySummary;
         expect(summary.scenario, AdvanceScenario.aa);
         expect(summary.trackingMode, AdvanceTrackingMode.itemized);
@@ -364,7 +366,7 @@ void main() {
 
         expect(page.anchors, hasLength(1));
         expect(page.anchors.single.anchorTransactionId, 'plan-initial');
-        final key = page.anchors.single.itemKey;
+        final key = page.anchors.single.activityKey;
         final summary =
             (await _findSummaries(source, page.anchors))[key]
                 as AmortizationBusinessActivitySummary;
@@ -482,7 +484,7 @@ void main() {
           ['purchase-tx', 'repayment-tx'],
         );
         expect(firstPage.hasMore, isTrue);
-        final contractKey = firstPage.anchors.first.itemKey;
+        final contractKey = firstPage.anchors.first.activityKey;
         final creditSummary =
             (await _findSummariesForKeys(source, {contractKey}))[contractKey]
                 as InstallmentBusinessActivitySummary;
@@ -491,7 +493,7 @@ void main() {
         expect(creditSummary.totalPeriodCount, 2);
         expect(creditSummary.remainingPrincipal, const Money(minorUnits: 6000));
         final allKeys = {
-          for (final anchor in firstPage.anchors) anchor.itemKey,
+          for (final anchor in firstPage.anchors) anchor.activityKey,
         };
         final summaries = await _findSummariesForKeys(source, allKeys);
         expect(summaries.keys, containsAll(allKeys));
@@ -508,7 +510,7 @@ void main() {
             limit: 2,
             before: BusinessActivityCursor(
               anchorAt: firstPage.anchors[1].anchorAt,
-              itemKey: firstPage.anchors[1].itemKey,
+              activityKey: firstPage.anchors[1].activityKey,
             ),
           ),
         );
@@ -1197,7 +1199,7 @@ Future<Map<BusinessActivityKey, BusinessActivitySummary>> _findSummariesForKeys(
   return _findSummaries(source, [
     for (final key in keys)
       BusinessActivityAnchorCandidate(
-        itemKey: key,
+        activityKey: key,
         anchorTransactionId: key.id,
         anchorAt: DateTime(2026, 10),
       ),

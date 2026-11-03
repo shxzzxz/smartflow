@@ -39,11 +39,11 @@ void main() {
     ]))['refund-tx'];
 
     expect(
-      (refundOwner! as AmortizationTransactionDetailOwnerContext).factKind,
+      (refundOwner! as AmortizationTransactionBusinessContext).factKind,
       AmortizationTransactionFactKind.refund,
     );
     expect(
-      (refundOwner as AmortizationTransactionDetailOwnerContext).refundId,
+      (refundOwner as AmortizationTransactionBusinessContext).refundId,
       'refund',
     );
   });

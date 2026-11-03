@@ -6,7 +6,8 @@ import 'transaction_detail_business_presentation.dart';
 TransactionDetailBusinessContent presentAmortizationDetailBusinessScene(
   TransactionDetailContext context,
 ) {
-  final owner = context.owner as AmortizationTransactionDetailOwnerContext;
+  final owner =
+      context.businessContext as AmortizationTransactionBusinessContext;
   final type = switch (owner.kind) {
     AmortizationKind.prepaidExpense => '预付费用',
     AmortizationKind.deferredIncome => '递延收入',

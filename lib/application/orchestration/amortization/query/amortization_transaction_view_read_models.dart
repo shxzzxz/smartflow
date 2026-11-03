@@ -30,12 +30,12 @@ final class AmortizationTransactionViewQuery {
 final class AmortizationTransactionViewCursor {
   const AmortizationTransactionViewCursor({
     required this.anchorAt,
-    required this.itemType,
+    required this.activityType,
     required this.planId,
   });
 
   final DateTime anchorAt;
-  final String itemType;
+  final String activityType;
   final String planId;
 }
 

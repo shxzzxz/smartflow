@@ -12,12 +12,17 @@ import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
 
+import '../../../helper/memory_app_settings_store.dart';
+
 void main() {
   test('category business activities include child category filters', () async {
     final service = _RecordingBusinessActivityQueryService();
     final container = ProviderContainer(
       overrides: [
         businessActivityQueryServiceProvider.overrideWithValue(service),
+        appSettingsStoreProvider.overrideWithValue(
+          const MemoryAppSettingsStore(),
+        ),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -45,6 +50,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         businessActivityQueryServiceProvider.overrideWithValue(service),
+        appSettingsStoreProvider.overrideWithValue(
+          const MemoryAppSettingsStore(),
+        ),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -71,6 +79,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         businessActivityQueryServiceProvider.overrideWithValue(service),
+        appSettingsStoreProvider.overrideWithValue(
+          const MemoryAppSettingsStore(),
+        ),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -97,6 +108,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         businessActivityQueryServiceProvider.overrideWithValue(service),
+        appSettingsStoreProvider.overrideWithValue(
+          const MemoryAppSettingsStore(),
+        ),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
         ),
@@ -289,7 +303,7 @@ BusinessActivityReadModel _businessActivity(String id) {
   );
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
-      itemKey: BusinessActivityKey.transactionGroup(id),
+      activityKey: BusinessActivityKey.transactionGroup(id),
       anchorTransactionId: id,
       anchorAt: transaction.occurredAt,
     ),
@@ -341,6 +355,9 @@ class _BatchFixture {
     final container = ProviderContainer(
       overrides: [
         businessActivityQueryServiceProvider.overrideWithValue(query),
+        appSettingsStoreProvider.overrideWithValue(
+          const MemoryAppSettingsStore(),
+        ),
         transactionBatchOperationAppServiceProvider.overrideWithValue(service),
         accountLookupProvider.overrideWithValue(
           AsyncData(AccountLookup(_accounts)),
