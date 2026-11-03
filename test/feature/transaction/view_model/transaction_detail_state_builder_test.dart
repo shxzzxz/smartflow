@@ -93,26 +93,125 @@ void main() {
     },
   );
 
-  test('amortization recognition keeps business edits and hides refund', () {
+  test('amortization initial exposes refund, terminate and plan edit', () {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      ownership: const TransactionOwnership(
+      businessOwner: AmortizationTransactionDetailOwnerContext(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: 'plan',
+        initialTransactionId: 'child',
+        kind: AmortizationKind.prepaidExpense,
+        status: AmortizationStatus.active,
+        originalAmount: Money(minorUnits: 1000),
+        recognizedAmount: Money.zero(),
+        remainingAmount: Money(minorUnits: 1000),
+        postedPeriodCount: 0,
+        totalPeriodCount: 3,
+        factKind: AmortizationTransactionFactKind.initial,
       ),
     );
 
-    expect(
-      state.actionButtons.where(
-        (button) => button.kind == DetailActionKind.refund,
-      ),
-      isEmpty,
+    final refund = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.refund,
     );
+    final terminate = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.amortizationTermination,
+    );
+    final edit = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.edit,
+    );
+    expect(refund.route, '/transaction/child/refund');
+    expect(terminate.route, '/transaction/child/amortization-terminate');
+    expect(edit.route, '/transaction/child/edit');
     expect(state.canEditReportingFlags, isTrue);
     expect(state.behavior.canEditNote, isA<DetailEditAllowed>());
     expect(state.behavior.canEditOccurredAt, isA<DetailEditAllowed>());
     expect(state.behavior.canEditPostedAt, isA<DetailEditAllowed>());
+  });
+
+  test('amortization refund routes to refund edit and refund deletion', () {
+    final state = _build(
+      purpose: BusinessPurpose.transfer,
+      parentTransactionId: null,
+      businessOwner: AmortizationTransactionDetailOwnerContext(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+        initialTransactionId: 'initial',
+        kind: AmortizationKind.prepaidExpense,
+        status: AmortizationStatus.active,
+        originalAmount: Money(minorUnits: 10000),
+        recognizedAmount: Money.zero(),
+        remainingAmount: Money(minorUnits: 10000),
+        postedPeriodCount: 0,
+        totalPeriodCount: 3,
+        factKind: AmortizationTransactionFactKind.refund,
+        refundId: 'refund',
+      ),
+    );
+
+    expect(state.behavior.editRoute, '/transaction/child/refund/edit');
+    expect(state.behavior.deleteMessage, contains('这笔摊销退款'));
+    final edit = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.edit,
+    );
+    expect(
+      state.actionButtons.any(
+        (button) => button.kind == DetailActionKind.refund,
+      ),
+      isFalse,
+    );
+    expect(
+      state.actionButtons.any(
+        (button) => button.kind == DetailActionKind.amortizationTermination,
+      ),
+      isFalse,
+    );
+    expect(edit.route, '/transaction/child/refund/edit');
+    expect(edit.enabled, isTrue);
+  });
+
+  test('amortization termination remains editable from its transaction', () {
+    final state = _build(
+      purpose: BusinessPurpose.dailyExpense,
+      parentTransactionId: null,
+      businessOwner: AmortizationTransactionDetailOwnerContext(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+        initialTransactionId: 'initial',
+        kind: AmortizationKind.prepaidExpense,
+        status: AmortizationStatus.terminated,
+        originalAmount: Money(minorUnits: 10000),
+        recognizedAmount: Money(minorUnits: 10000),
+        remainingAmount: Money.zero(),
+        postedPeriodCount: 3,
+        totalPeriodCount: 3,
+        factKind: AmortizationTransactionFactKind.terminationRecognition,
+        terminationId: 'termination',
+      ),
+    );
+
+    expect(
+      state.behavior.editRoute,
+      '/transaction/child/amortization-terminate/edit',
+    );
+    expect(state.behavior.deleteMessage, contains('该笔摊销终止'));
+    final edit = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.edit,
+    );
+    expect(
+      state.actionButtons.any(
+        (button) => button.kind == DetailActionKind.refund,
+      ),
+      isFalse,
+    );
+    expect(
+      state.actionButtons.any(
+        (button) => button.kind == DetailActionKind.amortizationTermination,
+      ),
+      isFalse,
+    );
+    expect(edit.enabled, isTrue);
   });
 
   test('routes open advance receipt child to shared advance edit', () {
@@ -462,7 +561,7 @@ void main() {
   });
 
   test(
-    'amortization business module opens the plan and blocks ledger delete',
+    'amortization business module opens the plan and allows plan deletion',
     () {
       final state = _build(
         purpose: BusinessPurpose.dailyExpense,
@@ -485,11 +584,37 @@ void main() {
       final module = state.businessModules.single as DetailBusinessLinkModule;
       expect(module.route, '/amortizations/plan-1');
       expect(module.summary, '预付费用 · 进行中 · 已确认 1/5');
-      expect(state.behavior.deletePermission, isA<DetailEditDenied>());
+      expect(state.behavior.deletePermission, isA<DetailEditAllowed>());
       expect(state.hero.title, '保险');
       expect(state.hero.iconKey, 'shield');
     },
   );
+
+  test('terminated amortization keeps deletion but rejects editing', () {
+    final state = _build(
+      purpose: BusinessPurpose.dailyExpense,
+      parentTransactionId: null,
+      businessOwner: const AmortizationTransactionDetailOwnerContext(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan-1',
+        initialTransactionId: 'child',
+        kind: AmortizationKind.prepaidExpense,
+        status: AmortizationStatus.terminated,
+        originalAmount: Money(minorUnits: 10000),
+        recognizedAmount: Money(minorUnits: 10000),
+        remainingAmount: Money(minorUnits: 0),
+        postedPeriodCount: 5,
+        totalPeriodCount: 5,
+      ),
+    );
+
+    final edit = state.actionButtons.singleWhere(
+      (button) => button.kind == DetailActionKind.edit,
+    );
+    expect(edit.enabled, isFalse);
+    expect(edit.deniedReason, '请先删除摊销终止');
+    expect(state.behavior.deletePermission, isA<DetailEditAllowed>());
+  });
 
   test('credit repayment business module opens its stable target', () {
     final state = _build(

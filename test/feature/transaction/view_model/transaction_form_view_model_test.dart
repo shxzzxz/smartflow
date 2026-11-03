@@ -13,6 +13,7 @@ import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/orchestration/port/advance_case_repository.dart';
+import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 import 'package:smartflow/feature/amortization/presentation/amortization_configuration_draft.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
@@ -29,6 +30,55 @@ import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   group('TransactionFormViewModel', () {
+    test(
+      'initializes an amortization transaction with its requested scene',
+      () {
+        final container = _container(
+          fundAccounts: [_account('cash')],
+          prepaidExpenseAccounts: [
+            _account(
+              'prepaid',
+              profileKey: AccountProfileKind.prepaidExpense.key,
+            ),
+          ],
+          deferredIncomeAccounts: [
+            _account(
+              'deferred',
+              profileKey: AccountProfileKind.deferredIncome.key,
+            ),
+          ],
+        );
+
+        final prepaid = container
+            .read(
+              transactionFormViewModelProvider(
+                initialMode: TransactionFormMode.expense,
+                initialAmortizationKind: AmortizationKind.prepaidExpense,
+                initialAmortizationDeferralAccountId: 'prepaid',
+              ),
+            )
+            .requireValue!;
+        expect(prepaid.expenseScene, TransactionExpenseScene.amortization);
+        expect(prepaid.incomeScene, TransactionIncomeScene.ordinary);
+        expect(prepaid.fromAccountId, 'cash');
+        expect(prepaid.amortizationDeferralAccountId, 'prepaid');
+
+        final deferred = container
+            .read(
+              transactionFormViewModelProvider(
+                initialMode: TransactionFormMode.income,
+                initialAmortizationKind: AmortizationKind.deferredIncome,
+                initialAmortizationDeferralAccountId: 'deferred',
+              ),
+            )
+            .requireValue!;
+        expect(deferred.expenseScene, TransactionExpenseScene.ordinary);
+        expect(deferred.incomeScene, TransactionIncomeScene.amortization);
+        expect(deferred.toAccountId, 'cash');
+        expect(deferred.amortizationDeferralAccountId, 'deferred');
+      },
+    );
+
     test('initializes a borrowing form with its liability account', () {
       final container = _container(
         liabilityAccounts: [_account('payable', type: AccountType.liability)],
@@ -543,6 +593,124 @@ void main() {
       expect(command.recognitionAllocations.single.accountId, 'salary');
       expect(command.initialIsExcludedFromStats, isTrue);
     });
+
+    test(
+      'loads and updates amortization through the transaction form',
+      () async {
+        final amortizationService = _FakeAmortizationPlanAppService();
+        final plan = AmortizationPlan.create(
+          id: 'plan',
+          kind: AmortizationKind.prepaidExpense,
+          deferralAccountId: 'prepaid',
+          fundingAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'cash',
+              amount: Money(minorUnits: 30000),
+            ),
+          ],
+          categoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'lunch',
+              amount: Money(minorUnits: 30000),
+            ),
+          ],
+          originalAmount: const Money(minorUnits: 30000),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          firstRecognitionAt: DateTime(2026, 2, 1),
+          recognitionCount: 3,
+          initialTransactionId: 'initial',
+        );
+        final ownership = TransactionOwnership(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: plan.id,
+        );
+        final initialDetail = TransactionReadModel.fromTransaction(
+          transaction: Transaction(
+            id: 'initial',
+            businessPurpose: BusinessPurpose.transfer,
+            occurredAt: DateTime(2026, 1, 1),
+            primaryAmount: plan.originalAmount,
+            note: '旧备注',
+            ownership: ownership,
+            sourceKind: SourceKind.manual,
+            isExcludedFromStats: false,
+            isExcludedFromBudget: false,
+          ),
+        );
+        final periodDetail = TransactionReadModel.fromTransaction(
+          transaction: Transaction(
+            id: 'period',
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 2, 1),
+            primaryAmount: const Money(minorUnits: 10000),
+            ownership: ownership,
+            sourceKind: SourceKind.auto,
+            isExcludedFromStats: false,
+            isExcludedFromBudget: false,
+          ),
+        );
+        final cash = _account('cash', profileKey: AccountProfileKind.fund.key);
+        final prepaid = _account(
+          'prepaid',
+          profileKey: AccountProfileKind.prepaidExpense.key,
+        );
+        final lunch = _account('lunch', type: AccountType.expense);
+        final container = _container(
+          editTransactionId: 'period',
+          editDetail: periodDetail,
+          amortizationPlan: plan,
+          amortizationInitialDetail: initialDetail,
+          amortizationService: amortizationService,
+          accountsById: {cash.id: cash, prepaid.id: prepaid, lunch.id: lunch},
+          fundAccounts: [cash],
+          prepaidExpenseAccounts: [prepaid],
+          expenseTree: [
+            CategoryNode(
+              account: _account('food', type: AccountType.expense),
+              children: [lunch],
+            ),
+          ],
+        );
+        final provider = _provider(editTransactionId: 'period');
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        await pumpEventQueue();
+
+        final state = container.read(provider).requireValue!;
+        expect(state.isAmortization, isTrue);
+        expect(state.mode, TransactionFormMode.expense);
+        expect(state.initialValues.amount, '300');
+        expect(state.initialValues.note, '旧备注');
+        expect(
+          state.initialValues.amortizationConfiguration?.recognitionCount,
+          3,
+        );
+        expect(state.expenseCategoryId, 'lunch');
+        expect(state.expenseRootId, 'food');
+        expect(state.fromAccountId, 'cash');
+        expect(state.amortizationDeferralAccountId, 'prepaid');
+
+        final outcome = await container
+            .read(provider.notifier)
+            .submit(
+              amountText: '300',
+              feeText: '',
+              noteText: '新备注',
+              amortizationConfiguration:
+                  state.initialValues.amortizationConfiguration,
+            );
+
+        expect(outcome, isA<SubmitSuccess>());
+        final command = amortizationService.updates.single;
+        expect(command.planId, plan.id);
+        expect(command.total, plan.originalAmount);
+        expect(command.recognitionAllocations, hasLength(1));
+        expect(command.recognitionAllocations.single.accountId, 'lunch');
+        expect(command.note, isA<PatchSet<String?>>());
+        expect(command.tagIds, isEmpty);
+      },
+    );
 
     test('requires amortization configuration before submit', () async {
       final amortizationService = _FakeAmortizationPlanAppService();
@@ -1665,9 +1833,14 @@ ProviderContainer _container({
   List<Account> ordinaryReceivableAccounts = const [],
   List<Account> prepaidExpenseAccounts = const [],
   List<Account> deferredIncomeAccounts = const [],
+  List<CategoryNode> expenseTree = const [],
+  List<CategoryNode> incomeTree = const [],
   List<CounterpartyView> counterparties = const [],
   ConsumptionInstallmentAppService? installmentService,
   AmortizationPlanAppService? amortizationService,
+  AmortizationPlan? amortizationPlan,
+  TransactionReadModel? amortizationInitialDetail,
+  Set<String> amortizationInitialTagIds = const {},
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -1718,10 +1891,10 @@ ProviderContainer _container({
       ),
       categoryTreeProvider(
         AccountType.expense,
-      ).overrideWithValue(const AsyncData(<CategoryNode>[])),
+      ).overrideWithValue(AsyncData(expenseTree)),
       categoryTreeProvider(
         AccountType.income,
-      ).overrideWithValue(const AsyncData(<CategoryNode>[])),
+      ).overrideWithValue(AsyncData(incomeTree)),
       accountsByIdProvider.overrideWithValue(AsyncData(accountsById)),
       counterpartyListProvider.overrideWithValue(AsyncData(counterparties)),
       tagListProvider.overrideWithValue(const AsyncData(<TagView>[])),
@@ -1732,6 +1905,19 @@ ProviderContainer _container({
         transactionTagIdsProvider(
           editTransactionId,
         ).overrideWithValue(const AsyncData(<String>{})),
+      ],
+      if (amortizationPlan != null) ...[
+        amortizationPlanProvider(
+          amortizationPlan.id,
+        ).overrideWith((ref) => Stream.value(amortizationPlan)),
+        if (amortizationInitialDetail != null) ...[
+          transactionDetailProvider(
+            amortizationPlan.initialTransactionId,
+          ).overrideWithValue(AsyncData(amortizationInitialDetail)),
+          transactionTagIdsProvider(
+            amortizationPlan.initialTransactionId,
+          ).overrideWithValue(AsyncData(amortizationInitialTagIds)),
+        ],
       ],
     ],
   );
@@ -2028,11 +2214,17 @@ class _FakeConsumptionInstallmentAppService
 
 class _FakeAmortizationPlanAppService implements AmortizationPlanAppService {
   final commands = <CreateAmortizationPlanCommand>[];
+  final updates = <UpdateAmortizationPlanCommand>[];
 
   @override
   Future<String> createPlan(CreateAmortizationPlanCommand command) async {
     commands.add(command);
     return 'plan-${commands.length}';
+  }
+
+  @override
+  Future<void> updatePlan(UpdateAmortizationPlanCommand command) async {
+    updates.add(command);
   }
 
   @override

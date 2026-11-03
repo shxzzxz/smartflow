@@ -28,6 +28,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   required InstallmentPrepaymentAppService installmentPrepaymentAppService,
   required AccountRepaymentAppService accountRepaymentAppService,
   AdvanceOrchestrationAppService? advanceAppService,
+  AmortizationPlanAppService? amortizationAppService,
 }) {
   final transaction = context.transaction;
   final owner = context.owner;
@@ -64,9 +65,16 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   }
 
   if (owner is AmortizationTransactionDetailOwnerContext) {
+    if (amortizationAppService == null) {
+      throw StateError(
+        'Amortization orchestration services are not configured.',
+      );
+    }
     return _AmortizationActionDispatcher(
       transaction,
+      owner: owner,
       updateService: updateService,
+      amortizationAppService: amortizationAppService,
     );
   }
 

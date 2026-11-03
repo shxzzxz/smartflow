@@ -280,7 +280,7 @@ void main() {
     );
   });
 
-  testWidgets('amortization module opens plan and blocks direct deletion', (
+  testWidgets('amortization module opens plan and confirms plan deletion', (
     tester,
   ) async {
     final detail = TransactionReadModel(
@@ -338,12 +338,17 @@ void main() {
     expect(find.text('购物'), findsOneWidget);
     expect(find.byType(CategoryAvatar), findsOneWidget);
     expect(find.byIcon(RemixIcons.arrow_left_right_line), findsNothing);
+    expect(find.text('退款'), findsOneWidget);
+    expect(find.text('终止'), findsOneWidget);
+    expect(find.text('编辑'), findsOneWidget);
 
     await tester.tap(find.byTooltip('更多'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.text('请在摊销计划中终止，不能单独删除计划交易'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。'), findsOneWidget);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets(

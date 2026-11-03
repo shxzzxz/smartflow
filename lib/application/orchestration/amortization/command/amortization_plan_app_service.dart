@@ -14,6 +14,7 @@ import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_error_code.dart';
 import '../../../shared/transaction_runner.dart';
 import 'amortization_command.dart';
+import '../service/amortization_plan_recalculator.dart';
 
 class AmortizationGenerationResult {
   const AmortizationGenerationResult({required this.generatedCount});
@@ -40,6 +41,12 @@ class AmortizationTerminationResult {
 abstract interface class AmortizationPlanAppService {
   Future<String> createPlan(CreateAmortizationPlanCommand command);
 
+  Future<void> updatePlan(UpdateAmortizationPlanCommand command);
+
+  Future<void> updateConfiguration(
+    UpdateAmortizationConfigurationCommand command,
+  );
+
   Future<AmortizationGenerationResult> generateDue(DateTime now);
 
   Future<AmortizationRefundResult> refund(
@@ -48,30 +55,38 @@ abstract interface class AmortizationPlanAppService {
 
   Future<void> editRefund(EditAmortizationRefundCommand command);
 
+  Future<void> deleteRefund(DeleteAmortizationRefundCommand command);
+
   Future<AmortizationTerminationResult> terminate(
     TerminateAmortizationPlanCommand command,
   );
 
-  Future<AmortizationGenerationResult> undoTermination(
-    UndoAmortizationTerminationCommand command,
+  Future<AmortizationTerminationResult> editTermination(
+    EditAmortizationTerminationCommand command,
+  );
+
+  Future<AmortizationGenerationResult> deleteTermination(
+    DeleteAmortizationTerminationCommand command,
   );
 
   Future<void> deletePlan(DeleteAmortizationPlanCommand command);
 }
 
 class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
-  const AmortizationPlanAppServiceImpl({
+  AmortizationPlanAppServiceImpl({
     required AmortizationRepository repository,
     required AmortizationLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
   }) : _repository = repository,
        _ledger = ledger,
+       _recalculator = AmortizationPlanRecalculator(ledger),
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator;
 
   final AmortizationRepository _repository;
   final AmortizationLedgerPort _ledger;
+  final AmortizationPlanRecalculator _recalculator;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
 
@@ -98,22 +113,16 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: planId,
       );
-      final deferralAllocation = singleAllocation(
-        accountId: command.deferralAccountId,
+      final initialTransfer = _initialTransferAllocations(
+        kind: command.kind,
         amount: command.total,
+        fundingAllocations: command.fundingAllocations,
+        deferralAccountId: command.deferralAccountId,
       );
-      final outgoingAllocations = switch (command.kind) {
-        AmortizationKind.prepaidExpense => command.fundingAllocations,
-        AmortizationKind.deferredIncome => deferralAllocation,
-      };
-      final incomingAllocations = switch (command.kind) {
-        AmortizationKind.prepaidExpense => deferralAllocation,
-        AmortizationKind.deferredIncome => command.fundingAllocations,
-      };
       final initialTransactionId = await _ledger.postTransfer(
         amount: command.total,
-        outgoingAllocations: outgoingAllocations,
-        incomingAllocations: incomingAllocations,
+        outgoingAllocations: initialTransfer.outgoing,
+        incomingAllocations: initialTransfer.incoming,
         occurredAt: command.occurredAt,
         feeAmount: command.feeAmount,
         counterpartyId: command.initialCounterpartyId,
@@ -142,17 +151,118 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
   }
 
   @override
+  Future<void> updatePlan(UpdateAmortizationPlanCommand command) {
+    return _transactionRunner.run(() async {
+      final current = await _requirePlan(command.planId);
+      if (current.status == AmortizationStatus.terminated) {
+        throw _error(
+          AmortizationErrorCode.planTerminated,
+          'Undo the amortization termination before editing the plan.',
+        );
+      }
+      await _ledger.validatePlanAccounts(
+        kind: current.kind,
+        deferralAccountId: command.deferralAccountId,
+        categoryAccountIds: command.recognitionAllocations.map(
+          (allocation) => allocation.accountId,
+        ),
+      );
+      if (current.kind == AmortizationKind.deferredIncome &&
+          command.feeAmount != null &&
+          command.feeAmount!.minorUnits > 0) {
+        throw _error(
+          AmortizationErrorCode.invalidCommand,
+          'Deferred-income collection fees must be recorded separately.',
+        );
+      }
+
+      final updated = current.reconfigured(
+        deferralAccountId: command.deferralAccountId,
+        originalAmount: command.total,
+        fundingAllocations: command.fundingAllocations,
+        categoryAllocations: command.recognitionAllocations,
+        cadenceUnit: command.cadenceUnit,
+        cadenceInterval: command.cadenceInterval,
+        firstRecognitionAt: command.firstRecognitionAt,
+        recognitionCount: command.recognitionCount,
+      );
+      final initialTransfer = _initialTransferAllocations(
+        kind: updated.kind,
+        amount: updated.originalAmount,
+        fundingAllocations: updated.fundingAllocations,
+        deferralAccountId: updated.deferralAccountId,
+      );
+      await _ledger.rewriteTransfer(
+        transactionId: updated.initialTransactionId,
+        amount: updated.originalAmount,
+        outgoingAllocations: initialTransfer.outgoing,
+        incomingAllocations: initialTransfer.incoming,
+        occurredAt: command.occurredAt,
+        feeAmount: command.feeAmount ?? Money.zero(),
+        note: command.note,
+        counterpartyId: command.counterpartyId,
+        tagIds: command.tagIds,
+        isExcludedFromStats: command.initialIsExcludedFromStats,
+        isExcludedFromBudget: command.initialIsExcludedFromBudget,
+      );
+
+      for (final refund in updated.refunds) {
+        final transfer = _returnTransferAllocations(
+          plan: updated,
+          amount: refund.amount,
+          settlementAllocations: refund.settlementAllocations,
+        );
+        await _ledger.rewriteTransfer(
+          transactionId: refund.transferTransactionId,
+          amount: refund.amount,
+          outgoingAllocations: transfer.outgoing,
+          incomingAllocations: transfer.incoming,
+        );
+      }
+
+      final reconciled = await _recalculator.reconcile(
+        before: current,
+        after: updated,
+        now: command.now,
+        rewriteTransfers: false,
+      );
+      await _repository.save(reconciled);
+    });
+  }
+
+  @override
+  Future<void> updateConfiguration(
+    UpdateAmortizationConfigurationCommand command,
+  ) {
+    return _transactionRunner.run(() async {
+      final current = await _requirePlan(command.planId);
+      final updated = current.reconfiguredConfiguration(
+        cadenceUnit: command.cadenceUnit,
+        cadenceInterval: command.cadenceInterval,
+        firstRecognitionAt: command.firstRecognitionAt,
+        recognitionCount: command.recognitionCount,
+      );
+      final reconciled = await _recalculator.reconcile(
+        before: current,
+        after: updated,
+        now: command.now,
+      );
+      await _repository.save(reconciled);
+    });
+  }
+
+  @override
   Future<AmortizationGenerationResult> generateDue(DateTime now) {
     return _transactionRunner.run(() async {
       final plans = await _repository.findAll();
       var generatedCount = 0;
       for (final plan in plans) {
         if (plan.status == AmortizationStatus.terminated) continue;
-        final duePeriods = plan.duePeriods(now);
-        if (duePeriods.isEmpty) continue;
-        final generated = await _postPeriods(plan, duePeriods);
-        await _repository.save(plan.withPeriods(generated.periods));
-        generatedCount += generated.generatedCount;
+        final reconciled = await _recalculator.generateDue(plan, now);
+        generatedCount += reconciled.postedPeriodCount - plan.postedPeriodCount;
+        if (reconciled != plan) {
+          await _repository.save(reconciled);
+        }
       }
       return AmortizationGenerationResult(generatedCount: generatedCount);
     });
@@ -205,6 +315,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         settlementAllocations: command.settlementAllocations,
         occurredAt: command.occurredAt,
         postedAt: command.postedAt,
+        note: command.note,
       );
       final refund = AmortizationRefund(
         id: _idGenerator.newId(),
@@ -214,12 +325,13 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         transferTransactionId: transferTransactionId,
       );
       final updated = plan.withRefund(refund);
-      await _rewriteChangedPeriods(plan, updated);
-      final duePeriods = updated.duePeriods(command.occurredAt);
-      final generated = duePeriods.isEmpty
-          ? (periods: updated.periods, generatedCount: 0)
-          : await _postPeriods(updated, duePeriods);
-      await _repository.save(updated.withPeriods(generated.periods));
+      final reconciled = await _recalculator.reconcile(
+        before: plan,
+        after: updated,
+        now: command.occurredAt,
+        rewriteTransfers: false,
+      );
+      await _repository.save(reconciled);
       return AmortizationRefundResult(
         refundTransactionId: transferTransactionId,
       );
@@ -292,13 +404,41 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         amount: refundAmount,
         outgoingAllocations: transfer.outgoing,
         incomingAllocations: transfer.incoming,
+        occurredAt: command.occurredAt,
+        note: command.note,
       );
-      await _rewriteChangedPeriods(plan, updated);
-      final duePeriods = updated.duePeriods(command.now);
-      final generated = duePeriods.isEmpty
-          ? (periods: updated.periods, generatedCount: 0)
-          : await _postPeriods(updated, duePeriods);
-      await _repository.save(updated.withPeriods(generated.periods));
+      final reconciled = await _recalculator.reconcile(
+        before: plan,
+        after: updated,
+        now: command.now,
+        rewriteTransfers: false,
+      );
+      await _repository.save(reconciled);
+    });
+  }
+
+  @override
+  Future<void> deleteRefund(DeleteAmortizationRefundCommand command) {
+    return _transactionRunner.run(() async {
+      final plan = await _requirePlan(command.planId);
+      final refund = plan.refunds
+          .where((item) => item.id == command.refundId)
+          .firstOrNull;
+      if (refund == null) {
+        throw _error(
+          AmortizationErrorCode.refundNotFound,
+          'Amortization refund not found.',
+        );
+      }
+      final updated = plan.withoutRefund(refund.id);
+      await _ledger.deleteTransaction(refund.transferTransactionId);
+      final reconciled = await _recalculator.reconcile(
+        before: plan,
+        after: updated,
+        now: command.now,
+        rewriteTransfers: false,
+      );
+      await _repository.save(reconciled);
     });
   }
 
@@ -314,140 +454,48 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
           'Amortization plan is already terminated.',
         );
       }
-      _validateDimension(
-        command.categoryReturnAllocations,
-        'termination category returns',
-      );
-      _validateDimension(
-        command.settlementAllocations,
-        'termination settlements',
-      );
-      final returnAmount = sumAllocations(command.categoryReturnAllocations);
-      if (returnAmount != sumAllocations(command.settlementAllocations)) {
+      return _applyTermination(plan, command);
+    });
+  }
+
+  @override
+  Future<AmortizationTerminationResult> editTermination(
+    EditAmortizationTerminationCommand command,
+  ) {
+    return _transactionRunner.run(() async {
+      final plan = await _requirePlan(command.planId);
+      final termination = plan.termination;
+      if (termination == null) {
         throw _error(
-          AmortizationErrorCode.invalidCommand,
-          'Termination category and settlement totals must match.',
+          AmortizationErrorCode.terminationNotActive,
+          'Amortization plan is not terminated.',
         );
       }
-      await _ledger.validateRefundAccounts(
-        kind: plan.kind,
-        categoryAccountIds: command.categoryReturnAllocations.map(
-          (allocation) => allocation.accountId,
-        ),
-        settlementAccountIds: command.settlementAllocations.map(
-          (allocation) => allocation.accountId,
-        ),
-      );
-
-      final cutoff = _dateOnly(command.terminatedAt);
-      final dueBeforeTermination = [
+      for (final transactionId in {
+        ?termination.recognitionTransactionId,
+        ?termination.returnTransactionId,
+      }) {
+        await _ledger.deleteTransaction(transactionId);
+      }
+      final reopened = plan.withoutTermination([
         for (final period in plan.periods)
-          if (period.isPending &&
-              period.amount.minorUnits > 0 &&
-              !_dateOnly(period.dueAt).isAfter(cutoff))
-            period,
-      ];
-      final generated = await _postPeriods(plan, dueBeforeTermination);
-      var normalized = plan.withPeriods(generated.periods);
-
-      for (final period in normalized.periods) {
-        if (!period.isPosted || !_dateOnly(period.dueAt).isAfter(cutoff)) {
-          continue;
-        }
-        await _ledger.deleteTransaction(period.transactionId!);
-      }
-      normalized = normalized.withPeriods([
-        for (final period in normalized.periods)
-          if (_dateOnly(period.dueAt).isAfter(cutoff) && period.isPosted)
-            AmortizationPeriod(
-              id: period.id,
-              planId: period.planId,
-              sequenceNo: period.sequenceNo,
-              dueAt: period.dueAt,
-              amount: period.amount,
-              categoryAllocations: period.categoryAllocations,
-              status: AmortizationPeriodStatus.canceled,
-            )
-          else
-            period,
+          if (period.isCanceled) period.reopened() else period,
       ]);
-
-      final remainingCategories = normalized.remainingCategoryAllocations;
-      if (!allocationsFitAvailable(
-        requested: command.categoryReturnAllocations,
-        available: remainingCategories,
-      )) {
-        throw _error(
-          AmortizationErrorCode.refundExceedsRemaining,
-          'Termination return exceeds the remaining category balance.',
-        );
-      }
-      final recognitionAllocations = subtractAllocations(
-        base: remainingCategories,
-        reductions: command.categoryReturnAllocations,
-      );
-      final recognitionAmount = sumAllocations(recognitionAllocations);
-      if (recognitionAmount.minorUnits == 0 && returnAmount.minorUnits == 0) {
-        throw _error(
-          AmortizationErrorCode.invalidCommand,
-          'There is no remaining amortization amount to terminate.',
-        );
-      }
-
-      final recognitionTransactionId = recognitionAmount.minorUnits > 0
-          ? await _postRecognition(
-              plan: normalized,
-              amount: recognitionAmount,
-              categoryAllocations: recognitionAllocations,
-              occurredAt: command.terminatedAt,
-            )
-          : null;
-      final returnTransactionId = returnAmount.minorUnits > 0
-          ? await _postReturnTransfer(
-              plan: normalized,
-              amount: returnAmount,
-              settlementAllocations: command.settlementAllocations,
-              occurredAt: command.terminatedAt,
-            )
-          : null;
-      final termination = AmortizationTermination(
-        id: _idGenerator.newId(),
-        planId: normalized.id,
-        terminatedAt: command.terminatedAt,
-        categoryReturnAllocations: command.categoryReturnAllocations,
-        settlementAllocations: command.settlementAllocations,
-        recognitionTransactionId: recognitionTransactionId,
-        returnTransactionId: returnTransactionId,
-      );
-      final terminated = normalized.terminatedWith(
-        termination: termination,
-        periods: [
-          for (final period in normalized.periods)
-            if (period.isPosted || period.isZero)
-              period
-            else
-              AmortizationPeriod(
-                id: period.id,
-                planId: period.planId,
-                sequenceNo: period.sequenceNo,
-                dueAt: period.dueAt,
-                amount: period.amount,
-                categoryAllocations: period.categoryAllocations,
-                status: AmortizationPeriodStatus.canceled,
-              ),
-        ],
-      );
-      await _repository.save(terminated);
-      return AmortizationTerminationResult(
-        recognitionTransactionId: recognitionTransactionId,
-        returnTransactionId: returnTransactionId,
+      return _applyTermination(
+        reopened,
+        TerminateAmortizationPlanCommand(
+          planId: command.planId,
+          terminatedAt: command.terminatedAt,
+          categoryReturnAllocations: command.categoryReturnAllocations,
+          settlementAllocations: command.settlementAllocations,
+        ),
       );
     });
   }
 
   @override
-  Future<AmortizationGenerationResult> undoTermination(
-    UndoAmortizationTerminationCommand command,
+  Future<AmortizationGenerationResult> deleteTermination(
+    DeleteAmortizationTerminationCommand command,
   ) {
     return _transactionRunner.run(() async {
       final plan = await _requirePlan(command.planId);
@@ -475,6 +523,140 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         generatedCount: generated.generatedCount,
       );
     });
+  }
+
+  Future<AmortizationTerminationResult> _applyTermination(
+    AmortizationPlan plan,
+    TerminateAmortizationPlanCommand command,
+  ) async {
+    _validateDimension(
+      command.categoryReturnAllocations,
+      'termination category returns',
+    );
+    _validateDimension(
+      command.settlementAllocations,
+      'termination settlements',
+    );
+    final returnAmount = sumAllocations(command.categoryReturnAllocations);
+    if (returnAmount != sumAllocations(command.settlementAllocations)) {
+      throw _error(
+        AmortizationErrorCode.invalidCommand,
+        'Termination category and settlement totals must match.',
+      );
+    }
+    await _ledger.validateRefundAccounts(
+      kind: plan.kind,
+      categoryAccountIds: command.categoryReturnAllocations.map(
+        (allocation) => allocation.accountId,
+      ),
+      settlementAccountIds: command.settlementAllocations.map(
+        (allocation) => allocation.accountId,
+      ),
+    );
+
+    final cutoff = _dateOnly(command.terminatedAt);
+    final dueBeforeTermination = [
+      for (final period in plan.periods)
+        if (period.isPending &&
+            period.amount.minorUnits > 0 &&
+            !_dateOnly(period.dueAt).isAfter(cutoff))
+          period,
+    ];
+    final generated = await _postPeriods(plan, dueBeforeTermination);
+    var normalized = plan.withPeriods(generated.periods);
+
+    for (final period in normalized.periods) {
+      if (!period.isPosted || !_dateOnly(period.dueAt).isAfter(cutoff)) {
+        continue;
+      }
+      await _ledger.deleteTransaction(period.transactionId!);
+    }
+    normalized = normalized.withPeriods([
+      for (final period in normalized.periods)
+        if (_dateOnly(period.dueAt).isAfter(cutoff) && period.isPosted)
+          AmortizationPeriod(
+            id: period.id,
+            planId: period.planId,
+            sequenceNo: period.sequenceNo,
+            dueAt: period.dueAt,
+            amount: period.amount,
+            categoryAllocations: period.categoryAllocations,
+            status: AmortizationPeriodStatus.canceled,
+          )
+        else
+          period,
+    ]);
+
+    final remainingCategories = normalized.remainingCategoryAllocations;
+    if (!allocationsFitAvailable(
+      requested: command.categoryReturnAllocations,
+      available: remainingCategories,
+    )) {
+      throw _error(
+        AmortizationErrorCode.refundExceedsRemaining,
+        'Termination return exceeds the remaining category balance.',
+      );
+    }
+    final recognitionAllocations = subtractAllocations(
+      base: remainingCategories,
+      reductions: command.categoryReturnAllocations,
+    );
+    final recognitionAmount = sumAllocations(recognitionAllocations);
+    if (recognitionAmount.minorUnits == 0 && returnAmount.minorUnits == 0) {
+      throw _error(
+        AmortizationErrorCode.invalidCommand,
+        'There is no remaining amortization amount to terminate.',
+      );
+    }
+
+    final recognitionTransactionId = recognitionAmount.minorUnits > 0
+        ? await _postRecognition(
+            plan: normalized,
+            amount: recognitionAmount,
+            categoryAllocations: recognitionAllocations,
+            occurredAt: command.terminatedAt,
+          )
+        : null;
+    final returnTransactionId = returnAmount.minorUnits > 0
+        ? await _postReturnTransfer(
+            plan: normalized,
+            amount: returnAmount,
+            settlementAllocations: command.settlementAllocations,
+            occurredAt: command.terminatedAt,
+          )
+        : null;
+    final termination = AmortizationTermination(
+      id: _idGenerator.newId(),
+      planId: normalized.id,
+      terminatedAt: command.terminatedAt,
+      categoryReturnAllocations: command.categoryReturnAllocations,
+      settlementAllocations: command.settlementAllocations,
+      recognitionTransactionId: recognitionTransactionId,
+      returnTransactionId: returnTransactionId,
+    );
+    final terminated = normalized.terminatedWith(
+      termination: termination,
+      periods: [
+        for (final period in normalized.periods)
+          if (period.isPosted || period.isZero)
+            period
+          else
+            AmortizationPeriod(
+              id: period.id,
+              planId: period.planId,
+              sequenceNo: period.sequenceNo,
+              dueAt: period.dueAt,
+              amount: period.amount,
+              categoryAllocations: period.categoryAllocations,
+              status: AmortizationPeriodStatus.canceled,
+            ),
+      ],
+    );
+    await _repository.save(terminated);
+    return AmortizationTerminationResult(
+      recognitionTransactionId: recognitionTransactionId,
+      returnTransactionId: returnTransactionId,
+    );
   }
 
   @override
@@ -523,48 +705,6 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     );
   }
 
-  Future<void> _rewriteChangedPeriods(
-    AmortizationPlan before,
-    AmortizationPlan after,
-  ) async {
-    final afterById = {for (final period in after.periods) period.id: period};
-    for (final period in before.periods) {
-      if (!period.isPosted) continue;
-      final next = afterById[period.id]!;
-      if (next.amount.minorUnits == 0) {
-        await _ledger.deleteTransaction(period.transactionId!);
-        continue;
-      }
-      if (next.amount == period.amount &&
-          _sameAllocations(
-            next.categoryAllocations,
-            period.categoryAllocations,
-          )) {
-        continue;
-      }
-      final settlement = singleAllocation(
-        accountId: after.deferralAccountId,
-        amount: next.amount,
-      );
-      switch (after.kind) {
-        case AmortizationKind.prepaidExpense:
-          await _ledger.rewriteExpense(
-            transactionId: period.transactionId!,
-            amount: next.amount,
-            categoryAllocations: next.categoryAllocations,
-            settlementAllocations: settlement,
-          );
-        case AmortizationKind.deferredIncome:
-          await _ledger.rewriteIncome(
-            transactionId: period.transactionId!,
-            amount: next.amount,
-            categoryAllocations: next.categoryAllocations,
-            settlementAllocations: settlement,
-          );
-      }
-    }
-  }
-
   Future<String> _postRecognition({
     required AmortizationPlan plan,
     required Money amount,
@@ -607,6 +747,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     required List<AccountAmountAllocation> settlementAllocations,
     required DateTime occurredAt,
     DateTime? postedAt,
+    String? note,
   }) {
     final transfer = _returnTransferAllocations(
       plan: plan,
@@ -619,6 +760,7 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       incomingAllocations: transfer.incoming,
       occurredAt: occurredAt,
       postedAt: postedAt,
+      note: note,
       ownership: TransactionOwnership(
         ownerType: orchestrationAmortizationOwnerType,
         ownerId: plan.id,
@@ -626,6 +768,30 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
       isExcludedFromStats: false,
       isExcludedFromBudget: false,
       sourceKind: SourceKind.auto,
+    );
+  }
+
+  ({
+    List<AccountAmountAllocation> outgoing,
+    List<AccountAmountAllocation> incoming,
+  })
+  _initialTransferAllocations({
+    required AmortizationKind kind,
+    required Money amount,
+    required List<AccountAmountAllocation> fundingAllocations,
+    required String deferralAccountId,
+  }) {
+    final deferralAllocation = singleAllocation(
+      accountId: deferralAccountId,
+      amount: amount,
+    );
+    return (
+      outgoing: kind == AmortizationKind.prepaidExpense
+          ? fundingAllocations
+          : deferralAllocation,
+      incoming: kind == AmortizationKind.prepaidExpense
+          ? deferralAllocation
+          : fundingAllocations,
     );
   }
 
@@ -687,22 +853,6 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         );
       }
     }
-  }
-
-  static bool _sameAllocations(
-    Iterable<AccountAmountAllocation> left,
-    Iterable<AccountAmountAllocation> right,
-  ) {
-    final leftList = left.toList(growable: false);
-    final rightList = right.toList(growable: false);
-    if (leftList.length != rightList.length) return false;
-    for (var index = 0; index < leftList.length; index++) {
-      if (leftList[index].accountId != rightList[index].accountId ||
-          leftList[index].amount != rightList[index].amount) {
-        return false;
-      }
-    }
-    return true;
   }
 
   static DateTime _dateOnly(DateTime value) =>

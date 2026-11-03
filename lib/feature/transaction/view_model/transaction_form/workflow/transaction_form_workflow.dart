@@ -37,6 +37,7 @@ final class _TransactionFormWorkflowDispatcher {
           state: state,
           amount: amount,
           note: note,
+          feeAmount: feeAmount,
           configuration: amortizationConfiguration,
         ),
       TransactionFormMode.income
@@ -45,6 +46,7 @@ final class _TransactionFormWorkflowDispatcher {
           state: state,
           amount: amount,
           note: note,
+          feeAmount: feeAmount,
           configuration: amortizationConfiguration,
         ),
       TransactionFormMode.expense
@@ -76,11 +78,33 @@ final class _TransactionFormWorkflowDispatcher {
   Future<void> edit({
     required TransactionFormState state,
     required String transactionId,
+    required String? amortizationPlanId,
     required Money amount,
     required Money? feeAmount,
     required String? note,
+    required AmortizationConfigurationDraft? amortizationConfiguration,
   }) {
     return switch (state.mode) {
+      TransactionFormMode.expense when state.isAmortization =>
+        _amortization.update(
+          planId:
+              amortizationPlanId ?? (throw invalidCommandException('无法定位摊销计划')),
+          state: state,
+          amount: amount,
+          feeAmount: feeAmount,
+          note: note,
+          configuration: amortizationConfiguration,
+        ),
+      TransactionFormMode.income when state.isAmortization =>
+        _amortization.update(
+          planId:
+              amortizationPlanId ?? (throw invalidCommandException('无法定位摊销计划')),
+          state: state,
+          amount: amount,
+          feeAmount: feeAmount,
+          note: note,
+          configuration: amortizationConfiguration,
+        ),
       TransactionFormMode.expense => _expense.edit(
         state: state,
         transactionId: transactionId,

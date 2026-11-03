@@ -10,6 +10,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
+import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
@@ -39,7 +40,11 @@ void main() {
         .read(provider.notifier)
         .submit(amountText: '35', noteText: '');
 
-    expect(outcome, isA<SubmitSuccess>());
+    expect(
+      outcome,
+      isA<SubmitSuccess>(),
+      reason: outcome is SubmitFailure ? outcome.error.message : null,
+    );
     final command = orchestration.refundCommands.single;
     expect(command.transactionId, 'refund');
     expect(command.amount, const Money(minorUnits: 3500));
@@ -314,6 +319,190 @@ void main() {
       expect(state.remaining, const Money(minorUnits: 6000));
     },
   );
+
+  test('creates an amortization refund through the refund form', () async {
+    final plan = _amortizationPlan();
+    final service = _FakeAmortizationPlanService();
+    final container = _amortizationContainer(plan: plan, service: service);
+    final provider = refundFormViewModelProvider('amortization-tx');
+
+    final state = await container.read(provider.future);
+
+    expect(state.amortizationPlanId, plan.id);
+    expect(state.remaining, const Money(minorUnits: 30000));
+    expect(state.availableCategoryAllocations.single.accountId, 'expense');
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '100', noteText: 'partial return');
+
+    expect(outcome, isA<SubmitSuccess>());
+    final command = service.refundCommands.single;
+    expect(command.planId, plan.id);
+    expect(command.categoryAllocations.single.amount, _money(10000));
+    expect(command.settlementAllocations.single.accountId, 'cash');
+    expect(command.note, 'partial return');
+  });
+
+  test('submits an amortization termination with zero refund', () async {
+    final plan = _amortizationPlan();
+    final service = _FakeAmortizationPlanService();
+    final container = _amortizationContainer(plan: plan, service: service);
+    final provider = refundFormViewModelProvider(
+      'amortization-tx',
+      amortizationTermination: true,
+    );
+
+    final state = await container.read(provider.future);
+
+    expect(state.amortizationTermination, isTrue);
+    expect(state.remaining, const Money(minorUnits: 30000));
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '', noteText: '');
+
+    expect(outcome, isA<SubmitSuccess>());
+    final command = service.terminationCommands.single;
+    expect(command.planId, plan.id);
+    expect(command.categoryReturnAllocations, isEmpty);
+    expect(command.settlementAllocations, isEmpty);
+  });
+
+  test('edits an amortization refund through the shared refund form', () async {
+    final created = _amortizationPlan();
+    final plan = created.withRefund(
+      AmortizationRefund(
+        id: 'refund',
+        planId: created.id,
+        categoryAllocations: singleAllocation(
+          accountId: 'expense',
+          amount: _money(5000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(5000),
+        ),
+        transferTransactionId: 'refund-tx',
+      ),
+    );
+    final service = _FakeAmortizationPlanService();
+    final detail = _amortizationDetail(
+      plan: plan,
+      transactionId: 'refund-tx',
+      occurredAt: DateTime(2026, 1, 20),
+      amount: _money(5000),
+    );
+    final container = _amortizationContainer(
+      plan: plan,
+      service: service,
+      transactionId: 'refund-tx',
+      transactionDetail: detail,
+    );
+    final provider = refundFormViewModelProvider('refund-tx', editing: true);
+
+    final state = await container.read(provider.future);
+
+    expect(state.amortizationRefundId, 'refund');
+    expect(state.amountText, '50');
+    expect(
+      state.categoryAllocations?.single.amount,
+      const Money(minorUnits: 5000),
+    );
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '60', noteText: 'updated');
+
+    expect(
+      outcome,
+      isA<SubmitSuccess>(),
+      reason: outcome is SubmitFailure ? outcome.error.message : null,
+    );
+    final command = service.refundEditCommands.single;
+    expect(command.refundId, 'refund');
+    expect(command.categoryAllocations.single.amount, _money(6000));
+    expect(command.occurredAt, DateTime(2026, 1, 20));
+    expect(command.note, isA<PatchSet<String?>>());
+  });
+
+  test('terminated amortization cannot be edited after termination', () async {
+    final created = _amortizationPlan();
+    final terminated = created.terminatedWith(
+      termination: AmortizationTermination(
+        id: 'termination',
+        planId: created.id,
+        terminatedAt: DateTime(2026, 2, 1),
+        categoryReturnAllocations: const [],
+        settlementAllocations: const [],
+        recognitionTransactionId: 'termination-entry',
+      ),
+      periods: created.periods,
+    );
+    final container = _amortizationContainer(
+      plan: terminated,
+      service: _FakeAmortizationPlanService(),
+    );
+
+    final state = await container.read(
+      refundFormViewModelProvider('amortization-tx').future,
+    );
+
+    expect(state.status, RefundFormStatus.notEditable);
+    expect(state.message, '摊销计划已终止，请先删除摊销终止');
+  });
+
+  test('edits the existing amortization termination', () async {
+    final created = _amortizationPlan();
+    final terminated = created.terminatedWith(
+      termination: AmortizationTermination(
+        id: 'termination',
+        planId: created.id,
+        terminatedAt: DateTime(2026, 2, 1),
+        categoryReturnAllocations: singleAllocation(
+          accountId: 'expense',
+          amount: _money(5000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(5000),
+        ),
+        recognitionTransactionId: 'termination-entry',
+        returnTransactionId: 'termination-return',
+      ),
+      periods: [for (final period in created.periods) period.canceled()],
+    );
+    final service = _FakeAmortizationPlanService();
+    final detail = _amortizationDetail(
+      plan: terminated,
+      transactionId: 'termination-entry',
+      occurredAt: DateTime(2026, 2, 1),
+      amount: _money(25000),
+    );
+    final container = _amortizationContainer(
+      plan: terminated,
+      service: service,
+      transactionId: 'termination-entry',
+      transactionDetail: detail,
+    );
+    final provider = refundFormViewModelProvider(
+      'termination-entry',
+      editing: true,
+      amortizationTermination: true,
+    );
+
+    final state = await container.read(provider.future);
+
+    expect(state.status, RefundFormStatus.loaded);
+    expect(state.amountText, '50');
+    expect(state.availableCategoryAllocations.single.amount, _money(30000));
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '100', noteText: '');
+
+    expect(outcome, isA<SubmitSuccess>());
+    final command = service.terminationEditCommands.single;
+    expect(command.planId, created.id);
+    expect(command.categoryReturnAllocations.single.amount, _money(10000));
+    expect(command.settlementAllocations.single.amount, _money(10000));
+  });
 
   test('maps AppException to submit failure', () async {
     final orchestration = _FakeAdvanceOrchestrationService(
@@ -719,8 +908,164 @@ TransactionLine _line(
   amount: Money(minorUnits: amount),
 );
 
+ProviderContainer _amortizationContainer({
+  required AmortizationPlan plan,
+  required AmortizationPlanAppService service,
+  String transactionId = 'amortization-tx',
+  TransactionReadModel? transactionDetail,
+}) {
+  final cash = _account('cash');
+  final bank = _account('bank');
+  final prepaid = _account('prepaid');
+  final expense = _account('expense', type: AccountType.expense);
+  final accounts = {
+    'cash': cash,
+    'bank': bank,
+    'prepaid': prepaid,
+    'expense': expense,
+  };
+  final container = ProviderContainer(
+    overrides: [
+      accountsForSelectionPurposeProvider(
+        AccountSelectionPurpose.settlement,
+      ).overrideWithValue(AsyncData([cash, bank])),
+      accountsByIdProvider.overrideWithValue(AsyncData(accounts)),
+      transactionDetailProvider(transactionId).overrideWithValue(
+        AsyncData(
+          transactionDetail ??
+              _amortizationDetail(
+                plan: plan,
+                transactionId: transactionId,
+                occurredAt: DateTime(2026, 1, 1),
+                amount: plan.originalAmount,
+              ),
+        ),
+      ),
+      amortizationPlanProvider(
+        plan.id,
+      ).overrideWith((ref) => Stream.value(plan)),
+      amortizationPlanAppServiceProvider.overrideWithValue(service),
+    ],
+  );
+  addTearDown(container.dispose);
+  return container;
+}
+
+TransactionReadModel _amortizationDetail({
+  required AmortizationPlan plan,
+  required String transactionId,
+  required DateTime occurredAt,
+  required Money amount,
+}) {
+  return TransactionReadModel.fromTransaction(
+    transaction: Transaction(
+      id: transactionId,
+      businessPurpose: BusinessPurpose.transfer,
+      occurredAt: occurredAt,
+      primaryAmount: amount,
+      sourceKind: SourceKind.manual,
+      ownership: TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: plan.id,
+      ),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+    ),
+    lines: [
+      TransactionLine(
+        id: '$transactionId-out',
+        transactionId: transactionId,
+        lineNo: 1,
+        role: TransactionRole.settlementOut,
+        accountId: 'prepaid',
+        amount: amount,
+      ),
+      TransactionLine(
+        id: '$transactionId-in',
+        transactionId: transactionId,
+        lineNo: 2,
+        role: TransactionRole.settlementIn,
+        accountId: 'cash',
+        amount: amount,
+      ),
+    ],
+  );
+}
+
+AmortizationPlan _amortizationPlan() {
+  return AmortizationPlan.create(
+    id: 'plan',
+    kind: AmortizationKind.prepaidExpense,
+    deferralAccountId: 'prepaid',
+    fundingAllocations: singleAllocation(
+      accountId: 'cash',
+      amount: _money(30000),
+    ),
+    categoryAllocations: singleAllocation(
+      accountId: 'expense',
+      amount: _money(30000),
+    ),
+    originalAmount: _money(30000),
+    cadenceUnit: AmortizationCadenceUnit.monthly,
+    cadenceInterval: 1,
+    firstRecognitionAt: DateTime(2026, 1, 31),
+    recognitionCount: 3,
+    initialTransactionId: 'amortization-tx',
+  );
+}
+
+Money _money(int minorUnits) => Money(minorUnits: minorUnits);
+
 Account _account(String id, {AccountType type = AccountType.asset}) {
   return Account(id: id, name: id, type: type, balance: Money.zero());
+}
+
+class _FakeAmortizationPlanService implements AmortizationPlanAppService {
+  final refundCommands = <CreateAmortizationRefundCommand>[];
+  final refundEditCommands = <EditAmortizationRefundCommand>[];
+  final terminationCommands = <TerminateAmortizationPlanCommand>[];
+  final terminationEditCommands = <EditAmortizationTerminationCommand>[];
+
+  @override
+  Future<AmortizationRefundResult> refund(
+    CreateAmortizationRefundCommand command,
+  ) async {
+    refundCommands.add(command);
+    return const AmortizationRefundResult(
+      refundTransactionId: 'amortization-refund',
+    );
+  }
+
+  @override
+  Future<AmortizationTerminationResult> terminate(
+    TerminateAmortizationPlanCommand command,
+  ) async {
+    terminationCommands.add(command);
+    return const AmortizationTerminationResult(
+      recognitionTransactionId: 'termination-entry',
+      returnTransactionId: null,
+    );
+  }
+
+  @override
+  Future<AmortizationTerminationResult> editTermination(
+    EditAmortizationTerminationCommand command,
+  ) async {
+    terminationEditCommands.add(command);
+    return const AmortizationTerminationResult(
+      recognitionTransactionId: 'termination-entry',
+      returnTransactionId: 'termination-return',
+    );
+  }
+
+  @override
+  Future<void> editRefund(EditAmortizationRefundCommand command) async {
+    refundEditCommands.add(command);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 InstallmentScheduleDTO _schedule({required int principal}) {

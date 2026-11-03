@@ -16,7 +16,8 @@ final class RefundFormViewModelProvider
     extends $AsyncNotifierProvider<RefundFormViewModel, RefundFormState> {
   RefundFormViewModelProvider._({
     required RefundFormViewModelFamily super.from,
-    required (String, {bool editing}) super.argument,
+    required (String, {bool editing, bool amortizationTermination})
+    super.argument,
   }) : super(
          retry: null,
          name: r'refundFormViewModelProvider',
@@ -60,7 +61,7 @@ final class RefundFormViewModelFamily extends $Family
           AsyncValue<RefundFormState>,
           RefundFormState,
           FutureOr<RefundFormState>,
-          (String, {bool editing})
+          (String, {bool editing, bool amortizationTermination})
         > {
   RefundFormViewModelFamily._()
     : super(
@@ -74,8 +75,13 @@ final class RefundFormViewModelFamily extends $Family
   RefundFormViewModelProvider call(
     String transactionId, {
     bool editing = false,
+    bool amortizationTermination = false,
   }) => RefundFormViewModelProvider._(
-    argument: (transactionId, editing: editing),
+    argument: (
+      transactionId,
+      editing: editing,
+      amortizationTermination: amortizationTermination,
+    ),
     from: this,
   );
 
@@ -84,11 +90,17 @@ final class RefundFormViewModelFamily extends $Family
 }
 
 abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
-  late final _$args = ref.$arg as (String, {bool editing});
+  late final _$args =
+      ref.$arg as (String, {bool editing, bool amortizationTermination});
   String get transactionId => _$args.$1;
   bool get editing => _$args.editing;
+  bool get amortizationTermination => _$args.amortizationTermination;
 
-  FutureOr<RefundFormState> build(String transactionId, {bool editing = false});
+  FutureOr<RefundFormState> build(
+    String transactionId, {
+    bool editing = false,
+    bool amortizationTermination = false,
+  });
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -103,7 +115,11 @@ abstract class _$RefundFormViewModel extends $AsyncNotifier<RefundFormState> {
             >;
     return element.handleCreate(
       ref,
-      () => build(_$args.$1, editing: _$args.editing),
+      () => build(
+        _$args.$1,
+        editing: _$args.editing,
+        amortizationTermination: _$args.amortizationTermination,
+      ),
     );
   }
 }

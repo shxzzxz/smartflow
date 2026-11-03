@@ -22,7 +22,11 @@ final class AmortizationDetailOwnerQuery
     TransactionOwnership ownership,
     TransactionReadModel anchorTransaction,
   ) async {
-    return _map(ownership, await _query.findById(ownership.ownerId));
+    return _map(
+      ownership,
+      anchorTransaction,
+      await _query.findById(ownership.ownerId),
+    );
   }
 
   @override
@@ -32,15 +36,32 @@ final class AmortizationDetailOwnerQuery
   ) {
     return _query
         .watchById(ownership.ownerId)
-        .map((plan) => _map(ownership, plan));
+        .map((plan) => _map(ownership, anchorTransaction, plan));
   }
 
   TransactionDetailOwnerContext? _map(
     TransactionOwnership ownership,
+    TransactionReadModel anchorTransaction,
     AmortizationPlan? plan,
   ) {
     if (plan == null) return null;
     final current = plan.currentPendingPeriod;
+    final refund = plan.refunds
+        .where((refund) => refund.transferTransactionId == anchorTransaction.id)
+        .firstOrNull;
+    final termination = plan.termination;
+    final factKind = switch (anchorTransaction.id) {
+      final id when id == plan.initialTransactionId =>
+        AmortizationTransactionFactKind.initial,
+      final id when plan.periods.any((period) => period.transactionId == id) =>
+        AmortizationTransactionFactKind.recognition,
+      _ when refund != null => AmortizationTransactionFactKind.refund,
+      final id when termination?.recognitionTransactionId == id =>
+        AmortizationTransactionFactKind.terminationRecognition,
+      final id when termination?.returnTransactionId == id =>
+        AmortizationTransactionFactKind.terminationReturn,
+      _ => null,
+    };
     return AmortizationTransactionDetailOwnerContext(
       ownerType: orchestrationAmortizationOwnerType,
       ownerId: ownership.ownerId,
@@ -58,6 +79,9 @@ final class AmortizationDetailOwnerQuery
       currentPeriodSequence: current?.sequenceNo,
       currentPeriodDueAt: current?.dueAt,
       currentPeriodAmount: current?.amount,
+      factKind: factKind,
+      refundId: refund?.id,
+      terminationId: termination?.id,
     );
   }
 }

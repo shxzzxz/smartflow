@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -25,23 +26,47 @@ class RefundFormPage extends ConsumerWidget {
   const RefundFormPage.edit({required String editTransactionId, Key? key})
     : this._(editTransactionId: editTransactionId, key: key);
 
+  const RefundFormPage.amortizationTermination({
+    required String transactionId,
+    Key? key,
+  }) : this._(
+         transactionId: transactionId,
+         amortizationTermination: true,
+         key: key,
+       );
+
+  const RefundFormPage.amortizationTerminationEdit({
+    required String transactionId,
+    Key? key,
+  }) : this._(
+         editTransactionId: transactionId,
+         amortizationTermination: true,
+         key: key,
+       );
+
   const RefundFormPage._({
     this.parentTransactionId,
     this.editTransactionId,
+    this.transactionId,
+    this.amortizationTermination = false,
     super.key,
   });
 
   final String? parentTransactionId;
   final String? editTransactionId;
+  final String? transactionId;
+  final bool amortizationTermination;
 
   bool get editing => editTransactionId != null;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionId = editTransactionId ?? parentTransactionId!;
+    final resolvedTransactionId =
+        editTransactionId ?? transactionId ?? parentTransactionId!;
     final provider = refundFormViewModelProvider(
-      transactionId,
+      resolvedTransactionId,
       editing: editing,
+      amortizationTermination: amortizationTermination,
     );
     final asyncState = ref.watch(provider);
     return Scaffold(
@@ -61,10 +86,10 @@ class RefundFormPage extends ConsumerWidget {
     RefundFormState state,
   ) {
     if (state.status == RefundFormStatus.notFound) {
-      return const Center(child: Text('原交易不存在'));
+      return Center(child: Text(state.message ?? '原交易不存在'));
     }
     if (state.status == RefundFormStatus.notEditable) {
-      return const Center(child: Text('垫付已结清，请先删除垫付结清'));
+      return Center(child: Text(state.message ?? '交易当前不可编辑'));
     }
     return _RefundFormContent(
       key: ValueKey('${state.transactionId}:${state.editing}'),
@@ -111,11 +136,12 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
   Widget build(BuildContext context) {
     final provider = widget.provider;
     final state = widget.state;
+    final termination = state.amortizationTermination;
     return Form(
       key: _formKey,
       child: Column(
         children: [
-          AppPageHeader(title: state.editing ? '编辑退款' : '退款'),
+          AppPageHeader(title: _pageTitle(state)),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -125,25 +151,27 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                 AppSpacing.space24,
               ),
               children: [
+                if (state.remaining != null) ...[
+                  _AmountSummaryCard(
+                    key: const ValueKey('refund-remaining-summary'),
+                    label: termination ? '剩余待摊' : '可退余额',
+                    amount: state.remaining!,
+                  ),
+                  const SizedBox(height: AppSpacing.space14),
+                ],
                 AppFormSection(
-                  title: '退款信息',
+                  title: termination ? '终止信息' : '退款信息',
                   children: [
-                    if (state.remaining != null)
-                      AppPlainValueRow(
-                        label: '可退余额',
-                        child: MoneyText(
-                          money: state.remaining!,
-                          style: context.appTextStyles.formValue,
-                        ),
-                      ),
                     MoneyPlainFormRow(
-                      label: '退款金额',
+                      label: termination ? '退还金额' : '退款金额',
                       controller: _amountController,
-                      hintText: '请输入退款金额',
-                      validator: validatePositiveMoneyText,
+                      hintText: termination ? '可为 0，剩余部分将立即确认' : '请输入退款金额',
+                      validator: termination
+                          ? validateOptionalNonNegativeMoneyText
+                          : validatePositiveMoneyText,
                     ),
                     DateTimePlainFormRow(
-                      label: '退款时间',
+                      label: termination ? '终止时间' : '退款时间',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
                       onTap: (onSelected) =>
@@ -154,7 +182,8 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                         }
                       },
                     ),
-                    NotePlainFormRow(controller: _noteController),
+                    if (!termination)
+                      NotePlainFormRow(controller: _noteController),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.space14),
@@ -188,9 +217,27 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
                 _buildCategoryAllocations(provider, state),
                 const SizedBox(height: AppSpacing.space14),
                 _buildSettlementAllocations(provider, state),
+                if (termination && state.remaining != null) ...[
+                  const SizedBox(height: AppSpacing.space14),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _amountController,
+                    builder: (context, value, _) {
+                      final amount = Money.tryParse(value.text) ?? Money.zero();
+                      return _AmountSummaryCard(
+                        key: const ValueKey('refund-termination-confirmation'),
+                        label: '终止确认',
+                        amount: state.remaining! - amount,
+                      );
+                    },
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.space24),
                 AppSubmitButton(
-                  label: '保存',
+                  label: termination
+                      ? state.editing
+                            ? '保存修改'
+                            : '确认终止'
+                      : '保存',
                   loading: state.submitting,
                   onPressed: () => _submit(provider),
                 ),
@@ -216,7 +263,7 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
             : null;
         return TransactionAllocationAmountFields(
           key: const ValueKey('refund-category-allocations'),
-          title: '退款分类',
+          title: state.amortizationTermination ? '退还分类' : '退款分类',
           allocations: transactionAllocationFieldValues(
             allocations: state.categoryAllocations,
             fallbackAccountId: fallbackCategoryId,
@@ -281,7 +328,7 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
     final picked = await showAppDateTimePicker(
       context: context,
       initialDateTime: occurredAt,
-      title: '选择退款时间',
+      title: widget.state.amortizationTermination ? '选择终止时间' : '选择退款时间',
     );
     if (!mounted || picked == null) return;
     onSelected(picked);
@@ -304,6 +351,39 @@ class _RefundFormContentState extends ConsumerState<_RefundFormContent> {
           context,
         ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  String _pageTitle(RefundFormState state) {
+    if (state.amortizationTermination) {
+      return state.editing ? '编辑摊销终止' : '摊销终止';
+    }
+    if (state.amortizationPlanId != null) {
+      return state.editing ? '编辑摊销退款' : '摊销退款';
+    }
+    return state.editing ? '编辑退款' : '退款';
+  }
+}
+
+class _AmountSummaryCard extends StatelessWidget {
+  const _AmountSummaryCard({
+    required this.label,
+    required this.amount,
+    super.key,
+  });
+
+  final String label;
+  final Money amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppFormSection(
+      children: [
+        Text(
+          '$label：${formatMoney(amount, style: MoneyFormatStyle.plain)}',
+          style: context.appTextStyles.formValue,
+        ),
+      ],
+    );
   }
 }
 

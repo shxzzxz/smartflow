@@ -6,6 +6,36 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
   final transaction = context.transaction;
   final owner = context.owner;
   const postedAtPermission = DetailEditPermission.allowed();
+  if (owner is AmortizationTransactionDetailOwnerContext) {
+    switch (owner.factKind) {
+      case AmortizationTransactionFactKind.refund:
+        return DetailBehaviorConfig(
+          editRoute: '/transaction/${transaction.id}/refund/edit',
+          canEditOccurredAt: const DetailEditPermission.allowed(),
+          canEditPostedAt: postedAtPermission,
+          canEditNote: const DetailEditPermission.allowed(),
+          canEditSettlementAccount: const DetailEditPermission.allowed(),
+          canEditTags: _tagEditPermissionFor(transaction),
+          deletePermission: const DetailEditPermission.allowed(),
+        );
+      case AmortizationTransactionFactKind.terminationRecognition:
+      case AmortizationTransactionFactKind.terminationReturn:
+        return DetailBehaviorConfig(
+          editRoute:
+              '/transaction/${transaction.id}/amortization-terminate/edit',
+          canEditOccurredAt: const DetailEditPermission.allowed(),
+          canEditPostedAt: postedAtPermission,
+          canEditNote: const DetailEditPermission.allowed(),
+          canEditSettlementAccount: const DetailEditPermission.allowed(),
+          canEditTags: _tagEditPermissionFor(transaction),
+          deletePermission: const DetailEditPermission.allowed(),
+        );
+      case AmortizationTransactionFactKind.initial:
+      case AmortizationTransactionFactKind.recognition:
+      case null:
+        break;
+    }
+  }
   if (transaction.businessPurpose == BusinessPurpose.refund ||
       transaction.businessPurpose == BusinessPurpose.advanceCollection ||
       transaction.businessPurpose == BusinessPurpose.advanceSettlement) {
@@ -96,7 +126,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
 
   if (owner is AmortizationTransactionDetailOwnerContext) {
     return DetailBehaviorConfig(
-      editRoute: '/amortizations/${owner.ownerId}',
+      editRoute: '/transaction/${transaction.id}/edit',
       canEditOccurredAt: const DetailEditPermission.allowed(),
       canEditPostedAt: const DetailEditPermission.allowed(),
       canEditNote: const DetailEditPermission.allowed(),
@@ -141,8 +171,6 @@ DetailEditPermission _deletePermissionFor(
   TransactionDetailOwnerContext? owner,
 ) {
   return switch (owner) {
-    AmortizationTransactionDetailOwnerContext() =>
-      const DetailEditPermission.denied(reason: '请在摊销计划中终止，不能单独删除计划交易'),
     UnknownTransactionDetailOwnerContext() => const DetailEditPermission.denied(
       reason: '未识别的业务来源不支持删除',
     ),
@@ -212,14 +240,63 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
       break;
   }
 
+  if (owner is AmortizationTransactionDetailOwnerContext) {
+    final showsPlanActions =
+        owner.factKind == null ||
+        owner.factKind == AmortizationTransactionFactKind.initial ||
+        owner.factKind == AmortizationTransactionFactKind.recognition;
+    if (showsPlanActions) {
+      final canRefund =
+          owner.status != AmortizationStatus.terminated &&
+          owner.remainingAmount.minorUnits > 0;
+      result.add(
+        DetailActionButton(
+          kind: DetailActionKind.refund,
+          label: '退款',
+          primary: false,
+          enabled: canRefund,
+          route: '/transaction/${transaction.id}/refund',
+          deniedReason: _amortizationRefundDeniedReason(owner.status),
+        ),
+      );
+      result.add(
+        DetailActionButton(
+          kind: DetailActionKind.amortizationTermination,
+          label: '终止',
+          primary: false,
+          enabled: canRefund,
+          route: '/transaction/${transaction.id}/amortization-terminate',
+          deniedReason: _amortizationTerminationDeniedReason(owner.status),
+        ),
+      );
+    }
+  }
+
   result.add(
     DetailActionButton(
       kind: DetailActionKind.edit,
       label: '编辑',
       primary: true,
-      enabled: behavior.editRoute != null && !editLocked,
+      enabled:
+          behavior.editRoute != null &&
+          !editLocked &&
+          !(owner is AmortizationTransactionDetailOwnerContext &&
+              owner.status == AmortizationStatus.terminated &&
+              owner.factKind !=
+                  AmortizationTransactionFactKind.terminationRecognition &&
+              owner.factKind !=
+                  AmortizationTransactionFactKind.terminationReturn),
       route: behavior.editRoute,
-      deniedReason: editLocked ? _advanceSettledEditReason : null,
+      deniedReason: editLocked
+          ? _advanceSettledEditReason
+          : owner is AmortizationTransactionDetailOwnerContext &&
+                owner.status == AmortizationStatus.terminated &&
+                owner.factKind !=
+                    AmortizationTransactionFactKind.terminationRecognition &&
+                owner.factKind !=
+                    AmortizationTransactionFactKind.terminationReturn
+          ? '请先删除摊销终止'
+          : null,
     ),
   );
   return result;
@@ -245,6 +322,14 @@ String _advanceActionLabel(AdvanceScenario? scenario) {
 
 String _advanceReceivableAccountLabel(AdvanceScenario? scenario) {
   return scenario == AdvanceScenario.reimbursement ? '报销账户' : '应收账户';
+}
+
+String? _amortizationRefundDeniedReason(AmortizationStatus status) {
+  return status == AmortizationStatus.terminated ? '摊销计划已终止' : '当前没有可退款金额';
+}
+
+String? _amortizationTerminationDeniedReason(AmortizationStatus status) {
+  return status == AmortizationStatus.terminated ? '摊销计划已终止' : '当前没有可终止余额';
 }
 
 DetailEditPermission _accountEditPermission(
@@ -290,7 +375,17 @@ String _transactionDetailDeleteMessage(TransactionDetailContext context) {
       '此操作将删除关联分期、还款计划及其关联账务记录，无法恢复。',
     RepaymentTransactionDetailOwnerContext() =>
       '此操作将删除还款记录及其关联交易，并重新计算相关账单与分期的还款状态，无法恢复。',
-    AmortizationTransactionDetailOwnerContext() => '此交易属于摊销计划，请从计划详情终止或调整。',
+    AmortizationTransactionDetailOwnerContext(
+      factKind: AmortizationTransactionFactKind.refund,
+    ) =>
+      '此操作将删除这笔摊销退款及其转账交易，并按剩余净额重算摊销期次，无法恢复。',
+    AmortizationTransactionDetailOwnerContext(
+      factKind: AmortizationTransactionFactKind.terminationRecognition ||
+          AmortizationTransactionFactKind.terminationReturn,
+    ) =>
+      '此操作将删除该笔摊销终止及其关联交易，恢复并补齐摊销期次，无法恢复。',
+    AmortizationTransactionDetailOwnerContext() =>
+      '此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。',
     _ =>
       detail.parentTransactionId == null
           ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'

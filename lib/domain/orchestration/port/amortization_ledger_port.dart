@@ -1,4 +1,5 @@
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
@@ -66,6 +67,13 @@ abstract interface class AmortizationLedgerPort {
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
+    DateTime? occurredAt,
+    Money? feeAmount,
+    Patch<String?>? note,
+    Patch<String?>? counterpartyId,
+    Set<String>? tagIds,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
   });
 
   Future<void> rewriteExpense({

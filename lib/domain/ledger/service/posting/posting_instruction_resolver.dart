@@ -193,6 +193,9 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       postedAt: transaction.postedAt,
       counterpartyId: transaction.counterpartyId,
       note: transaction.note,
+      ownership: transaction.ownership,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      isExcludedFromBudget: transaction.isExcludedFromBudget,
       sourceKind: transaction.sourceKind,
     );
   }

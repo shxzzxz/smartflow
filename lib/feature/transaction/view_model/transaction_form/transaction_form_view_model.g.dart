@@ -102,6 +102,8 @@ final class TransactionFormViewModelProvider
       String? initialFromAccountId,
       String? initialToAccountId,
       String? initialLiabilityAccountId,
+      AmortizationKind? initialAmortizationKind,
+      String? initialAmortizationDeferralAccountId,
     })
     super.argument,
   }) : super(
@@ -149,7 +151,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'0c1c7d32f0a624e66709bf9bb8a4a5595df12c52';
+    r'bbcd94b44fce95a700e3c542b5ad51623b1005f0';
 
 final class TransactionFormViewModelFamily extends $Family
     with
@@ -164,6 +166,8 @@ final class TransactionFormViewModelFamily extends $Family
             String? initialFromAccountId,
             String? initialToAccountId,
             String? initialLiabilityAccountId,
+            AmortizationKind? initialAmortizationKind,
+            String? initialAmortizationDeferralAccountId,
           })
         > {
   TransactionFormViewModelFamily._()
@@ -181,6 +185,8 @@ final class TransactionFormViewModelFamily extends $Family
     String? initialFromAccountId,
     String? initialToAccountId,
     String? initialLiabilityAccountId,
+    AmortizationKind? initialAmortizationKind,
+    String? initialAmortizationDeferralAccountId,
   }) => TransactionFormViewModelProvider._(
     argument: (
       editTransactionId: editTransactionId,
@@ -188,6 +194,9 @@ final class TransactionFormViewModelFamily extends $Family
       initialFromAccountId: initialFromAccountId,
       initialToAccountId: initialToAccountId,
       initialLiabilityAccountId: initialLiabilityAccountId,
+      initialAmortizationKind: initialAmortizationKind,
+      initialAmortizationDeferralAccountId:
+          initialAmortizationDeferralAccountId,
     ),
     from: this,
   );
@@ -206,12 +215,18 @@ abstract class _$TransactionFormViewModel
             String? initialFromAccountId,
             String? initialToAccountId,
             String? initialLiabilityAccountId,
+            AmortizationKind? initialAmortizationKind,
+            String? initialAmortizationDeferralAccountId,
           });
   String? get editTransactionId => _$args.editTransactionId;
   TransactionFormMode get initialMode => _$args.initialMode;
   String? get initialFromAccountId => _$args.initialFromAccountId;
   String? get initialToAccountId => _$args.initialToAccountId;
   String? get initialLiabilityAccountId => _$args.initialLiabilityAccountId;
+  AmortizationKind? get initialAmortizationKind =>
+      _$args.initialAmortizationKind;
+  String? get initialAmortizationDeferralAccountId =>
+      _$args.initialAmortizationDeferralAccountId;
 
   AsyncValue<TransactionFormState?> build({
     String? editTransactionId,
@@ -219,6 +234,8 @@ abstract class _$TransactionFormViewModel
     String? initialFromAccountId,
     String? initialToAccountId,
     String? initialLiabilityAccountId,
+    AmortizationKind? initialAmortizationKind,
+    String? initialAmortizationDeferralAccountId,
   });
   @$mustCallSuper
   @override
@@ -248,6 +265,9 @@ abstract class _$TransactionFormViewModel
         initialFromAccountId: _$args.initialFromAccountId,
         initialToAccountId: _$args.initialToAccountId,
         initialLiabilityAccountId: _$args.initialLiabilityAccountId,
+        initialAmortizationKind: _$args.initialAmortizationKind,
+        initialAmortizationDeferralAccountId:
+            _$args.initialAmortizationDeferralAccountId,
       ),
     );
   }

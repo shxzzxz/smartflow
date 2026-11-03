@@ -514,6 +514,34 @@ void main() {
     },
   );
 
+  testWidgets('opens a routed new amortization directly in its scene', (
+    tester,
+  ) async {
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      fundAccounts: [_account('cash')],
+      deferredIncomeAccounts: [
+        _account('deferred', profileKey: AccountProfileKind.deferredIncome.key),
+      ],
+      formPage: const TransactionFormPage(
+        initialMode: TransactionFormInitialMode.income,
+        initialAmortizationKind: AmortizationKind.deferredIncome,
+        initialAmortizationDeferralAccountId: 'deferred',
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('amortization-deferral-account-option')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('amortization-configuration')),
+      findsOneWidget,
+    );
+    expect(find.text('deferred'), findsOneWidget);
+  });
+
   testWidgets('opens the shared loan configuration page for consumption', (
     tester,
   ) async {
@@ -1290,6 +1318,7 @@ Future<void> _pumpTransactionForm(
   List<Account> deferredIncomeAccounts = const [],
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
+  Widget formPage = const TransactionFormPage(),
 }) async {
   final accountOptions = TransactionAccountOptions.fromAccounts(
     _uniqueAccounts([
@@ -1313,10 +1342,7 @@ Future<void> _pumpTransactionForm(
           ),
         ),
       ),
-      GoRoute(
-        path: '/form',
-        builder: (context, state) => const TransactionFormPage(),
-      ),
+      GoRoute(path: '/form', builder: (context, state) => formPage),
     ],
   );
   addTearDown(router.dispose);

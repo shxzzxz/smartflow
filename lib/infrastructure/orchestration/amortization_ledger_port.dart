@@ -3,6 +3,7 @@ import '../../application/ledger/transaction/command/transaction_edit_app_servic
 import '../../application/ledger/transaction/command/transaction_posting_app_service.dart';
 import '../../core/error/app_exception.dart';
 import '../../core/money/money.dart';
+import '../../core/patch/patch.dart';
 import '../../domain/ledger/port/account_repository.dart';
 import '../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../domain/ledger/valobj/ledger_enum.dart';
@@ -213,6 +214,13 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
+    DateTime? occurredAt,
+    Money? feeAmount,
+    Patch<String?>? note,
+    Patch<String?>? counterpartyId,
+    Set<String>? tagIds,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
   }) async {
     await _editing.editTransfer(
       EditTransferCommand(
@@ -220,6 +228,13 @@ class LedgerAmortizationPort implements AmortizationLedgerPort {
         amount: amount,
         outgoingAllocations: outgoingAllocations,
         incomingAllocations: incomingAllocations,
+        occurredAt: occurredAt,
+        feeAmount: feeAmount,
+        note: note,
+        counterpartyId: counterpartyId,
+        tagIds: tagIds,
+        isExcludedFromStats: isExcludedFromStats,
+        isExcludedFromBudget: isExcludedFromBudget,
       ),
     );
   }

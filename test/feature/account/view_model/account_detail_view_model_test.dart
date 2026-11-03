@@ -70,13 +70,17 @@ void main() {
       expect(prepaidActions.map((action) => action.label), ['新建摊销', '摊销计划']);
       expect(
         prepaidActions.first.route,
-        '/amortizations/new?kind=prepaidExpense'
-        '&deferralAccountId=prepaid',
+        '/transaction/new?mode=expense&scene=amortization'
+        '&kind=prepaidExpense&deferralAccountId=prepaid',
       );
       final deferredActions = accountDetailActions(
         _accountView('deferred', AccountProfileKind.deferredIncome),
       );
-      expect(deferredActions.first.route, contains('kind=deferredIncome'));
+      expect(
+        deferredActions.first.route,
+        '/transaction/new?mode=income&scene=amortization'
+        '&kind=deferredIncome&deferralAccountId=deferred',
+      );
       expect(
         accountDetailActions(
           _accountView('card', AccountProfileKind.credit),

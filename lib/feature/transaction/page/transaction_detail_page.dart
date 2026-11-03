@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/transaction_view/transaction_view_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -84,10 +85,24 @@ class TransactionDetailPage extends ConsumerWidget {
       return;
     }
     final message = loaded.behavior.deleteMessage;
+    final owner = loaded.context.owner;
+    final title = switch (owner) {
+      AmortizationTransactionDetailOwnerContext(
+        factKind: AmortizationTransactionFactKind.refund,
+      ) =>
+        '删除摊销退款',
+      AmortizationTransactionDetailOwnerContext(
+        factKind: AmortizationTransactionFactKind.terminationRecognition ||
+            AmortizationTransactionFactKind.terminationReturn,
+      ) =>
+        '删除摊销终止',
+      AmortizationTransactionDetailOwnerContext() => '删除摊销计划',
+      _ => '删除交易',
+    };
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除交易'),
+        title: Text(title),
         content: Text(message),
         actions: [
           TextButton(
@@ -875,6 +890,11 @@ class _ActionButton extends StatelessWidget {
           context.push(route);
         }
       case DetailActionKind.advance:
+        final route = state.route;
+        if (route != null) {
+          context.push(route);
+        }
+      case DetailActionKind.amortizationTermination:
         final route = state.route;
         if (route != null) {
           context.push(route);

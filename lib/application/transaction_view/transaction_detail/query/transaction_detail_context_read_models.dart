@@ -149,6 +149,9 @@ final class AmortizationTransactionDetailOwnerContext
     this.currentPeriodSequence,
     this.currentPeriodDueAt,
     this.currentPeriodAmount,
+    this.factKind,
+    this.refundId,
+    this.terminationId,
   });
 
   final String initialTransactionId;
@@ -163,6 +166,17 @@ final class AmortizationTransactionDetailOwnerContext
   final int? currentPeriodSequence;
   final DateTime? currentPeriodDueAt;
   final Money? currentPeriodAmount;
+  final AmortizationTransactionFactKind? factKind;
+  final String? refundId;
+  final String? terminationId;
+}
+
+enum AmortizationTransactionFactKind {
+  initial,
+  recognition,
+  refund,
+  terminationRecognition,
+  terminationReturn,
 }
 
 final class UnknownTransactionDetailOwnerContext

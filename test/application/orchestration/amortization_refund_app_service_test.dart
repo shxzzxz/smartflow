@@ -3,6 +3,7 @@ import 'package:smartflow/application/orchestration/amortization/command/amortiz
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/ledger/valobj/transaction_ownership.dart';
@@ -422,7 +423,144 @@ void main() {
   });
 
   test(
-    'undoing termination reopens canceled periods and catches up dues',
+    'configuration change rebuilds schedule from existing refunds and periods',
+    () async {
+      final repository = _MemoryRepository();
+      final ledger = _FakeLedger();
+      final service = _service(repository, ledger);
+      final planId = await service.createPlan(
+        _createPlanCommand(totalMinor: 60000, recognitionCount: 3),
+      );
+      await service.generateDue(DateTime(2026, 1, 31));
+      await service.refund(
+        CreateAmortizationRefundCommand(
+          planId: planId,
+          categoryAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: _money(10000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: _money(10000),
+          ),
+          occurredAt: DateTime(2026, 2, 1),
+        ),
+      );
+
+      await service.updateConfiguration(
+        UpdateAmortizationConfigurationCommand(
+          planId: planId,
+          firstRecognitionAt: DateTime(2026, 3, 31),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 2,
+          recognitionCount: 2,
+          now: DateTime(2026, 3, 1),
+        ),
+      );
+
+      final plan = (await repository.findById(planId))!;
+      expect(plan.kind, AmortizationKind.prepaidExpense);
+      expect(plan.recognitionCount, 2);
+      expect(plan.periods, hasLength(2));
+      expect(plan.periods.map((period) => period.amount.minorUnits), [
+        25000,
+        25000,
+      ]);
+      expect(plan.periods.first.transactionId, isNotNull);
+      expect(ledger.transferRewrites, isEmpty);
+      expect(plan.refunds.single.amount, _money(10000));
+    },
+  );
+
+  test('deleting a refund restores net amount and the full schedule', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      _createPlanCommand(totalMinor: 60000, recognitionCount: 3),
+    );
+    final refund = await service.refund(
+      CreateAmortizationRefundCommand(
+        planId: planId,
+        categoryAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(10000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: _money(10000),
+        ),
+        occurredAt: DateTime(2026, 2, 1),
+      ),
+    );
+
+    await service.deleteRefund(
+      DeleteAmortizationRefundCommand(
+        planId: planId,
+        refundId: (await repository.findById(planId))!.refunds.single.id,
+        now: DateTime(2026, 2, 1),
+      ),
+    );
+
+    final plan = (await repository.findById(planId))!;
+    expect(plan.refunds, isEmpty);
+    expect(plan.netAmount, _money(60000));
+    expect(plan.periods.map((period) => period.amount.minorUnits), [
+      20000,
+      20000,
+      20000,
+    ]);
+    expect(ledger.deletedTransactionIds, [refund.refundTransactionId]);
+  });
+
+  test('editing termination replaces both termination transactions', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      _createPlanCommand(totalMinor: 60000, recognitionCount: 3),
+    );
+    final original = await service.terminate(
+      TerminateAmortizationPlanCommand(
+        planId: planId,
+        terminatedAt: DateTime(2026, 1, 15),
+        categoryReturnAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(10000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: _money(10000),
+        ),
+      ),
+    );
+
+    final updated = await service.editTermination(
+      EditAmortizationTerminationCommand(
+        planId: planId,
+        terminatedAt: DateTime(2026, 1, 16),
+        categoryReturnAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(20000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: _money(20000),
+        ),
+      ),
+    );
+
+    final plan = (await repository.findById(planId))!;
+    expect(plan.termination!.returnAmount, _money(20000));
+    expect(ledger.deletedTransactionIds, [
+      original.recognitionTransactionId,
+      original.returnTransactionId,
+    ]);
+    expect(updated.returnTransactionId, isNot(original.returnTransactionId));
+  });
+
+  test(
+    'deleting termination reopens canceled periods and catches up dues',
     () async {
       final repository = _MemoryRepository();
       final ledger = _FakeLedger();
@@ -462,8 +600,8 @@ void main() {
         ),
       );
 
-      final generated = await service.undoTermination(
-        UndoAmortizationTerminationCommand(
+      final generated = await service.deleteTermination(
+        DeleteAmortizationTerminationCommand(
           planId: planId,
           now: DateTime(2026, 5, 1),
         ),
@@ -546,6 +684,30 @@ AmortizationPlanAppService _service(
 }
 
 Money _money(int minorUnits) => Money(minorUnits: minorUnits);
+
+CreateAmortizationPlanCommand _createPlanCommand({
+  required int totalMinor,
+  required int recognitionCount,
+}) {
+  return CreateAmortizationPlanCommand(
+    kind: AmortizationKind.prepaidExpense,
+    total: _money(totalMinor),
+    fundingAllocations: singleAllocation(
+      accountId: 'account-c',
+      amount: _money(totalMinor),
+    ),
+    deferralAccountId: 'deferral',
+    recognitionAllocations: singleAllocation(
+      accountId: 'category-a',
+      amount: _money(totalMinor),
+    ),
+    firstRecognitionAt: DateTime(2026, 1, 31),
+    cadenceUnit: AmortizationCadenceUnit.monthly,
+    cadenceInterval: 1,
+    recognitionCount: recognitionCount,
+    occurredAt: DateTime(2026, 1, 1),
+  );
+}
 
 class _Runner implements TransactionRunner {
   const _Runner();
@@ -723,6 +885,13 @@ class _FakeLedger implements AmortizationLedgerPort {
     required Money amount,
     required List<AccountAmountAllocation> outgoingAllocations,
     required List<AccountAmountAllocation> incomingAllocations,
+    DateTime? occurredAt,
+    Money? feeAmount,
+    Patch<String?>? note,
+    Patch<String?>? counterpartyId,
+    Set<String>? tagIds,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
   }) async {
     transferRewrites.add(
       _TransferRequest(

@@ -52,4 +52,37 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('keeps a disabled action visible and ignores taps', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: AppInlineActionButton(
+            icon: RemixIcons.refresh_line,
+            label: '暂不可操作',
+            onPressed: null,
+          ),
+        ),
+      ),
+    );
+
+    final action = tester.widget<AppInlineActionButton>(
+      find.byType(AppInlineActionButton),
+    );
+    final inkWell = tester.widget<InkWell>(
+      find.descendant(
+        of: find.byType(AppInlineActionButton),
+        matching: find.byType(InkWell),
+      ),
+    );
+
+    expect(action.onPressed, isNull);
+    expect(inkWell.onTap, isNull);
+    expect(find.text('暂不可操作'), findsOneWidget);
+    await tester.tap(find.byType(AppInlineActionButton));
+    expect(tester.takeException(), isNull);
+  });
 }

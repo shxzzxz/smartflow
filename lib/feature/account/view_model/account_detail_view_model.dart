@@ -180,9 +180,10 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
       AccountDetailAction(
         label: '新建摊销',
         iconKey: 'calendar-schedule-line',
-        route:
-            '/amortizations/new?kind=prepaidExpense'
-            '&deferralAccountId=${account.id}',
+        route: _amortizationTransactionRoute(
+          kind: 'prepaidExpense',
+          deferralAccountId: account.id,
+        ),
       ),
       AccountDetailAction(
         label: '摊销计划',
@@ -194,9 +195,10 @@ List<AccountDetailAction> accountDetailActions(AccountView account) {
       AccountDetailAction(
         label: '新建摊销',
         iconKey: 'calendar-schedule-line',
-        route:
-            '/amortizations/new?kind=deferredIncome'
-            '&deferralAccountId=${account.id}',
+        route: _amortizationTransactionRoute(
+          kind: 'deferredIncome',
+          deferralAccountId: account.id,
+        ),
       ),
       AccountDetailAction(
         label: '摊销计划',
@@ -237,6 +239,21 @@ String _transactionRoute({
   return Uri(
     path: '/transaction/new',
     queryParameters: {'mode': ?mode, ...queryParameters},
+  ).toString();
+}
+
+String _amortizationTransactionRoute({
+  required String kind,
+  required String deferralAccountId,
+}) {
+  return Uri(
+    path: '/transaction/new',
+    queryParameters: {
+      'mode': kind == 'deferredIncome' ? 'income' : 'expense',
+      'scene': 'amortization',
+      'kind': kind,
+      'deferralAccountId': deferralAccountId,
+    },
   ).toString();
 }
 

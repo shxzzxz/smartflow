@@ -68,6 +68,118 @@ class AmortizationPlan {
     );
   }
 
+  AmortizationPlan reconfigured({
+    required String deferralAccountId,
+    required Money originalAmount,
+    required List<AccountAmountAllocation> fundingAllocations,
+    required List<AccountAmountAllocation> categoryAllocations,
+    required AmortizationCadenceUnit cadenceUnit,
+    required int cadenceInterval,
+    required DateTime firstRecognitionAt,
+    required int recognitionCount,
+  }) {
+    if (termination != null) {
+      throw _invalid(
+        'termination',
+        'A terminated plan cannot be reconfigured.',
+      );
+    }
+    final nextCategoryAllocations = subtractAllocations(
+      base: categoryAllocations,
+      reductions: refunds.expand((refund) => refund.categoryAllocations),
+    );
+    final nextNetAmount =
+        originalAmount -
+        refunds.fold(Money.zero(), (total, refund) => total + refund.amount);
+    final draftPeriods = buildAmortizationSchedule(
+      planId: id,
+      total: nextNetAmount,
+      firstRecognitionAt: firstRecognitionAt,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      recognitionCount: recognitionCount,
+      categoryAllocations: nextCategoryAllocations,
+    );
+    final existingBySequence = {
+      for (final period in periods) period.sequenceNo: period,
+    };
+    return AmortizationPlan(
+      id: id,
+      kind: kind,
+      deferralAccountId: deferralAccountId,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt,
+      recognitionCount: recognitionCount,
+      initialTransactionId: initialTransactionId,
+      periods: [
+        for (final draft in draftPeriods)
+          _reconcileReconfiguredPeriod(
+            existingBySequence[draft.sequenceNo],
+            draft,
+          ),
+      ],
+      refunds: refunds,
+    );
+  }
+
+  /// Rebuilds the schedule from the plan's current financial inputs.
+  ///
+  /// Configuration changes only replace the recognition cadence.
+  /// Original amount, funding/category allocations and refunds remain the
+  /// authoritative inputs, so the same recalculation path also handles plans
+  /// with posted periods or refunds.
+  AmortizationPlan reconfiguredConfiguration({
+    required AmortizationCadenceUnit cadenceUnit,
+    required int cadenceInterval,
+    required DateTime firstRecognitionAt,
+    required int recognitionCount,
+  }) {
+    final nextCategoryAllocations = currentCategoryAllocations;
+    final draftPeriods = buildAmortizationSchedule(
+      planId: id,
+      total: netAmount,
+      firstRecognitionAt: firstRecognitionAt,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      recognitionCount: recognitionCount,
+      categoryAllocations: nextCategoryAllocations,
+    );
+    final existingBySequence = {
+      for (final period in periods) period.sequenceNo: period,
+    };
+    final terminationAt = termination?.terminatedAt;
+    return AmortizationPlan(
+      id: id,
+      kind: kind,
+      deferralAccountId: deferralAccountId,
+      originalAmount: originalAmount,
+      fundingAllocations: fundingAllocations,
+      categoryAllocations: categoryAllocations,
+      cadenceUnit: cadenceUnit,
+      cadenceInterval: cadenceInterval,
+      firstRecognitionAt: firstRecognitionAt,
+      recognitionCount: recognitionCount,
+      initialTransactionId: initialTransactionId,
+      periods: [
+        for (final draft in draftPeriods)
+          if (terminationAt != null &&
+              _dateOnly(draft.dueAt).isAfter(_dateOnly(terminationAt)))
+            _canceledPeriod(draft)
+          else
+            _reconcileReconfiguredPeriod(
+              existingBySequence[draft.sequenceNo],
+              draft,
+            ),
+      ],
+      refunds: refunds,
+      termination: termination,
+    );
+  }
+
   final String id;
   final AmortizationKind kind;
   final String deferralAccountId;
@@ -170,6 +282,13 @@ class AmortizationPlan {
           reductions: recognizedCategoryAllocations,
         );
 
+  /// Category balance available immediately before an existing termination.
+  List<AccountAmountAllocation>
+  get remainingCategoryAllocationsBeforeTermination => subtractAllocations(
+    base: currentCategoryAllocations,
+    reductions: recognizedCategoryAllocations,
+  );
+
   AmortizationPlan withPeriods(Iterable<AmortizationPeriod> nextPeriods) {
     return _copyWith(periods: nextPeriods);
   }
@@ -219,6 +338,16 @@ class AmortizationPlan {
     }
     final nextRefunds = [...refunds]..[index] = refund;
     return _withRefundFacts(nextRefunds);
+  }
+
+  AmortizationPlan withoutRefund(String refundId) {
+    if (!refunds.any((refund) => refund.id == refundId)) {
+      throw _invalid('refund.id', 'Refund does not exist.');
+    }
+    return _withRefundFacts([
+      for (final refund in refunds)
+        if (refund.id != refundId) refund,
+    ]);
   }
 
   AmortizationPlan _withRefundFacts(List<AmortizationRefund> nextRefunds) {
@@ -498,6 +627,50 @@ class AmortizationPlan {
       status: current.transactionId == null
           ? AmortizationPeriodStatus.pending
           : AmortizationPeriodStatus.posted,
+    );
+  }
+
+  static AmortizationPeriod _reconcileReconfiguredPeriod(
+    AmortizationPeriod? current,
+    AmortizationPeriod draft,
+  ) {
+    if (draft.amount.minorUnits == 0) {
+      return AmortizationPeriod(
+        id: draft.id,
+        planId: draft.planId,
+        sequenceNo: draft.sequenceNo,
+        dueAt: draft.dueAt,
+        amount: draft.amount,
+        categoryAllocations: const [],
+        status: AmortizationPeriodStatus.zero,
+      );
+    }
+    final currentTransactionId = current?.isPosted == true
+        ? current!.transactionId
+        : null;
+    return AmortizationPeriod(
+      id: draft.id,
+      planId: draft.planId,
+      sequenceNo: draft.sequenceNo,
+      dueAt: draft.dueAt,
+      amount: draft.amount,
+      categoryAllocations: draft.categoryAllocations,
+      transactionId: currentTransactionId,
+      status: currentTransactionId == null
+          ? AmortizationPeriodStatus.pending
+          : AmortizationPeriodStatus.posted,
+    );
+  }
+
+  static AmortizationPeriod _canceledPeriod(AmortizationPeriod draft) {
+    return AmortizationPeriod(
+      id: draft.id,
+      planId: draft.planId,
+      sequenceNo: draft.sequenceNo,
+      dueAt: draft.dueAt,
+      amount: draft.amount,
+      categoryAllocations: draft.categoryAllocations,
+      status: AmortizationPeriodStatus.canceled,
     );
   }
 

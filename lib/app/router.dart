@@ -17,7 +17,7 @@ import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
 import '../feature/account/presentation/account_creation_presets.dart';
 import '../feature/amortization/page/amortization_detail_page.dart';
-import '../feature/amortization/page/amortization_form_page.dart';
+import '../feature/amortization/page/amortization_configuration_edit_page.dart';
 import '../feature/amortization/page/amortization_plans_page.dart';
 import '../feature/category/page/categories_page.dart';
 import '../feature/tag/page/tags_page.dart';
@@ -187,16 +187,19 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/amortizations/new',
-      builder: (context, state) => AmortizationFormPage(
-        initialKind: _amortizationKindFromQuery(state.uri.queryParameters),
-        initialDeferralAccountId:
-            state.uri.queryParameters['deferralAccountId'],
-      ),
+      redirect: (context, state) =>
+          _legacyAmortizationTransactionRoute(state.uri.queryParameters),
     ),
     GoRoute(
       path: '/amortizations/:id',
       builder: (context, state) =>
           AmortizationDetailPage(planId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/amortizations/:id/configuration',
+      builder: (context, state) => AmortizationConfigurationEditPage(
+        planId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/calendar/bills/day',
@@ -247,19 +250,22 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/transaction/new',
       builder: (context, state) {
-        final mode = switch (state.uri.queryParameters['mode']) {
+        final query = state.uri.queryParameters;
+        final mode = switch (query['mode']) {
           'income' => TransactionFormInitialMode.income,
           'transfer' => TransactionFormInitialMode.transfer,
           'borrowing' => TransactionFormInitialMode.borrowing,
           'lending' => TransactionFormInitialMode.lending,
           _ => TransactionFormInitialMode.expense,
         };
+        final kind = _initialAmortizationKindFromQuery(query, mode: mode);
         return TransactionFormPage(
           initialMode: mode,
-          initialFromAccountId: state.uri.queryParameters['fromAccountId'],
-          initialToAccountId: state.uri.queryParameters['toAccountId'],
-          initialLiabilityAccountId:
-              state.uri.queryParameters['liabilityAccountId'],
+          initialFromAccountId: query['fromAccountId'],
+          initialToAccountId: query['toAccountId'],
+          initialLiabilityAccountId: query['liabilityAccountId'],
+          initialAmortizationKind: kind,
+          initialAmortizationDeferralAccountId: query['deferralAccountId'],
         );
       },
     ),
@@ -304,6 +310,18 @@ final appRouter = GoRouter(
       path: '/transaction/:id/refund/edit',
       builder: (context, state) =>
           RefundFormPage.edit(editTransactionId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/transaction/:id/amortization-terminate',
+      builder: (context, state) => RefundFormPage.amortizationTermination(
+        transactionId: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
+      path: '/transaction/:id/amortization-terminate/edit',
+      builder: (context, state) => RefundFormPage.amortizationTerminationEdit(
+        transactionId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/transaction/:id/advance',
@@ -583,4 +601,32 @@ AmortizationKind _amortizationKindFromQuery(Map<String, String> query) {
     'deferredIncome' => AmortizationKind.deferredIncome,
     _ => AmortizationKind.prepaidExpense,
   };
+}
+
+AmortizationKind? _initialAmortizationKindFromQuery(
+  Map<String, String> query, {
+  required TransactionFormInitialMode mode,
+}) {
+  if (query['scene'] != 'amortization' && query['kind'] == null) return null;
+  return switch (query['kind']) {
+    'deferredIncome' => AmortizationKind.deferredIncome,
+    'prepaidExpense' => AmortizationKind.prepaidExpense,
+    _ =>
+      mode == TransactionFormInitialMode.income
+          ? AmortizationKind.deferredIncome
+          : AmortizationKind.prepaidExpense,
+  };
+}
+
+String _legacyAmortizationTransactionRoute(Map<String, String> query) {
+  final kind = _amortizationKindFromQuery(query);
+  return Uri(
+    path: '/transaction/new',
+    queryParameters: {
+      'mode': kind == AmortizationKind.deferredIncome ? 'income' : 'expense',
+      'scene': 'amortization',
+      'kind': kind.name,
+      'deferralAccountId': ?query['deferralAccountId'],
+    },
+  ).toString();
 }

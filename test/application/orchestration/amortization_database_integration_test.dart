@@ -7,7 +7,9 @@ import 'package:smartflow/application/ledger/transaction/command/transaction_led
 import 'package:smartflow/application/ledger/transaction/command/transaction_posting_app_service.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_command.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
@@ -293,60 +295,63 @@ void main() {
     expect(await fixture.balance('rent-expense'), balancesBefore.expense);
   });
 
-  test('failed undo restores termination and catch-up writes', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.close);
-    final planId = await fixture.service.createPlan(_command());
-    await fixture.service.terminate(
-      TerminateAmortizationPlanCommand(
-        planId: planId,
-        terminatedAt: DateTime(2026, 1, 31),
-        categoryReturnAllocations: singleAllocation(
-          accountId: 'rent-expense',
-          amount: _money(5000),
-        ),
-        settlementAllocations: singleAllocation(
-          accountId: 'fund',
-          amount: _money(5000),
-        ),
-      ),
-    );
-    final balancesBefore = (
-      fund: await fixture.balance('fund'),
-      prepaid: await fixture.balance('prepaid'),
-      expense: await fixture.balance('rent-expense'),
-    );
-    final transactionCount = await _ownerTransactionCount(
-      fixture.database,
-      planId,
-    );
-    final service = AmortizationPlanAppServiceImpl(
-      repository: _FailAfterSaveRepository(fixture.database),
-      ledger: fixture.ledger,
-      transactionRunner: fixture.runner,
-      idGenerator: fixture.ids,
-    );
-
-    await expectLater(
-      service.undoTermination(
-        UndoAmortizationTerminationCommand(
+  test(
+    'failed termination deletion restores facts and catch-up writes',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.close);
+      final planId = await fixture.service.createPlan(_command());
+      await fixture.service.terminate(
+        TerminateAmortizationPlanCommand(
           planId: planId,
-          now: DateTime(2026, 4, 1),
+          terminatedAt: DateTime(2026, 1, 31),
+          categoryReturnAllocations: singleAllocation(
+            accountId: 'rent-expense',
+            amount: _money(5000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'fund',
+            amount: _money(5000),
+          ),
         ),
-      ),
-      throwsA(isA<StateError>()),
-    );
+      );
+      final balancesBefore = (
+        fund: await fixture.balance('fund'),
+        prepaid: await fixture.balance('prepaid'),
+        expense: await fixture.balance('rent-expense'),
+      );
+      final transactionCount = await _ownerTransactionCount(
+        fixture.database,
+        planId,
+      );
+      final service = AmortizationPlanAppServiceImpl(
+        repository: _FailAfterSaveRepository(fixture.database),
+        ledger: fixture.ledger,
+        transactionRunner: fixture.runner,
+        idGenerator: fixture.ids,
+      );
 
-    final plan = (await fixture.repository.findById(planId))!;
-    expect(plan.status, AmortizationStatus.terminated);
-    expect(
-      await _ownerTransactionCount(fixture.database, planId),
-      transactionCount,
-    );
-    expect(await fixture.balance('fund'), balancesBefore.fund);
-    expect(await fixture.balance('prepaid'), balancesBefore.prepaid);
-    expect(await fixture.balance('rent-expense'), balancesBefore.expense);
-  });
+      await expectLater(
+        service.deleteTermination(
+          DeleteAmortizationTerminationCommand(
+            planId: planId,
+            now: DateTime(2026, 4, 1),
+          ),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      final plan = (await fixture.repository.findById(planId))!;
+      expect(plan.status, AmortizationStatus.terminated);
+      expect(
+        await _ownerTransactionCount(fixture.database, planId),
+        transactionCount,
+      );
+      expect(await fixture.balance('fund'), balancesBefore.fund);
+      expect(await fixture.balance('prepaid'), balancesBefore.prepaid);
+      expect(await fixture.balance('rent-expense'), balancesBefore.expense);
+    },
+  );
 
   test(
     'failed plan delete restores transactions and projection rows',
@@ -419,6 +424,99 @@ void main() {
     expect(await fixture.balance('fund'), _money(-15000));
     expect(await fixture.balance('prepaid'), _money(10000));
     expect(await fixture.balance('rent-expense'), _money(5000));
+  });
+
+  test('editing a plan rewrites initial and posted ledger facts', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.close);
+    final planId = await fixture.service.createPlan(_command());
+    await fixture.service.generateDue(DateTime(2026, 1, 31));
+
+    await fixture.service.updatePlan(
+      UpdateAmortizationPlanCommand(
+        planId: planId,
+        total: _money(60000),
+        fundingAllocations: singleAllocation(
+          accountId: 'fund-2',
+          amount: _money(60000),
+        ),
+        deferralAccountId: 'prepaid',
+        recognitionAllocations: singleAllocation(
+          accountId: 'rent-expense',
+          amount: _money(60000),
+        ),
+        firstRecognitionAt: DateTime(2026, 2, 28),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 2,
+        occurredAt: DateTime(2026, 1, 2),
+        now: DateTime(2026, 1, 31),
+        note: const Patch<String?>.set('updated'),
+        feeAmount: _money(500),
+      ),
+    );
+
+    final plan = (await fixture.repository.findById(planId))!;
+    expect(plan.originalAmount, _money(60000));
+    expect(plan.periods, hasLength(2));
+    expect(plan.postedPeriodCount, 1);
+    expect(plan.periods.first.amount, _money(30000));
+    expect(plan.periods.first.dueAt, DateTime(2026, 2, 28));
+    final initialTransaction =
+        await (fixture.database.select(fixture.database.transactions)
+              ..where((table) => table.id.equals(plan.initialTransactionId)))
+            .getSingle();
+    expect(initialTransaction.ownerType, orchestrationAmortizationOwnerType);
+    expect(initialTransaction.ownerId, planId);
+    expect(await fixture.balance('fund'), _money(0));
+    expect(await fixture.balance('fund-2'), _money(-60500));
+    expect(await fixture.balance('prepaid'), _money(30000));
+    expect(await fixture.balance('rent-expense'), _money(30000));
+  });
+
+  test('terminated plans reject edits but still allow deletion', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.close);
+    final planId = await fixture.service.createPlan(_command());
+    await fixture.service.terminate(
+      TerminateAmortizationPlanCommand(
+        planId: planId,
+        terminatedAt: DateTime(2026, 1, 31),
+        categoryReturnAllocations: const [],
+        settlementAllocations: const [],
+      ),
+    );
+
+    await expectLater(
+      fixture.service.updatePlan(
+        UpdateAmortizationPlanCommand(
+          planId: planId,
+          total: _money(30000),
+          fundingAllocations: singleAllocation(
+            accountId: 'fund',
+            amount: _money(30000),
+          ),
+          deferralAccountId: 'prepaid',
+          recognitionAllocations: singleAllocation(
+            accountId: 'rent-expense',
+            amount: _money(30000),
+          ),
+          firstRecognitionAt: DateTime(2026, 1, 31),
+          cadenceUnit: AmortizationCadenceUnit.monthly,
+          cadenceInterval: 1,
+          recognitionCount: 3,
+          occurredAt: DateTime(2026, 1, 1),
+          now: DateTime(2026, 1, 31),
+          note: const Patch<String?>.clear(),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+
+    await fixture.service.deletePlan(
+      DeleteAmortizationPlanCommand(planId: planId),
+    );
+    expect(await fixture.repository.findById(planId), isNull);
   });
 
   test(

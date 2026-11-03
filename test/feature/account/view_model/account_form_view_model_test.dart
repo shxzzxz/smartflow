@@ -16,6 +16,37 @@ import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
   group('AccountFormViewModel', () {
+    test('uses amount wording for prepaid and deferred accounts', () {
+      expect(
+        manualBalanceLabel(
+          kind: AccountProfileKind.prepaidExpense,
+          isEdit: true,
+        ),
+        '预付金额',
+      );
+      expect(
+        manualBalanceHint(
+          kind: AccountProfileKind.prepaidExpense,
+          isEdit: true,
+        ),
+        '请输入预付金额',
+      );
+      expect(
+        manualBalanceLabel(
+          kind: AccountProfileKind.deferredIncome,
+          isEdit: true,
+        ),
+        '预收金额',
+      );
+      expect(
+        manualBalanceHint(
+          kind: AccountProfileKind.deferredIncome,
+          isEdit: true,
+        ),
+        '请输入预收金额',
+      );
+    });
+
     test('new account exposes an immediate data snapshot', () {
       final container = _container(_FakeAccountAppService());
 
@@ -98,10 +129,9 @@ void main() {
         snapshot = AsyncValue.data(updatedAccount);
         container.invalidate(snapshotProvider);
 
-        final state =
-            container
-                .read(accountFormViewModelProvider('account-1'))
-                .requireValue!;
+        final state = container
+            .read(accountFormViewModelProvider('account-1'))
+            .requireValue!;
         expect(state.initialValues.name, '原始名称');
         expect(state.iconKey, 'user-selected-icon');
       },
@@ -231,10 +261,9 @@ void main() {
       final viewModel = container.read(
         accountFormViewModelProvider('account-1').notifier,
       );
-      final loadedState =
-          container
-              .read(accountFormViewModelProvider('account-1'))
-              .requireValue!;
+      final loadedState = container
+          .read(accountFormViewModelProvider('account-1'))
+          .requireValue!;
 
       expect(loadedState.initialValues.name, 'Old');
       expect(loadedState.initialValues.openingBalance, '10.00');
@@ -277,10 +306,9 @@ void main() {
           creditAppService: creditAppService,
           editAccount: account,
         );
-        final loaded =
-            container
-                .read(accountFormViewModelProvider('credit-1'))
-                .requireValue!;
+        final loaded = container
+            .read(accountFormViewModelProvider('credit-1'))
+            .requireValue!;
         final viewModel = container.read(
           accountFormViewModelProvider('credit-1').notifier,
         );

@@ -13,6 +13,7 @@ import '../../../../../core/patch/patch.dart';
 import '../../../../../core/text/text_normalizer.dart';
 import '../../../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../../../shared/account_profile/account_selection_purpose.dart';
+import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 import '../../../../shared/provider/ledger_query_providers.dart';
 import '../../../../shared/view_model/action_guard.dart';
 import '../../../../shared/view_model/ui_action_outcome.dart';
@@ -32,6 +33,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
   Future<RefundFormState> build(
     String transactionId, {
     bool editing = false,
+    bool amortizationTermination = false,
   }) async {
     final accounts = await ref.watch(
       accountsForSelectionPurposeProvider(
@@ -47,6 +49,31 @@ class RefundFormViewModel extends _$RefundFormViewModel {
         accounts: accounts,
         transactionId: transactionId,
         editing: editing,
+        amortizationTermination: amortizationTermination,
+      );
+    }
+    final ownership = detail.ownership;
+    if (ownership?.ownerType == orchestrationAmortizationOwnerType) {
+      final plan = await ref.watch(
+        amortizationPlanProvider(ownership!.ownerId).future,
+      );
+      if (plan == null) {
+        return RefundFormState.notFound(
+          accounts: accounts,
+          transactionId: transactionId,
+          editing: editing,
+          amortizationTermination: amortizationTermination,
+          message: '摊销计划不存在',
+        );
+      }
+      return _buildAmortizationState(
+        transactionId: transactionId,
+        detail: detail,
+        plan: plan,
+        accounts: accounts,
+        accountsById: accountsById,
+        editing: editing,
+        termination: amortizationTermination,
       );
     }
     if (editing) {
@@ -55,6 +82,14 @@ class RefundFormViewModel extends _$RefundFormViewModel {
         detail: detail,
         accounts: accounts,
         accountsById: accountsById,
+      );
+    }
+    if (amortizationTermination) {
+      return RefundFormState.notEditable(
+        accounts: accounts,
+        transactionId: transactionId,
+        parentTransactionId: detail.parentTransactionId ?? transactionId,
+        message: '当前交易不是摊销交易',
       );
     }
     final defaultAccountId = effectiveRefundToAccountId(
@@ -104,6 +139,108 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       occurredAt: occurredAt,
       amountText: '',
       noteText: '',
+    );
+  }
+
+  RefundFormState _buildAmortizationState({
+    required String transactionId,
+    required TransactionReadModel detail,
+    required AmortizationPlan plan,
+    required List<Account> accounts,
+    required Map<String, Account> accountsById,
+    required bool editing,
+    required bool termination,
+  }) {
+    if (plan.status == AmortizationStatus.terminated &&
+        !(termination && editing)) {
+      return RefundFormState.notEditable(
+        accounts: accounts,
+        transactionId: transactionId,
+        parentTransactionId:
+            detail.parentTransactionId ?? plan.initialTransactionId,
+        amortizationTermination: termination,
+        message: '摊销计划已终止，请先删除摊销终止',
+      );
+    }
+
+    final AmortizationRefund? refund;
+    final AmortizationTermination? terminationFact;
+    if (termination && editing) {
+      terminationFact = plan.termination;
+      if (terminationFact == null) {
+        return RefundFormState.notFound(
+          accounts: accounts,
+          transactionId: transactionId,
+          editing: true,
+          amortizationTermination: true,
+          message: '摊销终止记录不存在',
+        );
+      }
+      refund = null;
+    } else if (editing) {
+      terminationFact = null;
+      refund = plan.refunds
+          .where((item) => item.transferTransactionId == transactionId)
+          .firstOrNull;
+      if (refund == null) {
+        return RefundFormState.notFound(
+          accounts: accounts,
+          transactionId: transactionId,
+          editing: true,
+          message: '摊销退款记录不存在',
+        );
+      }
+    } else {
+      terminationFact = null;
+      refund = null;
+    }
+
+    final availableCategories = termination
+        ? editing
+              ? plan.remainingCategoryAllocationsBeforeTermination
+              : plan.remainingCategoryAllocations
+        : editing
+        ? plan.categoryAllocationsExcludingRefund(refund!.id)
+        : plan.currentCategoryAllocations;
+    final categoryAllocations =
+        terminationFact?.categoryReturnAllocations ??
+        refund?.categoryAllocations;
+    final settlementAllocations =
+        terminationFact?.settlementAllocations ?? refund?.settlementAllocations;
+    final remaining = sumAllocations(availableCategories);
+    final categoryAccountIds = {
+      for (final allocation in plan.categoryAllocations) allocation.accountId,
+      for (final allocation in availableCategories) allocation.accountId,
+    };
+    final categoryAccounts = [
+      for (final accountId in categoryAccountIds) ?accountsById[accountId],
+    ];
+    final refundToAccountId =
+        settlementAllocations?.firstOrNull?.accountId ??
+        accounts.firstOrNull?.id;
+    return RefundFormState.loaded(
+      transactionId: transactionId,
+      parentTransactionId:
+          detail.parentTransactionId ?? plan.initialTransactionId,
+      editing: editing,
+      amortizationPlanId: plan.id,
+      amortizationTermination: termination,
+      amortizationRefundId: refund?.id,
+      accounts: accounts,
+      categoryAccounts: categoryAccounts,
+      availableCategoryAllocations: availableCategories,
+      categoryAllocations: categoryAllocations,
+      settlementAllocations: settlementAllocations,
+      remaining: remaining,
+      refundToAccountId: refundToAccountId,
+      occurredAt: editing ? detail.occurredAt : DateTime.now(),
+      amountText: refund == null && terminationFact == null
+          ? ''
+          : formatMoney(
+              refund?.amount ?? terminationFact!.returnAmount,
+              style: MoneyFormatStyle.plain,
+            ),
+      noteText: editing ? detail.note ?? '' : '',
     );
   }
 
@@ -246,6 +383,13 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     final current = state.asData?.value;
     if (current == null || !current.isLoaded) {
       return _invalidCommand('退款表单尚未加载');
+    }
+    if (current.amortizationPlanId != null) {
+      return _submitAmortization(
+        current,
+        amountText: amountText,
+        noteText: noteText,
+      );
     }
     final amount = _parsePositiveMoney(amountText);
     if (amount == null) return _invalidCommand('请输入有效退款金额');
@@ -415,6 +559,133 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     }
   }
 
+  Future<SubmitOutcome> _submitAmortization(
+    RefundFormState current, {
+    required String amountText,
+    required String noteText,
+  }) async {
+    final trimmedAmount = amountText.trim();
+    final amount = current.amortizationTermination && trimmedAmount.isEmpty
+        ? Money.zero()
+        : Money.tryParse(trimmedAmount);
+    if (amount == null ||
+        amount.minorUnits < 0 ||
+        (!current.amortizationTermination && amount.minorUnits == 0)) {
+      return _invalidCommand(
+        current.amortizationTermination ? '请输入有效退还金额' : '请输入有效退款金额',
+      );
+    }
+    final categoryAllocations = switch (current.categoryAllocations) {
+      final allocations? => patchAllocations(
+        current: allocations,
+        total: amount,
+      ),
+      null
+          when amount.minorUnits > 0 &&
+              current.availableCategoryAllocations.length == 1 =>
+        [current.availableCategoryAllocations.single.copyWith(amount: amount)],
+      null => const <AccountAmountAllocation>[],
+    };
+    if (sumAllocations(categoryAllocations) != amount ||
+        !allocationsFitAvailable(
+          requested: categoryAllocations,
+          available: current.availableCategoryAllocations,
+        )) {
+      return _invalidCommand(
+        current.amortizationTermination ? '请完成退还分类分配' : '请完成退款分类分配',
+      );
+    }
+    final defaultAccountId = _selectedId(
+      current.refundToAccountId,
+      current.accounts,
+    );
+    if (amount.minorUnits > 0 && defaultAccountId == null) {
+      return _invalidCommand('请选择退款账户');
+    }
+    final settlementAllocations = amount.minorUnits == 0
+        ? const <AccountAmountAllocation>[]
+        : current.settlementAllocations == null
+        ? singleAllocation(accountId: defaultAccountId!, amount: amount)
+        : patchAllocations(
+            current: current.settlementAllocations!,
+            total: amount,
+          );
+    if (sumAllocations(settlementAllocations) != amount) {
+      return _invalidCommand(
+        current.amortizationTermination ? '请完成到账账户分配' : '请完成退款到账分配',
+      );
+    }
+
+    _update((state) => state.copyWith(submitting: true));
+    try {
+      return await guardSubmit(
+        _logger,
+        current.amortizationTermination
+            ? 'Amortization termination submit'
+            : 'Amortization refund submit',
+        () async {
+          final service = ref.read(amortizationPlanAppServiceProvider);
+          final planId = current.amortizationPlanId!;
+          if (current.amortizationTermination) {
+            if (current.editing) {
+              await service.editTermination(
+                EditAmortizationTerminationCommand(
+                  planId: planId,
+                  terminatedAt: current.occurredAt,
+                  categoryReturnAllocations: categoryAllocations,
+                  settlementAllocations: settlementAllocations,
+                ),
+              );
+            } else {
+              await service.terminate(
+                TerminateAmortizationPlanCommand(
+                  planId: planId,
+                  terminatedAt: current.occurredAt,
+                  categoryReturnAllocations: categoryAllocations,
+                  settlementAllocations: settlementAllocations,
+                ),
+              );
+            }
+          } else if (current.editing) {
+            await service.editRefund(
+              EditAmortizationRefundCommand(
+                planId: planId,
+                refundId: current.amortizationRefundId!,
+                categoryAllocations: categoryAllocations,
+                settlementAllocations: settlementAllocations,
+                occurredAt: current.occurredAt,
+                note: _stringPatch(trimToNull(noteText)),
+                now: DateTime.now(),
+              ),
+            );
+          } else {
+            await service.refund(
+              CreateAmortizationRefundCommand(
+                planId: planId,
+                categoryAllocations: categoryAllocations,
+                settlementAllocations: settlementAllocations,
+                occurredAt: current.occurredAt,
+                note: trimToNull(noteText),
+              ),
+            );
+          }
+          ref
+            ..invalidate(amortizationPlanProvider(planId))
+            ..invalidate(amortizationPlansProvider())
+            ..invalidate(transactionDetailProvider(current.transactionId))
+            ..invalidate(accountsByIdProvider)
+            ..invalidate(
+              accountsForSelectionPurposeProvider(
+                AccountSelectionPurpose.settlement,
+              ),
+            );
+        },
+      );
+    } finally {
+      _update((state) => state.copyWith(submitting: false));
+    }
+  }
+
   void _update(RefundFormState Function(RefundFormState) update) {
     final current = state.asData?.value;
     if (current == null) return;
@@ -530,6 +801,10 @@ class RefundFormState {
     this.installmentLiabilityAccountId,
     this.refundablePrincipal,
     this.refundLimitLoading = false,
+    this.amortizationPlanId,
+    this.amortizationTermination = false,
+    this.amortizationRefundId,
+    this.message,
   }) : accounts = List.unmodifiable(accounts),
        categoryAccounts = List.unmodifiable(categoryAccounts),
        availableCategoryAllocations = List.unmodifiable(
@@ -554,6 +829,10 @@ class RefundFormState {
     String? refundToAccountId,
     List<AccountAmountAllocation>? categoryAllocations,
     List<AccountAmountAllocation>? settlementAllocations,
+    String? amortizationPlanId,
+    bool amortizationTermination = false,
+    String? amortizationRefundId,
+    String? message,
   }) {
     return RefundFormState(
       status: RefundFormStatus.loaded,
@@ -573,6 +852,10 @@ class RefundFormState {
       refundToAccountId: refundToAccountId,
       categoryAllocations: categoryAllocations,
       settlementAllocations: settlementAllocations,
+      amortizationPlanId: amortizationPlanId,
+      amortizationTermination: amortizationTermination,
+      amortizationRefundId: amortizationRefundId,
+      message: message,
       submitting: false,
       amountText: amountText,
       noteText: noteText,
@@ -583,6 +866,8 @@ class RefundFormState {
     required List<Account> accounts,
     required String transactionId,
     required bool editing,
+    bool amortizationTermination = false,
+    String message = '原交易不存在',
   }) {
     return RefundFormState(
       status: RefundFormStatus.notFound,
@@ -596,6 +881,8 @@ class RefundFormState {
       submitting: false,
       amountText: '',
       noteText: '',
+      amortizationTermination: amortizationTermination,
+      message: message,
     );
   }
 
@@ -603,6 +890,8 @@ class RefundFormState {
     required List<Account> accounts,
     required String transactionId,
     required String parentTransactionId,
+    bool amortizationTermination = false,
+    String message = '交易当前不可编辑',
   }) {
     return RefundFormState(
       status: RefundFormStatus.notEditable,
@@ -616,6 +905,8 @@ class RefundFormState {
       submitting: false,
       amountText: '',
       noteText: '',
+      amortizationTermination: amortizationTermination,
+      message: message,
     );
   }
 
@@ -628,6 +919,10 @@ class RefundFormState {
   final String? installmentLiabilityAccountId;
   final Money? refundablePrincipal;
   final bool refundLimitLoading;
+  final String? amortizationPlanId;
+  final bool amortizationTermination;
+  final String? amortizationRefundId;
+  final String? message;
   final List<Account> accounts;
   final List<Account> categoryAccounts;
   final List<AccountAmountAllocation> availableCategoryAllocations;
@@ -663,6 +958,10 @@ class RefundFormState {
           ? this.refundablePrincipal
           : refundablePrincipal as Money?,
       refundLimitLoading: refundLimitLoading ?? this.refundLimitLoading,
+      amortizationPlanId: amortizationPlanId,
+      amortizationTermination: amortizationTermination,
+      amortizationRefundId: amortizationRefundId,
+      message: message,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategoryAllocations,

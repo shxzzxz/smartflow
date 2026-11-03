@@ -359,8 +359,8 @@ String _balanceTitle(AccountView account) {
     AccountProfileKind.receivable => '当前应收',
     AccountProfileKind.payable => '当前应付',
     AccountProfileKind.credit || AccountProfileKind.loan => '当前欠款',
-    AccountProfileKind.prepaidExpense => '当前预付',
-    AccountProfileKind.deferredIncome => '当前预收',
+    AccountProfileKind.prepaidExpense => '预付金额',
+    AccountProfileKind.deferredIncome => '预收金额',
     AccountProfileKind.fund || AccountProfileKind.reimbursement => '当前余额',
   };
 }

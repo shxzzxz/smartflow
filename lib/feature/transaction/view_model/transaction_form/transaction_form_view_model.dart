@@ -12,6 +12,7 @@ import '../../../../core/patch/patch.dart';
 import '../../../../core/text/text_normalizer.dart';
 import '../../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../amortization/presentation/amortization_configuration_draft.dart';
+import '../../../amortization/provider/amortization_providers.dart';
 import '../../../shared/provider/counterparty_providers.dart';
 import '../../../shared/provider/ledger_query_providers.dart';
 import '../../../shared/provider/tag_providers.dart';
@@ -47,6 +48,7 @@ Future<AdvanceCase?> advanceCaseForForm(Ref ref, String advanceCaseId) {
 class TransactionFormViewModel extends _$TransactionFormViewModel {
   TransactionFormState? _initializedState;
   String? _editTransactionId;
+  String? _editAmortizationPlanId;
   int _defaultAccountRequestRevision = 0;
 
   TransactionFormState? get _currentState => state.asData?.value;
@@ -64,6 +66,8 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     String? initialFromAccountId,
     String? initialToAccountId,
     String? initialLiabilityAccountId,
+    AmortizationKind? initialAmortizationKind,
+    String? initialAmortizationDeferralAccountId,
   }) {
     _editTransactionId = editTransactionId;
     final accountOptionsAsync = ref.watch(transactionAccountOptionsProvider);
@@ -104,6 +108,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           fromAccountId: initialFromAccountId,
           toAccountId: initialToAccountId,
           liabilityAccountId: initialLiabilityAccountId,
+          initialAmortizationKind: initialAmortizationKind,
+          initialAmortizationDeferralAccountId:
+              initialAmortizationDeferralAccountId,
           accountOptions:
               accountOptionsAsync.value ?? TransactionAccountOptions.empty(),
           expenseTree: expenseTreeAsync.value ?? const <CategoryNode>[],
@@ -140,9 +147,54 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
     final detail = editDetailAsync!.requireValue;
     if (detail == null) return const AsyncValue.data(null);
-    if (detail.ownership?.ownerType == installmentOwnerType ||
-        detail.ownership?.ownerType == orchestrationAmortizationOwnerType) {
+    if (detail.ownership?.ownerType == installmentOwnerType) {
       return const AsyncValue.data(null);
+    }
+    if (detail.ownership?.ownerType == orchestrationAmortizationOwnerType) {
+      final planAsync = ref.watch(
+        amortizationPlanProvider(detail.ownership!.ownerId),
+      );
+      if (planAsync case AsyncError(:final error, :final stackTrace)) {
+        return AsyncValue.error(error, stackTrace);
+      }
+      if (!planAsync.hasValue) return const AsyncValue.loading();
+      final plan = planAsync.requireValue;
+      if (plan == null || plan.status == AmortizationStatus.terminated) {
+        return const AsyncValue.data(null);
+      }
+      final initialDetailAsync = ref.watch(
+        transactionDetailProvider(plan.initialTransactionId),
+      );
+      final initialTagIdsAsync = ref.watch(
+        transactionTagIdsProvider(plan.initialTransactionId),
+      );
+      final amortizationQueries = <AsyncValue<dynamic>>[
+        initialDetailAsync,
+        initialTagIdsAsync,
+      ];
+      for (final query in amortizationQueries) {
+        if (query case AsyncError(:final error, :final stackTrace)) {
+          return AsyncValue.error(error, stackTrace);
+        }
+      }
+      if (amortizationQueries.any((query) => !query.hasValue)) {
+        return const AsyncValue.loading();
+      }
+      final initialDetail = initialDetailAsync.requireValue;
+      if (initialDetail == null) return const AsyncValue.data(null);
+      _editAmortizationPlanId = plan.id;
+      return AsyncValue.data(
+        _initializedState ??= TransactionFormState.fromAmortizationPlan(
+          plan: plan,
+          initialTransaction: initialDetail,
+          accountOptions: accountOptions,
+          expenseTree: expenseTree,
+          incomeTree: incomeTree,
+          tags: tagsAsync.requireValue,
+          counterparties: counterpartiesAsync.requireValue,
+          initialTagIds: initialTagIdsAsync.requireValue,
+        ),
+      );
     }
     if (!supportsTransactionFormEdit(detail.businessPurpose)) {
       return const AsyncValue.data(null);
@@ -193,7 +245,9 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       return _invalidCommand('请输入有效金额');
     }
     Money? feeAmount;
-    if (current.mode == TransactionFormMode.transfer && feeText != null) {
+    if ((current.mode == TransactionFormMode.transfer ||
+            current.isAmortization) &&
+        feeText != null) {
       final trimmedFee = feeText.trim();
       if (trimmedFee.isEmpty) {
         feeAmount = Money.zero();
@@ -232,10 +286,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
           await workflow.edit(
             state: current,
             transactionId: editTransactionId,
+            amortizationPlanId: _editAmortizationPlanId,
             amount: amount,
             feeAmount: feeAmount,
             note: trimToNull(noteText),
+            amortizationConfiguration: amortizationConfiguration,
           );
+          final planId = _editAmortizationPlanId;
+          if (planId != null) {
+            ref
+              ..invalidate(amortizationPlanProvider(planId))
+              ..invalidate(amortizationPlansProvider())
+              ..invalidate(transactionDetailProvider(editTransactionId));
+          }
         }
       });
     } finally {
@@ -247,6 +310,16 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     _update((current) => current.copyWith(submitting: true));
     try {
       return await guardUiAction(_logger, 'Transaction delete', () async {
+        final planId = _editAmortizationPlanId;
+        if (planId != null) {
+          await ref
+              .read(amortizationPlanAppServiceProvider)
+              .deletePlan(DeleteAmortizationPlanCommand(planId: planId));
+          ref
+            ..invalidate(amortizationPlanProvider(planId))
+            ..invalidate(amortizationPlansProvider());
+          return;
+        }
         await ref
             .read(transactionEditAppServiceProvider)
             .deleteTransaction(
@@ -274,12 +347,25 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required List<TagView>? tags,
     required List<CounterpartyView>? counterparties,
   }) {
-    return current.copyWith(
+    final next = current.copyWith(
       accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
       tags: tags,
       counterparties: counterparties,
+    );
+    if (!next.isAmortization) return next;
+    return next.copyWith(
+      fromAccountId: next.mode == TransactionFormMode.expense
+          ? effectiveAccountId(next.fromAccountId, next.fundAccounts)
+          : next.fromAccountId,
+      toAccountId: next.mode == TransactionFormMode.income
+          ? effectiveAccountId(next.toAccountId, next.fundAccounts)
+          : next.toAccountId,
+      amortizationDeferralAccountId: effectiveAccountId(
+        next.amortizationDeferralAccountId,
+        next.amortizationDeferralAccounts,
+      ),
     );
   }
 

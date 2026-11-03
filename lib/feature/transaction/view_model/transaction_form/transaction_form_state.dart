@@ -1,11 +1,15 @@
 import '../../../../application/ledger/ledger_query_api.dart';
 import '../../../../application/ledger/tag/query/tag_read_models.dart';
 import '../../../../application/orchestration/advance/command/advance_share.dart';
+import '../../../../application/orchestration/orchestration_command_api.dart'
+    show AmortizationPlan;
 import '../../../../core/money/money.dart';
+import '../../../../core/money/money_formatter.dart';
 import '../../../../domain/credit/valobj/installment_contract_terms.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../../shared/account_profile/account_profile_kind.dart';
+import '../../../amortization/presentation/amortization_configuration_draft.dart';
 import '../../presentation/transaction_form_presentation.dart';
 import 'transaction_account_options.dart';
 
@@ -67,12 +71,20 @@ class TransactionFormState {
     String? fromAccountId,
     String? toAccountId,
     String? liabilityAccountId,
+    AmortizationKind? initialAmortizationKind,
+    String? initialAmortizationDeferralAccountId,
     required TransactionAccountOptions accountOptions,
     required List<CategoryNode> expenseTree,
     required List<CategoryNode> incomeTree,
     required List<TagView> tags,
     required List<CounterpartyView> counterparties,
   }) {
+    final amortizationDeferralAccounts =
+        initialAmortizationKind == AmortizationKind.prepaidExpense
+        ? accountOptions.prepaidExpenseAccounts
+        : initialAmortizationKind == AmortizationKind.deferredIncome
+        ? accountOptions.deferredIncomeAccounts
+        : const <Account>[];
     return TransactionFormState(
       initialValues: const TransactionFormInitialValues(),
       mode: mode,
@@ -82,11 +94,18 @@ class TransactionFormState {
       excludeStats: false,
       excludeBudget: false,
       submitting: false,
-      fromAccountId: fromAccountId,
+      fromAccountId:
+          mode == TransactionFormMode.expense &&
+              initialAmortizationKind == AmortizationKind.prepaidExpense
+          ? fromAccountId ?? accountOptions.fundAccounts.firstOrNull?.id
+          : fromAccountId,
       toAccountId:
           mode == TransactionFormMode.lending ||
               mode == TransactionFormMode.borrowing
           ? null
+          : mode == TransactionFormMode.income &&
+                initialAmortizationKind == AmortizationKind.deferredIncome
+          ? toAccountId ?? accountOptions.fundAccounts.firstOrNull?.id
           : toAccountId,
       ordinaryReceivableAccountId: mode == TransactionFormMode.lending
           ? toAccountId
@@ -94,6 +113,20 @@ class TransactionFormState {
       liabilityAccountId: mode == TransactionFormMode.borrowing
           ? liabilityAccountId
           : null,
+      expenseScene:
+          mode == TransactionFormMode.expense &&
+              initialAmortizationKind == AmortizationKind.prepaidExpense
+          ? TransactionExpenseScene.amortization
+          : TransactionExpenseScene.ordinary,
+      incomeScene:
+          mode == TransactionFormMode.income &&
+              initialAmortizationKind == AmortizationKind.deferredIncome
+          ? TransactionIncomeScene.amortization
+          : TransactionIncomeScene.ordinary,
+      amortizationDeferralAccountId: initialAmortizationKind == null
+          ? null
+          : initialAmortizationDeferralAccountId ??
+                amortizationDeferralAccounts.firstOrNull?.id,
       accountOptions: accountOptions,
       expenseTree: expenseTree,
       incomeTree: incomeTree,
@@ -150,6 +183,86 @@ class TransactionFormState {
           : const [],
       excludeStats: snapshot.excludeStats,
       excludeBudget: snapshot.excludeBudget,
+      submitting: false,
+      accountOptions: accountOptions,
+      expenseTree: expenseTree,
+      incomeTree: incomeTree,
+      tags: tags,
+      counterparties: counterparties,
+    );
+  }
+
+  factory TransactionFormState.fromAmortizationPlan({
+    required AmortizationPlan plan,
+    required TransactionReadModel initialTransaction,
+    required TransactionAccountOptions accountOptions,
+    required List<CategoryNode> expenseTree,
+    required List<CategoryNode> incomeTree,
+    required List<TagView> tags,
+    required List<CounterpartyView> counterparties,
+    required Set<String> initialTagIds,
+  }) {
+    final prepaid = plan.kind == AmortizationKind.prepaidExpense;
+    final mode = prepaid
+        ? TransactionFormMode.expense
+        : TransactionFormMode.income;
+    final usesAllocatedEntry =
+        plan.categoryAllocations.length > 1 ||
+        plan.fundingAllocations.length > 1;
+    final categoryId = plan.categoryAllocations.length == 1
+        ? plan.categoryAllocations.single.accountId
+        : null;
+    final fundingAccountId = plan.fundingAllocations.length == 1
+        ? plan.fundingAllocations.single.accountId
+        : null;
+    final fee = initialTransaction.amountOf(TransactionRole.fee);
+    final configuration = AmortizationConfigurationDraft(
+      firstRecognitionAt: plan.firstRecognitionAt,
+      cadenceUnit: plan.cadenceUnit,
+      cadenceInterval: plan.cadenceInterval,
+      recognitionCount: plan.recognitionCount,
+    );
+    return TransactionFormState(
+      initialValues: TransactionFormInitialValues(
+        amount: formatMoney(plan.originalAmount, style: MoneyFormatStyle.plain),
+        fee: fee.minorUnits == 0
+            ? ''
+            : formatMoney(fee, style: MoneyFormatStyle.plain),
+        note: initialTransaction.note ?? '',
+        amortizationConfiguration: configuration,
+      ),
+      mode: mode,
+      entryMode: usesAllocatedEntry
+          ? TransactionEntryMode.allocated
+          : TransactionEntryMode.normal,
+      occurredAt: initialTransaction.occurredAt,
+      selectedTagIds: initialTagIds,
+      counterpartyId: initialTransaction.counterpartyId,
+      expenseCategoryId: !usesAllocatedEntry && prepaid ? categoryId : null,
+      expenseRootId: !usesAllocatedEntry && prepaid
+          ? _rootCategoryId(expenseTree, categoryId)
+          : null,
+      incomeCategoryId: !usesAllocatedEntry && !prepaid ? categoryId : null,
+      incomeRootId: !usesAllocatedEntry && !prepaid
+          ? _rootCategoryId(incomeTree, categoryId)
+          : null,
+      fromAccountId: prepaid && !usesAllocatedEntry ? fundingAccountId : null,
+      toAccountId: !prepaid && !usesAllocatedEntry ? fundingAccountId : null,
+      expenseScene: prepaid
+          ? TransactionExpenseScene.amortization
+          : TransactionExpenseScene.ordinary,
+      incomeScene: prepaid
+          ? TransactionIncomeScene.ordinary
+          : TransactionIncomeScene.amortization,
+      amortizationDeferralAccountId: plan.deferralAccountId,
+      categoryAllocations: usesAllocatedEntry
+          ? plan.categoryAllocations
+          : const [],
+      settlementAllocations: usesAllocatedEntry
+          ? plan.fundingAllocations
+          : const [],
+      excludeStats: initialTransaction.isExcludedFromStats,
+      excludeBudget: initialTransaction.isExcludedFromBudget,
       submitting: false,
       accountOptions: accountOptions,
       expenseTree: expenseTree,
@@ -331,6 +444,7 @@ class TransactionFormInitialValues {
     this.amount = '',
     this.fee = '',
     this.note = '',
+    this.amortizationConfiguration,
   });
 
   factory TransactionFormInitialValues.fromSnapshot(
@@ -346,6 +460,18 @@ class TransactionFormInitialValues {
   final String amount;
   final String fee;
   final String note;
+  final AmortizationConfigurationDraft? amortizationConfiguration;
+}
+
+String? _rootCategoryId(List<CategoryNode> tree, String? categoryId) {
+  if (categoryId == null) return null;
+  for (final node in tree) {
+    if (node.account.id == categoryId) return node.account.id;
+    if (node.children.any((child) => child.id == categoryId)) {
+      return node.account.id;
+    }
+  }
+  return null;
 }
 
 int _aaPeopleCountFromSnapshot(TransactionFormEditSnapshot snapshot) {

@@ -4,15 +4,45 @@ final class _AmortizationActionDispatcher
     implements _TransactionDetailActionDispatcher {
   const _AmortizationActionDispatcher(
     this.transaction, {
+    required this.owner,
     required this.updateService,
+    required this.amortizationAppService,
   });
 
   final TransactionReadModel transaction;
+  final AmortizationTransactionDetailOwnerContext owner;
   final TransactionUpdateAppService updateService;
+  final AmortizationPlanAppService amortizationAppService;
 
   @override
-  Future<UiActionOutcome<void>> delete() async =>
-      detailNotEditable('请在摊销计划中终止，不能单独删除计划交易');
+  Future<UiActionOutcome<void>> delete() async {
+    return switch (owner.factKind) {
+      AmortizationTransactionFactKind.refund => detailVoidOutcomeFromAction(
+        () => amortizationAppService.deleteRefund(
+          DeleteAmortizationRefundCommand(
+            planId: owner.ownerId,
+            refundId: owner.refundId!,
+            now: DateTime.now(),
+          ),
+        ),
+      ),
+      AmortizationTransactionFactKind.terminationRecognition ||
+      AmortizationTransactionFactKind.terminationReturn =>
+        detailVoidOutcomeFromAction(
+          () => amortizationAppService.deleteTermination(
+            DeleteAmortizationTerminationCommand(
+              planId: owner.ownerId,
+              now: DateTime.now(),
+            ),
+          ),
+        ),
+      _ => detailVoidOutcomeFromAction(
+        () => amortizationAppService.deletePlan(
+          DeleteAmortizationPlanCommand(planId: owner.ownerId),
+        ),
+      ),
+    };
+  }
 
   @override
   Future<UiActionOutcome<void>> changeNote(String? value) async {

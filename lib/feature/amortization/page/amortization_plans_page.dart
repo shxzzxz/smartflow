@@ -85,11 +85,19 @@ class AmortizationPlansPage extends ConsumerWidget {
   }
 
   void _openNew(BuildContext context) {
-    final kind = '&kind=${initialKind.name}';
-    final account = deferralAccountId == null
-        ? ''
-        : '&deferralAccountId=$deferralAccountId';
-    context.push('/amortizations/new?source=list$kind$account');
+    context.push(
+      Uri(
+        path: '/transaction/new',
+        queryParameters: {
+          'mode': initialKind == AmortizationKind.deferredIncome
+              ? 'income'
+              : 'expense',
+          'scene': 'amortization',
+          'kind': initialKind.name,
+          'deferralAccountId': ?deferralAccountId,
+        },
+      ).toString(),
+    );
   }
 }
 

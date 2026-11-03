@@ -8,6 +8,7 @@ final class _AmortizationFormWorkflow {
   Future<void> create({
     required TransactionFormState state,
     required Money amount,
+    required Money? feeAmount,
     required String? note,
     required AmortizationConfigurationDraft? configuration,
   }) async {
@@ -18,6 +19,78 @@ final class _AmortizationFormWorkflow {
     if (configuration == null) {
       throw invalidCommandException('请先完成摊销配置');
     }
+    final resolved = _resolveAllocations(state: state, amount: amount);
+    await _service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: kind,
+        total: amount,
+        fundingAllocations: resolved.funding,
+        deferralAccountId: resolved.deferralAccountId,
+        recognitionAllocations: resolved.categories,
+        firstRecognitionAt: configuration.firstRecognitionAt,
+        cadenceUnit: configuration.cadenceUnit,
+        cadenceInterval: configuration.cadenceInterval,
+        recognitionCount: configuration.recognitionCount,
+        occurredAt: state.occurredAt,
+        initialIsExcludedFromStats: state.excludeStats,
+        initialIsExcludedFromBudget: state.excludeBudget,
+        initialCounterpartyId: state.counterpartyId,
+        initialNote: note,
+        tagIds: state.selectedTagIds,
+        feeAmount: feeAmount,
+      ),
+    );
+  }
+
+  Future<void> update({
+    required String planId,
+    required TransactionFormState state,
+    required Money amount,
+    required Money? feeAmount,
+    required String? note,
+    required AmortizationConfigurationDraft? configuration,
+  }) async {
+    final kind = state.amortizationKind;
+    if (kind == null) {
+      throw invalidCommandException('当前交易不是摊销');
+    }
+    if (configuration == null) {
+      throw invalidCommandException('请先完成摊销配置');
+    }
+    final resolved = _resolveAllocations(state: state, amount: amount);
+    await _service.updatePlan(
+      UpdateAmortizationPlanCommand(
+        planId: planId,
+        total: amount,
+        fundingAllocations: resolved.funding,
+        deferralAccountId: resolved.deferralAccountId,
+        recognitionAllocations: resolved.categories,
+        firstRecognitionAt: configuration.firstRecognitionAt,
+        cadenceUnit: configuration.cadenceUnit,
+        cadenceInterval: configuration.cadenceInterval,
+        recognitionCount: configuration.recognitionCount,
+        occurredAt: state.occurredAt,
+        now: DateTime.now(),
+        note: stringPatch(note),
+        counterpartyId: counterpartyPatch(state.counterpartyId),
+        tagIds: state.selectedTagIds,
+        initialIsExcludedFromStats: state.excludeStats,
+        initialIsExcludedFromBudget: state.excludeBudget,
+        feeAmount: feeAmount,
+      ),
+    );
+  }
+
+  ({
+    List<AccountAmountAllocation> categories,
+    List<AccountAmountAllocation> funding,
+    String deferralAccountId,
+  })
+  _resolveAllocations({
+    required TransactionFormState state,
+    required Money amount,
+  }) {
+    final kind = state.amortizationKind!;
     final categoryAllocations = state.entryMode == TransactionEntryMode.normal
         ? [
             if ((state.mode == TransactionFormMode.expense
@@ -65,24 +138,10 @@ final class _AmortizationFormWorkflow {
         kind == AmortizationKind.prepaidExpense ? '请先创建并选择预付账户' : '请先创建并选择预收账户',
       );
     }
-    await _service.createPlan(
-      CreateAmortizationPlanCommand(
-        kind: kind,
-        total: amount,
-        fundingAllocations: fundingAllocations,
-        deferralAccountId: deferralAccountId,
-        recognitionAllocations: categoryAllocations,
-        firstRecognitionAt: configuration.firstRecognitionAt,
-        cadenceUnit: configuration.cadenceUnit,
-        cadenceInterval: configuration.cadenceInterval,
-        recognitionCount: configuration.recognitionCount,
-        occurredAt: state.occurredAt,
-        initialIsExcludedFromStats: state.excludeStats,
-        initialIsExcludedFromBudget: state.excludeBudget,
-        initialCounterpartyId: state.counterpartyId,
-        initialNote: note,
-        tagIds: state.selectedTagIds,
-      ),
+    return (
+      categories: categoryAllocations,
+      funding: fundingAllocations,
+      deferralAccountId: deferralAccountId,
     );
   }
 }

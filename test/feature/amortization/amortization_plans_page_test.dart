@@ -50,8 +50,8 @@ void main() {
               Scaffold(body: Text('计划详情 ${state.pathParameters['id']}')),
         ),
         GoRoute(
-          path: '/amortizations/new',
-          builder: (context, state) => const Scaffold(body: Text('新建')),
+          path: '/transaction/new',
+          builder: (context, state) => Scaffold(body: Text('新建 ${state.uri}')),
         ),
       ],
     );
@@ -85,6 +85,13 @@ void main() {
     expect(find.text('房租支出'), findsOneWidget);
     expect(find.textContaining('预付房租'), findsOneWidget);
     expect(find.byType(MoneyText), findsNWidgets(2));
+
+    await tester.tap(find.byTooltip('新建摊销'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('/transaction/new'), findsOneWidget);
+    expect(find.textContaining('scene=amortization'), findsOneWidget);
+    router.pop();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('房租支出'));
     await tester.pumpAndSettle();

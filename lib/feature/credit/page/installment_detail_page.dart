@@ -16,6 +16,7 @@ import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_swipe_action.dart';
+import '../../../widget/business/finance/finance_activity_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/contract_status_presentation.dart';
 import '../presentation/contract_status_validation_presentation.dart';
@@ -486,8 +487,6 @@ class _ContractActivityRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
     final (label, supportingText, amount, icon) = switch (activity) {
       ContractRepaymentActivity(
         :final repaymentType,
@@ -510,52 +509,15 @@ class _ContractActivityRow extends ConsumerWidget {
         RemixIcons.refund_2_line,
       ),
     };
-    final row = InkWell(
+    final row = FinanceActivityRow(
+      label: label,
+      occurredAt: activity.occurredAt,
+      supportingText: supportingText,
+      amountLabel: amount,
+      icon: icon,
       onTap: activity.transactionId == null
           ? null
           : () => context.push('/transaction/${activity.transactionId}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space10,
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: Center(child: Icon(icon, color: colors.primary, size: 24)),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$label · ${formatDateLabel(activity.occurredAt)}',
-                    style: styles.formLabel,
-                  ),
-                  Text(
-                    supportingText,
-                    style: styles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            SizedBox(
-              width: 96,
-              child: Text(
-                amount,
-                style: styles.formLabel,
-                textAlign: TextAlign.right,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
     if (activity case final ContractRepaymentActivity repayment) {
       return AppSwipeAction(

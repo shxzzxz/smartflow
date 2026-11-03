@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_text_styles.dart';
+import '../token/component.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 
@@ -15,36 +16,41 @@ class AppInlineActionButton extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final enabled = onPressed != null;
     return Semantics(
       button: true,
+      enabled: enabled,
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space6,
-            vertical: AppSpacing.space6,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: colors.primary, size: AppSpacing.space20),
-              const SizedBox(width: AppSpacing.space6),
-              Flexible(
-                child: Text(
-                  label,
-                  style: context.appTextStyles.actionLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+        child: Opacity(
+          opacity: enabled ? 1 : AppComponentTokens.disabledContentOpacity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space6,
+              vertical: AppSpacing.space6,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: colors.primary, size: AppSpacing.space20),
+                const SizedBox(width: AppSpacing.space6),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: context.appTextStyles.actionLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

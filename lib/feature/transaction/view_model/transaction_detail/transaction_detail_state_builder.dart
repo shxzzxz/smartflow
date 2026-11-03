@@ -4,6 +4,7 @@ import '../../../../core/money/money.dart';
 import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
+import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/business_scene/business_scene_detail_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';

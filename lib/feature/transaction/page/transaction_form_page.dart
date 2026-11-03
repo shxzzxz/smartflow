@@ -93,6 +93,8 @@ class TransactionFormPage extends ConsumerWidget {
     this.initialFromAccountId,
     this.initialToAccountId,
     this.initialLiabilityAccountId,
+    this.initialAmortizationKind,
+    this.initialAmortizationDeferralAccountId,
     super.key,
   });
 
@@ -101,6 +103,8 @@ class TransactionFormPage extends ConsumerWidget {
   final String? initialFromAccountId;
   final String? initialToAccountId;
   final String? initialLiabilityAccountId;
+  final AmortizationKind? initialAmortizationKind;
+  final String? initialAmortizationDeferralAccountId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -111,6 +115,9 @@ class TransactionFormPage extends ConsumerWidget {
         initialFromAccountId: initialFromAccountId,
         initialToAccountId: initialToAccountId,
         initialLiabilityAccountId: initialLiabilityAccountId,
+        initialAmortizationKind: initialAmortizationKind,
+        initialAmortizationDeferralAccountId:
+            initialAmortizationDeferralAccountId,
       ),
     );
     return switch (asyncState) {
@@ -122,6 +129,9 @@ class TransactionFormPage extends ConsumerWidget {
           initialFromAccountId: initialFromAccountId,
           initialToAccountId: initialToAccountId,
           initialLiabilityAccountId: initialLiabilityAccountId,
+          initialAmortizationKind: initialAmortizationKind,
+          initialAmortizationDeferralAccountId:
+              initialAmortizationDeferralAccountId,
           formState: formState,
         ),
       AsyncData(value: null) => const _TransactionFormStatusPage(
@@ -144,6 +154,8 @@ class _TransactionFormContent extends ConsumerStatefulWidget {
     required this.initialFromAccountId,
     required this.initialToAccountId,
     required this.initialLiabilityAccountId,
+    required this.initialAmortizationKind,
+    required this.initialAmortizationDeferralAccountId,
     required this.formState,
     super.key,
   });
@@ -153,6 +165,8 @@ class _TransactionFormContent extends ConsumerStatefulWidget {
   final String? initialFromAccountId;
   final String? initialToAccountId;
   final String? initialLiabilityAccountId;
+  final AmortizationKind? initialAmortizationKind;
+  final String? initialAmortizationDeferralAccountId;
   final TransactionFormState formState;
 
   @override
@@ -176,6 +190,7 @@ class _TransactionFormContentState
     _amountController = TextEditingController(text: initialValues.amount);
     _feeController = TextEditingController(text: initialValues.fee);
     _noteController = TextEditingController(text: initialValues.note);
+    _amortizationConfiguration = initialValues.amortizationConfiguration;
   }
 
   @override
@@ -429,6 +444,8 @@ class _TransactionFormContentState
                           : settlementAccounts,
                       installmentAccounts: installmentAccounts,
                       amortization: amortization,
+                      amortizationConfiguration:
+                          amortization && widget.editTransactionId == null,
                       amortizationDeferralAccounts:
                           formState.amortizationDeferralAccounts,
                       advanceAccounts: selectableAdvanceAccounts,
@@ -508,6 +525,9 @@ class _TransactionFormContentState
         initialFromAccountId: widget.initialFromAccountId,
         initialToAccountId: widget.initialToAccountId,
         initialLiabilityAccountId: widget.initialLiabilityAccountId,
+        initialAmortizationKind: widget.initialAmortizationKind,
+        initialAmortizationDeferralAccountId:
+            widget.initialAmortizationDeferralAccountId,
       );
 
   Future<void> _pickDate() async {
@@ -606,6 +626,9 @@ class _TransactionFormContentState
 
   Future<void> _selectScene() async {
     final formState = ref.read(_formProvider).requireValue!;
+    if (widget.editTransactionId != null && formState.isAmortization) {
+      return;
+    }
     final selected = await _showTransactionSceneSheet(
       context: context,
       mode: formState.mode,
@@ -931,8 +954,12 @@ class _TransactionFormContentState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除交易'),
-        content: const Text('删除后交易及其账务记录将无法恢复。'),
+        title: Text(formState.isAmortization ? '删除摊销' : '删除交易'),
+        content: Text(
+          formState.isAmortization
+              ? '将删除整个摊销计划及其全部关联账务交易，且无法恢复。'
+              : '删除后交易及其账务记录将无法恢复。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

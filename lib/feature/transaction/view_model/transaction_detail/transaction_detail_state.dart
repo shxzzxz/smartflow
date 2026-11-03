@@ -97,7 +97,7 @@ abstract class DetailActionButton with _$DetailActionButton {
   }) = _DetailActionButton;
 }
 
-enum DetailActionKind { refund, advance, edit }
+enum DetailActionKind { refund, advance, amortizationTermination, edit }
 
 class AdvanceSubmitInput {
   const AdvanceSubmitInput({

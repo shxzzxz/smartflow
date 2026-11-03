@@ -7,6 +7,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.moneyAccounts,
     required this.installmentAccounts,
     required this.amortization,
+    required this.amortizationConfiguration,
     required this.amortizationDeferralAccounts,
     required this.advanceAccounts,
     required this.fromAccountId,
@@ -36,6 +37,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final List<Account> moneyAccounts;
   final List<Account> installmentAccounts;
   final bool amortization;
+  final bool amortizationConfiguration;
   final List<Account> amortizationDeferralAccounts;
   final List<Account> advanceAccounts;
   final String? fromAccountId;
@@ -136,7 +138,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
                       selectedId: amortizationDeferralAccountId,
                       onChanged: onAmortizationDeferralAccountChanged,
                     ),
-                  if (amortization)
+                  if (amortizationConfiguration)
                     _QuickActionChip(
                       key: const ValueKey('amortization-configuration'),
                       icon: RemixIcons.settings_3_line,

@@ -233,6 +233,49 @@ void main() {
       throwsA(isA<BusinessException>()),
     );
   });
+
+  test(
+    'configuration rebuild uses refunds and preserves posted identities',
+    () {
+      final created = _plan();
+      final refunded = created.withRefund(
+        AmortizationRefund(
+          id: 'refund',
+          planId: created.id,
+          categoryAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: const Money(minorUnits: 10000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: const Money(minorUnits: 10000),
+          ),
+          transferTransactionId: 'refund-transfer',
+        ),
+      );
+      final posted = refunded.withPeriods([
+        refunded.periods.first.posted('recognition-1'),
+        ...refunded.periods.skip(1),
+      ]);
+
+      final updated = posted.reconfiguredConfiguration(
+        firstRecognitionAt: DateTime(2026, 2, 15),
+        cadenceUnit: AmortizationCadenceUnit.yearly,
+        cadenceInterval: 1,
+        recognitionCount: 2,
+      );
+
+      expect(updated.kind, AmortizationKind.prepaidExpense);
+      expect(updated.periods, hasLength(2));
+      expect(updated.netAmount, const Money(minorUnits: 50000));
+      expect(updated.periods.map((period) => period.amount.minorUnits), [
+        25000,
+        25000,
+      ]);
+      expect(updated.periods.first.transactionId, 'recognition-1');
+      expect(updated.refunds.single.id, 'refund');
+    },
+  );
 }
 
 AmortizationPlan _plan({

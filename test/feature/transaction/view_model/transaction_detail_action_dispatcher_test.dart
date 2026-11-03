@@ -37,6 +37,9 @@ class _MockAccountRepaymentAppService extends Mock
 class _MockAdvanceOrchestrationAppService extends Mock
     implements AdvanceOrchestrationAppService {}
 
+class _MockAmortizationPlanAppService extends Mock
+    implements AmortizationPlanAppService {}
+
 class _FakeEditAdvanceWorkflowCommand extends Fake
     implements EditAdvanceWorkflowCommand {}
 
@@ -54,6 +57,15 @@ class _FakeEditRepaymentCommand extends Fake implements EditRepaymentCommand {}
 class _FakeUpdateTransactionBasicInfoCommand extends Fake
     implements UpdateTransactionBasicInfoCommand {}
 
+class _FakeDeleteAmortizationPlanCommand extends Fake
+    implements DeleteAmortizationPlanCommand {}
+
+class _FakeDeleteAmortizationRefundCommand extends Fake
+    implements DeleteAmortizationRefundCommand {}
+
+class _FakeDeleteAmortizationTerminationCommand extends Fake
+    implements DeleteAmortizationTerminationCommand {}
+
 void main() {
   late _MockTransactionEditAppService editService;
   late _MockTransactionUpdateAppService updateService;
@@ -64,6 +76,7 @@ void main() {
   late _MockInstallmentPrepaymentAppService installmentPrepaymentAppService;
   late _MockAccountRepaymentAppService accountRepaymentAppService;
   late _MockAdvanceOrchestrationAppService advanceAppService;
+  late _MockAmortizationPlanAppService amortizationAppService;
 
   setUpAll(() {
     registerFallbackValue(_FakeEditAdvanceWorkflowCommand());
@@ -72,6 +85,9 @@ void main() {
     registerFallbackValue(_FakeEditCreditRepaymentTransactionCommand());
     registerFallbackValue(_FakeEditRepaymentCommand());
     registerFallbackValue(_FakeUpdateTransactionBasicInfoCommand());
+    registerFallbackValue(_FakeDeleteAmortizationPlanCommand());
+    registerFallbackValue(_FakeDeleteAmortizationRefundCommand());
+    registerFallbackValue(_FakeDeleteAmortizationTerminationCommand());
   });
 
   setUp(() {
@@ -85,6 +101,7 @@ void main() {
     installmentPrepaymentAppService = _MockInstallmentPrepaymentAppService();
     accountRepaymentAppService = _MockAccountRepaymentAppService();
     advanceAppService = _MockAdvanceOrchestrationAppService();
+    amortizationAppService = _MockAmortizationPlanAppService();
   });
 
   test(
@@ -168,7 +185,7 @@ void main() {
               kind: AmortizationKind.prepaidExpense,
               status: AmortizationStatus.active,
               originalAmount: transaction.primaryAmount,
-              recognizedAmount: Money.zero(),
+              recognizedAmount: Money(minorUnits: 0),
               remainingAmount: transaction.primaryAmount,
               postedPeriodCount: 0,
               totalPeriodCount: 3,
@@ -182,6 +199,7 @@ void main() {
           billRepaymentAppService: billRepaymentAppService,
           installmentPrepaymentAppService: installmentPrepaymentAppService,
           accountRepaymentAppService: accountRepaymentAppService,
+          amortizationAppService: amortizationAppService,
         );
 
     expect(
@@ -205,6 +223,170 @@ void main() {
     expect(commands[1].occurredAt, DateTime(2026, 2, 1));
     expect(commands[2].postedAt, DateTime(2026, 2, 2));
   });
+
+  test('amortization deletion routes through the plan orchestration', () async {
+    final transaction = TransactionReadModel(
+      id: 'amortization-entry',
+      businessPurpose: BusinessPurpose.dailyExpense,
+      occurredAt: DateTime(2026, 1, 31),
+      primaryAmount: const Money(minorUnits: 10000),
+      ownership: const TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+      ),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+    );
+    when(
+      () => amortizationAppService.deletePlan(any()),
+    ).thenAnswer((_) async {});
+    final dynamic dispatcher =
+        createTransactionDetailActionDispatcherForTesting(
+          context: _context(
+            transaction,
+            owner: AmortizationTransactionDetailOwnerContext(
+              ownerType: orchestrationAmortizationOwnerType,
+              ownerId: 'plan',
+              initialTransactionId: 'amortization-entry',
+              kind: AmortizationKind.prepaidExpense,
+              status: AmortizationStatus.active,
+              originalAmount: Money(minorUnits: 10000),
+              recognizedAmount: Money(minorUnits: 0),
+              remainingAmount: Money(minorUnits: 10000),
+              postedPeriodCount: 0,
+              totalPeriodCount: 3,
+            ),
+          ),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+          amortizationAppService: amortizationAppService,
+        );
+
+    expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
+    final command =
+        verify(
+              () => amortizationAppService.deletePlan(captureAny()),
+            ).captured.single
+            as DeleteAmortizationPlanCommand;
+    expect(command.planId, 'plan');
+  });
+
+  test('amortization refund deletion targets only the refund fact', () async {
+    final transaction = TransactionReadModel(
+      id: 'refund',
+      businessPurpose: BusinessPurpose.transfer,
+      occurredAt: DateTime(2026, 1, 31),
+      primaryAmount: const Money(minorUnits: 2000),
+      ownership: const TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+      ),
+      isExcludedFromStats: false,
+      isExcludedFromBudget: false,
+    );
+    when(
+      () => amortizationAppService.deleteRefund(any()),
+    ).thenAnswer((_) async {});
+    final dynamic dispatcher =
+        createTransactionDetailActionDispatcherForTesting(
+          context: _context(
+            transaction,
+            owner: AmortizationTransactionDetailOwnerContext(
+              ownerType: orchestrationAmortizationOwnerType,
+              ownerId: 'plan',
+              initialTransactionId: 'initial',
+              kind: AmortizationKind.prepaidExpense,
+              status: AmortizationStatus.active,
+              originalAmount: Money(minorUnits: 10000),
+              recognizedAmount: Money.zero(),
+              remainingAmount: Money(minorUnits: 10000),
+              postedPeriodCount: 0,
+              totalPeriodCount: 3,
+              factKind: AmortizationTransactionFactKind.refund,
+              refundId: 'refund-fact',
+            ),
+          ),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+          amortizationAppService: amortizationAppService,
+        );
+
+    expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
+    final command =
+        verify(
+              () => amortizationAppService.deleteRefund(captureAny()),
+            ).captured.single
+            as DeleteAmortizationRefundCommand;
+    expect(command.planId, 'plan');
+    expect(command.refundId, 'refund-fact');
+    verifyNever(() => amortizationAppService.deletePlan(any()));
+  });
+
+  test(
+    'amortization termination deletion targets the termination fact',
+    () async {
+      final transaction = TransactionReadModel(
+        id: 'termination-entry',
+        businessPurpose: BusinessPurpose.dailyExpense,
+        occurredAt: DateTime(2026, 2, 1),
+        primaryAmount: const Money(minorUnits: 5000),
+        ownership: const TransactionOwnership(
+          ownerType: orchestrationAmortizationOwnerType,
+          ownerId: 'plan',
+        ),
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      );
+      when(() => amortizationAppService.deleteTermination(any())).thenAnswer(
+        (_) async => const AmortizationGenerationResult(generatedCount: 0),
+      );
+      final dynamic
+      dispatcher = createTransactionDetailActionDispatcherForTesting(
+        context: _context(
+          transaction,
+          owner: const AmortizationTransactionDetailOwnerContext(
+            ownerType: orchestrationAmortizationOwnerType,
+            ownerId: 'plan',
+            initialTransactionId: 'initial',
+            kind: AmortizationKind.prepaidExpense,
+            status: AmortizationStatus.terminated,
+            originalAmount: Money(minorUnits: 10000),
+            recognizedAmount: Money(minorUnits: 10000),
+            remainingAmount: Money(minorUnits: 0),
+            postedPeriodCount: 3,
+            totalPeriodCount: 3,
+            factKind: AmortizationTransactionFactKind.terminationRecognition,
+            terminationId: 'termination',
+          ),
+        ),
+        editService: editService,
+        updateService: updateService,
+        installmentAppService: installmentAppService,
+        disbursementInstallmentAppService: disbursementInstallmentAppService,
+        consumptionInstallmentAppService: consumptionInstallmentAppService,
+        billRepaymentAppService: billRepaymentAppService,
+        installmentPrepaymentAppService: installmentPrepaymentAppService,
+        accountRepaymentAppService: accountRepaymentAppService,
+        amortizationAppService: amortizationAppService,
+      );
+
+      expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
+      verify(() => amortizationAppService.deleteTermination(any())).called(1);
+      verifyNever(() => amortizationAppService.deletePlan(any()));
+    },
+  );
 
   test(
     'advance refund inheritance routes account edits through orchestration',

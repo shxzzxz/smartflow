@@ -4,9 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/orchestration/orchestration_command_api.dart';
-import '../../../shared/account_profile/account_selection_policy.dart';
-import '../../../shared/account_profile/account_selection_purpose.dart';
-import '../../shared/provider/ledger_query_providers.dart';
+import '../../../core/money/money.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/amortization_providers.dart';
@@ -21,123 +19,54 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
   Future<AmortizationDetailState?> build(String planId) async {
     final plan = await ref.watch(amortizationPlanProvider(planId).future);
     if (plan == null) return null;
-    final accounts = await ref.watch(accountListProvider.future);
-    final categories = await ref.watch(
-      categoryTreeProvider(
-        plan.kind == AmortizationKind.prepaidExpense
-            ? AccountType.expense
-            : AccountType.income,
-      ).future,
-    );
+    final transactionIds = {
+      plan.initialTransactionId,
+      for (final refund in plan.refunds) refund.transferTransactionId,
+      if (plan.termination case final termination?) ...[
+        ?termination.recognitionTransactionId,
+        ?termination.returnTransactionId,
+      ],
+    };
+    final transactions = await ref
+        .read(transactionQueryServiceProvider)
+        .findTransactionsByIds(transactionIds);
+    final transactionById = {
+      for (final transaction in transactions) transaction.id: transaction,
+    };
     return AmortizationDetailState(
       plan: plan,
-      settlementAccounts: accountsMatchingSelectionPurpose(
-        accounts,
-        AccountSelectionPurpose.settlement,
-      ),
-      categoryAccounts: [
-        for (final node in categories) ...[node.account, ...node.children],
-      ],
+      activities: _activitiesFor(plan, transactionById)..sort(_byOccurredAt),
     );
   }
 
-  Future<UiActionOutcome<void>> refund({
-    required DateTime occurredAt,
-    required List<AccountAmountAllocation> categoryAllocations,
-    required List<AccountAmountAllocation> settlementAllocations,
-  }) {
+  Future<UiActionOutcome<void>> deleteRefund(String refundId, {DateTime? now}) {
     final current = state.value;
     if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
-    if (sumAllocations(categoryAllocations).minorUnits <= 0 ||
-        sumAllocations(categoryAllocations) !=
-            sumAllocations(settlementAllocations)) {
-      return Future.value(_invalid('退款分类与账户金额必须相等且大于零'));
-    }
     return _run(
       current.plan.id,
-      'Create amortization refund',
+      'Delete amortization refund',
       () => ref
           .read(amortizationPlanAppServiceProvider)
-          .refund(
-            CreateAmortizationRefundCommand(
-              planId: current.plan.id,
-              categoryAllocations: categoryAllocations,
-              settlementAllocations: settlementAllocations,
-              occurredAt: occurredAt,
-            ),
-          )
-          .then((_) {}),
-    );
-  }
-
-  Future<UiActionOutcome<void>> editRefund({
-    required String refundId,
-    required List<AccountAmountAllocation> categoryAllocations,
-    required List<AccountAmountAllocation> settlementAllocations,
-    DateTime? now,
-  }) {
-    final current = state.value;
-    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
-    if (sumAllocations(categoryAllocations).minorUnits <= 0 ||
-        sumAllocations(categoryAllocations) !=
-            sumAllocations(settlementAllocations)) {
-      return Future.value(_invalid('退款分类与账户金额必须相等且大于零'));
-    }
-    return _run(
-      current.plan.id,
-      'Edit amortization refund',
-      () => ref
-          .read(amortizationPlanAppServiceProvider)
-          .editRefund(
-            EditAmortizationRefundCommand(
+          .deleteRefund(
+            DeleteAmortizationRefundCommand(
               planId: current.plan.id,
               refundId: refundId,
-              categoryAllocations: categoryAllocations,
-              settlementAllocations: settlementAllocations,
               now: now ?? DateTime.now(),
             ),
           ),
     );
   }
 
-  Future<UiActionOutcome<void>> terminate({
-    required DateTime terminatedAt,
-    required List<AccountAmountAllocation> categoryReturnAllocations,
-    required List<AccountAmountAllocation> settlementAllocations,
-  }) {
-    final current = state.value;
-    if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
-    if (sumAllocations(categoryReturnAllocations) !=
-        sumAllocations(settlementAllocations)) {
-      return Future.value(_invalid('终止分类退还与账户退还金额必须相等'));
-    }
-    return _run(
-      current.plan.id,
-      'Terminate amortization plan',
-      () => ref
-          .read(amortizationPlanAppServiceProvider)
-          .terminate(
-            TerminateAmortizationPlanCommand(
-              planId: current.plan.id,
-              terminatedAt: terminatedAt,
-              categoryReturnAllocations: categoryReturnAllocations,
-              settlementAllocations: settlementAllocations,
-            ),
-          )
-          .then((_) {}),
-    );
-  }
-
-  Future<UiActionOutcome<void>> undoTermination({DateTime? now}) {
+  Future<UiActionOutcome<void>> deleteTermination({DateTime? now}) {
     final current = state.value;
     if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
     return _run(
       current.plan.id,
-      'Undo amortization termination',
+      'Delete amortization termination',
       () => ref
           .read(amortizationPlanAppServiceProvider)
-          .undoTermination(
-            UndoAmortizationTerminationCommand(
+          .deleteTermination(
+            DeleteAmortizationTerminationCommand(
               planId: current.plan.id,
               now: now ?? DateTime.now(),
             ),
@@ -183,13 +112,96 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
 }
 
 class AmortizationDetailState {
-  const AmortizationDetailState({
-    required this.plan,
-    required this.settlementAccounts,
-    required this.categoryAccounts,
-  });
+  const AmortizationDetailState({required this.plan, required this.activities});
 
   final AmortizationPlan plan;
-  final List<Account> settlementAccounts;
-  final List<Account> categoryAccounts;
+  final List<AmortizationActivity> activities;
+}
+
+enum AmortizationActivityKind { initial, refund, termination }
+
+class AmortizationActivity {
+  const AmortizationActivity({
+    required this.id,
+    required this.kind,
+    required this.transactionId,
+    required this.occurredAt,
+    required this.amount,
+    this.refundId,
+    this.terminationReturnAmount = const Money(minorUnits: 0),
+    this.terminationRecognitionAmount = const Money(minorUnits: 0),
+  });
+
+  final String id;
+  final AmortizationActivityKind kind;
+  final String transactionId;
+  final DateTime occurredAt;
+  final Money amount;
+  final String? refundId;
+  final Money terminationReturnAmount;
+  final Money terminationRecognitionAmount;
+}
+
+List<AmortizationActivity> _activitiesFor(
+  AmortizationPlan plan,
+  Map<String, TransactionReadModel> transactionById,
+) {
+  final result = <AmortizationActivity>[];
+  final initial = transactionById[plan.initialTransactionId];
+  if (initial != null) {
+    result.add(
+      AmortizationActivity(
+        id: plan.initialTransactionId,
+        kind: AmortizationActivityKind.initial,
+        transactionId: plan.initialTransactionId,
+        occurredAt: initial.occurredAt,
+        amount: plan.originalAmount,
+      ),
+    );
+  }
+  for (final refund in plan.refunds) {
+    final transaction = transactionById[refund.transferTransactionId];
+    if (transaction == null) continue;
+    result.add(
+      AmortizationActivity(
+        id: refund.id,
+        kind: AmortizationActivityKind.refund,
+        transactionId: refund.transferTransactionId,
+        refundId: refund.id,
+        occurredAt: transaction.occurredAt,
+        amount: refund.amount,
+      ),
+    );
+  }
+  final termination = plan.termination;
+  if (termination != null) {
+    final transactionId =
+        termination.recognitionTransactionId ?? termination.returnTransactionId;
+    final transaction = transactionById[transactionId];
+    if (transactionId != null && transaction != null) {
+      final remainingBeforeTermination = subtractAllocations(
+        base: plan.currentCategoryAllocations,
+        reductions: plan.recognizedCategoryAllocations,
+      );
+      result.add(
+        AmortizationActivity(
+          id: termination.id,
+          kind: AmortizationActivityKind.termination,
+          transactionId: transactionId,
+          occurredAt: transaction.occurredAt,
+          amount: termination.returnAmount,
+          terminationReturnAmount: termination.returnAmount,
+          terminationRecognitionAmount:
+              sumAllocations(remainingBeforeTermination) -
+              termination.returnAmount,
+        ),
+      );
+    }
+  }
+  return result;
+}
+
+int _byOccurredAt(AmortizationActivity left, AmortizationActivity right) {
+  final byDate = right.occurredAt.compareTo(left.occurredAt);
+  return byDate != 0 ? byDate : right.id.compareTo(left.id);
 }
