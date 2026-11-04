@@ -27,7 +27,7 @@ void main() {
       ],
     );
 
-    expect(progress.paidPeriodCount, 1);
+    expect(progress.completedPeriodCount, 1);
     expect(progress.totalPeriodCount, 3);
     expect(progress.remainingPrincipal, const Money(minorUnits: 150));
     expect(
@@ -36,22 +36,25 @@ void main() {
     );
   });
 
-  test('skipped periods do not consume remaining principal', () {
-    final contract = _contract([
-      _schedule(1, status: InstallmentScheduleStatus.skipped),
-      _schedule(2),
-    ]);
+  test(
+    'counts skipped periods as completed without consuming remaining principal',
+    () {
+      final contract = _contract([
+        _schedule(1, status: InstallmentScheduleStatus.skipped),
+        _schedule(2),
+      ]);
 
-    final progress = service.project(
-      installment: contract,
-      allocatedByScheduleId: const {},
-      repayments: const [],
-    );
+      final progress = service.project(
+        installment: contract,
+        allocatedByScheduleId: const {},
+        repayments: const [],
+      );
 
-    expect(progress.paidPeriodCount, 0);
-    expect(progress.totalPeriodCount, 2);
-    expect(progress.remainingPrincipal, const Money(minorUnits: 100));
-  });
+      expect(progress.completedPeriodCount, 1);
+      expect(progress.totalPeriodCount, 2);
+      expect(progress.remainingPrincipal, const Money(minorUnits: 100));
+    },
+  );
 }
 
 InstallmentContract _contract(List<InstallmentSchedule> schedules) {

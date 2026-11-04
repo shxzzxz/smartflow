@@ -382,7 +382,7 @@ InstallmentDTO _contract() {
     status: InstallmentContractStatus.active,
     createdAt: DateTime(2026, 1, 1),
     repaymentProgress: const InstallmentRepaymentProgressDTO(
-      paidPeriodCount: 0,
+      completedPeriodCount: 0,
       totalPeriodCount: 2,
       remainingPrincipal: Money(minorUnits: 10000),
       repaid: RepaymentAmountBreakdown.zero,

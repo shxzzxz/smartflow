@@ -30,7 +30,7 @@ TransactionDetailBusinessContent presentInstallmentDetailBusinessScene(
         key: 'installment',
         title: '分期合同',
         summary:
-            '$type · 已还 ${summary.paidPeriodCount}/${summary.totalPeriodCount} · '
+            '$type · 已还 ${summary.completedPeriodCount}/${summary.totalPeriodCount} · '
             '剩余本金 ${summary.remainingPrincipal.format()}',
         route: '/installments/${item.ownerId}',
       ),

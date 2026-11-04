@@ -631,7 +631,7 @@ void main() {
             (await _findSummariesForKeys(source, {contractKey}))[contractKey]
                 as InstallmentBusinessActivitySummary;
         expect(creditSummary.installmentType, InstallmentType.purchase);
-        expect(creditSummary.paidPeriodCount, 1);
+        expect(creditSummary.completedPeriodCount, 1);
         expect(creditSummary.totalPeriodCount, 2);
         expect(creditSummary.remainingPrincipal, const Money(minorUnits: 6000));
         final allKeys = {
@@ -992,7 +992,7 @@ void main() {
                 as InstallmentBusinessActivitySummary;
 
         expect(summary.totalPeriodCount, 1);
-        expect(summary.paidPeriodCount, 0);
+        expect(summary.completedPeriodCount, 0);
         expect(summary.remainingPrincipal, const Money(minorUnits: 30000));
         final installment = await _installmentQuery(
           db,

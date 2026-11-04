@@ -115,11 +115,6 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () => context.push('/counterparties'),
           ),
           ProfileMenuEntry(
-            title: '摊销计划',
-            iconKey: 'amortization',
-            onTap: () => context.push('/amortizations'),
-          ),
-          ProfileMenuEntry(
             title: '贷款计算器',
             iconKey: 'calculator',
             onTap: () => context.push('/profile/loan-calculator'),

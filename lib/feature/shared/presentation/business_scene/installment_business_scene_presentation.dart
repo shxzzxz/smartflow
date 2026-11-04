@@ -25,7 +25,7 @@ BusinessActivityRowContent presentInstallmentBusinessActivityRow(
         ? [
             TransactionBadgePresentation(
               label:
-                  '分期 ${summary.paidPeriodCount}/${summary.totalPeriodCount}',
+                  '分期 ${summary.completedPeriodCount}/${summary.totalPeriodCount}',
               tone: FinanceTone.neutral,
             ),
           ]
@@ -43,7 +43,7 @@ String _standardSummary(InstallmentBusinessActivitySummary summary) {
     return '$typeLabel · 已结清 · ${summary.totalPeriodCount}/'
         '${summary.totalPeriodCount}';
   }
-  return '$typeLabel · 已还 ${summary.paidPeriodCount}/'
+  return '$typeLabel · 已还 ${summary.completedPeriodCount}/'
       '${summary.totalPeriodCount} · '
       '待还本金 ${formatMoney(summary.remainingPrincipal, style: MoneyFormatStyle.compact)}';
 }

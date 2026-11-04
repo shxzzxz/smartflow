@@ -40,16 +40,16 @@ final class InstallmentBusinessActivitySummary extends BusinessActivitySummary {
     required this.status,
     required this.principal,
     required this.remainingPrincipal,
-    required this.paidPeriodCount,
+    required this.completedPeriodCount,
     required this.totalPeriodCount,
-  }) : assert(paidPeriodCount >= 0),
+  }) : assert(completedPeriodCount >= 0),
        assert(totalPeriodCount >= 0);
 
   final InstallmentType installmentType;
   final InstallmentContractStatus status;
   final Money principal;
   final Money remainingPrincipal;
-  final int paidPeriodCount;
+  final int completedPeriodCount;
   final int totalPeriodCount;
 }
 

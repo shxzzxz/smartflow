@@ -266,7 +266,7 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       createdAt: contract.createdAt,
       stageTerms: contract.stageTerms,
       repaymentProgress: InstallmentRepaymentProgressDTO(
-        paidPeriodCount: progress.paidPeriodCount,
+        completedPeriodCount: progress.completedPeriodCount,
         totalPeriodCount: progress.totalPeriodCount,
         remainingPrincipal: progress.remainingPrincipal,
         repaid: progress.repaid,

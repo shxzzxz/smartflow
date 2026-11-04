@@ -62,7 +62,8 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
           status: entry.value.status,
           principal: entry.value.principal,
           remainingPrincipal: entry.value.repaymentProgress.remainingPrincipal,
-          paidPeriodCount: entry.value.repaymentProgress.paidPeriodCount,
+          completedPeriodCount:
+              entry.value.repaymentProgress.completedPeriodCount,
           totalPeriodCount: entry.value.repaymentProgress.totalPeriodCount,
         ),
       for (final entry in repaymentSummaries.entries)

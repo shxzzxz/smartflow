@@ -1221,7 +1221,7 @@ void main() {
           status: InstallmentContractStatus.active,
           principal: Money(minorUnits: 12000),
           remainingPrincipal: Money(minorUnits: 6000),
-          paidPeriodCount: 1,
+          completedPeriodCount: 1,
           totalPeriodCount: 2,
         ),
       );
@@ -1242,7 +1242,7 @@ void main() {
           status: InstallmentContractStatus.active,
           principal: Money(minorUnits: 12000),
           remainingPrincipal: Money(minorUnits: 6000),
-          paidPeriodCount: 1,
+          completedPeriodCount: 1,
           totalPeriodCount: 2,
         ),
       );

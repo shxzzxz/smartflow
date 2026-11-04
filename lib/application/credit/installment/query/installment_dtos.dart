@@ -84,13 +84,14 @@ class InstallmentDetailDTO {
 
 class InstallmentRepaymentProgressDTO {
   const InstallmentRepaymentProgressDTO({
-    required this.paidPeriodCount,
+    required this.completedPeriodCount,
     required this.totalPeriodCount,
     required this.remainingPrincipal,
     required this.repaid,
   });
 
-  final int paidPeriodCount;
+  /// 已完成期数，包含实际还清和人工跳过的期次。
+  final int completedPeriodCount;
   final int totalPeriodCount;
   final Money remainingPrincipal;
 

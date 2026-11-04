@@ -41,7 +41,6 @@ void main() {
       '分类管理': '/category',
       '标签管理': '/tags',
       '对手方管理': '/counterparties',
-      '摊销计划': '/amortizations',
       '贷款计算器': '/profile/loan-calculator',
       '设置': '/profile/settings',
       '分期产品': '/installment-products',
@@ -81,7 +80,7 @@ void main() {
     final sections = find.byType(AppSurface);
     expect(sections, findsNWidgets(5));
     const groups = [
-      ['分类管理', '标签管理', '对手方管理', '摊销计划', '贷款计算器', '设置'],
+      ['分类管理', '标签管理', '对手方管理', '贷款计算器', '设置'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],
       ['使用手册', '软件版本'],

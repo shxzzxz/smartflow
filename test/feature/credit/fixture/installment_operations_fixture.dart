@@ -19,7 +19,7 @@ InstallmentDTO operationsContract({bool multipleStages = false}) =>
       createdAt: DateTime(2026, 8, 8),
       status: InstallmentContractStatus.active,
       repaymentProgress: InstallmentRepaymentProgressDTO(
-        paidPeriodCount: 0,
+        completedPeriodCount: 0,
         totalPeriodCount: multipleStages ? 24 : 12,
         remainingPrincipal: const Money(minorUnits: 10000000),
         repaid: RepaymentAmountBreakdown.zero,

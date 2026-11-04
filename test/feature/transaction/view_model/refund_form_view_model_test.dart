@@ -717,7 +717,7 @@ class _FakeInstallmentQueryService implements InstallmentQueryService {
       status: InstallmentContractStatus.active,
       createdAt: DateTime(2026, 6, 1),
       repaymentProgress: const InstallmentRepaymentProgressDTO(
-        paidPeriodCount: 0,
+        completedPeriodCount: 0,
         totalPeriodCount: 12,
         remainingPrincipal: Money(minorUnits: 10000),
         repaid: RepaymentAmountBreakdown.zero,

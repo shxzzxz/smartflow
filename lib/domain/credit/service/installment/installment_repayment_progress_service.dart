@@ -7,13 +7,14 @@ import '../debt/credit_debt_bucket_service.dart';
 /// 一份分期合同当前的履约进度。
 class InstallmentRepaymentProgress {
   const InstallmentRepaymentProgress({
-    required this.paidPeriodCount,
+    required this.completedPeriodCount,
     required this.totalPeriodCount,
     required this.remainingPrincipal,
     required this.repaid,
   });
 
-  final int paidPeriodCount;
+  /// 已完成期数，包含实际还清和人工跳过的期次。
+  final int completedPeriodCount;
   final int totalPeriodCount;
   final Money remainingPrincipal;
 
@@ -53,9 +54,11 @@ class InstallmentRepaymentProgressService {
     }
 
     return InstallmentRepaymentProgress(
-      paidPeriodCount: installment.schedules
+      completedPeriodCount: installment.schedules
           .where(
-            (schedule) => schedule.status == InstallmentScheduleStatus.paid,
+            (schedule) =>
+                schedule.status == InstallmentScheduleStatus.paid ||
+                schedule.status == InstallmentScheduleStatus.skipped,
           )
           .length,
       totalPeriodCount: installment.schedules.length,

@@ -1106,7 +1106,7 @@ BusinessActivityReadModel _installmentActivity({
       status: InstallmentContractStatus.active,
       principal: const Money(minorUnits: 10000),
       remainingPrincipal: remainingPrincipal,
-      paidPeriodCount: 1,
+      completedPeriodCount: 1,
       totalPeriodCount: 3,
     ),
   );

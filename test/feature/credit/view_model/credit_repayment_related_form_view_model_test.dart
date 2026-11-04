@@ -1279,7 +1279,7 @@ credit_query.InstallmentDTO _contract() {
     status: credit.InstallmentContractStatus.active,
     createdAt: now,
     repaymentProgress: const credit_query.InstallmentRepaymentProgressDTO(
-      paidPeriodCount: 0,
+      completedPeriodCount: 0,
       totalPeriodCount: 10,
       remainingPrincipal: Money(minorUnits: 10000),
       repaid: credit.RepaymentAmountBreakdown.zero,

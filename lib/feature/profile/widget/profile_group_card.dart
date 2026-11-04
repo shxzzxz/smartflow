@@ -66,10 +66,10 @@ class _ProfileGrid extends StatelessWidget {
               AppComponentTokens.profileGridTileMainExtent * 1.5,
             )
             .toDouble();
-        final rows = (entries.length / columns).ceil();
         final tileWidth =
             (constraints.maxWidth - (columns - 1) * minCrossAxisSpacing) /
             columns;
+        final rows = (entries.length / columns).ceil();
         final height = rows * tileHeight + (rows - 1) * minCrossAxisSpacing;
 
         return SizedBox(
@@ -94,23 +94,20 @@ class _ProfileGrid extends StatelessWidget {
                 child: BusinessIconTile(
                   extent: tileWidth,
                   minHeight: tileHeight,
-                  alignment: Alignment.topCenter,
+                  alignment: Alignment.center,
                   onTap: entry.onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.space4),
-                    child: BusinessIconBubble(
-                      size: AppSpacing.space40,
-                      label: entry.title,
-                      labelSpacing: AppSpacing.space6,
-                      bubbleColor: Theme.of(context).colorScheme.primary
-                          .withValues(
-                            alpha: AppComponentTokens.selectedContainerOpacity,
-                          ),
-                      iconColor: Theme.of(context).colorScheme.primary,
-                      child: Icon(
-                        profileIconFor(entry.iconKey),
-                        size: AppSpacing.space24,
-                      ),
+                  child: BusinessIconBubble(
+                    size: AppSpacing.space40,
+                    label: entry.title,
+                    labelSpacing: AppSpacing.space6,
+                    bubbleColor: Theme.of(context).colorScheme.primary
+                        .withValues(
+                          alpha: AppComponentTokens.selectedContainerOpacity,
+                        ),
+                    iconColor: Theme.of(context).colorScheme.primary,
+                    child: Icon(
+                      profileIconFor(entry.iconKey),
+                      size: AppSpacing.space24,
                     ),
                   ),
                 ),

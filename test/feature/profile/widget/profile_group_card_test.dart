@@ -6,6 +6,7 @@ import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/typography.dart';
 import 'package:smartflow/feature/profile/presentation/profile_menu.dart';
 import 'package:smartflow/feature/profile/widget/profile_group_card.dart';
+import 'package:smartflow/widget/business/icon/business_icon_bubble.dart';
 
 void main() {
   testWidgets('keeps five-character labels on one line', (tester) async {
@@ -14,7 +15,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final entries = [
-      for (final title in ['分类管理', '标签管理', '对手方管理', '摊销计划', '贷款计算器', '设置'])
+      for (final title in ['分类管理', '标签管理', '对手方管理', '贷款计算器', '设置'])
         ProfileMenuEntry(title: title, iconKey: 'category', onTap: () {}),
     ];
 
@@ -138,7 +139,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('top-aligns labels with different line counts', (tester) async {
+  testWidgets('vertically centers entry content in grid cells', (tester) async {
     tester.view.physicalSize = const Size(340, 500);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -173,12 +174,14 @@ void main() {
       ),
     );
 
-    final shortLabelTop = tester.getTopLeft(find.text('对手方管理')).dy;
-    final longLabelTop = tester.getTopLeft(find.text('这是一个很长的标签名称')).dy;
-    expect(longLabelTop, closeTo(shortLabelTop, 0.01));
+    final tile = find.byKey(const ValueKey('profile-grid-entry-对手方管理'));
+    final content = find.descendant(
+      of: tile,
+      matching: find.byType(BusinessIconBubble),
+    );
     expect(
-      tester.getSize(find.text('这是一个很长的标签名称')).height,
-      greaterThan(tester.getSize(find.text('对手方管理')).height),
+      tester.getCenter(content).dy,
+      closeTo(tester.getCenter(tile).dy, 0.01),
     );
     expect(tester.takeException(), isNull);
   });
