@@ -5,6 +5,8 @@ import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/installment_plan_operation.dart';
 import '../../../../domain/credit/valobj/rate_change.dart';
 import '../../../../domain/credit/valobj/repayment_amount_breakdown.dart';
+import '../../../../domain/ledger/valobj/ledger_enum.dart';
+import '../../../../shared/business_activity/business_activity_item_role.dart';
 
 class InstallmentDTO {
   const InstallmentDTO({
@@ -39,6 +41,32 @@ class InstallmentDTO {
   final DateTime createdAt;
   final InstallmentContractTerms stageTerms;
   final InstallmentRepaymentProgressDTO repaymentProgress;
+}
+
+class InstallmentBusinessActivityItemRequest {
+  const InstallmentBusinessActivityItemRequest({
+    required this.installmentId,
+    required this.businessPurpose,
+  });
+
+  final String installmentId;
+  final BusinessPurpose businessPurpose;
+}
+
+class InstallmentBusinessActivityItemProjection {
+  const InstallmentBusinessActivityItemProjection({
+    required this.transactionId,
+    required this.installmentId,
+    required this.installmentType,
+    required this.factKind,
+    required this.role,
+  });
+
+  final String transactionId;
+  final String installmentId;
+  final InstallmentType installmentType;
+  final InstallmentTransactionFactKind factKind;
+  final BusinessActivityItemRole role;
 }
 
 class InstallmentDetailDTO {

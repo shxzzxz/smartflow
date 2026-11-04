@@ -521,6 +521,98 @@ void main() {
       },
     );
 
+    test(
+      'anchors bill and unattributed repayments but not prepayments',
+      () async {
+        await _insertRepaymentTransaction(
+          db,
+          id: 'bill-repayment-tx',
+          repaymentId: 'bill-repayment',
+          occurredAt: DateTime(2026, 10, 4),
+        );
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'bill-repayment',
+                repaymentType: RepaymentType.bill.code,
+                targetType: RepaymentTargetType.bill.code,
+                targetId: 'bill-1',
+                transactionId: const Value('bill-repayment-tx'),
+                repaymentDate: DateTime(2026, 10, 4),
+              ),
+            );
+        await _insertRepaymentTransaction(
+          db,
+          id: 'prepayment-tx',
+          repaymentId: 'prepayment',
+          occurredAt: DateTime(2026, 10, 5),
+        );
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'prepayment',
+                repaymentType: RepaymentType.prepayment.code,
+                targetType: RepaymentTargetType.contract.code,
+                targetId: 'contract-1',
+                transactionId: const Value('prepayment-tx'),
+                repaymentDate: DateTime(2026, 10, 5),
+              ),
+            );
+        await _insertRepaymentTransaction(
+          db,
+          id: 'unattributed-tx',
+          repaymentId: 'unattributed',
+          occurredAt: DateTime(2026, 10, 6),
+        );
+        await db
+            .into(db.repayments)
+            .insert(
+              RepaymentsCompanion.insert(
+                id: 'unattributed',
+                repaymentType: RepaymentType.unattributed.code,
+                targetType: RepaymentTargetType.account.code,
+                targetId: 'credit-account',
+                transactionId: const Value('unattributed-tx'),
+                repaymentDate: DateTime(2026, 10, 6),
+              ),
+            );
+
+        final source = CreditBusinessActivitySource(
+          _creditQuery(db),
+          _installmentQuery(db),
+        );
+        final page = await source.findAnchorPage(_query());
+
+        expect(page.anchors.map((anchor) => anchor.anchorTransactionId), [
+          'unattributed-tx',
+          'bill-repayment-tx',
+        ]);
+
+        final summaries = await _creditQuery(db).findRepaymentSummaries({
+          'bill-repayment',
+          'prepayment',
+          'unattributed',
+        });
+        expect(
+          summaries['bill-repayment']!.role,
+          BusinessActivityItemRole.origin,
+        );
+        expect(summaries['bill-repayment']!.activityId, 'bill-repayment');
+        expect(
+          summaries['prepayment']!.role,
+          BusinessActivityItemRole.followUp,
+        );
+        expect(summaries['prepayment']!.activityType, installmentOwnerType);
+        expect(summaries['prepayment']!.activityId, 'contract-1');
+        expect(
+          summaries['unattributed']!.role,
+          BusinessActivityItemRole.origin,
+        );
+      },
+    );
+
     test('deducts allocated principal from partially paid schedules', () async {
       await _insertTransaction(
         db,
@@ -917,9 +1009,9 @@ void main() {
         .insert(
           RepaymentsCompanion.insert(
             id: 'repayment-1',
-            repaymentType: RepaymentType.prepayment.code,
-            targetType: RepaymentTargetType.contract.code,
-            targetId: 'contract-1',
+            repaymentType: RepaymentType.unattributed.code,
+            targetType: RepaymentTargetType.account.code,
+            targetId: 'credit-account',
             transactionId: const Value('repayment-tx'),
             repaymentDate: DateTime(2026, 10, 2),
           ),
@@ -1336,6 +1428,22 @@ Future<void> _insertTransaction(
           counterpartyId: Value(counterpartyId),
         ),
       );
+}
+
+Future<void> _insertRepaymentTransaction(
+  AppDatabase db, {
+  required String id,
+  required String repaymentId,
+  required DateTime occurredAt,
+}) {
+  return _insertTransaction(
+    db,
+    id: id,
+    occurredAt: occurredAt,
+    businessPurpose: BusinessPurpose.debtRepayment,
+    ownerType: creditRepaymentOwnerType,
+    ownerId: repaymentId,
+  );
 }
 
 Future<void> _insertLine(

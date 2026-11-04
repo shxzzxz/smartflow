@@ -4,6 +4,7 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
@@ -161,6 +162,7 @@ void main() {
             id: 'plan',
           ),
           transactionId: 'tx',
+          role: BusinessActivityItemRole.followUp,
           kind: AmortizationKind.prepaidExpense,
           occurrencePeriodSequence: 2,
           factKind: AmortizationTransactionFactKind.recognition,
@@ -198,6 +200,7 @@ void main() {
             id: 'plan',
           ),
           transactionId: 'tx',
+          role: BusinessActivityItemRole.origin,
           kind: AmortizationKind.prepaidExpense,
           factKind: AmortizationTransactionFactKind.initial,
           localCategoryAllocations: const [
@@ -233,6 +236,7 @@ void main() {
             id: 'contract',
           ),
           transactionId: 'tx',
+          role: BusinessActivityItemRole.origin,
           installmentType: InstallmentType.purchase,
           factKind: InstallmentTransactionFactKind.purchase,
         ),
@@ -262,6 +266,7 @@ void main() {
             id: 'advance',
           ),
           transactionId: 'tx',
+          role: BusinessActivityItemRole.followUp,
           factKind: AdvanceTransactionFactKind.collection,
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.itemized,
@@ -274,6 +279,39 @@ void main() {
       expect(row.supportingText, isNull);
       expect(row.iconKey, isNull);
       expect(row.avatarKind, TransactionAvatarKind.advanceCollection);
+      expect(row.preferCategoryArtwork, isFalse);
+    });
+
+    test('prepayment uses its own title and icon without activity summary', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.debtRepayment,
+          categoryAccountId: null,
+          ownership: const TransactionOwnership(
+            ownerType: creditRepaymentOwnerType,
+            ownerId: 'prepayment',
+          ),
+        ),
+        businessItem: const RepaymentBusinessActivityItem(
+          activityKey: BusinessActivityKey(
+            type: installmentOwnerType,
+            id: 'contract',
+          ),
+          transactionId: 'tx',
+          role: BusinessActivityItemRole.followUp,
+          repaymentId: 'prepayment',
+          repaymentType: RepaymentType.prepayment,
+          targetType: RepaymentTargetType.contract,
+          targetId: 'contract',
+        ),
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+
+      expect(row.title, '提前还款');
+      expect(row.supportingText, isNull);
+      expect(row.iconKey, isNull);
+      expect(row.avatarKind, TransactionAvatarKind.prepayment);
       expect(row.preferCategoryArtwork, isFalse);
     });
 

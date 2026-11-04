@@ -18,17 +18,7 @@ _buildTransactionDetailLedger(
           localCategoryAllocations,
         _ => const <AccountAmountAllocation>[],
       };
-  final isActivityEntry = switch (context.businessItem) {
-    AdvanceBusinessActivityItem(:final factKind) =>
-      factKind == AdvanceTransactionFactKind.advance,
-    InstallmentBusinessActivityItem(:final factKind) =>
-      factKind == InstallmentTransactionFactKind.purchase ||
-          factKind == InstallmentTransactionFactKind.disbursement,
-    RepaymentBusinessActivityItem() => true,
-    AmortizationBusinessActivityItem(:final factKind) =>
-      factKind == AmortizationTransactionFactKind.initial,
-    UnknownBusinessActivityItem() || null => false,
-  };
+  final isActivityEntry = context.businessItem?.isOrigin ?? false;
   final isNonEntry =
       isKnownBusinessActivityItem(context.businessItem) && !isActivityEntry;
   final categoryAccountIds = isActivityEntry

@@ -46,10 +46,12 @@ final class RepaymentBusinessActivityItemSource
     if (ownership == null || summary == null) return null;
     return RepaymentBusinessActivityItem(
       activityKey: BusinessActivityKey(
-        type: ownership.ownerType,
-        id: ownership.ownerId,
+        type: summary.activityType,
+        id: summary.activityId,
       ),
       transactionId: transaction.id,
+      role: summary.role,
+      repaymentId: summary.repaymentId,
       repaymentType: summary.repaymentType,
       targetType: summary.targetType,
       targetId: summary.targetId,

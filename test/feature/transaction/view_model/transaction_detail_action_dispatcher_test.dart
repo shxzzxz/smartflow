@@ -437,6 +437,9 @@ void main() {
       when(
         () => installmentPrepaymentAppService.editRepaymentTransaction(any()),
       ).thenAnswer((_) async {});
+      when(
+        () => installmentPrepaymentAppService.deleteRepayment(any()),
+      ).thenAnswer((_) async {});
       final dynamic dispatcher =
           createTransactionDetailActionDispatcherForTesting(
             context: _context(
@@ -458,9 +461,23 @@ void main() {
         await dispatcher.changeNote('updated'),
         isA<UiActionSuccess<void>>(),
       );
-      verify(
-        () => installmentPrepaymentAppService.editRepaymentTransaction(any()),
-      ).called(1);
+      expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
+      final editCommand =
+          verify(
+                () => installmentPrepaymentAppService.editRepaymentTransaction(
+                  captureAny(),
+                ),
+              ).captured.single
+              as EditCreditRepaymentTransactionCommand;
+      final deleteCommand =
+          verify(
+                () => installmentPrepaymentAppService.deleteRepayment(
+                  captureAny(),
+                ),
+              ).captured.single
+              as DeleteCreditRepaymentCommand;
+      expect(editCommand.repaymentId, 'repayment-1');
+      expect(deleteCommand.repaymentId, 'repayment-1');
       verifyNever(
         () => billRepaymentAppService.editRepaymentTransaction(any()),
       );
@@ -529,6 +546,7 @@ BusinessActivityItem _advanceItem(TransactionReadModel transaction) {
       id: transaction.ownership!.ownerId,
     ),
     transactionId: transaction.id,
+    role: BusinessActivityItemRole.origin,
     factKind: AdvanceTransactionFactKind.advance,
     scenario: AdvanceScenario.aa,
     trackingMode: AdvanceTrackingMode.itemized,
@@ -548,6 +566,9 @@ BusinessActivityItem _amortizationItem(
       id: 'plan',
     ),
     transactionId: transaction.id,
+    role: factKind == AmortizationTransactionFactKind.initial
+        ? BusinessActivityItemRole.origin
+        : BusinessActivityItemRole.followUp,
     kind: AmortizationKind.prepaidExpense,
     factKind: factKind,
     localCategoryAllocations: const [],
@@ -558,11 +579,17 @@ BusinessActivityItem _amortizationItem(
 
 RepaymentBusinessActivityItem _repaymentOwner(RepaymentType type) {
   return RepaymentBusinessActivityItem(
-    activityKey: const BusinessActivityKey(
-      type: creditRepaymentOwnerType,
-      id: 'repayment-1',
+    activityKey: BusinessActivityKey(
+      type: type == RepaymentType.prepayment
+          ? installmentOwnerType
+          : creditRepaymentOwnerType,
+      id: type == RepaymentType.prepayment ? 'contract-1' : 'repayment-1',
     ),
     transactionId: 'repayment-transaction',
+    role: type == RepaymentType.bill || type == RepaymentType.unattributed
+        ? BusinessActivityItemRole.origin
+        : BusinessActivityItemRole.followUp,
+    repaymentId: 'repayment-1',
     repaymentType: type,
     targetType: switch (type) {
       RepaymentType.bill ||

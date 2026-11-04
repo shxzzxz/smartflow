@@ -1,7 +1,6 @@
-import '../../../../domain/orchestration/entity/advance_case.dart';
-import '../../../../domain/orchestration/service/advance_transaction_fact_policy.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
+import '../../../orchestration/advance/query/advance_business_activity_item_query.dart';
 import '../../../orchestration/advance/query/advance_case_query_service.dart';
 import '../../business_activity/query/business_activity_queries.dart';
 import '../query/business_activity_item_read_models.dart';
@@ -21,13 +20,10 @@ final class AdvanceBusinessActivityItemSource
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
-    final cases = await _query.findByIds(_ownerIds(values));
+    final items = await _query.findBusinessActivityItems(_requests(values));
     return {
       for (final transaction in values)
-        transaction.id: ?_map(
-          transaction,
-          cases[transaction.ownership?.ownerId],
-        ),
+        transaction.id: ?_map(transaction, items[transaction.id]),
     };
   }
 
@@ -36,20 +32,25 @@ final class AdvanceBusinessActivityItemSource
     return _query.watchById(ownerId);
   }
 
-  Set<String> _ownerIds(Iterable<TransactionReadModel> transactions) => {
-    for (final transaction in transactions)
-      if (transaction.ownership case final ownership?) ownership.ownerId,
-  };
+  Map<String, AdvanceBusinessActivityItemRequest> _requests(
+    Iterable<TransactionReadModel> transactions,
+  ) {
+    return {
+      for (final transaction in transactions)
+        if (transaction.ownership case final ownership?)
+          transaction.id: AdvanceBusinessActivityItemRequest(
+            advanceCaseId: ownership.ownerId,
+            businessPurpose: transaction.businessPurpose,
+          ),
+    };
+  }
 
   BusinessActivityItem? _map(
     TransactionReadModel transaction,
-    AdvanceCase? advanceCase,
+    AdvanceBusinessActivityItemProjection? item,
   ) {
     final ownership = transaction.ownership;
-    final factKind = resolveAdvanceTransactionFactKind(
-      transaction.businessPurpose,
-    );
-    if (ownership == null || advanceCase == null || factKind == null) {
+    if (ownership == null || item == null) {
       return null;
     }
     return AdvanceBusinessActivityItem(
@@ -58,9 +59,10 @@ final class AdvanceBusinessActivityItemSource
         id: ownership.ownerId,
       ),
       transactionId: transaction.id,
-      factKind: factKind,
-      scenario: advanceCase.scenario,
-      trackingMode: advanceCase.trackingMode,
+      role: item.role,
+      factKind: item.factKind,
+      scenario: item.scenario,
+      trackingMode: item.trackingMode,
     );
   }
 }

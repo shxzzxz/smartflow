@@ -1,6 +1,7 @@
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/transaction/transaction_avatar_kind.dart';
@@ -61,21 +62,11 @@ String? nonEntryBusinessActivityItemTitle(
   if (!isKnownBusinessActivityItem(item)) {
     return null;
   }
-  final isEntry = switch (item) {
-    AdvanceBusinessActivityItem(:final factKind) =>
-      factKind == AdvanceTransactionFactKind.advance,
-    InstallmentBusinessActivityItem(:final factKind) =>
-      factKind == InstallmentTransactionFactKind.purchase ||
-          factKind == InstallmentTransactionFactKind.disbursement,
-    RepaymentBusinessActivityItem() => true,
-    AmortizationBusinessActivityItem(:final factKind) =>
-      factKind == AmortizationTransactionFactKind.initial,
-    UnknownBusinessActivityItem() || null => false,
-  };
-  if (isEntry) return null;
+  if (item!.isOrigin) return null;
   return switch (item) {
     AmortizationBusinessActivityItem() => businessActivityItemLabel(item),
     InstallmentBusinessActivityItem() => businessActivityItemLabel(item),
+    RepaymentBusinessActivityItem() => businessActivityItemLabel(item),
     _ => transactionPurposeLabel(transaction.businessPurpose),
   };
 }
@@ -84,18 +75,7 @@ String? businessActivityEntrySupportingText(
   BusinessActivityItem? item,
   TransactionReadModel transaction,
 ) {
-  final isEntry = switch (item) {
-    AdvanceBusinessActivityItem(:final factKind) =>
-      factKind == AdvanceTransactionFactKind.advance,
-    InstallmentBusinessActivityItem(:final factKind) =>
-      factKind == InstallmentTransactionFactKind.purchase ||
-          factKind == InstallmentTransactionFactKind.disbursement,
-    RepaymentBusinessActivityItem() => true,
-    AmortizationBusinessActivityItem(:final factKind) =>
-      factKind == AmortizationTransactionFactKind.initial,
-    UnknownBusinessActivityItem() || null => false,
-  };
-  if (!isEntry) return null;
+  if (!isKnownBusinessActivityItem(item) || !item!.isOrigin) return null;
   return businessActivityItemLabel(item);
 }
 
@@ -121,8 +101,10 @@ TransactionAvatarKind? businessActivityItemAvatarKind(
         TransactionAvatarKind.amortizationTermination,
       AmortizationTransactionFactKind.initial => null,
     },
+    RepaymentBusinessActivityItem(repaymentType: RepaymentType.prepayment) =>
+      TransactionAvatarKind.prepayment,
+    RepaymentBusinessActivityItem() => null,
     InstallmentBusinessActivityItem() ||
-    RepaymentBusinessActivityItem() ||
     UnknownBusinessActivityItem() ||
     null => null,
   };

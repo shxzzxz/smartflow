@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'package:smartflow/application/orchestration/advance/query/advance_business_activity_item_query.dart';
 import 'package:smartflow/application/orchestration/advance/query/advance_case_query_service.dart';
 import 'package:smartflow/application/transaction_view/business_activity_item/source/advance_business_activity_item_source.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/orchestration/entity/advance_case.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 class _MockAdvanceCaseQueryService extends Mock
@@ -14,10 +14,13 @@ class _MockAdvanceCaseQueryService extends Mock
 void main() {
   test('child transaction is classified without anchor summary', () async {
     final cases = _MockAdvanceCaseQueryService();
-    when(() => cases.findByIds({'advance-1'})).thenAnswer(
+    when(() => cases.findBusinessActivityItems(any())).thenAnswer(
       (_) async => {
-        'advance-1': const AdvanceCase(
-          id: 'advance-1',
+        'refund-1': const AdvanceBusinessActivityItemProjection(
+          transactionId: 'refund-1',
+          advanceCaseId: 'advance-1',
+          factKind: AdvanceTransactionFactKind.refund,
+          role: BusinessActivityItemRole.followUp,
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.itemized,
         ),
@@ -30,6 +33,7 @@ void main() {
             as AdvanceBusinessActivityItem;
 
     expect(item.factKind, AdvanceTransactionFactKind.refund);
+    expect(item.role, BusinessActivityItemRole.followUp);
     expect(item.scenario, AdvanceScenario.reimbursement);
     expect(item.trackingMode, AdvanceTrackingMode.itemized);
   });

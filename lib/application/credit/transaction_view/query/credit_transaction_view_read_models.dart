@@ -1,4 +1,6 @@
+import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_role.dart';
 
 /// Credit-owned business activity kinds exposed to the transaction view.
 enum CreditTransactionViewActivityType {
@@ -81,15 +83,45 @@ final class CreditTransactionViewAnchorPage {
 }
 
 final class CreditRepaymentBusinessActivitySummary {
-  const CreditRepaymentBusinessActivitySummary({
+  const CreditRepaymentBusinessActivitySummary._({
+    required this.repaymentId,
     required this.repaymentType,
     required this.targetType,
     required this.targetId,
+    required this.activityType,
+    required this.activityId,
+    required this.role,
   });
 
+  factory CreditRepaymentBusinessActivitySummary.fromRepayment({
+    required String repaymentId,
+    required RepaymentType repaymentType,
+    required RepaymentTargetType targetType,
+    required String targetId,
+  }) {
+    final isOrigin =
+        repaymentType == RepaymentType.bill ||
+        repaymentType == RepaymentType.unattributed;
+    return CreditRepaymentBusinessActivitySummary._(
+      repaymentId: repaymentId,
+      repaymentType: repaymentType,
+      targetType: targetType,
+      targetId: targetId,
+      activityType: isOrigin ? creditRepaymentOwnerType : installmentOwnerType,
+      activityId: isOrigin ? repaymentId : targetId,
+      role: isOrigin
+          ? BusinessActivityItemRole.origin
+          : BusinessActivityItemRole.followUp,
+    );
+  }
+
+  final String repaymentId;
   final RepaymentType repaymentType;
   final RepaymentTargetType targetType;
   final String targetId;
+  final String activityType;
+  final String activityId;
+  final BusinessActivityItemRole role;
 }
 
 Set<String>? _immutableStrings(Set<String>? values) =>

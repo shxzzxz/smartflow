@@ -3,6 +3,7 @@ import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_role.dart';
 import '../../business_activity/query/business_activity_queries.dart';
 
 /// 一笔实际交易在所属业务活动中的业务侧投影。
@@ -13,19 +14,24 @@ sealed class BusinessActivityItem {
   const BusinessActivityItem({
     required this.activityKey,
     required this.transactionId,
+    required this.role,
   });
 
   final BusinessActivityKey activityKey;
   final String transactionId;
+  final BusinessActivityItemRole role;
 
   String get ownerType => activityKey.type;
   String get ownerId => activityKey.id;
+
+  bool get isOrigin => role == BusinessActivityItemRole.origin;
 }
 
 final class AdvanceBusinessActivityItem extends BusinessActivityItem {
   const AdvanceBusinessActivityItem({
     required super.activityKey,
     required super.transactionId,
+    required super.role,
     required this.factKind,
     required this.scenario,
     required this.trackingMode,
@@ -40,6 +46,7 @@ final class InstallmentBusinessActivityItem extends BusinessActivityItem {
   const InstallmentBusinessActivityItem({
     required super.activityKey,
     required super.transactionId,
+    required super.role,
     required this.installmentType,
     required this.factKind,
   });
@@ -52,11 +59,14 @@ final class RepaymentBusinessActivityItem extends BusinessActivityItem {
   const RepaymentBusinessActivityItem({
     required super.activityKey,
     required super.transactionId,
+    required super.role,
+    required this.repaymentId,
     required this.repaymentType,
     required this.targetType,
     required this.targetId,
   });
 
+  final String repaymentId;
   final RepaymentType repaymentType;
   final RepaymentTargetType targetType;
   final String targetId;
@@ -66,6 +76,7 @@ final class AmortizationBusinessActivityItem extends BusinessActivityItem {
   AmortizationBusinessActivityItem({
     required super.activityKey,
     required super.transactionId,
+    required super.role,
     required this.kind,
     required this.factKind,
     required Iterable<AccountAmountAllocation> localCategoryAllocations,
@@ -88,5 +99,6 @@ final class UnknownBusinessActivityItem extends BusinessActivityItem {
   const UnknownBusinessActivityItem({
     required super.activityKey,
     required super.transactionId,
+    super.role = BusinessActivityItemRole.followUp,
   });
 }

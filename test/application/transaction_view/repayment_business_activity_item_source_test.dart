@@ -10,37 +10,70 @@ class _MockCreditTransactionViewQueryService extends Mock
     implements CreditTransactionViewQueryService {}
 
 void main() {
-  test('maps repayment-owned facts', () async {
+  test('maps origin and follow-up repayment-owned facts', () async {
     final query = _MockCreditTransactionViewQueryService();
-    when(() => query.findRepaymentSummaries({'repayment-1'})).thenAnswer(
+    when(
+      () => query.findRepaymentSummaries({'bill-repayment', 'prepayment'}),
+    ).thenAnswer(
       (_) async => {
-        'repayment-1': const CreditRepaymentBusinessActivitySummary(
+        'bill-repayment': CreditRepaymentBusinessActivitySummary.fromRepayment(
+          repaymentId: 'bill-repayment',
           repaymentType: RepaymentType.bill,
           targetType: RepaymentTargetType.bill,
           targetId: 'bill-1',
+        ),
+        'prepayment': CreditRepaymentBusinessActivitySummary.fromRepayment(
+          repaymentId: 'prepayment',
+          repaymentType: RepaymentType.prepayment,
+          targetType: RepaymentTargetType.contract,
+          targetId: 'contract-1',
         ),
       },
     );
     final source = RepaymentBusinessActivityItemSource(query);
 
-    final item =
-        (await source.findItems([_transaction()]))['tx-1']
-            as RepaymentBusinessActivityItem;
+    final items = await source.findItems([
+      _transaction(id: 'bill-tx', repaymentId: 'bill-repayment'),
+      _transaction(id: 'prepayment-tx', repaymentId: 'prepayment'),
+    ]);
+    final bill = items['bill-tx']! as RepaymentBusinessActivityItem;
+    final prepayment = items['prepayment-tx']! as RepaymentBusinessActivityItem;
 
-    expect(item.repaymentType, RepaymentType.bill);
-    expect(item.targetId, 'bill-1');
+    expect(bill.role, BusinessActivityItemRole.origin);
+    expect(
+      bill.activityKey,
+      const BusinessActivityKey(
+        type: creditRepaymentOwnerType,
+        id: 'bill-repayment',
+      ),
+    );
+    expect(bill.repaymentType, RepaymentType.bill);
+    expect(bill.repaymentId, 'bill-repayment');
+    expect(bill.targetId, 'bill-1');
+
+    expect(prepayment.role, BusinessActivityItemRole.followUp);
+    expect(
+      prepayment.activityKey,
+      const BusinessActivityKey(type: installmentOwnerType, id: 'contract-1'),
+    );
+    expect(prepayment.repaymentType, RepaymentType.prepayment);
+    expect(prepayment.repaymentId, 'prepayment');
+    expect(prepayment.targetId, 'contract-1');
   });
 }
 
-TransactionReadModel _transaction() {
+TransactionReadModel _transaction({
+  required String id,
+  required String repaymentId,
+}) {
   return TransactionReadModel(
-    id: 'tx-1',
+    id: id,
     businessPurpose: BusinessPurpose.debtRepayment,
     occurredAt: DateTime(2026, 1, 15),
     primaryAmount: const Money(minorUnits: 1200),
-    ownership: const TransactionOwnership(
+    ownership: TransactionOwnership(
       ownerType: creditRepaymentOwnerType,
-      ownerId: 'repayment-1',
+      ownerId: repaymentId,
     ),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,

@@ -5,4 +5,5 @@ enum TransactionAvatarKind {
   amortizationRecognition,
   amortizationRefund,
   amortizationTermination,
+  prepayment,
 }

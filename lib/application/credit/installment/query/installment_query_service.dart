@@ -3,8 +3,10 @@ import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/service/installment/installment_repayment_progress_service.dart';
+import 'package:smartflow/domain/credit/service/installment/installment_transaction_fact_policy.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
+import 'package:smartflow/shared/business_activity/business_activity_item_role.dart';
 
 import 'installment_dtos.dart';
 import 'port/installment_progress_source.dart';
@@ -25,6 +27,12 @@ abstract interface class InstallmentQueryService {
   );
 
   Stream<InstallmentDTO?> watchInstallment(String installmentId);
+
+  /// Classifies one or more transactions that belong to installment contracts.
+  Future<Map<String, InstallmentBusinessActivityItemProjection>>
+  findBusinessActivityItems(
+    Map<String, InstallmentBusinessActivityItemRequest> requests,
+  );
 
   /// 分期基本信息与完整还款计划。
   Future<InstallmentDetailDTO?> findInstallmentDetail(String installmentId);
@@ -97,6 +105,40 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
     return _changes.watchChanges().asyncMap(
       (_) => findInstallment(installmentId),
     );
+  }
+
+  @override
+  Future<Map<String, InstallmentBusinessActivityItemProjection>>
+  findBusinessActivityItems(
+    Map<String, InstallmentBusinessActivityItemRequest> requests,
+  ) async {
+    if (requests.isEmpty) return const {};
+    final installments = await findInstallments({
+      for (final request in requests.values) request.installmentId,
+    });
+    final items = <String, InstallmentBusinessActivityItemProjection>{};
+    for (final entry in requests.entries) {
+      final installment = installments[entry.value.installmentId];
+      if (installment == null) continue;
+      final factKind = resolveInstallmentTransactionFactKind(
+        installmentType: installment.installmentType,
+        businessPurpose: entry.value.businessPurpose,
+      );
+      if (factKind == null) continue;
+      final isOrigin =
+          factKind == InstallmentTransactionFactKind.purchase ||
+          factKind == InstallmentTransactionFactKind.disbursement;
+      items[entry.key] = InstallmentBusinessActivityItemProjection(
+        transactionId: entry.key,
+        installmentId: installment.id,
+        installmentType: installment.installmentType,
+        factKind: factKind,
+        role: isOrigin
+            ? BusinessActivityItemRole.origin
+            : BusinessActivityItemRole.followUp,
+      );
+    }
+    return items;
   }
 
   @override

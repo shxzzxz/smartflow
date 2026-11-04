@@ -139,7 +139,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
   if (item is RepaymentBusinessActivityItem) {
     return DetailBehaviorConfig(
       editRoute: item.repaymentType == RepaymentType.bill
-          ? '/repayments/${item.ownerId}/edit'
+          ? '/repayments/${item.repaymentId}/edit'
                 '?transactionId=${transaction.id}'
           : null,
       canEditOccurredAt: const DetailEditPermission.allowed(),

@@ -239,6 +239,9 @@ AmortizationBusinessActivityItem _amortizationItem(
       id: 'plan-1',
     ),
     transactionId: transactionId,
+    role: factKind == AmortizationTransactionFactKind.initial
+        ? BusinessActivityItemRole.origin
+        : BusinessActivityItemRole.followUp,
     kind: AmortizationKind.prepaidExpense,
     factKind: factKind,
     localCategoryAllocations: const [

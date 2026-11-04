@@ -1,6 +1,7 @@
 /// 信贷读侧 application API。
 library;
 
+export '../../shared/business_activity/business_activity_item_role.dart';
 export 'product/installment_product_app_service.dart'
     show InstallmentProductReadModel;
 

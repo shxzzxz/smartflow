@@ -525,6 +525,7 @@ void main() {
           id: 'contract-1',
         ),
         transactionId: 'child',
+        role: BusinessActivityItemRole.origin,
         installmentType: InstallmentType.purchase,
         factKind: InstallmentTransactionFactKind.purchase,
       ),
@@ -550,6 +551,7 @@ void main() {
           id: 'contract-1',
         ),
         transactionId: 'child',
+        role: BusinessActivityItemRole.followUp,
         installmentType: InstallmentType.purchase,
         factKind: InstallmentTransactionFactKind.refund,
       ),
@@ -622,6 +624,7 @@ void main() {
           id: 'advance',
         ),
         transactionId: 'child',
+        role: BusinessActivityItemRole.followUp,
         factKind: AdvanceTransactionFactKind.collection,
         scenario: AdvanceScenario.reimbursement,
         trackingMode: AdvanceTrackingMode.itemized,
@@ -693,6 +696,8 @@ void main() {
           id: 'repayment-1',
         ),
         transactionId: 'child',
+        role: BusinessActivityItemRole.origin,
+        repaymentId: 'repayment-1',
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
@@ -703,6 +708,63 @@ void main() {
     final module = state.businessModules.single as DetailBusinessLinkModule;
     expect(module.summary, '账单还款 · 账单');
     expect(module.route, '/bills/bill-1');
+    expect(
+      state.behavior.editRoute,
+      '/repayments/repayment-1/edit?transactionId=child',
+    );
+  });
+
+  test('unattributed repayment remains an account activity entry', () {
+    final state = _build(
+      purpose: BusinessPurpose.debtRepayment,
+      parentTransactionId: null,
+      businessItem: const RepaymentBusinessActivityItem(
+        activityKey: BusinessActivityKey(
+          type: creditRepaymentOwnerType,
+          id: 'repayment-2',
+        ),
+        transactionId: 'child',
+        role: BusinessActivityItemRole.origin,
+        repaymentId: 'repayment-2',
+        repaymentType: RepaymentType.unattributed,
+        targetType: RepaymentTargetType.account,
+        targetId: 'credit-account',
+      ),
+      businessActivity: _repaymentActivity(
+        transactionId: 'child',
+        repaymentId: 'repayment-2',
+        repaymentType: RepaymentType.unattributed,
+        targetType: RepaymentTargetType.account,
+      ),
+    );
+
+    final module = state.businessModules.single as DetailBusinessLinkModule;
+    expect(module.summary, '未归属还款 · 账户');
+    expect(module.route, '/account/credit-account');
+  });
+
+  test('prepayment stays local while retaining repayment actions', () {
+    final state = _build(
+      purpose: BusinessPurpose.debtRepayment,
+      parentTransactionId: null,
+      businessItem: const RepaymentBusinessActivityItem(
+        activityKey: BusinessActivityKey(
+          type: installmentOwnerType,
+          id: 'contract-1',
+        ),
+        transactionId: 'child',
+        role: BusinessActivityItemRole.followUp,
+        repaymentId: 'prepayment',
+        repaymentType: RepaymentType.prepayment,
+        targetType: RepaymentTargetType.contract,
+        targetId: 'contract-1',
+      ),
+    );
+
+    expect(state.businessModules, isEmpty);
+    expect(state.hero.title, '提前还款');
+    expect(state.hero.avatarKind, TransactionAvatarKind.prepayment);
+    expect(state.behavior.deletePermission, isA<DetailEditAllowed>());
   });
 }
 
@@ -828,6 +890,7 @@ TransactionDetailLoaded _build({
                 id: resolvedAdvanceCase.id,
               ),
               transactionId: detail.id,
+              role: BusinessActivityItemRole.origin,
               factKind: AdvanceTransactionFactKind.advance,
               scenario: resolvedAdvanceCase.scenario,
               trackingMode: resolvedAdvanceCase.trackingMode,
@@ -884,6 +947,9 @@ AmortizationBusinessActivityItem _amortizationItem({
       id: planId,
     ),
     transactionId: transactionId,
+    role: factKind == AmortizationTransactionFactKind.initial
+        ? BusinessActivityItemRole.origin
+        : BusinessActivityItemRole.followUp,
     kind: kind,
     factKind: factKind,
     refundId: refundId,
@@ -971,15 +1037,20 @@ BusinessActivityReadModel _installmentActivity({
   );
 }
 
-BusinessActivityReadModel _repaymentActivity({required String transactionId}) {
+BusinessActivityReadModel _repaymentActivity({
+  required String transactionId,
+  String repaymentId = 'repayment-1',
+  RepaymentType repaymentType = RepaymentType.bill,
+  RepaymentTargetType targetType = RepaymentTargetType.bill,
+}) {
   final transaction = _activityTransaction(
     id: transactionId,
     ownerType: creditRepaymentOwnerType,
-    ownerId: 'repayment-1',
+    ownerId: repaymentId,
   );
-  final key = const BusinessActivityKey(
+  final key = BusinessActivityKey(
     type: creditRepaymentOwnerType,
-    id: 'repayment-1',
+    id: repaymentId,
   );
   return BusinessActivityReadModel.fromCandidate(
     candidate: BusinessActivityAnchorCandidate(
@@ -988,9 +1059,9 @@ BusinessActivityReadModel _repaymentActivity({required String transactionId}) {
       anchorAt: transaction.occurredAt,
     ),
     anchorTransaction: transaction,
-    summary: const RepaymentBusinessActivitySummary(
-      repaymentType: RepaymentType.bill,
-      targetType: RepaymentTargetType.bill,
+    summary: RepaymentBusinessActivitySummary(
+      repaymentType: repaymentType,
+      targetType: targetType,
     ),
   );
 }

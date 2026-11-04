@@ -17,6 +17,9 @@ BusinessSceneKind businessSceneKindForBusinessActivity(
 }
 
 BusinessSceneKind businessSceneKindForDetail(TransactionDetailContext context) {
+  if (context.businessItem?.isOrigin != true) {
+    return BusinessSceneKind.ledger;
+  }
   return switch (context.businessItem) {
     AdvanceBusinessActivityItem() => BusinessSceneKind.advance,
     InstallmentBusinessActivityItem() => BusinessSceneKind.installment,

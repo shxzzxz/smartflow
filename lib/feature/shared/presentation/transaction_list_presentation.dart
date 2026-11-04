@@ -3,8 +3,6 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
-import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
-import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -429,17 +427,7 @@ TransactionRowPresentation buildTransactionRowPresentation({
       localCategoryAllocations.map((allocation) => allocation.accountId),
     _ => const <String>[],
   };
-  final isActivityEntry = switch (businessItem) {
-    AdvanceBusinessActivityItem(:final factKind) =>
-      factKind == AdvanceTransactionFactKind.advance,
-    InstallmentBusinessActivityItem(:final factKind) =>
-      factKind == InstallmentTransactionFactKind.purchase ||
-          factKind == InstallmentTransactionFactKind.disbursement,
-    RepaymentBusinessActivityItem() => true,
-    AmortizationBusinessActivityItem(:final factKind) =>
-      factKind == AmortizationTransactionFactKind.initial,
-    UnknownBusinessActivityItem() || null => false,
-  };
+  final isActivityEntry = businessItem?.isOrigin ?? false;
   final isNonEntry =
       isKnownBusinessActivityItem(businessItem) && !isActivityEntry;
   final itemCategory =

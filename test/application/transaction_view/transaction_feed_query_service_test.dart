@@ -32,6 +32,7 @@ void main() {
             id: 'plan',
           ),
           transactionId: 'recognition',
+          role: BusinessActivityItemRole.followUp,
           kind: AmortizationKind.prepaidExpense,
           factKind: AmortizationTransactionFactKind.recognition,
           localCategoryAllocations: const [
@@ -74,6 +75,7 @@ void main() {
           id: 'plan',
         ),
         transactionId: transaction.id,
+        role: BusinessActivityItemRole.followUp,
         kind: AmortizationKind.prepaidExpense,
         factKind: AmortizationTransactionFactKind.recognition,
         localCategoryAllocations: const [],

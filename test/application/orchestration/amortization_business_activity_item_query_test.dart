@@ -10,6 +10,7 @@ import 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_termination.dart';
 import 'package:smartflow/domain/orchestration/port/amortization_repository.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
+import 'package:smartflow/shared/business_activity/business_activity_item_role.dart';
 
 void main() {
   test('projects only requested amortization transactions', () async {
@@ -29,6 +30,7 @@ void main() {
       items['refund-tx']!.factKind,
       AmortizationTransactionFactKind.refund,
     );
+    expect(items['refund-tx']!.role, BusinessActivityItemRole.followUp);
     expect(items['refund-tx']!.refundId, 'refund');
     expect(
       items['refund-tx']!.localCategoryAllocations.single.amount,
@@ -38,6 +40,7 @@ void main() {
       items['termination-tx']!.factKind,
       AmortizationTransactionFactKind.terminationRecognition,
     );
+    expect(items['termination-tx']!.role, BusinessActivityItemRole.followUp);
     expect(items['termination-tx']!.terminationId, 'termination');
   });
 

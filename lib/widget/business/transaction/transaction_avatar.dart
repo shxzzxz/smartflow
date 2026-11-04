@@ -40,6 +40,7 @@ class TransactionAvatar extends StatelessWidget {
         TransactionAvatarKind.amortizationRefund => RemixIcons.refund_2_line,
         TransactionAvatarKind.amortizationTermination =>
           RemixIcons.stop_circle_line,
+        TransactionAvatarKind.prepayment => RemixIcons.arrow_up_circle_line,
       };
       return BusinessIconBubble(
         size: size,

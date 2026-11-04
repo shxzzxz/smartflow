@@ -1,6 +1,7 @@
 import '../../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../../domain/orchestration/entity/amortization_plan.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_role.dart';
 import 'amortization_plan_query_service.dart';
 
 /// Business item facts for one amortization transaction.
@@ -12,6 +13,7 @@ final class AmortizationBusinessActivityItemProjection {
     required this.transactionId,
     required this.kind,
     required this.factKind,
+    required this.role,
     required Iterable<AccountAmountAllocation> localCategoryAllocations,
     this.occurrencePeriodSequence,
     this.occurrencePeriodDueAt,
@@ -23,6 +25,7 @@ final class AmortizationBusinessActivityItemProjection {
   final String transactionId;
   final AmortizationKind kind;
   final AmortizationTransactionFactKind factKind;
+  final BusinessActivityItemRole role;
   final List<AccountAmountAllocation> localCategoryAllocations;
   final int? occurrencePeriodSequence;
   final DateTime? occurrencePeriodDueAt;
@@ -36,6 +39,7 @@ final class AmortizationBusinessActivityItemProjection {
         other.transactionId == transactionId &&
         other.kind == kind &&
         other.factKind == factKind &&
+        other.role == role &&
         _sameAllocations(
           other.localCategoryAllocations,
           localCategoryAllocations,
@@ -52,6 +56,7 @@ final class AmortizationBusinessActivityItemProjection {
     transactionId,
     kind,
     factKind,
+    role,
     Object.hashAll([
       for (final allocation in localCategoryAllocations)
         (allocation.accountId, allocation.amount.minorUnits),
@@ -126,6 +131,9 @@ class AmortizationBusinessActivityItemQueryService {
           occurrencePeriodSequence: period?.sequenceNo,
           occurrencePeriodDueAt: period?.dueAt,
           factKind: factKind,
+          role: factKind == AmortizationTransactionFactKind.initial
+              ? BusinessActivityItemRole.origin
+              : BusinessActivityItemRole.followUp,
           refundId: refund?.id,
           terminationId:
               factKind ==

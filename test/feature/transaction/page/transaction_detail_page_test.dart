@@ -307,6 +307,7 @@ void main() {
                 id: 'plan-1',
               ),
               transactionId: 'amortization-entry',
+              role: BusinessActivityItemRole.origin,
               kind: AmortizationKind.prepaidExpense,
               factKind: AmortizationTransactionFactKind.initial,
               localCategoryAllocations: const [
@@ -837,6 +838,7 @@ Override _detailContextOverride(
                 id: advanceOwnerId,
               ),
               transactionId: detail.id,
+              role: BusinessActivityItemRole.origin,
               factKind: AdvanceTransactionFactKind.advance,
               scenario: AdvanceScenario.reimbursement,
               trackingMode: AdvanceTrackingMode.itemized,

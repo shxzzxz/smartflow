@@ -65,6 +65,7 @@ final class AmortizationBusinessActivityItemSource
       transactionId: item.transactionId,
       kind: item.kind,
       factKind: item.factKind,
+      role: item.role,
       localCategoryAllocations: item.localCategoryAllocations,
       occurrencePeriodSequence: item.occurrencePeriodSequence,
       occurrencePeriodDueAt: item.occurrencePeriodDueAt,

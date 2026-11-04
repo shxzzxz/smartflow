@@ -18,7 +18,7 @@ final class _CreditRepaymentActionDispatcher
   final TransactionUpdateAppService updateService;
   final RepaymentBusinessActivityItem owner;
 
-  String get repaymentId => owner.ownerId;
+  String get repaymentId => owner.repaymentId;
 
   @override
   Future<UiActionOutcome<void>> delete() async {

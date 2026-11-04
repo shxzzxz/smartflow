@@ -20,6 +20,7 @@ void main() {
           transactionId: 'refund-tx',
           kind: AmortizationKind.prepaidExpense,
           factKind: AmortizationTransactionFactKind.refund,
+          role: BusinessActivityItemRole.followUp,
           localCategoryAllocations: const [
             AccountAmountAllocation(
               accountId: 'rent',

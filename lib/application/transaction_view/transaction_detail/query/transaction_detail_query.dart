@@ -1,8 +1,5 @@
 import 'dart:async';
 
-import '../../../../domain/credit/valobj/installment_enums.dart';
-import '../../../../domain/orchestration/valobj/advance_enums.dart';
-import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../business_activity/query/business_activity_query_service.dart';
 import '../../business_activity/query/business_activity_read_models.dart';
 import '../../transaction_view_query_streams.dart';
@@ -76,16 +73,8 @@ final class TransactionDetailQueryImpl implements TransactionDetailQuery {
   }
 
   bool _requiresBusinessActivity(BusinessActivityItem? item) {
-    return switch (item) {
-      AdvanceBusinessActivityItem(:final factKind) =>
-        factKind == AdvanceTransactionFactKind.advance,
-      InstallmentBusinessActivityItem(:final factKind) =>
-        factKind == InstallmentTransactionFactKind.purchase ||
-            factKind == InstallmentTransactionFactKind.disbursement,
-      RepaymentBusinessActivityItem() => true,
-      AmortizationBusinessActivityItem(:final factKind) =>
-        factKind == AmortizationTransactionFactKind.initial,
-      UnknownBusinessActivityItem() || null => false,
-    };
+    return item != null &&
+        item is! UnknownBusinessActivityItem &&
+        item.isOrigin;
   }
 }

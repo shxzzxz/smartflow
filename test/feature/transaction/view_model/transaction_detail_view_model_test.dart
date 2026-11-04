@@ -953,6 +953,9 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         id: ownership.ownerId,
       ),
       transactionId: detail.id,
+      role: detail.businessPurpose == BusinessPurpose.refund
+          ? BusinessActivityItemRole.followUp
+          : BusinessActivityItemRole.origin,
       installmentType: InstallmentType.disbursement,
       factKind: detail.businessPurpose == BusinessPurpose.refund
           ? InstallmentTransactionFactKind.refund
@@ -964,6 +967,8 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         id: ownership.ownerId,
       ),
       transactionId: detail.id,
+      role: BusinessActivityItemRole.origin,
+      repaymentId: 'repayment-1',
       repaymentType: RepaymentType.bill,
       targetType: RepaymentTargetType.bill,
       targetId: 'bill-1',
@@ -974,6 +979,9 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         id: ownership.ownerId,
       ),
       transactionId: detail.id,
+      role: detail.businessPurpose == BusinessPurpose.advance
+          ? BusinessActivityItemRole.origin
+          : BusinessActivityItemRole.followUp,
       factKind: switch (detail.businessPurpose) {
         BusinessPurpose.advance => AdvanceTransactionFactKind.advance,
         BusinessPurpose.advanceCollection =>
@@ -1019,6 +1027,7 @@ AmortizationBusinessActivityItem _testAmortizationItem({
   return AmortizationBusinessActivityItem(
     activityKey: activityKey,
     transactionId: transactionId,
+    role: BusinessActivityItemRole.origin,
     kind: AmortizationKind.prepaidExpense,
     factKind: AmortizationTransactionFactKind.initial,
     localCategoryAllocations: const [],

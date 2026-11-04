@@ -1,6 +1,5 @@
 import '../../../credit/credit_query_api.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../../../domain/credit/service/installment/installment_transaction_fact_policy.dart';
 import '../../business_activity/query/business_activity_queries.dart';
 import '../query/business_activity_item_read_models.dart';
 import 'business_activity_item_source.dart';
@@ -19,13 +18,10 @@ final class InstallmentBusinessActivityItemSource
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
-    final installments = await _query.findInstallments(_ownerIds(values));
+    final items = await _query.findBusinessActivityItems(_requests(values));
     return {
       for (final transaction in values)
-        transaction.id: ?_map(
-          transaction,
-          installments[transaction.ownership?.ownerId],
-        ),
+        transaction.id: ?_map(transaction, items[transaction.id]),
     };
   }
 
@@ -34,30 +30,34 @@ final class InstallmentBusinessActivityItemSource
     return _query.watchInstallment(ownerId);
   }
 
-  Set<String> _ownerIds(Iterable<TransactionReadModel> transactions) => {
-    for (final transaction in transactions)
-      if (transaction.ownership case final ownership?) ownership.ownerId,
-  };
+  Map<String, InstallmentBusinessActivityItemRequest> _requests(
+    Iterable<TransactionReadModel> transactions,
+  ) {
+    return {
+      for (final transaction in transactions)
+        if (transaction.ownership case final ownership?)
+          transaction.id: InstallmentBusinessActivityItemRequest(
+            installmentId: ownership.ownerId,
+            businessPurpose: transaction.businessPurpose,
+          ),
+    };
+  }
 
   BusinessActivityItem? _map(
     TransactionReadModel transaction,
-    InstallmentDTO? installment,
+    InstallmentBusinessActivityItemProjection? item,
   ) {
     final ownership = transaction.ownership;
-    if (ownership == null || installment == null) return null;
-    final factKind = resolveInstallmentTransactionFactKind(
-      installmentType: installment.installmentType,
-      businessPurpose: transaction.businessPurpose,
-    );
-    if (factKind == null) return null;
+    if (ownership == null || item == null) return null;
     return InstallmentBusinessActivityItem(
       activityKey: BusinessActivityKey(
         type: ownership.ownerType,
         id: ownership.ownerId,
       ),
       transactionId: transaction.id,
-      installmentType: installment.installmentType,
-      factKind: factKind,
+      role: item.role,
+      installmentType: item.installmentType,
+      factKind: item.factKind,
     );
   }
 }

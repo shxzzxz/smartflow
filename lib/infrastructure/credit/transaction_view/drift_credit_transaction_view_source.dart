@@ -46,7 +46,10 @@ WHERE id IN (${_placeholders(ids.length)})
         .get();
     return {
       for (final row in rows)
-        row.read<String>('id'): CreditRepaymentBusinessActivitySummary(
+        row.read<String>(
+          'id',
+        ): CreditRepaymentBusinessActivitySummary.fromRepayment(
+          repaymentId: row.read<String>('id'),
           repaymentType: RepaymentType.fromCode(
             row.read<String>('repayment_type'),
           ),
@@ -105,7 +108,11 @@ SELECT
   repayment.id AS activity_id
 FROM repayments repayment
 JOIN transactions anchor ON anchor.id = repayment.transaction_id
-WHERE anchor.parent_transaction_id IS NULL
+WHERE repayment.repayment_type IN (
+  '${RepaymentType.bill.code}',
+  '${RepaymentType.unattributed.code}'
+)
+  AND anchor.parent_transaction_id IS NULL
   AND anchor.owner_type = '$creditRepaymentOwnerType'
   AND anchor.owner_id = repayment.id
   AND ${sql.whereClause}
