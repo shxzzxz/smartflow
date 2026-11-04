@@ -41,6 +41,13 @@ void main() {
 
     expect(bill.role, BusinessActivityItemRole.origin);
     expect(
+      bill.itemKey,
+      const BusinessActivityItemKey(
+        type: creditRepaymentOwnerType,
+        id: 'bill-repayment',
+      ),
+    );
+    expect(
       bill.activityKey,
       const BusinessActivityKey(
         type: creditRepaymentOwnerType,
@@ -53,12 +60,21 @@ void main() {
 
     expect(prepayment.role, BusinessActivityItemRole.followUp);
     expect(
+      prepayment.itemKey,
+      const BusinessActivityItemKey(
+        type: creditRepaymentOwnerType,
+        id: 'prepayment',
+      ),
+    );
+    expect(
       prepayment.activityKey,
       const BusinessActivityKey(type: installmentOwnerType, id: 'contract-1'),
     );
     expect(prepayment.repaymentType, RepaymentType.prepayment);
     expect(prepayment.repaymentId, 'prepayment');
     expect(prepayment.targetId, 'contract-1');
+    expect(bill.projections.single.transactionId, 'bill-tx');
+    expect(prepayment.projections.single.transactionId, 'prepayment-tx');
   });
 }
 

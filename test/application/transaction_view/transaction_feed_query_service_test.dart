@@ -31,16 +31,22 @@ void main() {
             type: orchestrationAmortizationOwnerType,
             id: 'plan',
           ),
-          transactionId: 'recognition',
+          itemKey: BusinessActivityItemKey.transaction('recognition'),
           role: BusinessActivityItemRole.followUp,
-          kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.recognition,
-          localCategoryAllocations: const [
-            AccountAmountAllocation(
-              accountId: 'membership',
-              amount: Money(minorUnits: 100),
+          occurredAt: amortization.occurredAt,
+          projections: [
+            AmortizationTransactionProjection(
+              transactionId: 'recognition',
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'membership',
+                  amount: Money(minorUnits: 100),
+                ),
+              ],
             ),
           ],
+          kind: AmortizationKind.prepaidExpense,
+          factKind: AmortizationTransactionFactKind.recognition,
         ),
       },
     );
@@ -56,6 +62,7 @@ void main() {
       'ordinary',
     ]);
     expect(entries.first.businessItem, isNotNull);
+    expect(entries.first.transactionProjection!.transactionId, 'recognition');
     expect(entries.last.businessItem, isNull);
   });
 
@@ -74,11 +81,17 @@ void main() {
           type: orchestrationAmortizationOwnerType,
           id: 'plan',
         ),
-        transactionId: transaction.id,
+        itemKey: BusinessActivityItemKey.transaction(transaction.id),
         role: BusinessActivityItemRole.followUp,
+        occurredAt: transaction.occurredAt,
+        projections: [
+          AmortizationTransactionProjection(
+            transactionId: transaction.id,
+            localCategoryAllocations: const [],
+          ),
+        ],
         kind: AmortizationKind.prepaidExpense,
         factKind: AmortizationTransactionFactKind.recognition,
-        localCategoryAllocations: const [],
       );
       when(
         () => transactions.watchTransactions(query),
@@ -94,6 +107,7 @@ void main() {
       final entries = await service.watchTransactions(query).first;
 
       expect(entries.single.businessItem, same(item));
+      expect(entries.single.transactionProjection, item.projections.single);
       verify(() => items.watchItems(any())).called(1);
     },
   );

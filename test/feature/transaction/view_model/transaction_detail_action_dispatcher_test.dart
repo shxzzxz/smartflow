@@ -545,8 +545,15 @@ BusinessActivityItem _advanceItem(TransactionReadModel transaction) {
       type: orchestrationAdvanceOwnerType,
       id: transaction.ownership!.ownerId,
     ),
-    transactionId: transaction.id,
+    itemKey: BusinessActivityItemKey(
+      type: orchestrationAdvanceOwnerType,
+      id: transaction.ownership!.ownerId,
+    ),
     role: BusinessActivityItemRole.origin,
+    occurredAt: transaction.occurredAt,
+    projections: [
+      BusinessActivityItemProjection(transactionId: transaction.id),
+    ],
     factKind: AdvanceTransactionFactKind.advance,
     scenario: AdvanceScenario.aa,
     trackingMode: AdvanceTrackingMode.itemized,
@@ -565,13 +572,19 @@ BusinessActivityItem _amortizationItem(
       type: orchestrationAmortizationOwnerType,
       id: 'plan',
     ),
-    transactionId: transaction.id,
+    itemKey: BusinessActivityItemKey.transaction(transaction.id),
     role: factKind == AmortizationTransactionFactKind.initial
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
+    occurredAt: transaction.occurredAt,
+    projections: [
+      AmortizationTransactionProjection(
+        transactionId: transaction.id,
+        localCategoryAllocations: const [],
+      ),
+    ],
     kind: AmortizationKind.prepaidExpense,
     factKind: factKind,
-    localCategoryAllocations: const [],
     refundId: refundId,
     terminationId: terminationId,
   );
@@ -585,10 +598,17 @@ RepaymentBusinessActivityItem _repaymentOwner(RepaymentType type) {
           : creditRepaymentOwnerType,
       id: type == RepaymentType.prepayment ? 'contract-1' : 'repayment-1',
     ),
-    transactionId: 'repayment-transaction',
+    itemKey: BusinessActivityItemKey(
+      type: creditRepaymentOwnerType,
+      id: 'repayment-1',
+    ),
     role: type == RepaymentType.bill || type == RepaymentType.unattributed
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
+    occurredAt: DateTime(2026, 10, 23),
+    projections: const [
+      BusinessActivityItemProjection(transactionId: 'repayment-transaction'),
+    ],
     repaymentId: 'repayment-1',
     repaymentType: type,
     targetType: switch (type) {

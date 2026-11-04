@@ -952,10 +952,17 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         type: ownership!.ownerType,
         id: ownership.ownerId,
       ),
-      transactionId: detail.id,
+      itemKey: detail.businessPurpose == BusinessPurpose.refund
+          ? BusinessActivityItemKey.transaction(detail.id)
+          : BusinessActivityItemKey(
+              type: installmentOwnerType,
+              id: ownership.ownerId,
+            ),
       role: detail.businessPurpose == BusinessPurpose.refund
           ? BusinessActivityItemRole.followUp
           : BusinessActivityItemRole.origin,
+      occurredAt: detail.occurredAt,
+      projections: [BusinessActivityItemProjection(transactionId: detail.id)],
       installmentType: InstallmentType.disbursement,
       factKind: detail.businessPurpose == BusinessPurpose.refund
           ? InstallmentTransactionFactKind.refund
@@ -966,8 +973,13 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         type: ownership!.ownerType,
         id: ownership.ownerId,
       ),
-      transactionId: detail.id,
+      itemKey: BusinessActivityItemKey(
+        type: creditRepaymentOwnerType,
+        id: ownership.ownerId,
+      ),
       role: BusinessActivityItemRole.origin,
+      occurredAt: detail.occurredAt,
+      projections: [BusinessActivityItemProjection(transactionId: detail.id)],
       repaymentId: 'repayment-1',
       repaymentType: RepaymentType.bill,
       targetType: RepaymentTargetType.bill,
@@ -978,10 +990,17 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
         type: ownership!.ownerType,
         id: ownership.ownerId,
       ),
-      transactionId: detail.id,
+      itemKey: detail.businessPurpose == BusinessPurpose.advance
+          ? BusinessActivityItemKey(
+              type: orchestrationAdvanceOwnerType,
+              id: ownership.ownerId,
+            )
+          : BusinessActivityItemKey.transaction(detail.id),
       role: detail.businessPurpose == BusinessPurpose.advance
           ? BusinessActivityItemRole.origin
           : BusinessActivityItemRole.followUp,
+      occurredAt: detail.occurredAt,
+      projections: [BusinessActivityItemProjection(transactionId: detail.id)],
       factKind: switch (detail.businessPurpose) {
         BusinessPurpose.advance => AdvanceTransactionFactKind.advance,
         BusinessPurpose.advanceCollection =>
@@ -1003,7 +1022,9 @@ TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
     ),
     final String ownerType => UnknownBusinessActivityItem(
       activityKey: BusinessActivityKey(type: ownerType, id: ownership!.ownerId),
-      transactionId: detail.id,
+      itemKey: BusinessActivityItemKey.transaction(detail.id),
+      occurredAt: detail.occurredAt,
+      projections: [BusinessActivityItemProjection(transactionId: detail.id)],
     ),
     null => null,
   };
@@ -1026,11 +1047,17 @@ AmortizationBusinessActivityItem _testAmortizationItem({
 }) {
   return AmortizationBusinessActivityItem(
     activityKey: activityKey,
-    transactionId: transactionId,
+    itemKey: BusinessActivityItemKey.transaction(transactionId),
     role: BusinessActivityItemRole.origin,
+    occurredAt: DateTime(2026, 1, 15),
+    projections: [
+      AmortizationTransactionProjection(
+        transactionId: transactionId,
+        localCategoryAllocations: const [],
+      ),
+    ],
     kind: AmortizationKind.prepaidExpense,
     factKind: AmortizationTransactionFactKind.initial,
-    localCategoryAllocations: const [],
   );
 }
 

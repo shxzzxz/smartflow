@@ -10,7 +10,19 @@ import 'package:smartflow/widget/business/finance/finance_labels.dart';
 bool isKnownBusinessActivityItem(BusinessActivityItem? item) =>
     item != null && item is! UnknownBusinessActivityItem;
 
-String? businessActivityItemLabel(BusinessActivityItem? item) {
+String? businessActivityItemLabel(
+  BusinessActivityItem? item, {
+  BusinessActivityItemProjection? projection,
+}) {
+  final effectiveProjection =
+      projection ??
+      (item != null && item.projections.length == 1
+          ? item.projections.single
+          : null);
+  final amortizationProjection =
+      effectiveProjection is AmortizationTransactionProjection
+      ? effectiveProjection
+      : null;
   return switch (item) {
     AdvanceBusinessActivityItem(:final factKind) => switch (factKind) {
       AdvanceTransactionFactKind.advance => '垫付',
@@ -31,14 +43,11 @@ String? businessActivityItemLabel(BusinessActivityItem? item) {
       kind == AmortizationKind.prepaidExpense ? '摊销预付' : '摊销预收',
     AmortizationBusinessActivityItem(
       factKind: AmortizationTransactionFactKind.recognition,
-      :final occurrencePeriodSequence,
-    )
-        when occurrencePeriodSequence != null =>
-      '第 $occurrencePeriodSequence 期确认',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.recognition,
     ) =>
-      '摊销确认',
+      switch (amortizationProjection?.occurrencePeriodSequence) {
+        final sequence? => '第 $sequence 期确认',
+        null => '摊销确认',
+      },
     AmortizationBusinessActivityItem(
       factKind: AmortizationTransactionFactKind.refund,
     ) =>
@@ -63,10 +72,20 @@ String? nonEntryBusinessActivityItemTitle(
     return null;
   }
   if (item!.isOrigin) return null;
+  final projection = item.projectionFor(transaction.id);
   return switch (item) {
-    AmortizationBusinessActivityItem() => businessActivityItemLabel(item),
-    InstallmentBusinessActivityItem() => businessActivityItemLabel(item),
-    RepaymentBusinessActivityItem() => businessActivityItemLabel(item),
+    AmortizationBusinessActivityItem() => businessActivityItemLabel(
+      item,
+      projection: projection,
+    ),
+    InstallmentBusinessActivityItem() => businessActivityItemLabel(
+      item,
+      projection: projection,
+    ),
+    RepaymentBusinessActivityItem() => businessActivityItemLabel(
+      item,
+      projection: projection,
+    ),
     _ => transactionPurposeLabel(transaction.businessPurpose),
   };
 }
@@ -76,7 +95,10 @@ String? businessActivityEntrySupportingText(
   TransactionReadModel transaction,
 ) {
   if (!isKnownBusinessActivityItem(item) || !item!.isOrigin) return null;
-  return businessActivityItemLabel(item);
+  return businessActivityItemLabel(
+    item,
+    projection: item.projectionFor(transaction.id),
+  );
 }
 
 TransactionAvatarKind? businessActivityItemAvatarKind(

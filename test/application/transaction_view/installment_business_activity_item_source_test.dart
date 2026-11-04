@@ -18,6 +18,7 @@ void main() {
         'tx-1': const InstallmentBusinessActivityItemProjection(
           transactionId: 'tx-1',
           installmentId: 'contract-1',
+          itemKey: BusinessActivityItemKey.transaction('tx-1'),
           installmentType: InstallmentType.purchase,
           factKind: InstallmentTransactionFactKind.refund,
           role: BusinessActivityItemRole.followUp,
@@ -32,6 +33,9 @@ void main() {
 
     expect(item.factKind, InstallmentTransactionFactKind.refund);
     expect(item.role, BusinessActivityItemRole.followUp);
+    expect(item.itemKey, const BusinessActivityItemKey.transaction('tx-1'));
+    expect(item.activityKey.id, 'contract-1');
+    expect(item.projections.single.transactionId, 'tx-1');
     expect(item.installmentType, InstallmentType.purchase);
   });
 }

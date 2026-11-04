@@ -6,6 +6,47 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 void main() {
+  test('activity items can represent zero or multiple projections', () {
+    final withoutTransaction = AdvanceBusinessActivityItem(
+      activityKey: const BusinessActivityKey(
+        type: orchestrationAdvanceOwnerType,
+        id: 'owner-1',
+      ),
+      itemKey: const BusinessActivityItemKey(
+        type: orchestrationAdvanceOwnerType,
+        id: 'owner-1',
+      ),
+      role: BusinessActivityItemRole.origin,
+      occurredAt: DateTime(2026, 1),
+      projections: const [],
+      factKind: AdvanceTransactionFactKind.advance,
+      scenario: AdvanceScenario.reimbursement,
+      trackingMode: AdvanceTrackingMode.itemized,
+    );
+    final multiple = AdvanceBusinessActivityItem(
+      activityKey: const BusinessActivityKey(
+        type: orchestrationAdvanceOwnerType,
+        id: 'owner-1',
+      ),
+      itemKey: const BusinessActivityItemKey.transaction('item-1'),
+      role: BusinessActivityItemRole.followUp,
+      occurredAt: DateTime(2026, 1),
+      projections: const [
+        BusinessActivityItemProjection(transactionId: 'tx-1'),
+        BusinessActivityItemProjection(transactionId: 'tx-2'),
+      ],
+      factKind: AdvanceTransactionFactKind.collection,
+      scenario: AdvanceScenario.reimbursement,
+      trackingMode: AdvanceTrackingMode.itemized,
+    );
+
+    expect(withoutTransaction.projections, isEmpty);
+    expect(() => withoutTransaction.transactionId, throwsStateError);
+    expect(multiple.projections, hasLength(2));
+    expect(multiple.projectionFor('tx-2')?.transactionId, 'tx-2');
+    expect(() => multiple.transactionId, throwsStateError);
+  });
+
   test('batches one source call and preserves unknown items', () async {
     final source = _ItemSource();
     final query = BusinessActivityItemQueryImpl(sources: [source]);
@@ -20,11 +61,26 @@ void main() {
     final unknown = _transaction('unknown', ownerType: 'unknown.owner');
     final ordinary = _transaction('ordinary');
 
-    final items = await query.findItems([first, second, unknown, ordinary]);
+    final items = await query.findItems([
+      first,
+      first,
+      second,
+      unknown,
+      ordinary,
+    ]);
 
     expect(source.calls, 1);
+    expect(source.requestedTransactionCount, 2);
     expect(source.requestedTransactionIds, {'first', 'second'});
     expect(items['first'], isA<AdvanceBusinessActivityItem>());
+    expect(
+      items['first']!.itemKey,
+      const BusinessActivityItemKey(
+        type: orchestrationAdvanceOwnerType,
+        id: 'owner-1',
+      ),
+    );
+    expect(items['first']!.projections.single.transactionId, 'first');
     expect(items['second'], isA<UnknownBusinessActivityItem>());
     expect(items['unknown'], isA<UnknownBusinessActivityItem>());
     expect(items, isNot(contains('ordinary')));
@@ -48,6 +104,7 @@ void main() {
 
 final class _ItemSource extends BusinessActivityItemSource {
   var calls = 0;
+  var requestedTransactionCount = 0;
   var requestedTransactionIds = <String>{};
 
   @override
@@ -58,28 +115,40 @@ final class _ItemSource extends BusinessActivityItemSource {
     Iterable<TransactionReadModel> transactions,
   ) async {
     calls += 1;
+    requestedTransactionCount += transactions.length;
     requestedTransactionIds = {
       for (final transaction in transactions) transaction.id,
     };
     return {
-      'first': const AdvanceBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      'first': AdvanceBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: orchestrationAdvanceOwnerType,
           id: 'owner-1',
         ),
-        transactionId: 'first',
+        itemKey: const BusinessActivityItemKey(
+          type: orchestrationAdvanceOwnerType,
+          id: 'owner-1',
+        ),
         role: BusinessActivityItemRole.origin,
+        occurredAt: DateTime(2026, 1),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'first'),
+        ],
         factKind: AdvanceTransactionFactKind.advance,
         scenario: AdvanceScenario.reimbursement,
         trackingMode: AdvanceTrackingMode.itemized,
       ),
-      'outside-request': const AdvanceBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      'outside-request': AdvanceBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: orchestrationAdvanceOwnerType,
           id: 'owner-1',
         ),
-        transactionId: 'outside-request',
+        itemKey: const BusinessActivityItemKey.transaction('outside-request'),
         role: BusinessActivityItemRole.origin,
+        occurredAt: DateTime(2026, 1),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'outside-request'),
+        ],
         factKind: AdvanceTransactionFactKind.advance,
         scenario: AdvanceScenario.reimbursement,
         trackingMode: AdvanceTrackingMode.itemized,

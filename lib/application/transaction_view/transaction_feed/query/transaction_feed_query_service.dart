@@ -8,6 +8,9 @@ final class TransactionFeedEntry {
 
   final TransactionReadModel transaction;
   final BusinessActivityItem? businessItem;
+
+  BusinessActivityItemProjection? get transactionProjection =>
+      businessItem?.projectionFor(transaction.id);
 }
 
 abstract interface class TransactionFeedQueryService {

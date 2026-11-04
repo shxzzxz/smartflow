@@ -54,8 +54,12 @@ final class InstallmentBusinessActivityItemSource
         type: ownership.ownerType,
         id: ownership.ownerId,
       ),
-      transactionId: transaction.id,
+      itemKey: item.itemKey,
       role: item.role,
+      occurredAt: transaction.occurredAt,
+      projections: [
+        BusinessActivityItemProjection(transactionId: transaction.id),
+      ],
       installmentType: item.installmentType,
       factKind: item.factKind,
     );

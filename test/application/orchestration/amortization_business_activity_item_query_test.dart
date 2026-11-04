@@ -10,6 +10,7 @@ import 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_termination.dart';
 import 'package:smartflow/domain/orchestration/port/amortization_repository.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
+import 'package:smartflow/shared/business_activity/business_activity_item_key.dart';
 import 'package:smartflow/shared/business_activity/business_activity_item_role.dart';
 
 void main() {
@@ -31,6 +32,13 @@ void main() {
       AmortizationTransactionFactKind.refund,
     );
     expect(items['refund-tx']!.role, BusinessActivityItemRole.followUp);
+    expect(
+      items['refund-tx']!.itemKey,
+      const BusinessActivityItemKey(
+        type: amortizationRefundBusinessActivityItemType,
+        id: 'refund',
+      ),
+    );
     expect(items['refund-tx']!.refundId, 'refund');
     expect(
       items['refund-tx']!.localCategoryAllocations.single.amount,
@@ -41,6 +49,13 @@ void main() {
       AmortizationTransactionFactKind.terminationRecognition,
     );
     expect(items['termination-tx']!.role, BusinessActivityItemRole.followUp);
+    expect(
+      items['termination-tx']!.itemKey,
+      const BusinessActivityItemKey(
+        type: amortizationTerminationBusinessActivityItemType,
+        id: 'termination',
+      ),
+    );
     expect(items['termination-tx']!.terminationId, 'termination');
   });
 

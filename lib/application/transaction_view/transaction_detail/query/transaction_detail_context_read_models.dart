@@ -35,6 +35,10 @@ final class TransactionDetailContext {
   /// Business meaning and local facts for the concrete transaction.
   final BusinessActivityItem? businessItem;
 
+  /// The local projection for the transaction opened by the detail route.
+  BusinessActivityItemProjection? get transactionProjection =>
+      businessItem?.projectionFor(transaction.id);
+
   /// Minimal operation constraint for amortization transactions.
   final bool isAmortizationTerminated;
 

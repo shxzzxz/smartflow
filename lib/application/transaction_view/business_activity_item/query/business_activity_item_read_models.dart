@@ -3,35 +3,69 @@ import '../../../../domain/credit/valobj/repayment_enums.dart';
 import '../../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_key.dart';
 import '../../../../shared/business_activity/business_activity_item_role.dart';
 import '../../business_activity/query/business_activity_queries.dart';
 
-/// 一笔实际交易在所属业务活动中的业务侧投影。
+/// 一笔实际交易在所属业务活动项中的局部业务投影。
 ///
-/// 该模型只包含当前交易自身的业务含义和局部业务事实，不包含活动级余额、
-/// 进度或完整业务模块信息。
+/// 投影只表达当前交易自己的局部事实，不构成独立的业务操作边界。
+class BusinessActivityItemProjection {
+  const BusinessActivityItemProjection({required this.transactionId});
+
+  final String transactionId;
+}
+
+/// 一个可独立识别的业务活动项。
+///
+/// 活动项拥有业务域提供的稳定身份和零到多条实际交易投影。本阶段业务域仍
+/// 只产生一条投影，但模型和查询契约不把交易身份当作活动项身份。
 sealed class BusinessActivityItem {
-  const BusinessActivityItem({
+  BusinessActivityItem({
     required this.activityKey,
-    required this.transactionId,
+    required this.itemKey,
     required this.role,
-  });
+    required this.occurredAt,
+    required Iterable<BusinessActivityItemProjection> projections,
+  }) : projections = List.unmodifiable(projections);
 
   final BusinessActivityKey activityKey;
-  final String transactionId;
+  final BusinessActivityItemKey itemKey;
   final BusinessActivityItemRole role;
+  final DateTime occurredAt;
+  final List<BusinessActivityItemProjection> projections;
 
   String get ownerType => activityKey.type;
   String get ownerId => activityKey.id;
 
   bool get isOrigin => role == BusinessActivityItemRole.origin;
+
+  BusinessActivityItemProjection? projectionFor(String transactionId) {
+    for (final projection in projections) {
+      if (projection.transactionId == transactionId) return projection;
+    }
+    return null;
+  }
+
+  /// 单投影迁移期的兼容入口。新代码应通过 [projections] 访问交易身份。
+  String get transactionId {
+    if (projections.length != 1) {
+      throw StateError(
+        'BusinessActivityItem.transactionId is only available while the item '
+        'has exactly one transaction projection.',
+      );
+    }
+    return projections.single.transactionId;
+  }
 }
 
 final class AdvanceBusinessActivityItem extends BusinessActivityItem {
-  const AdvanceBusinessActivityItem({
+  AdvanceBusinessActivityItem({
     required super.activityKey,
-    required super.transactionId,
+    required super.itemKey,
     required super.role,
+    required super.occurredAt,
+    required super.projections,
     required this.factKind,
     required this.scenario,
     required this.trackingMode,
@@ -43,10 +77,12 @@ final class AdvanceBusinessActivityItem extends BusinessActivityItem {
 }
 
 final class InstallmentBusinessActivityItem extends BusinessActivityItem {
-  const InstallmentBusinessActivityItem({
+  InstallmentBusinessActivityItem({
     required super.activityKey,
-    required super.transactionId,
+    required super.itemKey,
     required super.role,
+    required super.occurredAt,
+    required super.projections,
     required this.installmentType,
     required this.factKind,
   });
@@ -56,10 +92,12 @@ final class InstallmentBusinessActivityItem extends BusinessActivityItem {
 }
 
 final class RepaymentBusinessActivityItem extends BusinessActivityItem {
-  const RepaymentBusinessActivityItem({
+  RepaymentBusinessActivityItem({
     required super.activityKey,
-    required super.transactionId,
+    required super.itemKey,
     required super.role,
+    required super.occurredAt,
+    required super.projections,
     required this.repaymentId,
     required this.repaymentType,
     required this.targetType,
@@ -72,33 +110,45 @@ final class RepaymentBusinessActivityItem extends BusinessActivityItem {
   final String targetId;
 }
 
-final class AmortizationBusinessActivityItem extends BusinessActivityItem {
-  AmortizationBusinessActivityItem({
-    required super.activityKey,
+final class AmortizationTransactionProjection
+    extends BusinessActivityItemProjection {
+  AmortizationTransactionProjection({
     required super.transactionId,
-    required super.role,
-    required this.kind,
-    required this.factKind,
     required Iterable<AccountAmountAllocation> localCategoryAllocations,
     this.occurrencePeriodSequence,
     this.occurrencePeriodDueAt,
-    this.refundId,
-    this.terminationId,
   }) : localCategoryAllocations = List.unmodifiable(localCategoryAllocations);
 
-  final AmortizationKind kind;
-  final AmortizationTransactionFactKind factKind;
   final List<AccountAmountAllocation> localCategoryAllocations;
   final int? occurrencePeriodSequence;
   final DateTime? occurrencePeriodDueAt;
+}
+
+final class AmortizationBusinessActivityItem extends BusinessActivityItem {
+  AmortizationBusinessActivityItem({
+    required super.activityKey,
+    required super.itemKey,
+    required super.role,
+    required super.occurredAt,
+    required super.projections,
+    required this.kind,
+    required this.factKind,
+    this.refundId,
+    this.terminationId,
+  });
+
+  final AmortizationKind kind;
+  final AmortizationTransactionFactKind factKind;
   final String? refundId;
   final String? terminationId;
 }
 
 final class UnknownBusinessActivityItem extends BusinessActivityItem {
-  const UnknownBusinessActivityItem({
+  UnknownBusinessActivityItem({
     required super.activityKey,
-    required super.transactionId,
+    required super.itemKey,
+    required super.occurredAt,
+    required super.projections,
     super.role = BusinessActivityItemRole.followUp,
   });
 }

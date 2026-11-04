@@ -67,6 +67,10 @@ void main() {
 
     expect(context, isNotNull);
     expect(context!.businessItem, same(item));
+    expect(context.businessItem!.itemKey, item.itemKey);
+    expect(context.businessItem!.role, item.role);
+    expect(context.transactionProjection, same(item.projections.single));
+    expect(context.transactionProjection!.transactionId, 'refund');
     expect(context.isAmortizationTerminated, isFalse);
     expect(itemQuery.calls, 1);
   });
@@ -238,18 +242,24 @@ AmortizationBusinessActivityItem _amortizationItem(
       type: orchestrationAmortizationOwnerType,
       id: 'plan-1',
     ),
-    transactionId: transactionId,
+    itemKey: BusinessActivityItemKey.transaction(transactionId),
     role: factKind == AmortizationTransactionFactKind.initial
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
-    kind: AmortizationKind.prepaidExpense,
-    factKind: factKind,
-    localCategoryAllocations: const [
-      AccountAmountAllocation(
-        accountId: 'food',
-        amount: Money(minorUnits: 100),
+    occurredAt: DateTime(2026, 1),
+    projections: [
+      AmortizationTransactionProjection(
+        transactionId: transactionId,
+        localCategoryAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'food',
+            amount: Money(minorUnits: 100),
+          ),
+        ],
       ),
     ],
+    kind: AmortizationKind.prepaidExpense,
+    factKind: factKind,
   );
 }
 

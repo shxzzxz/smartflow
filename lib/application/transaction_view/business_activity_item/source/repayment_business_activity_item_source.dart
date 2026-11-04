@@ -49,8 +49,12 @@ final class RepaymentBusinessActivityItemSource
         type: summary.activityType,
         id: summary.activityId,
       ),
-      transactionId: transaction.id,
+      itemKey: summary.itemKey,
       role: summary.role,
+      occurredAt: transaction.occurredAt,
+      projections: [
+        BusinessActivityItemProjection(transactionId: transaction.id),
+      ],
       repaymentId: summary.repaymentId,
       repaymentType: summary.repaymentType,
       targetType: summary.targetType,

@@ -1,4 +1,5 @@
 import '../../../ledger/transaction/query/transaction_read_models.dart';
+import '../../../../shared/business_activity/business_activity_item_key.dart';
 import '../../business_activity/query/business_activity_queries.dart';
 import '../../transaction_view_query_streams.dart';
 import '../source/business_activity_item_source.dart';
@@ -25,7 +26,7 @@ final class BusinessActivityItemQueryImpl implements BusinessActivityItemQuery {
   Future<Map<String, BusinessActivityItem>> findItems(
     Iterable<TransactionReadModel> transactions,
   ) async {
-    final values = transactions.toList();
+    final values = _uniqueTransactions(transactions);
     final groups = _groupBySource(values);
     final loaded = await Future.wait([
       for (final entry in groups.entries) entry.key.findItems(entry.value),
@@ -37,7 +38,7 @@ final class BusinessActivityItemQueryImpl implements BusinessActivityItemQuery {
   Stream<Map<String, BusinessActivityItem>> watchItems(
     Iterable<TransactionReadModel> transactions,
   ) {
-    final values = transactions.toList();
+    final values = _uniqueTransactions(transactions);
     final groups = _groupBySource(values);
     if (groups.isEmpty) {
       return Stream.value(_complete(values, const []));
@@ -81,10 +82,24 @@ final class BusinessActivityItemQueryImpl implements BusinessActivityItemQuery {
           type: ownership.ownerType,
           id: ownership.ownerId,
         ),
-        transactionId: transaction.id,
+        itemKey: BusinessActivityItemKey.transaction(transaction.id),
+        occurredAt: transaction.occurredAt,
+        projections: [
+          BusinessActivityItemProjection(transactionId: transaction.id),
+        ],
       );
     }
     return items;
+  }
+
+  List<TransactionReadModel> _uniqueTransactions(
+    Iterable<TransactionReadModel> transactions,
+  ) {
+    final byId = <String, TransactionReadModel>{};
+    for (final transaction in transactions) {
+      byId.putIfAbsent(transaction.id, () => transaction);
+    }
+    return byId.values.toList(growable: false);
   }
 
   BusinessActivityItemSource? _sourceFor(String ownerType) {

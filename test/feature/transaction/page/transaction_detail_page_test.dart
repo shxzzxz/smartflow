@@ -306,16 +306,25 @@ void main() {
                 type: orchestrationAmortizationOwnerType,
                 id: 'plan-1',
               ),
-              transactionId: 'amortization-entry',
+              itemKey: const BusinessActivityItemKey(
+                type: orchestrationAmortizationOwnerType,
+                id: 'plan-1',
+              ),
               role: BusinessActivityItemRole.origin,
-              kind: AmortizationKind.prepaidExpense,
-              factKind: AmortizationTransactionFactKind.initial,
-              localCategoryAllocations: const [
-                AccountAmountAllocation(
-                  accountId: 'shopping',
-                  amount: Money(minorUnits: 10000),
+              occurredAt: detail.occurredAt,
+              projections: [
+                AmortizationTransactionProjection(
+                  transactionId: 'amortization-entry',
+                  localCategoryAllocations: const [
+                    AccountAmountAllocation(
+                      accountId: 'shopping',
+                      amount: Money(minorUnits: 10000),
+                    ),
+                  ],
                 ),
               ],
+              kind: AmortizationKind.prepaidExpense,
+              factKind: AmortizationTransactionFactKind.initial,
             ),
             activity: _amortizationActivity(detail),
           ),
@@ -837,8 +846,15 @@ Override _detailContextOverride(
                 type: orchestrationAdvanceOwnerType,
                 id: advanceOwnerId,
               ),
-              transactionId: detail.id,
+              itemKey: BusinessActivityItemKey(
+                type: orchestrationAdvanceOwnerType,
+                id: advanceOwnerId,
+              ),
               role: BusinessActivityItemRole.origin,
+              occurredAt: detail.occurredAt,
+              projections: [
+                BusinessActivityItemProjection(transactionId: detail.id),
+              ],
               factKind: AdvanceTransactionFactKind.advance,
               scenario: AdvanceScenario.reimbursement,
               trackingMode: AdvanceTrackingMode.itemized,
@@ -850,7 +866,11 @@ Override _detailContextOverride(
                 type: ownership.ownerType,
                 id: ownership.ownerId,
               ),
-              transactionId: detail.id,
+              itemKey: BusinessActivityItemKey.transaction(detail.id),
+              occurredAt: detail.occurredAt,
+              projections: [
+                BusinessActivityItemProjection(transactionId: detail.id),
+              ],
             ));
   final resolvedActivity =
       activity ??

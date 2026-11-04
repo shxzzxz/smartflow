@@ -19,6 +19,7 @@ void main() {
         'refund-1': const AdvanceBusinessActivityItemProjection(
           transactionId: 'refund-1',
           advanceCaseId: 'advance-1',
+          itemKey: BusinessActivityItemKey.transaction('refund-1'),
           factKind: AdvanceTransactionFactKind.refund,
           role: BusinessActivityItemRole.followUp,
           scenario: AdvanceScenario.reimbursement,
@@ -34,6 +35,10 @@ void main() {
 
     expect(item.factKind, AdvanceTransactionFactKind.refund);
     expect(item.role, BusinessActivityItemRole.followUp);
+    expect(item.itemKey, const BusinessActivityItemKey.transaction('refund-1'));
+    expect(item.activityKey.id, 'advance-1');
+    expect(item.projections.single.transactionId, 'refund-1');
+    expect(item.occurredAt, DateTime(2026, 1, 2));
     expect(item.scenario, AdvanceScenario.reimbursement);
     expect(item.trackingMode, AdvanceTrackingMode.itemized);
   });

@@ -161,17 +161,23 @@ void main() {
             type: orchestrationAmortizationOwnerType,
             id: 'plan',
           ),
-          transactionId: 'tx',
+          itemKey: const BusinessActivityItemKey.transaction('tx-1'),
           role: BusinessActivityItemRole.followUp,
-          kind: AmortizationKind.prepaidExpense,
-          occurrencePeriodSequence: 2,
-          factKind: AmortizationTransactionFactKind.recognition,
-          localCategoryAllocations: const [
-            AccountAmountAllocation(
-              accountId: 'food',
-              amount: Money(minorUnits: 2000),
+          occurredAt: DateTime(2026, 1, 15),
+          projections: [
+            AmortizationTransactionProjection(
+              transactionId: 'tx-1',
+              occurrencePeriodSequence: 2,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'food',
+                  amount: Money(minorUnits: 2000),
+                ),
+              ],
             ),
           ],
+          kind: AmortizationKind.prepaidExpense,
+          factKind: AmortizationTransactionFactKind.recognition,
         ),
         accountLookup: _lookup,
         amountSource: const TransactionGroupAmountSource(),
@@ -199,16 +205,25 @@ void main() {
             type: orchestrationAmortizationOwnerType,
             id: 'plan',
           ),
-          transactionId: 'tx',
+          itemKey: const BusinessActivityItemKey(
+            type: orchestrationAmortizationOwnerType,
+            id: 'plan',
+          ),
           role: BusinessActivityItemRole.origin,
-          kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.initial,
-          localCategoryAllocations: const [
-            AccountAmountAllocation(
-              accountId: 'food',
-              amount: Money(minorUnits: 2000),
+          occurredAt: DateTime(2026, 1, 15),
+          projections: [
+            AmortizationTransactionProjection(
+              transactionId: 'tx-1',
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'food',
+                  amount: Money(minorUnits: 2000),
+                ),
+              ],
             ),
           ],
+          kind: AmortizationKind.prepaidExpense,
+          factKind: AmortizationTransactionFactKind.initial,
         ),
         accountLookup: _lookup,
         amountSource: const TransactionGroupAmountSource(),
@@ -230,13 +245,20 @@ void main() {
             ownerId: 'contract',
           ),
         ),
-        businessItem: const InstallmentBusinessActivityItem(
-          activityKey: BusinessActivityKey(
+        businessItem: InstallmentBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
             type: installmentOwnerType,
             id: 'contract',
           ),
-          transactionId: 'tx',
+          itemKey: const BusinessActivityItemKey(
+            type: installmentOwnerType,
+            id: 'contract',
+          ),
           role: BusinessActivityItemRole.origin,
+          occurredAt: DateTime(2026, 1, 15),
+          projections: const [
+            BusinessActivityItemProjection(transactionId: 'tx-1'),
+          ],
           installmentType: InstallmentType.purchase,
           factKind: InstallmentTransactionFactKind.purchase,
         ),
@@ -260,13 +282,17 @@ void main() {
             ownerId: 'advance',
           ),
         ),
-        businessItem: const AdvanceBusinessActivityItem(
-          activityKey: BusinessActivityKey(
+        businessItem: AdvanceBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
             type: orchestrationAdvanceOwnerType,
             id: 'advance',
           ),
-          transactionId: 'tx',
+          itemKey: const BusinessActivityItemKey.transaction('tx-1'),
           role: BusinessActivityItemRole.followUp,
+          occurredAt: DateTime(2026, 1, 15),
+          projections: const [
+            BusinessActivityItemProjection(transactionId: 'tx-1'),
+          ],
           factKind: AdvanceTransactionFactKind.collection,
           scenario: AdvanceScenario.reimbursement,
           trackingMode: AdvanceTrackingMode.itemized,
@@ -292,13 +318,20 @@ void main() {
             ownerId: 'prepayment',
           ),
         ),
-        businessItem: const RepaymentBusinessActivityItem(
-          activityKey: BusinessActivityKey(
+        businessItem: RepaymentBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
             type: installmentOwnerType,
             id: 'contract',
           ),
-          transactionId: 'tx',
+          itemKey: const BusinessActivityItemKey(
+            type: creditRepaymentOwnerType,
+            id: 'prepayment',
+          ),
           role: BusinessActivityItemRole.followUp,
+          occurredAt: DateTime(2026, 1, 15),
+          projections: const [
+            BusinessActivityItemProjection(transactionId: 'tx-1'),
+          ],
           repaymentId: 'prepayment',
           repaymentType: RepaymentType.prepayment,
           targetType: RepaymentTargetType.contract,

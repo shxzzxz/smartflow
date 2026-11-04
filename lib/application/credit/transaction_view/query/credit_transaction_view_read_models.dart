@@ -1,5 +1,6 @@
 import '../../../../domain/credit/valobj/installment_enums.dart';
 import '../../../../domain/credit/valobj/repayment_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_key.dart';
 import '../../../../shared/business_activity/business_activity_item_role.dart';
 
 /// Credit-owned business activity kinds exposed to the transaction view.
@@ -88,6 +89,7 @@ final class CreditRepaymentBusinessActivitySummary {
     required this.repaymentType,
     required this.targetType,
     required this.targetId,
+    required this.itemKey,
     required this.activityType,
     required this.activityId,
     required this.role,
@@ -107,6 +109,10 @@ final class CreditRepaymentBusinessActivitySummary {
       repaymentType: repaymentType,
       targetType: targetType,
       targetId: targetId,
+      itemKey: BusinessActivityItemKey(
+        type: creditRepaymentOwnerType,
+        id: repaymentId,
+      ),
       activityType: isOrigin ? creditRepaymentOwnerType : installmentOwnerType,
       activityId: isOrigin ? repaymentId : targetId,
       role: isOrigin
@@ -119,6 +125,7 @@ final class CreditRepaymentBusinessActivitySummary {
   final RepaymentType repaymentType;
   final RepaymentTargetType targetType;
   final String targetId;
+  final BusinessActivityItemKey itemKey;
   final String activityType;
   final String activityId;
   final BusinessActivityItemRole role;

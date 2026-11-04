@@ -1,6 +1,7 @@
 /// 跨业务域的用户交易视图读侧 API。
 library;
 
+export '../../shared/business_activity/business_activity_item_key.dart';
 export '../../shared/business_activity/business_activity_item_role.dart';
 export 'business_activity_item/query/business_activity_item_query.dart';
 export 'business_activity_item/query/business_activity_item_read_models.dart';

@@ -422,8 +422,9 @@ TransactionRowPresentation buildTransactionRowPresentation({
     );
   }
 
-  final itemCategoryIds = switch (businessItem) {
-    AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+  final transactionProjection = businessItem?.projectionFor(item.id);
+  final itemCategoryIds = switch (transactionProjection) {
+    AmortizationTransactionProjection(:final localCategoryAllocations) =>
       localCategoryAllocations.map((allocation) => allocation.accountId),
     _ => const <String>[],
   };

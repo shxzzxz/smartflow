@@ -519,13 +519,20 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessItem: const InstallmentBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      businessItem: InstallmentBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: installmentOwnerType,
           id: 'contract-1',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey(
+          type: installmentOwnerType,
+          id: 'contract-1',
+        ),
         role: BusinessActivityItemRole.origin,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         installmentType: InstallmentType.purchase,
         factKind: InstallmentTransactionFactKind.purchase,
       ),
@@ -545,13 +552,17 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.refund,
       parentTransactionId: null,
-      businessItem: const InstallmentBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      businessItem: InstallmentBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: installmentOwnerType,
           id: 'contract-1',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey.transaction('child'),
         role: BusinessActivityItemRole.followUp,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         installmentType: InstallmentType.purchase,
         factKind: InstallmentTransactionFactKind.refund,
       ),
@@ -623,8 +634,12 @@ void main() {
           type: orchestrationAdvanceOwnerType,
           id: 'advance',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey.transaction('child'),
         role: BusinessActivityItemRole.followUp,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         factKind: AdvanceTransactionFactKind.collection,
         scenario: AdvanceScenario.reimbursement,
         trackingMode: AdvanceTrackingMode.itemized,
@@ -690,13 +705,20 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.debtRepayment,
       parentTransactionId: null,
-      businessItem: const RepaymentBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      businessItem: RepaymentBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: creditRepaymentOwnerType,
           id: 'repayment-1',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey(
+          type: creditRepaymentOwnerType,
+          id: 'repayment-1',
+        ),
         role: BusinessActivityItemRole.origin,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         repaymentId: 'repayment-1',
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
@@ -718,13 +740,20 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.debtRepayment,
       parentTransactionId: null,
-      businessItem: const RepaymentBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      businessItem: RepaymentBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: creditRepaymentOwnerType,
           id: 'repayment-2',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey(
+          type: creditRepaymentOwnerType,
+          id: 'repayment-2',
+        ),
         role: BusinessActivityItemRole.origin,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         repaymentId: 'repayment-2',
         repaymentType: RepaymentType.unattributed,
         targetType: RepaymentTargetType.account,
@@ -747,13 +776,20 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.debtRepayment,
       parentTransactionId: null,
-      businessItem: const RepaymentBusinessActivityItem(
-        activityKey: BusinessActivityKey(
+      businessItem: RepaymentBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
           type: installmentOwnerType,
           id: 'contract-1',
         ),
-        transactionId: 'child',
+        itemKey: const BusinessActivityItemKey(
+          type: creditRepaymentOwnerType,
+          id: 'prepayment',
+        ),
         role: BusinessActivityItemRole.followUp,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: const [
+          BusinessActivityItemProjection(transactionId: 'child'),
+        ],
         repaymentId: 'prepayment',
         repaymentType: RepaymentType.prepayment,
         targetType: RepaymentTargetType.contract,
@@ -889,8 +925,15 @@ TransactionDetailLoaded _build({
                 type: orchestrationAdvanceOwnerType,
                 id: resolvedAdvanceCase.id,
               ),
-              transactionId: detail.id,
+              itemKey: BusinessActivityItemKey(
+                type: orchestrationAdvanceOwnerType,
+                id: resolvedAdvanceCase.id,
+              ),
               role: BusinessActivityItemRole.origin,
+              occurredAt: detail.occurredAt,
+              projections: [
+                BusinessActivityItemProjection(transactionId: detail.id),
+              ],
               factKind: AdvanceTransactionFactKind.advance,
               scenario: resolvedAdvanceCase.scenario,
               trackingMode: resolvedAdvanceCase.trackingMode,
@@ -946,22 +989,28 @@ AmortizationBusinessActivityItem _amortizationItem({
       type: orchestrationAmortizationOwnerType,
       id: planId,
     ),
-    transactionId: transactionId,
+    itemKey: BusinessActivityItemKey.transaction(transactionId),
     role: factKind == AmortizationTransactionFactKind.initial
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
+    occurredAt: DateTime(2026, 1, 15),
+    projections: [
+      AmortizationTransactionProjection(
+        transactionId: transactionId,
+        occurrencePeriodSequence: occurrencePeriodSequence,
+        localCategoryAllocations: [
+          if (categoryId != null)
+            AccountAmountAllocation(
+              accountId: categoryId,
+              amount: const Money(minorUnits: 1000),
+            ),
+        ],
+      ),
+    ],
     kind: kind,
     factKind: factKind,
     refundId: refundId,
     terminationId: terminationId,
-    occurrencePeriodSequence: occurrencePeriodSequence,
-    localCategoryAllocations: [
-      if (categoryId != null)
-        AccountAmountAllocation(
-          accountId: categoryId,
-          amount: const Money(minorUnits: 1000),
-        ),
-    ],
   );
 }
 

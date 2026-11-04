@@ -1,8 +1,18 @@
 import '../../../../domain/ledger/valobj/account_amount_allocation.dart';
 import '../../../../domain/orchestration/entity/amortization_plan.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../../../shared/business_activity/business_activity_item_key.dart';
 import '../../../../shared/business_activity/business_activity_item_role.dart';
 import 'amortization_plan_query_service.dart';
+
+const String amortizationPlanBusinessActivityItemType =
+    'orchestration.amortization_plan';
+const String amortizationPeriodBusinessActivityItemType =
+    'orchestration.amortization_period';
+const String amortizationRefundBusinessActivityItemType =
+    'orchestration.amortization_refund';
+const String amortizationTerminationBusinessActivityItemType =
+    'orchestration.amortization_termination';
 
 /// Business item facts for one amortization transaction.
 ///
@@ -11,6 +21,7 @@ final class AmortizationBusinessActivityItemProjection {
   AmortizationBusinessActivityItemProjection({
     required this.planId,
     required this.transactionId,
+    required this.itemKey,
     required this.kind,
     required this.factKind,
     required this.role,
@@ -23,6 +34,7 @@ final class AmortizationBusinessActivityItemProjection {
 
   final String planId;
   final String transactionId;
+  final BusinessActivityItemKey itemKey;
   final AmortizationKind kind;
   final AmortizationTransactionFactKind factKind;
   final BusinessActivityItemRole role;
@@ -37,6 +49,7 @@ final class AmortizationBusinessActivityItemProjection {
     return other is AmortizationBusinessActivityItemProjection &&
         other.planId == planId &&
         other.transactionId == transactionId &&
+        other.itemKey == itemKey &&
         other.kind == kind &&
         other.factKind == factKind &&
         other.role == role &&
@@ -54,6 +67,7 @@ final class AmortizationBusinessActivityItemProjection {
   int get hashCode => Object.hash(
     planId,
     transactionId,
+    itemKey,
     kind,
     factKind,
     role,
@@ -123,9 +137,31 @@ class AmortizationBusinessActivityItemQueryService {
           AmortizationTransactionFactKind.terminationReturn =>
             termination?.categoryReturnAllocations ?? const [],
         };
+        final itemKey = switch (factKind) {
+          AmortizationTransactionFactKind.initial => BusinessActivityItemKey(
+            type: amortizationPlanBusinessActivityItemType,
+            id: plan.id,
+          ),
+          AmortizationTransactionFactKind.recognition =>
+            BusinessActivityItemKey(
+              type: amortizationPeriodBusinessActivityItemType,
+              id: period!.id,
+            ),
+          AmortizationTransactionFactKind.refund => BusinessActivityItemKey(
+            type: amortizationRefundBusinessActivityItemType,
+            id: refund!.id,
+          ),
+          AmortizationTransactionFactKind.terminationRecognition ||
+          AmortizationTransactionFactKind.terminationReturn =>
+            BusinessActivityItemKey(
+              type: amortizationTerminationBusinessActivityItemType,
+              id: termination!.id,
+            ),
+        };
         items[transactionId] = AmortizationBusinessActivityItemProjection(
           planId: plan.id,
           transactionId: transactionId,
+          itemKey: itemKey,
           kind: plan.kind,
           localCategoryAllocations: localCategories,
           occurrencePeriodSequence: period?.sequenceNo,

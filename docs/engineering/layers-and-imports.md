@@ -113,7 +113,7 @@ lib/
 │   │           └── port/                # 读侧 application port；无 port 时可省略
 │   ├── transaction_view/                # 跨域用户交易读视图；不是业务域
 │   │   ├── business_activity/query/     # 业务活动分页与活动摘要
-│   │   ├── business_activity_item/query/ # 单笔交易的业务侧投影
+│   │   ├── business_activity_item/query/ # 业务活动项及交易投影
 │   │   └── transaction_feed/query/      # 交易明细视图语义封装
 │   └── shared/                          # 事务执行抽象等 application 共享能力
 │       └── task/                        # Task 定义、调度器、重试策略分别存放
@@ -202,6 +202,7 @@ lib/infrastructure/database/table/*
 - 业务活动页按业务活动分页；内容流复用已选活动集合，分别订阅活动摘要和展示交易，不重新解析活动身份。
 - `application/transaction_view` 的 source adapter 只做业务域查询结果与账务核心已有事实到统一业务活动读模型的映射；业务筛选、活动项角色、业务事实和变更监听由所属业务域 application query 提供，不得复制账务聚合或为单一消费方定义专用摘要 DTO。
 - 交易明细视图先取得账务核心的交易页，再按 owner 类型和业务活动 ID 批量请求命中交易的业务活动项交易投影；业务活动摘要按活动身份单独返回一次，`transaction_view` 不读取 owner 内部结构并自行判断交易含义。多项交易投影共享活动项身份时，整体业务操作以活动项为作用边界。
+- 业务域活动项查询提供稳定 `itemKey` 与角色，`transaction_view` 负责映射活动身份并装配交易投影；活动项可以没有交易投影，交易身份不作为活动项的必填身份。
 - 业务域 application query 不得导入 `application/transaction_view` 的读模型或 source 接口。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。

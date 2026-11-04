@@ -20,19 +20,33 @@ final class AmortizationBusinessActivityItemSource
   Future<Map<String, BusinessActivityItem>> findItems(
     Iterable<TransactionReadModel> transactions,
   ) async {
-    final items = await _query.findForTransactions(_groupByOwner(transactions));
-    return {for (final entry in items.entries) entry.key: _map(entry.value)};
+    final values = transactions.toList();
+    final items = await _query.findForTransactions(_groupByOwner(values));
+    final transactionsById = {
+      for (final transaction in values) transaction.id: transaction,
+    };
+    return {
+      for (final entry in items.entries)
+        if (transactionsById[entry.key] case final transaction?)
+          entry.key: _map(entry.value, transaction),
+    };
   }
 
   @override
   Stream<Map<String, BusinessActivityItem>> watchItems(
     Iterable<TransactionReadModel> transactions,
   ) {
+    final values = transactions.toList();
+    final transactionsById = {
+      for (final transaction in values) transaction.id: transaction,
+    };
     return _query
-        .watchForTransactions(_groupByOwner(transactions))
+        .watchForTransactions(_groupByOwner(values))
         .map(
           (items) => {
-            for (final entry in items.entries) entry.key: _map(entry.value),
+            for (final entry in items.entries)
+              if (transactionsById[entry.key] case final transaction?)
+                entry.key: _map(entry.value, transaction),
           },
         );
   }
@@ -56,19 +70,28 @@ final class AmortizationBusinessActivityItemSource
     return transactionIdsByPlanId;
   }
 
-  BusinessActivityItem _map(AmortizationBusinessActivityItemProjection item) {
+  BusinessActivityItem _map(
+    AmortizationBusinessActivityItemProjection item,
+    TransactionReadModel transaction,
+  ) {
     return AmortizationBusinessActivityItem(
       activityKey: BusinessActivityKey(
         type: orchestrationAmortizationOwnerType,
         id: item.planId,
       ),
-      transactionId: item.transactionId,
+      itemKey: item.itemKey,
+      role: item.role,
+      occurredAt: transaction.occurredAt,
+      projections: [
+        AmortizationTransactionProjection(
+          transactionId: item.transactionId,
+          localCategoryAllocations: item.localCategoryAllocations,
+          occurrencePeriodSequence: item.occurrencePeriodSequence,
+          occurrencePeriodDueAt: item.occurrencePeriodDueAt,
+        ),
+      ],
       kind: item.kind,
       factKind: item.factKind,
-      role: item.role,
-      localCategoryAllocations: item.localCategoryAllocations,
-      occurrencePeriodSequence: item.occurrencePeriodSequence,
-      occurrencePeriodDueAt: item.occurrencePeriodDueAt,
       refundId: item.refundId,
       terminationId: item.terminationId,
     );

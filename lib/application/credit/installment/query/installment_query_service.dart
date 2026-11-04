@@ -6,6 +6,7 @@ import 'package:smartflow/domain/credit/service/installment/installment_repaymen
 import 'package:smartflow/domain/credit/service/installment/installment_transaction_fact_policy.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
+import 'package:smartflow/shared/business_activity/business_activity_item_key.dart';
 import 'package:smartflow/shared/business_activity/business_activity_item_role.dart';
 
 import 'installment_dtos.dart';
@@ -131,6 +132,12 @@ class InstallmentQueryServiceImpl implements InstallmentQueryService {
       items[entry.key] = InstallmentBusinessActivityItemProjection(
         transactionId: entry.key,
         installmentId: installment.id,
+        itemKey: isOrigin
+            ? BusinessActivityItemKey(
+                type: installmentOwnerType,
+                id: installment.id,
+              )
+            : BusinessActivityItemKey.transaction(entry.key),
         installmentType: installment.installmentType,
         factKind: factKind,
         role: isOrigin

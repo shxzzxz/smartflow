@@ -12,9 +12,10 @@ _buildTransactionDetailLedger(
   DetailBehaviorConfig behavior,
 ) {
   final detail = context.transaction;
+  final transactionProjection = context.transactionProjection;
   final List<AccountAmountAllocation> categoryAllocations =
-      switch (context.businessItem) {
-        AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+      switch (transactionProjection) {
+        AmortizationTransactionProjection(:final localCategoryAllocations) =>
           localCategoryAllocations,
         _ => const <AccountAmountAllocation>[],
       };
@@ -22,8 +23,8 @@ _buildTransactionDetailLedger(
   final isNonEntry =
       isKnownBusinessActivityItem(context.businessItem) && !isActivityEntry;
   final categoryAccountIds = isActivityEntry
-      ? switch (context.businessItem) {
-          AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+      ? switch (transactionProjection) {
+          AmortizationTransactionProjection(:final localCategoryAllocations) =>
             localCategoryAllocations.map((allocation) => allocation.accountId),
           _ => const <String>[],
         }

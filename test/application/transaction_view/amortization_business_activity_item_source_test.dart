@@ -18,6 +18,10 @@ void main() {
         'refund-tx': AmortizationBusinessActivityItemProjection(
           planId: 'plan',
           transactionId: 'refund-tx',
+          itemKey: BusinessActivityItemKey(
+            type: amortizationRefundBusinessActivityItemType,
+            id: 'refund',
+          ),
           kind: AmortizationKind.prepaidExpense,
           factKind: AmortizationTransactionFactKind.refund,
           role: BusinessActivityItemRole.followUp,
@@ -42,7 +46,13 @@ void main() {
       AmortizationTransactionFactKind.refund,
     );
     expect((refundItem as AmortizationBusinessActivityItem).refundId, 'refund');
-    expect(refundItem.localCategoryAllocations.single.amount.minorUnits, 1000);
+    expect(refundItem.itemKey.id, 'refund');
+    expect(refundItem.role, BusinessActivityItemRole.followUp);
+    expect(refundItem.activityKey.id, 'plan');
+    final projection =
+        refundItem.projections.single as AmortizationTransactionProjection;
+    expect(projection.transactionId, 'refund-tx');
+    expect(projection.localCategoryAllocations.single.amount.minorUnits, 1000);
   });
 }
 
