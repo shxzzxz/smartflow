@@ -126,19 +126,7 @@ void main() {
 
       final dynamic dispatcher =
           createTransactionDetailActionDispatcherForTesting(
-            context: _context(
-              transaction,
-              owner: AdvanceTransactionBusinessContext(
-                ownerType: orchestrationAdvanceOwnerType,
-                ownerId: 'advance',
-                scenario: AdvanceScenario.aa,
-                trackingMode: AdvanceTrackingMode.itemized,
-                advanceAmount: transaction.primaryAmount,
-                receivedAmount: Money.zero(),
-                outstanding: transaction.primaryAmount,
-                isClosed: false,
-              ),
-            ),
+            context: _context(transaction, item: _advanceItem(transaction)),
             editService: editService,
             updateService: updateService,
             installmentAppService: installmentAppService,
@@ -176,21 +164,7 @@ void main() {
     );
     final dynamic dispatcher =
         createTransactionDetailActionDispatcherForTesting(
-          context: _context(
-            transaction,
-            owner: AmortizationTransactionBusinessContext(
-              ownerType: orchestrationAmortizationOwnerType,
-              ownerId: 'plan',
-              initialTransactionId: 'amortization-entry',
-              kind: AmortizationKind.prepaidExpense,
-              status: AmortizationStatus.active,
-              originalAmount: transaction.primaryAmount,
-              recognizedAmount: Money(minorUnits: 0),
-              remainingAmount: transaction.primaryAmount,
-              postedPeriodCount: 0,
-              totalPeriodCount: 3,
-            ),
-          ),
+          context: _context(transaction, item: _amortizationItem(transaction)),
           editService: editService,
           updateService: updateService,
           installmentAppService: installmentAppService,
@@ -242,21 +216,7 @@ void main() {
     ).thenAnswer((_) async {});
     final dynamic dispatcher =
         createTransactionDetailActionDispatcherForTesting(
-          context: _context(
-            transaction,
-            owner: AmortizationTransactionBusinessContext(
-              ownerType: orchestrationAmortizationOwnerType,
-              ownerId: 'plan',
-              initialTransactionId: 'amortization-entry',
-              kind: AmortizationKind.prepaidExpense,
-              status: AmortizationStatus.active,
-              originalAmount: Money(minorUnits: 10000),
-              recognizedAmount: Money(minorUnits: 0),
-              remainingAmount: Money(minorUnits: 10000),
-              postedPeriodCount: 0,
-              totalPeriodCount: 3,
-            ),
-          ),
+          context: _context(transaction, item: _amortizationItem(transaction)),
           editService: editService,
           updateService: updateService,
           installmentAppService: installmentAppService,
@@ -297,17 +257,8 @@ void main() {
         createTransactionDetailActionDispatcherForTesting(
           context: _context(
             transaction,
-            owner: AmortizationTransactionBusinessContext(
-              ownerType: orchestrationAmortizationOwnerType,
-              ownerId: 'plan',
-              initialTransactionId: 'initial',
-              kind: AmortizationKind.prepaidExpense,
-              status: AmortizationStatus.active,
-              originalAmount: Money(minorUnits: 10000),
-              recognizedAmount: Money.zero(),
-              remainingAmount: Money(minorUnits: 10000),
-              postedPeriodCount: 0,
-              totalPeriodCount: 3,
+            item: _amortizationItem(
+              transaction,
               factKind: AmortizationTransactionFactKind.refund,
               refundId: 'refund-fact',
             ),
@@ -356,17 +307,8 @@ void main() {
       dispatcher = createTransactionDetailActionDispatcherForTesting(
         context: _context(
           transaction,
-          owner: const AmortizationTransactionBusinessContext(
-            ownerType: orchestrationAmortizationOwnerType,
-            ownerId: 'plan',
-            initialTransactionId: 'initial',
-            kind: AmortizationKind.prepaidExpense,
-            status: AmortizationStatus.terminated,
-            originalAmount: Money(minorUnits: 10000),
-            recognizedAmount: Money(minorUnits: 10000),
-            remainingAmount: Money(minorUnits: 0),
-            postedPeriodCount: 3,
-            totalPeriodCount: 3,
+          item: _amortizationItem(
+            transaction,
             factKind: AmortizationTransactionFactKind.terminationRecognition,
             terminationId: 'termination',
           ),
@@ -411,19 +353,7 @@ void main() {
 
       final dynamic dispatcher =
           createTransactionDetailActionDispatcherForTesting(
-            context: _context(
-              transaction,
-              owner: AdvanceTransactionBusinessContext(
-                ownerType: orchestrationAdvanceOwnerType,
-                ownerId: 'advance',
-                scenario: AdvanceScenario.aa,
-                trackingMode: AdvanceTrackingMode.itemized,
-                advanceAmount: transaction.primaryAmount,
-                receivedAmount: Money.zero(),
-                outstanding: transaction.primaryAmount,
-                isClosed: false,
-              ),
-            ),
+            context: _context(transaction, item: _advanceItem(transaction)),
             editService: editService,
             updateService: updateService,
             installmentAppService: installmentAppService,
@@ -483,7 +413,7 @@ void main() {
         createTransactionDetailActionDispatcherForTesting(
           context: _context(
             _creditRepaymentTransaction('repayment-1'),
-            owner: _repaymentOwner(RepaymentType.bill),
+            item: _repaymentOwner(RepaymentType.bill),
           ),
           editService: editService,
           updateService: updateService,
@@ -511,7 +441,7 @@ void main() {
           createTransactionDetailActionDispatcherForTesting(
             context: _context(
               _creditRepaymentTransaction('repayment-1'),
-              owner: _repaymentOwner(RepaymentType.prepayment),
+              item: _repaymentOwner(RepaymentType.prepayment),
             ),
             editService: editService,
             updateService: updateService,
@@ -550,7 +480,7 @@ void main() {
           createTransactionDetailActionDispatcherForTesting(
             context: _context(
               _creditRepaymentTransaction('repayment-1'),
-              owner: _repaymentOwner(RepaymentType.unattributed),
+              item: _repaymentOwner(RepaymentType.unattributed),
             ),
             editService: editService,
             updateService: updateService,
@@ -582,24 +512,57 @@ void main() {
 
 TransactionDetailContext _context(
   TransactionReadModel transaction, {
-  TransactionBusinessContext? owner,
+  BusinessActivityItem? item,
+  TransactionParentFacts? parentFacts,
 }) {
-  final group = TransactionDetailGroup(
-    anchor: transaction,
-    children: transaction.children,
-  );
   return TransactionDetailContext(
     transaction: transaction,
-    currentGroup: group,
-    anchorGroup: group,
-    businessContext: owner,
+    parentFacts: parentFacts,
+    businessItem: item,
   );
 }
 
-RepaymentTransactionBusinessContext _repaymentOwner(RepaymentType type) {
-  return RepaymentTransactionBusinessContext(
-    ownerType: creditRepaymentOwnerType,
-    ownerId: 'repayment-1',
+BusinessActivityItem _advanceItem(TransactionReadModel transaction) {
+  return AdvanceBusinessActivityItem(
+    activityKey: BusinessActivityKey(
+      type: orchestrationAdvanceOwnerType,
+      id: transaction.ownership!.ownerId,
+    ),
+    transactionId: transaction.id,
+    factKind: AdvanceTransactionFactKind.advance,
+    scenario: AdvanceScenario.aa,
+    trackingMode: AdvanceTrackingMode.itemized,
+  );
+}
+
+BusinessActivityItem _amortizationItem(
+  TransactionReadModel transaction, {
+  AmortizationTransactionFactKind factKind =
+      AmortizationTransactionFactKind.initial,
+  String? refundId,
+  String? terminationId,
+}) {
+  return AmortizationBusinessActivityItem(
+    activityKey: const BusinessActivityKey(
+      type: orchestrationAmortizationOwnerType,
+      id: 'plan',
+    ),
+    transactionId: transaction.id,
+    kind: AmortizationKind.prepaidExpense,
+    factKind: factKind,
+    localCategoryAllocations: const [],
+    refundId: refundId,
+    terminationId: terminationId,
+  );
+}
+
+RepaymentBusinessActivityItem _repaymentOwner(RepaymentType type) {
+  return RepaymentBusinessActivityItem(
+    activityKey: const BusinessActivityKey(
+      type: creditRepaymentOwnerType,
+      id: 'repayment-1',
+    ),
+    transactionId: 'repayment-transaction',
     repaymentType: type,
     targetType: switch (type) {
       RepaymentType.bill ||

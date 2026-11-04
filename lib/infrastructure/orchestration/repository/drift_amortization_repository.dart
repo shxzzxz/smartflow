@@ -62,6 +62,25 @@ class DriftAmortizationRepository implements AmortizationRepository {
   }
 
   @override
+  Stream<List<AmortizationPlan>> watchByIds(Set<String> ids) {
+    if (ids.isEmpty) return Stream.value(const []);
+    final immutableIds = Set<String>.unmodifiable(ids);
+    return _database
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _database.amortizationPlans,
+            _database.amortizationPeriods,
+            _database.amortizationRefunds,
+            _database.amortizationTerminations,
+            _database.amortizationAllocations,
+          },
+        )
+        .watch()
+        .asyncMap((_) => findByIds(immutableIds));
+  }
+
+  @override
   Future<void> save(AmortizationPlan plan) async {
     plan.validate();
     final existingPeriods = await (_database.select(

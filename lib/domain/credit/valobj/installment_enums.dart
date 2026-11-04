@@ -1,5 +1,7 @@
 enum InstallmentType { disbursement, billConversion, purchase }
 
+enum InstallmentTransactionFactKind { purchase, disbursement, refund }
+
 enum InstallmentRepaymentMethod {
   equalInstallment,
   equalPrincipal,

@@ -1,58 +1,54 @@
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../business_context/query/transaction_business_context_read_models.dart';
+import '../../business_activity/query/business_activity_read_models.dart';
+import '../../business_activity_item/query/business_activity_item_read_models.dart';
 
-export '../../business_context/query/transaction_business_context_read_models.dart';
+export '../../business_activity_item/query/business_activity_item_read_models.dart';
 
-/// The current transaction group used by one detail entry.
-///
-/// [anchor] is always the top-level transaction. For a child entry the group is
-/// loaded through its parent, so child transactions never masquerade as anchors.
-final class TransactionDetailGroup {
-  TransactionDetailGroup({
-    required this.anchor,
-    Iterable<TransactionReadModel> children = const [],
-  }) : children = List.unmodifiable(children);
+/// Minimal parent facts needed by child detail presentation and operations.
+final class TransactionParentFacts {
+  const TransactionParentFacts({
+    required this.isExcludedFromStats,
+    required this.isExcludedFromBudget,
+    this.isAdvanceClosed = false,
+  });
 
-  final TransactionReadModel anchor;
-  final List<TransactionReadModel> children;
-
-  List<TransactionReadModel> get transactions => [anchor, ...children];
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
+  final bool isAdvanceClosed;
 }
 
 /// Read-side facts for the concrete transaction opened by the detail route.
 final class TransactionDetailContext {
   const TransactionDetailContext({
     required this.transaction,
-    required this.currentGroup,
-    required this.anchorGroup,
-    this.parentTransaction,
-    this.businessContext,
+    this.parentFacts,
+    this.businessItem,
+    this.isAmortizationTerminated = false,
   });
 
   /// The transaction referenced by `/transaction/:transactionId`.
   final TransactionReadModel transaction;
 
-  /// The parent when [transaction] is a child.
-  final TransactionReadModel? parentTransaction;
+  /// Parent facts inherited by a child transaction.
+  final TransactionParentFacts? parentFacts;
 
-  /// The group containing [transaction].
-  final TransactionDetailGroup currentGroup;
+  /// Business meaning and local facts for the concrete transaction.
+  final BusinessActivityItem? businessItem;
 
-  /// The group containing the business-activity anchor transaction.
-  ///
-  /// This differs from [currentGroup] for amortization recognition entries:
-  /// the anchor remains the plan's initial transaction.
-  final TransactionDetailGroup anchorGroup;
-
-  final TransactionBusinessContext? businessContext;
-
-  TransactionReadModel get anchorTransaction => anchorGroup.anchor;
+  /// Minimal operation constraint for amortization transactions.
+  final bool isAmortizationTerminated;
 
   bool get isChild => transaction.parentTransactionId != null;
+}
 
-  Iterable<String> get categoryAccountIds => switch (businessContext) {
-    AmortizationTransactionBusinessContext(:final categoryAccountIds) =>
-      categoryAccountIds,
-    _ => const [],
-  };
+/// Detail projection assembled after the local context has decided whether
+/// an activity-level read model is required.
+final class TransactionDetailReadModel {
+  const TransactionDetailReadModel({
+    required this.context,
+    this.businessActivity,
+  });
+
+  final TransactionDetailContext context;
+  final BusinessActivityReadModel? businessActivity;
 }

@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import '../../../ledger/ledger_query_api.dart';
+import '../../transaction_view_query_streams.dart';
 import 'business_activity_queries.dart';
 import 'business_activity_read_models.dart';
 import 'business_activity_source.dart';
@@ -13,6 +12,16 @@ abstract interface class BusinessActivityQueryService {
   Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query);
 
   Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query);
+
+  Future<BusinessActivityReadModel?> findForAnchor({
+    required BusinessActivityKey activityKey,
+    required TransactionReadModel anchorTransaction,
+  });
+
+  /// Refreshes the content of existing members without discovering new ones.
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  );
 }
 
 /// Merges bounded source pages and loads only the resulting page in batches.
@@ -48,9 +57,68 @@ final class BusinessActivityQueryServiceImpl
       );
     }
     final streams = sources.map((source) => source.watchAnchorPage(query));
-    return _combineLatest(
+    return combineLatestStreams(
       streams,
     ).asyncMap((pages) => _assemblePage(query, sources, pages));
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  ) {
+    final activities = currentActivities.toList(growable: false);
+    if (activities.isEmpty) return Stream.value(const {});
+
+    final activitiesBySource =
+        <BusinessActivitySource, List<BusinessActivityReadModel>>{};
+    for (final activity in activities) {
+      final source = _sourceForType(activity.activityKey.type);
+      if (source == null) continue;
+      activitiesBySource.putIfAbsent(source, () => []).add(activity);
+    }
+    if (activitiesBySource.isEmpty) return Stream.value(const {});
+
+    final sourceEntries = activitiesBySource.entries.toList(growable: false);
+    final summaryStreams = <Stream<Object?>>[
+      for (final entry in sourceEntries)
+        entry.key
+            .watchSummaries(entry.value.map(_candidateForActivity))
+            .map<Object?>((summaries) => summaries),
+    ];
+    final transactionIds = {
+      for (final activity in activities) activity.anchorTransactionId,
+    };
+    final transactionStream = _transactionQuery
+        .watchTransactionsByIds(transactionIds)
+        .map<Object?>((transactions) => transactions);
+
+    return combineLatestStreams<Object?>([
+      ...summaryStreams,
+      transactionStream,
+    ]).map((values) {
+      final summaries = <BusinessActivityKey, BusinessActivitySummary>{};
+      for (var index = 0; index < sourceEntries.length; index++) {
+        final sourceSummaries =
+            values[index] as Map<BusinessActivityKey, BusinessActivitySummary>;
+        summaries.addAll(sourceSummaries);
+      }
+      final transactions = values.last as List<TransactionReadModel>;
+      final transactionsById = {
+        for (final transaction in transactions) transaction.id: transaction,
+      };
+      final updated = <BusinessActivityKey, BusinessActivityReadModel>{};
+      for (final activity in activities) {
+        final summary = summaries[activity.activityKey];
+        final transaction = transactionsById[activity.anchorTransactionId];
+        if (summary == null || transaction == null) continue;
+        updated[activity.activityKey] = BusinessActivityReadModel.fromCandidate(
+          candidate: _candidateForActivity(activity),
+          anchorTransaction: transaction,
+          summary: summary,
+        );
+      }
+      return updated;
+    });
   }
 
   Future<BusinessActivityPage> _assemblePage(
@@ -129,6 +197,28 @@ final class BusinessActivityQueryServiceImpl
     );
   }
 
+  @override
+  Future<BusinessActivityReadModel?> findForAnchor({
+    required BusinessActivityKey activityKey,
+    required TransactionReadModel anchorTransaction,
+  }) async {
+    final source = _sourceForType(activityKey.type);
+    if (source == null || anchorTransaction.id.isEmpty) return null;
+    final candidate = BusinessActivityAnchorCandidate(
+      activityKey: activityKey,
+      anchorTransactionId: anchorTransaction.id,
+      anchorAt: anchorTransaction.occurredAt,
+    );
+    final summaries = await source.findSummaries([candidate]);
+    final summary = summaries[activityKey];
+    if (summary == null) return null;
+    return BusinessActivityReadModel.fromCandidate(
+      candidate: candidate,
+      anchorTransaction: anchorTransaction,
+      summary: summary,
+    );
+  }
+
   BusinessActivityReadModel _buildReadModel(
     _SourcedCandidate sourced,
     Map<BusinessActivityKey, BusinessActivitySummary> summaries,
@@ -170,6 +260,23 @@ final class BusinessActivityQueryServiceImpl
       ),
     );
   }
+
+  BusinessActivitySource? _sourceForType(String activityType) {
+    for (final source in _sources) {
+      if (source.supportedActivityTypes.contains(activityType)) return source;
+    }
+    return null;
+  }
+
+  BusinessActivityAnchorCandidate _candidateForActivity(
+    BusinessActivityReadModel activity,
+  ) {
+    return BusinessActivityAnchorCandidate(
+      activityKey: activity.activityKey,
+      anchorTransactionId: activity.anchorTransactionId,
+      anchorAt: activity.anchorAt,
+    );
+  }
 }
 
 final class _SourcedCandidate {
@@ -177,50 +284,4 @@ final class _SourcedCandidate {
 
   final int sourceIndex;
   final BusinessActivityAnchorCandidate candidate;
-}
-
-Stream<List<T>> _combineLatest<T>(Iterable<Stream<T>> streams) {
-  final values = List<Stream<T>>.unmodifiable(streams);
-  if (values.isEmpty) {
-    return Stream.value(const []);
-  }
-  return Stream.multi((controller) {
-    final latest = List<T?>.filled(values.length, null);
-    final subscriptions = List<StreamSubscription<T>?>.filled(
-      values.length,
-      null,
-    );
-    var cancelled = false;
-
-    Future<void> cancelAll() async {
-      for (final subscription in subscriptions) {
-        await subscription?.cancel();
-      }
-    }
-
-    for (var index = 0; index < values.length; index++) {
-      subscriptions[index] = values[index].listen(
-        (value) {
-          if (cancelled) return;
-          latest[index] = value;
-          if (latest.every((value) => value != null)) {
-            controller.add(List<T>.unmodifiable(latest.cast<T>()));
-          }
-        },
-        onError: controller.addError,
-        onDone: () {
-          if (cancelled) return;
-          cancelled = true;
-          unawaited(cancelAll());
-          controller.close();
-        },
-        cancelOnError: true,
-      );
-    }
-
-    controller.onCancel = () {
-      cancelled = true;
-      return cancelAll();
-    };
-  });
 }

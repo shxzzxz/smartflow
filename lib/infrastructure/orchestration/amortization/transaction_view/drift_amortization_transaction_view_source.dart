@@ -54,10 +54,6 @@ LIMIT ?
         _db.transactionLines,
         _db.transactionTags,
         _db.amortizationPlans,
-        _db.amortizationPeriods,
-        _db.amortizationRefunds,
-        _db.amortizationTerminations,
-        _db.amortizationAllocations,
       },
     );
   }

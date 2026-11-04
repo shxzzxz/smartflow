@@ -1,4 +1,3 @@
-import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_detail_presentation.dart';
@@ -6,28 +5,36 @@ import 'package:smartflow/feature/transaction/presentation/transaction_detail_pr
 import 'transaction_detail_business_presentation.dart';
 
 TransactionDetailBusinessContent presentAdvanceDetailBusinessScene(
-  TransactionDetailContext context,
+  TransactionDetailReadModel detail,
 ) {
-  final owner = context.businessContext;
-  if (owner is! AdvanceTransactionBusinessContext ||
-      context.transaction.businessPurpose != BusinessPurpose.advance ||
-      owner.trackingMode != AdvanceTrackingMode.itemized) {
+  final context = detail.context;
+  final item = context.businessItem;
+  final activity = detail.businessActivity;
+  final summary = activity?.summary;
+  if (item is! AdvanceBusinessActivityItem ||
+      item.factKind != AdvanceTransactionFactKind.advance ||
+      item.trackingMode != AdvanceTrackingMode.itemized ||
+      summary is! AdvanceBusinessActivitySummary ||
+      activity == null) {
     return const TransactionDetailBusinessContent();
   }
 
-  final items = advanceSheetItems(context.transaction.children);
+  final anchorTransaction = activity.anchorTransaction;
+  final items = advanceSheetItems(anchorTransaction.children);
   final hasActivity = items.isNotEmpty;
-  final summaryText = owner.isClosed
-      ? '已结清 · 实收 ${owner.receivedAmount.format()}'
+  final facts = anchorTransaction.advanceSummary;
+  final summaryText = summary.isClosed
+      ? '已结清 · 实收 ${facts?.receivedAmount.format() ?? '0.00'}'
       : hasActivity
-      ? '已收 ${owner.receivedAmount.format()} / 应收 ${owner.advanceAmount.format()}'
+      ? '已收 ${facts?.receivedAmount.format() ?? '0.00'} / '
+            '应收 ${facts?.advanceAmount.format() ?? '0.00'}'
       : '未收回';
   return TransactionDetailBusinessContent(
     advance: DetailAdvance(
       summaryText: summaryText,
       hasActivity: hasActivity,
-      isClosed: owner.isClosed,
-      outstanding: owner.outstanding,
+      isClosed: summary.isClosed,
+      outstanding: summary.outstanding,
       items: items,
     ),
   );

@@ -1,5 +1,7 @@
 const String orchestrationAdvanceOwnerType = 'orchestration.advance';
 
+enum AdvanceTransactionFactKind { advance, collection, refund, settlement }
+
 enum AdvanceScenario {
   aa,
   onBehalf,

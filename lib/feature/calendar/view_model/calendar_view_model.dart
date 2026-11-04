@@ -75,9 +75,11 @@ Stream<BusinessActivityPage> calendarBusinessActivities(
   Ref ref,
   DateTime selectedDate,
 ) {
-  return ref
-      .watch(businessActivityQueryServiceProvider)
-      .watchPage(_dayQuery(selectedDate));
+  final service = ref.watch(businessActivityQueryServiceProvider);
+  return watchBusinessActivityContents(
+    service.watchPage(_dayQuery(selectedDate)),
+    service,
+  );
 }
 
 BusinessActivityPageQuery _dayQuery(

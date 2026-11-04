@@ -10,7 +10,7 @@ final class _AmortizationActionDispatcher
   });
 
   final TransactionReadModel transaction;
-  final AmortizationTransactionBusinessContext owner;
+  final AmortizationBusinessActivityItem owner;
   final TransactionUpdateAppService updateService;
   final AmortizationPlanAppService amortizationAppService;
 

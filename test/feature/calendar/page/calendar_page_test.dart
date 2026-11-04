@@ -442,6 +442,15 @@ class _FakeBusinessActivityQueryService
   }
 
   @override
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  ) {
+    return Stream.value({
+      for (final activity in currentActivities) activity.activityKey: activity,
+    });
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

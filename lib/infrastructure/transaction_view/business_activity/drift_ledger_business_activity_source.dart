@@ -49,6 +49,13 @@ final class DriftLedgerBusinessActivitySource
     };
   }
 
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) {
+    return Stream.fromFuture(findSummaries(anchors));
+  }
+
   Selectable<QueryRow> _select(BusinessActivityPageQuery query) {
     final sql = BusinessActivityAnchorSql(
       transactionAlias: 'anchor',

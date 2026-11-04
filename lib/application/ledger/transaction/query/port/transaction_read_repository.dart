@@ -44,6 +44,14 @@ abstract interface class TransactionReadRepository {
     Set<String> parentIds,
   );
 
+  /// Returns whether [parentTransactionId] has a child transaction with
+  /// [businessPurpose]. This narrow fact query avoids hydrating the whole
+  /// transaction group when only a parent constraint is needed.
+  Future<bool> hasChildTransaction({
+    required String parentTransactionId,
+    required BusinessPurpose businessPurpose,
+  });
+
   Stream<TransactionCleanupPreview> watchCleanupPreview(
     TransactionCleanupQuery query,
   );

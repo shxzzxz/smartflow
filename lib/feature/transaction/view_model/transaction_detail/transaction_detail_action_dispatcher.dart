@@ -31,8 +31,8 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
   AmortizationPlanAppService? amortizationAppService,
 }) {
   final transaction = context.transaction;
-  final owner = context.businessContext;
-  if (owner == null) {
+  final item = context.businessItem;
+  if (item == null) {
     return _DefaultActionDispatcher(
       transaction: transaction,
       editService: editService,
@@ -40,21 +40,21 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     );
   }
 
-  if (transaction.businessPurpose == BusinessPurpose.refund &&
-      owner is InstallmentTransactionBusinessContext) {
+  if (item is InstallmentBusinessActivityItem &&
+      item.factKind == InstallmentTransactionFactKind.refund) {
     return _InstallmentRefundActionDispatcher(
       transaction: transaction,
       consumptionInstallmentAppService: consumptionInstallmentAppService,
     );
   }
 
-  if (owner is AdvanceTransactionBusinessContext) {
+  if (item is AdvanceBusinessActivityItem) {
     if (advanceAppService == null) {
       throw StateError('Advance orchestration services are not configured.');
     }
     return _AdvanceActionDispatcher(
       transaction: transaction,
-      owner: owner,
+      owner: item,
       advanceAppService: advanceAppService,
       fallback: _DefaultActionDispatcher(
         transaction: transaction,
@@ -64,7 +64,7 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     );
   }
 
-  if (owner is AmortizationTransactionBusinessContext) {
+  if (item is AmortizationBusinessActivityItem) {
     if (amortizationAppService == null) {
       throw StateError(
         'Amortization orchestration services are not configured.',
@@ -72,31 +72,31 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
     }
     return _AmortizationActionDispatcher(
       transaction,
-      owner: owner,
+      owner: item,
       updateService: updateService,
       amortizationAppService: amortizationAppService,
     );
   }
 
-  if (owner is InstallmentTransactionBusinessContext) {
+  if (item is InstallmentBusinessActivityItem) {
     return _InstallmentActionDispatcher(
       transaction: transaction,
       installmentAppService: installmentAppService,
       disbursementInstallmentAppService: disbursementInstallmentAppService,
       consumptionInstallmentAppService: consumptionInstallmentAppService,
       updateService: updateService,
-      contractId: owner.ownerId,
+      contractId: item.ownerId,
     );
   }
 
-  if (owner is RepaymentTransactionBusinessContext) {
+  if (item is RepaymentBusinessActivityItem) {
     return _CreditRepaymentActionDispatcher(
       transaction: transaction,
       billRepaymentAppService: billRepaymentAppService,
       installmentPrepaymentAppService: installmentPrepaymentAppService,
       accountRepaymentAppService: accountRepaymentAppService,
       updateService: updateService,
-      owner: owner,
+      owner: item,
     );
   }
 

@@ -8,13 +8,13 @@ import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 class _MockTransactionQueryService extends Mock
     implements TransactionQueryService {}
 
-class _MockBusinessContextQuery extends Mock
-    implements TransactionBusinessContextQuery {}
+class _MockBusinessActivityItemQuery extends Mock
+    implements BusinessActivityItemQuery {}
 
 void main() {
-  test('composes ledger transactions with batched business context', () async {
+  test('composes ledger transactions with batched business items', () async {
     final transactions = _MockTransactionQueryService();
-    final contexts = _MockBusinessContextQuery();
+    final items = _MockBusinessActivityItemQuery();
     final amortization = _transaction(
       'recognition',
       ownerType: orchestrationAmortizationOwnerType,
@@ -24,27 +24,28 @@ void main() {
     when(
       () => transactions.findTransactions(query),
     ).thenAnswer((_) async => [amortization, ordinary]);
-    when(() => contexts.findContexts(any())).thenAnswer(
+    when(() => items.findItems(any())).thenAnswer(
       (_) async => {
-        'recognition': const AmortizationTransactionBusinessContext(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan',
-          initialTransactionId: 'initial',
+        'recognition': AmortizationBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
+            type: orchestrationAmortizationOwnerType,
+            id: 'plan',
+          ),
+          transactionId: 'recognition',
           kind: AmortizationKind.prepaidExpense,
-          status: AmortizationStatus.active,
-          originalAmount: Money(minorUnits: 1200),
-          recognizedAmount: Money(minorUnits: 100),
-          remainingAmount: Money(minorUnits: 1100),
-          postedPeriodCount: 1,
-          totalPeriodCount: 12,
-          categoryAccountIds: ['membership'],
           factKind: AmortizationTransactionFactKind.recognition,
+          localCategoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'membership',
+              amount: Money(minorUnits: 100),
+            ),
+          ],
         ),
       },
     );
     final service = TransactionFeedQueryServiceImpl(
       transactions: transactions,
-      businessContexts: contexts,
+      businessItems: items,
     );
 
     final entries = await service.findTransactions(query);
@@ -53,9 +54,47 @@ void main() {
       'recognition',
       'ordinary',
     ]);
-    expect(entries.first.businessContext, isNotNull);
-    expect(entries.last.businessContext, isNull);
+    expect(entries.first.businessItem, isNotNull);
+    expect(entries.last.businessItem, isNull);
   });
+
+  test(
+    'watches the current transaction set with bounded business items',
+    () async {
+      final transactions = _MockTransactionQueryService();
+      final items = _MockBusinessActivityItemQuery();
+      final transaction = _transaction(
+        'recognition',
+        ownerType: orchestrationAmortizationOwnerType,
+      );
+      const query = TransactionListQuery();
+      final item = AmortizationBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
+          type: orchestrationAmortizationOwnerType,
+          id: 'plan',
+        ),
+        transactionId: transaction.id,
+        kind: AmortizationKind.prepaidExpense,
+        factKind: AmortizationTransactionFactKind.recognition,
+        localCategoryAllocations: const [],
+      );
+      when(
+        () => transactions.watchTransactions(query),
+      ).thenAnswer((_) => Stream.value([transaction]));
+      when(
+        () => items.watchItems(any()),
+      ).thenAnswer((_) => Stream.value({transaction.id: item}));
+      final service = TransactionFeedQueryServiceImpl(
+        transactions: transactions,
+        businessItems: items,
+      );
+
+      final entries = await service.watchTransactions(query).first;
+
+      expect(entries.single.businessItem, same(item));
+      verify(() => items.watchItems(any())).called(1);
+    },
+  );
 }
 
 TransactionReadModel _transaction(String id, {String? ownerType}) {

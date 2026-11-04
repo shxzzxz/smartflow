@@ -8,6 +8,7 @@ import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/budget/presentation/budget_transaction_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/widget/business/transaction/transaction_avatar_kind.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -137,13 +138,14 @@ void main() {
           ),
         ),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.title, '餐饮');
       expect(row.canQuickEdit, isFalse);
     });
 
-    test('amortization transaction context supplies category and action', () {
+    test('non-entry amortization recognition uses transaction semantics', () {
       final row = buildTransactionRowPresentation(
         item: _item(
           businessPurpose: BusinessPurpose.dailyExpense,
@@ -153,27 +155,126 @@ void main() {
             ownerId: 'plan',
           ),
         ),
-        businessContext: const AmortizationTransactionBusinessContext(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan',
-          initialTransactionId: 'initial',
+        businessItem: AmortizationBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
+            type: orchestrationAmortizationOwnerType,
+            id: 'plan',
+          ),
+          transactionId: 'tx',
           kind: AmortizationKind.prepaidExpense,
-          status: AmortizationStatus.active,
-          originalAmount: Money(minorUnits: 12000),
-          recognizedAmount: Money(minorUnits: 4000),
-          remainingAmount: Money(minorUnits: 8000),
-          postedPeriodCount: 2,
-          totalPeriodCount: 6,
-          categoryAccountIds: ['food'],
           occurrencePeriodSequence: 2,
           factKind: AmortizationTransactionFactKind.recognition,
+          localCategoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 2000),
+            ),
+          ],
         ),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+
+      expect(row.title, '第 2 期确认');
+      expect(row.supportingText, isNull);
+      expect(row.iconKey, isNull);
+      expect(row.avatarKind, TransactionAvatarKind.amortizationRecognition);
+      expect(row.preferCategoryArtwork, isFalse);
+    });
+
+    test('amortization entry keeps category and business supporting text', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.dailyExpense,
+          categoryAccountId: null,
+          ownership: const TransactionOwnership(
+            ownerType: orchestrationAmortizationOwnerType,
+            ownerId: 'plan',
+          ),
+        ),
+        businessItem: AmortizationBusinessActivityItem(
+          activityKey: const BusinessActivityKey(
+            type: orchestrationAmortizationOwnerType,
+            id: 'plan',
+          ),
+          transactionId: 'tx',
+          kind: AmortizationKind.prepaidExpense,
+          factKind: AmortizationTransactionFactKind.initial,
+          localCategoryAllocations: const [
+            AccountAmountAllocation(
+              accountId: 'food',
+              amount: Money(minorUnits: 2000),
+            ),
+          ],
+        ),
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.title, '餐饮');
-      expect(row.supportingText, '摊销预付 · 第 2/6 期确认');
+      expect(row.supportingText, '摊销预付');
       expect(row.iconKey, 'meal');
+      expect(row.avatarKind, isNull);
+      expect(row.preferCategoryArtwork, isTrue);
+    });
+
+    test('installment entry keeps category and business supporting text', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.dailyExpense,
+          ownership: const TransactionOwnership(
+            ownerType: installmentOwnerType,
+            ownerId: 'contract',
+          ),
+        ),
+        businessItem: const InstallmentBusinessActivityItem(
+          activityKey: BusinessActivityKey(
+            type: installmentOwnerType,
+            id: 'contract',
+          ),
+          transactionId: 'tx',
+          installmentType: InstallmentType.purchase,
+          factKind: InstallmentTransactionFactKind.purchase,
+        ),
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+
+      expect(row.title, '餐饮');
+      expect(row.supportingText, '消费分期');
+      expect(row.iconKey, 'meal');
+      expect(row.avatarKind, isNull);
+    });
+
+    test('non-entry advance collection uses its own title and icon', () {
+      final row = buildTransactionRowPresentation(
+        item: _item(
+          businessPurpose: BusinessPurpose.advanceCollection,
+          categoryAccountId: null,
+          ownership: const TransactionOwnership(
+            ownerType: orchestrationAdvanceOwnerType,
+            ownerId: 'advance',
+          ),
+        ),
+        businessItem: const AdvanceBusinessActivityItem(
+          activityKey: BusinessActivityKey(
+            type: orchestrationAdvanceOwnerType,
+            id: 'advance',
+          ),
+          transactionId: 'tx',
+          factKind: AdvanceTransactionFactKind.collection,
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.itemized,
+        ),
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+
+      expect(row.title, '垫付到账');
+      expect(row.supportingText, isNull);
+      expect(row.iconKey, isNull);
+      expect(row.avatarKind, TransactionAvatarKind.advanceCollection);
+      expect(row.preferCategoryArtwork, isFalse);
     });
 
     test('groups transactions with daily summaries by descending date', () {
@@ -182,6 +283,7 @@ void main() {
 
       final groups = groupTransactionsByDay(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         items: [
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
@@ -207,6 +309,7 @@ void main() {
     test('does not create transaction groups from daily summaries alone', () {
       final groups = groupTransactionsByDay(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         items: const [],
         dailySummaries: [
           DailyCashflowSummary(
@@ -231,6 +334,7 @@ void main() {
 
       final groups = groupTransactionsByDay(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         items: [
           _item(id: 'a', occurredAt: jan1),
           _item(id: 'b', occurredAt: jan2),
@@ -262,6 +366,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: item,
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.title, '餐饮');
@@ -280,6 +385,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: _item(primaryAmount: const Money(minorUnits: 123456789)),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.amount.preciseText, '-1234567.89');
@@ -295,6 +401,7 @@ void main() {
           refundedTotal: const Money(minorUnits: 100000),
         ),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.amount.preciseText, '-1233567.89');
@@ -384,6 +491,7 @@ void main() {
         final row = buildTransactionRowPresentation(
           item: item,
           accountLookup: lookup,
+          amountSource: const TransactionGroupAmountSource(),
         );
         final flow = row.accountFlow;
 
@@ -437,6 +545,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: item,
         accountLookup: lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.accountFlow.effectiveOutEndpoints.single.label, '应收款');
@@ -473,6 +582,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: item,
         accountLookup: lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.accountFlow.effectiveInEndpoints.single.label, '应付款');
@@ -517,6 +627,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: item,
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.accountFlow.outEndpoints.map((endpoint) => endpoint.label), [
@@ -529,10 +640,12 @@ void main() {
       final badDebt = buildTransactionRowPresentation(
         item: _item(businessPurpose: BusinessPurpose.badDebt),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
       final debtRelief = buildTransactionRowPresentation(
         item: _item(businessPurpose: BusinessPurpose.debtRelief),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(badDebt.amount.preciseText, '-12.34');
@@ -553,6 +666,7 @@ void main() {
           ],
         ),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.badges, isEmpty);
@@ -561,6 +675,7 @@ void main() {
     test('refund still adjusts the displayed advance amount', () {
       final row = buildTransactionRowPresentation(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         item: _item(
           businessPurpose: BusinessPurpose.advance,
           primaryAmount: const Money(minorUnits: 10000),
@@ -578,6 +693,7 @@ void main() {
     test('keeps advance compensation out of badges', () {
       final row = buildTransactionRowPresentation(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         item: _item(
           businessPurpose: BusinessPurpose.advance,
           primaryAmount: const Money(minorUnits: 10000),
@@ -611,6 +727,7 @@ void main() {
     test('keeps receivable collection adjustments out of badges', () {
       final row = buildTransactionRowPresentation(
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
         item: _item(
           businessPurpose: BusinessPurpose.receivableCollection,
           adjustments: const [
@@ -646,6 +763,7 @@ void main() {
         final row = buildTransactionRowPresentation(
           item: _item(impactsByAccountId: const {}),
           accountLookup: _lookup,
+          amountSource: const TransactionGroupAmountSource(),
         );
 
         expect(row.accountFlow.singleEndpoint.label, '无账户');
@@ -691,6 +809,7 @@ void main() {
       final groupRow = buildTransactionRowPresentation(
         item: parent,
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
       final accountRows = [parent, refund]
           .map(
@@ -742,6 +861,7 @@ void main() {
         final row = buildTransactionRowPresentation(
           item: item,
           accountLookup: _lookup,
+          amountSource: const TransactionGroupAmountSource(),
         );
 
         expect(row.accountFlow.out?.label, '现金');
@@ -801,6 +921,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: item,
         accountLookup: renamedLookup,
+        amountSource: const TransactionGroupAmountSource(),
       );
 
       expect(row.title, '外食');

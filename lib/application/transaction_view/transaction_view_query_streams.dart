@@ -1,15 +1,18 @@
 import 'dart:async';
 
+/// Stream combinators shared by transaction-view query orchestration.
 Stream<List<T>> combineLatestStreams<T>(Iterable<Stream<T>> streams) {
   final values = List<Stream<T>>.unmodifiable(streams);
   if (values.isEmpty) return Stream.value(const []);
   return Stream.multi((controller) {
     final latest = List<T?>.filled(values.length, null);
+    final hasValue = List<bool>.filled(values.length, false);
     final subscriptions = List<StreamSubscription<T>?>.filled(
       values.length,
       null,
     );
     var cancelled = false;
+    var completedCount = 0;
 
     Future<void> cancelAll() async {
       for (final subscription in subscriptions) {
@@ -17,21 +20,33 @@ Stream<List<T>> combineLatestStreams<T>(Iterable<Stream<T>> streams) {
       }
     }
 
+    Future<void> closeAll() async {
+      if (cancelled) return;
+      cancelled = true;
+      await cancelAll();
+      await controller.close();
+    }
+
     for (var index = 0; index < values.length; index++) {
       subscriptions[index] = values[index].listen(
         (value) {
           if (cancelled) return;
           latest[index] = value;
-          if (latest.every((value) => value != null)) {
+          hasValue[index] = true;
+          if (hasValue.every((value) => value)) {
             controller.add(List<T>.unmodifiable(latest.cast<T>()));
           }
         },
-        onError: controller.addError,
+        onError: (Object error, StackTrace stackTrace) {
+          controller.addError(error, stackTrace);
+          unawaited(closeAll());
+        },
         onDone: () {
           if (cancelled) return;
-          cancelled = true;
-          unawaited(cancelAll());
-          controller.close();
+          completedCount += 1;
+          if (completedCount == values.length) {
+            unawaited(closeAll());
+          }
         },
         cancelOnError: true,
       );
@@ -54,16 +69,17 @@ Stream<R> switchMapStreams<T, R>(
     var generation = 0;
     var cancelled = false;
 
-    Future<void> cancelMapped() async {
-      await mappedSubscription?.cancel();
-      mappedSubscription = null;
+    Future<void> cancelMapped(StreamSubscription<R>? subscription) async {
+      await subscription?.cancel();
     }
 
     sourceSubscription = source.listen(
       (value) {
         if (cancelled) return;
         final currentGeneration = ++generation;
-        unawaited(cancelMapped());
+        final previous = mappedSubscription;
+        mappedSubscription = null;
+        unawaited(cancelMapped(previous));
         mappedSubscription = mapper(value).listen((mapped) {
           if (!cancelled && currentGeneration == generation) {
             controller.add(mapped);
@@ -73,7 +89,9 @@ Stream<R> switchMapStreams<T, R>(
       onError: controller.addError,
       onDone: () async {
         cancelled = true;
-        await cancelMapped();
+        final subscription = mappedSubscription;
+        mappedSubscription = null;
+        await cancelMapped(subscription);
         await controller.close();
       },
       cancelOnError: true,
@@ -82,7 +100,9 @@ Stream<R> switchMapStreams<T, R>(
     controller.onCancel = () async {
       cancelled = true;
       await sourceSubscription?.cancel();
-      await cancelMapped();
+      final subscription = mappedSubscription;
+      mappedSubscription = null;
+      await cancelMapped(subscription);
     };
   });
 }

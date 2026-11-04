@@ -112,7 +112,8 @@ lib/
 │   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
 │   │           └── port/                # 读侧 application port；无 port 时可省略
 │   ├── transaction_view/                # 跨域用户交易读视图；不是业务域
-│   │   ├── business_activity/query/     # 业务活动来源与统一读模型
+│   │   ├── business_activity/query/     # 业务活动锚点与活动摘要
+│   │   ├── business_activity_item/query/ # 单笔交易的业务侧投影
 │   │   └── transaction_feed/query/      # 交易明细视图语义封装
 │   └── shared/                          # 事务执行抽象等 application 共享能力
 │       └── task/                        # Task 定义、调度器、重试策略分别存放
@@ -197,9 +198,10 @@ lib/infrastructure/database/table/*
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
-- `application/transaction_view` 的交易详情上下文查询统一加载当前交易、当前/锚点交易组与可选 owner 摘要；feature 只消费该上下文，不自行组合 owner 查询来推断详情能力。
+- `application/transaction_view` 的本地详情查询先加载当前交易和 `BusinessActivityItem`；上层详情查询只在当前 item kind 表示活动入口时加载 `BusinessActivity` 及其摘要。非锚点详情不加载锚点交易组、兄弟交易或活动摘要。
+- 业务活动页的成员流负责发现当前 anchor 集合；内容流复用该集合，分别订阅业务摘要和账务 anchor transaction，不重新按 activity ID 解析 anchor。
 - `application/transaction_view` 的 source adapter 只做业务域查询结果与账务核心已有事实到统一业务活动读模型的映射；业务筛选、锚点规则、业务事实和变更监听由所属业务域 application query 提供，不得复制账务聚合或为单一消费方定义专用摘要 DTO。
-- 交易明细视图先取得账务核心的交易页，再按 owner 类型和业务活动 ID 批量请求命中交易的业务上下文；所属业务域只返回请求交易的发生含义和去重的活动摘要，`transaction_view` 不读取 owner 内部结构并自行判断交易含义。
+- 交易明细视图先取得账务核心的交易页，再按 owner 类型和业务活动 ID 批量请求命中交易的 `BusinessActivityItem`；业务活动摘要按活动身份单独返回一次，`transaction_view` 不读取 owner 内部结构并自行判断交易含义。
 - 业务域 application query 不得导入 `application/transaction_view` 的读模型或 source 接口。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。

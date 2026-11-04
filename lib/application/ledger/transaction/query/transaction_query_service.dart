@@ -22,6 +22,9 @@ import 'transaction_scope.dart';
 abstract interface class TransactionBatchQueryService {
   /// Batch-loads fully projected transactions without issuing per-item reads.
   Future<List<TransactionReadModel>> findTransactionsByIds(Set<String> ids);
+
+  /// Watches the current projection for a bounded set of transaction IDs.
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids);
 }
 
 abstract interface class TransactionQueryService
@@ -50,6 +53,11 @@ abstract interface class TransactionQueryService
   );
 
   Future<Transaction?> findTransactionById(String transactionId);
+
+  Future<bool> hasChildTransaction({
+    required String parentTransactionId,
+    required BusinessPurpose businessPurpose,
+  });
 
   /// 查询该收支分类最近一笔交易使用的唯一有效结算账户。
   Future<String?> findLastUsedSettlementAccountId(String categoryId);
@@ -114,6 +122,15 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     return _projectTransactions(
       ordered,
       await _accountQuery.findAccountsById(),
+    );
+  }
+
+  @override
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
+    if (ids.isEmpty) return Stream.value(const []);
+    final immutableIds = Set<String>.unmodifiable(ids);
+    return _txRead.watchChanges().asyncMap(
+      (_) => findTransactionsByIds(immutableIds),
     );
   }
 
@@ -395,6 +412,17 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   @override
   Future<Transaction?> findTransactionById(String transactionId) {
     return _txRead.findById(transactionId);
+  }
+
+  @override
+  Future<bool> hasChildTransaction({
+    required String parentTransactionId,
+    required BusinessPurpose businessPurpose,
+  }) {
+    return _txRead.hasChildTransaction(
+      parentTransactionId: parentTransactionId,
+      businessPurpose: businessPurpose,
+    );
   }
 
   @override

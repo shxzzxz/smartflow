@@ -743,6 +743,14 @@ class _MemoryRepository implements AmortizationRepository {
   }
 
   @override
+  Stream<List<AmortizationPlan>> watchByIds(Set<String> ids) => watchAll().map(
+    (plans) => [
+      for (final plan in plans)
+        if (ids.contains(plan.id)) plan,
+    ],
+  );
+
+  @override
   Future<void> save(AmortizationPlan plan) async {
     _plans[plan.id] = plan;
   }

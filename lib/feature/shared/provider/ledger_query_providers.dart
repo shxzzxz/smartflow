@@ -149,3 +149,11 @@ Stream<TransactionDetailContext?> transactionDetailContext(
       .watch(transactionDetailContextQueryProvider)
       .watchById(transactionId);
 }
+
+@riverpod
+Stream<TransactionDetailReadModel?> transactionDetailReadModel(
+  Ref ref,
+  String transactionId,
+) {
+  return ref.watch(transactionDetailQueryProvider).watchById(transactionId);
+}

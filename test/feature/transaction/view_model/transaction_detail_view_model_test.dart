@@ -889,9 +889,11 @@ ProviderContainer _container({
   };
   final container = ProviderContainer(
     overrides: [
-      transactionDetailContextProvider(
-        'tx-1',
-      ).overrideWith((ref) => Stream.value(_contextForDetail(detail))),
+      transactionDetailReadModelProvider('tx-1').overrideWith(
+        (ref) => Stream.value(
+          TransactionDetailReadModel(context: _contextForDetail(detail)),
+        ),
+      ),
       accountLookupProvider.overrideWith(
         (ref) => Stream.value(AccountLookup(accounts)),
       ),
@@ -943,68 +945,83 @@ ProviderContainer _container({
 
 TransactionDetailContext _contextForDetail(TransactionReadModel detail) {
   final parent = detail.parentTransactionId == null ? null : _detail();
-  final anchor = parent ?? detail;
   final ownership = detail.ownership;
-  final owner = switch (ownership?.ownerType) {
-    installmentOwnerType => InstallmentTransactionBusinessContext(
-      ownerType: ownership!.ownerType,
-      ownerId: ownership.ownerId,
+  final item = switch (ownership?.ownerType) {
+    installmentOwnerType => InstallmentBusinessActivityItem(
+      activityKey: BusinessActivityKey(
+        type: ownership!.ownerType,
+        id: ownership.ownerId,
+      ),
+      transactionId: detail.id,
       installmentType: InstallmentType.disbursement,
-      status: InstallmentContractStatus.active,
-      principal: detail.primaryAmount,
-      remainingPrincipal: detail.primaryAmount,
-      paidPeriodCount: 0,
-      totalPeriodCount: 3,
+      factKind: detail.businessPurpose == BusinessPurpose.refund
+          ? InstallmentTransactionFactKind.refund
+          : InstallmentTransactionFactKind.disbursement,
     ),
-    creditRepaymentOwnerType => RepaymentTransactionBusinessContext(
-      ownerType: ownership!.ownerType,
-      ownerId: ownership.ownerId,
+    creditRepaymentOwnerType => RepaymentBusinessActivityItem(
+      activityKey: BusinessActivityKey(
+        type: ownership!.ownerType,
+        id: ownership.ownerId,
+      ),
+      transactionId: detail.id,
       repaymentType: RepaymentType.bill,
       targetType: RepaymentTargetType.bill,
       targetId: 'bill-1',
     ),
-    orchestrationAdvanceOwnerType => AdvanceTransactionBusinessContext(
-      ownerType: ownership!.ownerType,
-      ownerId: ownership.ownerId,
+    orchestrationAdvanceOwnerType => AdvanceBusinessActivityItem(
+      activityKey: BusinessActivityKey(
+        type: ownership!.ownerType,
+        id: ownership.ownerId,
+      ),
+      transactionId: detail.id,
+      factKind: switch (detail.businessPurpose) {
+        BusinessPurpose.advance => AdvanceTransactionFactKind.advance,
+        BusinessPurpose.advanceCollection =>
+          AdvanceTransactionFactKind.collection,
+        BusinessPurpose.refund => AdvanceTransactionFactKind.refund,
+        BusinessPurpose.advanceSettlement =>
+          AdvanceTransactionFactKind.settlement,
+        _ => AdvanceTransactionFactKind.advance,
+      },
       scenario: AdvanceScenario.reimbursement,
       trackingMode: AdvanceTrackingMode.itemized,
-      advanceAmount:
-          detail.advanceSummary?.advanceAmount ?? detail.primaryAmount,
-      receivedAmount: detail.advanceSummary?.receivedAmount ?? Money.zero(),
-      outstanding: detail.advanceSummary?.outstanding ?? detail.primaryAmount,
-      isClosed: detail.advanceSummary?.isClosed ?? false,
     ),
-    orchestrationAmortizationOwnerType =>
-      AmortizationTransactionBusinessContext(
-        ownerType: ownership!.ownerType,
-        ownerId: ownership.ownerId,
-        initialTransactionId: detail.id,
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.active,
-        originalAmount: detail.primaryAmount,
-        recognizedAmount: Money.zero(),
-        remainingAmount: detail.primaryAmount,
-        postedPeriodCount: 0,
-        totalPeriodCount: 3,
+    orchestrationAmortizationOwnerType => _testAmortizationItem(
+      activityKey: BusinessActivityKey(
+        type: ownership!.ownerType,
+        id: ownership.ownerId,
       ),
-    final String ownerType => UnknownTransactionBusinessContext(
-      ownerType: ownerType,
-      ownerId: ownership!.ownerId,
+      transactionId: detail.id,
+    ),
+    final String ownerType => UnknownBusinessActivityItem(
+      activityKey: BusinessActivityKey(type: ownerType, id: ownership!.ownerId),
+      transactionId: detail.id,
     ),
     null => null,
   };
   return TransactionDetailContext(
     transaction: detail,
-    parentTransaction: parent,
-    currentGroup: TransactionDetailGroup(
-      anchor: anchor,
-      children: anchor.children,
-    ),
-    anchorGroup: TransactionDetailGroup(
-      anchor: anchor,
-      children: anchor.children,
-    ),
-    businessContext: owner,
+    parentFacts: parent == null
+        ? null
+        : TransactionParentFacts(
+            isExcludedFromStats: parent.isExcludedFromStats,
+            isExcludedFromBudget: parent.isExcludedFromBudget,
+            isAdvanceClosed: parent.advanceSummary?.isClosed ?? false,
+          ),
+    businessItem: item,
+  );
+}
+
+AmortizationBusinessActivityItem _testAmortizationItem({
+  required BusinessActivityKey activityKey,
+  required String transactionId,
+}) {
+  return AmortizationBusinessActivityItem(
+    activityKey: activityKey,
+    transactionId: transactionId,
+    kind: AmortizationKind.prepaidExpense,
+    factKind: AmortizationTransactionFactKind.initial,
+    localCategoryAllocations: const [],
   );
 }
 

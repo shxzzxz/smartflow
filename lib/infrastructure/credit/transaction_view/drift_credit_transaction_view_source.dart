@@ -135,11 +135,7 @@ LIMIT ?
         _db.transactionLines,
         _db.transactionTags,
         _db.installmentContracts,
-        _db.installmentSchedules,
-        _db.bills,
-        _db.billItems,
         _db.repayments,
-        _db.repaymentItems,
       },
     );
   }

@@ -16,7 +16,7 @@ final class _CreditRepaymentActionDispatcher
   final InstallmentPrepaymentAppService installmentPrepaymentAppService;
   final AccountRepaymentAppService accountRepaymentAppService;
   final TransactionUpdateAppService updateService;
-  final RepaymentTransactionBusinessContext owner;
+  final RepaymentBusinessActivityItem owner;
 
   String get repaymentId => owner.ownerId;
 

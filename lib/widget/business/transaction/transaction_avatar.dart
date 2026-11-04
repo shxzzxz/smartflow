@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
+import 'transaction_avatar_kind.dart';
 
 import '../category/category_avatar.dart';
 import '../icon/business_icon_bubble.dart';
@@ -15,6 +16,7 @@ class TransactionAvatar extends StatelessWidget {
     this.iconSize,
     this.hasMultipleCategories = false,
     this.preferCategoryArtwork = false,
+    this.kind,
   });
 
   final BusinessPurpose businessPurpose;
@@ -23,9 +25,27 @@ class TransactionAvatar extends StatelessWidget {
   final double? iconSize;
   final bool hasMultipleCategories;
   final bool preferCategoryArtwork;
+  final TransactionAvatarKind? kind;
 
   @override
   Widget build(BuildContext context) {
+    if (kind case final kind?) {
+      final icon = switch (kind) {
+        TransactionAvatarKind.advanceCollection =>
+          RemixIcons.money_cny_circle_line,
+        TransactionAvatarKind.advanceSettlement => RemixIcons.check_double_line,
+        TransactionAvatarKind.refund => RemixIcons.refund_line,
+        TransactionAvatarKind.amortizationRecognition =>
+          RemixIcons.calendar_check_line,
+        TransactionAvatarKind.amortizationRefund => RemixIcons.refund_2_line,
+        TransactionAvatarKind.amortizationTermination =>
+          RemixIcons.stop_circle_line,
+      };
+      return BusinessIconBubble(
+        size: size,
+        child: Icon(icon, size: iconSize ?? size * 0.7),
+      );
+    }
     if (preferCategoryArtwork) {
       if (hasMultipleCategories) {
         return BusinessIconBubble(

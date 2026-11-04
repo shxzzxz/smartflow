@@ -1,13 +1,15 @@
 import '../../../../domain/orchestration/entity/advance_case.dart';
+import '../../../../domain/orchestration/service/advance_transaction_fact_policy.dart';
 import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
 import '../../../orchestration/advance/query/advance_case_query_service.dart';
-import '../query/transaction_business_context_read_models.dart';
-import 'transaction_business_context_source.dart';
+import '../../business_activity/query/business_activity_queries.dart';
+import '../query/business_activity_item_read_models.dart';
+import 'business_activity_item_source.dart';
 
-final class AdvanceBusinessContextSource
-    extends TransactionBusinessContextSource {
-  const AdvanceBusinessContextSource(this._query);
+final class AdvanceBusinessActivityItemSource
+    extends BusinessActivityItemSource {
+  const AdvanceBusinessActivityItemSource(this._query);
 
   final AdvanceCaseQueryService _query;
 
@@ -15,7 +17,7 @@ final class AdvanceBusinessContextSource
   Set<String> get supportedOwnerTypes => const {orchestrationAdvanceOwnerType};
 
   @override
-  Future<Map<String, TransactionBusinessContext>> findContexts(
+  Future<Map<String, BusinessActivityItem>> findItems(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -39,23 +41,26 @@ final class AdvanceBusinessContextSource
       if (transaction.ownership case final ownership?) ownership.ownerId,
   };
 
-  TransactionBusinessContext? _map(
+  BusinessActivityItem? _map(
     TransactionReadModel transaction,
     AdvanceCase? advanceCase,
   ) {
-    if (advanceCase == null) return null;
-    final facts = transaction.advanceSummary;
-    if (facts == null) return null;
-    return AdvanceTransactionBusinessContext(
-      ownerType: orchestrationAdvanceOwnerType,
-      ownerId: advanceCase.id,
+    final ownership = transaction.ownership;
+    final factKind = resolveAdvanceTransactionFactKind(
+      transaction.businessPurpose,
+    );
+    if (ownership == null || advanceCase == null || factKind == null) {
+      return null;
+    }
+    return AdvanceBusinessActivityItem(
+      activityKey: BusinessActivityKey(
+        type: ownership.ownerType,
+        id: ownership.ownerId,
+      ),
+      transactionId: transaction.id,
+      factKind: factKind,
       scenario: advanceCase.scenario,
       trackingMode: advanceCase.trackingMode,
-      advanceAmount: facts.advanceAmount,
-      receivedAmount: facts.receivedAmount,
-      outstanding: facts.outstanding,
-      isClosed: facts.isClosed,
-      aaPeopleCount: advanceCase.aaPeopleCount,
     );
   }
 }

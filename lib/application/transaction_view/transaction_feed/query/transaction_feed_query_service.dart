@@ -1,13 +1,13 @@
 import '../../../ledger/ledger_query_api.dart';
-import '../../business_context/query/business_context_stream.dart';
-import '../../business_context/query/transaction_business_context_query.dart';
-import '../../business_context/query/transaction_business_context_read_models.dart';
+import '../../business_activity_item/query/business_activity_item_query.dart';
+import '../../business_activity_item/query/business_activity_item_read_models.dart';
+import '../../transaction_view_query_streams.dart';
 
 final class TransactionFeedEntry {
-  const TransactionFeedEntry({required this.transaction, this.businessContext});
+  const TransactionFeedEntry({required this.transaction, this.businessItem});
 
   final TransactionReadModel transaction;
-  final TransactionBusinessContext? businessContext;
+  final BusinessActivityItem? businessItem;
 }
 
 abstract interface class TransactionFeedQueryService {
@@ -24,20 +24,20 @@ final class TransactionFeedQueryServiceImpl
     implements TransactionFeedQueryService {
   const TransactionFeedQueryServiceImpl({
     required TransactionQueryService transactions,
-    required TransactionBusinessContextQuery businessContexts,
+    required BusinessActivityItemQuery businessItems,
   }) : _transactions = transactions,
-       _businessContexts = businessContexts;
+       _businessItems = businessItems;
 
   final TransactionQueryService _transactions;
-  final TransactionBusinessContextQuery _businessContexts;
+  final BusinessActivityItemQuery _businessItems;
 
   @override
   Future<List<TransactionFeedEntry>> findTransactions(
     TransactionListQuery query,
   ) async {
     final transactions = await _transactions.findTransactions(query);
-    final contexts = await _businessContexts.findContexts(transactions);
-    return _entries(transactions, contexts);
+    final items = await _businessItems.findItems(transactions);
+    return _entries(transactions, items);
   }
 
   @override
@@ -46,21 +46,21 @@ final class TransactionFeedQueryServiceImpl
   ) {
     return switchMapStreams(
       _transactions.watchTransactions(query),
-      (transactions) => _businessContexts
-          .watchContexts(transactions)
-          .map((contexts) => _entries(transactions, contexts)),
+      (transactions) => _businessItems
+          .watchItems(transactions)
+          .map((items) => _entries(transactions, items)),
     );
   }
 
   List<TransactionFeedEntry> _entries(
     List<TransactionReadModel> transactions,
-    Map<String, TransactionBusinessContext> contexts,
+    Map<String, BusinessActivityItem> items,
   ) {
     return [
       for (final transaction in transactions)
         TransactionFeedEntry(
           transaction: transaction,
-          businessContext: contexts[transaction.id],
+          businessItem: items[transaction.id],
         ),
     ];
   }

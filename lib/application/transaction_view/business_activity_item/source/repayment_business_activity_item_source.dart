@@ -1,11 +1,12 @@
 import '../../../credit/credit_query_api.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../query/transaction_business_context_read_models.dart';
-import 'transaction_business_context_source.dart';
+import '../../business_activity/query/business_activity_queries.dart';
+import '../query/business_activity_item_read_models.dart';
+import 'business_activity_item_source.dart';
 
-final class RepaymentBusinessContextSource
-    extends TransactionBusinessContextSource {
-  const RepaymentBusinessContextSource(this._query);
+final class RepaymentBusinessActivityItemSource
+    extends BusinessActivityItemSource {
+  const RepaymentBusinessActivityItemSource(this._query);
 
   final CreditTransactionViewQueryService _query;
 
@@ -13,7 +14,7 @@ final class RepaymentBusinessContextSource
   Set<String> get supportedOwnerTypes => const {creditRepaymentOwnerType};
 
   @override
-  Future<Map<String, TransactionBusinessContext>> findContexts(
+  Future<Map<String, BusinessActivityItem>> findItems(
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
@@ -21,7 +22,7 @@ final class RepaymentBusinessContextSource
     return {
       for (final transaction in values)
         transaction.id: ?_map(
-          transaction.ownership?.ownerId,
+          transaction,
           summaries[transaction.ownership?.ownerId],
         ),
     };
@@ -37,14 +38,18 @@ final class RepaymentBusinessContextSource
       if (transaction.ownership case final ownership?) ownership.ownerId,
   };
 
-  TransactionBusinessContext? _map(
-    String? ownerId,
+  BusinessActivityItem? _map(
+    TransactionReadModel transaction,
     CreditRepaymentBusinessActivitySummary? summary,
   ) {
-    if (ownerId == null || summary == null) return null;
-    return RepaymentTransactionBusinessContext(
-      ownerType: creditRepaymentOwnerType,
-      ownerId: ownerId,
+    final ownership = transaction.ownership;
+    if (ownership == null || summary == null) return null;
+    return RepaymentBusinessActivityItem(
+      activityKey: BusinessActivityKey(
+        type: ownership.ownerType,
+        id: ownership.ownerId,
+      ),
+      transactionId: transaction.id,
       repaymentType: summary.repaymentType,
       targetType: summary.targetType,
       targetId: summary.targetId,

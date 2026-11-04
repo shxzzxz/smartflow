@@ -4,15 +4,23 @@ import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'transaction_detail_business_presentation.dart';
 
 TransactionDetailBusinessContent presentAmortizationDetailBusinessScene(
-  TransactionDetailContext context,
+  TransactionDetailReadModel detail,
 ) {
-  final owner =
-      context.businessContext as AmortizationTransactionBusinessContext;
-  final type = switch (owner.kind) {
+  final context = detail.context;
+  final item = context.businessItem;
+  final activity = detail.businessActivity;
+  final summary = activity?.summary;
+  if (item is! AmortizationBusinessActivityItem ||
+      item.factKind != AmortizationTransactionFactKind.initial ||
+      summary is! AmortizationBusinessActivitySummary ||
+      activity == null) {
+    return const TransactionDetailBusinessContent();
+  }
+  final type = switch (summary.kind) {
     AmortizationKind.prepaidExpense => '预付费用',
     AmortizationKind.deferredIncome => '递延收入',
   };
-  final status = switch (owner.status) {
+  final status = switch (summary.status) {
     AmortizationStatus.active => '进行中',
     AmortizationStatus.completed => '已完成',
     AmortizationStatus.terminated => '已终止',
@@ -24,8 +32,8 @@ TransactionDetailBusinessContent presentAmortizationDetailBusinessScene(
         title: '摊销计划',
         summary:
             '$type · $status · 已确认 '
-            '${owner.postedPeriodCount}/${owner.totalPeriodCount}',
-        route: '/amortizations/${owner.ownerId}',
+            '${summary.postedPeriodCount}/${summary.totalPeriodCount}',
+        route: '/amortizations/${item.ownerId}',
       ),
     ],
   );

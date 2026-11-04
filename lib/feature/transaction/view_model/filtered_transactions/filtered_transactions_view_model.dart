@@ -43,20 +43,22 @@ Stream<BusinessActivityPage> filteredBusinessActivities(
     FilteredTransactionTarget.counterparty => null,
   };
 
-  yield* ref
-      .watch(businessActivityQueryServiceProvider)
-      .watchPage(
-        BusinessActivityPageQuery(
-          occurredFrom: DateTime.utc(1),
-          occurredUntil: DateTime.utc(9999, 12, 31),
-          categoryAccountIds: categoryIds,
-          tagIds: target == FilteredTransactionTarget.tag ? {targetId} : null,
-          counterpartyId: target == FilteredTransactionTarget.counterparty
-              ? targetId
-              : null,
-          limit: limit,
-        ),
-      );
+  final service = ref.watch(businessActivityQueryServiceProvider);
+  yield* watchBusinessActivityContents(
+    service.watchPage(
+      BusinessActivityPageQuery(
+        occurredFrom: DateTime.utc(1),
+        occurredUntil: DateTime.utc(9999, 12, 31),
+        categoryAccountIds: categoryIds,
+        tagIds: target == FilteredTransactionTarget.tag ? {targetId} : null,
+        counterpartyId: target == FilteredTransactionTarget.counterparty
+            ? targetId
+            : null,
+        limit: limit,
+      ),
+    ),
+    service,
+  );
 }
 
 @riverpod

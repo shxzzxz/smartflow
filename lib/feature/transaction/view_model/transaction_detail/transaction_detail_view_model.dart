@@ -67,16 +67,16 @@ Object createTransactionDetailActionDispatcherForTesting({
 class TransactionDetailViewModel extends _$TransactionDetailViewModel {
   @override
   Future<TransactionDetailUiState> build(String transactionId) async {
-    final context = await ref.watch(
-      transactionDetailContextProvider(transactionId).future,
+    final detail = await ref.watch(
+      transactionDetailReadModelProvider(transactionId).future,
     );
-    if (context == null) {
+    if (detail == null) {
       return const TransactionDetailUiState.notFound();
     }
 
     final accountLookup = await ref.watch(accountLookupProvider.future);
     return buildTransactionDetailLoadedState(
-      context: context,
+      detail: detail,
       accountLookup: accountLookup,
     );
   }
@@ -153,8 +153,8 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
             currentAccountId: currentAccountId,
           );
         case AccountSelectionPurpose.advanceReceivable:
-          final advance = loaded.context.businessContext;
-          if (advance is! AdvanceTransactionBusinessContext) {
+          final advance = loaded.context.businessItem;
+          if (advance is! AdvanceBusinessActivityItem) {
             return detailInvalidCommand('无法定位垫付编排实例');
           }
           await ref
@@ -284,12 +284,11 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
         installmentPrepaymentAppServiceProvider,
       ),
       accountRepaymentAppService: ref.read(accountRepaymentAppServiceProvider),
-      advanceAppService:
-          context.businessContext is AdvanceTransactionBusinessContext
+      advanceAppService: context.businessItem is AdvanceBusinessActivityItem
           ? ref.read(advanceOrchestrationAppServiceProvider)
           : null,
       amortizationAppService:
-          context.businessContext is AmortizationTransactionBusinessContext
+          context.businessItem is AmortizationBusinessActivityItem
           ? ref.read(amortizationPlanAppServiceProvider)
           : null,
     );
@@ -307,10 +306,10 @@ class TransactionDetailViewModel extends _$TransactionDetailViewModel {
       final outcome = await body(loaded);
       if (outcome is UiActionSuccess<void>) {
         _invalidateInstallmentAfterRefundChange(loaded.detail);
-        final owner = loaded.context.businessContext;
-        if (owner is AmortizationTransactionBusinessContext) {
+        final item = loaded.context.businessItem;
+        if (item is AmortizationBusinessActivityItem) {
           ref
-            ..invalidate(amortizationPlanProvider(owner.ownerId))
+            ..invalidate(amortizationPlanProvider(item.ownerId))
             ..invalidate(amortizationPlansProvider());
         }
       }

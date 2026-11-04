@@ -2238,24 +2238,24 @@ final class AmortizationPlanQueryServiceProvider
 String _$amortizationPlanQueryServiceHash() =>
     r'417cdd17f99ea3344b1b0cc5db3013324a005f07';
 
-@ProviderFor(amortizationTransactionContextQueryService)
-final amortizationTransactionContextQueryServiceProvider =
-    AmortizationTransactionContextQueryServiceProvider._();
+@ProviderFor(amortizationBusinessActivityItemQueryService)
+final amortizationBusinessActivityItemQueryServiceProvider =
+    AmortizationBusinessActivityItemQueryServiceProvider._();
 
-final class AmortizationTransactionContextQueryServiceProvider
+final class AmortizationBusinessActivityItemQueryServiceProvider
     extends
         $FunctionalProvider<
-          AmortizationTransactionContextQueryService,
-          AmortizationTransactionContextQueryService,
-          AmortizationTransactionContextQueryService
+          AmortizationBusinessActivityItemQueryService,
+          AmortizationBusinessActivityItemQueryService,
+          AmortizationBusinessActivityItemQueryService
         >
-    with $Provider<AmortizationTransactionContextQueryService> {
-  AmortizationTransactionContextQueryServiceProvider._()
+    with $Provider<AmortizationBusinessActivityItemQueryService> {
+  AmortizationBusinessActivityItemQueryServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'amortizationTransactionContextQueryServiceProvider',
+        name: r'amortizationBusinessActivityItemQueryServiceProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
@@ -2263,31 +2263,35 @@ final class AmortizationTransactionContextQueryServiceProvider
 
   @override
   String debugGetCreateSourceHash() =>
-      _$amortizationTransactionContextQueryServiceHash();
+      _$amortizationBusinessActivityItemQueryServiceHash();
 
   @$internal
   @override
-  $ProviderElement<AmortizationTransactionContextQueryService> $createElement(
+  $ProviderElement<AmortizationBusinessActivityItemQueryService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  AmortizationTransactionContextQueryService create(Ref ref) {
-    return amortizationTransactionContextQueryService(ref);
+  AmortizationBusinessActivityItemQueryService create(Ref ref) {
+    return amortizationBusinessActivityItemQueryService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AmortizationTransactionContextQueryService value) {
+  Override overrideWithValue(
+    AmortizationBusinessActivityItemQueryService value,
+  ) {
     return $ProviderOverride(
       origin: this,
       providerOverride:
-          $SyncValueProvider<AmortizationTransactionContextQueryService>(value),
+          $SyncValueProvider<AmortizationBusinessActivityItemQueryService>(
+            value,
+          ),
     );
   }
 }
 
-String _$amortizationTransactionContextQueryServiceHash() =>
-    r'37035134190d9a46eab63a8a8afbdd8d6a8b7e8b';
+String _$amortizationBusinessActivityItemQueryServiceHash() =>
+    r'1366fe23a3104b7b6a33768428acbd8e34a47d7a';
 
 @ProviderFor(advanceCaseQueryService)
 final advanceCaseQueryServiceProvider = AdvanceCaseQueryServiceProvider._();
@@ -2778,7 +2782,7 @@ final class TransactionFeedQueryServiceProvider
 }
 
 String _$transactionFeedQueryServiceHash() =>
-    r'2a3ccd575f4877adad57d035d484eeb798a0810f';
+    r'192e87897f071c8c17539cd868df56ac18038a9f';
 
 @ProviderFor(businessActivityQueryService)
 final businessActivityQueryServiceProvider =
@@ -2984,56 +2988,53 @@ final class CreditTransactionViewQueryServiceProvider
 String _$creditTransactionViewQueryServiceHash() =>
     r'a83aebfb8f1c5900fe533aebca306338ebe9971e';
 
-@ProviderFor(transactionBusinessContextQuery)
-final transactionBusinessContextQueryProvider =
-    TransactionBusinessContextQueryProvider._();
+@ProviderFor(businessActivityItemQuery)
+final businessActivityItemQueryProvider = BusinessActivityItemQueryProvider._();
 
-final class TransactionBusinessContextQueryProvider
+final class BusinessActivityItemQueryProvider
     extends
         $FunctionalProvider<
-          TransactionBusinessContextQuery,
-          TransactionBusinessContextQuery,
-          TransactionBusinessContextQuery
+          BusinessActivityItemQuery,
+          BusinessActivityItemQuery,
+          BusinessActivityItemQuery
         >
-    with $Provider<TransactionBusinessContextQuery> {
-  TransactionBusinessContextQueryProvider._()
+    with $Provider<BusinessActivityItemQuery> {
+  BusinessActivityItemQueryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'transactionBusinessContextQueryProvider',
+        name: r'businessActivityItemQueryProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionBusinessContextQueryHash();
+  String debugGetCreateSourceHash() => _$businessActivityItemQueryHash();
 
   @$internal
   @override
-  $ProviderElement<TransactionBusinessContextQuery> $createElement(
+  $ProviderElement<BusinessActivityItemQuery> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  TransactionBusinessContextQuery create(Ref ref) {
-    return transactionBusinessContextQuery(ref);
+  BusinessActivityItemQuery create(Ref ref) {
+    return businessActivityItemQuery(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransactionBusinessContextQuery value) {
+  Override overrideWithValue(BusinessActivityItemQuery value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<TransactionBusinessContextQuery>(
-        value,
-      ),
+      providerOverride: $SyncValueProvider<BusinessActivityItemQuery>(value),
     );
   }
 }
 
-String _$transactionBusinessContextQueryHash() =>
-    r'04bcf87b9ba12497645aaf40b9bc7ab3cc876766';
+String _$businessActivityItemQueryHash() =>
+    r'a37bd74a43b7db1bd334415325bcbd252ce27a4c';
 
 @ProviderFor(transactionDetailContextQuery)
 final transactionDetailContextQueryProvider =
@@ -3084,7 +3085,55 @@ final class TransactionDetailContextQueryProvider
 }
 
 String _$transactionDetailContextQueryHash() =>
-    r'86c707529c8c73b4fe13d46242ed4dd43e03091e';
+    r'ae7887e15341f44947655c09e440e9116265feac';
+
+@ProviderFor(transactionDetailQuery)
+final transactionDetailQueryProvider = TransactionDetailQueryProvider._();
+
+final class TransactionDetailQueryProvider
+    extends
+        $FunctionalProvider<
+          TransactionDetailQuery,
+          TransactionDetailQuery,
+          TransactionDetailQuery
+        >
+    with $Provider<TransactionDetailQuery> {
+  TransactionDetailQueryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transactionDetailQueryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionDetailQueryHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransactionDetailQuery> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  TransactionDetailQuery create(Ref ref) {
+    return transactionDetailQuery(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionDetailQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionDetailQuery>(value),
+    );
+  }
+}
+
+String _$transactionDetailQueryHash() =>
+    r'24b7f1fa624252937ee2bf5921bc967154011704';
 
 @ProviderFor(financialMetricsService)
 final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();

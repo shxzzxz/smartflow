@@ -30,4 +30,11 @@ abstract interface class BusinessActivitySource {
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityAnchorCandidate> anchors,
   );
+
+  /// Watches summaries for an already selected, bounded set of anchors.
+  ///
+  /// Implementations must not discover activities outside [anchors].
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  );
 }

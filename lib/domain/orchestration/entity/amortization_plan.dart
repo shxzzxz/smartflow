@@ -310,6 +310,16 @@ class AmortizationPlan {
     reductions: recognizedCategoryAllocations,
   );
 
+  /// Category balances recognized when the plan is terminated.
+  ///
+  /// Returned category balances stay attached to the termination return fact
+  /// and must not be recognized again by the termination confirmation.
+  List<AccountAmountAllocation> get terminationRecognitionCategoryAllocations =>
+      subtractAllocations(
+        base: remainingCategoryAllocationsBeforeTermination,
+        reductions: termination?.categoryReturnAllocations ?? const [],
+      );
+
   AmortizationPlan withPeriods(Iterable<AmortizationPeriod> nextPeriods) {
     return _copyWith(periods: nextPeriods);
   }

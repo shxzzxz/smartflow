@@ -1,5 +1,6 @@
 import '../../../credit/credit_query_api.dart';
 import '../../transaction_view_query_port_api.dart';
+import '../../transaction_view_query_streams.dart';
 
 /// Consumer-side adapter over credit-owned anchor and installment queries.
 final class CreditBusinessActivitySource implements BusinessActivitySource {
@@ -73,6 +74,35 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
           targetType: entry.value.targetType,
         ),
     };
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) {
+    final values = anchors.toList();
+    if (values.isEmpty) return Stream.value(const {});
+    final contractIds = {
+      for (final anchor in values)
+        if (anchor.activityKey.type == installmentOwnerType)
+          anchor.activityKey.id,
+    };
+    final repaymentIds = {
+      for (final anchor in values)
+        if (anchor.activityKey.type == creditRepaymentOwnerType)
+          anchor.activityKey.id,
+    };
+    final signals = <Stream<Object?>>[
+      for (final contractId in contractIds)
+        _installments
+            .watchInstallment(contractId)
+            .map<Object?>((value) => value),
+      for (final repaymentId in repaymentIds)
+        _query
+            .watchRepaymentSummary(repaymentId)
+            .map<Object?>((value) => value),
+    ];
+    return combineLatestStreams(signals).asyncMap((_) => findSummaries(values));
   }
 
   CreditTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {

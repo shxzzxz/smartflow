@@ -8,6 +8,7 @@ import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/transaction.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/widget/business/transaction/transaction_avatar_kind.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
@@ -105,6 +106,7 @@ void main() {
       final row = buildTransactionRowPresentation(
         item: _item(purpose: purpose, multipleCategories: true),
         accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
       ).copyWith(dimmed: true);
       expect(row.hasMultipleCategories, isTrue);
       expect(row.iconKey, isNull);
@@ -174,6 +176,42 @@ void main() {
 
     expect(find.byType(CategoryAvatar), findsOneWidget);
     expect(find.byIcon(RemixIcons.arrow_left_right_line), findsNothing);
+  });
+
+  testWidgets('fixed transaction avatar kind overrides category artwork', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TransactionRow(
+            presentation: TransactionRowPresentation(
+              transactionId: 'fixed-artwork',
+              businessPurpose: BusinessPurpose.dailyExpense,
+              iconKey: 'meal',
+              avatarKind: TransactionAvatarKind.amortizationRecognition,
+              title: '第 2 期确认',
+              subtitle: '08:30',
+              amount: const AdaptiveMoneyTextPresentation(
+                preciseText: '12.34',
+                compactText: '12.34',
+              ),
+              amountTone: FinanceTone.expense,
+              accountFlow: const TransactionAccountFlowPresentation(
+                out: AccountEndpointPresentation(label: '现金'),
+              ),
+              badges: const [],
+              canQuickEdit: false,
+              preferCategoryArtwork: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CategoryAvatar), findsNothing);
+    expect(find.byIcon(RemixIcons.calendar_check_line), findsOneWidget);
   });
 
   for (final scenario in [
@@ -248,6 +286,7 @@ void main() {
     final presentation = buildTransactionRowPresentation(
       item: _item(),
       accountLookup: _lookup,
+      amountSource: const TransactionGroupAmountSource(),
     );
 
     await tester.pumpWidget(
@@ -289,6 +328,7 @@ void main() {
     final presentation = buildTransactionRowPresentation(
       item: _item(),
       accountLookup: _lookup,
+      amountSource: const TransactionGroupAmountSource(),
     ).copyWith(selectable: true);
 
     await tester.pumpWidget(
@@ -312,6 +352,7 @@ void main() {
     final presentation = buildTransactionRowPresentation(
       item: _item(),
       accountLookup: _lookup,
+      amountSource: const TransactionGroupAmountSource(),
     ).copyWith(selectable: true);
 
     await tester.pumpWidget(
@@ -625,6 +666,7 @@ void main() {
     final presentation = buildTransactionRowPresentation(
       item: _item(),
       accountLookup: _lookup,
+      amountSource: const TransactionGroupAmountSource(),
     );
 
     await tester.pumpWidget(

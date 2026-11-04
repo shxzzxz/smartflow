@@ -17,6 +17,9 @@ class AmortizationPlanQueryService {
   Stream<List<AmortizationPlan>> watchAll({String? deferralAccountId}) =>
       _repository.watchAll(deferralAccountId: deferralAccountId);
 
+  Stream<List<AmortizationPlan>> watchByIds(Set<String> ids) =>
+      _repository.watchByIds(ids);
+
   Stream<AmortizationPlan?> watchById(String id) => watchAll().map(
     (plans) => plans.where((plan) => plan.id == id).firstOrNull,
   );

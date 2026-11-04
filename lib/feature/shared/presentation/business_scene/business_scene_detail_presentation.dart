@@ -8,16 +8,17 @@ import 'transaction_detail_business_presentation.dart';
 import 'business_scene_presentation.dart';
 
 TransactionDetailBusinessContent presentBusinessSceneDetailContent(
-  TransactionDetailContext context,
+  TransactionDetailReadModel detail,
 ) {
+  final context = detail.context;
   return switch (businessSceneKindForDetail(context)) {
-    BusinessSceneKind.advance => presentAdvanceDetailBusinessScene(context),
+    BusinessSceneKind.advance => presentAdvanceDetailBusinessScene(detail),
     BusinessSceneKind.installment => presentInstallmentDetailBusinessScene(
-      context,
+      detail,
     ),
-    BusinessSceneKind.repayment => presentRepaymentDetailBusinessScene(context),
+    BusinessSceneKind.repayment => presentRepaymentDetailBusinessScene(detail),
     BusinessSceneKind.amortization => presentAmortizationDetailBusinessScene(
-      context,
+      detail,
     ),
     BusinessSceneKind.ledger => const TransactionDetailBusinessContent(),
   };

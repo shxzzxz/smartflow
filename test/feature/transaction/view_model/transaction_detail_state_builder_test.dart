@@ -3,6 +3,7 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/widget/business/transaction/transaction_avatar_kind.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail/transaction_detail_state.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_detail/transaction_detail_state_builder.dart';
 import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
@@ -97,18 +98,12 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionBusinessContext(
-        ownerType: orchestrationAmortizationOwnerType,
-        ownerId: 'plan',
-        initialTransactionId: 'child',
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.active,
-        originalAmount: Money(minorUnits: 1000),
-        recognizedAmount: Money.zero(),
-        remainingAmount: Money(minorUnits: 1000),
-        postedPeriodCount: 0,
-        totalPeriodCount: 3,
+      businessItem: _amortizationItem(
         factKind: AmortizationTransactionFactKind.initial,
+      ),
+      businessActivity: _amortizationActivity(
+        originalAmount: const Money(minorUnits: 1000),
+        remainingAmount: const Money(minorUnits: 1000),
       ),
     );
 
@@ -134,17 +129,7 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.transfer,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionBusinessContext(
-        ownerType: orchestrationAmortizationOwnerType,
-        ownerId: 'plan',
-        initialTransactionId: 'initial',
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.active,
-        originalAmount: Money(minorUnits: 10000),
-        recognizedAmount: Money.zero(),
-        remainingAmount: Money(minorUnits: 10000),
-        postedPeriodCount: 0,
-        totalPeriodCount: 3,
+      businessItem: _amortizationItem(
         factKind: AmortizationTransactionFactKind.refund,
         refundId: 'refund',
       ),
@@ -175,20 +160,11 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: AmortizationTransactionBusinessContext(
-        ownerType: orchestrationAmortizationOwnerType,
-        ownerId: 'plan',
-        initialTransactionId: 'initial',
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.terminated,
-        originalAmount: Money(minorUnits: 10000),
-        recognizedAmount: Money(minorUnits: 10000),
-        remainingAmount: Money.zero(),
-        postedPeriodCount: 3,
-        totalPeriodCount: 3,
+      businessItem: _amortizationItem(
         factKind: AmortizationTransactionFactKind.terminationRecognition,
         terminationId: 'termination',
       ),
+      amortizationStatus: AmortizationStatus.terminated,
     );
 
     expect(
@@ -225,6 +201,7 @@ void main() {
       ),
     );
 
+    expect(state.businessModules, isEmpty);
     expect(state.behavior.editRoute, '/transaction/child/advance/edit');
     final edit = state.actionButtons.singleWhere(
       (button) => button.kind == DetailActionKind.edit,
@@ -542,15 +519,18 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: const InstallmentTransactionBusinessContext(
-        ownerType: installmentOwnerType,
-        ownerId: 'contract-1',
+      businessItem: const InstallmentBusinessActivityItem(
+        activityKey: BusinessActivityKey(
+          type: installmentOwnerType,
+          id: 'contract-1',
+        ),
+        transactionId: 'child',
         installmentType: InstallmentType.purchase,
-        status: InstallmentContractStatus.active,
-        principal: Money(minorUnits: 10000),
-        remainingPrincipal: Money(minorUnits: 6000),
-        paidPeriodCount: 1,
-        totalPeriodCount: 3,
+        factKind: InstallmentTransactionFactKind.purchase,
+      ),
+      businessActivity: _installmentActivity(
+        transactionId: 'child',
+        remainingPrincipal: const Money(minorUnits: 6000),
       ),
     );
 
@@ -560,24 +540,119 @@ void main() {
     expect(module.route, '/installments/contract-1');
   });
 
+  test('non-entry installment refund has no business module', () {
+    final state = _build(
+      purpose: BusinessPurpose.refund,
+      parentTransactionId: null,
+      businessItem: const InstallmentBusinessActivityItem(
+        activityKey: BusinessActivityKey(
+          type: installmentOwnerType,
+          id: 'contract-1',
+        ),
+        transactionId: 'child',
+        installmentType: InstallmentType.purchase,
+        factKind: InstallmentTransactionFactKind.refund,
+      ),
+    );
+
+    expect(state.businessModules, isEmpty);
+  });
+
+  test('amortization refund stays local without plan module', () {
+    final state = _build(
+      purpose: BusinessPurpose.transfer,
+      parentTransactionId: null,
+      businessItem: _amortizationItem(
+        factKind: AmortizationTransactionFactKind.refund,
+        categoryId: 'food',
+        refundId: 'refund',
+      ),
+    );
+
+    expect(state.businessModules, isEmpty);
+    expect(state.hero.title, '摊销退款');
+    expect(state.hero.iconKey, isNull);
+    expect(state.hero.avatarKind, TransactionAvatarKind.amortizationRefund);
+    expect(state.hero.preferCategoryArtwork, isFalse);
+  });
+
+  for (final scenario in [
+    (
+      AmortizationTransactionFactKind.recognition,
+      '第 2 期确认',
+      TransactionAvatarKind.amortizationRecognition,
+    ),
+    (
+      AmortizationTransactionFactKind.terminationRecognition,
+      '终止确认',
+      TransactionAvatarKind.amortizationTermination,
+    ),
+    (
+      AmortizationTransactionFactKind.terminationReturn,
+      '终止退还',
+      TransactionAvatarKind.amortizationTermination,
+    ),
+  ]) {
+    test('non-entry ${scenario.$1.name} uses business item icon', () {
+      final state = _build(
+        purpose: BusinessPurpose.dailyExpense,
+        parentTransactionId: null,
+        businessItem: _amortizationItem(
+          factKind: scenario.$1,
+          occurrencePeriodSequence: 2,
+          categoryId: 'food',
+        ),
+      );
+
+      expect(state.businessModules, isEmpty);
+      expect(state.hero.title, scenario.$2);
+      expect(state.hero.iconKey, isNull);
+      expect(state.hero.avatarKind, scenario.$3);
+      expect(state.hero.preferCategoryArtwork, isFalse);
+    });
+  }
+
+  test('advance collection uses its own title and icon', () {
+    final state = _build(
+      purpose: BusinessPurpose.advanceCollection,
+      parentTransactionId: null,
+      businessItem: AdvanceBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
+          type: orchestrationAdvanceOwnerType,
+          id: 'advance',
+        ),
+        transactionId: 'child',
+        factKind: AdvanceTransactionFactKind.collection,
+        scenario: AdvanceScenario.reimbursement,
+        trackingMode: AdvanceTrackingMode.itemized,
+      ),
+    );
+
+    expect(state.hero.title, '垫付到账');
+    expect(state.hero.iconKey, isNull);
+    expect(state.hero.avatarKind, TransactionAvatarKind.advanceCollection);
+    expect(state.hero.preferCategoryArtwork, isFalse);
+  });
+
   test(
     'amortization business module opens the plan and allows plan deletion',
     () {
       final state = _build(
         purpose: BusinessPurpose.dailyExpense,
         parentTransactionId: null,
-        businessOwner: const AmortizationTransactionBusinessContext(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan-1',
-          initialTransactionId: 'child',
-          kind: AmortizationKind.prepaidExpense,
-          status: AmortizationStatus.active,
-          originalAmount: Money(minorUnits: 10000),
-          recognizedAmount: Money(minorUnits: 2000),
-          remainingAmount: Money(minorUnits: 8000),
+        businessItem: _amortizationItem(
+          planId: 'plan-1',
+          factKind: AmortizationTransactionFactKind.initial,
+          categoryId: 'insurance',
+        ),
+        businessActivity: _amortizationActivity(
+          planId: 'plan-1',
+          originalAmount: const Money(minorUnits: 10000),
+          recognizedAmount: const Money(minorUnits: 2000),
+          remainingAmount: const Money(minorUnits: 8000),
           postedPeriodCount: 1,
           totalPeriodCount: 5,
-          categoryAccountIds: ['insurance'],
+          categoryId: 'insurance',
         ),
       );
 
@@ -594,18 +669,10 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.dailyExpense,
       parentTransactionId: null,
-      businessOwner: const AmortizationTransactionBusinessContext(
-        ownerType: orchestrationAmortizationOwnerType,
-        ownerId: 'plan-1',
-        initialTransactionId: 'child',
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.terminated,
-        originalAmount: Money(minorUnits: 10000),
-        recognizedAmount: Money(minorUnits: 10000),
-        remainingAmount: Money(minorUnits: 0),
-        postedPeriodCount: 5,
-        totalPeriodCount: 5,
+      businessItem: _amortizationItem(
+        factKind: AmortizationTransactionFactKind.initial,
       ),
+      amortizationStatus: AmortizationStatus.terminated,
     );
 
     final edit = state.actionButtons.singleWhere(
@@ -620,13 +687,17 @@ void main() {
     final state = _build(
       purpose: BusinessPurpose.debtRepayment,
       parentTransactionId: null,
-      businessOwner: const RepaymentTransactionBusinessContext(
-        ownerType: creditRepaymentOwnerType,
-        ownerId: 'repayment-1',
+      businessItem: const RepaymentBusinessActivityItem(
+        activityKey: BusinessActivityKey(
+          type: creditRepaymentOwnerType,
+          id: 'repayment-1',
+        ),
+        transactionId: 'child',
         repaymentType: RepaymentType.bill,
         targetType: RepaymentTargetType.bill,
         targetId: 'bill-1',
       ),
+      businessActivity: _repaymentActivity(transactionId: 'child'),
     );
 
     final module = state.businessModules.single as DetailBusinessLinkModule;
@@ -645,7 +716,9 @@ TransactionDetailLoaded _build({
   Iterable<TransactionLine> additionalLines = const [],
   TransactionOwnership? ownership,
   AdvanceCase? advanceCase,
-  TransactionBusinessContext? businessOwner,
+  BusinessActivityItem? businessItem,
+  BusinessActivityReadModel? businessActivity,
+  AmortizationStatus amortizationStatus = AmortizationStatus.active,
 }) {
   final detail = TransactionReadModel.fromTransaction(
     transaction: Transaction(
@@ -693,29 +766,6 @@ TransactionDetailLoaded _build({
           ),
     advanceSummary: advanceSummary,
   );
-  final parentDetail = advanceSummary == null
-      ? null
-      : TransactionReadModel(
-          id: 'parent',
-          businessPurpose: BusinessPurpose.advance,
-          occurredAt: DateTime(2026, 7, 22),
-          primaryAmount: advanceSummary.advanceAmount,
-          isExcludedFromStats: false,
-          isExcludedFromBudget: false,
-          advanceSummary: advanceSummary,
-          children: [
-            if (advanceSummary.isClosed)
-              TransactionReadModel(
-                id: 'close',
-                parentTransactionId: 'parent',
-                businessPurpose: BusinessPurpose.advanceSettlement,
-                occurredAt: DateTime(2026, 7, 22),
-                primaryAmount: advanceSummary.receivedAmount,
-                isExcludedFromStats: false,
-                isExcludedFromBudget: false,
-              ),
-          ],
-        );
   final accounts = <String, Account>{
     'receivable': Account(
       id: 'receivable',
@@ -745,6 +795,13 @@ TransactionDetailLoaded _build({
       type: AccountType.expense,
       balance: Money.zero(),
     ),
+    'food': Account(
+      id: 'food',
+      name: '餐饮',
+      type: AccountType.expense,
+      iconKey: 'meal',
+      balance: Money.zero(),
+    ),
     'insurance': Account(
       id: 'insurance',
       name: '保险',
@@ -762,53 +819,239 @@ TransactionDetailLoaded _build({
               trackingMode: AdvanceTrackingMode.itemized,
             )
           : null);
-  final owner =
-      businessOwner ??
+  final item =
+      businessItem ??
       (resolvedAdvanceCase != null
-          ? AdvanceTransactionBusinessContext(
-              ownerType: orchestrationAdvanceOwnerType,
-              ownerId: resolvedAdvanceCase.id,
+          ? AdvanceBusinessActivityItem(
+              activityKey: BusinessActivityKey(
+                type: orchestrationAdvanceOwnerType,
+                id: resolvedAdvanceCase.id,
+              ),
+              transactionId: detail.id,
+              factKind: AdvanceTransactionFactKind.advance,
               scenario: resolvedAdvanceCase.scenario,
               trackingMode: resolvedAdvanceCase.trackingMode,
-              advanceAmount:
-                  advanceSummary?.advanceAmount ?? detail.primaryAmount,
-              receivedAmount: advanceSummary?.receivedAmount ?? Money.zero(),
-              outstanding: advanceSummary?.outstanding ?? detail.primaryAmount,
-              isClosed: advanceSummary?.isClosed ?? false,
-              aaPeopleCount: resolvedAdvanceCase.aaPeopleCount,
             )
-          : ownership?.ownerType == orchestrationAmortizationOwnerType
-          ? AmortizationTransactionBusinessContext(
-              ownerType: ownership!.ownerType,
-              ownerId: ownership.ownerId,
-              initialTransactionId: detail.id,
-              kind: AmortizationKind.prepaidExpense,
-              status: AmortizationStatus.active,
-              originalAmount: detail.primaryAmount,
-              recognizedAmount: Money.zero(),
-              remainingAmount: detail.primaryAmount,
-              postedPeriodCount: 0,
-              totalPeriodCount: 3,
+          : null);
+  final activity =
+      businessActivity ??
+      (resolvedAdvanceCase != null && advanceSummary != null
+          ? _advanceActivity(
+              transaction: detail,
+              summary: advanceSummary,
+              caseId: resolvedAdvanceCase.id,
+              scenario: resolvedAdvanceCase.scenario,
+              trackingMode: resolvedAdvanceCase.trackingMode,
             )
           : null);
   final context = TransactionDetailContext(
     transaction: detail,
-    parentTransaction: parentDetail,
-    currentGroup: TransactionDetailGroup(
-      anchor: parentDetail ?? detail,
-      children: (parentDetail ?? detail).children,
-    ),
-    anchorGroup: TransactionDetailGroup(
-      anchor: parentDetail ?? detail,
-      children: (parentDetail ?? detail).children,
-    ),
-    businessContext: owner,
+    parentFacts: parentTransactionId != null
+        ? TransactionParentFacts(
+            isExcludedFromStats: false,
+            isExcludedFromBudget: false,
+            isAdvanceClosed: advanceSummary?.isClosed ?? false,
+          )
+        : null,
+    businessItem: item,
+    isAmortizationTerminated:
+        amortizationStatus == AmortizationStatus.terminated,
   );
   return buildTransactionDetailLoadedState(
-        context: context,
+        detail: TransactionDetailReadModel(
+          context: context,
+          businessActivity: activity,
+        ),
         accountLookup: AccountLookup(accounts),
       )
       as TransactionDetailLoaded;
+}
+
+AmortizationBusinessActivityItem _amortizationItem({
+  String transactionId = 'child',
+  String planId = 'plan',
+  AmortizationKind kind = AmortizationKind.prepaidExpense,
+  AmortizationTransactionFactKind factKind =
+      AmortizationTransactionFactKind.initial,
+  String? refundId,
+  String? terminationId,
+  int? occurrencePeriodSequence,
+  String? categoryId = 'food',
+}) {
+  return AmortizationBusinessActivityItem(
+    activityKey: BusinessActivityKey(
+      type: orchestrationAmortizationOwnerType,
+      id: planId,
+    ),
+    transactionId: transactionId,
+    kind: kind,
+    factKind: factKind,
+    refundId: refundId,
+    terminationId: terminationId,
+    occurrencePeriodSequence: occurrencePeriodSequence,
+    localCategoryAllocations: [
+      if (categoryId != null)
+        AccountAmountAllocation(
+          accountId: categoryId,
+          amount: const Money(minorUnits: 1000),
+        ),
+    ],
+  );
+}
+
+BusinessActivityReadModel _amortizationActivity({
+  String transactionId = 'child',
+  String planId = 'plan',
+  AmortizationKind kind = AmortizationKind.prepaidExpense,
+  AmortizationStatus status = AmortizationStatus.active,
+  Money originalAmount = const Money(minorUnits: 1000),
+  Money recognizedAmount = const Money(minorUnits: 0),
+  Money remainingAmount = const Money(minorUnits: 1000),
+  int postedPeriodCount = 0,
+  int totalPeriodCount = 3,
+  String? categoryId = 'food',
+}) {
+  final transaction = _activityTransaction(
+    id: transactionId,
+    ownerType: orchestrationAmortizationOwnerType,
+    ownerId: planId,
+  );
+  final key = BusinessActivityKey(
+    type: orchestrationAmortizationOwnerType,
+    id: planId,
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: transaction.id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: AmortizationBusinessActivitySummary(
+      kind: kind,
+      status: status,
+      originalAmount: originalAmount,
+      recognizedAmount: recognizedAmount,
+      remainingAmount: remainingAmount,
+      postedPeriodCount: postedPeriodCount,
+      totalPeriodCount: totalPeriodCount,
+      categoryAccountIds: [?categoryId],
+    ),
+  );
+}
+
+BusinessActivityReadModel _installmentActivity({
+  required String transactionId,
+  required Money remainingPrincipal,
+}) {
+  final transaction = _activityTransaction(
+    id: transactionId,
+    ownerType: installmentOwnerType,
+    ownerId: 'contract-1',
+  );
+  final key = const BusinessActivityKey(
+    type: installmentOwnerType,
+    id: 'contract-1',
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: transaction.id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: InstallmentBusinessActivitySummary(
+      installmentType: InstallmentType.purchase,
+      status: InstallmentContractStatus.active,
+      principal: const Money(minorUnits: 10000),
+      remainingPrincipal: remainingPrincipal,
+      paidPeriodCount: 1,
+      totalPeriodCount: 3,
+    ),
+  );
+}
+
+BusinessActivityReadModel _repaymentActivity({required String transactionId}) {
+  final transaction = _activityTransaction(
+    id: transactionId,
+    ownerType: creditRepaymentOwnerType,
+    ownerId: 'repayment-1',
+  );
+  final key = const BusinessActivityKey(
+    type: creditRepaymentOwnerType,
+    id: 'repayment-1',
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: transaction.id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: const RepaymentBusinessActivitySummary(
+      repaymentType: RepaymentType.bill,
+      targetType: RepaymentTargetType.bill,
+    ),
+  );
+}
+
+BusinessActivityReadModel _advanceActivity({
+  required TransactionReadModel transaction,
+  required AdvanceSummary summary,
+  required String caseId,
+  required AdvanceScenario scenario,
+  required AdvanceTrackingMode trackingMode,
+}) {
+  final key = BusinessActivityKey(
+    type: orchestrationAdvanceOwnerType,
+    id: caseId,
+  );
+  final ownedTransaction = TransactionReadModel(
+    id: transaction.id,
+    businessPurpose: transaction.businessPurpose,
+    occurredAt: transaction.occurredAt,
+    postedAt: transaction.postedAt,
+    primaryAmount: transaction.primaryAmount,
+    ownership: TransactionOwnership(
+      ownerType: orchestrationAdvanceOwnerType,
+      ownerId: caseId,
+    ),
+    isExcludedFromStats: transaction.isExcludedFromStats,
+    isExcludedFromBudget: transaction.isExcludedFromBudget,
+    children: transaction.children,
+    advanceSummary: summary,
+    lines: transaction.lines,
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: ownedTransaction.id,
+      anchorAt: ownedTransaction.occurredAt,
+    ),
+    anchorTransaction: ownedTransaction,
+    summary: AdvanceBusinessActivitySummary(
+      scenario: scenario,
+      trackingMode: trackingMode,
+      outstanding: summary.outstanding,
+      isClosed: summary.isClosed,
+    ),
+  );
+}
+
+TransactionReadModel _activityTransaction({
+  required String id,
+  required String ownerType,
+  required String ownerId,
+}) {
+  return TransactionReadModel(
+    id: id,
+    businessPurpose: BusinessPurpose.transfer,
+    occurredAt: DateTime(2026, 7, 23),
+    primaryAmount: const Money(minorUnits: 1000),
+    ownership: TransactionOwnership(ownerType: ownerType, ownerId: ownerId),
+    isExcludedFromStats: false,
+    isExcludedFromBudget: false,
+  );
 }
 
 TransactionReadModel _child({

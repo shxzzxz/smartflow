@@ -602,7 +602,7 @@ final class TransactionFeedProvider
   }
 }
 
-String _$transactionFeedHash() => r'11b99b8d82b61b22757c5433fa0362bf2c72731a';
+String _$transactionFeedHash() => r'41c0d9bd078bc36bdb9028c2dce72201efb583a6';
 
 final class TransactionFeedFamily extends $Family
     with
@@ -909,4 +909,84 @@ final class TransactionDetailContextFamily extends $Family
 
   @override
   String toString() => r'transactionDetailContextProvider';
+}
+
+@ProviderFor(transactionDetailReadModel)
+final transactionDetailReadModelProvider = TransactionDetailReadModelFamily._();
+
+final class TransactionDetailReadModelProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<TransactionDetailReadModel?>,
+          TransactionDetailReadModel?,
+          Stream<TransactionDetailReadModel?>
+        >
+    with
+        $FutureModifier<TransactionDetailReadModel?>,
+        $StreamProvider<TransactionDetailReadModel?> {
+  TransactionDetailReadModelProvider._({
+    required TransactionDetailReadModelFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'transactionDetailReadModelProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$transactionDetailReadModelHash();
+
+  @override
+  String toString() {
+    return r'transactionDetailReadModelProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<TransactionDetailReadModel?> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<TransactionDetailReadModel?> create(Ref ref) {
+    final argument = this.argument as String;
+    return transactionDetailReadModel(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TransactionDetailReadModelProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$transactionDetailReadModelHash() =>
+    r'46026bb9425685e4deafd4b740da631edd0df521';
+
+final class TransactionDetailReadModelFamily extends $Family
+    with
+        $FunctionalFamilyOverride<Stream<TransactionDetailReadModel?>, String> {
+  TransactionDetailReadModelFamily._()
+    : super(
+        retry: null,
+        name: r'transactionDetailReadModelProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  TransactionDetailReadModelProvider call(String transactionId) =>
+      TransactionDetailReadModelProvider._(argument: transactionId, from: this);
+
+  @override
+  String toString() => r'transactionDetailReadModelProvider';
 }

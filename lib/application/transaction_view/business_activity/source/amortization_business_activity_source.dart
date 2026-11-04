@@ -39,9 +39,29 @@ final class AmortizationBusinessActivitySource
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
+    final values = anchors.toList();
     final plans = await _plans.findByIds({
-      for (final anchor in anchors) anchor.activityKey.id,
+      for (final anchor in values) anchor.activityKey.id,
     });
+    return _summariesFor(values, plans);
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) {
+    final values = anchors.toList();
+    if (values.isEmpty) return Stream.value(const {});
+    final planIds = {for (final anchor in values) anchor.activityKey.id};
+    return _plans
+        .watchByIds(planIds)
+        .asyncMap((plans) async => _summariesFor(values, plans));
+  }
+
+  Map<BusinessActivityKey, BusinessActivitySummary> _summariesFor(
+    List<BusinessActivityAnchorCandidate> anchors,
+    Iterable<AmortizationPlan> plans,
+  ) {
     final plansById = {for (final plan in plans) plan.id: plan};
     return {
       for (final anchor in anchors)

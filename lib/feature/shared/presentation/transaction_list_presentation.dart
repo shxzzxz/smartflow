@@ -3,14 +3,18 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 import 'account_lookup.dart';
+import 'business_scene/business_activity_item_presentation.dart';
 import 'business_scene/business_scene_list_presentation.dart';
 import 'business_scene/transaction_adjustment_presentation.dart';
 import 'transaction_badge_presentation.dart';
+import '../../../widget/business/transaction/transaction_avatar_kind.dart';
 import 'transaction_category_identity.dart';
 
 export 'transaction_badge_presentation.dart';
@@ -94,6 +98,7 @@ class FinancialFeedRowPresentation {
     this.selected = false,
     this.dimmed = false,
     this.supportingText,
+    this.avatarKind,
   });
 
   final String transactionId;
@@ -109,6 +114,7 @@ class FinancialFeedRowPresentation {
   final TransactionAccountFlowPresentation accountFlow;
   final List<TransactionBadgePresentation> badges;
   final bool canQuickEdit;
+  final TransactionAvatarKind? avatarKind;
   final bool selectable;
   final bool selected;
   final String? supportingText;
@@ -129,6 +135,7 @@ class FinancialFeedRowPresentation {
     bool? preferCategoryArtwork,
     String? iconKey,
     bool? hasMultipleCategories,
+    TransactionAvatarKind? avatarKind,
   }) {
     return FinancialFeedRowPresentation(
       transactionId: transactionId,
@@ -146,6 +153,7 @@ class FinancialFeedRowPresentation {
       accountFlow: accountFlow,
       badges: badges ?? this.badges,
       canQuickEdit: canQuickEdit,
+      avatarKind: avatarKind ?? this.avatarKind,
       selectable: selectable ?? this.selectable,
       selected: selected ?? this.selected,
       dimmed: dimmed ?? this.dimmed,
@@ -236,8 +244,7 @@ List<TransactionDayGroup> groupTransactionsByDay({
   required List<TransactionReadModel> items,
   required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
-  TransactionListAmountSource amountSource =
-      const TransactionGroupAmountSource(),
+  required TransactionListAmountSource amountSource,
 }) {
   final groups = <DateTime, List<TransactionRowPresentation>>{};
   for (final item in items) {
@@ -270,8 +277,7 @@ List<TransactionDayGroup> groupTransactionFeedEntriesByDay({
   required List<TransactionFeedEntry> entries,
   required AccountLookup accountLookup,
   List<DailyCashflowSummary> dailySummaries = const [],
-  TransactionListAmountSource amountSource =
-      const TransactionGroupAmountSource(),
+  required TransactionListAmountSource amountSource,
 }) {
   final groups = <DateTime, List<TransactionRowPresentation>>{};
   for (final entry in entries) {
@@ -282,7 +288,7 @@ List<TransactionDayGroup> groupTransactionFeedEntriesByDay({
         .add(
           buildTransactionRowPresentation(
             item: transaction,
-            businessContext: entry.businessContext,
+            businessItem: entry.businessItem,
             accountLookup: accountLookup,
             amountSource: amountSource,
           ),
@@ -335,35 +341,6 @@ List<TransactionDayGroup> groupBusinessActivitiesByDay({
   ];
 }
 
-TransactionDayGroup transactionGroupForDate({
-  required DateTime date,
-  required List<TransactionReadModel> transactions,
-  required List<DailyCashflowSummary> dailySummaries,
-  required AccountLookup accountLookup,
-  TransactionListAmountSource amountSource =
-      const TransactionGroupAmountSource(),
-}) {
-  final normalized = normalizeDate(date);
-  final items = [
-    for (final item in transactions)
-      if (isSameDate(item.occurredAt, normalized)) item,
-  ];
-  final summary = _dailySummariesByDate(dailySummaries)[normalized];
-  return TransactionDayGroup(
-    date: normalized,
-    rows: [
-      for (final item in items)
-        buildTransactionRowPresentation(
-          item: item,
-          accountLookup: accountLookup,
-          amountSource: amountSource,
-        ),
-    ],
-    incomeMinor: summary?.income.minorUnits ?? 0,
-    expenseMinor: summary?.expense.minorUnits ?? 0,
-  );
-}
-
 TransactionDayGroup businessActivityGroupForDate({
   required DateTime date,
   required List<BusinessActivityReadModel> items,
@@ -395,9 +372,8 @@ TransactionDayGroup businessActivityGroupForDate({
 TransactionRowPresentation buildTransactionRowPresentation({
   required TransactionReadModel item,
   required AccountLookup accountLookup,
-  TransactionBusinessContext? businessContext,
-  TransactionListAmountSource amountSource =
-      const TransactionGroupAmountSource(),
+  BusinessActivityItem? businessItem,
+  required TransactionListAmountSource amountSource,
 }) {
   final cashflowDelta = amountSource is TransactionCashflowImpactAmountSource
       ? Money(
@@ -448,32 +424,55 @@ TransactionRowPresentation buildTransactionRowPresentation({
     );
   }
 
-  final contextCategoryIds = switch (businessContext) {
-    AmortizationTransactionBusinessContext(:final categoryAccountIds) =>
-      categoryAccountIds,
+  final itemCategoryIds = switch (businessItem) {
+    AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+      localCategoryAllocations.map((allocation) => allocation.accountId),
     _ => const <String>[],
   };
-  final contextCategory =
-      item.categoryLines.isEmpty && contextCategoryIds.isNotEmpty
+  final isActivityEntry = switch (businessItem) {
+    AdvanceBusinessActivityItem(:final factKind) =>
+      factKind == AdvanceTransactionFactKind.advance,
+    InstallmentBusinessActivityItem(:final factKind) =>
+      factKind == InstallmentTransactionFactKind.purchase ||
+          factKind == InstallmentTransactionFactKind.disbursement,
+    RepaymentBusinessActivityItem() => true,
+    AmortizationBusinessActivityItem(:final factKind) =>
+      factKind == AmortizationTransactionFactKind.initial,
+    UnknownBusinessActivityItem() || null => false,
+  };
+  final isNonEntry =
+      isKnownBusinessActivityItem(businessItem) && !isActivityEntry;
+  final itemCategory =
+      !isNonEntry && item.categoryLines.isEmpty && itemCategoryIds.isNotEmpty
       ? resolveTransactionCategoryIdentity(
           transactionAccountIds: const {},
-          supplementalAccountIds: contextCategoryIds,
+          supplementalAccountIds: itemCategoryIds,
           accountLookup: accountLookup,
         )
       : null;
   final hasMultipleCategories =
-      _businessCategoryAccountIds(item).length > 1 ||
-      contextCategory?.hasMultiple == true;
+      !isNonEntry &&
+      (_businessCategoryAccountIds(item).length > 1 ||
+          itemCategory?.hasMultiple == true);
+  final itemTitle = isNonEntry
+      ? nonEntryBusinessActivityItemTitle(businessItem, item)
+      : null;
+  final avatarKind = isNonEntry
+      ? businessActivityItemAvatarKind(businessItem)
+      : null;
 
   return TransactionRowPresentation(
     transactionId: item.id,
     businessPurpose: item.businessPurpose,
     hasMultipleCategories: hasMultipleCategories,
-    iconKey:
-        contextCategory?.iconKey ?? resolveCategoryIconKey(item, accountLookup),
-    title: contextCategory?.hasMultiple == true
+    iconKey: isNonEntry
+        ? null
+        : itemCategory?.iconKey ?? resolveCategoryIconKey(item, accountLookup),
+    title: isNonEntry
+        ? itemTitle ?? transactionPrimaryLabel(item, accountLookup)
+        : itemCategory?.hasMultiple == true
         ? '多类别'
-        : contextCategory?.name ?? transactionPrimaryLabel(item, accountLookup),
+        : itemCategory?.name ?? transactionPrimaryLabel(item, accountLookup),
     subtitle: formatTime(item.occurredAt),
     amount: AdaptiveMoneyTextPresentation(
       preciseText: formatPrimaryAmount(MoneyFormatStyle.plain),
@@ -496,8 +495,9 @@ TransactionRowPresentation buildTransactionRowPresentation({
     accountFlow: resolveAccountFlow(item, accountLookup),
     badges: buildTransactionBadges(item),
     canQuickEdit: canQuickEditTransaction(item),
-    supportingText: _businessContextSupportingText(businessContext),
-    preferCategoryArtwork: contextCategory != null,
+    avatarKind: avatarKind,
+    supportingText: businessActivityEntrySupportingText(businessItem, item),
+    preferCategoryArtwork: !isNonEntry && itemCategory != null,
   );
 }
 
@@ -510,6 +510,7 @@ FinancialFeedRowPresentation buildBusinessActivityRowPresentation({
   final base = buildTransactionRowPresentation(
     item: transaction,
     accountLookup: accountLookup,
+    amountSource: const TransactionGroupAmountSource(),
   );
   final content = presentBusinessSceneRowContent(item);
   final categoryIdentity = content.categoryAccountIds.isEmpty
@@ -894,29 +895,6 @@ bool canQuickEditTransaction(TransactionReadModel item) {
 
 Set<String> _businessCategoryAccountIds(TransactionReadModel item) {
   return {for (final line in item.categoryLines) ?line.accountId};
-}
-
-String? _businessContextSupportingText(TransactionBusinessContext? context) {
-  if (context is! AmortizationTransactionBusinessContext) return null;
-  final planLabel = switch (context.kind) {
-    AmortizationKind.prepaidExpense => '摊销预付',
-    AmortizationKind.deferredIncome => '摊销预收',
-  };
-  final action = switch (context.factKind) {
-    AmortizationTransactionFactKind.initial =>
-      context.kind == AmortizationKind.prepaidExpense ? '初始充值' : '初始收款',
-    AmortizationTransactionFactKind.recognition
-        when context.occurrencePeriodSequence != null =>
-      '第 ${context.occurrencePeriodSequence}/${context.totalPeriodCount} 期确认',
-    AmortizationTransactionFactKind.recognition => '摊销确认',
-    AmortizationTransactionFactKind.refund => '退款',
-    AmortizationTransactionFactKind.terminationRecognition => '终止确认',
-    AmortizationTransactionFactKind.terminationReturn => '终止退还',
-    null => null,
-  };
-  return action == null
-      ? '$planLabel · 已确认 ${context.postedPeriodCount}/${context.totalPeriodCount}'
-      : '$planLabel · $action';
 }
 
 bool _isAmortizationTransaction(TransactionReadModel item) =>

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 void main() {
   group('BusinessActivityPageQuery', () {
@@ -69,6 +72,62 @@ void main() {
     expect(page.items, isEmpty);
     expect(ledger.findCalls, 1);
     expect(credit.findCalls, 0);
+  });
+
+  test('query service deduplicates a repeated activity anchor', () async {
+    final occurredAt = DateTime(2026, 10, 12);
+    final transaction = _transaction(id: 'tx-1', occurredAt: occurredAt);
+    const key = BusinessActivityKey.transactionGroup('tx-1');
+    final candidate = BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: transaction.id,
+      anchorAt: occurredAt,
+    );
+    final source = _Source(
+      'ledger',
+      {ledgerTransactionGroupActivityType},
+      anchors: [candidate, candidate],
+      summaries: {key: const LedgerBusinessActivitySummary()},
+    );
+    final service = BusinessActivityQueryServiceImpl(
+      sources: [source],
+      transactionQuery: _StaticTransactionQuery([transaction]),
+    );
+
+    final page = await service.findPage(
+      BusinessActivityPageQuery(
+        occurredFrom: DateTime(2026, 10),
+        occurredUntil: DateTime(2026, 11),
+      ),
+    );
+
+    expect(page.items, hasLength(1));
+    expect(page.items.single.activityKey, key);
+    expect(source.summaryAnchorCounts, [1]);
+  });
+
+  test('lookup builds one activity from the current anchor', () async {
+    final occurredAt = DateTime(2026, 10, 12);
+    final transaction = _transaction(id: 'tx-1', occurredAt: occurredAt);
+    final key = const BusinessActivityKey.transactionGroup('tx-1');
+    final source = _Source(
+      'ledger',
+      {ledgerTransactionGroupActivityType},
+      summaries: {key: const LedgerBusinessActivitySummary()},
+    );
+    final service = BusinessActivityQueryServiceImpl(
+      sources: [source],
+      transactionQuery: const _EmptyTransactionQuery(),
+    );
+
+    final activity = await service.findForAnchor(
+      activityKey: key,
+      anchorTransaction: transaction,
+    );
+
+    expect(activity, isNotNull);
+    expect(activity!.anchorTransaction, same(transaction));
+    expect(activity.summary, isA<LedgerBusinessActivitySummary>());
   });
 
   group('BusinessActivityReadModel', () {
@@ -149,6 +208,64 @@ void main() {
   });
 
   test(
+    'watchContents refreshes summaries for the current members only',
+    () async {
+      final transaction = _transaction(
+        id: 'advance-anchor',
+        occurredAt: DateTime(2026, 10, 2),
+        ownership: const TransactionOwnership(
+          ownerType: orchestrationAdvanceOwnerType,
+          ownerId: 'advance-1',
+        ),
+      );
+      final source = _WatchingSource();
+      final service = BusinessActivityQueryServiceImpl(
+        sources: [source],
+        transactionQuery: _StaticTransactionQuery([transaction]),
+      );
+      final initial = await service.findForAnchor(
+        activityKey: const BusinessActivityKey(
+          type: orchestrationAdvanceOwnerType,
+          id: 'advance-1',
+        ),
+        anchorTransaction: transaction,
+      );
+      final events = <Map<BusinessActivityKey, BusinessActivityReadModel>>[];
+      final subscription = service.watchContents([initial!]).listen(events.add);
+      addTearDown(subscription.cancel);
+      addTearDown(source._controller.close);
+
+      await pumpEventQueue();
+      expect(
+        (events.last.values.single.summary as AdvanceBusinessActivitySummary)
+            .outstanding,
+        const Money(minorUnits: 900),
+      );
+
+      source.emit(
+        const BusinessActivityKey(
+          type: orchestrationAdvanceOwnerType,
+          id: 'advance-1',
+        ),
+        AdvanceBusinessActivitySummary(
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.itemized,
+          outstanding: const Money(minorUnits: 700),
+          isClosed: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(events, hasLength(2));
+      expect(
+        (events.last.values.single.summary as AdvanceBusinessActivitySummary)
+            .outstanding,
+        const Money(minorUnits: 700),
+      );
+    },
+  );
+
+  test(
     'BusinessActivityPage returns a cursor only when another page exists',
     () {
       final occurredAt = DateTime(2026, 10, 12);
@@ -177,23 +294,87 @@ void main() {
   );
 }
 
+final class _WatchingSource implements BusinessActivitySource {
+  _WatchingSource()
+    : _summary = AdvanceBusinessActivitySummary(
+        scenario: AdvanceScenario.reimbursement,
+        trackingMode: AdvanceTrackingMode.itemized,
+        outstanding: const Money(minorUnits: 900),
+        isClosed: false,
+      );
+
+  final _controller =
+      StreamController<
+        Map<BusinessActivityKey, BusinessActivitySummary>
+      >.broadcast();
+  BusinessActivitySummary _summary;
+  final _key = const BusinessActivityKey(
+    type: orchestrationAdvanceOwnerType,
+    id: 'advance-1',
+  );
+
+  @override
+  String get sourceKey => 'advance';
+
+  @override
+  Set<String> get supportedActivityTypes => const {
+    orchestrationAdvanceOwnerType,
+  };
+
+  @override
+  Future<BusinessActivitySourcePage> findAnchorPage(
+    BusinessActivityPageQuery query,
+  ) async => BusinessActivitySourcePage(anchors: const [], hasMore: false);
+
+  @override
+  Stream<BusinessActivitySourcePage> watchAnchorPage(
+    BusinessActivityPageQuery query,
+  ) => const Stream.empty();
+
+  @override
+  Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) async => {_key: _summary};
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) async* {
+    yield {_key: _summary};
+    yield* _controller.stream;
+  }
+
+  void emit(BusinessActivityKey key, BusinessActivitySummary summary) {
+    _summary = summary;
+    _controller.add({key: summary});
+  }
+}
+
 final class _Source implements BusinessActivitySource {
-  _Source(this.sourceKey, this.supportedActivityTypes);
+  _Source(
+    this.sourceKey,
+    this.supportedActivityTypes, {
+    this.anchors = const [],
+    this.summaries = const {},
+  });
 
   @override
   final String sourceKey;
 
   @override
   final Set<String> supportedActivityTypes;
+  final List<BusinessActivityAnchorCandidate> anchors;
+  final Map<BusinessActivityKey, BusinessActivitySummary> summaries;
 
   var findCalls = 0;
+  final summaryAnchorCounts = <int>[];
 
   @override
   Future<BusinessActivitySourcePage> findAnchorPage(
     BusinessActivityPageQuery query,
   ) async {
     findCalls += 1;
-    return BusinessActivitySourcePage(anchors: const [], hasMore: false);
+    return BusinessActivitySourcePage(anchors: anchors, hasMore: false);
   }
 
   @override
@@ -207,7 +388,15 @@ final class _Source implements BusinessActivitySource {
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
     Iterable<BusinessActivityAnchorCandidate> anchors,
   ) async {
-    return const {};
+    summaryAnchorCounts.add(anchors.length);
+    return summaries;
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) {
+    return Stream.fromFuture(findSummaries(anchors));
   }
 }
 
@@ -219,6 +408,32 @@ final class _EmptyTransactionQuery implements TransactionBatchQueryService {
     Set<String> ids,
   ) async {
     return const [];
+  }
+
+  @override
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
+    return Stream.fromFuture(findTransactionsByIds(ids));
+  }
+}
+
+final class _StaticTransactionQuery implements TransactionBatchQueryService {
+  const _StaticTransactionQuery(this.transactions);
+
+  final List<TransactionReadModel> transactions;
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(
+    Set<String> ids,
+  ) async {
+    return [
+      for (final transaction in transactions)
+        if (ids.contains(transaction.id)) transaction,
+    ];
+  }
+
+  @override
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
+    return Stream.fromFuture(findTransactionsByIds(ids));
   }
 }
 

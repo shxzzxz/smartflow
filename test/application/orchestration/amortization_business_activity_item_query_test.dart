@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/orchestration/amortization/query/amortization_plan_query_service.dart';
-import 'package:smartflow/application/orchestration/amortization/query/amortization_transaction_context_query.dart';
+import 'package:smartflow/application/orchestration/amortization/query/amortization_business_activity_item_query.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
@@ -13,26 +15,66 @@ void main() {
   test('projects only requested amortization transactions', () async {
     final plan = _planWithRefundAndTermination();
     final repository = _FakeAmortizationRepository([plan]);
-    final query = AmortizationTransactionContextQueryService(
+    final query = AmortizationBusinessActivityItemQueryService(
       AmortizationPlanQueryService(repository),
     );
 
-    final contexts = await query.findForTransactions({
+    final items = await query.findForTransactions({
       plan.id: {'refund-tx', 'termination-tx', 'unrelated-tx'},
     });
 
-    expect(contexts.keys, containsAll(['refund-tx', 'termination-tx']));
-    expect(contexts.keys, isNot(contains('unrelated-tx')));
+    expect(items.keys, containsAll(['refund-tx', 'termination-tx']));
+    expect(items.keys, isNot(contains('unrelated-tx')));
     expect(
-      contexts['refund-tx']!.factKind,
+      items['refund-tx']!.factKind,
       AmortizationTransactionFactKind.refund,
     );
-    expect(contexts['refund-tx']!.refundId, 'refund');
+    expect(items['refund-tx']!.refundId, 'refund');
     expect(
-      contexts['termination-tx']!.factKind,
+      items['refund-tx']!.localCategoryAllocations.single.amount,
+      const Money(minorUnits: 1000),
+    );
+    expect(
+      items['termination-tx']!.factKind,
       AmortizationTransactionFactKind.terminationRecognition,
     );
-    expect(contexts['termination-tx']!.terminationId, 'termination');
+    expect(items['termination-tx']!.terminationId, 'termination');
+  });
+
+  test('watch requests only the current plan IDs', () async {
+    final plan = _planWithRefundAndTermination();
+    final repository = _FakeAmortizationRepository([plan]);
+    final query = AmortizationBusinessActivityItemQueryService(
+      AmortizationPlanQueryService(repository),
+    );
+
+    await query.watchForTransactions({
+      plan.id: {'refund-tx'},
+    }).first;
+
+    expect(repository.lastWatchIds, {plan.id});
+  });
+
+  test('watch does not emit an unchanged projection', () async {
+    final plan = _planWithRefundAndTermination();
+    final repository = _ControllableAmortizationRepository();
+    final query = AmortizationBusinessActivityItemQueryService(
+      AmortizationPlanQueryService(repository),
+    );
+    final events = <Map<String, AmortizationBusinessActivityItemProjection>>[];
+    final subscription = query
+        .watchForTransactions({
+          plan.id: {'refund-tx'},
+        })
+        .listen(events.add);
+    addTearDown(subscription.cancel);
+
+    repository.add([plan]);
+    await pumpEventQueue();
+    repository.add([plan]);
+    await pumpEventQueue();
+
+    expect(events, hasLength(1));
   });
 }
 
@@ -88,6 +130,7 @@ final class _FakeAmortizationRepository implements AmortizationRepository {
   _FakeAmortizationRepository(this.plans);
 
   final List<AmortizationPlan> plans;
+  Set<String>? lastWatchIds;
 
   @override
   Future<AmortizationPlan?> findById(String id) async =>
@@ -108,8 +151,37 @@ final class _FakeAmortizationRepository implements AmortizationRepository {
       Stream.value(plans);
 
   @override
+  Stream<List<AmortizationPlan>> watchByIds(Set<String> ids) {
+    lastWatchIds = Set.unmodifiable(ids);
+    return Stream.value([
+      for (final plan in plans)
+        if (ids.contains(plan.id)) plan,
+    ]);
+  }
+
+  @override
   Future<void> deleteById(String id) async {}
 
   @override
   Future<void> save(AmortizationPlan plan) async {}
+}
+
+final class _ControllableAmortizationRepository
+    implements AmortizationRepository {
+  final _controller = StreamController<List<AmortizationPlan>>.broadcast();
+
+  void add(List<AmortizationPlan> plans) => _controller.add(plans);
+
+  @override
+  Stream<List<AmortizationPlan>> watchByIds(Set<String> ids) =>
+      _controller.stream.map(
+        (plans) => [
+          for (final plan in plans)
+            if (ids.contains(plan.id)) plan,
+        ],
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }

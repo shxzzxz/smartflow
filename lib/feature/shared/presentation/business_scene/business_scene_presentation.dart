@@ -17,11 +17,11 @@ BusinessSceneKind businessSceneKindForBusinessActivity(
 }
 
 BusinessSceneKind businessSceneKindForDetail(TransactionDetailContext context) {
-  return switch (context.businessContext) {
-    AdvanceTransactionBusinessContext() => BusinessSceneKind.advance,
-    InstallmentTransactionBusinessContext() => BusinessSceneKind.installment,
-    RepaymentTransactionBusinessContext() => BusinessSceneKind.repayment,
-    AmortizationTransactionBusinessContext() => BusinessSceneKind.amortization,
+  return switch (context.businessItem) {
+    AdvanceBusinessActivityItem() => BusinessSceneKind.advance,
+    InstallmentBusinessActivityItem() => BusinessSceneKind.installment,
+    RepaymentBusinessActivityItem() => BusinessSceneKind.repayment,
+    AmortizationBusinessActivityItem() => BusinessSceneKind.amortization,
     _ => BusinessSceneKind.ledger,
   };
 }

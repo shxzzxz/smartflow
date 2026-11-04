@@ -3,9 +3,11 @@ import '../../../../application/transaction_view/transaction_view_query_api.dart
 import '../../../../core/money/money.dart';
 import '../../../../shared/account_profile/account_selection_purpose.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
+import 'package:smartflow/feature/shared/presentation/business_scene/business_activity_item_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/business_scene/business_scene_detail_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 
@@ -17,9 +19,10 @@ part 'transaction_detail_ledger_builder.dart';
 part 'transaction_detail_shell_builder.dart';
 
 TransactionDetailUiState buildTransactionDetailLoadedState({
-  required TransactionDetailContext context,
+  required TransactionDetailReadModel detail,
   required AccountLookup accountLookup,
 }) {
+  final context = detail.context;
   final shell = _buildTransactionDetailShell(context);
   final behavior = _buildTransactionDetailBehavior(
     context,
@@ -29,7 +32,7 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     accountLookup,
     behavior,
   );
-  final business = presentBusinessSceneDetailContent(context);
+  final business = presentBusinessSceneDetailContent(detail);
 
   return TransactionDetailUiState.loaded(
     transactionId: context.transaction.id,
@@ -51,7 +54,11 @@ TransactionDetailUiState buildTransactionDetailLoadedState({
     showExcludeBudget: shell.showExcludeBudget,
     excludeStats: shell.excludeStats,
     excludeBudget: shell.excludeBudget,
-    actionButtons: _buildTransactionDetailActionButtons(context, behavior),
+    actionButtons: _buildTransactionDetailActionButtons(
+      context,
+      behavior,
+      detail.businessActivity,
+    ),
     submitting: false,
   );
 }

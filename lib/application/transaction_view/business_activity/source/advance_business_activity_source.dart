@@ -5,6 +5,7 @@ import '../../../ledger/transaction/query/transaction_query_service.dart';
 import '../../../orchestration/advance/query/advance_case_query_service.dart';
 import '../../../orchestration/advance/query/advance_transaction_view_query_service.dart';
 import '../../../orchestration/advance/query/advance_transaction_view_read_models.dart';
+import '../../transaction_view_query_streams.dart';
 import '../../transaction_view_query_port_api.dart';
 
 /// Consumer-side adapter over advance metadata and ledger-owned facts.
@@ -59,6 +60,26 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
       for (final anchor in values)
         anchor.activityKey: _summaryFor(anchor, cases, transactionsById),
     };
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
+    Iterable<BusinessActivityAnchorCandidate> anchors,
+  ) {
+    final values = anchors.toList();
+    if (values.isEmpty) return Stream.value(const {});
+    final ownerIds = {for (final anchor in values) anchor.activityKey.id};
+    final transactionIds = {
+      for (final anchor in values) anchor.anchorTransactionId,
+    };
+    final signals = <Stream<Object?>>[
+      for (final ownerId in ownerIds)
+        _cases.watchById(ownerId).map<Object?>((value) => value),
+      _transactions
+          .watchTransactionsByIds(transactionIds)
+          .map<Object?>((value) => value),
+    ];
+    return combineLatestStreams(signals).asyncMap((_) => findSummaries(values));
   }
 
   AdvanceBusinessActivitySummary _summaryFor(

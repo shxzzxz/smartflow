@@ -187,6 +187,27 @@ class DriftTransactionReadRepository implements TransactionReadRepository {
   }
 
   @override
+  Future<bool> hasChildTransaction({
+    required String parentTransactionId,
+    required BusinessPurpose businessPurpose,
+  }) async {
+    final matchCount = _db.transactions.id.count();
+    final row =
+        await (_db.selectOnly(_db.transactions)
+              ..addColumns([matchCount])
+              ..where(
+                _db.transactions.parentTransactionId.equals(
+                      parentTransactionId,
+                    ) &
+                    _db.transactions.businessPurpose.equals(
+                      businessPurpose.name,
+                    ),
+              ))
+            .getSingle();
+    return (row.read(matchCount) ?? 0) > 0;
+  }
+
+  @override
   Future<List<TransactionCleanupTarget>> findCleanupTargets(
     TransactionCleanupQuery query,
   ) async {

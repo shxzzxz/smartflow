@@ -148,7 +148,7 @@ void main() {
         categoryAllocations: const [
           AccountAmountAllocation(
             accountId: 'category-a',
-            amount: Money(minorUnits: 10000),
+            amount: Money(minorUnits: 15000),
           ),
           AccountAmountAllocation(
             accountId: 'category-b',
@@ -157,7 +157,7 @@ void main() {
         ],
         settlementAllocations: singleAllocation(
           accountId: 'account-c',
-          amount: const Money(minorUnits: 30000),
+          amount: const Money(minorUnits: 35000),
         ),
         transferTransactionId: 'refund-transfer',
       ),
@@ -276,6 +276,80 @@ void main() {
       expect(updated.refunds.single.id, 'refund');
     },
   );
+
+  test('termination recognition excludes returned category balances', () {
+    final created = _plan(multiCategory: true);
+    final posted = created.withPeriods([
+      created.periods.first.posted('recognition-1'),
+      ...created.periods.skip(1),
+    ]);
+
+    final terminated = posted.terminatedWith(
+      termination: AmortizationTermination(
+        id: 'termination',
+        planId: posted.id,
+        terminatedAt: DateTime(2026, 2, 1),
+        categoryReturnAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 15000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 20000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: const Money(minorUnits: 35000),
+        ),
+        recognitionTransactionId: 'termination-recognition',
+        returnTransactionId: 'termination-return',
+      ),
+      periods: posted.periods,
+    );
+
+    expect(
+      terminated.terminationRecognitionCategoryAllocations.map(
+        (allocation) => (allocation.accountId, allocation.amount.minorUnits),
+      ),
+      [('category-b', 10000)],
+    );
+  });
+
+  test('termination recognition is empty when every category is returned', () {
+    final created = _plan(multiCategory: true);
+    final posted = created.withPeriods([
+      created.periods.first.posted('recognition-1'),
+      ...created.periods.skip(1),
+    ]);
+
+    final terminated = posted.terminatedWith(
+      termination: AmortizationTermination(
+        id: 'termination',
+        planId: posted.id,
+        terminatedAt: DateTime(2026, 2, 1),
+        categoryReturnAllocations: const [
+          AccountAmountAllocation(
+            accountId: 'category-a',
+            amount: Money(minorUnits: 15000),
+          ),
+          AccountAmountAllocation(
+            accountId: 'category-b',
+            amount: Money(minorUnits: 30000),
+          ),
+        ],
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: const Money(minorUnits: 45000),
+        ),
+        returnTransactionId: 'termination-return',
+      ),
+      periods: posted.periods,
+    );
+
+    expect(terminated.terminationRecognitionCategoryAllocations, isEmpty);
+  });
 }
 
 AmortizationPlan _plan({

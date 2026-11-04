@@ -345,6 +345,48 @@ void main() {
 
     expect(transaction?.id, 'same-time-z');
   });
+
+  test('checks child business purpose without loading the group', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    await database.batch((batch) {
+      batch.insertAll(database.transactions, [
+        _transactionCompanionAt(
+          'advance',
+          DateTime(2026, 4, 1),
+          businessPurpose: BusinessPurpose.advance,
+        ),
+        _transactionCompanionAt(
+          'refund',
+          DateTime(2026, 4, 2),
+          businessPurpose: BusinessPurpose.refund,
+          parentTransactionId: 'advance',
+        ),
+        _transactionCompanionAt(
+          'settlement',
+          DateTime(2026, 4, 3),
+          businessPurpose: BusinessPurpose.advanceSettlement,
+          parentTransactionId: 'advance',
+        ),
+      ]);
+    });
+    final repository = DriftTransactionReadRepository(database);
+
+    expect(
+      await repository.hasChildTransaction(
+        parentTransactionId: 'advance',
+        businessPurpose: BusinessPurpose.advanceSettlement,
+      ),
+      isTrue,
+    );
+    expect(
+      await repository.hasChildTransaction(
+        parentTransactionId: 'advance',
+        businessPurpose: BusinessPurpose.advanceCollection,
+      ),
+      isFalse,
+    );
+  });
 }
 
 TransactionsCompanion _transactionCompanion(String id) =>

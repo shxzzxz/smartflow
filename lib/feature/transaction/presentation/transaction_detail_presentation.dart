@@ -1,5 +1,6 @@
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/money/money.dart';
+import '../../../widget/business/transaction/transaction_avatar_kind.dart';
 import '../../shared/presentation/transaction_detail_amount.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
@@ -14,6 +15,7 @@ class DetailHero {
     required this.semantic,
     required this.showSign,
     this.preferCategoryArtwork = false,
+    this.avatarKind,
     this.subtitle,
     this.iconKey,
   });
@@ -27,6 +29,7 @@ class DetailHero {
   final MoneySemantic semantic;
   final bool showSign;
   final bool preferCategoryArtwork;
+  final TransactionAvatarKind? avatarKind;
 }
 
 class DetailAllocationBreakdown {
@@ -77,21 +80,29 @@ DetailHero transactionDetailHero({
   required TransactionReadModel detail,
   required AccountLookup accountLookup,
   Iterable<String> categoryAccountIds = const [],
+  String? titleOverride,
+  bool useCategoryIdentity = true,
+  TransactionAvatarKind? avatarKind,
 }) {
   final transaction = detail;
   final semantic = semanticForTransactionPurpose(transaction.businessPurpose);
-  final categoryIds = {
-    for (final line in detail.categoryLines)
-      if (line.accountId != null) line.accountId!,
-    ...categoryAccountIds,
-  }.toList(growable: false);
+  final categoryIds = useCategoryIdentity
+      ? {
+          for (final line in detail.categoryLines)
+            if (line.accountId != null) line.accountId!,
+          ...categoryAccountIds,
+        }.toList(growable: false)
+      : const <String>[];
   final hasMultipleCategories = categoryIds.length > 1;
   final category = categoryIds.length == 1
       ? accountLookup.find(categoryIds.single)
       : null;
-  final title = hasMultipleCategories
-      ? '多分类'
-      : category?.name ?? transactionPurposeLabel(transaction.businessPurpose);
+  final title =
+      titleOverride ??
+      (hasMultipleCategories
+          ? '多分类'
+          : category?.name ??
+                transactionPurposeLabel(transaction.businessPurpose));
   final counterparty = transaction.counterpartyName;
   final subtitle = counterparty != null && counterparty.isNotEmpty
       ? counterparty
@@ -102,8 +113,11 @@ DetailHero transactionDetailHero({
     hasMultipleCategories: hasMultipleCategories,
     title: title,
     subtitle: subtitle,
-    iconKey: hasMultipleCategories ? null : category?.iconKey,
-    preferCategoryArtwork: categoryIds.isNotEmpty,
+    iconKey: useCategoryIdentity && !hasMultipleCategories
+        ? category?.iconKey
+        : null,
+    preferCategoryArtwork: useCategoryIdentity && categoryIds.isNotEmpty,
+    avatarKind: avatarKind,
     amount: signedAmountForSemantic(transaction.primaryAmount, semantic),
     semantic: semantic,
     showSign: semantic == MoneySemantic.income,
@@ -113,6 +127,7 @@ DetailHero transactionDetailHero({
 List<DetailAllocationBreakdown> transactionDetailAllocationBreakdowns({
   required TransactionReadModel detail,
   required AccountLookup accountLookup,
+  Iterable<AccountAmountAllocation> categoryAllocations = const [],
 }) {
   final result = <DetailAllocationBreakdown>[];
   final categories = detail.categoryLines.toList();
@@ -123,6 +138,23 @@ List<DetailAllocationBreakdown> transactionDetailAllocationBreakdowns({
         title: '分类构成',
         items: [
           for (final line in categories) _allocationItem(line, accountLookup),
+        ],
+      ),
+    );
+  } else if (categoryAllocations.length > 1) {
+    result.add(
+      DetailAllocationBreakdown(
+        kind: DetailAllocationKind.category,
+        title: '分类构成',
+        items: [
+          for (final allocation in categoryAllocations)
+            DetailAllocationItem(
+              title:
+                  accountLookup.find(allocation.accountId)?.name ??
+                  allocation.accountId,
+              iconKey: accountLookup.find(allocation.accountId)?.iconKey,
+              amount: allocation.amount,
+            ),
         ],
       ),
     );

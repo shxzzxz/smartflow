@@ -86,6 +86,7 @@ class TransactionRow extends StatelessWidget {
                       businessPurpose: presentation.businessPurpose,
                       hasMultipleCategories: presentation.hasMultipleCategories,
                       preferCategoryArtwork: presentation.preferCategoryArtwork,
+                      kind: presentation.avatarKind,
                       iconKey: presentation.iconKey,
                       size: AppSpacing.space32,
                     ),

@@ -10,7 +10,7 @@ final class _AdvanceActionDispatcher
   });
 
   final TransactionReadModel transaction;
-  final AdvanceTransactionBusinessContext owner;
+  final AdvanceBusinessActivityItem owner;
   final AdvanceOrchestrationAppService advanceAppService;
   final _TransactionDetailActionDispatcher fallback;
 

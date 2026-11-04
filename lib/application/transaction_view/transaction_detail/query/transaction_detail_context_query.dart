@@ -1,14 +1,14 @@
-import 'dart:async';
-
+import '../../../../domain/ledger/valobj/ledger_enum.dart';
+import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../ledger/transaction/query/transaction_query_service.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
-import '../../business_context/query/transaction_business_context_query.dart';
+import '../../../orchestration/amortization/query/amortization_plan_query_service.dart';
+import '../../business_activity_item/query/business_activity_item_query.dart';
+import '../../transaction_view_query_streams.dart';
 import 'transaction_detail_context_read_models.dart';
 
-/// Loads all ledger and owner facts needed to compose a transaction detail.
-///
-/// Feature code observes this query only. It must not reconstruct business
-/// state by combining owner-specific query providers.
+/// Loads the local transaction detail and only the activity facts required by
+/// the concrete transaction.
 abstract interface class TransactionDetailContextQuery {
   Future<TransactionDetailContext?> findById(String transactionId);
 
@@ -19,172 +19,119 @@ final class TransactionDetailContextQueryImpl
     implements TransactionDetailContextQuery {
   TransactionDetailContextQueryImpl({
     required TransactionQueryService transactions,
-    required TransactionBusinessContextQuery businessContexts,
+    required BusinessActivityItemQuery businessItems,
+    AmortizationPlanQueryService? amortizationPlans,
   }) : _transactions = transactions,
-       _businessContexts = businessContexts;
+       _businessItems = businessItems,
+       _amortizationPlans = amortizationPlans;
 
   final TransactionQueryService _transactions;
-  final TransactionBusinessContextQuery _businessContexts;
+  final BusinessActivityItemQuery _businessItems;
+  final AmortizationPlanQueryService? _amortizationPlans;
 
   @override
   Future<TransactionDetailContext?> findById(String transactionId) async {
     final transaction = await _transactions.findTransactionDetail(
       transactionId,
     );
-    return transaction == null ? null : _assemble(transaction);
+    if (transaction == null) return null;
+    final businessItems = await _businessItems.findItems([transaction]);
+    return _assemble(transaction, businessItems: businessItems);
   }
 
   @override
   Stream<TransactionDetailContext?> watchById(String transactionId) {
-    late StreamController<TransactionDetailContext?> controller;
-    StreamSubscription<TransactionReadModel?>? transactionSubscription;
-    StreamSubscription<Map<String, TransactionBusinessContext>>?
-    ownerSubscription;
-    TransactionReadModel? latestTransaction;
-    Map<String, TransactionBusinessContext> latestBusinessContexts = const {};
-    var revision = 0;
-    var ownerRevision = 0;
-    var closed = false;
-
-    Future<void> cancelOwner() async {
-      await ownerSubscription?.cancel();
-      ownerSubscription = null;
-    }
-
-    Future<void> handleOwnerChange(
-      int transactionRevision,
-      int currentOwnerRevision,
-    ) async {
-      if (closed ||
-          transactionRevision != revision ||
-          currentOwnerRevision != ownerRevision) {
-        return;
-      }
-      final transaction = latestTransaction;
-      if (transaction == null) return;
-      try {
-        final context = await _assemble(
-          transaction,
-          businessContexts: latestBusinessContexts,
-        );
-        if (!closed &&
-            transactionRevision == revision &&
-            currentOwnerRevision == ownerRevision) {
-          controller.add(context);
-        }
-      } catch (error, stackTrace) {
-        if (!closed &&
-            transactionRevision == revision &&
-            currentOwnerRevision == ownerRevision) {
-          controller.addError(error, stackTrace);
-        }
-      }
-    }
-
-    Future<void> handleTransaction(TransactionReadModel? transaction) async {
-      final currentRevision = ++revision;
-      latestTransaction = transaction;
-      await cancelOwner();
-      if (closed) return;
-      if (transaction == null) {
-        controller.add(null);
-        return;
-      }
-      try {
-        final context = await _assemble(transaction);
-        latestBusinessContexts = await _businessContexts.findContexts(
-          context.currentGroup.transactions,
-        );
-        if (closed || currentRevision != revision) return;
-        controller.add(context);
-        ownerSubscription = _businessContexts
-            .watchContexts(context.currentGroup.transactions)
-            .skip(1)
-            .listen((contexts) {
-              latestBusinessContexts = contexts;
-              final requestRevision = ++ownerRevision;
-              unawaited(handleOwnerChange(currentRevision, requestRevision));
-            }, onError: controller.addError);
-      } catch (error, stackTrace) {
-        if (!closed && currentRevision == revision) {
-          controller.addError(error, stackTrace);
-        }
-      }
-    }
-
-    controller = StreamController<TransactionDetailContext?>(
-      onListen: () {
-        transactionSubscription = _transactions
-            .watchTransactionDetail(transactionId)
-            .listen(
-              (transaction) => unawaited(handleTransaction(transaction)),
-              onError: controller.addError,
-              onDone: () async {
-                closed = true;
-                await cancelOwner();
-                await controller.close();
-              },
-            );
-      },
-      onCancel: () async {
-        closed = true;
-        await transactionSubscription?.cancel();
-        await cancelOwner();
+    return switchMapStreams(
+      _transactions.watchTransactionDetail(transactionId),
+      (transaction) {
+        if (transaction == null) return Stream.value(null);
+        return _watchTransaction(transaction);
       },
     );
-    return controller.stream;
+  }
+
+  Stream<TransactionDetailContext> _watchTransaction(
+    TransactionReadModel transaction,
+  ) async* {
+    final businessItems = await _businessItems.findItems([transaction]);
+    yield await _assemble(transaction, businessItems: businessItems);
+
+    final item = businessItems[transaction.id];
+    final streams = <Stream<Object?>>[
+      _businessItems.watchItems([transaction]).map<Object?>((items) => items),
+      if (item is AmortizationBusinessActivityItem &&
+          _amortizationPlans != null)
+        _amortizationPlans
+            .watchByIds({item.ownerId})
+            .map<Object?>(
+              (plans) =>
+                  plans
+                      .where((plan) => plan.id == item.ownerId)
+                      .firstOrNull
+                      ?.status ==
+                  AmortizationStatus.terminated,
+            ),
+    ];
+    if (streams.isEmpty) return;
+
+    await for (final values in combineLatestStreams(streams).skip(1)) {
+      final latestItems = values.first as Map<String, BusinessActivityItem>;
+      final isTerminated = values.length > 1
+          ? values.last as bool
+          : await _loadAmortizationTermination(latestItems[transaction.id]);
+      yield await _assemble(
+        transaction,
+        businessItems: latestItems,
+        amortizationTerminated: isTerminated,
+      );
+    }
   }
 
   Future<TransactionDetailContext> _assemble(
     TransactionReadModel transaction, {
-    Map<String, TransactionBusinessContext>? businessContexts,
+    Map<String, BusinessActivityItem>? businessItems,
+    bool? amortizationTerminated,
   }) async {
-    final parent = transaction.parentTransactionId == null
-        ? null
-        : await _transactions.findTransactionDetail(
-            transaction.parentTransactionId!,
-          );
-    final currentGroup = parent == null
-        ? TransactionDetailGroup(
-            anchor: transaction,
-            children: transaction.children,
-          )
-        : TransactionDetailGroup(anchor: parent, children: parent.children);
-
-    final contexts =
-        businessContexts ??
-        await _businessContexts.findContexts(currentGroup.transactions);
-    final businessContext =
-        contexts[transaction.id] ?? contexts[currentGroup.anchor.id];
-    final anchorId = switch (businessContext) {
-      AmortizationTransactionBusinessContext(:final initialTransactionId) =>
-        initialTransactionId,
-      _ => currentGroup.anchor.id,
-    };
-    final anchorGroup = anchorId == currentGroup.anchor.id
-        ? currentGroup
-        : await _loadAnchorGroup(anchorId);
+    final items =
+        businessItems ?? await _businessItems.findItems([transaction]);
+    final businessItem = items[transaction.id];
     return TransactionDetailContext(
       transaction: transaction,
-      parentTransaction: parent,
-      currentGroup: currentGroup,
-      anchorGroup: anchorGroup,
-      businessContext: businessContext,
+      parentFacts: await _loadParentFacts(transaction),
+      businessItem: businessItem,
+      isAmortizationTerminated:
+          amortizationTerminated ??
+          await _loadAmortizationTermination(businessItem),
     );
   }
 
-  Future<TransactionDetailGroup> _loadAnchorGroup(String anchorId) async {
-    final anchor = await _transactions.findTransactionDetail(anchorId);
-    if (anchor == null) {
-      throw StateError(
-        'Transaction detail anchor $anchorId could not be loaded.',
-      );
+  Future<bool> _loadAmortizationTermination(BusinessActivityItem? item) async {
+    if (item is! AmortizationBusinessActivityItem ||
+        _amortizationPlans == null) {
+      return false;
     }
-    if (anchor.parentTransactionId != null) {
-      throw StateError(
-        'Transaction detail anchor $anchorId is not a top-level transaction.',
-      );
-    }
-    return TransactionDetailGroup(anchor: anchor, children: anchor.children);
+    final plans = await _amortizationPlans.findByIds({item.ownerId});
+    return plans.where((plan) => plan.id == item.ownerId).firstOrNull?.status ==
+        AmortizationStatus.terminated;
+  }
+
+  Future<TransactionParentFacts?> _loadParentFacts(
+    TransactionReadModel transaction,
+  ) async {
+    final parentId = transaction.parentTransactionId;
+    if (parentId == null) return null;
+    final parent = await _transactions.findTransactionById(parentId);
+    if (parent == null) return null;
+    final isAdvanceClosed = parent.businessPurpose == BusinessPurpose.advance
+        ? await _transactions.hasChildTransaction(
+            parentTransactionId: parentId,
+            businessPurpose: BusinessPurpose.advanceSettlement,
+          )
+        : false;
+    return TransactionParentFacts(
+      isExcludedFromStats: parent.isExcludedFromStats,
+      isExcludedFromBudget: parent.isExcludedFromBudget,
+      isAdvanceClosed: isAdvanceClosed,
+    );
   }
 }

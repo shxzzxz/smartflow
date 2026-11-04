@@ -13,7 +13,7 @@ part of 'transaction_detail_state_builder.dart';
 })
 _buildTransactionDetailShell(TransactionDetailContext context) {
   final transaction = context.transaction;
-  final parent = context.parentTransaction;
+  final parentFacts = context.parentFacts;
   return (
     occurredAtText: formatTransactionDetailDateTime(transaction.occurredAt),
     postedAtText: formatTransactionDetailDateTime(transaction.postedAt),
@@ -25,8 +25,8 @@ _buildTransactionDetailShell(TransactionDetailContext context) {
     showExcludeStats: true,
     showExcludeBudget: true,
     excludeStats:
-        parent?.isExcludedFromStats ?? transaction.isExcludedFromStats,
+        parentFacts?.isExcludedFromStats ?? transaction.isExcludedFromStats,
     excludeBudget:
-        parent?.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
+        parentFacts?.isExcludedFromBudget ?? transaction.isExcludedFromBudget,
   );
 }

@@ -408,6 +408,15 @@ class _FakeBusinessActivityQueryService
     return _nextPage;
   }
 
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  ) {
+    return Stream.value({
+      for (final activity in currentActivities) activity.activityKey: activity,
+    });
+  }
+
   void emit(BusinessActivityPage page) {
     _streams.last.add(page);
   }

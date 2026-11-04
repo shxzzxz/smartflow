@@ -301,19 +301,22 @@ void main() {
           _detailContextOverride(
             'amortization-entry',
             detail,
-            owner: const AmortizationTransactionBusinessContext(
-              ownerType: orchestrationAmortizationOwnerType,
-              ownerId: 'plan-1',
-              initialTransactionId: 'anchor',
+            item: AmortizationBusinessActivityItem(
+              activityKey: const BusinessActivityKey(
+                type: orchestrationAmortizationOwnerType,
+                id: 'plan-1',
+              ),
+              transactionId: 'amortization-entry',
               kind: AmortizationKind.prepaidExpense,
-              status: AmortizationStatus.active,
-              originalAmount: Money(minorUnits: 10000),
-              recognizedAmount: Money(minorUnits: 2000),
-              remainingAmount: Money(minorUnits: 8000),
-              postedPeriodCount: 1,
-              totalPeriodCount: 5,
-              categoryAccountIds: ['shopping'],
+              factKind: AmortizationTransactionFactKind.initial,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'shopping',
+                  amount: Money(minorUnits: 10000),
+                ),
+              ],
             ),
+            activity: _amortizationActivity(detail),
           ),
           accountLookupProvider.overrideWith(
             (ref) => Stream.value(AccountLookup(_accounts)),
@@ -818,46 +821,130 @@ Override _detailContextOverride(
   String transactionId,
   TransactionReadModel detail, {
   TransactionReadModel? parent,
-  TransactionBusinessContext? owner,
+  BusinessActivityItem? item,
+  BusinessActivityReadModel? activity,
 }) {
-  final anchor = parent ?? detail;
-  final group = TransactionDetailGroup(
-    anchor: anchor,
-    children: anchor.children,
-  );
   final ownership = detail.ownership;
-  final resolvedOwner =
-      owner ??
-      (ownership?.ownerType == orchestrationAdvanceOwnerType
-          ? AdvanceTransactionBusinessContext(
-              ownerType: ownership!.ownerType,
-              ownerId: ownership.ownerId,
+  final advanceOwnerId = ownership?.ownerType == orchestrationAdvanceOwnerType
+      ? ownership!.ownerId
+      : 'advance';
+  final resolvedItem =
+      item ??
+      (detail.businessPurpose == BusinessPurpose.advance
+          ? AdvanceBusinessActivityItem(
+              activityKey: BusinessActivityKey(
+                type: orchestrationAdvanceOwnerType,
+                id: advanceOwnerId,
+              ),
+              transactionId: detail.id,
+              factKind: AdvanceTransactionFactKind.advance,
               scenario: AdvanceScenario.reimbursement,
               trackingMode: AdvanceTrackingMode.itemized,
-              advanceAmount:
-                  detail.advanceSummary?.advanceAmount ?? detail.primaryAmount,
-              receivedAmount:
-                  detail.advanceSummary?.receivedAmount ?? Money.zero(),
-              outstanding:
-                  detail.advanceSummary?.outstanding ?? detail.primaryAmount,
-              isClosed: detail.advanceSummary?.isClosed ?? false,
             )
           : ownership == null
           ? null
-          : UnknownTransactionBusinessContext(
-              ownerType: ownership.ownerType,
-              ownerId: ownership.ownerId,
+          : UnknownBusinessActivityItem(
+              activityKey: BusinessActivityKey(
+                type: ownership.ownerType,
+                id: ownership.ownerId,
+              ),
+              transactionId: detail.id,
             ));
+  final resolvedActivity =
+      activity ??
+      (detail.businessPurpose == BusinessPurpose.advance &&
+              detail.advanceSummary != null
+          ? _advanceActivity(
+              transaction: detail,
+              ownerId: advanceOwnerId,
+              summary: detail.advanceSummary!,
+            )
+          : null);
   final context = TransactionDetailContext(
     transaction: detail,
-    parentTransaction: parent,
-    currentGroup: group,
-    anchorGroup: group,
-    businessContext: resolvedOwner,
+    parentFacts: parent == null
+        ? null
+        : TransactionParentFacts(
+            isExcludedFromStats: parent.isExcludedFromStats,
+            isExcludedFromBudget: parent.isExcludedFromBudget,
+            isAdvanceClosed: parent.advanceSummary?.isClosed ?? false,
+          ),
+    businessItem: resolvedItem,
   );
-  return transactionDetailContextProvider(
-    transactionId,
-  ).overrideWith((ref) => Stream.value(context));
+  return transactionDetailReadModelProvider(transactionId).overrideWith(
+    (ref) => Stream.value(
+      TransactionDetailReadModel(
+        context: context,
+        businessActivity: resolvedActivity,
+      ),
+    ),
+  );
+}
+
+BusinessActivityReadModel _advanceActivity({
+  required TransactionReadModel transaction,
+  required String ownerId,
+  required AdvanceSummary summary,
+}) {
+  final key = BusinessActivityKey(
+    type: orchestrationAdvanceOwnerType,
+    id: ownerId,
+  );
+  final anchor = TransactionReadModel(
+    id: transaction.id,
+    businessPurpose: transaction.businessPurpose,
+    occurredAt: transaction.occurredAt,
+    postedAt: transaction.postedAt,
+    primaryAmount: transaction.primaryAmount,
+    ownership: TransactionOwnership(
+      ownerType: orchestrationAdvanceOwnerType,
+      ownerId: ownerId,
+    ),
+    isExcludedFromStats: transaction.isExcludedFromStats,
+    isExcludedFromBudget: transaction.isExcludedFromBudget,
+    lines: transaction.lines,
+    children: transaction.children,
+    advanceSummary: summary,
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: anchor.id,
+      anchorAt: anchor.occurredAt,
+    ),
+    anchorTransaction: anchor,
+    summary: AdvanceBusinessActivitySummary(
+      scenario: AdvanceScenario.reimbursement,
+      trackingMode: AdvanceTrackingMode.itemized,
+      outstanding: summary.outstanding,
+      isClosed: summary.isClosed,
+    ),
+  );
+}
+
+BusinessActivityReadModel _amortizationActivity(TransactionReadModel detail) {
+  final key = const BusinessActivityKey(
+    type: orchestrationAmortizationOwnerType,
+    id: 'plan-1',
+  );
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: key,
+      anchorTransactionId: detail.id,
+      anchorAt: detail.occurredAt,
+    ),
+    anchorTransaction: detail,
+    summary: const AmortizationBusinessActivitySummary(
+      kind: AmortizationKind.prepaidExpense,
+      status: AmortizationStatus.active,
+      originalAmount: Money(minorUnits: 10000),
+      recognizedAmount: Money(minorUnits: 2000),
+      remainingAmount: Money(minorUnits: 8000),
+      postedPeriodCount: 1,
+      totalPeriodCount: 5,
+      categoryAccountIds: ['shopping'],
+    ),
+  );
 }
 
 class _FakeAccountQueryService implements AccountQueryService {

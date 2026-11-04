@@ -86,18 +86,18 @@ class TransactionDetailPage extends ConsumerWidget {
       return;
     }
     final message = loaded.behavior.deleteMessage;
-    final owner = loaded.context.businessContext;
-    final title = switch (owner) {
-      AmortizationTransactionBusinessContext(
+    final item = loaded.context.businessItem;
+    final title = switch (item) {
+      AmortizationBusinessActivityItem(
         factKind: AmortizationTransactionFactKind.refund,
       ) =>
         '删除摊销退款',
-      AmortizationTransactionBusinessContext(
+      AmortizationBusinessActivityItem(
         factKind: AmortizationTransactionFactKind.terminationRecognition ||
             AmortizationTransactionFactKind.terminationReturn,
       ) =>
         '删除摊销终止',
-      AmortizationTransactionBusinessContext() => '删除摊销计划',
+      AmortizationBusinessActivityItem() => '删除摊销计划',
       _ => '删除交易',
     };
     final confirmed = await showDialog<bool>(
@@ -337,6 +337,7 @@ class _HeroCard extends StatelessWidget {
               businessPurpose: hero.businessPurpose,
               hasMultipleCategories: hero.hasMultipleCategories,
               preferCategoryArtwork: hero.preferCategoryArtwork,
+              kind: hero.avatarKind,
               iconKey: hero.iconKey,
               iconSize: AppSpacing.space28,
             ),

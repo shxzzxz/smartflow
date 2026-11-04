@@ -12,15 +12,49 @@ _buildTransactionDetailLedger(
   DetailBehaviorConfig behavior,
 ) {
   final detail = context.transaction;
+  final List<AccountAmountAllocation> categoryAllocations =
+      switch (context.businessItem) {
+        AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+          localCategoryAllocations,
+        _ => const <AccountAmountAllocation>[],
+      };
+  final isActivityEntry = switch (context.businessItem) {
+    AdvanceBusinessActivityItem(:final factKind) =>
+      factKind == AdvanceTransactionFactKind.advance,
+    InstallmentBusinessActivityItem(:final factKind) =>
+      factKind == InstallmentTransactionFactKind.purchase ||
+          factKind == InstallmentTransactionFactKind.disbursement,
+    RepaymentBusinessActivityItem() => true,
+    AmortizationBusinessActivityItem(:final factKind) =>
+      factKind == AmortizationTransactionFactKind.initial,
+    UnknownBusinessActivityItem() || null => false,
+  };
+  final isNonEntry =
+      isKnownBusinessActivityItem(context.businessItem) && !isActivityEntry;
+  final categoryAccountIds = isActivityEntry
+      ? switch (context.businessItem) {
+          AmortizationBusinessActivityItem(:final localCategoryAllocations) =>
+            localCategoryAllocations.map((allocation) => allocation.accountId),
+          _ => const <String>[],
+        }
+      : const <String>[];
   return (
     hero: transactionDetailHero(
       detail: detail,
       accountLookup: accountLookup,
-      categoryAccountIds: context.categoryAccountIds,
+      categoryAccountIds: categoryAccountIds,
+      titleOverride: isNonEntry
+          ? nonEntryBusinessActivityItemTitle(context.businessItem, detail)
+          : null,
+      useCategoryIdentity: !isNonEntry,
+      avatarKind: isNonEntry
+          ? businessActivityItemAvatarKind(context.businessItem)
+          : null,
     ),
     allocationBreakdowns: transactionDetailAllocationBreakdowns(
       detail: detail,
       accountLookup: accountLookup,
+      categoryAllocations: categoryAllocations,
     ),
     accountRows: _accountRows(context, accountLookup, behavior),
     refund: _refundState(detail),
@@ -34,7 +68,7 @@ List<DetailAccountRow> _accountRows(
 ) {
   final detail = context.transaction;
   final purpose = detail.businessPurpose;
-  final advance = context.businessContext;
+  final advance = context.businessItem;
 
   DetailAccountRow info(
     String label,
@@ -146,7 +180,7 @@ List<DetailAccountRow> _accountRows(
       final outgoing = detail.linesOf(TransactionRole.settlementOut).toList();
       final receivables = detail.linesOf(TransactionRole.receivable).toList();
       final receivableLabel = _advanceReceivableAccountLabel(
-        advance is AdvanceTransactionBusinessContext ? advance.scenario : null,
+        advance is AdvanceBusinessActivityItem ? advance.scenario : null,
       );
       return [
         if (outgoing.length > 1)

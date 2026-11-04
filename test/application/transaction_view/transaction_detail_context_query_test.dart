@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -11,182 +9,267 @@ import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 class _MockTransactionQueryService extends Mock
     implements TransactionQueryService {}
 
-class _BusinessContextQuery implements TransactionBusinessContextQuery {
-  _BusinessContextQuery({required this.summary, this.watchStream});
+class _MockBusinessActivityQueryService extends Mock
+    implements BusinessActivityQueryService {}
 
-  TransactionBusinessContext? summary;
-  final Stream<Map<String, TransactionBusinessContext>>? watchStream;
+class _ItemQuery implements BusinessActivityItemQuery {
+  _ItemQuery({required this.items});
 
-  @override
-  Future<Map<String, TransactionBusinessContext>> findContexts(
-    Iterable<TransactionReadModel> transactions,
-  ) async => {for (final transaction in transactions) transaction.id: ?summary};
+  final Map<String, BusinessActivityItem> items;
+  var calls = 0;
 
   @override
-  Stream<Map<String, TransactionBusinessContext>> watchContexts(
+  Future<Map<String, BusinessActivityItem>> findItems(
     Iterable<TransactionReadModel> transactions,
-  ) => watchStream ?? const Stream.empty();
+  ) async {
+    calls += 1;
+    return {
+      for (final transaction in transactions)
+        transaction.id: ?items[transaction.id],
+    };
+  }
+
+  @override
+  Stream<Map<String, BusinessActivityItem>> watchItems(
+    Iterable<TransactionReadModel> transactions,
+  ) => const Stream.empty();
 }
 
 void main() {
   late _MockTransactionQueryService transactions;
+  late _MockBusinessActivityQueryService activities;
 
   setUp(() {
     transactions = _MockTransactionQueryService();
+    activities = _MockBusinessActivityQueryService();
   });
 
-  test(
-    'owns current and anchor groups through business context seam',
-    () async {
-      final plan = AmortizationTransactionBusinessContext(
-        ownerType: orchestrationAmortizationOwnerType,
-        ownerId: 'plan-1',
-        initialTransactionId: 'anchor',
-        kind: AmortizationKind.prepaidExpense,
-        status: AmortizationStatus.active,
-        originalAmount: const Money(minorUnits: 12000),
-        recognizedAmount: const Money(minorUnits: 2000),
-        remainingAmount: const Money(minorUnits: 10000),
-        postedPeriodCount: 1,
-        totalPeriodCount: 3,
-        categoryAccountIds: const ['insurance'],
-      );
-      final recognition = _transaction(
-        id: 'recognition',
-        purpose: BusinessPurpose.dailyExpense,
-        ownerType: orchestrationAmortizationOwnerType,
-      );
-      final anchor = _transaction(
-        id: 'anchor',
-        purpose: BusinessPurpose.transfer,
-        ownerType: orchestrationAmortizationOwnerType,
-      );
-      when(
-        () => transactions.findTransactionDetail('recognition'),
-      ).thenAnswer((_) async => recognition);
-      when(
-        () => transactions.findTransactionDetail('anchor'),
-      ).thenAnswer((_) async => anchor);
-      final query = TransactionDetailContextQueryImpl(
-        transactions: transactions,
-        businessContexts: _BusinessContextQuery(summary: plan),
-      );
-
-      final context = await query.findById('recognition');
-
-      expect(context, isNotNull);
-      expect(context!.transaction.id, 'recognition');
-      expect(context.anchorTransaction.id, 'anchor');
-      expect(
-        context.businessContext,
-        isA<AmortizationTransactionBusinessContext>(),
-      );
-      expect(context.categoryAccountIds, ['insurance']);
-    },
-  );
-
-  test('missing business context is represented as unknown owner', () async {
+  test('local context loads only the current transaction item', () async {
     final transaction = _transaction(
-      id: 'tx-1',
-      purpose: BusinessPurpose.dailyExpense,
-      ownerType: 'unknown.owner',
+      id: 'refund',
+      purpose: BusinessPurpose.transfer,
+      ownerType: orchestrationAmortizationOwnerType,
     );
+    final item = _amortizationItem(
+      transaction.id,
+      factKind: AmortizationTransactionFactKind.refund,
+    );
+    final itemQuery = _ItemQuery(items: {transaction.id: item});
     when(
-      () => transactions.findTransactionDetail('tx-1'),
+      () => transactions.findTransactionDetail('refund'),
     ).thenAnswer((_) async => transaction);
     final query = TransactionDetailContextQueryImpl(
       transactions: transactions,
-      businessContexts: TransactionBusinessContextQueryImpl(sources: const []),
+      businessItems: itemQuery,
     );
 
-    final context = await query.findById('tx-1');
+    final context = await query.findById('refund');
 
     expect(context, isNotNull);
-    expect(
-      context!.businessContext,
-      isA<UnknownTransactionBusinessContext>(),
+    expect(context!.businessItem, same(item));
+    expect(context.isAmortizationTerminated, isFalse);
+    expect(itemQuery.calls, 1);
+  });
+
+  test('higher-level detail loads activity only for an entry item', () async {
+    final transaction = _transaction(
+      id: 'initial',
+      purpose: BusinessPurpose.transfer,
+      ownerType: orchestrationAmortizationOwnerType,
+    );
+    final item = _amortizationItem(
+      transaction.id,
+      factKind: AmortizationTransactionFactKind.initial,
+    );
+    final activity = _activity(transaction);
+    when(
+      () => transactions.findTransactionDetail('initial'),
+    ).thenAnswer((_) async => transaction);
+    when(
+      () => activities.findForAnchor(
+        activityKey: item.activityKey,
+        anchorTransaction: transaction,
+      ),
+    ).thenAnswer((_) async => activity);
+    final local = TransactionDetailContextQueryImpl(
+      transactions: transactions,
+      businessItems: _ItemQuery(items: {transaction.id: item}),
+    );
+    final query = TransactionDetailQueryImpl(
+      localContext: local,
+      businessActivities: activities,
+    );
+
+    final detail = await query.findById('initial');
+
+    expect(detail, isNotNull);
+    expect(detail!.businessActivity, same(activity));
+    verify(
+      () => activities.findForAnchor(
+        activityKey: item.activityKey,
+        anchorTransaction: transaction,
+      ),
+    ).called(1);
+  });
+
+  test('higher-level detail skips activity for a non-entry item', () async {
+    final transaction = _transaction(
+      id: 'refund',
+      purpose: BusinessPurpose.transfer,
+      ownerType: orchestrationAmortizationOwnerType,
+    );
+    final item = _amortizationItem(
+      transaction.id,
+      factKind: AmortizationTransactionFactKind.refund,
+    );
+    when(
+      () => transactions.findTransactionDetail('refund'),
+    ).thenAnswer((_) async => transaction);
+    final local = TransactionDetailContextQueryImpl(
+      transactions: transactions,
+      businessItems: _ItemQuery(items: {transaction.id: item}),
+    );
+    final query = TransactionDetailQueryImpl(
+      localContext: local,
+      businessActivities: activities,
+    );
+
+    final detail = await query.findById('refund');
+
+    expect(detail!.businessActivity, isNull);
+    verifyNever(
+      () => activities.findForAnchor(
+        activityKey: item.activityKey,
+        anchorTransaction: transaction,
+      ),
     );
   });
 
-  test('business context changes produce a new detail context', () async {
+  test('advance child loads only bounded parent facts', () async {
     final transaction = _transaction(
-      id: 'advance-tx',
-      purpose: BusinessPurpose.advance,
+      id: 'collection',
+      purpose: BusinessPurpose.advanceCollection,
       ownerType: orchestrationAdvanceOwnerType,
+      parentTransactionId: 'advance',
     );
-    final ledgerChanges = StreamController<TransactionReadModel?>();
-    final ownerChanges =
-        StreamController<Map<String, TransactionBusinessContext>>();
-    addTearDown(ledgerChanges.close);
-    addTearDown(ownerChanges.close);
     when(
-      () => transactions.watchTransactionDetail('advance-tx'),
-    ).thenAnswer((_) => ledgerChanges.stream);
-    final initialOwner = _advanceOwner(outstanding: 8000, closed: false);
-    final updatedOwner = _advanceOwner(outstanding: 5000, closed: false);
-    final ownerQuery = _BusinessContextQuery(
-      summary: initialOwner,
-      watchStream: ownerChanges.stream,
+      () => transactions.findTransactionDetail('collection'),
+    ).thenAnswer((_) async => transaction);
+    when(() => transactions.findTransactionById('advance')).thenAnswer(
+      (_) async => Transaction(
+        id: 'advance',
+        businessPurpose: BusinessPurpose.advance,
+        occurredAt: DateTime(2026, 1),
+        primaryAmount: const Money(minorUnits: 12000),
+        isExcludedFromStats: true,
+        isExcludedFromBudget: false,
+        sourceKind: SourceKind.manual,
+      ),
     );
+    when(
+      () => transactions.hasChildTransaction(
+        parentTransactionId: 'advance',
+        businessPurpose: BusinessPurpose.advanceSettlement,
+      ),
+    ).thenAnswer((_) async => true);
     final query = TransactionDetailContextQueryImpl(
       transactions: transactions,
-      businessContexts: ownerQuery,
-    );
-    final iterator = StreamIterator(query.watchById('advance-tx'));
-
-    ledgerChanges.add(transaction);
-    expect(await iterator.moveNext(), isTrue);
-    expect(
-      (iterator.current!.businessContext as AdvanceTransactionBusinessContext)
-          .outstanding,
-      const Money(minorUnits: 8000),
+      businessItems: _ItemQuery(items: const {}),
     );
 
-    ownerQuery.summary = updatedOwner;
-    ownerChanges
-      ..add({'advance-tx': initialOwner})
-      ..add({'advance-tx': updatedOwner});
-    expect(await iterator.moveNext(), isTrue);
-    expect(
-      (iterator.current!.businessContext as AdvanceTransactionBusinessContext)
-          .outstanding,
-      const Money(minorUnits: 5000),
-    );
+    final context = await query.findById('collection');
 
-    await iterator.cancel();
+    expect(context!.parentFacts!.isExcludedFromStats, isTrue);
+    expect(context.parentFacts!.isExcludedFromBudget, isFalse);
+    expect(context.parentFacts!.isAdvanceClosed, isTrue);
+    verifyNever(() => transactions.findParentTransactionDetail('advance'));
   });
+
+  test(
+    'missing item is represented as unknown without hiding transaction',
+    () async {
+      final transaction = _transaction(
+        id: 'tx-1',
+        purpose: BusinessPurpose.dailyExpense,
+        ownerType: 'unknown.owner',
+      );
+      when(
+        () => transactions.findTransactionDetail('tx-1'),
+      ).thenAnswer((_) async => transaction);
+      final query = TransactionDetailContextQueryImpl(
+        transactions: transactions,
+        businessItems: BusinessActivityItemQueryImpl(sources: const []),
+      );
+
+      final context = await query.findById('tx-1');
+
+      expect(context, isNotNull);
+      expect(context!.businessItem, isA<UnknownBusinessActivityItem>());
+    },
+  );
 }
 
 TransactionReadModel _transaction({
   required String id,
   required BusinessPurpose purpose,
   String? ownerType,
+  String? parentTransactionId,
 }) {
   return TransactionReadModel(
     id: id,
+    parentTransactionId: parentTransactionId,
     businessPurpose: purpose,
     occurredAt: DateTime(2026, 1),
     primaryAmount: const Money(minorUnits: 12000),
     ownership: ownerType == null
         ? null
-        : TransactionOwnership(ownerType: ownerType, ownerId: 'owner-1'),
+        : TransactionOwnership(ownerType: ownerType, ownerId: 'plan-1'),
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
   );
 }
 
-TransactionBusinessContext _advanceOwner({
-  required int outstanding,
-  required bool closed,
+AmortizationBusinessActivityItem _amortizationItem(
+  String transactionId, {
+  required AmortizationTransactionFactKind factKind,
 }) {
-  return AdvanceTransactionBusinessContext(
-    ownerType: orchestrationAdvanceOwnerType,
-    ownerId: 'owner-1',
-    scenario: AdvanceScenario.reimbursement,
-    trackingMode: AdvanceTrackingMode.itemized,
-    advanceAmount: const Money(minorUnits: 10000),
-    receivedAmount: Money(minorUnits: 10000 - outstanding),
-    outstanding: Money(minorUnits: outstanding),
-    isClosed: closed,
+  return AmortizationBusinessActivityItem(
+    activityKey: const BusinessActivityKey(
+      type: orchestrationAmortizationOwnerType,
+      id: 'plan-1',
+    ),
+    transactionId: transactionId,
+    kind: AmortizationKind.prepaidExpense,
+    factKind: factKind,
+    localCategoryAllocations: const [
+      AccountAmountAllocation(
+        accountId: 'food',
+        amount: Money(minorUnits: 100),
+      ),
+    ],
+  );
+}
+
+BusinessActivityReadModel _activity(TransactionReadModel transaction) {
+  return BusinessActivityReadModel.fromCandidate(
+    candidate: BusinessActivityAnchorCandidate(
+      activityKey: const BusinessActivityKey(
+        type: orchestrationAmortizationOwnerType,
+        id: 'plan-1',
+      ),
+      anchorTransactionId: transaction.id,
+      anchorAt: transaction.occurredAt,
+    ),
+    anchorTransaction: transaction,
+    summary: AmortizationBusinessActivitySummary(
+      kind: AmortizationKind.prepaidExpense,
+      status: AmortizationStatus.active,
+      originalAmount: Money(minorUnits: 12000),
+      recognizedAmount: const Money(minorUnits: 0),
+      remainingAmount: Money(minorUnits: 12000),
+      postedPeriodCount: 0,
+      totalPeriodCount: 3,
+      categoryAccountIds: ['food'],
+    ),
   );
 }

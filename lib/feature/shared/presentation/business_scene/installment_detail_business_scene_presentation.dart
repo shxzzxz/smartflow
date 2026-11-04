@@ -4,11 +4,22 @@ import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'transaction_detail_business_presentation.dart';
 
 TransactionDetailBusinessContent presentInstallmentDetailBusinessScene(
-  TransactionDetailContext context,
+  TransactionDetailReadModel detail,
 ) {
-  final owner =
-      context.businessContext as InstallmentTransactionBusinessContext;
-  final type = switch (owner.installmentType) {
+  final context = detail.context;
+  final item = context.businessItem;
+  final activity = detail.businessActivity;
+  final summary = activity?.summary;
+  if (item is! InstallmentBusinessActivityItem ||
+      summary is! InstallmentBusinessActivitySummary ||
+      activity == null) {
+    return const TransactionDetailBusinessContent();
+  }
+  if (item.factKind != InstallmentTransactionFactKind.purchase &&
+      item.factKind != InstallmentTransactionFactKind.disbursement) {
+    return const TransactionDetailBusinessContent();
+  }
+  final type = switch (summary.installmentType) {
     InstallmentType.disbursement => '放款分期',
     InstallmentType.billConversion => '账单分期',
     InstallmentType.purchase => '消费分期',
@@ -19,9 +30,9 @@ TransactionDetailBusinessContent presentInstallmentDetailBusinessScene(
         key: 'installment',
         title: '分期合同',
         summary:
-            '$type · 已还 ${owner.paidPeriodCount}/${owner.totalPeriodCount} · '
-            '剩余本金 ${owner.remainingPrincipal.format()}',
-        route: '/installments/${owner.ownerId}',
+            '$type · 已还 ${summary.paidPeriodCount}/${summary.totalPeriodCount} · '
+            '剩余本金 ${summary.remainingPrincipal.format()}',
+        route: '/installments/${item.ownerId}',
       ),
     ],
   );

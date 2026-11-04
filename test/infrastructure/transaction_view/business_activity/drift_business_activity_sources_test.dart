@@ -958,7 +958,7 @@ void main() {
     expect(secondPage.hasMore, isFalse);
   });
 
-  test('watchPage reacts to summary-only source table changes', () async {
+  test('watchSummaries reacts to summary-only source table changes', () async {
     await _insertTransaction(
       db,
       id: 'amortization-tx',
@@ -1021,22 +1021,28 @@ void main() {
       accountId: 'software',
       amountMinor: 3000,
     );
+    final amortizationSource = AmortizationBusinessActivitySource(
+      _amortizationQuery(db),
+      _amortizationPlans(db),
+    );
     final service = BusinessActivityQueryServiceImpl(
-      sources: [
-        DriftLedgerBusinessActivitySource(db),
-        AmortizationBusinessActivitySource(
-          _amortizationQuery(db),
-          _amortizationPlans(db),
-        ),
-      ],
+      sources: [DriftLedgerBusinessActivitySource(db), amortizationSource],
       transactionQuery: _TransactionBatchQuery(db),
     );
-    final iterator = StreamIterator(service.watchPage(_query()));
+    final page = await service.findPage(_query());
+    final iterator = StreamIterator(
+      amortizationSource.watchSummaries([
+        BusinessActivityAnchorCandidate(
+          activityKey: page.items.single.activityKey,
+          anchorTransactionId: page.items.single.anchorTransactionId,
+          anchorAt: page.items.single.anchorAt,
+        ),
+      ]),
+    );
 
     expect(await iterator.moveNext(), isTrue);
     final initialSummary =
-        iterator.current.items.single.summary
-            as AmortizationBusinessActivitySummary;
+        iterator.current.values.single as AmortizationBusinessActivitySummary;
     expect(initialSummary.totalPeriodCount, 1);
     expect(initialSummary.currentPeriodSequence, 1);
 
@@ -1051,8 +1057,7 @@ void main() {
 
     expect(await iterator.moveNext(), isTrue);
     final updatedSummary =
-        iterator.current.items.single.summary
-            as AmortizationBusinessActivitySummary;
+        iterator.current.values.single as AmortizationBusinessActivitySummary;
     expect(updatedSummary.totalPeriodCount, 1);
     expect(updatedSummary.currentPeriodSequence, null);
     expect(updatedSummary.status, AmortizationStatus.completed);
@@ -1273,6 +1278,11 @@ final class _TransactionBatchQuery implements TransactionBatchQueryService {
             childTransactions: childrenByParent[id] ?? const [],
           ),
     ];
+  }
+
+  @override
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
+    return Stream.fromFuture(findTransactionsByIds(ids));
   }
 }
 

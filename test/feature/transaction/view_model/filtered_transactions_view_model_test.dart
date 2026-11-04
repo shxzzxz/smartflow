@@ -330,6 +330,13 @@ class _RecordingBusinessActivityQueryService
   }
 
   @override
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  ) {
+    return Stream.value(const {});
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -401,6 +408,32 @@ class _BatchQueryService implements BusinessActivityQueryService {
   @override
   Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query) async {
     return _page(items, query.limit);
+  }
+
+  @override
+  Stream<Map<BusinessActivityKey, BusinessActivityReadModel>> watchContents(
+    Iterable<BusinessActivityReadModel> currentActivities,
+  ) {
+    final keys = {
+      for (final activity in currentActivities) activity.activityKey,
+    };
+    Map<BusinessActivityKey, BusinessActivityReadModel> current(
+      List<BusinessActivityReadModel> values,
+    ) {
+      return {
+        for (final activity in values)
+          if (keys.contains(activity.activityKey))
+            activity.activityKey: activity,
+      };
+    }
+
+    return Stream.multi((controller) {
+      controller.add(current(items));
+      final subscription = changes.stream.listen(
+        (values) => controller.add(current(values)),
+      );
+      controller.onCancel = subscription.cancel;
+    });
   }
 
   @override
