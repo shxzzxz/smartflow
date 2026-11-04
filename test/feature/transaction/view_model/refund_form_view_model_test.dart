@@ -500,6 +500,7 @@ void main() {
     expect(outcome, isA<SubmitSuccess>());
     final command = service.terminationEditCommands.single;
     expect(command.planId, created.id);
+    expect(command.terminationId, 'termination');
     expect(command.categoryReturnAllocations.single.amount, _money(10000));
     expect(command.settlementAllocations.single.amount, _money(10000));
   });

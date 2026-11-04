@@ -5,18 +5,20 @@ final class _AmortizationActionDispatcher
   const _AmortizationActionDispatcher(
     this.transaction, {
     required this.owner,
+    required this.projection,
     required this.updateService,
     required this.amortizationAppService,
   });
 
   final TransactionReadModel transaction;
   final AmortizationBusinessActivityItem owner;
+  final AmortizationTransactionProjection projection;
   final TransactionUpdateAppService updateService;
   final AmortizationPlanAppService amortizationAppService;
 
   @override
   Future<UiActionOutcome<void>> delete() async {
-    return switch (owner.factKind) {
+    return switch (projection.factKind) {
       AmortizationTransactionFactKind.refund => detailVoidOutcomeFromAction(
         () => amortizationAppService.deleteRefund(
           DeleteAmortizationRefundCommand(
@@ -32,6 +34,7 @@ final class _AmortizationActionDispatcher
           () => amortizationAppService.deleteTermination(
             DeleteAmortizationTerminationCommand(
               planId: owner.ownerId,
+              terminationId: owner.terminationId!,
               now: DateTime.now(),
             ),
           ),

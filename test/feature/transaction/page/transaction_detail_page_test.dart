@@ -315,6 +315,7 @@ void main() {
               projections: [
                 AmortizationTransactionProjection(
                   transactionId: 'amortization-entry',
+                  factKind: AmortizationTransactionFactKind.initial,
                   localCategoryAllocations: const [
                     AccountAmountAllocation(
                       accountId: 'shopping',
@@ -324,7 +325,6 @@ void main() {
                 ),
               ],
               kind: AmortizationKind.prepaidExpense,
-              factKind: AmortizationTransactionFactKind.initial,
             ),
             activity: _amortizationActivity(detail),
           ),

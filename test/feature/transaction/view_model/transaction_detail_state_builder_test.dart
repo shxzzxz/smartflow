@@ -156,39 +156,47 @@ void main() {
     expect(edit.enabled, isTrue);
   });
 
-  test('amortization termination remains editable from its transaction', () {
-    final state = _build(
-      purpose: BusinessPurpose.dailyExpense,
-      parentTransactionId: null,
-      businessItem: _amortizationItem(
-        factKind: AmortizationTransactionFactKind.terminationRecognition,
-        terminationId: 'termination',
-      ),
-      amortizationStatus: AmortizationStatus.terminated,
-    );
+  for (final factKind in [
+    AmortizationTransactionFactKind.terminationRecognition,
+    AmortizationTransactionFactKind.terminationReturn,
+  ]) {
+    test(
+      'amortization ${factKind.name} remains editable from its transaction',
+      () {
+        final state = _build(
+          purpose: BusinessPurpose.dailyExpense,
+          parentTransactionId: null,
+          businessItem: _amortizationItem(
+            factKind: factKind,
+            terminationId: 'termination',
+          ),
+          amortizationStatus: AmortizationStatus.terminated,
+        );
 
-    expect(
-      state.behavior.editRoute,
-      '/transaction/child/amortization-terminate/edit',
+        expect(
+          state.behavior.editRoute,
+          '/transaction/child/amortization-terminate/edit',
+        );
+        expect(state.behavior.deleteMessage, contains('该笔摊销终止'));
+        final edit = state.actionButtons.singleWhere(
+          (button) => button.kind == DetailActionKind.edit,
+        );
+        expect(
+          state.actionButtons.any(
+            (button) => button.kind == DetailActionKind.refund,
+          ),
+          isFalse,
+        );
+        expect(
+          state.actionButtons.any(
+            (button) => button.kind == DetailActionKind.amortizationTermination,
+          ),
+          isFalse,
+        );
+        expect(edit.enabled, isTrue);
+      },
     );
-    expect(state.behavior.deleteMessage, contains('该笔摊销终止'));
-    final edit = state.actionButtons.singleWhere(
-      (button) => button.kind == DetailActionKind.edit,
-    );
-    expect(
-      state.actionButtons.any(
-        (button) => button.kind == DetailActionKind.refund,
-      ),
-      isFalse,
-    );
-    expect(
-      state.actionButtons.any(
-        (button) => button.kind == DetailActionKind.amortizationTermination,
-      ),
-      isFalse,
-    );
-    expect(edit.enabled, isTrue);
-  });
+  }
 
   test('routes open advance receipt child to shared advance edit', () {
     final state = _build(
@@ -614,6 +622,7 @@ void main() {
           factKind: scenario.$1,
           occurrencePeriodSequence: 2,
           categoryId: 'food',
+          terminationId: 'termination',
         ),
       );
 
@@ -989,7 +998,24 @@ AmortizationBusinessActivityItem _amortizationItem({
       type: orchestrationAmortizationOwnerType,
       id: planId,
     ),
-    itemKey: BusinessActivityItemKey.transaction(transactionId),
+    itemKey: switch (factKind) {
+      AmortizationTransactionFactKind.initial => BusinessActivityItemKey(
+        type: orchestrationAmortizationOwnerType,
+        id: planId,
+      ),
+      AmortizationTransactionFactKind.refund => BusinessActivityItemKey(
+        type: 'orchestration.amortization_refund',
+        id: refundId!,
+      ),
+      AmortizationTransactionFactKind.terminationRecognition ||
+      AmortizationTransactionFactKind.terminationReturn =>
+        BusinessActivityItemKey(
+          type: 'orchestration.amortization_termination',
+          id: terminationId!,
+        ),
+      AmortizationTransactionFactKind.recognition =>
+        BusinessActivityItemKey.transaction(transactionId),
+    },
     role: factKind == AmortizationTransactionFactKind.initial
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
@@ -997,6 +1023,7 @@ AmortizationBusinessActivityItem _amortizationItem({
     projections: [
       AmortizationTransactionProjection(
         transactionId: transactionId,
+        factKind: factKind,
         occurrencePeriodSequence: occurrencePeriodSequence,
         localCategoryAllocations: [
           if (categoryId != null)
@@ -1008,7 +1035,6 @@ AmortizationBusinessActivityItem _amortizationItem({
       ),
     ],
     kind: kind,
-    factKind: factKind,
     refundId: refundId,
     terminationId: terminationId,
   );

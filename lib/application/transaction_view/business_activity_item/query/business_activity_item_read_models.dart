@@ -18,8 +18,8 @@ class BusinessActivityItemProjection {
 
 /// 一个可独立识别的业务活动项。
 ///
-/// 活动项拥有业务域提供的稳定身份和零到多条实际交易投影。本阶段业务域仍
-/// 只产生一条投影，但模型和查询契约不把交易身份当作活动项身份。
+/// 活动项拥有业务域提供的稳定身份和零到多条实际交易投影。至少有一条投影
+/// 时，交易身份只能用于定位当前局部事实，不能替代活动项身份。
 sealed class BusinessActivityItem {
   BusinessActivityItem({
     required this.activityKey,
@@ -114,11 +114,13 @@ final class AmortizationTransactionProjection
     extends BusinessActivityItemProjection {
   AmortizationTransactionProjection({
     required super.transactionId,
+    required this.factKind,
     required Iterable<AccountAmountAllocation> localCategoryAllocations,
     this.occurrencePeriodSequence,
     this.occurrencePeriodDueAt,
   }) : localCategoryAllocations = List.unmodifiable(localCategoryAllocations);
 
+  final AmortizationTransactionFactKind factKind;
   final List<AccountAmountAllocation> localCategoryAllocations;
   final int? occurrencePeriodSequence;
   final DateTime? occurrencePeriodDueAt;
@@ -132,13 +134,11 @@ final class AmortizationBusinessActivityItem extends BusinessActivityItem {
     required super.occurredAt,
     required super.projections,
     required this.kind,
-    required this.factKind,
     this.refundId,
     this.terminationId,
   });
 
   final AmortizationKind kind;
-  final AmortizationTransactionFactKind factKind;
   final String? refundId;
   final String? terminationId;
 }

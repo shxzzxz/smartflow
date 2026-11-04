@@ -377,6 +377,142 @@ void main() {
         expect(summary.categoryAccountIds, ['software']);
       },
     );
+
+    test(
+      'matches any termination projection before limiting and returns one plan',
+      () async {
+        await _insertTransaction(
+          db,
+          id: 'plan-initial',
+          occurredAt: DateTime(2026, 10, 1),
+          businessPurpose: BusinessPurpose.transfer,
+          ownerType: 'orchestration.amortization',
+          ownerId: 'plan-1',
+        );
+        await _insertTransaction(
+          db,
+          id: 'termination-recognition',
+          occurredAt: DateTime(2026, 10, 15),
+          businessPurpose: BusinessPurpose.dailyExpense,
+          ownerType: 'orchestration.amortization',
+          ownerId: 'plan-1',
+        );
+        await _insertTransaction(
+          db,
+          id: 'termination-return',
+          occurredAt: DateTime(2026, 10, 15),
+          businessPurpose: BusinessPurpose.transfer,
+          ownerType: 'orchestration.amortization',
+          ownerId: 'plan-1',
+        );
+        await _insertTransaction(
+          db,
+          id: 'newer-initial',
+          occurredAt: DateTime(2026, 10, 20),
+          businessPurpose: BusinessPurpose.transfer,
+          ownerType: 'orchestration.amortization',
+          ownerId: 'plan-2',
+        );
+        await db
+            .into(db.amortizationPlans)
+            .insert(
+              AmortizationPlansCompanion.insert(
+                id: 'plan-1',
+                kind: AmortizationKind.prepaidExpense,
+                deferralAccountId: 'prepaid',
+                totalAmountMinor: 10000,
+                cadenceUnit: AmortizationCadenceUnit.monthly,
+                cadenceInterval: 1,
+                firstRecognitionAt: DateTime(2026, 11),
+                recognitionCount: 1,
+                initialTransactionId: 'plan-initial',
+              ),
+            );
+        await db
+            .into(db.amortizationPlans)
+            .insert(
+              AmortizationPlansCompanion.insert(
+                id: 'plan-2',
+                kind: AmortizationKind.prepaidExpense,
+                deferralAccountId: 'prepaid',
+                totalAmountMinor: 10000,
+                cadenceUnit: AmortizationCadenceUnit.monthly,
+                cadenceInterval: 1,
+                firstRecognitionAt: DateTime(2026, 11),
+                recognitionCount: 1,
+                initialTransactionId: 'newer-initial',
+              ),
+            );
+        await db
+            .into(db.amortizationTerminations)
+            .insert(
+              AmortizationTerminationsCompanion.insert(
+                id: 'termination-1',
+                planId: 'plan-1',
+                terminatedAt: DateTime(2026, 10, 15),
+                recognitionTransactionId: const Value(
+                  'termination-recognition',
+                ),
+                returnTransactionId: const Value('termination-return'),
+              ),
+            );
+        await _insertAmortizationAllocation(
+          db,
+          id: 'termination-category-allocation',
+          subjectType: AmortizationSubjectType.termination,
+          subjectId: 'termination-1',
+          dimension: AmortizationAllocationDimension.category,
+          accountId: 'termination-category',
+          amountMinor: 1000,
+        );
+        await _insertLine(
+          db,
+          id: 'termination-recognition-category',
+          transactionId: 'termination-recognition',
+          lineNo: 1,
+          role: TransactionRole.category,
+          accountId: 'recognition-category',
+          amountMinor: 9000,
+        );
+        await _insertLine(
+          db,
+          id: 'termination-return-settlement',
+          transactionId: 'termination-return',
+          lineNo: 1,
+          role: TransactionRole.settlementOut,
+          accountId: 'return-bank',
+          amountMinor: 1000,
+        );
+        final source = AmortizationBusinessActivitySource(
+          _amortizationQuery(db),
+          _amortizationPlans(db),
+        );
+
+        final categoryPage = await source.findAnchorPage(
+          _query(limit: 1, categoryAccountIds: const {'termination-category'}),
+        );
+        final settlementPage = await source.findAnchorPage(
+          _query(limit: 1, settlementAccountIds: const {'return-bank'}),
+        );
+        final recognitionPage = await source.findAnchorPage(
+          _query(limit: 1, categoryAccountIds: const {'recognition-category'}),
+        );
+
+        expect(categoryPage.anchors, hasLength(1));
+        expect(categoryPage.anchors.single.anchorTransactionId, 'plan-initial');
+        expect(categoryPage.hasMore, isFalse);
+        expect(settlementPage.anchors, hasLength(1));
+        expect(
+          settlementPage.anchors.single.anchorTransactionId,
+          'plan-initial',
+        );
+        expect(recognitionPage.anchors, hasLength(1));
+        expect(
+          recognitionPage.anchors.single.anchorTransactionId,
+          'plan-initial',
+        );
+      },
+    );
   });
 
   group('CreditBusinessActivitySource', () {

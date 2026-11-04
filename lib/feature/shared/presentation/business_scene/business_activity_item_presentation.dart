@@ -36,30 +36,20 @@ String? businessActivityItemLabel(
       InstallmentTransactionFactKind.refund => '分期退款',
     },
     RepaymentBusinessActivityItem(:final repaymentType) => repaymentType.label,
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.initial,
-      :final kind,
-    ) =>
-      kind == AmortizationKind.prepaidExpense ? '摊销预付' : '摊销预收',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.recognition,
-    ) =>
-      switch (amortizationProjection?.occurrencePeriodSequence) {
-        final sequence? => '第 $sequence 期确认',
-        null => '摊销确认',
+    AmortizationBusinessActivityItem(:final kind) =>
+      switch (amortizationProjection?.factKind) {
+        AmortizationTransactionFactKind.initial =>
+          kind == AmortizationKind.prepaidExpense ? '摊销预付' : '摊销预收',
+        AmortizationTransactionFactKind.recognition =>
+          switch (amortizationProjection?.occurrencePeriodSequence) {
+            final sequence? => '第 $sequence 期确认',
+            null => '摊销确认',
+          },
+        AmortizationTransactionFactKind.refund => '摊销退款',
+        AmortizationTransactionFactKind.terminationRecognition => '终止确认',
+        AmortizationTransactionFactKind.terminationReturn => '终止退还',
+        null => '摊销',
       },
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.refund,
-    ) =>
-      '摊销退款',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.terminationRecognition,
-    ) =>
-      '终止确认',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.terminationReturn,
-    ) =>
-      '终止退还',
     UnknownBusinessActivityItem() || null => null,
   };
 }
@@ -102,8 +92,18 @@ String? businessActivityEntrySupportingText(
 }
 
 TransactionAvatarKind? businessActivityItemAvatarKind(
-  BusinessActivityItem? item,
-) {
+  BusinessActivityItem? item, {
+  BusinessActivityItemProjection? projection,
+}) {
+  final effectiveProjection =
+      projection ??
+      (item != null && item.projections.length == 1
+          ? item.projections.single
+          : null);
+  final amortizationFactKind =
+      effectiveProjection is AmortizationTransactionProjection
+      ? effectiveProjection.factKind
+      : null;
   return switch (item) {
     AdvanceBusinessActivityItem(:final factKind) => switch (factKind) {
       AdvanceTransactionFactKind.collection =>
@@ -113,7 +113,7 @@ TransactionAvatarKind? businessActivityItemAvatarKind(
       AdvanceTransactionFactKind.refund => TransactionAvatarKind.refund,
       AdvanceTransactionFactKind.advance => null,
     },
-    AmortizationBusinessActivityItem(:final factKind) => switch (factKind) {
+    AmortizationBusinessActivityItem() => switch (amortizationFactKind) {
       AmortizationTransactionFactKind.recognition =>
         TransactionAvatarKind.amortizationRecognition,
       AmortizationTransactionFactKind.refund =>
@@ -122,6 +122,7 @@ TransactionAvatarKind? businessActivityItemAvatarKind(
       AmortizationTransactionFactKind.terminationReturn =>
         TransactionAvatarKind.amortizationTermination,
       AmortizationTransactionFactKind.initial => null,
+      null => null,
     },
     RepaymentBusinessActivityItem(repaymentType: RepaymentType.prepayment) =>
       TransactionAvatarKind.prepayment,

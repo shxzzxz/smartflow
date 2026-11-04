@@ -171,6 +171,7 @@ class TerminateAmortizationPlanCommand {
 class EditAmortizationTerminationCommand {
   EditAmortizationTerminationCommand({
     required this.planId,
+    required this.terminationId,
     required this.terminatedAt,
     required List<AccountAmountAllocation> categoryReturnAllocations,
     required List<AccountAmountAllocation> settlementAllocations,
@@ -178,6 +179,7 @@ class EditAmortizationTerminationCommand {
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
   final String planId;
+  final String terminationId;
   final DateTime terminatedAt;
   final List<AccountAmountAllocation> categoryReturnAllocations;
   final List<AccountAmountAllocation> settlementAllocations;
@@ -186,10 +188,12 @@ class EditAmortizationTerminationCommand {
 class DeleteAmortizationTerminationCommand {
   const DeleteAmortizationTerminationCommand({
     required this.planId,
+    required this.terminationId,
     required this.now,
   });
 
   final String planId;
+  final String terminationId;
   final DateTime now;
 }
 

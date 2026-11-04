@@ -1053,11 +1053,11 @@ AmortizationBusinessActivityItem _testAmortizationItem({
     projections: [
       AmortizationTransactionProjection(
         transactionId: transactionId,
+        factKind: AmortizationTransactionFactKind.initial,
         localCategoryAllocations: const [],
       ),
     ],
     kind: AmortizationKind.prepaidExpense,
-    factKind: AmortizationTransactionFactKind.initial,
   );
 }
 

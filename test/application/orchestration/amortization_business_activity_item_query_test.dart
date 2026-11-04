@@ -21,42 +21,58 @@ void main() {
       AmortizationPlanQueryService(repository),
     );
 
-    final items = await query.findForTransactions({
-      plan.id: {'refund-tx', 'termination-tx', 'unrelated-tx'},
+    final items = await query.findItemsForTransactions({
+      plan.id: {
+        'refund-tx',
+        'termination-recognition-tx',
+        'termination-return-tx',
+        'unrelated-tx',
+      },
     });
 
-    expect(items.keys, containsAll(['refund-tx', 'termination-tx']));
-    expect(items.keys, isNot(contains('unrelated-tx')));
     expect(
-      items['refund-tx']!.factKind,
-      AmortizationTransactionFactKind.refund,
+      items.keys,
+      containsAll([
+        'refund-tx',
+        'termination-recognition-tx',
+        'termination-return-tx',
+      ]),
     );
-    expect(items['refund-tx']!.role, BusinessActivityItemRole.followUp);
+    expect(items.keys, isNot(contains('unrelated-tx')));
+    final refundItem = items['refund-tx']!;
+    final refundProjection = refundItem.projectionFor('refund-tx')!;
+    expect(refundProjection.factKind, AmortizationTransactionFactKind.refund);
+    expect(refundItem.role, BusinessActivityItemRole.followUp);
     expect(
-      items['refund-tx']!.itemKey,
+      refundItem.itemKey,
       const BusinessActivityItemKey(
         type: amortizationRefundBusinessActivityItemType,
         id: 'refund',
       ),
     );
-    expect(items['refund-tx']!.refundId, 'refund');
+    expect(refundItem.refundId, 'refund');
     expect(
-      items['refund-tx']!.localCategoryAllocations.single.amount,
+      refundProjection.localCategoryAllocations.single.amount,
       const Money(minorUnits: 1000),
     );
-    expect(
-      items['termination-tx']!.factKind,
+
+    final terminationRecognition = items['termination-recognition-tx']!;
+    final terminationReturn = items['termination-return-tx']!;
+    expect(terminationReturn.itemKey, terminationRecognition.itemKey);
+    expect(terminationRecognition.projections, hasLength(2));
+    expect(terminationRecognition.projections.map((item) => item.factKind), [
       AmortizationTransactionFactKind.terminationRecognition,
-    );
-    expect(items['termination-tx']!.role, BusinessActivityItemRole.followUp);
+      AmortizationTransactionFactKind.terminationReturn,
+    ]);
     expect(
-      items['termination-tx']!.itemKey,
+      terminationRecognition.itemKey,
       const BusinessActivityItemKey(
         type: amortizationTerminationBusinessActivityItemType,
         id: 'termination',
       ),
     );
-    expect(items['termination-tx']!.terminationId, 'termination');
+    expect(terminationRecognition.role, BusinessActivityItemRole.followUp);
+    expect(terminationRecognition.terminationId, 'termination');
   });
 
   test('watch requests only the current plan IDs', () async {
@@ -66,12 +82,35 @@ void main() {
       AmortizationPlanQueryService(repository),
     );
 
-    await query.watchForTransactions({
+    final items = await query.watchItemsForTransactions({
       plan.id: {'refund-tx'},
     }).first;
 
     expect(repository.lastWatchIds, {plan.id});
+    expect(items['refund-tx']!.projections.single.refundId, 'refund');
   });
+
+  test(
+    'watching either termination projection returns one shared item',
+    () async {
+      final plan = _planWithRefundAndTermination();
+      final repository = _FakeAmortizationRepository([plan]);
+      final query = AmortizationBusinessActivityItemQueryService(
+        AmortizationPlanQueryService(repository),
+      );
+
+      final items = await query.watchItemsForTransactions({
+        plan.id: {'termination-recognition-tx', 'termination-return-tx'},
+      }).first;
+
+      expect(items, hasLength(2));
+      expect(
+        items['termination-recognition-tx'],
+        same(items['termination-return-tx']),
+      );
+      expect(items.values.first.projections, hasLength(2));
+    },
+  );
 
   test('watch does not emit an unchanged projection', () async {
     final plan = _planWithRefundAndTermination();
@@ -79,9 +118,9 @@ void main() {
     final query = AmortizationBusinessActivityItemQueryService(
       AmortizationPlanQueryService(repository),
     );
-    final events = <Map<String, AmortizationBusinessActivityItemProjection>>[];
+    final events = <Map<String, AmortizationBusinessActivityItemReadModel>>[];
     final subscription = query
-        .watchForTransactions({
+        .watchItemsForTransactions({
           plan.id: {'refund-tx'},
         })
         .listen(events.add);
@@ -94,9 +133,47 @@ void main() {
 
     expect(events, hasLength(1));
   });
+
+  test('one projection change emits one logical item', () async {
+    final original = _planWithRefundAndTermination();
+    final changed = _planWithRefundAndTermination(terminationReturnMinor: 500);
+    final repository = _ControllableAmortizationRepository();
+    final query = AmortizationBusinessActivityItemQueryService(
+      AmortizationPlanQueryService(repository),
+    );
+    final events = <Map<String, AmortizationBusinessActivityItemReadModel>>[];
+    final subscription = query
+        .watchItemsForTransactions({
+          original.id: {'termination-recognition-tx', 'termination-return-tx'},
+        })
+        .listen(events.add);
+    addTearDown(subscription.cancel);
+
+    repository.add([original]);
+    await pumpEventQueue();
+    repository.add([changed]);
+    await pumpEventQueue();
+
+    expect(events, hasLength(2));
+    expect(events.last.keys, hasLength(2));
+    expect(
+      events.last.values.map((item) => item.itemKey).toSet(),
+      hasLength(1),
+    );
+    expect(
+      events.last.values.first
+          .projectionFor('termination-return-tx')!
+          .localCategoryAllocations
+          .single
+          .amount,
+      const Money(minorUnits: 500),
+    );
+  });
 }
 
-AmortizationPlan _planWithRefundAndTermination() {
+AmortizationPlan _planWithRefundAndTermination({
+  int terminationReturnMinor = 1000,
+}) {
   final created = AmortizationPlan.create(
     id: 'plan',
     kind: AmortizationKind.prepaidExpense,
@@ -136,9 +213,16 @@ AmortizationPlan _planWithRefundAndTermination() {
       id: 'termination',
       planId: created.id,
       terminatedAt: DateTime(2026, 2, 1),
-      categoryReturnAllocations: const [],
-      settlementAllocations: const [],
-      recognitionTransactionId: 'termination-tx',
+      categoryReturnAllocations: singleAllocation(
+        accountId: 'rent',
+        amount: Money(minorUnits: terminationReturnMinor),
+      ),
+      settlementAllocations: singleAllocation(
+        accountId: 'cash',
+        amount: Money(minorUnits: terminationReturnMinor),
+      ),
+      recognitionTransactionId: 'termination-recognition-tx',
+      returnTransactionId: 'termination-return-tx',
     ),
     periods: refunded.periods,
   );

@@ -14,6 +14,83 @@ const String amortizationRefundBusinessActivityItemType =
 const String amortizationTerminationBusinessActivityItemType =
     'orchestration.amortization_termination';
 
+/// One logical amortization activity item and every transaction projection
+/// that carries its local business facts.
+final class AmortizationBusinessActivityItemReadModel {
+  AmortizationBusinessActivityItemReadModel({
+    required this.planId,
+    required this.itemKey,
+    required this.kind,
+    required this.role,
+    required Iterable<AmortizationBusinessActivityItemProjection> projections,
+    this.refundId,
+    this.terminationId,
+  }) : projections = List.unmodifiable(projections) {
+    if (this.projections.isEmpty) {
+      throw ArgumentError.value(
+        this.projections,
+        'projections',
+        'An amortization activity item requires at least one projection.',
+      );
+    }
+    final transactionIds = <String>{};
+    for (final projection in this.projections) {
+      if (projection.planId != planId ||
+          projection.itemKey != itemKey ||
+          projection.kind != kind ||
+          projection.role != role ||
+          !transactionIds.add(projection.transactionId)) {
+        throw ArgumentError.value(
+          projection,
+          'projections',
+          'Projections must share one plan, item, kind and role, with unique '
+              'transactions.',
+        );
+      }
+    }
+  }
+
+  final String planId;
+  final BusinessActivityItemKey itemKey;
+  final AmortizationKind kind;
+  final BusinessActivityItemRole role;
+  final List<AmortizationBusinessActivityItemProjection> projections;
+  final String? refundId;
+  final String? terminationId;
+
+  AmortizationBusinessActivityItemProjection? projectionFor(
+    String transactionId,
+  ) {
+    for (final projection in projections) {
+      if (projection.transactionId == transactionId) return projection;
+    }
+    return null;
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AmortizationBusinessActivityItemReadModel &&
+        other.planId == planId &&
+        other.itemKey == itemKey &&
+        other.kind == kind &&
+        other.role == role &&
+        other.refundId == refundId &&
+        other.terminationId == terminationId &&
+        _sameProjections(other.projections, projections);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    planId,
+    itemKey,
+    kind,
+    role,
+    refundId,
+    terminationId,
+    Object.hashAll(projections),
+  );
+}
+
 /// Business item facts for one amortization transaction.
 ///
 /// Activity-level amounts and progress stay in the business activity summary.
@@ -82,110 +159,235 @@ final class AmortizationBusinessActivityItemProjection {
   );
 }
 
-/// Projects only the amortization transactions requested by a transaction
-/// view. Transaction roles and owner-level summaries stay in the amortization
-/// application domain.
+/// Projects the logical activity items hit by the requested transactions.
+/// Each returned item carries all of its own projections while unrelated plan
+/// facts stay out of the result. Owner-level summaries remain separate.
 class AmortizationBusinessActivityItemQueryService {
   const AmortizationBusinessActivityItemQueryService(this._plans);
 
   final AmortizationPlanQueryService _plans;
 
-  Future<Map<String, AmortizationBusinessActivityItemProjection>>
-  findForTransactions(Map<String, Set<String>> transactionIdsByPlanId) async {
+  Future<Map<String, AmortizationBusinessActivityItemReadModel>>
+  findItemsForTransactions(
+    Map<String, Set<String>> transactionIdsByPlanId,
+  ) async {
     if (transactionIdsByPlanId.isEmpty) return const {};
     final plans = await _plans.findByIds(transactionIdsByPlanId.keys.toSet());
-    return _project(plans, transactionIdsByPlanId);
+    return _projectItems(plans, transactionIdsByPlanId);
   }
 
-  Stream<Map<String, AmortizationBusinessActivityItemProjection>>
-  watchForTransactions(Map<String, Set<String>> transactionIdsByPlanId) {
+  Stream<Map<String, AmortizationBusinessActivityItemReadModel>>
+  watchItemsForTransactions(Map<String, Set<String>> transactionIdsByPlanId) {
     if (transactionIdsByPlanId.isEmpty) {
       return Stream.value(const {});
     }
     final planIds = transactionIdsByPlanId.keys.toSet();
     return _plans
         .watchByIds(planIds)
-        .map((plans) => _project(plans, transactionIdsByPlanId))
-        .distinct(_sameProjections);
+        .map((plans) => _projectItems(plans, transactionIdsByPlanId))
+        .distinct(_sameItems);
   }
 
-  Map<String, AmortizationBusinessActivityItemProjection> _project(
+  Future<Map<String, AmortizationBusinessActivityItemProjection>>
+  findForTransactions(Map<String, Set<String>> transactionIdsByPlanId) async {
+    final items = await findItemsForTransactions(transactionIdsByPlanId);
+    return {
+      for (final entry in items.entries)
+        entry.key: ?entry.value.projectionFor(entry.key),
+    };
+  }
+
+  Stream<Map<String, AmortizationBusinessActivityItemProjection>>
+  watchForTransactions(Map<String, Set<String>> transactionIdsByPlanId) {
+    return watchItemsForTransactions(transactionIdsByPlanId).map((items) {
+      return {
+        for (final entry in items.entries)
+          entry.key: ?entry.value.projectionFor(entry.key),
+      };
+    });
+  }
+
+  Map<String, AmortizationBusinessActivityItemReadModel> _projectItems(
     Iterable<AmortizationPlan> plans,
     Map<String, Set<String>> transactionIdsByPlanId,
   ) {
-    final items = <String, AmortizationBusinessActivityItemProjection>{};
+    final items = <String, AmortizationBusinessActivityItemReadModel>{};
     for (final plan in plans) {
       final transactionIds = transactionIdsByPlanId[plan.id] ?? const {};
-      for (final transactionId in transactionIds) {
-        final factKind = plan.transactionFactKind(transactionId);
-        if (factKind == null) continue;
-        final period = plan.periods
-            .where((period) => period.transactionId == transactionId)
-            .firstOrNull;
-        final refund = plan.refunds
-            .where((refund) => refund.transferTransactionId == transactionId)
-            .firstOrNull;
-        final termination = plan.termination;
-        final localCategories = switch (factKind) {
-          AmortizationTransactionFactKind.initial => plan.categoryAllocations,
-          AmortizationTransactionFactKind.recognition =>
-            period?.categoryAllocations ?? const [],
-          AmortizationTransactionFactKind.refund =>
-            refund?.categoryAllocations ?? const [],
-          AmortizationTransactionFactKind.terminationRecognition =>
-            plan.terminationRecognitionCategoryAllocations,
-          AmortizationTransactionFactKind.terminationReturn =>
-            termination?.categoryReturnAllocations ?? const [],
-        };
-        final itemKey = switch (factKind) {
-          AmortizationTransactionFactKind.initial => BusinessActivityItemKey(
-            type: amortizationPlanBusinessActivityItemType,
-            id: plan.id,
+      if (transactionIds.isEmpty) continue;
+      final requestedFactKinds = {
+        for (final transactionId in transactionIds)
+          transactionId: ?plan.transactionFactKind(transactionId),
+      };
+      if (requestedFactKinds.isEmpty) continue;
+      final requestedItemKeys = {
+        for (final entry in requestedFactKinds.entries)
+          _itemKeyFor(plan, entry.key, entry.value),
+      };
+
+      final projectionsByItem =
+          <
+            BusinessActivityItemKey,
+            List<AmortizationBusinessActivityItemProjection>
+          >{};
+      for (final projection in _projectPlan(
+        plan,
+        requestedItemKeys: requestedItemKeys,
+      )) {
+        projectionsByItem
+            .putIfAbsent(projection.itemKey, () => [])
+            .add(projection);
+      }
+      final itemsByKey = {
+        for (final entry in projectionsByItem.entries)
+          entry.key: AmortizationBusinessActivityItemReadModel(
+            planId: plan.id,
+            itemKey: entry.key,
+            kind: plan.kind,
+            role: entry.value.first.role,
+            refundId: entry.value.first.refundId,
+            terminationId: entry.value.first.terminationId,
+            projections: entry.value,
           ),
-          AmortizationTransactionFactKind.recognition =>
-            BusinessActivityItemKey(
-              type: amortizationPeriodBusinessActivityItemType,
-              id: period!.id,
-            ),
-          AmortizationTransactionFactKind.refund => BusinessActivityItemKey(
-            type: amortizationRefundBusinessActivityItemType,
-            id: refund!.id,
-          ),
-          AmortizationTransactionFactKind.terminationRecognition ||
-          AmortizationTransactionFactKind.terminationReturn =>
-            BusinessActivityItemKey(
-              type: amortizationTerminationBusinessActivityItemType,
-              id: termination!.id,
-            ),
-        };
-        items[transactionId] = AmortizationBusinessActivityItemProjection(
-          planId: plan.id,
-          transactionId: transactionId,
-          itemKey: itemKey,
-          kind: plan.kind,
-          localCategoryAllocations: localCategories,
-          occurrencePeriodSequence: period?.sequenceNo,
-          occurrencePeriodDueAt: period?.dueAt,
-          factKind: factKind,
-          role: factKind == AmortizationTransactionFactKind.initial
-              ? BusinessActivityItemRole.origin
-              : BusinessActivityItemRole.followUp,
-          refundId: refund?.id,
-          terminationId:
-              factKind ==
-                      AmortizationTransactionFactKind.terminationRecognition ||
-                  factKind == AmortizationTransactionFactKind.terminationReturn
-              ? termination?.id
-              : null,
-        );
+      };
+      for (final entry in requestedFactKinds.entries) {
+        final itemKey = _itemKeyFor(plan, entry.key, entry.value);
+        if (itemsByKey[itemKey] case final item?) {
+          items[entry.key] = item;
+        }
       }
     }
     return items;
   }
 
-  bool _sameProjections(
-    Map<String, AmortizationBusinessActivityItemProjection> left,
-    Map<String, AmortizationBusinessActivityItemProjection> right,
+  Iterable<AmortizationBusinessActivityItemProjection> _projectPlan(
+    AmortizationPlan plan, {
+    required Set<BusinessActivityItemKey> requestedItemKeys,
+  }) sync* {
+    final initialItemKey = BusinessActivityItemKey(
+      type: amortizationPlanBusinessActivityItemType,
+      id: plan.id,
+    );
+    if (requestedItemKeys.contains(initialItemKey)) {
+      yield AmortizationBusinessActivityItemProjection(
+        planId: plan.id,
+        transactionId: plan.initialTransactionId,
+        itemKey: initialItemKey,
+        kind: plan.kind,
+        factKind: AmortizationTransactionFactKind.initial,
+        role: BusinessActivityItemRole.origin,
+        localCategoryAllocations: plan.categoryAllocations,
+      );
+    }
+    for (final period in plan.periods) {
+      final transactionId = period.transactionId;
+      if (transactionId == null) continue;
+      final itemKey = BusinessActivityItemKey(
+        type: amortizationPeriodBusinessActivityItemType,
+        id: period.id,
+      );
+      if (!requestedItemKeys.contains(itemKey)) continue;
+      yield AmortizationBusinessActivityItemProjection(
+        planId: plan.id,
+        transactionId: transactionId,
+        itemKey: itemKey,
+        kind: plan.kind,
+        factKind: AmortizationTransactionFactKind.recognition,
+        role: BusinessActivityItemRole.followUp,
+        localCategoryAllocations: period.categoryAllocations,
+        occurrencePeriodSequence: period.sequenceNo,
+        occurrencePeriodDueAt: period.dueAt,
+      );
+    }
+    for (final refund in plan.refunds) {
+      final itemKey = BusinessActivityItemKey(
+        type: amortizationRefundBusinessActivityItemType,
+        id: refund.id,
+      );
+      if (!requestedItemKeys.contains(itemKey)) continue;
+      yield AmortizationBusinessActivityItemProjection(
+        planId: plan.id,
+        transactionId: refund.transferTransactionId,
+        itemKey: itemKey,
+        kind: plan.kind,
+        factKind: AmortizationTransactionFactKind.refund,
+        role: BusinessActivityItemRole.followUp,
+        localCategoryAllocations: refund.categoryAllocations,
+        refundId: refund.id,
+      );
+    }
+    final termination = plan.termination;
+    if (termination == null) return;
+    final terminationItemKey = BusinessActivityItemKey(
+      type: amortizationTerminationBusinessActivityItemType,
+      id: termination.id,
+    );
+    if (!requestedItemKeys.contains(terminationItemKey)) return;
+    final recognitionTransactionId = termination.recognitionTransactionId;
+    if (recognitionTransactionId != null) {
+      yield AmortizationBusinessActivityItemProjection(
+        planId: plan.id,
+        transactionId: recognitionTransactionId,
+        itemKey: terminationItemKey,
+        kind: plan.kind,
+        factKind: AmortizationTransactionFactKind.terminationRecognition,
+        role: BusinessActivityItemRole.followUp,
+        localCategoryAllocations:
+            plan.terminationRecognitionCategoryAllocations,
+        terminationId: termination.id,
+      );
+    }
+    final returnTransactionId = termination.returnTransactionId;
+    if (returnTransactionId != null) {
+      yield AmortizationBusinessActivityItemProjection(
+        planId: plan.id,
+        transactionId: returnTransactionId,
+        itemKey: terminationItemKey,
+        kind: plan.kind,
+        factKind: AmortizationTransactionFactKind.terminationReturn,
+        role: BusinessActivityItemRole.followUp,
+        localCategoryAllocations: termination.categoryReturnAllocations,
+        terminationId: termination.id,
+      );
+    }
+  }
+
+  BusinessActivityItemKey _itemKeyFor(
+    AmortizationPlan plan,
+    String transactionId,
+    AmortizationTransactionFactKind factKind,
+  ) {
+    return switch (factKind) {
+      AmortizationTransactionFactKind.initial => BusinessActivityItemKey(
+        type: amortizationPlanBusinessActivityItemType,
+        id: plan.id,
+      ),
+      AmortizationTransactionFactKind.recognition => BusinessActivityItemKey(
+        type: amortizationPeriodBusinessActivityItemType,
+        id: plan.periods
+            .singleWhere((period) => period.transactionId == transactionId)
+            .id,
+      ),
+      AmortizationTransactionFactKind.refund => BusinessActivityItemKey(
+        type: amortizationRefundBusinessActivityItemType,
+        id: plan.refunds
+            .singleWhere(
+              (refund) => refund.transferTransactionId == transactionId,
+            )
+            .id,
+      ),
+      AmortizationTransactionFactKind.terminationRecognition ||
+      AmortizationTransactionFactKind.terminationReturn =>
+        BusinessActivityItemKey(
+          type: amortizationTerminationBusinessActivityItemType,
+          id: plan.termination!.id,
+        ),
+    };
+  }
+
+  bool _sameItems(
+    Map<String, AmortizationBusinessActivityItemReadModel> left,
+    Map<String, AmortizationBusinessActivityItemReadModel> right,
   ) {
     if (left.length != right.length) return false;
     for (final entry in left.entries) {
@@ -193,6 +395,17 @@ class AmortizationBusinessActivityItemQueryService {
     }
     return true;
   }
+}
+
+bool _sameProjections(
+  List<AmortizationBusinessActivityItemProjection> left,
+  List<AmortizationBusinessActivityItemProjection> right,
+) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
 }
 
 bool _sameAllocations(

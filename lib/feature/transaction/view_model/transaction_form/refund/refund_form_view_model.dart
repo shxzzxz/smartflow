@@ -226,6 +226,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       amortizationPlanId: plan.id,
       amortizationTermination: termination,
       amortizationRefundId: refund?.id,
+      amortizationTerminationId: terminationFact?.id,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
       availableCategoryAllocations: availableCategories,
@@ -631,6 +632,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
               await service.editTermination(
                 EditAmortizationTerminationCommand(
                   planId: planId,
+                  terminationId: current.amortizationTerminationId!,
                   terminatedAt: current.occurredAt,
                   categoryReturnAllocations: categoryAllocations,
                   settlementAllocations: settlementAllocations,
@@ -804,6 +806,7 @@ class RefundFormState {
     this.amortizationPlanId,
     this.amortizationTermination = false,
     this.amortizationRefundId,
+    this.amortizationTerminationId,
     this.message,
   }) : accounts = List.unmodifiable(accounts),
        categoryAccounts = List.unmodifiable(categoryAccounts),
@@ -832,6 +835,7 @@ class RefundFormState {
     String? amortizationPlanId,
     bool amortizationTermination = false,
     String? amortizationRefundId,
+    String? amortizationTerminationId,
     String? message,
   }) {
     return RefundFormState(
@@ -855,6 +859,7 @@ class RefundFormState {
       amortizationPlanId: amortizationPlanId,
       amortizationTermination: amortizationTermination,
       amortizationRefundId: amortizationRefundId,
+      amortizationTerminationId: amortizationTerminationId,
       message: message,
       submitting: false,
       amountText: amountText,
@@ -922,6 +927,7 @@ class RefundFormState {
   final String? amortizationPlanId;
   final bool amortizationTermination;
   final String? amortizationRefundId;
+  final String? amortizationTerminationId;
   final String? message;
   final List<Account> accounts;
   final List<Account> categoryAccounts;
@@ -961,6 +967,7 @@ class RefundFormState {
       amortizationPlanId: amortizationPlanId,
       amortizationTermination: amortizationTermination,
       amortizationRefundId: amortizationRefundId,
+      amortizationTerminationId: amortizationTerminationId,
       message: message,
       accounts: accounts,
       categoryAccounts: categoryAccounts,

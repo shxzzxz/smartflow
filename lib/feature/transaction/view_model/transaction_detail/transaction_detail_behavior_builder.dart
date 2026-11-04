@@ -5,9 +5,10 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
 ) {
   final transaction = context.transaction;
   final item = context.businessItem;
+  final amortizationFactKind = _amortizationFactKind(context);
   const postedAtPermission = DetailEditPermission.allowed();
   if (item is AmortizationBusinessActivityItem) {
-    switch (item.factKind) {
+    switch (amortizationFactKind) {
       case AmortizationTransactionFactKind.refund:
         return DetailBehaviorConfig(
           editRoute: '/transaction/${transaction.id}/refund/edit',
@@ -32,6 +33,7 @@ DetailBehaviorConfig _buildTransactionDetailBehavior(
         );
       case AmortizationTransactionFactKind.initial:
       case AmortizationTransactionFactKind.recognition:
+      case null:
         break;
     }
   }
@@ -243,7 +245,8 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
   if (item is AmortizationBusinessActivityItem) {
     final summary = businessActivity?.summary;
     final showsPlanActions =
-        item.factKind == AmortizationTransactionFactKind.initial;
+        _amortizationFactKind(context) ==
+        AmortizationTransactionFactKind.initial;
     if (showsPlanActions) {
       final amortizationSummary = summary is AmortizationBusinessActivitySummary
           ? summary
@@ -289,18 +292,18 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
           !editLocked &&
           !(item is AmortizationBusinessActivityItem &&
               context.isAmortizationTerminated &&
-              item.factKind !=
+              _amortizationFactKind(context) !=
                   AmortizationTransactionFactKind.terminationRecognition &&
-              item.factKind !=
+              _amortizationFactKind(context) !=
                   AmortizationTransactionFactKind.terminationReturn),
       route: behavior.editRoute,
       deniedReason: editLocked
           ? _advanceSettledEditReason
           : item is AmortizationBusinessActivityItem &&
                 context.isAmortizationTerminated &&
-                item.factKind !=
+                _amortizationFactKind(context) !=
                     AmortizationTransactionFactKind.terminationRecognition &&
-                item.factKind !=
+                _amortizationFactKind(context) !=
                     AmortizationTransactionFactKind.terminationReturn
           ? '请先删除摊销终止'
           : null,
@@ -374,6 +377,16 @@ const String _advanceSettledEditReason = '垫付已结清，请先删除垫付�
 
 String _transactionDetailDeleteMessage(TransactionDetailContext context) {
   final detail = context.transaction;
+  if (context.businessItem is AmortizationBusinessActivityItem) {
+    return switch (_amortizationFactKind(context)) {
+      AmortizationTransactionFactKind.refund =>
+        '此操作将删除这笔摊销退款及其转账交易，并按剩余净额重算摊销期次，无法恢复。',
+      AmortizationTransactionFactKind.terminationRecognition ||
+      AmortizationTransactionFactKind.terminationReturn =>
+        '此操作将删除该笔摊销终止及其关联交易，恢复并补齐摊销期次，无法恢复。',
+      _ => '此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。',
+    };
+  }
   return switch (context.businessItem) {
     InstallmentBusinessActivityItem()
         when detail.businessPurpose == BusinessPurpose.refund =>
@@ -381,19 +394,18 @@ String _transactionDetailDeleteMessage(TransactionDetailContext context) {
     InstallmentBusinessActivityItem() => '此操作将删除关联分期、还款计划及其关联账务记录，无法恢复。',
     RepaymentBusinessActivityItem() =>
       '此操作将删除还款记录及其关联交易，并重新计算相关账单与分期的还款状态，无法恢复。',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.refund,
-    ) =>
-      '此操作将删除这笔摊销退款及其转账交易，并按剩余净额重算摊销期次，无法恢复。',
-    AmortizationBusinessActivityItem(
-      factKind: AmortizationTransactionFactKind.terminationRecognition ||
-          AmortizationTransactionFactKind.terminationReturn,
-    ) =>
-      '此操作将删除该笔摊销终止及其关联交易，恢复并补齐摊销期次，无法恢复。',
-    AmortizationBusinessActivityItem() => '此操作将删除整个摊销计划及其全部关联账务交易，无法恢复。',
     _ =>
       detail.parentTransactionId == null
           ? '此操作将删除整个交易组及其账务记录（包括退款、垫付等子交易），无法恢复。'
           : '此操作仅删除当前子交易及其账务记录，无法恢复。',
   };
+}
+
+AmortizationTransactionFactKind? _amortizationFactKind(
+  TransactionDetailContext context,
+) {
+  final projection = context.transactionProjection;
+  return projection is AmortizationTransactionProjection
+      ? projection.factKind
+      : null;
 }

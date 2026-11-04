@@ -54,6 +54,10 @@ LIMIT ?
         _db.transactionLines,
         _db.transactionTags,
         _db.amortizationPlans,
+        _db.amortizationPeriods,
+        _db.amortizationRefunds,
+        _db.amortizationTerminations,
+        _db.amortizationAllocations,
       },
     );
   }
@@ -87,6 +91,7 @@ final class _AmortizationAnchorSql {
   final String activityIdExpression;
   final String planAlias;
   final List<String> _conditions = [];
+  final List<String> _eventConditions = [];
   final List<Variable> _variables = [];
 
   List<Variable> get variables => List.unmodifiable(_variables);
@@ -123,19 +128,57 @@ final class _AmortizationAnchorSql {
       }
     }
 
+    _applyEventFilters(query);
+    if (_eventConditions.isNotEmpty) {
+      final eventConditions = _eventConditions.join(' AND ');
+      _conditions.add(
+        'EXISTS (SELECT 1 FROM transactions event '
+        'WHERE event.parent_transaction_id IS NULL '
+        'AND event.owner_type = \'$orchestrationAmortizationOwnerType\' '
+        'AND event.owner_id = $planAlias.id '
+        'AND $eventConditions)',
+      );
+    }
+  }
+
+  void _applyEventFilters(AmortizationTransactionViewQuery query) {
     final categories = query.categoryAccountIds;
     if (categories != null) {
       if (categories.isEmpty) {
-        _conditions.add('0 = 1');
+        _eventConditions.add('0 = 1');
       } else {
         final placeholders = _placeholders(categories.length);
         _variables.addAll(_stringVariables(categories));
-        _conditions.add(
-          'EXISTS (SELECT 1 FROM amortization_allocations category_match '
-          'WHERE category_match.subject_type = \'plan\' '
+        _variables.addAll(_stringVariables(categories));
+        _eventConditions.add(
+          '('
+          'EXISTS (SELECT 1 FROM amortization_terminations recognition '
+          'WHERE recognition.recognition_transaction_id = event.id '
+          'AND EXISTS (SELECT 1 FROM transaction_lines category_line '
+          'WHERE category_line.transaction_id = event.id '
+          'AND category_line.role = \'category\' '
+          'AND category_line.account_id IN ($placeholders))) '
+          'OR EXISTS (SELECT 1 FROM amortization_allocations category_match '
+          'WHERE category_match.dimension = \'category\' '
+          'AND category_match.account_id IN ($placeholders) '
+          'AND ('
+          '(category_match.subject_type = \'plan\' '
           'AND category_match.subject_id = $planAlias.id '
-          'AND category_match.dimension = \'category\' '
-          'AND category_match.account_id IN ($placeholders))',
+          'AND event.id = $planAlias.initial_transaction_id) '
+          'OR (category_match.subject_type = \'period\' '
+          'AND EXISTS (SELECT 1 FROM amortization_periods period_match '
+          'WHERE period_match.id = category_match.subject_id '
+          'AND period_match.transaction_id = event.id)) '
+          'OR (category_match.subject_type = \'refund\' '
+          'AND EXISTS (SELECT 1 FROM amortization_refunds refund_match '
+          'WHERE refund_match.id = category_match.subject_id '
+          'AND refund_match.transfer_transaction_id = event.id)) '
+          'OR (category_match.subject_type = \'termination\' '
+          'AND EXISTS (SELECT 1 FROM amortization_terminations termination_match '
+          'WHERE termination_match.id = category_match.subject_id '
+          'AND termination_match.return_transaction_id = event.id))'
+          '))'
+          ')',
         );
       }
     }
@@ -152,26 +195,26 @@ final class _AmortizationAnchorSql {
     final tags = query.tagIds;
     if (tags != null) {
       if (tags.isEmpty) {
-        _conditions.add('0 = 1');
+        _eventConditions.add('0 = 1');
       } else {
         final placeholders = _placeholders(tags.length);
         _variables.addAll(_stringVariables(tags));
-        _conditions.add(
+        _eventConditions.add(
           'EXISTS (SELECT 1 FROM transaction_tags tag_match '
-          'WHERE tag_match.transaction_id = $transactionAlias.id '
+          'WHERE tag_match.transaction_id = event.id '
           'AND tag_match.tag_id IN ($placeholders))',
         );
       }
     } else if (query.untaggedOnly) {
-      _conditions.add(
+      _eventConditions.add(
         'NOT EXISTS (SELECT 1 FROM transaction_tags tag_match '
-        'WHERE tag_match.transaction_id = $transactionAlias.id)',
+        'WHERE tag_match.transaction_id = event.id)',
       );
     }
 
     final counterpartyId = query.counterpartyId;
     if (counterpartyId != null) {
-      _conditions.add('$transactionAlias.counterparty_id = ?');
+      _eventConditions.add('event.counterparty_id = ?');
       _variables.add(Variable<String>(counterpartyId));
     }
   }
@@ -184,7 +227,7 @@ final class _AmortizationAnchorSql {
     required String alias,
   }) {
     if (accountIds.isEmpty) {
-      _conditions.add('0 = 1');
+      _eventConditions.add('0 = 1');
       return;
     }
     final placeholders = _placeholders(accountIds.length);
@@ -192,9 +235,9 @@ final class _AmortizationAnchorSql {
     final rolePlaceholders = roles
         .map((role) => "'${role.replaceAll("'", "''")}'")
         .join(', ');
-    _conditions.add(
+    _eventConditions.add(
       'EXISTS (SELECT 1 FROM transaction_lines $alias '
-      'WHERE $alias.transaction_id = $transactionAlias.id '
+      'WHERE $alias.transaction_id = event.id '
       'AND $alias.role IN ($rolePlaceholders) '
       'AND $alias.account_id IN ($placeholders))',
     );

@@ -447,7 +447,10 @@ TransactionRowPresentation buildTransactionRowPresentation({
       ? nonEntryBusinessActivityItemTitle(businessItem, item)
       : null;
   final avatarKind = isNonEntry
-      ? businessActivityItemAvatarKind(businessItem)
+      ? businessActivityItemAvatarKind(
+          businessItem,
+          projection: transactionProjection,
+        )
       : null;
 
   return TransactionRowPresentation(

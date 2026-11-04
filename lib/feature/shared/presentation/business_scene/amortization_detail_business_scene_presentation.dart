@@ -10,8 +10,10 @@ TransactionDetailBusinessContent presentAmortizationDetailBusinessScene(
   final item = context.businessItem;
   final activity = detail.businessActivity;
   final summary = activity?.summary;
+  final projection = context.transactionProjection;
   if (item is! AmortizationBusinessActivityItem ||
-      item.factKind != AmortizationTransactionFactKind.initial ||
+      projection is! AmortizationTransactionProjection ||
+      projection.factKind != AmortizationTransactionFactKind.initial ||
       summary is! AmortizationBusinessActivitySummary ||
       activity == null) {
     return const TransactionDetailBusinessContent();

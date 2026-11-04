@@ -324,6 +324,9 @@ void main() {
         fixture.database,
         planId,
       );
+      final terminationId = (await fixture.repository.findById(
+        planId,
+      ))!.termination!.id;
       final service = AmortizationPlanAppServiceImpl(
         repository: _FailAfterSaveRepository(fixture.database),
         ledger: fixture.ledger,
@@ -335,6 +338,7 @@ void main() {
         service.deleteTermination(
           DeleteAmortizationTerminationCommand(
             planId: planId,
+            terminationId: terminationId,
             now: DateTime(2026, 4, 1),
           ),
         ),

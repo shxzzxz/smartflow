@@ -21,7 +21,7 @@ final class AmortizationBusinessActivityItemSource
     Iterable<TransactionReadModel> transactions,
   ) async {
     final values = transactions.toList();
-    final items = await _query.findForTransactions(_groupByOwner(values));
+    final items = await _query.findItemsForTransactions(_groupByOwner(values));
     final transactionsById = {
       for (final transaction in values) transaction.id: transaction,
     };
@@ -41,7 +41,7 @@ final class AmortizationBusinessActivityItemSource
       for (final transaction in values) transaction.id: transaction,
     };
     return _query
-        .watchForTransactions(_groupByOwner(values))
+        .watchItemsForTransactions(_groupByOwner(values))
         .map(
           (items) => {
             for (final entry in items.entries)
@@ -71,7 +71,7 @@ final class AmortizationBusinessActivityItemSource
   }
 
   BusinessActivityItem _map(
-    AmortizationBusinessActivityItemProjection item,
+    AmortizationBusinessActivityItemReadModel item,
     TransactionReadModel transaction,
   ) {
     return AmortizationBusinessActivityItem(
@@ -83,15 +83,16 @@ final class AmortizationBusinessActivityItemSource
       role: item.role,
       occurredAt: transaction.occurredAt,
       projections: [
-        AmortizationTransactionProjection(
-          transactionId: item.transactionId,
-          localCategoryAllocations: item.localCategoryAllocations,
-          occurrencePeriodSequence: item.occurrencePeriodSequence,
-          occurrencePeriodDueAt: item.occurrencePeriodDueAt,
-        ),
+        for (final projection in item.projections)
+          AmortizationTransactionProjection(
+            transactionId: projection.transactionId,
+            factKind: projection.factKind,
+            localCategoryAllocations: projection.localCategoryAllocations,
+            occurrencePeriodSequence: projection.occurrencePeriodSequence,
+            occurrencePeriodDueAt: projection.occurrencePeriodDueAt,
+          ),
       ],
       kind: item.kind,
-      factKind: item.factKind,
       refundId: item.refundId,
       terminationId: item.terminationId,
     );

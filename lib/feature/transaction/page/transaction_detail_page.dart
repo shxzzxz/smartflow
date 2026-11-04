@@ -87,15 +87,19 @@ class TransactionDetailPage extends ConsumerWidget {
     }
     final message = loaded.behavior.deleteMessage;
     final item = loaded.context.businessItem;
+    final amortizationProjection = loaded.context.transactionProjection;
     final title = switch (item) {
-      AmortizationBusinessActivityItem(
-        factKind: AmortizationTransactionFactKind.refund,
-      ) =>
+      AmortizationBusinessActivityItem()
+          when amortizationProjection is AmortizationTransactionProjection &&
+              amortizationProjection.factKind ==
+                  AmortizationTransactionFactKind.refund =>
         '删除摊销退款',
-      AmortizationBusinessActivityItem(
-        factKind: AmortizationTransactionFactKind.terminationRecognition ||
-            AmortizationTransactionFactKind.terminationReturn,
-      ) =>
+      AmortizationBusinessActivityItem()
+          when amortizationProjection is AmortizationTransactionProjection &&
+              (amortizationProjection.factKind ==
+                      AmortizationTransactionFactKind.terminationRecognition ||
+                  amortizationProjection.factKind ==
+                      AmortizationTransactionFactKind.terminationReturn) =>
         '删除摊销终止',
       AmortizationBusinessActivityItem() => '删除摊销计划',
       _ => '删除交易',

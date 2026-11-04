@@ -167,6 +167,7 @@ void main() {
           projections: [
             AmortizationTransactionProjection(
               transactionId: 'tx-1',
+              factKind: AmortizationTransactionFactKind.recognition,
               occurrencePeriodSequence: 2,
               localCategoryAllocations: const [
                 AccountAmountAllocation(
@@ -177,7 +178,6 @@ void main() {
             ),
           ],
           kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.recognition,
         ),
         accountLookup: _lookup,
         amountSource: const TransactionGroupAmountSource(),
@@ -188,6 +188,79 @@ void main() {
       expect(row.iconKey, isNull);
       expect(row.avatarKind, TransactionAvatarKind.amortizationRecognition);
       expect(row.preferCategoryArtwork, isFalse);
+    });
+
+    test('multi-projection termination keeps each local title and icon', () {
+      const ownership = TransactionOwnership(
+        ownerType: orchestrationAmortizationOwnerType,
+        ownerId: 'plan',
+      );
+      final businessItem = AmortizationBusinessActivityItem(
+        activityKey: const BusinessActivityKey(
+          type: orchestrationAmortizationOwnerType,
+          id: 'plan',
+        ),
+        itemKey: const BusinessActivityItemKey(
+          type: 'orchestration.amortization_termination',
+          id: 'termination',
+        ),
+        role: BusinessActivityItemRole.followUp,
+        occurredAt: DateTime(2026, 1, 15),
+        projections: [
+          AmortizationTransactionProjection(
+            transactionId: 'termination-recognition',
+            factKind: AmortizationTransactionFactKind.terminationRecognition,
+            localCategoryAllocations: const [],
+          ),
+          AmortizationTransactionProjection(
+            transactionId: 'termination-return',
+            factKind: AmortizationTransactionFactKind.terminationReturn,
+            localCategoryAllocations: const [],
+          ),
+        ],
+        kind: AmortizationKind.prepaidExpense,
+        terminationId: 'termination',
+      );
+
+      final recognition = buildTransactionRowPresentation(
+        item: _item(
+          id: 'termination-recognition',
+          businessPurpose: BusinessPurpose.dailyExpense,
+          categoryAccountId: null,
+          ownership: ownership,
+        ),
+        businessItem: businessItem,
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+      final returned = buildTransactionRowPresentation(
+        item: _item(
+          id: 'termination-return',
+          businessPurpose: BusinessPurpose.transfer,
+          categoryAccountId: null,
+          ownership: ownership,
+        ),
+        businessItem: businessItem,
+        accountLookup: _lookup,
+        amountSource: const TransactionGroupAmountSource(),
+      );
+
+      expect(recognition.title, '终止确认');
+      expect(
+        recognition.avatarKind,
+        TransactionAvatarKind.amortizationTermination,
+      );
+      expect(returned.title, '终止退还');
+      expect(
+        returned.avatarKind,
+        TransactionAvatarKind.amortizationTermination,
+      );
+      expect(
+        (businessItem.projectionFor('termination-return')
+                as AmortizationTransactionProjection)
+            .factKind,
+        AmortizationTransactionFactKind.terminationReturn,
+      );
     });
 
     test('amortization entry keeps category and business supporting text', () {
@@ -214,6 +287,7 @@ void main() {
           projections: [
             AmortizationTransactionProjection(
               transactionId: 'tx-1',
+              factKind: AmortizationTransactionFactKind.initial,
               localCategoryAllocations: const [
                 AccountAmountAllocation(
                   accountId: 'food',
@@ -223,7 +297,6 @@ void main() {
             ),
           ],
           kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.initial,
         ),
         accountLookup: _lookup,
         amountSource: const TransactionGroupAmountSource(),

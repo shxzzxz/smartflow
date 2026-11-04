@@ -465,10 +465,10 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     return _transactionRunner.run(() async {
       final plan = await _requirePlan(command.planId);
       final termination = plan.termination;
-      if (termination == null) {
+      if (termination == null || termination.id != command.terminationId) {
         throw _error(
           AmortizationErrorCode.terminationNotActive,
-          'Amortization plan is not terminated.',
+          'Amortization termination not found.',
         );
       }
       for (final transactionId in {
@@ -500,10 +500,10 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     return _transactionRunner.run(() async {
       final plan = await _requirePlan(command.planId);
       final termination = plan.termination;
-      if (termination == null) {
+      if (termination == null || termination.id != command.terminationId) {
         throw _error(
           AmortizationErrorCode.terminationNotActive,
-          'Amortization plan is not terminated.',
+          'Amortization termination not found.',
         );
       }
       for (final transactionId in {

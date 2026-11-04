@@ -13,46 +13,145 @@ class _MockAmortizationBusinessActivityItemQueryService extends Mock
 void main() {
   test('maps local amortization facts to the activity item', () async {
     final service = _MockAmortizationBusinessActivityItemQueryService();
-    when(() => service.findForTransactions(any())).thenAnswer(
+    when(() => service.findItemsForTransactions(any())).thenAnswer(
       (_) async => {
-        'refund-tx': AmortizationBusinessActivityItemProjection(
+        'termination-recognition-tx': AmortizationBusinessActivityItemReadModel(
           planId: 'plan',
-          transactionId: 'refund-tx',
           itemKey: BusinessActivityItemKey(
-            type: amortizationRefundBusinessActivityItemType,
-            id: 'refund',
+            type: amortizationTerminationBusinessActivityItemType,
+            id: 'termination',
           ),
           kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.refund,
           role: BusinessActivityItemRole.followUp,
-          localCategoryAllocations: const [
-            AccountAmountAllocation(
-              accountId: 'rent',
-              amount: Money(minorUnits: 1000),
+          terminationId: 'termination',
+          projections: [
+            AmortizationBusinessActivityItemProjection(
+              planId: 'plan',
+              transactionId: 'termination-recognition-tx',
+              itemKey: BusinessActivityItemKey(
+                type: amortizationTerminationBusinessActivityItemType,
+                id: 'termination',
+              ),
+              kind: AmortizationKind.prepaidExpense,
+              factKind: AmortizationTransactionFactKind.terminationRecognition,
+              role: BusinessActivityItemRole.followUp,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'rent',
+                  amount: Money(minorUnits: 1000),
+                ),
+              ],
+              terminationId: 'termination',
+            ),
+            AmortizationBusinessActivityItemProjection(
+              planId: 'plan',
+              transactionId: 'termination-return-tx',
+              itemKey: BusinessActivityItemKey(
+                type: amortizationTerminationBusinessActivityItemType,
+                id: 'termination',
+              ),
+              kind: AmortizationKind.prepaidExpense,
+              factKind: AmortizationTransactionFactKind.terminationReturn,
+              role: BusinessActivityItemRole.followUp,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'rent',
+                  amount: Money(minorUnits: 500),
+                ),
+              ],
+              terminationId: 'termination',
             ),
           ],
-          refundId: 'refund',
+        ),
+        'termination-return-tx': AmortizationBusinessActivityItemReadModel(
+          planId: 'plan',
+          itemKey: BusinessActivityItemKey(
+            type: amortizationTerminationBusinessActivityItemType,
+            id: 'termination',
+          ),
+          kind: AmortizationKind.prepaidExpense,
+          role: BusinessActivityItemRole.followUp,
+          terminationId: 'termination',
+          projections: [
+            AmortizationBusinessActivityItemProjection(
+              planId: 'plan',
+              transactionId: 'termination-recognition-tx',
+              itemKey: BusinessActivityItemKey(
+                type: amortizationTerminationBusinessActivityItemType,
+                id: 'termination',
+              ),
+              kind: AmortizationKind.prepaidExpense,
+              factKind: AmortizationTransactionFactKind.terminationRecognition,
+              role: BusinessActivityItemRole.followUp,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'rent',
+                  amount: Money(minorUnits: 1000),
+                ),
+              ],
+              terminationId: 'termination',
+            ),
+            AmortizationBusinessActivityItemProjection(
+              planId: 'plan',
+              transactionId: 'termination-return-tx',
+              itemKey: BusinessActivityItemKey(
+                type: amortizationTerminationBusinessActivityItemType,
+                id: 'termination',
+              ),
+              kind: AmortizationKind.prepaidExpense,
+              factKind: AmortizationTransactionFactKind.terminationReturn,
+              role: BusinessActivityItemRole.followUp,
+              localCategoryAllocations: const [
+                AccountAmountAllocation(
+                  accountId: 'rent',
+                  amount: Money(minorUnits: 500),
+                ),
+              ],
+              terminationId: 'termination',
+            ),
+          ],
         ),
       },
     );
     final query = AmortizationBusinessActivityItemSource(service);
 
-    final refundItem = (await query.findItems([
-      _transaction('refund-tx'),
-    ]))['refund-tx'];
+    final items = await query.findItems([
+      _transaction('termination-recognition-tx'),
+      _transaction('termination-return-tx'),
+    ]);
+    final recognitionItem =
+        items['termination-recognition-tx']!
+            as AmortizationBusinessActivityItem;
+    final returnItem =
+        items['termination-return-tx']! as AmortizationBusinessActivityItem;
 
+    expect(recognitionItem.itemKey.id, 'termination');
+    expect(returnItem.itemKey, recognitionItem.itemKey);
+    expect(recognitionItem.role, BusinessActivityItemRole.followUp);
+    expect(recognitionItem.activityKey.id, 'plan');
+    expect(recognitionItem.projections, hasLength(2));
+    final recognitionProjection =
+        recognitionItem.projectionFor('termination-recognition-tx')!
+            as AmortizationTransactionProjection;
+    final returnProjection =
+        returnItem.projectionFor('termination-return-tx')!
+            as AmortizationTransactionProjection;
     expect(
-      (refundItem! as AmortizationBusinessActivityItem).factKind,
-      AmortizationTransactionFactKind.refund,
+      recognitionProjection.factKind,
+      AmortizationTransactionFactKind.terminationRecognition,
     );
-    expect((refundItem as AmortizationBusinessActivityItem).refundId, 'refund');
-    expect(refundItem.itemKey.id, 'refund');
-    expect(refundItem.role, BusinessActivityItemRole.followUp);
-    expect(refundItem.activityKey.id, 'plan');
-    final projection =
-        refundItem.projections.single as AmortizationTransactionProjection;
-    expect(projection.transactionId, 'refund-tx');
-    expect(projection.localCategoryAllocations.single.amount.minorUnits, 1000);
+    expect(
+      returnProjection.factKind,
+      AmortizationTransactionFactKind.terminationReturn,
+    );
+    expect(
+      recognitionProjection.localCategoryAllocations.single.amount.minorUnits,
+      1000,
+    );
+    expect(
+      returnProjection.localCategoryAllocations.single.amount.minorUnits,
+      500,
+    );
   });
 }
 

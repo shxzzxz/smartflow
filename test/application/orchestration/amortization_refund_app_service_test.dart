@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_command.dart';
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
+import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
@@ -534,10 +535,12 @@ void main() {
         ),
       ),
     );
+    final terminationId = (await repository.findById(planId))!.termination!.id;
 
     final updated = await service.editTermination(
       EditAmortizationTerminationCommand(
         planId: planId,
+        terminationId: terminationId,
         terminatedAt: DateTime(2026, 1, 16),
         categoryReturnAllocations: singleAllocation(
           accountId: 'category-a',
@@ -557,6 +560,43 @@ void main() {
       original.returnTransactionId,
     ]);
     expect(updated.returnTransactionId, isNot(original.returnTransactionId));
+  });
+
+  test('termination commands reject a different activity item', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      _createPlanCommand(totalMinor: 60000, recognitionCount: 3),
+    );
+    await service.terminate(
+      TerminateAmortizationPlanCommand(
+        planId: planId,
+        terminatedAt: DateTime(2026, 1, 15),
+        categoryReturnAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(10000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'account-c',
+          amount: _money(10000),
+        ),
+      ),
+    );
+
+    await expectLater(
+      service.deleteTermination(
+        DeleteAmortizationTerminationCommand(
+          planId: planId,
+          terminationId: 'another-termination',
+          now: DateTime(2026, 2, 1),
+        ),
+      ),
+      throwsA(isA<BusinessException>()),
+    );
+
+    expect((await repository.findById(planId))!.termination, isNotNull);
+    expect(ledger.deletedTransactionIds, isEmpty);
   });
 
   test(
@@ -599,10 +639,14 @@ void main() {
           ),
         ),
       );
+      final terminationId = (await repository.findById(
+        planId,
+      ))!.termination!.id;
 
       final generated = await service.deleteTermination(
         DeleteAmortizationTerminationCommand(
           planId: planId,
+          terminationId: terminationId,
           now: DateTime(2026, 5, 1),
         ),
       );

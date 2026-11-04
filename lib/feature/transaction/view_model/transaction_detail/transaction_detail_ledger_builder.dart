@@ -39,7 +39,10 @@ _buildTransactionDetailLedger(
           : null,
       useCategoryIdentity: !isNonEntry,
       avatarKind: isNonEntry
-          ? businessActivityItemAvatarKind(context.businessItem)
+          ? businessActivityItemAvatarKind(
+              context.businessItem,
+              projection: transactionProjection,
+            )
           : null,
     ),
     allocationBreakdowns: transactionDetailAllocationBreakdowns(

@@ -90,6 +90,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.deleteTerminationCommands, hasLength(1));
+    expect(
+      service.deleteTerminationCommands.single.terminationId,
+      'termination',
+    );
     expect(find.text('摊销终止已删除'), findsOneWidget);
   });
 

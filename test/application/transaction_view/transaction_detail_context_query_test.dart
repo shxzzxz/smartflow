@@ -250,6 +250,7 @@ AmortizationBusinessActivityItem _amortizationItem(
     projections: [
       AmortizationTransactionProjection(
         transactionId: transactionId,
+        factKind: factKind,
         localCategoryAllocations: const [
           AccountAmountAllocation(
             accountId: 'food',
@@ -259,7 +260,6 @@ AmortizationBusinessActivityItem _amortizationItem(
       ),
     ],
     kind: AmortizationKind.prepaidExpense,
-    factKind: factKind,
   );
 }
 

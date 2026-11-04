@@ -37,6 +37,7 @@ void main() {
           projections: [
             AmortizationTransactionProjection(
               transactionId: 'recognition',
+              factKind: AmortizationTransactionFactKind.recognition,
               localCategoryAllocations: const [
                 AccountAmountAllocation(
                   accountId: 'membership',
@@ -46,7 +47,6 @@ void main() {
             ),
           ],
           kind: AmortizationKind.prepaidExpense,
-          factKind: AmortizationTransactionFactKind.recognition,
         ),
       },
     );
@@ -87,11 +87,11 @@ void main() {
         projections: [
           AmortizationTransactionProjection(
             transactionId: transaction.id,
+            factKind: AmortizationTransactionFactKind.recognition,
             localCategoryAllocations: const [],
           ),
         ],
         kind: AmortizationKind.prepaidExpense,
-        factKind: AmortizationTransactionFactKind.recognition,
       );
       when(
         () => transactions.watchTransactions(query),

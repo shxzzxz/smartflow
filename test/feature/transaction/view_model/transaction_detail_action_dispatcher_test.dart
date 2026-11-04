@@ -285,50 +285,60 @@ void main() {
     verifyNever(() => amortizationAppService.deletePlan(any()));
   });
 
-  test(
-    'amortization termination deletion targets the termination fact',
-    () async {
-      final transaction = TransactionReadModel(
-        id: 'termination-entry',
-        businessPurpose: BusinessPurpose.dailyExpense,
-        occurredAt: DateTime(2026, 2, 1),
-        primaryAmount: const Money(minorUnits: 5000),
-        ownership: const TransactionOwnership(
-          ownerType: orchestrationAmortizationOwnerType,
-          ownerId: 'plan',
-        ),
-        isExcludedFromStats: false,
-        isExcludedFromBudget: false,
-      );
-      when(() => amortizationAppService.deleteTermination(any())).thenAnswer(
-        (_) async => const AmortizationGenerationResult(generatedCount: 0),
-      );
-      final dynamic
-      dispatcher = createTransactionDetailActionDispatcherForTesting(
-        context: _context(
-          transaction,
-          item: _amortizationItem(
-            transaction,
-            factKind: AmortizationTransactionFactKind.terminationRecognition,
-            terminationId: 'termination',
+  for (final factKind in [
+    AmortizationTransactionFactKind.terminationRecognition,
+    AmortizationTransactionFactKind.terminationReturn,
+  ]) {
+    test(
+      'amortization ${factKind.name} deletion targets the termination fact',
+      () async {
+        final transaction = TransactionReadModel(
+          id: 'termination-entry',
+          businessPurpose: BusinessPurpose.dailyExpense,
+          occurredAt: DateTime(2026, 2, 1),
+          primaryAmount: const Money(minorUnits: 5000),
+          ownership: const TransactionOwnership(
+            ownerType: orchestrationAmortizationOwnerType,
+            ownerId: 'plan',
           ),
-        ),
-        editService: editService,
-        updateService: updateService,
-        installmentAppService: installmentAppService,
-        disbursementInstallmentAppService: disbursementInstallmentAppService,
-        consumptionInstallmentAppService: consumptionInstallmentAppService,
-        billRepaymentAppService: billRepaymentAppService,
-        installmentPrepaymentAppService: installmentPrepaymentAppService,
-        accountRepaymentAppService: accountRepaymentAppService,
-        amortizationAppService: amortizationAppService,
-      );
+          isExcludedFromStats: false,
+          isExcludedFromBudget: false,
+        );
+        when(() => amortizationAppService.deleteTermination(any())).thenAnswer(
+          (_) async => const AmortizationGenerationResult(generatedCount: 0),
+        );
+        final dynamic
+        dispatcher = createTransactionDetailActionDispatcherForTesting(
+          context: _context(
+            transaction,
+            item: _amortizationItem(
+              transaction,
+              factKind: factKind,
+              terminationId: 'termination',
+            ),
+          ),
+          editService: editService,
+          updateService: updateService,
+          installmentAppService: installmentAppService,
+          disbursementInstallmentAppService: disbursementInstallmentAppService,
+          consumptionInstallmentAppService: consumptionInstallmentAppService,
+          billRepaymentAppService: billRepaymentAppService,
+          installmentPrepaymentAppService: installmentPrepaymentAppService,
+          accountRepaymentAppService: accountRepaymentAppService,
+          amortizationAppService: amortizationAppService,
+        );
 
-      expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
-      verify(() => amortizationAppService.deleteTermination(any())).called(1);
-      verifyNever(() => amortizationAppService.deletePlan(any()));
-    },
-  );
+        expect(await dispatcher.delete(), isA<UiActionSuccess<void>>());
+        final command =
+            verify(
+                  () => amortizationAppService.deleteTermination(captureAny()),
+                ).captured.single
+                as DeleteAmortizationTerminationCommand;
+        expect(command.terminationId, 'termination');
+        verifyNever(() => amortizationAppService.deletePlan(any()));
+      },
+    );
+  }
 
   test(
     'advance refund inheritance routes account edits through orchestration',
@@ -572,7 +582,19 @@ BusinessActivityItem _amortizationItem(
       type: orchestrationAmortizationOwnerType,
       id: 'plan',
     ),
-    itemKey: BusinessActivityItemKey.transaction(transaction.id),
+    itemKey: switch (factKind) {
+      AmortizationTransactionFactKind.refund => BusinessActivityItemKey(
+        type: 'orchestration.amortization_refund',
+        id: refundId!,
+      ),
+      AmortizationTransactionFactKind.terminationRecognition ||
+      AmortizationTransactionFactKind.terminationReturn =>
+        BusinessActivityItemKey(
+          type: 'orchestration.amortization_termination',
+          id: terminationId!,
+        ),
+      _ => BusinessActivityItemKey.transaction(transaction.id),
+    },
     role: factKind == AmortizationTransactionFactKind.initial
         ? BusinessActivityItemRole.origin
         : BusinessActivityItemRole.followUp,
@@ -580,11 +602,11 @@ BusinessActivityItem _amortizationItem(
     projections: [
       AmortizationTransactionProjection(
         transactionId: transaction.id,
+        factKind: factKind,
         localCategoryAllocations: const [],
       ),
     ],
     kind: AmortizationKind.prepaidExpense,
-    factKind: factKind,
     refundId: refundId,
     terminationId: terminationId,
   );

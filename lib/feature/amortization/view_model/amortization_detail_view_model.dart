@@ -60,6 +60,10 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
   Future<UiActionOutcome<void>> deleteTermination({DateTime? now}) {
     final current = state.value;
     if (current == null) return Future.value(_invalid('摊销计划尚未加载'));
+    final terminationId = current.plan.termination?.id;
+    if (terminationId == null) {
+      return Future.value(_invalid('摊销终止不存在'));
+    }
     return _run(
       current.plan.id,
       'Delete amortization termination',
@@ -68,6 +72,7 @@ class AmortizationDetailViewModel extends _$AmortizationDetailViewModel {
           .deleteTermination(
             DeleteAmortizationTerminationCommand(
               planId: current.plan.id,
+              terminationId: terminationId,
               now: now ?? DateTime.now(),
             ),
           )

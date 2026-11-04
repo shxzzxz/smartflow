@@ -70,9 +70,16 @@ _TransactionDetailActionDispatcher _createTransactionDetailActionDispatcher({
         'Amortization orchestration services are not configured.',
       );
     }
+    final projection = context.transactionProjection;
+    if (projection is! AmortizationTransactionProjection) {
+      throw StateError(
+        'Amortization transaction ${transaction.id} has no local projection.',
+      );
+    }
     return _AmortizationActionDispatcher(
       transaction,
       owner: item,
+      projection: projection,
       updateService: updateService,
       amortizationAppService: amortizationAppService,
     );
