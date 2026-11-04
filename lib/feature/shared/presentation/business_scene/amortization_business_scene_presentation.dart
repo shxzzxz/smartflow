@@ -13,7 +13,7 @@ BusinessActivityRowContent presentAmortizationBusinessActivityRow(
   final isTerminated = summary.status == AmortizationStatus.terminated;
   return BusinessActivityRowContent(
     preferCategoryArtwork:
-        item.anchorTransaction.categoryLines.isNotEmpty ||
+        (item.displayTransaction?.categoryLines.isNotEmpty ?? false) ||
         summary.categoryAccountIds.isNotEmpty,
     categoryAccountIds: summary.categoryAccountIds,
     standardSummary: _standardSummary(summary),

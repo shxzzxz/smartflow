@@ -14,7 +14,8 @@ BusinessActivityRowContent presentAdvanceBusinessActivityRow(
 ) {
   final summary = item.summary as AdvanceBusinessActivitySummary;
   return BusinessActivityRowContent(
-    preferCategoryArtwork: item.anchorTransaction.categoryLines.isNotEmpty,
+    preferCategoryArtwork:
+        item.displayTransaction?.categoryLines.isNotEmpty ?? false,
     standardSummary: _standardSummary(item, summary),
     standardBadges: _standardFallbackBadges(summary),
     compactBadges: [?_compactBadgePresentation(item, summary)],
@@ -29,14 +30,18 @@ String? _standardSummary(
     return null;
   }
 
-  final transaction = item.anchorTransaction;
+  final transaction = item.displayTransaction;
   final scenarioLabel = _scenarioLabel(summary);
-  final gapParts = _gapParts(transaction);
+  final gapParts = transaction == null
+      ? const <String>[]
+      : _gapParts(transaction);
   if (summary.isClosed) {
     return [scenarioLabel, '已结清', ...gapParts].join(' · ');
   }
 
-  final progress = _advanceProgress(transaction, summary);
+  final progress = transaction == null
+      ? null
+      : _advanceProgress(transaction, summary);
   if (progress == null) {
     return [scenarioLabel, ...gapParts].join(' · ');
   }
@@ -61,7 +66,10 @@ String? _compactBadgeLabel(
     return scenarioLabel;
   }
 
-  final progress = _advanceProgress(item.anchorTransaction, summary);
+  final transaction = item.displayTransaction;
+  final progress = transaction == null
+      ? null
+      : _advanceProgress(transaction, summary);
   if (progress == null) {
     return scenarioLabel;
   }

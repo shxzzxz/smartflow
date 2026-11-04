@@ -6,6 +6,7 @@ import 'package:smartflow/application/transaction_view/transaction_view_query_ap
 import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/advance_enums.dart';
 
 void main() {
@@ -74,19 +75,19 @@ void main() {
     expect(credit.findCalls, 0);
   });
 
-  test('query service deduplicates a repeated activity anchor', () async {
+  test('query service deduplicates a repeated activity candidate', () async {
     final occurredAt = DateTime(2026, 10, 12);
     final transaction = _transaction(id: 'tx-1', occurredAt: occurredAt);
     const key = BusinessActivityKey.transactionGroup('tx-1');
-    final candidate = BusinessActivityAnchorCandidate(
+    final candidate = BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: transaction.id,
-      anchorAt: occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: occurredAt,
     );
     final source = _Source(
       'ledger',
       {ledgerTransactionGroupActivityType},
-      anchors: [candidate, candidate],
+      candidates: [candidate, candidate],
       summaries: {key: const LedgerBusinessActivitySummary()},
     );
     final service = BusinessActivityQueryServiceImpl(
@@ -106,106 +107,179 @@ void main() {
     expect(source.summaryAnchorCounts, [1]);
   });
 
-  test('lookup builds one activity from the current anchor', () async {
-    final occurredAt = DateTime(2026, 10, 12);
-    final transaction = _transaction(id: 'tx-1', occurredAt: occurredAt);
-    final key = const BusinessActivityKey.transactionGroup('tx-1');
-    final source = _Source(
-      'ledger',
-      {ledgerTransactionGroupActivityType},
-      summaries: {key: const LedgerBusinessActivitySummary()},
-    );
-    final service = BusinessActivityQueryServiceImpl(
-      sources: [source],
-      transactionQuery: const _EmptyTransactionQuery(),
-    );
+  test(
+    'lookup builds one activity from its key and display projection',
+    () async {
+      final occurredAt = DateTime(2026, 10, 12);
+      final transaction = _transaction(id: 'tx-1', occurredAt: occurredAt);
+      final key = const BusinessActivityKey.transactionGroup('tx-1');
+      final source = _Source(
+        'ledger',
+        {ledgerTransactionGroupActivityType},
+        summaries: {key: const LedgerBusinessActivitySummary()},
+      );
+      final service = BusinessActivityQueryServiceImpl(
+        sources: [source],
+        transactionQuery: const _EmptyTransactionQuery(),
+      );
 
-    final activity = await service.findForAnchor(
-      activityKey: key,
-      anchorTransaction: transaction,
-    );
+      final activity = await service.findForActivity(
+        activityKey: key,
+        activityAt: occurredAt,
+        displayTransaction: transaction,
+      );
 
-    expect(activity, isNotNull);
-    expect(activity!.anchorTransaction, same(transaction));
-    expect(activity.summary, isA<LedgerBusinessActivitySummary>());
-  });
+      expect(activity, isNotNull);
+      expect(activity!.displayTransaction, same(transaction));
+      expect(activity.summary, isA<LedgerBusinessActivitySummary>());
+    },
+  );
 
   group('BusinessActivityReadModel', () {
-    test('derives anchor identity and time from the loaded transaction', () {
-      final occurredAt = DateTime(2026, 10, 12, 9, 30);
-      final transaction = _transaction(
-        id: 'tx-anchor',
-        occurredAt: occurredAt,
-        ownership: const TransactionOwnership(
-          ownerType: 'orchestration.amortization',
-          ownerId: 'plan-1',
-        ),
-      );
-      final item = BusinessActivityReadModel.fromCandidate(
-        candidate: BusinessActivityAnchorCandidate(
-          activityKey: const BusinessActivityKey(
+    test(
+      'keeps business identity and time independent from its projection',
+      () {
+        final transactionOccurredAt = DateTime(2026, 10, 12, 9, 30);
+        final activityAt = DateTime(2026, 10, 20, 18);
+        final transaction = _transaction(
+          id: 'tx-display',
+          occurredAt: transactionOccurredAt,
+          ownership: const TransactionOwnership(
+            ownerType: 'orchestration.amortization',
+            ownerId: 'plan-1',
+          ),
+        );
+        final item = BusinessActivityReadModel.fromCandidate(
+          candidate: BusinessActivityCandidate(
+            activityKey: const BusinessActivityKey(
+              type: 'orchestration.amortization',
+              id: 'plan-1',
+            ),
+            displayTransactionId: 'tx-display',
+            activityAt: activityAt,
+          ),
+          displayTransaction: transaction,
+          summary: const LedgerBusinessActivitySummary(),
+        );
+
+        expect(item.displayTransactionId, 'tx-display');
+        expect(item.activityAt, activityAt);
+        expect(
+          item.activityKey,
+          const BusinessActivityKey(
             type: 'orchestration.amortization',
             id: 'plan-1',
           ),
-          anchorTransactionId: 'tx-anchor',
-          anchorAt: occurredAt,
+        );
+      },
+    );
+
+    test('does not require an activity key to match transaction ownership', () {
+      final transaction = _transaction(
+        id: 'tx-display',
+        occurredAt: DateTime(2026, 10, 12),
+        ownership: const TransactionOwnership(
+          ownerType: 'orchestration.advance',
+          ownerId: 'advance-1',
         ),
-        anchorTransaction: transaction,
+      );
+
+      final item = BusinessActivityReadModel.fromCandidate(
+        candidate: BusinessActivityCandidate(
+          activityKey: const BusinessActivityKey(
+            type: 'credit.installment_contract',
+            id: 'contract-1',
+          ),
+          displayTransactionId: 'tx-display',
+          activityAt: DateTime(2026, 10, 20),
+        ),
+        displayTransaction: transaction,
         summary: const LedgerBusinessActivitySummary(),
       );
 
-      expect(item.anchorTransactionId, 'tx-anchor');
-      expect(item.anchorAt, occurredAt);
-      expect(item.ownerType, 'orchestration.amortization');
-      expect(item.ownerId, 'plan-1');
+      expect(item.activityKey.id, 'contract-1');
+      expect(item.displayTransaction, same(transaction));
     });
 
-    test('rejects an anchor whose occurredAt differs from anchorAt', () {
-      final transaction = _transaction(
-        id: 'tx-anchor',
-        occurredAt: DateTime(2026, 10, 12),
+    test('builds an activity without a display transaction', () {
+      const key = BusinessActivityKey(
+        type: 'credit.repayment',
+        id: 'repayment-1',
       );
+      final activityAt = DateTime(2026, 10, 12);
 
-      expect(
-        () => BusinessActivityReadModel.fromCandidate(
-          candidate: BusinessActivityAnchorCandidate(
-            activityKey: const BusinessActivityKey.transactionGroup(
-              'tx-anchor',
-            ),
-            anchorTransactionId: 'tx-anchor',
-            anchorAt: DateTime(2026, 10, 13),
-          ),
-          anchorTransaction: transaction,
-          summary: const LedgerBusinessActivitySummary(),
+      final item = BusinessActivityReadModel.fromCandidate(
+        candidate: BusinessActivityCandidate(
+          activityKey: key,
+          activityAt: activityAt,
         ),
-        throwsArgumentError,
-      );
-    });
-
-    test('rejects a child transaction as an item anchor', () {
-      final occurredAt = DateTime(2026, 10, 12);
-      final transaction = _transaction(
-        id: 'tx-child',
-        occurredAt: occurredAt,
-        parentTransactionId: 'tx-parent',
+        summary: const LedgerBusinessActivitySummary(),
       );
 
-      expect(
-        () => BusinessActivityReadModel.fromCandidate(
-          candidate: BusinessActivityAnchorCandidate(
-            activityKey: const BusinessActivityKey.transactionGroup(
-              'tx-parent',
-            ),
-            anchorTransactionId: 'tx-child',
-            anchorAt: occurredAt,
-          ),
-          anchorTransaction: transaction,
-          summary: const LedgerBusinessActivitySummary(),
-        ),
-        throwsArgumentError,
-      );
+      expect(item.activityKey, key);
+      expect(item.activityAt, activityAt);
+      expect(item.displayTransaction, isNull);
+      expect(item.displayTransactionId, isNull);
     });
   });
+
+  test(
+    'query service merges transactionless activities without loading transactions',
+    () async {
+      const ledgerKey = BusinessActivityKey.transactionGroup('ledger-1');
+      const repaymentKey = BusinessActivityKey(
+        type: creditRepaymentOwnerType,
+        id: 'repayment-1',
+      );
+      final ledger = _Source(
+        'ledger',
+        {ledgerTransactionGroupActivityType},
+        candidates: [
+          BusinessActivityCandidate(
+            activityKey: ledgerKey,
+            activityAt: DateTime(2026, 10, 2),
+          ),
+        ],
+        summaries: {ledgerKey: const LedgerBusinessActivitySummary()},
+      );
+      final repayment = _Source(
+        'credit',
+        {creditRepaymentOwnerType},
+        candidates: [
+          BusinessActivityCandidate(
+            activityKey: repaymentKey,
+            activityAt: DateTime(2026, 10, 3),
+          ),
+        ],
+        summaries: {
+          repaymentKey: const RepaymentBusinessActivitySummary(
+            repaymentType: RepaymentType.bill,
+            targetType: RepaymentTargetType.bill,
+          ),
+        },
+      );
+      final service = BusinessActivityQueryServiceImpl(
+        sources: [ledger, repayment],
+        transactionQuery: const _ExplodingTransactionQuery(),
+      );
+
+      final page = await service.findPage(
+        BusinessActivityPageQuery(
+          occurredFrom: DateTime(2026, 10),
+          occurredUntil: DateTime(2026, 11),
+        ),
+      );
+
+      expect(page.items.map((item) => item.activityKey), [
+        repaymentKey,
+        ledgerKey,
+      ]);
+      expect(
+        page.items.every((item) => item.displayTransaction == null),
+        isTrue,
+      );
+    },
+  );
 
   test(
     'watchContents refreshes summaries for the current members only',
@@ -223,12 +297,13 @@ void main() {
         sources: [source],
         transactionQuery: _StaticTransactionQuery([transaction]),
       );
-      final initial = await service.findForAnchor(
+      final initial = await service.findForActivity(
         activityKey: const BusinessActivityKey(
           type: orchestrationAdvanceOwnerType,
           id: 'advance-1',
         ),
-        anchorTransaction: transaction,
+        activityAt: transaction.occurredAt,
+        displayTransaction: transaction,
       );
       final events = <Map<BusinessActivityKey, BusinessActivityReadModel>>[];
       final subscription = service.watchContents([initial!]).listen(events.add);
@@ -266,16 +341,69 @@ void main() {
   );
 
   test(
+    'watchContents refreshes a transactionless activity without transaction IO',
+    () async {
+      const key = BusinessActivityKey(
+        type: orchestrationAdvanceOwnerType,
+        id: 'advance-1',
+      );
+      final source = _WatchingSource();
+      final service = BusinessActivityQueryServiceImpl(
+        sources: [source],
+        transactionQuery: const _ExplodingTransactionQuery(),
+      );
+      final initial = BusinessActivityReadModel.fromCandidate(
+        candidate: BusinessActivityCandidate(
+          activityKey: key,
+          activityAt: DateTime(2026, 10, 2),
+        ),
+        summary: source._summary,
+      );
+      final events = <Map<BusinessActivityKey, BusinessActivityReadModel>>[];
+      final subscription = service.watchContents([initial]).listen(events.add);
+      addTearDown(subscription.cancel);
+      addTearDown(source._controller.close);
+
+      await pumpEventQueue();
+      expect(events.last.values.single.displayTransaction, isNull);
+      expect(
+        (events.last.values.single.summary as AdvanceBusinessActivitySummary)
+            .outstanding,
+        const Money(minorUnits: 900),
+      );
+
+      source.emit(
+        key,
+        AdvanceBusinessActivitySummary(
+          scenario: AdvanceScenario.reimbursement,
+          trackingMode: AdvanceTrackingMode.itemized,
+          outstanding: const Money(minorUnits: 700),
+          isClosed: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(events, hasLength(2));
+      expect(events.last.values.single.displayTransaction, isNull);
+      expect(
+        (events.last.values.single.summary as AdvanceBusinessActivitySummary)
+            .outstanding,
+        const Money(minorUnits: 700),
+      );
+    },
+  );
+
+  test(
     'BusinessActivityPage returns a cursor only when another page exists',
     () {
       final occurredAt = DateTime(2026, 10, 12);
       final item = BusinessActivityReadModel.fromCandidate(
-        candidate: BusinessActivityAnchorCandidate(
+        candidate: BusinessActivityCandidate(
           activityKey: const BusinessActivityKey.transactionGroup('tx-1'),
-          anchorTransactionId: 'tx-1',
-          anchorAt: occurredAt,
+          displayTransactionId: 'tx-1',
+          activityAt: occurredAt,
         ),
-        anchorTransaction: _transaction(id: 'tx-1', occurredAt: occurredAt),
+        displayTransaction: _transaction(id: 'tx-1', occurredAt: occurredAt),
         summary: const LedgerBusinessActivitySummary(),
       );
 
@@ -322,23 +450,23 @@ final class _WatchingSource implements BusinessActivitySource {
   };
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
-  ) async => BusinessActivitySourcePage(anchors: const [], hasMore: false);
+  ) async => BusinessActivitySourcePage(candidates: const [], hasMore: false);
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) => const Stream.empty();
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> anchors,
   ) async => {_key: _summary};
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> anchors,
   ) async* {
     yield {_key: _summary};
     yield* _controller.stream;
@@ -354,7 +482,7 @@ final class _Source implements BusinessActivitySource {
   _Source(
     this.sourceKey,
     this.supportedActivityTypes, {
-    this.anchors = const [],
+    this.candidates = const [],
     this.summaries = const {},
   });
 
@@ -363,22 +491,22 @@ final class _Source implements BusinessActivitySource {
 
   @override
   final Set<String> supportedActivityTypes;
-  final List<BusinessActivityAnchorCandidate> anchors;
+  final List<BusinessActivityCandidate> candidates;
   final Map<BusinessActivityKey, BusinessActivitySummary> summaries;
 
   var findCalls = 0;
   final summaryAnchorCounts = <int>[];
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
   ) async {
     findCalls += 1;
-    return BusinessActivitySourcePage(anchors: anchors, hasMore: false);
+    return BusinessActivitySourcePage(candidates: candidates, hasMore: false);
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) {
     return const Stream.empty();
@@ -386,7 +514,7 @@ final class _Source implements BusinessActivitySource {
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> anchors,
   ) async {
     summaryAnchorCounts.add(anchors.length);
     return summaries;
@@ -394,7 +522,7 @@ final class _Source implements BusinessActivitySource {
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> anchors,
   ) {
     return Stream.fromFuture(findSummaries(anchors));
   }
@@ -413,6 +541,20 @@ final class _EmptyTransactionQuery implements TransactionBatchQueryService {
   @override
   Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
     return Stream.fromFuture(findTransactionsByIds(ids));
+  }
+}
+
+final class _ExplodingTransactionQuery implements TransactionBatchQueryService {
+  const _ExplodingTransactionQuery();
+
+  @override
+  Future<List<TransactionReadModel>> findTransactionsByIds(Set<String> ids) {
+    throw StateError('Transactionless activities must not query transactions.');
+  }
+
+  @override
+  Stream<List<TransactionReadModel>> watchTransactionsByIds(Set<String> ids) {
+    throw StateError('Transactionless activities must not watch transactions.');
   }
 }
 

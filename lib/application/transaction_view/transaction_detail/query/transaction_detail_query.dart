@@ -66,9 +66,10 @@ final class TransactionDetailQueryImpl implements TransactionDetailQuery {
   ) {
     final item = context.businessItem;
     if (!_requiresBusinessActivity(item)) return Future.value(null);
-    return _businessActivities.findForAnchor(
+    return _businessActivities.findForActivity(
       activityKey: item!.activityKey,
-      anchorTransaction: context.transaction,
+      activityAt: context.transaction.occurredAt,
+      displayTransaction: context.transaction,
     );
   }
 

@@ -2,20 +2,22 @@ import 'package:drift/drift.dart';
 
 import '../../../application/transaction_view/business_activity/query/business_activity_queries.dart';
 
-/// Builds the common anchor predicate used by business-activity sources.
+/// Builds the common candidate predicate used by business-activity sources.
 ///
-/// Source implementations provide the item identity and any owner/plan join
-/// predicate. All business filters, time bounds and the cursor are appended
-/// here so every source applies them before its own `LIMIT`.
-final class BusinessActivityAnchorSql {
-  BusinessActivityAnchorSql({
-    required this.transactionAlias,
+/// Source implementations provide the activity identity, business time and
+/// optional display-transaction join. All filters, time bounds and the cursor
+/// are appended here so every source applies them before its own `LIMIT`.
+final class BusinessActivityCandidateSql {
+  BusinessActivityCandidateSql({
+    required this.displayTransactionAlias,
+    required this.activityAtExpression,
     required this.activityType,
     required this.activityIdExpression,
     this.amortizationPlanAlias,
   });
 
-  final String transactionAlias;
+  final String displayTransactionAlias;
+  final String activityAtExpression;
   final String activityType;
   final String activityIdExpression;
   final String? amortizationPlanAlias;
@@ -31,8 +33,8 @@ final class BusinessActivityAnchorSql {
 
   void apply(BusinessActivityPageQuery query) {
     addCondition(
-      '$transactionAlias.occurred_at >= ? AND '
-      '$transactionAlias.occurred_at < ?',
+      '$activityAtExpression >= ? AND '
+      '$activityAtExpression < ?',
     );
     _variables
       ..add(Variable<DateTime>(query.occurredFrom))
@@ -65,20 +67,20 @@ final class BusinessActivityAnchorSql {
         final inClause = _inClause(tagIds);
         addCondition(
           'EXISTS (SELECT 1 FROM transaction_tags tag_match '
-          'WHERE tag_match.transaction_id = $transactionAlias.id '
+          'WHERE tag_match.transaction_id = $displayTransactionAlias.id '
           'AND tag_match.tag_id IN ($inClause))',
         );
       }
     } else if (query.untaggedOnly) {
       addCondition(
         'NOT EXISTS (SELECT 1 FROM transaction_tags tag_match '
-        'WHERE tag_match.transaction_id = $transactionAlias.id)',
+        'WHERE tag_match.transaction_id = $displayTransactionAlias.id)',
       );
     }
 
     final counterpartyId = query.counterpartyId;
     if (counterpartyId != null) {
-      addCondition('$transactionAlias.counterparty_id = ?');
+      addCondition('$displayTransactionAlias.counterparty_id = ?');
       _variables.add(Variable<String>(counterpartyId));
     }
   }
@@ -89,23 +91,23 @@ final class BusinessActivityAnchorSql {
   void _applyCursor(BusinessActivityCursor before) {
     final typeComparison = activityType.compareTo(before.activityKey.type);
     if (typeComparison < 0) {
-      addCondition('$transactionAlias.occurred_at <= ?');
-      _variables.add(Variable<DateTime>(before.anchorAt));
+      addCondition('$activityAtExpression <= ?');
+      _variables.add(Variable<DateTime>(before.activityAt));
       return;
     }
     if (typeComparison > 0) {
-      addCondition('$transactionAlias.occurred_at < ?');
-      _variables.add(Variable<DateTime>(before.anchorAt));
+      addCondition('$activityAtExpression < ?');
+      _variables.add(Variable<DateTime>(before.activityAt));
       return;
     }
     addCondition(
-      '$transactionAlias.occurred_at < ? OR '
-      '($transactionAlias.occurred_at = ? AND '
+      '$activityAtExpression < ? OR '
+      '($activityAtExpression = ? AND '
       '$activityIdExpression < ?)',
     );
     _variables
-      ..add(Variable<DateTime>(before.anchorAt))
-      ..add(Variable<DateTime>(before.anchorAt))
+      ..add(Variable<DateTime>(before.activityAt))
+      ..add(Variable<DateTime>(before.activityAt))
       ..add(Variable<String>(before.activityKey.id));
   }
 
@@ -146,7 +148,7 @@ final class BusinessActivityAnchorSql {
     final roleClause = _literalInClause(roles);
     addCondition(
       'EXISTS (SELECT 1 FROM transaction_lines $subqueryAlias '
-      'WHERE $subqueryAlias.transaction_id = $transactionAlias.id '
+      'WHERE $subqueryAlias.transaction_id = $displayTransactionAlias.id '
       'AND $subqueryAlias.role IN ($roleClause) '
       'AND $subqueryAlias.account_id IN ($accountClause))',
     );
@@ -176,15 +178,15 @@ BusinessActivitySourcePage businessActivitySourcePageFromRows(
   final hasMore = rows.length > limit;
   return BusinessActivitySourcePage(
     hasMore: hasMore,
-    anchors: [
+    candidates: [
       for (final row in rows.take(limit + 1))
-        BusinessActivityAnchorCandidate(
+        BusinessActivityCandidate(
           activityKey: BusinessActivityKey(
             type: row.read<String>('activity_type'),
             id: row.read<String>('activity_id'),
           ),
-          anchorTransactionId: row.read<String>('anchor_transaction_id'),
-          anchorAt: row.read<DateTime>('anchor_at'),
+          activityAt: row.read<DateTime>('activity_at'),
+          displayTransactionId: row.read<String?>('display_transaction_id'),
         ),
     ],
   );

@@ -199,10 +199,11 @@ lib/infrastructure/database/table/*
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。
 - `application/transaction_view` 可以编排多个业务域的只读查询，但不拥有领域状态，也不向 `domain/*` 反向提供实现依赖。
 - `application/transaction_view` 的本地详情查询先加载当前交易及其业务活动项交易投影；上层详情查询只在投影所属活动项角色为 `origin` 时加载 `BusinessActivity` 及其摘要。`followUp` 详情不加载活动摘要或业务模块。
-- 业务活动页按业务活动分页；内容流复用已选活动集合，分别订阅活动摘要和展示交易，不重新解析活动身份。
+- 业务活动页按业务活动分页；来源候选提供活动身份与明确的 `activityAt`，展示交易是可选的列表投影。内容流复用已选活动集合，分别订阅活动摘要和存在的展示交易，不重新解析活动身份。
 - `application/transaction_view` 的 source adapter 只做业务域查询结果与账务核心已有事实到统一业务活动读模型的映射；业务筛选、活动项角色、业务事实和变更监听由所属业务域 application query 提供，不得复制账务聚合或为单一消费方定义专用摘要 DTO。
 - 交易明细视图先取得账务核心的交易页，再按 owner 类型和业务活动 ID 批量请求命中交易的业务活动项交易投影；业务活动摘要按活动身份单独返回一次，`transaction_view` 不读取 owner 内部结构并自行判断交易含义。多项交易投影共享活动项身份时，整体业务操作以活动项为作用边界。
 - 业务域活动项查询提供稳定 `itemKey` 与角色，`transaction_view` 负责映射活动身份并装配交易投影；活动项可以没有交易投影，交易身份不作为活动项的必填身份。
+- 业务活动可以没有展示交易；分页、游标、筛选、监听和展示使用 `activityKey` 与 `activityAt`。业务活动读模型不根据展示交易推导活动身份、业务时间或 owner，也不要求二者一致。
 - 业务域 application query 不得导入 `application/transaction_view` 的读模型或 source 接口。
 - `infrastructure/*` 实现 `domain/*/port` 和 application query interfaces，可以依赖对应接口和模型。
 - `feature/*` 可直接引用稳定的 domain 枚举和值类型；不得直接依赖 domain service / port 或 `infrastructure/*`，业务行为通过 application provider / use case / query 完成。

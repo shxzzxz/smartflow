@@ -439,7 +439,8 @@ final class FilteredTransactionsLoaded extends FilteredTransactionsState {
   final FilteredTransactionBatchState batch;
 
   Set<String> get visibleTransactionIds => {
-    for (final row in rows) row.transactionId,
+    for (final row in rows)
+      if (row.canOpenTransaction) row.transactionId,
   };
 
   Set<String> get selectedVisibleIds =>

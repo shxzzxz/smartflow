@@ -20,7 +20,7 @@ final class DriftLedgerBusinessActivitySource
   };
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
   ) async {
     return businessActivitySourcePageFromRows(
@@ -30,7 +30,7 @@ final class DriftLedgerBusinessActivitySource
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) {
     return _select(query).watch().map(
@@ -40,41 +40,42 @@ final class DriftLedgerBusinessActivitySource
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) async {
     return {
-      for (final anchor in anchors)
-        if (anchor.activityKey.type == ledgerTransactionGroupActivityType)
-          anchor.activityKey: const LedgerBusinessActivitySummary(),
+      for (final candidate in candidates)
+        if (candidate.activityKey.type == ledgerTransactionGroupActivityType)
+          candidate.activityKey: const LedgerBusinessActivitySummary(),
     };
   }
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) {
-    return Stream.fromFuture(findSummaries(anchors));
+    return Stream.fromFuture(findSummaries(candidates));
   }
 
   Selectable<QueryRow> _select(BusinessActivityPageQuery query) {
-    final sql = BusinessActivityAnchorSql(
-      transactionAlias: 'anchor',
+    final sql = BusinessActivityCandidateSql(
+      displayTransactionAlias: 'display_transaction',
+      activityAtExpression: 'display_transaction.occurred_at',
       activityType: ledgerTransactionGroupActivityType,
-      activityIdExpression: 'anchor.id',
+      activityIdExpression: 'display_transaction.id',
     )..apply(query);
     return _db.customSelect(
       '''
 SELECT
-  anchor.id AS anchor_transaction_id,
-  anchor.occurred_at AS anchor_at,
+  display_transaction.id AS display_transaction_id,
+  display_transaction.occurred_at AS activity_at,
   '$ledgerTransactionGroupActivityType' AS activity_type,
-  anchor.id AS activity_id
-FROM transactions anchor
-WHERE anchor.parent_transaction_id IS NULL
-  AND anchor.owner_type IS NULL
-  AND anchor.owner_id IS NULL
+  display_transaction.id AS activity_id
+FROM transactions display_transaction
+WHERE display_transaction.parent_transaction_id IS NULL
+  AND display_transaction.owner_type IS NULL
+  AND display_transaction.owner_id IS NULL
   AND ${sql.whereClause}
-ORDER BY anchor.occurred_at DESC, anchor.id DESC
+ORDER BY display_transaction.occurred_at DESC, display_transaction.id DESC
 LIMIT ?
 ''',
       variables: [...sql.variables, Variable<int>(query.limit + 1)],

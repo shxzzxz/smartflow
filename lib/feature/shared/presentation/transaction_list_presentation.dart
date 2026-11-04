@@ -3,12 +3,15 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/money/money_formatter.dart';
+import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
+import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
 import 'package:smartflow/widget/business/finance/finance_labels.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
 
 import 'account_lookup.dart';
 import 'business_scene/business_activity_item_presentation.dart';
+import 'business_scene/business_scene_presentation.dart';
 import 'business_scene/business_scene_list_presentation.dart';
 import 'business_scene/transaction_adjustment_presentation.dart';
 import 'transaction_badge_presentation.dart';
@@ -95,6 +98,7 @@ class FinancialFeedRowPresentation {
     this.selectable = false,
     this.selected = false,
     this.dimmed = false,
+    this.canOpenTransaction = true,
     this.supportingText,
     this.avatarKind,
   });
@@ -115,6 +119,7 @@ class FinancialFeedRowPresentation {
   final TransactionAvatarKind? avatarKind;
   final bool selectable;
   final bool selected;
+  final bool canOpenTransaction;
   final String? supportingText;
 
   /// 行不会参与导入/展示时置灰，保持可交互。
@@ -155,6 +160,7 @@ class FinancialFeedRowPresentation {
       selectable: selectable ?? this.selectable,
       selected: selected ?? this.selected,
       dimmed: dimmed ?? this.dimmed,
+      canOpenTransaction: canOpenTransaction,
       supportingText: supportingText ?? this.supportingText,
     );
   }
@@ -314,7 +320,7 @@ List<TransactionDayGroup> groupBusinessActivitiesByDay({
 }) {
   final groups = <DateTime, List<FinancialFeedRowPresentation>>{};
   for (final item in items) {
-    final date = normalizeDate(item.anchorAt);
+    final date = normalizeDate(item.activityAt);
     groups
         .putIfAbsent(date, () => [])
         .add(
@@ -349,7 +355,7 @@ TransactionDayGroup businessActivityGroupForDate({
   final normalized = normalizeDate(date);
   final dayItems = [
     for (final item in items)
-      if (isSameDate(item.anchorAt, normalized)) item,
+      if (isSameDate(item.activityAt, normalized)) item,
   ];
   final summary = _dailySummariesByDate(dailySummaries)[normalized];
   return TransactionDayGroup(
@@ -498,13 +504,26 @@ FinancialFeedRowPresentation buildBusinessActivityRowPresentation({
   required AccountLookup accountLookup,
   TransactionListDisplayMode displayMode = TransactionListDisplayMode.standard,
 }) {
-  final transaction = item.anchorTransaction;
+  final transaction = item.displayTransaction;
+  final content = presentBusinessSceneRowContent(item);
+  final modeBadges = displayMode == TransactionListDisplayMode.compact
+      ? content.compactBadges
+      : content.standardBadges;
+  if (transaction == null) {
+    return _buildTransactionlessBusinessActivityRow(
+      item: item,
+      content: content,
+      modeBadges: modeBadges,
+      accountLookup: accountLookup,
+      displayMode: displayMode,
+    );
+  }
+
   final base = buildTransactionRowPresentation(
     item: transaction,
     accountLookup: accountLookup,
     amountSource: const TransactionGroupAmountSource(),
   );
-  final content = presentBusinessSceneRowContent(item);
   final categoryIdentity = content.categoryAccountIds.isEmpty
       ? null
       : resolveTransactionCategoryIdentity(
@@ -512,9 +531,6 @@ FinancialFeedRowPresentation buildBusinessActivityRowPresentation({
           supplementalAccountIds: content.categoryAccountIds,
           accountLookup: accountLookup,
         );
-  final modeBadges = displayMode == TransactionListDisplayMode.compact
-      ? content.compactBadges
-      : content.standardBadges;
   final badges = <TransactionBadgePresentation>[...modeBadges, ...base.badges];
   return base.copyWith(
     title: categoryIdentity?.hasMultiple == true
@@ -528,6 +544,76 @@ FinancialFeedRowPresentation buildBusinessActivityRowPresentation({
         : content.standardSummary,
     preferCategoryArtwork: content.preferCategoryArtwork,
   );
+}
+
+FinancialFeedRowPresentation _buildTransactionlessBusinessActivityRow({
+  required BusinessActivityReadModel item,
+  required BusinessActivityRowContent content,
+  required List<TransactionBadgePresentation> modeBadges,
+  required AccountLookup accountLookup,
+  required TransactionListDisplayMode displayMode,
+}) {
+  final categoryIdentity = content.categoryAccountIds.isEmpty
+      ? null
+      : resolveTransactionCategoryIdentity(
+          transactionAccountIds: const {},
+          supplementalAccountIds: content.categoryAccountIds,
+          accountLookup: accountLookup,
+        );
+  final amount = formatMoney(Money.zero(), style: MoneyFormatStyle.plain);
+  final compactAmount = formatMoney(
+    Money.zero(),
+    style: MoneyFormatStyle.compact,
+  );
+  return TransactionRowPresentation(
+    transactionId:
+        'business-activity:${item.activityKey.type}:${item.activityKey.id}',
+    title: categoryIdentity?.hasMultiple == true
+        ? '多类别'
+        : categoryIdentity?.name ??
+              content.titleOverride ??
+              businessActivityTitle(item.summary),
+    subtitle: formatTime(item.activityAt),
+    iconKey: categoryIdentity?.iconKey,
+    amount: AdaptiveMoneyTextPresentation(
+      preciseText: amount,
+      compactText: compactAmount,
+    ),
+    amountTone: FinanceTone.neutral,
+    accountFlow: const TransactionAccountFlowPresentation(),
+    badges: modeBadges,
+    canQuickEdit: false,
+    canOpenTransaction: false,
+    hasMultipleCategories: categoryIdentity?.hasMultiple ?? false,
+    preferCategoryArtwork: content.preferCategoryArtwork,
+    supportingText: displayMode == TransactionListDisplayMode.compact
+        ? null
+        : content.standardSummary,
+  );
+}
+
+String businessActivityTitle(BusinessActivitySummary summary) {
+  return switch (summary) {
+    LedgerBusinessActivitySummary() => '账务活动',
+    AdvanceBusinessActivitySummary() => '垫付',
+    InstallmentBusinessActivitySummary(:final installmentType) =>
+      switch (installmentType) {
+        InstallmentType.purchase => '消费分期',
+        InstallmentType.disbursement => '放款分期',
+        InstallmentType.billConversion => '账单分期',
+      },
+    RepaymentBusinessActivitySummary(:final repaymentType) =>
+      switch (repaymentType) {
+        RepaymentType.bill => '账单还款',
+        RepaymentType.installment => '分期还款',
+        RepaymentType.prepayment => '提前还款',
+        RepaymentType.unattributed => '未归属还款',
+      },
+    AmortizationBusinessActivitySummary(:final kind) => switch (kind) {
+      AmortizationKind.prepaidExpense => '预付摊销',
+      AmortizationKind.deferredIncome => '预收摊销',
+    },
+  };
 }
 
 String? _flowAccountId(

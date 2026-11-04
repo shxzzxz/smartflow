@@ -711,7 +711,8 @@ Set<String> _contentTransactionIds(HomeContentState content) {
   return switch (content) {
     HomeContentLoaded(:final groups) => {
       for (final group in groups)
-        for (final row in group.rows) row.transactionId,
+        for (final row in group.rows)
+          if (row.canOpenTransaction) row.transactionId,
     },
     _ => const <String>{},
   };

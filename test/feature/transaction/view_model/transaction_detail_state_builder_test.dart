@@ -1062,12 +1062,12 @@ BusinessActivityReadModel _amortizationActivity({
     id: planId,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: AmortizationBusinessActivitySummary(
       kind: kind,
       status: status,
@@ -1095,12 +1095,12 @@ BusinessActivityReadModel _installmentActivity({
     id: 'contract-1',
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: InstallmentBusinessActivitySummary(
       installmentType: InstallmentType.purchase,
       status: InstallmentContractStatus.active,
@@ -1128,12 +1128,12 @@ BusinessActivityReadModel _repaymentActivity({
     id: repaymentId,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: RepaymentBusinessActivitySummary(
       repaymentType: repaymentType,
       targetType: targetType,
@@ -1169,12 +1169,12 @@ BusinessActivityReadModel _advanceActivity({
     lines: transaction.lines,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: ownedTransaction.id,
-      anchorAt: ownedTransaction.occurredAt,
+      displayTransactionId: ownedTransaction.id,
+      activityAt: ownedTransaction.occurredAt,
     ),
-    anchorTransaction: ownedTransaction,
+    displayTransaction: ownedTransaction,
     summary: AdvanceBusinessActivitySummary(
       scenario: scenario,
       trackingMode: trackingMode,

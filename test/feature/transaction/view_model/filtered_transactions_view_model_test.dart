@@ -302,12 +302,12 @@ BusinessActivityReadModel _businessActivity(String id) {
     isExcludedFromBudget: false,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: BusinessActivityKey.transactionGroup(id),
-      anchorTransactionId: id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: const LedgerBusinessActivitySummary(),
   );
 }

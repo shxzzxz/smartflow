@@ -63,25 +63,25 @@ class TransactionDayCard extends StatelessWidget {
                 for (var i = 0; i < group.rows.length; i++) ...[
                   TransactionRow(
                     presentation: group.rows[i],
-                    onTap:
-                        enableRowTap
-                            ? () => _openTransaction(context, group.rows[i])
-                            : null,
+                    onTap: enableRowTap && group.rows[i].canOpenTransaction
+                        ? () => _openTransaction(context, group.rows[i])
+                        : null,
                     onLongPress:
-                        onRowLongPress == null
-                            ? null
-                            : () =>
-                                onRowLongPress!(group.rows[i].transactionId),
-                    onQuickEdit:
-                        () => _openTransactionEditor(context, group.rows[i]),
+                        onRowLongPress == null ||
+                            !group.rows[i].canOpenTransaction
+                        ? null
+                        : () => onRowLongPress!(group.rows[i].transactionId),
+                    onQuickEdit: () =>
+                        _openTransactionEditor(context, group.rows[i]),
                     enableQuickEdit: enableRowQuickEdit,
                     onSelectionChanged:
-                        onRowSelectionChanged == null
-                            ? null
-                            : (selected) => onRowSelectionChanged!(
-                              group.rows[i].transactionId,
-                              selected,
-                            ),
+                        onRowSelectionChanged == null ||
+                            !group.rows[i].canOpenTransaction
+                        ? null
+                        : (selected) => onRowSelectionChanged!(
+                            group.rows[i].transactionId,
+                            selected,
+                          ),
                   ),
                   if (i < group.rows.length - 1)
                     Container(

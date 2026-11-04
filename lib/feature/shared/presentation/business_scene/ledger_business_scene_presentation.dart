@@ -6,7 +6,10 @@ import 'transaction_adjustment_presentation.dart';
 BusinessActivityRowContent presentLedgerBusinessActivityRow(
   BusinessActivityReadModel item,
 ) {
-  final parts = adjustmentSupportingParts(item.anchorTransaction);
+  final transaction = item.displayTransaction;
+  final parts = transaction == null
+      ? const <String>[]
+      : adjustmentSupportingParts(transaction);
   return BusinessActivityRowContent(
     standardSummary: parts.isEmpty ? null : parts.join(' · '),
   );

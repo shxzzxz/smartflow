@@ -19,14 +19,14 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   };
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _query.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) {
     return _query.watchAnchorPage(_queryFor(query)).map(_mapPage);
@@ -34,17 +34,17 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) async {
     final contractIds = {
-      for (final anchor in anchors)
-        if (anchor.activityKey.type == installmentOwnerType)
-          anchor.activityKey.id,
+      for (final candidate in candidates)
+        if (candidate.activityKey.type == installmentOwnerType)
+          candidate.activityKey.id,
     };
     final repaymentIds = {
-      for (final anchor in anchors)
-        if (anchor.activityKey.type == creditRepaymentOwnerType)
-          anchor.activityKey.id,
+      for (final candidate in candidates)
+        if (candidate.activityKey.type == creditRepaymentOwnerType)
+          candidate.activityKey.id,
     };
     final installmentSummaries = await _installments.findInstallments(
       contractIds,
@@ -78,19 +78,19 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) {
-    final values = anchors.toList();
+    final values = candidates.toList();
     if (values.isEmpty) return Stream.value(const {});
     final contractIds = {
-      for (final anchor in values)
-        if (anchor.activityKey.type == installmentOwnerType)
-          anchor.activityKey.id,
+      for (final candidate in values)
+        if (candidate.activityKey.type == installmentOwnerType)
+          candidate.activityKey.id,
     };
     final repaymentIds = {
-      for (final anchor in values)
-        if (anchor.activityKey.type == creditRepaymentOwnerType)
-          anchor.activityKey.id,
+      for (final candidate in values)
+        if (candidate.activityKey.type == creditRepaymentOwnerType)
+          candidate.activityKey.id,
     };
     final signals = <Stream<Object?>>[
       for (final contractId in contractIds)
@@ -113,7 +113,7 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
       before: switch (query.before) {
         null => null,
         final cursor => CreditTransactionViewCursor(
-          anchorAt: cursor.anchorAt,
+          anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           activityId: cursor.activityKey.id,
         ),
@@ -133,15 +133,15 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
   BusinessActivitySourcePage _mapPage(CreditTransactionViewAnchorPage page) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,
-      anchors: [
+      candidates: [
         for (final anchor in page.anchors)
-          BusinessActivityAnchorCandidate(
+          BusinessActivityCandidate(
             activityKey: BusinessActivityKey(
               type: anchor.activityType.code,
               id: anchor.activityId,
             ),
-            anchorTransactionId: anchor.anchorTransactionId,
-            anchorAt: anchor.anchorAt,
+            activityAt: anchor.anchorAt,
+            displayTransactionId: anchor.anchorTransactionId,
           ),
       ],
     );

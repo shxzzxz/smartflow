@@ -95,80 +95,47 @@ final class AmortizationBusinessActivitySummary
 
 /// 业务活动的统一读模型。
 ///
-/// 锚点交易是该事项在交易列表和交易详情中的默认入口。`anchorAt` 不单独
-/// 持久化，始终等于锚点交易的 `occurredAt`。
+/// 展示交易是可选的列表投影，不是活动身份、业务时间或详情入口的前提。
+/// [activityAt] 由来源显式给出，不能从展示交易隐式推导。
 final class BusinessActivityReadModel {
   BusinessActivityReadModel._({
     required this.activityKey,
-    required this.ownerType,
-    required this.ownerId,
-    required this.anchorTransaction,
+    required this.activityAt,
+    required this.displayTransaction,
     required this.summary,
   });
 
   factory BusinessActivityReadModel.fromCandidate({
-    required BusinessActivityAnchorCandidate candidate,
-    required TransactionReadModel anchorTransaction,
+    required BusinessActivityCandidate candidate,
+    TransactionReadModel? displayTransaction,
     required BusinessActivitySummary summary,
   }) {
-    if (anchorTransaction.parentTransactionId != null) {
+    final displayTransactionId = candidate.displayTransactionId;
+    if ((displayTransactionId == null) != (displayTransaction == null) ||
+        (displayTransactionId != null &&
+            displayTransaction!.id != displayTransactionId)) {
       throw ArgumentError.value(
-        anchorTransaction.id,
-        'anchorTransaction',
-        'A business activity anchor must be a top-level transaction.',
-      );
-    }
-    if (anchorTransaction.id != candidate.anchorTransactionId) {
-      throw ArgumentError.value(
-        candidate.anchorTransactionId,
-        'candidate.anchorTransactionId',
-        'The loaded transaction does not match the anchor candidate.',
-      );
-    }
-    if (anchorTransaction.occurredAt != candidate.anchorAt) {
-      throw ArgumentError.value(
-        candidate.anchorAt,
-        'candidate.anchorAt',
-        'anchorAt must equal the anchor transaction occurredAt.',
-      );
-    }
-
-    final ownership = anchorTransaction.ownership;
-    if (ownership == null) {
-      if (candidate.activityKey.type != ledgerTransactionGroupActivityType) {
-        throw ArgumentError.value(
-          candidate.activityKey,
-          'candidate.activityKey',
-          'An ownerless business activity must use the transaction-group type.',
-        );
-      }
-    } else if (candidate.activityKey.type != ownership.ownerType ||
-        candidate.activityKey.id != ownership.ownerId) {
-      throw ArgumentError.value(
-        candidate.activityKey,
-        'candidate.activityKey',
-        'The item key does not match the anchor transaction ownership.',
+        displayTransaction?.id,
+        'displayTransaction',
+        'The loaded transaction does not match the candidate display '
+            'transaction.',
       );
     }
 
     return BusinessActivityReadModel._(
       activityKey: candidate.activityKey,
-      ownerType: ownership?.ownerType,
-      ownerId: ownership?.ownerId,
-      anchorTransaction: anchorTransaction,
+      activityAt: candidate.activityAt,
+      displayTransaction: displayTransaction,
       summary: summary,
     );
   }
 
   final BusinessActivityKey activityKey;
-  final String? ownerType;
-  final String? ownerId;
-  final TransactionReadModel anchorTransaction;
+  final DateTime activityAt;
+  final TransactionReadModel? displayTransaction;
   final BusinessActivitySummary summary;
 
-  String get anchorTransactionId => anchorTransaction.id;
-
-  DateTime get anchorAt => anchorTransaction.occurredAt;
+  String? get displayTransactionId => displayTransaction?.id;
 }
 
 /// 公共业务活动查询返回的一页结果。
@@ -185,7 +152,7 @@ final class BusinessActivityPage {
     if (!hasMore || items.isEmpty) return null;
     final last = items.last;
     return BusinessActivityCursor(
-      anchorAt: last.anchorAt,
+      activityAt: last.activityAt,
       activityKey: last.activityKey,
     );
   }

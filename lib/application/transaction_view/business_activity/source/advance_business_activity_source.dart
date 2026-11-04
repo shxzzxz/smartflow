@@ -29,14 +29,14 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   };
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _anchors.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) {
     return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
@@ -44,33 +44,35 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) async {
-    final values = anchors.toList();
+    final values = candidates.toList();
     final (cases, transactions) = await (
-      _cases.findByIds({for (final anchor in values) anchor.activityKey.id}),
+      _cases.findByIds({
+        for (final candidate in values) candidate.activityKey.id,
+      }),
       _transactions.findTransactionsByIds({
-        for (final anchor in values) anchor.anchorTransactionId,
+        for (final candidate in values) ?candidate.displayTransactionId,
       }),
     ).wait;
     final transactionsById = {
       for (final transaction in transactions) transaction.id: transaction,
     };
     return {
-      for (final anchor in values)
-        anchor.activityKey: _summaryFor(anchor, cases, transactionsById),
+      for (final candidate in values)
+        candidate.activityKey: _summaryFor(candidate, cases, transactionsById),
     };
   }
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) {
-    final values = anchors.toList();
+    final values = candidates.toList();
     if (values.isEmpty) return Stream.value(const {});
-    final ownerIds = {for (final anchor in values) anchor.activityKey.id};
+    final ownerIds = {for (final candidate in values) candidate.activityKey.id};
     final transactionIds = {
-      for (final anchor in values) anchor.anchorTransactionId,
+      for (final candidate in values) ?candidate.displayTransactionId,
     };
     final signals = <Stream<Object?>>[
       for (final ownerId in ownerIds)
@@ -83,21 +85,25 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   }
 
   AdvanceBusinessActivitySummary _summaryFor(
-    BusinessActivityAnchorCandidate anchor,
+    BusinessActivityCandidate candidate,
     Map<String, AdvanceCase> cases,
     Map<String, TransactionReadModel> transactionsById,
   ) {
-    final advanceCase = cases[anchor.activityKey.id];
+    final advanceCase = cases[candidate.activityKey.id];
     if (advanceCase == null) {
       throw StateError(
-        'Advance case ${anchor.activityKey.id} for business activity was not found.',
+        'Advance case ${candidate.activityKey.id} for business activity was '
+        'not found.',
       );
     }
-    final facts = transactionsById[anchor.anchorTransactionId]?.advanceSummary;
+    final displayTransactionId = candidate.displayTransactionId;
+    final facts = displayTransactionId == null
+        ? null
+        : transactionsById[displayTransactionId]?.advanceSummary;
     if (facts == null) {
       throw StateError(
-        'Advance facts for anchor transaction ${anchor.anchorTransactionId} '
-        'were not found.',
+        'Advance facts for display transaction $displayTransactionId were not '
+        'found.',
       );
     }
     return AdvanceBusinessActivitySummary(
@@ -116,7 +122,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
       before: switch (query.before) {
         null => null,
         final cursor => AdvanceTransactionViewCursor(
-          anchorAt: cursor.anchorAt,
+          anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           ownerId: cursor.activityKey.id,
         ),
@@ -133,15 +139,15 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
   BusinessActivitySourcePage _mapPage(AdvanceTransactionViewAnchorPage page) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,
-      anchors: [
+      candidates: [
         for (final anchor in page.anchors)
-          BusinessActivityAnchorCandidate(
+          BusinessActivityCandidate(
             activityKey: BusinessActivityKey(
               type: orchestrationAdvanceOwnerType,
               id: anchor.ownerId,
             ),
-            anchorTransactionId: anchor.anchorTransactionId,
-            anchorAt: anchor.anchorAt,
+            activityAt: anchor.anchorAt,
+            displayTransactionId: anchor.anchorTransactionId,
           ),
       ],
     );

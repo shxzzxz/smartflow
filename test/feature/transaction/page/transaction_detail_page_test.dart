@@ -929,12 +929,12 @@ BusinessActivityReadModel _advanceActivity({
     advanceSummary: summary,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: anchor.id,
-      anchorAt: anchor.occurredAt,
+      displayTransactionId: anchor.id,
+      activityAt: anchor.occurredAt,
     ),
-    anchorTransaction: anchor,
+    displayTransaction: anchor,
     summary: AdvanceBusinessActivitySummary(
       scenario: AdvanceScenario.reimbursement,
       trackingMode: AdvanceTrackingMode.itemized,
@@ -950,12 +950,12 @@ BusinessActivityReadModel _amortizationActivity(TransactionReadModel detail) {
     id: 'plan-1',
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: key,
-      anchorTransactionId: detail.id,
-      anchorAt: detail.occurredAt,
+      displayTransactionId: detail.id,
+      activityAt: detail.occurredAt,
     ),
-    anchorTransaction: detail,
+    displayTransaction: detail,
     summary: const AmortizationBusinessActivitySummary(
       kind: AmortizationKind.prepaidExpense,
       status: AmortizationStatus.active,

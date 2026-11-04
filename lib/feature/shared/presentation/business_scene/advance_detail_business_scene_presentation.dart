@@ -19,10 +19,13 @@ TransactionDetailBusinessContent presentAdvanceDetailBusinessScene(
     return const TransactionDetailBusinessContent();
   }
 
-  final anchorTransaction = activity.anchorTransaction;
-  final items = advanceSheetItems(anchorTransaction.children);
+  final displayTransaction = activity.displayTransaction;
+  if (displayTransaction == null) {
+    return const TransactionDetailBusinessContent();
+  }
+  final items = advanceSheetItems(displayTransaction.children);
   final hasActivity = items.isNotEmpty;
-  final facts = anchorTransaction.advanceSummary;
+  final facts = displayTransaction.advanceSummary;
   final summaryText = summary.isClosed
       ? '已结清 · 实收 ${facts?.receivedAmount.format() ?? '0.00'}'
       : hasActivity

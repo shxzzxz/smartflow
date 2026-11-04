@@ -422,7 +422,7 @@ void main() {
             container.read(homeTransactionFeedViewModelProvider(visibleMonth))
                 as HomeTransactionFeedLoaded;
         expect(loaded.items, hasLength(homeBusinessActivityPageSize + 1));
-        expect(loaded.items.first.anchorTransactionId, 'initial-0');
+        expect(loaded.items.first.displayTransactionId, 'initial-0');
         expect(loaded.hasPendingRefresh, isTrue);
 
         container
@@ -435,7 +435,7 @@ void main() {
         loaded =
             container.read(homeTransactionFeedViewModelProvider(visibleMonth))
                 as HomeTransactionFeedLoaded;
-        expect(loaded.items.map((item) => item.anchorTransactionId), ['newer']);
+        expect(loaded.items.map((item) => item.displayTransactionId), ['newer']);
         expect(loaded.hasPendingRefresh, isFalse);
         expect(loaded.isRefreshing, isFalse);
       },
@@ -486,7 +486,7 @@ void main() {
       final state =
           container.read(homeTransactionFeedViewModelProvider(visibleMonth))
               as HomeTransactionFeedLoaded;
-      expect(state.items.map((item) => item.anchorTransactionId), [
+      expect(state.items.map((item) => item.displayTransactionId), [
         'new-filter',
       ]);
       expect(state.hasPendingRefresh, isFalse);
@@ -589,17 +589,17 @@ BusinessActivityReadModel _businessActivity({
   final anchor = transaction ?? _item(id: id, occurredAt: occurredAt);
   final ownership = anchor.ownership;
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: ownership == null
           ? BusinessActivityKey.transactionGroup(anchor.id)
           : BusinessActivityKey(
               type: ownership.ownerType,
               id: ownership.ownerId,
             ),
-      anchorTransactionId: anchor.id,
-      anchorAt: anchor.occurredAt,
+      displayTransactionId: anchor.id,
+      activityAt: anchor.occurredAt,
     ),
-    anchorTransaction: anchor,
+    displayTransaction: anchor,
     summary: summary,
   );
 }

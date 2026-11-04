@@ -226,7 +226,7 @@ void main() {
           'tx-${calendarBusinessActivityPageSize - 1}',
         ),
       );
-      expect(cursor?.anchorAt, DateTime(2026, 1, 15, 9));
+      expect(cursor?.activityAt, DateTime(2026, 1, 15, 9));
     });
 
     test('shifts month and clamps selected date', () {
@@ -351,12 +351,12 @@ BusinessActivityReadModel _businessActivity(
 }) {
   final transaction = _item(occurredAt, id: id);
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: BusinessActivityKey.transactionGroup(transaction.id),
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: const LedgerBusinessActivitySummary(),
   );
 }

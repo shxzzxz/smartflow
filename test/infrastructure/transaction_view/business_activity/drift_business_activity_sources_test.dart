@@ -111,17 +111,17 @@ void main() {
         );
 
         final source = DriftLedgerBusinessActivitySource(db);
-        final firstPage = await source.findAnchorPage(
+        final firstPage = await source.findCandidatePage(
           _query(limit: 1, occurredUntil: DateTime(2026, 11)),
         );
 
         expect(firstPage.hasMore, isTrue);
-        expect(firstPage.anchors.first.anchorTransactionId, 'ledger-new');
-        final secondPage = await source.findAnchorPage(
+        expect(firstPage.candidates.first.displayTransactionId, 'ledger-new');
+        final secondPage = await source.findCandidatePage(
           _query(
             limit: 1,
             before: BusinessActivityCursor(
-              anchorAt: DateTime(2026, 10, 3),
+              activityAt: DateTime(2026, 10, 3),
               activityKey: const BusinessActivityKey.transactionGroup(
                 'ledger-new',
               ),
@@ -129,36 +129,37 @@ void main() {
           ),
         );
         expect(secondPage.hasMore, isFalse);
-        expect(secondPage.anchors.single.anchorTransactionId, 'ledger-old');
+        expect(secondPage.candidates.single.displayTransactionId, 'ledger-old');
 
-        final filtered = await source.findAnchorPage(
+        final filtered = await source.findCandidatePage(
           _query(categoryAccountIds: const {'food'}),
         );
-        expect(filtered.anchors.map((anchor) => anchor.anchorTransactionId), [
-          'ledger-old',
-        ]);
         expect(
-          (await source.findAnchorPage(
+          filtered.candidates.map((anchor) => anchor.displayTransactionId),
+          ['ledger-old'],
+        );
+        expect(
+          (await source.findCandidatePage(
             _query(settlementAccountIds: const {'cash'}),
-          )).anchors.map((anchor) => anchor.anchorTransactionId),
+          )).candidates.map((anchor) => anchor.displayTransactionId),
           ['ledger-old'],
         );
         expect(
-          (await source.findAnchorPage(
+          (await source.findCandidatePage(
             _query(tagIds: const {'tag-1'}),
-          )).anchors.map((anchor) => anchor.anchorTransactionId),
+          )).candidates.map((anchor) => anchor.displayTransactionId),
           ['ledger-old'],
         );
         expect(
-          (await source.findAnchorPage(
+          (await source.findCandidatePage(
             _query(untaggedOnly: true),
-          )).anchors.map((anchor) => anchor.anchorTransactionId),
+          )).candidates.map((anchor) => anchor.displayTransactionId),
           ['ledger-new'],
         );
         expect(
-          (await source.findAnchorPage(
+          (await source.findCandidatePage(
             _query(counterpartyId: 'counterparty-1'),
-          )).anchors.map((anchor) => anchor.anchorTransactionId),
+          )).candidates.map((anchor) => anchor.displayTransactionId),
           ['ledger-old'],
         );
       },
@@ -239,12 +240,12 @@ void main() {
           _advanceCases(db),
           _TransactionBatchQuery(db),
         );
-        final page = await source.findAnchorPage(_query());
+        final page = await source.findCandidatePage(_query());
 
-        expect(page.anchors, hasLength(1));
-        expect(page.anchors.single.anchorTransactionId, 'advance-parent');
+        expect(page.candidates, hasLength(1));
+        expect(page.candidates.single.displayTransactionId, 'advance-parent');
         expect(
-          page.anchors.single.activityKey,
+          page.candidates.single.activityKey,
           const BusinessActivityKey(
             type: 'orchestration.advance',
             id: 'advance-1',
@@ -253,8 +254,8 @@ void main() {
         final summary =
             (await _findSummaries(
                   source,
-                  page.anchors,
-                ))[page.anchors.single.activityKey]
+                  page.candidates,
+                ))[page.candidates.single.activityKey]
                 as AdvanceBusinessActivitySummary;
         expect(summary.scenario, AdvanceScenario.aa);
         expect(summary.trackingMode, AdvanceTrackingMode.itemized);
@@ -360,15 +361,15 @@ void main() {
           _amortizationQuery(db),
           _amortizationPlans(db),
         );
-        final page = await source.findAnchorPage(
+        final page = await source.findCandidatePage(
           _query(categoryAccountIds: const {'software'}),
         );
 
-        expect(page.anchors, hasLength(1));
-        expect(page.anchors.single.anchorTransactionId, 'plan-initial');
-        final key = page.anchors.single.activityKey;
+        expect(page.candidates, hasLength(1));
+        expect(page.candidates.single.displayTransactionId, 'plan-initial');
+        final key = page.candidates.single.activityKey;
         final summary =
-            (await _findSummaries(source, page.anchors))[key]
+            (await _findSummaries(source, page.candidates))[key]
                 as AmortizationBusinessActivitySummary;
         expect(summary.status, AmortizationStatus.completed);
         expect(summary.originalAmount, const Money(minorUnits: 10000));
@@ -488,27 +489,30 @@ void main() {
           _amortizationPlans(db),
         );
 
-        final categoryPage = await source.findAnchorPage(
+        final categoryPage = await source.findCandidatePage(
           _query(limit: 1, categoryAccountIds: const {'termination-category'}),
         );
-        final settlementPage = await source.findAnchorPage(
+        final settlementPage = await source.findCandidatePage(
           _query(limit: 1, settlementAccountIds: const {'return-bank'}),
         );
-        final recognitionPage = await source.findAnchorPage(
+        final recognitionPage = await source.findCandidatePage(
           _query(limit: 1, categoryAccountIds: const {'recognition-category'}),
         );
 
-        expect(categoryPage.anchors, hasLength(1));
-        expect(categoryPage.anchors.single.anchorTransactionId, 'plan-initial');
-        expect(categoryPage.hasMore, isFalse);
-        expect(settlementPage.anchors, hasLength(1));
+        expect(categoryPage.candidates, hasLength(1));
         expect(
-          settlementPage.anchors.single.anchorTransactionId,
+          categoryPage.candidates.single.displayTransactionId,
           'plan-initial',
         );
-        expect(recognitionPage.anchors, hasLength(1));
+        expect(categoryPage.hasMore, isFalse);
+        expect(settlementPage.candidates, hasLength(1));
         expect(
-          recognitionPage.anchors.single.anchorTransactionId,
+          settlementPage.candidates.single.displayTransactionId,
+          'plan-initial',
+        );
+        expect(recognitionPage.candidates, hasLength(1));
+        expect(
+          recognitionPage.candidates.single.displayTransactionId,
           'plan-initial',
         );
       },
@@ -614,13 +618,15 @@ void main() {
           _creditQuery(db),
           _installmentQuery(db),
         );
-        final firstPage = await source.findAnchorPage(_query(limit: 2));
+        final firstPage = await source.findCandidatePage(_query(limit: 2));
         expect(
-          firstPage.anchors.take(2).map((anchor) => anchor.anchorTransactionId),
+          firstPage.candidates
+              .take(2)
+              .map((anchor) => anchor.displayTransactionId),
           ['purchase-tx', 'repayment-tx'],
         );
         expect(firstPage.hasMore, isTrue);
-        final contractKey = firstPage.anchors.first.activityKey;
+        final contractKey = firstPage.candidates.first.activityKey;
         final creditSummary =
             (await _findSummariesForKeys(source, {contractKey}))[contractKey]
                 as InstallmentBusinessActivitySummary;
@@ -629,7 +635,7 @@ void main() {
         expect(creditSummary.totalPeriodCount, 2);
         expect(creditSummary.remainingPrincipal, const Money(minorUnits: 6000));
         final allKeys = {
-          for (final anchor in firstPage.anchors) anchor.activityKey,
+          for (final anchor in firstPage.candidates) anchor.activityKey,
         };
         final summaries = await _findSummariesForKeys(source, allKeys);
         expect(summaries.keys, containsAll(allKeys));
@@ -641,19 +647,20 @@ void main() {
           isA<RepaymentBusinessActivitySummary>(),
         );
 
-        final secondPage = await source.findAnchorPage(
+        final secondPage = await source.findCandidatePage(
           _query(
             limit: 2,
             before: BusinessActivityCursor(
-              anchorAt: firstPage.anchors[1].anchorAt,
-              activityKey: firstPage.anchors[1].activityKey,
+              activityAt: firstPage.candidates[1].activityAt,
+              activityKey: firstPage.candidates[1].activityKey,
             ),
           ),
         );
         expect(secondPage.hasMore, isFalse);
-        expect(secondPage.anchors.map((anchor) => anchor.anchorTransactionId), [
-          'loan-tx',
-        ]);
+        expect(
+          secondPage.candidates.map((anchor) => anchor.displayTransactionId),
+          ['loan-tx'],
+        );
       },
     );
 
@@ -719,9 +726,9 @@ void main() {
           _creditQuery(db),
           _installmentQuery(db),
         );
-        final page = await source.findAnchorPage(_query());
+        final page = await source.findCandidatePage(_query());
 
-        expect(page.anchors.map((anchor) => anchor.anchorTransactionId), [
+        expect(page.candidates.map((anchor) => anchor.displayTransactionId), [
           'unattributed-tx',
           'bill-repayment-tx',
         ]);
@@ -1010,10 +1017,10 @@ void main() {
         _creditQuery(db),
         _installmentQuery(db),
       );
-      final iterator = StreamIterator(source.watchAnchorPage(_query()));
+      final iterator = StreamIterator(source.watchCandidatePage(_query()));
 
       expect(await iterator.moveNext(), isTrue);
-      expect(iterator.current.anchors, isEmpty);
+      expect(iterator.current.candidates, isEmpty);
 
       await db
           .into(db.repayments)
@@ -1030,7 +1037,7 @@ void main() {
 
       expect(await iterator.moveNext(), isTrue);
       expect(
-        iterator.current.anchors.single.anchorTransactionId,
+        iterator.current.candidates.single.displayTransactionId,
         'repayment-tx',
       );
       await iterator.cancel();
@@ -1170,7 +1177,7 @@ void main() {
       transactionQuery: _TransactionBatchQuery(db),
     );
     final firstPage = await service.findPage(_query(limit: 2));
-    expect(firstPage.items.map((item) => item.anchorTransactionId), [
+    expect(firstPage.items.map((item) => item.displayTransactionId), [
       'amortization-tx',
       'advance-tx',
     ]);
@@ -1179,7 +1186,7 @@ void main() {
     final secondPage = await service.findPage(
       _query(limit: 2, before: firstPage.nextCursor),
     );
-    expect(secondPage.items.map((item) => item.anchorTransactionId), [
+    expect(secondPage.items.map((item) => item.displayTransactionId), [
       'ledger-tx',
       'repayment-tx',
     ]);
@@ -1260,10 +1267,10 @@ void main() {
     final page = await service.findPage(_query());
     final iterator = StreamIterator(
       amortizationSource.watchSummaries([
-        BusinessActivityAnchorCandidate(
+        BusinessActivityCandidate(
           activityKey: page.items.single.activityKey,
-          anchorTransactionId: page.items.single.anchorTransactionId,
-          anchorAt: page.items.single.anchorAt,
+          displayTransactionId: page.items.single.displayTransactionId,
+          activityAt: page.items.single.activityAt,
         ),
       ]),
     );
@@ -1420,7 +1427,7 @@ InstallmentQueryService _installmentQuery(AppDatabase db) {
 
 Future<Map<BusinessActivityKey, BusinessActivitySummary>> _findSummaries(
   BusinessActivitySource source,
-  Iterable<BusinessActivityAnchorCandidate> anchors,
+  Iterable<BusinessActivityCandidate> anchors,
 ) {
   return source.findSummaries(anchors);
 }
@@ -1431,10 +1438,10 @@ Future<Map<BusinessActivityKey, BusinessActivitySummary>> _findSummariesForKeys(
 ) {
   return _findSummaries(source, [
     for (final key in keys)
-      BusinessActivityAnchorCandidate(
+      BusinessActivityCandidate(
         activityKey: key,
-        anchorTransactionId: key.id,
-        anchorAt: DateTime(2026, 10),
+        displayTransactionId: key.id,
+        activityAt: DateTime(2026, 10),
       ),
   ]);
 }

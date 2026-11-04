@@ -1460,6 +1460,36 @@ void main() {
 
       expect(row.supportingText, isNull);
     });
+
+    test('builds a transactionless activity row from activity facts', () {
+      final activityAt = DateTime(2026, 1, 3, 11, 45);
+      final item = _businessActivity(
+        summary: const RepaymentBusinessActivitySummary(
+          repaymentType: RepaymentType.bill,
+          targetType: RepaymentTargetType.bill,
+        ),
+        includeDisplayTransaction: false,
+        activityAt: activityAt,
+      );
+
+      final row = buildBusinessActivityRowPresentation(
+        item: item,
+        accountLookup: _lookup,
+      );
+      final groups = groupBusinessActivitiesByDay(
+        items: [item],
+        accountLookup: _lookup,
+      );
+
+      expect(row.title, '账单还款');
+      expect(row.subtitle, '11:45');
+      expect(row.accountFlow.singleEndpoint.label, '无账户');
+      expect(row.canOpenTransaction, isFalse);
+      expect(row.canQuickEdit, isFalse);
+      expect(row.supportingText, '账单还款 · 账单');
+      expect(groups.single.date, DateTime(2026, 1, 3));
+      expect(groups.single.rows.single.title, '账单还款');
+    });
   });
 }
 
@@ -1638,15 +1668,20 @@ TransactionReadModel _item({
 BusinessActivityReadModel _businessActivity({
   required BusinessActivitySummary summary,
   TransactionReadModel? transaction,
+  bool includeDisplayTransaction = true,
+  DateTime? activityAt,
 }) {
-  final anchor = transaction ?? _item();
+  final displayTransaction = transaction ?? _item();
+  final resolvedActivityAt = activityAt ?? displayTransaction.occurredAt;
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
-      activityKey: BusinessActivityKey.transactionGroup(anchor.id),
-      anchorTransactionId: anchor.id,
-      anchorAt: anchor.occurredAt,
+    candidate: BusinessActivityCandidate(
+      activityKey: BusinessActivityKey.transactionGroup(displayTransaction.id),
+      displayTransactionId: includeDisplayTransaction
+          ? displayTransaction.id
+          : null,
+      activityAt: resolvedActivityAt,
     ),
-    anchorTransaction: anchor,
+    displayTransaction: includeDisplayTransaction ? displayTransaction : null,
     summary: summary,
   );
 }

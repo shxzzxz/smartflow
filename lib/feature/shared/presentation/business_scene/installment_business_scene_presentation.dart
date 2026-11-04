@@ -18,7 +18,8 @@ BusinessActivityRowContent presentInstallmentBusinessActivityRow(
         ? '放款分期'
         : null,
     preferCategoryArtwork:
-        usesCategoryArtwork && item.anchorTransaction.categoryLines.isNotEmpty,
+        usesCategoryArtwork &&
+        (item.displayTransaction?.categoryLines.isNotEmpty ?? false),
     standardSummary: _standardSummary(summary),
     compactBadges: summary.installmentType == InstallmentType.purchase
         ? [

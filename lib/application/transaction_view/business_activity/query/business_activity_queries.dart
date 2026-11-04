@@ -30,14 +30,15 @@ final class BusinessActivityKey {
   int get hashCode => Object.hash(type, id);
 }
 
-/// 业务活动视图的排他游标；排序方向为 `(anchorAt DESC, activityKey DESC)`。
+/// 业务活动视图的排他游标；排序方向为 `(activityAt DESC, activityKey DESC)`。
 final class BusinessActivityCursor {
   const BusinessActivityCursor({
-    required this.anchorAt,
+    required this.activityAt,
     required this.activityKey,
   });
 
-  final DateTime anchorAt;
+  /// 业务活动自身的展示与排序时间，不等同于展示交易的交易时间。
+  final DateTime activityAt;
   final BusinessActivityKey activityKey;
 }
 
@@ -86,31 +87,34 @@ final class BusinessActivityPageQuery {
   final String? counterpartyId;
 }
 
-/// 来源返回给公共归并层的锚点候选。
-final class BusinessActivityAnchorCandidate {
-  const BusinessActivityAnchorCandidate({
+/// 来源返回给公共归并层的业务活动候选。
+///
+/// 活动身份和业务时间由所属来源决定。展示交易只是可选的列表投影，不参与
+/// 活动身份，也不是活动能够被查询、分页或展示的前提。
+final class BusinessActivityCandidate {
+  const BusinessActivityCandidate({
     required this.activityKey,
-    required this.anchorTransactionId,
-    required this.anchorAt,
-  }) : assert(anchorTransactionId != '');
+    required this.activityAt,
+    this.displayTransactionId,
+  }) : assert(displayTransactionId == null || displayTransactionId != '');
 
   final BusinessActivityKey activityKey;
-  final String anchorTransactionId;
-  final DateTime anchorAt;
+  final DateTime activityAt;
+  final String? displayTransactionId;
 }
 
-/// 单个来源的一页锚点结果。
+/// 单个来源的一页业务活动候选结果。
 ///
-/// [anchors] 必须已按 `(anchorAt DESC, activityKey DESC)` 排序，且不能超过请求
+/// [candidates] 必须已按 `(activityAt DESC, activityKey DESC)` 排序，且不能超过请求
 /// limit + 1。来源需要额外读取并返回一条候选来判断本来源是否还有下一页；
-/// 因此 `hasMore == true` 时 [anchors] 必须恰好包含 limit + 1 条。
+/// 因此 `hasMore == true` 时 [candidates] 必须恰好包含 limit + 1 条。
 final class BusinessActivitySourcePage {
   BusinessActivitySourcePage({
-    required Iterable<BusinessActivityAnchorCandidate> anchors,
+    required Iterable<BusinessActivityCandidate> candidates,
     required this.hasMore,
-  }) : anchors = List.unmodifiable(anchors);
+  }) : candidates = List.unmodifiable(candidates);
 
-  final List<BusinessActivityAnchorCandidate> anchors;
+  final List<BusinessActivityCandidate> candidates;
   final bool hasMore;
 }
 

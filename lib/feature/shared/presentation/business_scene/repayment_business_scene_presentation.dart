@@ -8,11 +8,12 @@ BusinessActivityRowContent presentRepaymentBusinessActivityRow(
   BusinessActivityReadModel item,
 ) {
   final summary = item.summary as RepaymentBusinessActivitySummary;
+  final transaction = item.displayTransaction;
   return BusinessActivityRowContent(
     standardSummary: [
       _repaymentTypeLabel(summary.repaymentType),
       _repaymentTargetLabel(summary.targetType),
-      ...adjustmentSupportingParts(item.anchorTransaction),
+      if (transaction != null) ...adjustmentSupportingParts(transaction),
     ].join(' · '),
   );
 }

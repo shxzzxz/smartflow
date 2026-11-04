@@ -28,9 +28,9 @@ void main() {
 
     contents.add({first.activityKey: _activity('first', 2)});
     await pumpEventQueue();
-    expect(events.last.items.single.anchorTransaction.id, 'first');
+    expect(events.last.items.single.displayTransaction!.id, 'first');
     expect(
-      events.last.items.single.anchorTransaction.primaryAmount.minorUnits,
+      events.last.items.single.displayTransaction!.primaryAmount.minorUnits,
       2,
     );
 
@@ -38,7 +38,47 @@ void main() {
     pages.add(BusinessActivityPage(items: [second], hasMore: false));
     await Future<void>.delayed(const Duration(milliseconds: 10));
     expect(query.watchCalls, 2);
-    expect(events.last.items.single.anchorTransaction.id, 'second');
+    expect(events.last.items.single.displayTransaction!.id, 'second');
+  });
+
+  test('refreshes a member that has no display transaction', () async {
+    final pages = StreamController<BusinessActivityPage>.broadcast();
+    final contents =
+        StreamController<
+          Map<BusinessActivityKey, BusinessActivityReadModel>
+        >.broadcast();
+    final query = _ContentQueryService(contents.stream);
+    final events = <BusinessActivityPage>[];
+    final subscription = watchBusinessActivityContents(
+      pages.stream,
+      query,
+    ).listen(events.add);
+    addTearDown(subscription.cancel);
+    addTearDown(pages.close);
+    addTearDown(contents.close);
+
+    final first = _activity('first', 1, includeDisplayTransaction: false);
+    pages.add(BusinessActivityPage(items: [first], hasMore: true));
+    await pumpEventQueue();
+    expect(events.last.items.single.displayTransaction, isNull);
+    expect(events.last.hasMore, isTrue);
+    expect(events.last.nextCursor?.activityAt, first.activityAt);
+    expect(events.last.nextCursor?.activityKey, first.activityKey);
+
+    final refreshedAt = DateTime(2026, 1, 2);
+    contents.add({
+      first.activityKey: _activity(
+        'first',
+        2,
+        includeDisplayTransaction: false,
+        activityAt: refreshedAt,
+      ),
+    });
+    await pumpEventQueue();
+
+    expect(events.last.items.single.activityAt, refreshedAt);
+    expect(events.last.items.single.displayTransaction, isNull);
+    expect(events.last.hasMore, isTrue);
   });
 }
 
@@ -68,7 +108,12 @@ final class _ContentQueryService implements BusinessActivityQueryService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-BusinessActivityReadModel _activity(String id, int amountMinor) {
+BusinessActivityReadModel _activity(
+  String id,
+  int amountMinor, {
+  bool includeDisplayTransaction = true,
+  DateTime? activityAt,
+}) {
   final transaction = TransactionReadModel(
     id: id,
     businessPurpose: BusinessPurpose.dailyExpense,
@@ -78,12 +123,12 @@ BusinessActivityReadModel _activity(String id, int amountMinor) {
     isExcludedFromBudget: false,
   );
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: BusinessActivityKey.transactionGroup(id),
-      anchorTransactionId: id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: includeDisplayTransaction ? id : null,
+      activityAt: activityAt ?? transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: includeDisplayTransaction ? transaction : null,
     summary: const LedgerBusinessActivitySummary(),
   );
 }

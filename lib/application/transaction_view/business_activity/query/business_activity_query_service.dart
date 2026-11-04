@@ -6,16 +6,17 @@ import 'business_activity_source.dart';
 
 /// 跨业务来源的业务活动查询用例。
 ///
-/// 实现负责合并各来源锚点、确定全局 `hasMore`、批量加载摘要和校验锚点
+/// 实现负责合并各来源候选、确定全局 `hasMore`、批量加载摘要和可选的展示
 /// 交易。来源查询已经完成全部筛选和游标条件，本服务不得补做业务过滤。
 abstract interface class BusinessActivityQueryService {
   Future<BusinessActivityPage> findPage(BusinessActivityPageQuery query);
 
   Stream<BusinessActivityPage> watchPage(BusinessActivityPageQuery query);
 
-  Future<BusinessActivityReadModel?> findForAnchor({
+  Future<BusinessActivityReadModel?> findForActivity({
     required BusinessActivityKey activityKey,
-    required TransactionReadModel anchorTransaction,
+    required DateTime activityAt,
+    TransactionReadModel? displayTransaction,
   });
 
   /// Refreshes the content of existing members without discovering new ones.
@@ -43,7 +44,7 @@ final class BusinessActivityQueryServiceImpl
       return BusinessActivityPage(items: const [], hasMore: false);
     }
     final pages = await Future.wait(
-      sources.map((source) => source.findAnchorPage(query)),
+      sources.map((source) => source.findCandidatePage(query)),
     );
     return _assemblePage(query, sources, pages);
   }
@@ -56,7 +57,7 @@ final class BusinessActivityQueryServiceImpl
         BusinessActivityPage(items: const [], hasMore: false),
       );
     }
-    final streams = sources.map((source) => source.watchAnchorPage(query));
+    final streams = sources.map((source) => source.watchCandidatePage(query));
     return combineLatestStreams(
       streams,
     ).asyncMap((pages) => _assemblePage(query, sources, pages));
@@ -86,11 +87,13 @@ final class BusinessActivityQueryServiceImpl
             .map<Object?>((summaries) => summaries),
     ];
     final transactionIds = {
-      for (final activity in activities) activity.anchorTransactionId,
+      for (final activity in activities) ?activity.displayTransactionId,
     };
-    final transactionStream = _transactionQuery
-        .watchTransactionsByIds(transactionIds)
-        .map<Object?>((transactions) => transactions);
+    final transactionStream = transactionIds.isEmpty
+        ? Stream<Object?>.value(const <TransactionReadModel>[])
+        : _transactionQuery
+              .watchTransactionsByIds(transactionIds)
+              .map<Object?>((transactions) => transactions);
 
     return combineLatestStreams<Object?>([
       ...summaryStreams,
@@ -109,11 +112,17 @@ final class BusinessActivityQueryServiceImpl
       final updated = <BusinessActivityKey, BusinessActivityReadModel>{};
       for (final activity in activities) {
         final summary = summaries[activity.activityKey];
-        final transaction = transactionsById[activity.anchorTransactionId];
-        if (summary == null || transaction == null) continue;
+        final displayTransactionId = activity.displayTransactionId;
+        final transaction = displayTransactionId == null
+            ? null
+            : transactionsById[displayTransactionId];
+        if (summary == null ||
+            (displayTransactionId != null && transaction == null)) {
+          continue;
+        }
         updated[activity.activityKey] = BusinessActivityReadModel.fromCandidate(
           candidate: _candidateForActivity(activity),
-          anchorTransaction: transaction,
+          displayTransaction: transaction,
           summary: summary,
         );
       }
@@ -129,20 +138,20 @@ final class BusinessActivityQueryServiceImpl
     final merged = <_SourcedCandidate>[];
     for (var sourceIndex = 0; sourceIndex < pages.length; sourceIndex++) {
       final page = pages[sourceIndex];
-      if (page.anchors.length > query.limit + 1) {
+      if (page.candidates.length > query.limit + 1) {
         throw StateError(
           'Source ${sources[sourceIndex].sourceKey} returned more than '
-          'limit + 1 anchors.',
+          'limit + 1 candidates.',
         );
       }
-      if (page.hasMore != (page.anchors.length > query.limit)) {
+      if (page.hasMore != (page.candidates.length > query.limit)) {
         throw StateError(
           'Source ${sources[sourceIndex].sourceKey} returned an inconsistent '
           'hasMore flag.',
         );
       }
       merged.addAll([
-        for (final candidate in page.anchors)
+        for (final candidate in page.candidates)
           _SourcedCandidate(sourceIndex: sourceIndex, candidate: candidate),
       ]);
     }
@@ -161,19 +170,23 @@ final class BusinessActivityQueryServiceImpl
       return BusinessActivityPage(items: const [], hasMore: false);
     }
 
-    final anchorsBySource = <int, List<BusinessActivityAnchorCandidate>>{};
+    final candidatesBySource = <int, List<BusinessActivityCandidate>>{};
     for (final candidate in selected) {
-      anchorsBySource
+      candidatesBySource
           .putIfAbsent(candidate.sourceIndex, () => [])
           .add(candidate.candidate);
     }
-    final transactionFuture = _transactionQuery.findTransactionsByIds({
-      for (final candidate in selected) candidate.candidate.anchorTransactionId,
-    });
+    final displayTransactionIds = {
+      for (final candidate in selected)
+        ?candidate.candidate.displayTransactionId,
+    };
+    final transactionFuture = displayTransactionIds.isEmpty
+        ? Future<List<TransactionReadModel>>.value(const [])
+        : _transactionQuery.findTransactionsByIds(displayTransactionIds);
     final summaryFutures = [
       for (var sourceIndex = 0; sourceIndex < sources.length; sourceIndex++)
-        if (anchorsBySource[sourceIndex] case final anchors?)
-          sources[sourceIndex].findSummaries(anchors)
+        if (candidatesBySource[sourceIndex] case final candidates?)
+          sources[sourceIndex].findSummaries(candidates)
         else
           Future.value(const <BusinessActivityKey, BusinessActivitySummary>{}),
     ];
@@ -198,23 +211,24 @@ final class BusinessActivityQueryServiceImpl
   }
 
   @override
-  Future<BusinessActivityReadModel?> findForAnchor({
+  Future<BusinessActivityReadModel?> findForActivity({
     required BusinessActivityKey activityKey,
-    required TransactionReadModel anchorTransaction,
+    required DateTime activityAt,
+    TransactionReadModel? displayTransaction,
   }) async {
     final source = _sourceForType(activityKey.type);
-    if (source == null || anchorTransaction.id.isEmpty) return null;
-    final candidate = BusinessActivityAnchorCandidate(
+    if (source == null) return null;
+    final candidate = BusinessActivityCandidate(
       activityKey: activityKey,
-      anchorTransactionId: anchorTransaction.id,
-      anchorAt: anchorTransaction.occurredAt,
+      activityAt: activityAt,
+      displayTransactionId: displayTransaction?.id,
     );
     final summaries = await source.findSummaries([candidate]);
     final summary = summaries[activityKey];
     if (summary == null) return null;
     return BusinessActivityReadModel.fromCandidate(
       candidate: candidate,
-      anchorTransaction: anchorTransaction,
+      displayTransaction: displayTransaction,
       summary: summary,
     );
   }
@@ -225,10 +239,13 @@ final class BusinessActivityQueryServiceImpl
     Map<String, TransactionReadModel> transactionsById,
   ) {
     final candidate = sourced.candidate;
-    final transaction = transactionsById[candidate.anchorTransactionId];
-    if (transaction == null) {
+    final displayTransactionId = candidate.displayTransactionId;
+    final transaction = displayTransactionId == null
+        ? null
+        : transactionsById[displayTransactionId];
+    if (displayTransactionId != null && transaction == null) {
       throw StateError(
-        'Anchor transaction ${candidate.anchorTransactionId} was not found.',
+        'Display transaction $displayTransactionId was not found.',
       );
     }
     final summary = summaries[candidate.activityKey];
@@ -240,13 +257,15 @@ final class BusinessActivityQueryServiceImpl
     }
     return BusinessActivityReadModel.fromCandidate(
       candidate: candidate,
-      anchorTransaction: transaction,
+      displayTransaction: transaction,
       summary: summary,
     );
   }
 
   int _compareCandidates(_SourcedCandidate left, _SourcedCandidate right) {
-    final byTime = right.candidate.anchorAt.compareTo(left.candidate.anchorAt);
+    final byTime = right.candidate.activityAt.compareTo(
+      left.candidate.activityAt,
+    );
     if (byTime != 0) return byTime;
     return right.candidate.activityKey.compareTo(left.candidate.activityKey);
   }
@@ -268,13 +287,13 @@ final class BusinessActivityQueryServiceImpl
     return null;
   }
 
-  BusinessActivityAnchorCandidate _candidateForActivity(
+  BusinessActivityCandidate _candidateForActivity(
     BusinessActivityReadModel activity,
   ) {
-    return BusinessActivityAnchorCandidate(
+    return BusinessActivityCandidate(
       activityKey: activity.activityKey,
-      anchorTransactionId: activity.anchorTransactionId,
-      anchorAt: activity.anchorAt,
+      activityAt: activity.activityAt,
+      displayTransactionId: activity.displayTransactionId,
     );
   }
 }
@@ -283,5 +302,5 @@ final class _SourcedCandidate {
   const _SourcedCandidate({required this.sourceIndex, required this.candidate});
 
   final int sourceIndex;
-  final BusinessActivityAnchorCandidate candidate;
+  final BusinessActivityCandidate candidate;
 }

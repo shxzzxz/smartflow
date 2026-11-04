@@ -22,14 +22,14 @@ final class AmortizationBusinessActivitySource
   };
 
   @override
-  Future<BusinessActivitySourcePage> findAnchorPage(
+  Future<BusinessActivitySourcePage> findCandidatePage(
     BusinessActivityPageQuery query,
   ) async {
     return _mapPage(await _anchors.findAnchorPage(_queryFor(query)));
   }
 
   @override
-  Stream<BusinessActivitySourcePage> watchAnchorPage(
+  Stream<BusinessActivitySourcePage> watchCandidatePage(
     BusinessActivityPageQuery query,
   ) {
     return _anchors.watchAnchorPage(_queryFor(query)).map(_mapPage);
@@ -37,47 +37,47 @@ final class AmortizationBusinessActivitySource
 
   @override
   Future<Map<BusinessActivityKey, BusinessActivitySummary>> findSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) async {
-    final values = anchors.toList();
+    final values = candidates.toList();
     final plans = await _plans.findByIds({
-      for (final anchor in values) anchor.activityKey.id,
+      for (final candidate in values) candidate.activityKey.id,
     });
     return _summariesFor(values, plans);
   }
 
   @override
   Stream<Map<BusinessActivityKey, BusinessActivitySummary>> watchSummaries(
-    Iterable<BusinessActivityAnchorCandidate> anchors,
+    Iterable<BusinessActivityCandidate> candidates,
   ) {
-    final values = anchors.toList();
+    final values = candidates.toList();
     if (values.isEmpty) return Stream.value(const {});
-    final planIds = {for (final anchor in values) anchor.activityKey.id};
+    final planIds = {for (final candidate in values) candidate.activityKey.id};
     return _plans
         .watchByIds(planIds)
         .asyncMap((plans) async => _summariesFor(values, plans));
   }
 
   Map<BusinessActivityKey, BusinessActivitySummary> _summariesFor(
-    List<BusinessActivityAnchorCandidate> anchors,
+    List<BusinessActivityCandidate> candidates,
     Iterable<AmortizationPlan> plans,
   ) {
     final plansById = {for (final plan in plans) plan.id: plan};
     return {
-      for (final anchor in anchors)
-        anchor.activityKey: _summaryFor(anchor, plansById),
+      for (final candidate in candidates)
+        candidate.activityKey: _summaryFor(candidate, plansById),
     };
   }
 
   AmortizationBusinessActivitySummary _summaryFor(
-    BusinessActivityAnchorCandidate anchor,
+    BusinessActivityCandidate candidate,
     Map<String, AmortizationPlan> plansById,
   ) {
-    final plan = plansById[anchor.activityKey.id];
+    final plan = plansById[candidate.activityKey.id];
     if (plan == null) {
       throw StateError(
-        'Amortization plan ${anchor.activityKey.id} for business activity was not '
-        'found.',
+        'Amortization plan ${candidate.activityKey.id} for business activity '
+        'was not found.',
       );
     }
     final current = plan.currentPendingPeriod;
@@ -105,7 +105,7 @@ final class AmortizationBusinessActivitySource
       before: switch (query.before) {
         null => null,
         final cursor => AmortizationTransactionViewCursor(
-          anchorAt: cursor.anchorAt,
+          anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           planId: cursor.activityKey.id,
         ),
@@ -124,15 +124,15 @@ final class AmortizationBusinessActivitySource
   ) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,
-      anchors: [
+      candidates: [
         for (final anchor in page.anchors)
-          BusinessActivityAnchorCandidate(
+          BusinessActivityCandidate(
             activityKey: BusinessActivityKey(
               type: orchestrationAmortizationOwnerType,
               id: anchor.planId,
             ),
-            anchorTransactionId: anchor.anchorTransactionId,
-            anchorAt: anchor.anchorAt,
+            activityAt: anchor.anchorAt,
+            displayTransactionId: anchor.anchorTransactionId,
           ),
       ],
     );

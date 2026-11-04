@@ -90,9 +90,10 @@ void main() {
       () => transactions.findTransactionDetail('initial'),
     ).thenAnswer((_) async => transaction);
     when(
-      () => activities.findForAnchor(
+      () => activities.findForActivity(
         activityKey: item.activityKey,
-        anchorTransaction: transaction,
+        activityAt: transaction.occurredAt,
+        displayTransaction: transaction,
       ),
     ).thenAnswer((_) async => activity);
     final local = TransactionDetailContextQueryImpl(
@@ -109,9 +110,10 @@ void main() {
     expect(detail, isNotNull);
     expect(detail!.businessActivity, same(activity));
     verify(
-      () => activities.findForAnchor(
+      () => activities.findForActivity(
         activityKey: item.activityKey,
-        anchorTransaction: transaction,
+        activityAt: transaction.occurredAt,
+        displayTransaction: transaction,
       ),
     ).called(1);
   });
@@ -142,9 +144,10 @@ void main() {
 
     expect(detail!.businessActivity, isNull);
     verifyNever(
-      () => activities.findForAnchor(
+      () => activities.findForActivity(
         activityKey: item.activityKey,
-        anchorTransaction: transaction,
+        activityAt: transaction.occurredAt,
+        displayTransaction: transaction,
       ),
     );
   });
@@ -265,15 +268,15 @@ AmortizationBusinessActivityItem _amortizationItem(
 
 BusinessActivityReadModel _activity(TransactionReadModel transaction) {
   return BusinessActivityReadModel.fromCandidate(
-    candidate: BusinessActivityAnchorCandidate(
+    candidate: BusinessActivityCandidate(
       activityKey: const BusinessActivityKey(
         type: orchestrationAmortizationOwnerType,
         id: 'plan-1',
       ),
-      anchorTransactionId: transaction.id,
-      anchorAt: transaction.occurredAt,
+      displayTransactionId: transaction.id,
+      activityAt: transaction.occurredAt,
     ),
-    anchorTransaction: transaction,
+    displayTransaction: transaction,
     summary: AmortizationBusinessActivitySummary(
       kind: AmortizationKind.prepaidExpense,
       status: AmortizationStatus.active,
