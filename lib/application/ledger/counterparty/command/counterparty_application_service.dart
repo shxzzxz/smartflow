@@ -1,7 +1,7 @@
 import '../../../../core/id/id_generator.dart';
 import '../../../shared/transaction_runner.dart';
 import '../query/counterparty_read_models.dart';
-import '../query/port/counterparty_repository.dart';
+import '../port/counterparty_repository.dart';
 
 /// 对手方词表应用服务。
 ///

@@ -14,7 +14,7 @@ import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../../domain/orchestration/valobj/amortization_error_code.dart';
 import '../../../shared/transaction_runner.dart';
 import 'amortization_command.dart';
-import '../service/amortization_plan_recalculator.dart';
+import 'amortization_plan_recalculator.dart';
 
 class AmortizationGenerationResult {
   const AmortizationGenerationResult({required this.generatedCount});

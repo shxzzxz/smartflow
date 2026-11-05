@@ -1,7 +1,7 @@
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 
-import '../repayment_amount_dto.dart';
+import 'repayment_amount_dto.dart';
 
 class RepaymentTransactionInfo {
   const RepaymentTransactionInfo({

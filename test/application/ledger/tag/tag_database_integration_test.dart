@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/tag/command/tag_application_service.dart';
-import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
+import 'package:smartflow/application/ledger/tag/port/tag_repository.dart';
 import 'package:smartflow/application/ledger/tag/query/tag_read_models.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';

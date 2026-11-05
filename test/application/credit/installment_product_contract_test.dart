@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:smartflow/application/credit/disbursement_installment/command/disbursement_installment_app_service.dart';
-import 'package:smartflow/application/credit/disbursement_installment/command/disbursement_installment_command.dart';
+import 'package:smartflow/application/credit/installment/command/disbursement_installment_app_service.dart';
+import 'package:smartflow/application/credit/installment/command/disbursement_installment_command.dart';
 import 'package:smartflow/application/credit/installment/command/installment_contract_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_contract_edit_app_service.dart';
 import 'package:smartflow/application/credit/installment/command/installment_plan_app_service.dart';

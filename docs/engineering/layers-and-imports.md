@@ -109,8 +109,10 @@ lib/
 │   │   ├── task/                        # 本域时间驱动任务；调用域内用例
 │   │   └── <capability>/                # account / category / transaction / metrics ...
 │   │       ├── command/                 # 写用例 + command model；无写侧时可省略
-│   │       └── query/                   # 读用例 + query/read model；读侧 port 放 query/port
-│   │           └── port/                # 读侧 application port；无 port 时可省略
+│   │       │   └── port/                # 仅命令侧使用的 application port
+│   │       ├── query/                   # 读用例 + query/read model
+│   │       │   └── port/                # 纯读 application port；无 port 时可省略
+│   │       └── port/                    # command/query 共用的能力级 application port
 │   ├── transaction_view/                # 跨域用户交易读视图；不是业务域
 │   │   ├── business_activity/query/     # 业务活动分页与活动摘要
 │   │   ├── business_activity_item/query/ # 业务活动项及交易投影
@@ -136,6 +138,16 @@ lib/
 ├── widget/business/                      # 跨 feature 复用的业务组件
 └── l10n/
 ```
+
+application 能力与端口规则：
+
+- 能力目录按业务对象或稳定工作流命名，例如 `installment / repayment / transaction`；单个命令或页面动作不单独建立能力目录，其用例名称体现在文件名。
+- `command / query` 是能力内部角色，不跨越能力边界。命令模型、app service 与写侧编排放在 `command/`；query、scope、read model 与查询服务放在 `query/`。
+- 端口按使用侧放置：仅命令侧使用放 `command/port`，纯读侧使用放 `query/port`，命令和查询共用或跨本能力多个用例使用放能力根目录 `port`。
+- 不新增 `service/` 目录。只服务单个用例的协调器放入对应 `command/` 或 `query/`，文件名说明其职责。
+- `source/` 只用于顶层 `application/transaction_view` 的跨域来源适配；业务域自己的查询契约仍属于对应能力目录。
+- 业务域提供给跨域视图的查询契约统一使用 `business_activity` 命名（目录、服务、read model、port 和类型）；`transaction_view` 仅作为顶层跨域应用目录名，不用于业务域契约。
+- 薄域可以整体保持扁平；已采用完整结构的能力不应在能力根目录新增业务服务。读写接口尚未拆分的小型能力可以暂时保留 `<capability>/<capability>_app_service.dart`，但新增能力不得采用该形态。
 
 feature 内部按需使用：
 

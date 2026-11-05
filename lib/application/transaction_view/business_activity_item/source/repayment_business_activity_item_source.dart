@@ -8,7 +8,7 @@ final class RepaymentBusinessActivityItemSource
     extends BusinessActivityItemSource {
   const RepaymentBusinessActivityItemSource(this._query);
 
-  final CreditTransactionViewQueryService _query;
+  final CreditBusinessActivityQueryService _query;
 
   @override
   Set<String> get supportedOwnerTypes => const {creditRepaymentOwnerType};

@@ -3,7 +3,7 @@
 /// infrastructure 实现这些接口，装配层注入实现；feature 不应直接依赖本入口。
 library;
 
-export 'account/query/account_query_repository.dart';
+export 'account/query/port/account_query_repository.dart';
 export 'budget/query/port/budget_query_source.dart';
 export 'metrics/query/port/ledger_metrics_source.dart';
 export 'transaction/query/port/entry_read_repository.dart';

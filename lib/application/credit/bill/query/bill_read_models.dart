@@ -5,7 +5,7 @@ import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-import '../../repayment/repayment_amount_dto.dart';
+import '../../repayment/command/repayment_amount_dto.dart';
 
 class BillSummaryReadModel {
   const BillSummaryReadModel({

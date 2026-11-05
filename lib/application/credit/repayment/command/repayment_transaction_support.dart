@@ -9,7 +9,7 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-import '../repayment_amount_dto.dart';
+import 'repayment_amount_dto.dart';
 import 'repayment_command.dart';
 
 /// 各还款目标 module 共享的账务交易读写能力。

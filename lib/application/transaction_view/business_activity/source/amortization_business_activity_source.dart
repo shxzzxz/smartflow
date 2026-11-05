@@ -1,8 +1,8 @@
 import '../../../../domain/orchestration/entity/amortization_plan.dart';
 import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../orchestration/amortization/query/amortization_plan_query_service.dart';
-import '../../../orchestration/amortization/query/amortization_transaction_view_query_service.dart';
-import '../../../orchestration/amortization/query/amortization_transaction_view_read_models.dart';
+import '../../../orchestration/amortization/query/amortization_business_activity_query_service.dart';
+import '../../../orchestration/amortization/query/amortization_business_activity_read_models.dart';
 import '../../transaction_view_query_port_api.dart';
 
 /// Consumer-side adapter over amortization anchors and reusable plan queries.
@@ -10,7 +10,7 @@ final class AmortizationBusinessActivitySource
     implements BusinessActivitySource {
   const AmortizationBusinessActivitySource(this._anchors, this._plans);
 
-  final AmortizationTransactionViewQueryService _anchors;
+  final AmortizationBusinessActivityQueryService _anchors;
   final AmortizationPlanQueryService _plans;
 
   @override
@@ -98,13 +98,13 @@ final class AmortizationBusinessActivitySource
     );
   }
 
-  AmortizationTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
-    return AmortizationTransactionViewQuery(
+  AmortizationBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
+    return AmortizationBusinessActivityQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {
         null => null,
-        final cursor => AmortizationTransactionViewCursor(
+        final cursor => AmortizationBusinessActivityCursor(
           anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           planId: cursor.activityKey.id,
@@ -120,7 +120,7 @@ final class AmortizationBusinessActivitySource
   }
 
   BusinessActivitySourcePage _mapPage(
-    AmortizationTransactionViewAnchorPage page,
+    AmortizationBusinessActivityAnchorPage page,
   ) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,

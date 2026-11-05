@@ -1,7 +1,7 @@
 import 'package:smartflow/application/shared/transaction_runner.dart';
 
 import '../query/port/transaction_read_repository.dart';
-import '../../tag/query/port/tag_repository.dart';
+import '../../tag/port/tag_repository.dart';
 import '../query/transaction_queries.dart';
 import 'transaction_batch_command.dart';
 import 'transaction_command.dart';

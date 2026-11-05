@@ -6,7 +6,7 @@ import 'package:smartflow/shared/analytics/time_series_transform.dart';
 
 import '../../account/query/account_query_service.dart';
 import '../../tag/query/tag_read_models.dart';
-import '../../tag/query/port/tag_repository.dart';
+import '../../tag/port/tag_repository.dart';
 import '../../transaction/query/transaction_read_models.dart';
 import '../../transaction/query/transaction_scope.dart';
 import 'financial_metrics_queries.dart';

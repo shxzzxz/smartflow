@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../application/ledger/counterparty/query/counterparty_read_models.dart';
-import '../../../application/ledger/counterparty/query/port/counterparty_repository.dart';
+import '../../../application/ledger/counterparty/port/counterparty_repository.dart';
 import '../../database/app_database.dart';
 
 class DriftCounterpartyRepository implements CounterpartyRepository {

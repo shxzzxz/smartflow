@@ -7,8 +7,8 @@ import 'package:smartflow/domain/ledger/service/mutation/transaction_deletion_re
 import 'package:smartflow/domain/ledger/service/mutation/transaction_group_rewrite_result.dart';
 import 'package:smartflow/domain/ledger/service/mutation/transaction_update_result.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_result.dart';
-import 'package:smartflow/application/ledger/tag/query/port/tag_repository.dart';
-import 'package:smartflow/application/ledger/counterparty/query/port/counterparty_repository.dart';
+import 'package:smartflow/application/ledger/tag/port/tag_repository.dart';
+import 'package:smartflow/application/ledger/counterparty/port/counterparty_repository.dart';
 
 import 'package:smartflow/domain/ledger/valobj/ledger_violation_reason.dart';
 

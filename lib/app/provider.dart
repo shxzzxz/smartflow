@@ -32,7 +32,7 @@ import '../application/credit/product/installment_product_app_service.dart';
 import '../infrastructure/credit/repository/drift_repayment_repository.dart';
 import '../infrastructure/credit/query/drift_installment_progress_source.dart';
 import '../infrastructure/credit/installment_statistics_change_source.dart';
-import '../infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
+import '../infrastructure/credit/business_activity/drift_credit_business_activity_source.dart';
 import '../infrastructure/credit/adapter/ledger_credit_ledger_port.dart';
 import '../infrastructure/credit/adapter/ledger_credit_account_port.dart';
 import '../infrastructure/ledger/repository/drift_posting_repository.dart';
@@ -43,13 +43,13 @@ import '../infrastructure/ledger/repository/drift_transaction_tag_repository.dar
 import '../infrastructure/ledger/repository/drift_counterparty_repository.dart';
 import '../infrastructure/orchestration/advance_ledger_port.dart';
 import '../infrastructure/orchestration/amortization_ledger_port.dart';
-import '../infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
-import '../infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
+import '../infrastructure/orchestration/advance/business_activity/drift_advance_business_activity_source.dart';
+import '../infrastructure/orchestration/amortization/business_activity/drift_amortization_business_activity_source.dart';
 import '../infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import '../infrastructure/orchestration/repository/drift_amortization_repository.dart';
 import '../infrastructure/transaction_view/business_activity/drift_ledger_business_activity_source.dart';
-import '../application/ledger/counterparty/query/port/counterparty_repository.dart';
-import '../application/ledger/tag/query/port/tag_repository.dart';
+import '../application/ledger/counterparty/port/counterparty_repository.dart';
+import '../application/ledger/tag/port/tag_repository.dart';
 import '../infrastructure/database/drift_app_settings_store.dart';
 import '../infrastructure/database/drift_asset_section_collapse_store.dart';
 import '../infrastructure/database/drift_log_retention_store.dart';
@@ -69,11 +69,11 @@ import '../application/transaction_view/business_activity_item/source/installmen
 import '../application/transaction_view/business_activity_item/source/repayment_business_activity_item_source.dart';
 import '../application/orchestration/advance/command/advance_orchestration_app_service.dart';
 import '../application/orchestration/advance/query/advance_case_query_service.dart';
-import '../application/orchestration/advance/query/advance_transaction_view_query_service.dart';
+import '../application/orchestration/advance/query/advance_business_activity_query_service.dart';
 import '../application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import '../application/orchestration/amortization/query/amortization_plan_query_service.dart';
 import '../application/orchestration/amortization/query/amortization_business_activity_item_query.dart';
-import '../application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
+import '../application/orchestration/amortization/query/amortization_business_activity_query_service.dart';
 import '../application/orchestration/task/amortization_generation_task.dart';
 import '../application/import/import_plan_app_service.dart';
 import '../application/import/import_parser_registry.dart';
@@ -593,16 +593,16 @@ BusinessActivityQueryService businessActivityQueryService(Ref ref) {
     sources: [
       DriftLedgerBusinessActivitySource(database),
       AdvanceBusinessActivitySource(
-        ref.watch(advanceTransactionViewQueryServiceProvider),
+        ref.watch(advanceBusinessActivityQueryServiceProvider),
         ref.watch(advanceCaseQueryServiceProvider),
         ref.watch(transactionQueryServiceProvider),
       ),
       AmortizationBusinessActivitySource(
-        ref.watch(amortizationTransactionViewQueryServiceProvider),
+        ref.watch(amortizationBusinessActivityQueryServiceProvider),
         ref.watch(amortizationPlanQueryServiceProvider),
       ),
       CreditBusinessActivitySource(
-        ref.watch(creditTransactionViewQueryServiceProvider),
+        ref.watch(creditBusinessActivityQueryServiceProvider),
         ref.watch(installmentQueryServiceProvider),
       ),
     ],
@@ -611,25 +611,26 @@ BusinessActivityQueryService businessActivityQueryService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-AdvanceTransactionViewQueryService advanceTransactionViewQueryService(Ref ref) {
-  return AdvanceTransactionViewQueryServiceImpl(
-    DriftAdvanceTransactionViewSource(ref.watch(appDatabaseProvider)),
-  );
-}
-
-@Riverpod(keepAlive: true)
-AmortizationTransactionViewQueryService amortizationTransactionViewQueryService(
+AdvanceBusinessActivityQueryService advanceBusinessActivityQueryService(
   Ref ref,
 ) {
-  return AmortizationTransactionViewQueryServiceImpl(
-    DriftAmortizationTransactionViewSource(ref.watch(appDatabaseProvider)),
+  return AdvanceBusinessActivityQueryServiceImpl(
+    DriftAdvanceBusinessActivitySource(ref.watch(appDatabaseProvider)),
   );
 }
 
 @Riverpod(keepAlive: true)
-CreditTransactionViewQueryService creditTransactionViewQueryService(Ref ref) {
-  return CreditTransactionViewQueryServiceImpl(
-    source: DriftCreditTransactionViewSource(ref.watch(appDatabaseProvider)),
+AmortizationBusinessActivityQueryService
+amortizationBusinessActivityQueryService(Ref ref) {
+  return AmortizationBusinessActivityQueryServiceImpl(
+    DriftAmortizationBusinessActivitySource(ref.watch(appDatabaseProvider)),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CreditBusinessActivityQueryService creditBusinessActivityQueryService(Ref ref) {
+  return CreditBusinessActivityQueryServiceImpl(
+    source: DriftCreditBusinessActivitySource(ref.watch(appDatabaseProvider)),
     changes: ref.watch(installmentStatisticsChangeSourceProvider),
   );
 }
@@ -645,7 +646,7 @@ BusinessActivityItemQuery businessActivityItemQuery(Ref ref) {
         ref.watch(installmentQueryServiceProvider),
       ),
       RepaymentBusinessActivityItemSource(
-        ref.watch(creditTransactionViewQueryServiceProvider),
+        ref.watch(creditBusinessActivityQueryServiceProvider),
       ),
       AmortizationBusinessActivityItemSource(
         ref.watch(amortizationBusinessActivityItemQueryServiceProvider),

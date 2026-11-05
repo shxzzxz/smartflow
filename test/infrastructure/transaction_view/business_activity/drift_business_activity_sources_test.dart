@@ -5,9 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/orchestration/advance/query/advance_case_query_service.dart';
-import 'package:smartflow/application/orchestration/advance/query/advance_transaction_view_query_service.dart';
+import 'package:smartflow/application/orchestration/advance/query/advance_business_activity_query_service.dart';
 import 'package:smartflow/application/orchestration/amortization/query/amortization_plan_query_service.dart';
-import 'package:smartflow/application/orchestration/amortization/query/amortization_transaction_view_query_service.dart';
+import 'package:smartflow/application/orchestration/amortization/query/amortization_business_activity_query_service.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/application/transaction_view/transaction_view_query_port_api.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -22,9 +22,9 @@ import 'package:smartflow/infrastructure/credit/repository/drift_installment_rep
 import 'package:smartflow/infrastructure/credit/query/drift_installment_progress_source.dart';
 import 'package:smartflow/infrastructure/credit/installment_statistics_change_source.dart';
 import 'package:smartflow/infrastructure/credit/mapper/installment_stage_mapper.dart';
-import 'package:smartflow/infrastructure/credit/transaction_view/drift_credit_transaction_view_source.dart';
-import 'package:smartflow/infrastructure/orchestration/advance/transaction_view/drift_advance_transaction_view_source.dart';
-import 'package:smartflow/infrastructure/orchestration/amortization/transaction_view/drift_amortization_transaction_view_source.dart';
+import 'package:smartflow/infrastructure/credit/business_activity/drift_credit_business_activity_source.dart';
+import 'package:smartflow/infrastructure/orchestration/advance/business_activity/drift_advance_business_activity_source.dart';
+import 'package:smartflow/infrastructure/orchestration/amortization/business_activity/drift_amortization_business_activity_source.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_advance_case_repository.dart';
 import 'package:smartflow/infrastructure/orchestration/repository/drift_amortization_repository.dart';
 import 'package:smartflow/application/transaction_view/business_activity/source/advance_business_activity_source.dart';
@@ -1389,15 +1389,15 @@ LIMIT 21
   });
 }
 
-AdvanceTransactionViewQueryService _advanceQuery(AppDatabase db) {
-  return AdvanceTransactionViewQueryServiceImpl(
-    DriftAdvanceTransactionViewSource(db),
+AdvanceBusinessActivityQueryService _advanceQuery(AppDatabase db) {
+  return AdvanceBusinessActivityQueryServiceImpl(
+    DriftAdvanceBusinessActivitySource(db),
   );
 }
 
-AmortizationTransactionViewQueryService _amortizationQuery(AppDatabase db) {
-  return AmortizationTransactionViewQueryServiceImpl(
-    DriftAmortizationTransactionViewSource(db),
+AmortizationBusinessActivityQueryService _amortizationQuery(AppDatabase db) {
+  return AmortizationBusinessActivityQueryServiceImpl(
+    DriftAmortizationBusinessActivitySource(db),
   );
 }
 
@@ -1409,9 +1409,9 @@ AmortizationPlanQueryService _amortizationPlans(AppDatabase db) {
   return AmortizationPlanQueryService(DriftAmortizationRepository(db));
 }
 
-CreditTransactionViewQueryService _creditQuery(AppDatabase db) {
-  return CreditTransactionViewQueryServiceImpl(
-    source: DriftCreditTransactionViewSource(db),
+CreditBusinessActivityQueryService _creditQuery(AppDatabase db) {
+  return CreditBusinessActivityQueryServiceImpl(
+    source: DriftCreditBusinessActivitySource(db),
     changes: DriftInstallmentStatisticsChangeSource(db),
   );
 }

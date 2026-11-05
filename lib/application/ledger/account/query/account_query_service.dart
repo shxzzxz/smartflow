@@ -2,7 +2,7 @@ import 'package:smartflow/domain/ledger/entity/account.dart';
 import 'package:smartflow/domain/ledger/valobj/account_usage.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
-import 'account_query_repository.dart';
+import 'port/account_query_repository.dart';
 
 abstract interface class AccountQueryService {
   Future<Account?> findAccountById(String id);

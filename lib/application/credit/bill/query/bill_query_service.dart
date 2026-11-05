@@ -15,7 +15,7 @@ import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'bill_read_models.dart';
-import '../../repayment/repayment_amount_dto.dart';
+import '../../repayment/command/repayment_amount_dto.dart';
 
 abstract interface class BillQueryService {
   Future<List<BillSummaryReadModel>> listBillsByAccount(String accountId);

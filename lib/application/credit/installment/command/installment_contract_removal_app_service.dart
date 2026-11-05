@@ -11,7 +11,7 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
-import '../../settlement/settlement_app_service.dart';
+import '../../repayment/command/settlement_app_service.dart';
 
 /// 在场景用例的顶层事务中清除分期及其来源、账单投影和计划。
 class InstallmentContractRemovalAppService {

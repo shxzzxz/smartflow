@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/counterparty/command/counterparty_application_service.dart';
 import 'package:smartflow/application/ledger/counterparty/query/counterparty_read_models.dart';
-import 'package:smartflow/application/ledger/counterparty/query/port/counterparty_repository.dart';
+import 'package:smartflow/application/ledger/counterparty/port/counterparty_repository.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';

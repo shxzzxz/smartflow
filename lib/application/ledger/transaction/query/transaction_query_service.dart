@@ -10,7 +10,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 
 import '../../account/query/account_query_service.dart';
 import '../../counterparty/query/counterparty_read_models.dart';
-import '../../counterparty/query/port/counterparty_repository.dart';
+import '../../counterparty/port/counterparty_repository.dart';
 import '../../metrics/query/port/ledger_metrics_source.dart';
 import 'port/entry_read_repository.dart';
 import 'port/transaction_line_read_repository.dart';

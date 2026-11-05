@@ -1,5 +1,5 @@
 import 'package:smartflow/application/ledger/counterparty/query/counterparty_read_models.dart';
-import 'package:smartflow/application/ledger/counterparty/query/port/counterparty_repository.dart';
+import 'package:smartflow/application/ledger/counterparty/port/counterparty_repository.dart';
 
 class FakeCounterpartyRepository implements CounterpartyRepository {
   FakeCounterpartyRepository([Iterable<CounterpartyView> initial = const []])

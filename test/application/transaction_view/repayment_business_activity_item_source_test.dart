@@ -6,12 +6,12 @@ import 'package:smartflow/application/transaction_view/business_activity_item/so
 import 'package:smartflow/application/transaction_view/transaction_view_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 
-class _MockCreditTransactionViewQueryService extends Mock
-    implements CreditTransactionViewQueryService {}
+class _MockCreditBusinessActivityQueryService extends Mock
+    implements CreditBusinessActivityQueryService {}
 
 void main() {
   test('maps origin and follow-up repayment-owned facts', () async {
-    final query = _MockCreditTransactionViewQueryService();
+    final query = _MockCreditBusinessActivityQueryService();
     when(
       () => query.findRepaymentSummaries({'bill-repayment', 'prepayment'}),
     ).thenAnswer(

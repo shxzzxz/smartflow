@@ -3,8 +3,8 @@ import '../../../../domain/orchestration/valobj/advance_enums.dart';
 import '../../../ledger/transaction/query/transaction_read_models.dart';
 import '../../../ledger/transaction/query/transaction_query_service.dart';
 import '../../../orchestration/advance/query/advance_case_query_service.dart';
-import '../../../orchestration/advance/query/advance_transaction_view_query_service.dart';
-import '../../../orchestration/advance/query/advance_transaction_view_read_models.dart';
+import '../../../orchestration/advance/query/advance_business_activity_query_service.dart';
+import '../../../orchestration/advance/query/advance_business_activity_read_models.dart';
 import '../../transaction_view_query_streams.dart';
 import '../../transaction_view_query_port_api.dart';
 
@@ -16,7 +16,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
     this._transactions,
   );
 
-  final AdvanceTransactionViewQueryService _anchors;
+  final AdvanceBusinessActivityQueryService _anchors;
   final AdvanceCaseQueryService _cases;
   final TransactionBatchQueryService _transactions;
 
@@ -115,13 +115,13 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
     );
   }
 
-  AdvanceTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
-    return AdvanceTransactionViewQuery(
+  AdvanceBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
+    return AdvanceBusinessActivityQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {
         null => null,
-        final cursor => AdvanceTransactionViewCursor(
+        final cursor => AdvanceBusinessActivityCursor(
           anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           ownerId: cursor.activityKey.id,
@@ -136,7 +136,7 @@ final class AdvanceBusinessActivitySource implements BusinessActivitySource {
     );
   }
 
-  BusinessActivitySourcePage _mapPage(AdvanceTransactionViewAnchorPage page) {
+  BusinessActivitySourcePage _mapPage(AdvanceBusinessActivityAnchorPage page) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,
       candidates: [

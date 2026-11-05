@@ -6,7 +6,7 @@ import '../../transaction_view_query_streams.dart';
 final class CreditBusinessActivitySource implements BusinessActivitySource {
   const CreditBusinessActivitySource(this._query, this._installments);
 
-  final CreditTransactionViewQueryService _query;
+  final CreditBusinessActivityQueryService _query;
   final InstallmentQueryService _installments;
 
   @override
@@ -106,14 +106,14 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
     return combineLatestStreams(signals).asyncMap((_) => findSummaries(values));
   }
 
-  CreditTransactionViewQuery _queryFor(BusinessActivityPageQuery query) {
+  CreditBusinessActivityQuery _queryFor(BusinessActivityPageQuery query) {
     final activityTypes = query.activityTypes;
-    return CreditTransactionViewQuery(
+    return CreditBusinessActivityQuery(
       occurredFrom: query.occurredFrom,
       occurredUntil: query.occurredUntil,
       before: switch (query.before) {
         null => null,
-        final cursor => CreditTransactionViewCursor(
+        final cursor => CreditBusinessActivityCursor(
           anchorAt: cursor.activityAt,
           activityType: cursor.activityKey.type,
           activityId: cursor.activityKey.id,
@@ -131,7 +131,7 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
     );
   }
 
-  BusinessActivitySourcePage _mapPage(CreditTransactionViewAnchorPage page) {
+  BusinessActivitySourcePage _mapPage(CreditBusinessActivityAnchorPage page) {
     return BusinessActivitySourcePage(
       hasMore: page.hasMore,
       candidates: [
@@ -148,10 +148,10 @@ final class CreditBusinessActivitySource implements BusinessActivitySource {
     );
   }
 
-  CreditTransactionViewActivityType? _tryActivityType(String activityType) {
+  CreditBusinessActivityType? _tryActivityType(String activityType) {
     return switch (activityType) {
-      installmentOwnerType => CreditTransactionViewActivityType.installment,
-      creditRepaymentOwnerType => CreditTransactionViewActivityType.repayment,
+      installmentOwnerType => CreditBusinessActivityType.installment,
+      creditRepaymentOwnerType => CreditBusinessActivityType.repayment,
       _ => null,
     };
   }
