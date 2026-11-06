@@ -111,7 +111,10 @@ final class _TestPlatformFile extends PlatformFile {
   Never get xFile => throw UnimplementedError();
 
   @override
-  Future<int> length() => File(this.path!).length();
+  Future<int?> length() => File(this.path!).length();
+
+  @override
+  int? lengthSync() => File(this.path!).lengthSync();
 
   @override
   Future<Uint8List> readAsBytes() => File(this.path!).readAsBytes();

@@ -107,8 +107,7 @@ class PlatformBackupArchive implements BackupArchivePort {
         savedPath = await FilePicker.saveFile(
           dialogTitle: '保存备份',
           fileName: 'smartflow-backup-$stamp.zip',
-          type: FileType.custom,
-          allowedExtensions: const ['zip'],
+          mimeType: 'application/zip',
           bytes: archiveBytes,
         );
       } on Exception catch (error, stackTrace) {
