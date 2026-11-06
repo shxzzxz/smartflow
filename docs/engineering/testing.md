@@ -77,6 +77,7 @@ test/architecture/
 ## 平台验证与 CI
 
 - CI 保持 `fvm flutter analyze` 与 `fvm flutter test`。需要辅助排查覆盖缺口时可运行 `fvm flutter test --coverage`，报告不作为百分比合并门槛。
+- 本地默认使用 CN Pub 源，提交的 `pubspec.lock` 保持 CN 源地址；CI 在安装依赖前仅在工作区将锁文件来源归一为 `https://pub.dev`，再以 `--enforce-lockfile` 校验相同版本与哈希。不得提交 CI 来源归一产生的锁文件改写。
 - 本地先运行受影响测试；涉及公共能力、跨层行为或测试删除时，提交前运行完整 analyze 与测试。仅修改文档时检查内容、链接和 diff，无须启动 Flutter 测试。
 - 不要求所有页面有端到端测试。涉及文件选择、保存、分享、权限等真实平台能力时，按变更覆盖相应平台集成验证；暂无法稳定自动化时记录平台、操作步骤和结果作为人工验证依据。
 - 测试固定时钟和必要的随机种子，独立管理数据库、临时文件及 provider 生命周期；清理全局 Logger 订阅和错误 handler 等修改，不依赖真实用户数据、外网或测试执行顺序。

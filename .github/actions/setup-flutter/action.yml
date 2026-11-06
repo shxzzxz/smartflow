@@ -22,6 +22,12 @@ runs:
       shell: bash
       run: fvm install
 
+    # The committed lockfile uses the CN mirror for local development.
+    # Normalize only this CI workspace so GitHub resolves from pub.dev.
+    - name: Align lockfile with official Pub source
+      shell: bash
+      run: sed -i 's#https://pub.flutter-io.cn#https://pub.dev#g' pubspec.lock
+
     - name: Get dependencies
       shell: bash
-      run: fvm flutter pub get
+      run: fvm flutter pub get --enforce-lockfile
