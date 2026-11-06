@@ -172,7 +172,7 @@ final class HomeBusinessActivitiesProvider
 }
 
 String _$homeBusinessActivitiesHash() =>
-    r'b1e38e954972fd680be7690a0c2df796919f4455';
+    r'a52989ff9524cf35d3c925df79ec571bf1386751';
 
 final class HomeBusinessActivitiesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<BusinessActivityPage>, DateTime> {

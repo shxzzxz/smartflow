@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
-  test('fresh databases create the current v57 schema', () async {
+  test('fresh databases create the current v60 schema', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.read<int>('user_version'), 57);
+    expect(version.read<int>('user_version'), 60);
     expect(
       await db
           .customSelect(
@@ -31,6 +31,42 @@ void main() {
           )
           .get(),
       hasLength(5),
+    );
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            'AND name IN ('
+            "'insured_people', "
+            "'commercial_insurances', "
+            "'commercial_insurance_insured_people', "
+            "'coverage_responsibilities', "
+            "'responsibility_points', "
+            "'insurance_attachments', "
+            "'social_medical_insurances', "
+            "'social_medical_contribution_records', "
+            "'social_pension_insurances', "
+            "'social_pension_contribution_records'"
+            ')',
+          )
+          .get(),
+      hasLength(10),
+    );
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            'AND name IN ('
+            "'commercial_insurance_insured_people_person_idx', "
+            "'coverage_responsibilities_insurance_idx', "
+            "'responsibility_points_responsibility_idx', "
+            "'insurance_attachments_insurance_idx', "
+            "'social_medical_insurances_person_idx', "
+            "'social_pension_insurances_person_idx'"
+            ')',
+          )
+          .get(),
+      hasLength(6),
     );
 
     final accountColumns = await db

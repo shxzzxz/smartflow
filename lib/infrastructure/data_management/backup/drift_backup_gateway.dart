@@ -134,6 +134,46 @@ class DriftBackupGateway
             .map(_json),
         'import_batch_items':
             (await database.select(database.importBatchItems).get()).map(_json),
+        'insured_people': (await database.select(database.insuredPeople).get())
+            .map(_json),
+        'commercial_insurances':
+            (await database.select(database.commercialInsurances).get()).map(
+              _json,
+            ),
+        'commercial_insurance_insured_people':
+            (await database
+                    .select(database.commercialInsuranceInsuredPeople)
+                    .get())
+                .map(_json),
+        'coverage_responsibilities':
+            (await database.select(database.coverageResponsibilities).get())
+                .map(_json),
+        'responsibility_points':
+            (await database.select(database.responsibilityPoints).get()).map(
+              _json,
+            ),
+        'insurance_attachments':
+            (await database.select(database.insuranceAttachments).get()).map(
+              _json,
+            ),
+        'social_medical_insurances':
+            (await database.select(database.socialMedicalInsurances).get()).map(
+              _json,
+            ),
+        'social_medical_contribution_records':
+            (await database
+                    .select(database.socialMedicalContributionRecords)
+                    .get())
+                .map(_json),
+        'social_pension_insurances':
+            (await database.select(database.socialPensionInsurances).get()).map(
+              _json,
+            ),
+        'social_pension_contribution_records':
+            (await database
+                    .select(database.socialPensionContributionRecords)
+                    .get())
+                .map(_json),
       };
       final metadata = await (database.select(
         database.appMetadata,
@@ -171,6 +211,16 @@ class DriftBackupGateway
       // but this ordering also makes the operation work if SQLite enforcement is
       // enabled by a host application in the future.
       for (final table in [
+        'responsibility_points',
+        'coverage_responsibilities',
+        'commercial_insurance_insured_people',
+        'insurance_attachments',
+        'commercial_insurances',
+        'social_medical_contribution_records',
+        'social_medical_insurances',
+        'social_pension_contribution_records',
+        'social_pension_insurances',
+        'insured_people',
         'installment_repricing_records',
         'installment_repricing_configs',
         'installment_interest_adjustments',
@@ -463,6 +513,93 @@ class DriftBackupGateway
               .rows('import_batch_items')
               .map((row) => ImportBatchItemRow.fromJson(row).toCompanion(true)),
         );
+        batch.insertAll(
+          database.insuredPeople,
+          snapshot
+              .rows('insured_people')
+              .map((row) => InsuredPersonRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.commercialInsurances,
+          snapshot
+              .rows('commercial_insurances')
+              .map(
+                (row) => CommercialInsuranceRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.commercialInsuranceInsuredPeople,
+          snapshot
+              .rows('commercial_insurance_insured_people')
+              .map(
+                (row) => CommercialInsuranceInsuredPersonRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.coverageResponsibilities,
+          snapshot
+              .rows('coverage_responsibilities')
+              .map(
+                (row) =>
+                    CoverageResponsibilityRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.responsibilityPoints,
+          snapshot
+              .rows('responsibility_points')
+              .map(
+                (row) => ResponsibilityPointRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.insuranceAttachments,
+          snapshot
+              .rows('insurance_attachments')
+              .map(
+                (row) => InsuranceAttachmentRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.socialMedicalInsurances,
+          snapshot
+              .rows('social_medical_insurances')
+              .map(
+                (row) =>
+                    SocialMedicalInsuranceRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.socialMedicalContributionRecords,
+          snapshot
+              .rows('social_medical_contribution_records')
+              .map(
+                (row) => SocialMedicalContributionRecordRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.socialPensionInsurances,
+          snapshot
+              .rows('social_pension_insurances')
+              .map(
+                (row) =>
+                    SocialPensionInsuranceRow.fromJson(row).toCompanion(true),
+              ),
+        );
+        batch.insertAll(
+          database.socialPensionContributionRecords,
+          snapshot
+              .rows('social_pension_contribution_records')
+              .map(
+                (row) => SocialPensionContributionRecordRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
+        );
       });
 
       await (database.delete(
@@ -587,6 +724,36 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is ImportBatchItemRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InsuredPersonRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is CommercialInsuranceRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is CommercialInsuranceInsuredPersonRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is CoverageResponsibilityRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is ResponsibilityPointRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is InsuranceAttachmentRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is SocialMedicalInsuranceRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is SocialMedicalContributionRecordRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is SocialPensionInsuranceRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is SocialPensionContributionRecordRow) {
       return row.toJson().cast<String, Object?>();
     }
     throw ArgumentError('Unsupported backup row: ${row.runtimeType}');

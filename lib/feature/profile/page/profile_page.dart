@@ -127,6 +127,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       ProfileMenuGroup(
+        title: '保险',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '保险',
+            iconKey: 'insurance',
+            onTap: () => context.push('/insurance'),
+          ),
+        ],
+      ),
+      ProfileMenuGroup(
         title: '信贷工具',
         layout: ProfileGroupLayout.list,
         entries: [

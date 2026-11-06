@@ -43,6 +43,7 @@ void main() {
       '对手方管理': '/counterparties',
       '贷款计算器': '/profile/loan-calculator',
       '设置': '/profile/settings',
+      '保险': '/insurance',
       '分期产品': '/installment-products',
       '参考利率': '/profile/reference-rates',
       '数据导入': '/profile/import',
@@ -76,11 +77,13 @@ void main() {
     for (final title in ['常用功能', '信贷工具', '数据管理', '帮助与关于', '开发工具']) {
       expect(find.text(title), findsOneWidget);
     }
+    expect(find.text('保险'), findsNWidgets(2));
 
     final sections = find.byType(AppSurface);
-    expect(sections, findsNWidgets(5));
+    expect(sections, findsNWidgets(6));
     const groups = [
       ['分类管理', '标签管理', '对手方管理', '贷款计算器', '设置'],
+      ['保险'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],
       ['使用手册', '软件版本'],
@@ -117,7 +120,13 @@ void main() {
     expect(tester.takeException(), isNull);
 
     for (final destination in destinations.entries) {
-      await tester.tap(find.text(destination.key));
+      final listEntry = find.byKey(
+        ValueKey('profile-entry-row-${destination.key}'),
+      );
+      final gridEntry = find.byKey(
+        ValueKey('profile-grid-entry-${destination.key}'),
+      );
+      await tester.tap(listEntry.evaluate().isNotEmpty ? listEntry : gridEntry);
       await tester.pumpAndSettle();
       expect(find.text('目标页面：${destination.value}'), findsOneWidget);
       router.pop();

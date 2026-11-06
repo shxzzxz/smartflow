@@ -314,6 +314,108 @@ Future<void> _upgrade(
           'WHERE parent_transaction_id IS NULL AND owner_type IS NOT NULL',
         );
       },
+      from57To58: (migration, schema) async {
+        for (final table in [
+          schema.insuredPeople,
+          schema.commercialInsurances,
+          schema.commercialInsuranceInsuredPeople,
+          schema.coverageResponsibilities,
+          schema.responsibilityPoints,
+          schema.insuranceAttachments,
+          schema.socialMedicalInsurances,
+          schema.socialMedicalContributionRecords,
+          schema.socialPensionInsurances,
+          schema.socialPensionContributionRecords,
+        ]) {
+          await migration.createTable(table);
+        }
+        for (final indexStatement in const [
+          'CREATE INDEX commercial_insurance_insured_people_person_idx '
+              'ON commercial_insurance_insured_people (insured_person_id)',
+          'CREATE INDEX coverage_responsibilities_insurance_idx '
+              'ON coverage_responsibilities '
+              '(commercial_insurance_id, sort_order)',
+          'CREATE INDEX responsibility_points_responsibility_idx '
+              'ON responsibility_points '
+              '(responsibility_id, sort_order)',
+          'CREATE INDEX insurance_attachments_insurance_idx '
+              'ON insurance_attachments '
+              '(commercial_insurance_id, created_at)',
+          'CREATE INDEX social_medical_insurances_person_idx '
+              'ON social_medical_insurances (insured_person_id)',
+          'CREATE INDEX social_pension_insurances_person_idx '
+              'ON social_pension_insurances (insured_person_id)',
+        ]) {
+          await migration.database.customStatement(indexStatement);
+        }
+      },
+      from58To59: (migration, schema) async {
+        for (final column in [
+          schema.insuredPeople.relationship,
+          schema.insuredPeople.gender,
+          schema.insuredPeople.note,
+          schema.insuredPeople.avatarPreset,
+        ]) {
+          await migration.addColumn(schema.insuredPeople, column);
+        }
+      },
+      from59To60: (migration, schema) async {
+        final columnRows = await migration.database
+            .customSelect('PRAGMA table_info(insured_people)')
+            .get();
+        final columns = {
+          for (final row in columnRows) row.read<String>('name'),
+        };
+        if (columns.contains('birth_date')) return;
+        if (!columns.contains('birth_year') ||
+            !columns.contains('birth_month')) {
+          throw StateError(
+            'Unsupported v59 insured_people schema: '
+            'missing birth_date and legacy birth columns.',
+          );
+        }
+
+        await migration.database.customStatement(
+          'ALTER TABLE insured_people RENAME TO insured_people_v59_legacy',
+        );
+        await migration.createTable(schema.insuredPeople);
+
+        final relationship = columns.contains('relationship')
+            ? "COALESCE(relationship, 'other')"
+            : "'other'";
+        final gender = columns.contains('gender')
+            ? "COALESCE(gender, 'unknown')"
+            : "'unknown'";
+        final note = columns.contains('note') ? 'note' : 'NULL';
+        final avatarPreset = columns.contains('avatar_preset')
+            ? "COALESCE(avatar_preset, 'blue')"
+            : "'blue'";
+        final createdAt = columns.contains('created_at')
+            ? 'COALESCE(created_at, '
+                  "CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER))"
+            : "CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER)";
+        final updatedAt = columns.contains('updated_at')
+            ? 'COALESCE(updated_at, '
+                  "CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER))"
+            : "CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER)";
+
+        await migration.database.customStatement(
+          'INSERT INTO insured_people ('
+          'id, name, birth_date, created_at, updated_at, relationship, '
+          'gender, note, avatar_preset'
+          ') '
+          'SELECT '
+          'id, name, '
+          "CAST(strftime('%s', printf('%04d-%02d-%02d 00:00:00', "
+          'birth_year, birth_month, COALESCE(birth_day, 1))) AS INTEGER), '
+          '$createdAt, $updatedAt, $relationship, $gender, $note, '
+          '$avatarPreset '
+          'FROM insured_people_v59_legacy',
+        );
+        await migration.database.customStatement(
+          'DROP TABLE insured_people_v59_legacy',
+        );
+      },
     )(migrator, from, to);
   });
 }

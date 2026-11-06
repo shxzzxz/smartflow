@@ -512,6 +512,400 @@ final class IdGeneratorProvider
 
 String _$idGeneratorHash() => r'624ed3af1e5159a035175298293b9e8f5b616cd9';
 
+@ProviderFor(insuredPersonRepository)
+final insuredPersonRepositoryProvider = InsuredPersonRepositoryProvider._();
+
+final class InsuredPersonRepositoryProvider
+    extends
+        $FunctionalProvider<
+          InsuredPersonRepository,
+          InsuredPersonRepository,
+          InsuredPersonRepository
+        >
+    with $Provider<InsuredPersonRepository> {
+  InsuredPersonRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'insuredPersonRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$insuredPersonRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<InsuredPersonRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InsuredPersonRepository create(Ref ref) {
+    return insuredPersonRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InsuredPersonRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InsuredPersonRepository>(value),
+    );
+  }
+}
+
+String _$insuredPersonRepositoryHash() =>
+    r'47e53fa80f517b3f9f23aee5bc8944c838eff179';
+
+@ProviderFor(commercialInsuranceRepository)
+final commercialInsuranceRepositoryProvider =
+    CommercialInsuranceRepositoryProvider._();
+
+final class CommercialInsuranceRepositoryProvider
+    extends
+        $FunctionalProvider<
+          CommercialInsuranceRepository,
+          CommercialInsuranceRepository,
+          CommercialInsuranceRepository
+        >
+    with $Provider<CommercialInsuranceRepository> {
+  CommercialInsuranceRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'commercialInsuranceRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$commercialInsuranceRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<CommercialInsuranceRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CommercialInsuranceRepository create(Ref ref) {
+    return commercialInsuranceRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CommercialInsuranceRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CommercialInsuranceRepository>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$commercialInsuranceRepositoryHash() =>
+    r'738368c03288aab3b5e4742eb4af915a3f48ceb7';
+
+@ProviderFor(socialInsuranceRepository)
+final socialInsuranceRepositoryProvider = SocialInsuranceRepositoryProvider._();
+
+final class SocialInsuranceRepositoryProvider
+    extends
+        $FunctionalProvider<
+          SocialInsuranceRepository,
+          SocialInsuranceRepository,
+          SocialInsuranceRepository
+        >
+    with $Provider<SocialInsuranceRepository> {
+  SocialInsuranceRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'socialInsuranceRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$socialInsuranceRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<SocialInsuranceRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SocialInsuranceRepository create(Ref ref) {
+    return socialInsuranceRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SocialInsuranceRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SocialInsuranceRepository>(value),
+    );
+  }
+}
+
+String _$socialInsuranceRepositoryHash() =>
+    r'a09ad41cab547716eef69603401f28bb46215889';
+
+@ProviderFor(insuranceAttachmentStorage)
+final insuranceAttachmentStorageProvider =
+    InsuranceAttachmentStorageProvider._();
+
+final class InsuranceAttachmentStorageProvider
+    extends
+        $FunctionalProvider<
+          InsuranceAttachmentStorage,
+          InsuranceAttachmentStorage,
+          InsuranceAttachmentStorage
+        >
+    with $Provider<InsuranceAttachmentStorage> {
+  InsuranceAttachmentStorageProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'insuranceAttachmentStorageProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$insuranceAttachmentStorageHash();
+
+  @$internal
+  @override
+  $ProviderElement<InsuranceAttachmentStorage> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InsuranceAttachmentStorage create(Ref ref) {
+    return insuranceAttachmentStorage(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InsuranceAttachmentStorage value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InsuranceAttachmentStorage>(value),
+    );
+  }
+}
+
+String _$insuranceAttachmentStorageHash() =>
+    r'469a0861701d4b87dc2de051b9740296b6a201ae';
+
+@ProviderFor(insuredPersonAppService)
+final insuredPersonAppServiceProvider = InsuredPersonAppServiceProvider._();
+
+final class InsuredPersonAppServiceProvider
+    extends
+        $FunctionalProvider<
+          InsuredPersonAppService,
+          InsuredPersonAppService,
+          InsuredPersonAppService
+        >
+    with $Provider<InsuredPersonAppService> {
+  InsuredPersonAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'insuredPersonAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$insuredPersonAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InsuredPersonAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InsuredPersonAppService create(Ref ref) {
+    return insuredPersonAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InsuredPersonAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InsuredPersonAppService>(value),
+    );
+  }
+}
+
+String _$insuredPersonAppServiceHash() =>
+    r'cbfafba27e4ee0087cfd7764acaca938b6e7591e';
+
+@ProviderFor(commercialInsuranceAppService)
+final commercialInsuranceAppServiceProvider =
+    CommercialInsuranceAppServiceProvider._();
+
+final class CommercialInsuranceAppServiceProvider
+    extends
+        $FunctionalProvider<
+          CommercialInsuranceAppService,
+          CommercialInsuranceAppService,
+          CommercialInsuranceAppService
+        >
+    with $Provider<CommercialInsuranceAppService> {
+  CommercialInsuranceAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'commercialInsuranceAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$commercialInsuranceAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CommercialInsuranceAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  CommercialInsuranceAppService create(Ref ref) {
+    return commercialInsuranceAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CommercialInsuranceAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CommercialInsuranceAppService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$commercialInsuranceAppServiceHash() =>
+    r'ac5f127e05adc5256f4f1f606c54f0141e8ed024';
+
+@ProviderFor(socialInsuranceAppService)
+final socialInsuranceAppServiceProvider = SocialInsuranceAppServiceProvider._();
+
+final class SocialInsuranceAppServiceProvider
+    extends
+        $FunctionalProvider<
+          SocialInsuranceAppService,
+          SocialInsuranceAppService,
+          SocialInsuranceAppService
+        >
+    with $Provider<SocialInsuranceAppService> {
+  SocialInsuranceAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'socialInsuranceAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$socialInsuranceAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SocialInsuranceAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SocialInsuranceAppService create(Ref ref) {
+    return socialInsuranceAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SocialInsuranceAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SocialInsuranceAppService>(value),
+    );
+  }
+}
+
+String _$socialInsuranceAppServiceHash() =>
+    r'c5e3427e6f84bf4bb814a4fec989d37e7ec91f73';
+
+@ProviderFor(insuranceCoverageQueryService)
+final insuranceCoverageQueryServiceProvider =
+    InsuranceCoverageQueryServiceProvider._();
+
+final class InsuranceCoverageQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          InsuranceCoverageQueryService,
+          InsuranceCoverageQueryService,
+          InsuranceCoverageQueryService
+        >
+    with $Provider<InsuranceCoverageQueryService> {
+  InsuranceCoverageQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'insuranceCoverageQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$insuranceCoverageQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<InsuranceCoverageQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  InsuranceCoverageQueryService create(Ref ref) {
+    return insuranceCoverageQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InsuranceCoverageQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InsuranceCoverageQueryService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$insuranceCoverageQueryServiceHash() =>
+    r'3debbf73c31fef9ec45d9da513da13d0961dd717';
+
 @ProviderFor(systemAccountResolver)
 final systemAccountResolverProvider = SystemAccountResolverProvider._();
 

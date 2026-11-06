@@ -40,7 +40,30 @@ class BackupTables {
     'amortization_refunds',
     'amortization_terminations',
     'amortization_allocations',
+    'insured_people',
+    'commercial_insurances',
+    'commercial_insurance_insured_people',
+    'coverage_responsibilities',
+    'responsibility_points',
+    'insurance_attachments',
+    'social_medical_insurances',
+    'social_medical_contribution_records',
+    'social_pension_insurances',
+    'social_pension_contribution_records',
   ];
+
+  static const insurance = <String>{
+    'insured_people',
+    'commercial_insurances',
+    'commercial_insurance_insured_people',
+    'coverage_responsibilities',
+    'responsibility_points',
+    'insurance_attachments',
+    'social_medical_insurances',
+    'social_medical_contribution_records',
+    'social_pension_insurances',
+    'social_pension_contribution_records',
+  };
 
   /// Tables used by supported backup contracts before v7.
   static const legacy = <String>{
@@ -100,6 +123,7 @@ class BackupTables {
         table == 'amortization_allocations') {
       return 'orchestration';
     }
+    if (insurance.contains(table)) return 'insurance';
     throw ArgumentError('Unknown backup table: $table');
   }
 }
@@ -232,7 +256,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 7;
+  static const currentBackupSchemaVersion = 9;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
@@ -379,6 +403,7 @@ class BackupDiff {
         return '交易组';
       }
       if (table == 'budgets') return '预算';
+      if (BackupTables.insurance.contains(table)) return '保险';
       if (table == 'advance_cases') return '垫付编排';
       if (table.startsWith('amortization_')) {
         return '摊销计划';
@@ -558,6 +583,15 @@ String _rowIdentity(BackupJson row, String table) {
   }
   if (table == 'bill_generation_suppressions') {
     return '${row['accountId']}\u0000${row['period']}';
+  }
+  if (table == 'commercial_insurance_insured_people') {
+    return '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}';
+  }
+  if (table == 'social_medical_contribution_records' ||
+      table == 'social_pension_contribution_records') {
+    final insuranceId =
+        row['socialMedicalInsuranceId'] ?? row['socialPensionInsuranceId'];
+    return '$insuranceId\u0000${row['yearMonth']}';
   }
   return '${row['id']}';
 }

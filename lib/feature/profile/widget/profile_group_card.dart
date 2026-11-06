@@ -208,6 +208,7 @@ IconData profileIconFor(String iconKey) => switch (iconKey) {
   'amortization' => RemixIcons.calendar_schedule_line,
   'calculator' => RemixIcons.calculator_line,
   'settings' => RemixIcons.settings_3_line,
+  'insurance' => RemixIcons.shield_user_line,
   'installment_product' => RemixIcons.file_list_3_line,
   'reference_rate' => RemixIcons.percent_line,
   'import' => RemixIcons.file_excel_2_line,

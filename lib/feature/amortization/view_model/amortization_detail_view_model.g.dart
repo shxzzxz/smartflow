@@ -57,7 +57,7 @@ final class AmortizationDetailViewModelProvider
 }
 
 String _$amortizationDetailViewModelHash() =>
-    r'a34c26216ff77d195a1cabefe0cf7eb06dd4b49a';
+    r'bdfbce795335b8ce8012fee90f0efc7b2a94fdca';
 
 final class AmortizationDetailViewModelFamily extends $Family
     with

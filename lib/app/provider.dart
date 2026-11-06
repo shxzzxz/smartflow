@@ -124,6 +124,18 @@ import '../infrastructure/data_management/backup/file_backup_package_store.dart'
 import '../application/data_management/backup/backup_archive.dart';
 import '../infrastructure/data_management/backup/platform_backup_archive.dart';
 import '../core/id/id_generator.dart';
+import '../application/insurance/attachment/port/insurance_attachment_storage.dart';
+import '../application/insurance/commercial_insurance/command/commercial_insurance_app_service.dart';
+import '../application/insurance/coverage_overview/query/insurance_coverage_query_service.dart';
+import '../application/insurance/insured_person/command/insured_person_app_service.dart';
+import '../application/insurance/social_insurance/command/social_insurance_app_service.dart';
+import '../domain/insurance/port/commercial_insurance_repository.dart';
+import '../domain/insurance/port/insured_person_repository.dart';
+import '../domain/insurance/port/social_insurance_repository.dart';
+import '../infrastructure/insurance/platform_insurance_attachment_storage.dart';
+import '../infrastructure/insurance/repository/drift_commercial_insurance_repository.dart';
+import '../infrastructure/insurance/repository/drift_insured_person_repository.dart';
+import '../infrastructure/insurance/repository/drift_social_insurance_repository.dart';
 
 part 'provider.g.dart';
 
@@ -199,6 +211,69 @@ ImportWorkflowAppService importWorkflowAppService(Ref ref) {
 @Riverpod(keepAlive: true)
 IdGenerator idGenerator(Ref ref) {
   return const UuidIdGenerator();
+}
+
+@Riverpod(keepAlive: true)
+InsuredPersonRepository insuredPersonRepository(Ref ref) {
+  return DriftInsuredPersonRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+CommercialInsuranceRepository commercialInsuranceRepository(Ref ref) {
+  return DriftCommercialInsuranceRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+SocialInsuranceRepository socialInsuranceRepository(Ref ref) {
+  return DriftSocialInsuranceRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+InsuranceAttachmentStorage insuranceAttachmentStorage(Ref ref) {
+  return PlatformInsuranceAttachmentStorage(
+    ids: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InsuredPersonAppService insuredPersonAppService(Ref ref) {
+  return InsuredPersonAppServiceImpl(
+    insuredPeople: ref.watch(insuredPersonRepositoryProvider),
+    commercialInsurances: ref.watch(commercialInsuranceRepositoryProvider),
+    socialInsurances: ref.watch(socialInsuranceRepositoryProvider),
+    runner: ref.watch(transactionRunnerProvider),
+    ids: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+CommercialInsuranceAppService commercialInsuranceAppService(Ref ref) {
+  return CommercialInsuranceAppServiceImpl(
+    insurances: ref.watch(commercialInsuranceRepositoryProvider),
+    insuredPeople: ref.watch(insuredPersonRepositoryProvider),
+    attachmentStorage: ref.watch(insuranceAttachmentStorageProvider),
+    runner: ref.watch(transactionRunnerProvider),
+    ids: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+SocialInsuranceAppService socialInsuranceAppService(Ref ref) {
+  return SocialInsuranceAppServiceImpl(
+    insurances: ref.watch(socialInsuranceRepositoryProvider),
+    insuredPeople: ref.watch(insuredPersonRepositoryProvider),
+    runner: ref.watch(transactionRunnerProvider),
+    ids: ref.watch(idGeneratorProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+InsuranceCoverageQueryService insuranceCoverageQueryService(Ref ref) {
+  return InsuranceCoverageQueryServiceImpl(
+    insuredPeople: ref.watch(insuredPersonRepositoryProvider),
+    commercialInsurances: ref.watch(commercialInsuranceRepositoryProvider),
+    socialInsurances: ref.watch(socialInsuranceRepositoryProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)

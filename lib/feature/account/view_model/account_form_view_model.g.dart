@@ -62,7 +62,7 @@ final class AccountFormViewModelProvider
 }
 
 String _$accountFormViewModelHash() =>
-    r'a700b80e90932a555e98fd83c422d66cc49bc3c4';
+    r'58351260dd8f945e3ba10e8af3109b62de7dfac2';
 
 final class AccountFormViewModelFamily extends $Family
     with

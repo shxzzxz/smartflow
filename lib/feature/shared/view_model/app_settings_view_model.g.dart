@@ -34,7 +34,7 @@ final class AppSettingsViewModelProvider
 }
 
 String _$appSettingsViewModelHash() =>
-    r'e08b65d07663c49a84bae20c58dc78e65b0de0e8';
+    r'4094736af7c52d27c71425fc77f01b3e24c46395';
 
 abstract class _$AppSettingsViewModel extends $AsyncNotifier<AppSettings> {
   FutureOr<AppSettings> build();

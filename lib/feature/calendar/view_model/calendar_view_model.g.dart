@@ -120,7 +120,7 @@ final class CalendarBusinessActivitiesProvider
 }
 
 String _$calendarBusinessActivitiesHash() =>
-    r'686a584c6eedcce29fce2a25aab420aebe637a9a';
+    r'35a6d27b6e767026e803d2b49075f7036bfd6959';
 
 final class CalendarBusinessActivitiesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<BusinessActivityPage>, DateTime> {

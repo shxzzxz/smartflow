@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:test/test.dart';
 
 import 'package:smartflow/application/data_management/backup/backup_models.dart';
@@ -41,7 +42,7 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 7);
+      expect(inspected.manifest.backupSchemaVersion, 9);
       expect(inspected.manifest.schemaVersion, 55);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
@@ -79,7 +80,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 7);
+        expect(inspection.manifest.backupSchemaVersion, 9);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -212,6 +213,64 @@ void main() {
       expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
     });
 
+    test('migrates v7 backups before requiring insurance tables', () async {
+      await service.createBackup(tempDirectory);
+      for (final table in BackupTables.insurance) {
+        await _removeBackupTable(tempDirectory, table);
+      }
+      await _rewriteBackupSchemaVersion(tempDirectory, 7);
+
+      final inspection = await service.inspect(tempDirectory);
+
+      expect(inspection.manifest.backupSchemaVersion, 7);
+      for (final table in BackupTables.insurance) {
+        expect(inspection.snapshot.rows(table), isEmpty);
+      }
+    });
+
+    test('migrates v8 members to the expanded profile fields', () async {
+      gateway.snapshot = _emptySnapshot(
+        tables: {
+          'insured_people': [
+            {
+              'id': 'person-1',
+              'name': '张三',
+              'birthDate': '1990-06-15T00:00:00.000',
+              'relationship': 'self',
+              'gender': 'unknown',
+              'note': null,
+              'avatarPreset': 'blue',
+              'createdAt': '2026-01-01T00:00:00.000Z',
+              'updatedAt': '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+      );
+      await service.createBackup(tempDirectory);
+      await _rewriteBackupNdjson(
+        tempDirectory,
+        'insurance/insured_people.ndjson',
+        [
+          {
+            'id': 'person-1',
+            'name': '张三',
+            'birthDate': '1990-06-15T00:00:00.000',
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      );
+      await _rewriteBackupSchemaVersion(tempDirectory, 8);
+
+      final inspection = await service.inspect(tempDirectory);
+      final member = inspection.snapshot.rows('insured_people').single;
+
+      expect(member['relationship'], 'other');
+      expect(member['gender'], 'unknown');
+      expect(member['note'], isNull);
+      expect(member['avatarPreset'], 'blue');
+    });
+
     test('keeps legacy amortization rows available for migration', () {
       final snapshot = BackupSnapshot(
         tables: {
@@ -243,7 +302,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 8;
+      manifest['backupSchemaVersion'] = 10;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -252,7 +311,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 8'),
+            contains('backupSchemaVersion 10'),
           ),
         ),
       );
@@ -301,7 +360,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 7);
+        expect(manifest.backupSchemaVersion, 9);
       },
     );
   });
@@ -478,6 +537,25 @@ Future<void> _rewriteBackupSchemaVersion(
       jsonDecode(await file.readAsString()) as Map<String, Object?>;
   manifest['backupSchemaVersion'] = version;
   await file.writeAsString(jsonEncode(manifest));
+}
+
+Future<void> _rewriteBackupNdjson(
+  Directory directory,
+  String path,
+  List<Map<String, Object?>> rows,
+) async {
+  final file = File('${directory.path}/$path');
+  final bytes = utf8.encode('${rows.map(jsonEncode).join('\n')}\n');
+  await file.writeAsBytes(bytes);
+
+  final manifestFile = File('${directory.path}/manifest.json');
+  final manifest =
+      jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
+  final files = (manifest['requiredFiles'] as List).cast<Map>();
+  final descriptor = files.singleWhere((entry) => entry['path'] == path);
+  descriptor['byteCount'] = bytes.length;
+  descriptor['sha256'] = sha256.convert(bytes).toString();
+  await manifestFile.writeAsString(jsonEncode(manifest));
 }
 
 Future<void> _removeBackupTable(Directory directory, String table) async {

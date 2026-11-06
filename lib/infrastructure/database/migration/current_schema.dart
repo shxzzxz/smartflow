@@ -56,7 +56,35 @@ Future<void> createCurrentSchema(
     'CREATE INDEX amortization_allocations_subject_idx '
     'ON amortization_allocations (subject_type, subject_id, dimension)',
   );
+  await _createInsuranceIndexes(database);
   await _createBusinessActivityIndexes(database);
+}
+
+Future<void> _createInsuranceIndexes(AppDatabase database) async {
+  await database.customStatement(
+    'CREATE INDEX commercial_insurance_insured_people_person_idx '
+    'ON commercial_insurance_insured_people (insured_person_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX coverage_responsibilities_insurance_idx '
+    'ON coverage_responsibilities (commercial_insurance_id, sort_order)',
+  );
+  await database.customStatement(
+    'CREATE INDEX responsibility_points_responsibility_idx '
+    'ON responsibility_points (responsibility_id, sort_order)',
+  );
+  await database.customStatement(
+    'CREATE INDEX insurance_attachments_insurance_idx '
+    'ON insurance_attachments (commercial_insurance_id, created_at)',
+  );
+  await database.customStatement(
+    'CREATE INDEX social_medical_insurances_person_idx '
+    'ON social_medical_insurances (insured_person_id)',
+  );
+  await database.customStatement(
+    'CREATE INDEX social_pension_insurances_person_idx '
+    'ON social_pension_insurances (insured_person_id)',
+  );
 }
 
 Future<void> _createBusinessActivityIndexes(AppDatabase database) async {

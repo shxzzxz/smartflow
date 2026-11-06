@@ -10,6 +10,7 @@ import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';
 import '../../domain/orchestration/valobj/advance_enums.dart';
 import '../../domain/orchestration/valobj/amortization_enums.dart';
+import '../../domain/insurance/valobj/insurance_enums.dart';
 import 'migration/app_migration_strategy.dart';
 import 'table/ledger/accounts.dart';
 import 'table/ledger/account_groups.dart';
@@ -46,6 +47,16 @@ import 'table/orchestration/amortization_periods.dart';
 import 'table/orchestration/amortization_plans.dart';
 import 'table/orchestration/amortization_refunds.dart';
 import 'table/orchestration/amortization_terminations.dart';
+import 'table/insurance/insured_people.dart';
+import 'table/insurance/commercial_insurances.dart';
+import 'table/insurance/commercial_insurance_insured_people.dart';
+import 'table/insurance/coverage_responsibilities.dart';
+import 'table/insurance/responsibility_points.dart';
+import 'table/insurance/insurance_attachments.dart';
+import 'table/insurance/social_medical_insurances.dart';
+import 'table/insurance/social_medical_contribution_records.dart';
+import 'table/insurance/social_pension_insurances.dart';
+import 'table/insurance/social_pension_contribution_records.dart';
 
 part 'app_database.g.dart';
 
@@ -86,6 +97,16 @@ part 'app_database.g.dart';
     AmortizationRefunds,
     AmortizationTerminations,
     AmortizationAllocations,
+    InsuredPeople,
+    CommercialInsurances,
+    CommercialInsuranceInsuredPeople,
+    CoverageResponsibilities,
+    ResponsibilityPoints,
+    InsuranceAttachments,
+    SocialMedicalInsurances,
+    SocialMedicalContributionRecords,
+    SocialPensionInsurances,
+    SocialPensionContributionRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -93,7 +114,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 57;
+  int get schemaVersion => 60;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

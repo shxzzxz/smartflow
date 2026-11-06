@@ -1,10 +1,11 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Migrator;
+import 'package:drift/drift.dart' show Migrator, OrderingTerm;
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/domain/insurance/valobj/insurance_enums.dart';
 
 import '../../generated_migrations/schema.dart';
 import '../../generated_migrations/schema_v49.dart' as v49;
@@ -15,6 +16,9 @@ import '../../generated_migrations/schema_v53.dart' as v53;
 import '../../generated_migrations/schema_v54.dart' as v54;
 import '../../generated_migrations/schema_v55.dart' as v55;
 import '../../generated_migrations/schema_v56.dart' as v56;
+import '../../generated_migrations/schema_v57.dart' as v57;
+import '../../generated_migrations/schema_v58.dart' as v58;
+import '../../generated_migrations/schema_v59.dart' as v59;
 
 void main() {
   late SchemaVerifier verifier;
@@ -94,7 +98,7 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 57,
+      newVersion: 60,
     );
   });
 
@@ -135,7 +139,7 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 57,
+      newVersion: 60,
     );
   });
 
@@ -174,7 +178,7 @@ void main() {
         expect(indexes, hasLength(1));
       },
       oldVersion: 52,
-      newVersion: 57,
+      newVersion: 60,
     );
   });
 
@@ -380,7 +384,7 @@ void main() {
           );
         },
         oldVersion: 55,
-        newVersion: 57,
+        newVersion: 60,
       );
     },
   );
@@ -404,7 +408,188 @@ void main() {
         );
       },
       oldVersion: 56,
-      newVersion: 57,
+      newVersion: 60,
+    );
+  });
+
+  test('migrates v57 to current with insurance tables and indexes', () async {
+    await verifier.testWithDataIntegrity<v57.DatabaseAtV57, AppDatabase>(
+      createOld: v57.DatabaseAtV57.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {},
+      validateItems: (db) async {
+        const expectedTables = {
+          'insured_people',
+          'commercial_insurances',
+          'commercial_insurance_insured_people',
+          'coverage_responsibilities',
+          'responsibility_points',
+          'insurance_attachments',
+          'social_medical_insurances',
+          'social_medical_contribution_records',
+          'social_pension_insurances',
+          'social_pension_contribution_records',
+        };
+        final tables =
+            (await db
+                    .customSelect(
+                      "SELECT name FROM sqlite_master WHERE type = 'table'",
+                    )
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(tables, containsAll(expectedTables));
+
+        const expectedIndexes = {
+          'commercial_insurance_insured_people_person_idx',
+          'coverage_responsibilities_insurance_idx',
+          'responsibility_points_responsibility_idx',
+          'insurance_attachments_insurance_idx',
+          'social_medical_insurances_person_idx',
+          'social_pension_insurances_person_idx',
+        };
+        final indexes =
+            (await db
+                    .customSelect(
+                      "SELECT name FROM sqlite_master WHERE type = 'index'",
+                    )
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(indexes, containsAll(expectedIndexes));
+      },
+      oldVersion: 57,
+      newVersion: 60,
+    );
+  });
+
+  test('migrates v58 members with profile defaults', () async {
+    await verifier.testWithDataIntegrity<v58.DatabaseAtV58, AppDatabase>(
+      createOld: v58.DatabaseAtV58.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {
+        batch.customStatement(
+          'INSERT INTO insured_people (id, name, birth_date) '
+          'VALUES (?, ?, ?)',
+          ['person-1', '张三', DateTime(1990, 6, 15).millisecondsSinceEpoch],
+        );
+      },
+      validateItems: (db) async {
+        final person = await db.select(db.insuredPeople).getSingle();
+        expect(person.relationship, MemberRelationship.other);
+        expect(person.gender, MemberGender.unknown);
+        expect(person.note, isNull);
+        expect(person.avatarPreset, MemberAvatarPreset.blue);
+      },
+      oldVersion: 58,
+      newVersion: 59,
+    );
+  });
+
+  test('migrates legacy v59 member birth parts to birth_date', () async {
+    final schema = await verifier.schemaAt(59);
+    final oldDb = v59.DatabaseAtV59(schema.newConnection());
+    await oldDb.customStatement('DROP TABLE insured_people');
+    await oldDb.customStatement(
+      'CREATE TABLE insured_people ('
+      'id TEXT NOT NULL, '
+      'name TEXT NOT NULL, '
+      'birth_year INTEGER NOT NULL, '
+      'birth_month INTEGER NOT NULL, '
+      'birth_day INTEGER NULL, '
+      'created_at INTEGER NOT NULL, '
+      'updated_at INTEGER NOT NULL, '
+      "relationship TEXT NOT NULL DEFAULT 'other', "
+      "gender TEXT NOT NULL DEFAULT 'unknown', "
+      'note TEXT NULL, '
+      "avatar_preset TEXT NOT NULL DEFAULT 'blue', "
+      'PRIMARY KEY(id), '
+      'CHECK(length(trim(name)) > 0), '
+      'CHECK(birth_year BETWEEN 1900 AND 2100), '
+      'CHECK(birth_month BETWEEN 1 AND 12), '
+      'CHECK(birth_day IS NULL OR birth_day BETWEEN 1 AND 31)'
+      ')',
+    );
+    await oldDb.customStatement(
+      'INSERT INTO insured_people '
+      '(id, name, birth_year, birth_month, birth_day, created_at, '
+      'updated_at, relationship, gender, note, avatar_preset) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        'legacy-1',
+        '旧成员一',
+        2000,
+        6,
+        15,
+        1793893840,
+        1793893840,
+        'parent',
+        'female',
+        '旧备注',
+        'green',
+      ],
+    );
+    await oldDb.customStatement(
+      'INSERT INTO insured_people '
+      '(id, name, birth_year, birth_month, birth_day, created_at, '
+      'updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['legacy-2', '旧成员二', 1995, 2, null, 1793893840, 1793893840],
+    );
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 60);
+    final people = await (db.select(
+      db.insuredPeople,
+    )..orderBy([(row) => OrderingTerm(expression: row.id)])).get();
+    expect(people, hasLength(2));
+    expect(people.first.birthDate.year, 2000);
+    expect(people.first.birthDate.month, 6);
+    expect(people.first.birthDate.day, 15);
+    expect(people.first.relationship, MemberRelationship.parent);
+    expect(people.first.gender, MemberGender.female);
+    expect(people.first.note, '旧备注');
+    expect(people.first.avatarPreset, MemberAvatarPreset.green);
+    expect(people.last.birthDate.year, 1995);
+    expect(people.last.birthDate.month, 2);
+    expect(people.last.birthDate.day, 1);
+    await db.close();
+  });
+
+  test('keeps current v59 member data when migrating to v60', () async {
+    await verifier.testWithDataIntegrity<v59.DatabaseAtV59, AppDatabase>(
+      createOld: v59.DatabaseAtV59.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {
+        batch.customStatement(
+          'INSERT INTO insured_people '
+          '(id, name, birth_date, relationship, gender, avatar_preset) '
+          'VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            'person-1',
+            '当前成员',
+            DateTime(1992, 8, 9).millisecondsSinceEpoch ~/ 1000,
+            'self',
+            'male',
+            'green',
+          ],
+        );
+      },
+      validateItems: (db) async {
+        final person = await db.select(db.insuredPeople).getSingle();
+        expect(person.birthDate.year, 1992);
+        expect(person.birthDate.month, 8);
+        expect(person.birthDate.day, 9);
+        expect(person.relationship, MemberRelationship.self);
+        expect(person.gender, MemberGender.male);
+        expect(person.avatarPreset, MemberAvatarPreset.green);
+      },
+      oldVersion: 59,
+      newVersion: 60,
     );
   });
 
