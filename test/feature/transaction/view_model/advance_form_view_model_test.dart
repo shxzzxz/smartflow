@@ -96,7 +96,10 @@ void main() {
   testWidgets('switches shortfall allocation between self-borne and bad debt', (
     tester,
   ) async {
-    final container = _container(_FakeAdvanceOrchestrationService());
+    final container = _container(
+      _FakeAdvanceOrchestrationService(),
+      detail: _advanceDetail(outstandingMinorUnits: 20010),
+    );
     final provider = advanceFormViewModelProvider('advance');
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
@@ -112,8 +115,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final amountField = find.byType(EditableText).first;
-    await tester.enterText(amountField, '30');
+    final amountRow = find.byKey(const ValueKey('advance-form-amount'));
+    final editableAmount = find.descendant(
+      of: amountRow,
+      matching: find.byType(EditableText),
+    );
+    final amountField = tester.widget<EditableText>(editableAmount);
+    expect(amountField.controller.text, '200.1');
+    expect(find.byTooltip('清空实收金额'), findsNothing);
+
+    await tester.tap(editableAmount);
+    await tester.pump();
+    expect(find.byTooltip('清空实收金额'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('清空实收金额'));
+    await tester.pump();
+    expect(amountField.controller.text, isEmpty);
+
+    await tester.enterText(editableAmount, '190.1');
     await tester.pumpAndSettle();
 
     final selfBorneSwitch = find.byKey(
@@ -188,24 +207,28 @@ ProviderContainer _container(
   return container;
 }
 
-TransactionReadModel _advanceDetail({TransactionOwnership? ownership}) {
+TransactionReadModel _advanceDetail({
+  TransactionOwnership? ownership,
+  int outstandingMinorUnits = 4000,
+}) {
+  final outstanding = Money(minorUnits: outstandingMinorUnits);
   return TransactionReadModel(
     id: 'advance',
     businessPurpose: BusinessPurpose.advance,
     occurredAt: DateTime(2026, 10, 23),
-    primaryAmount: const Money(minorUnits: 4000),
+    primaryAmount: outstanding,
     isExcludedFromStats: false,
     isExcludedFromBudget: false,
     ownership: ownership,
     impactsByAccountId: const {},
-    lines: const [
+    lines: [
       TransactionLine(
         id: 'advance-category',
         transactionId: 'advance',
         lineNo: 1,
         role: TransactionRole.advanceExpenseCategory,
         accountId: 'food',
-        amount: Money(minorUnits: 4000),
+        amount: outstanding,
       ),
       TransactionLine(
         id: 'advance-cash',
@@ -213,7 +236,7 @@ TransactionReadModel _advanceDetail({TransactionOwnership? ownership}) {
         lineNo: 2,
         role: TransactionRole.settlementOut,
         accountId: 'cash',
-        amount: Money(minorUnits: 4000),
+        amount: outstanding,
       ),
       TransactionLine(
         id: 'advance-receivable',
@@ -221,23 +244,20 @@ TransactionReadModel _advanceDetail({TransactionOwnership? ownership}) {
         lineNo: 3,
         role: TransactionRole.receivable,
         accountId: 'receivable',
-        amount: Money(minorUnits: 4000),
+        amount: outstanding,
       ),
     ],
     refundSummary: RefundSummary(
       refundedTotal: Money.zero(),
-      originalCategoryAllocations: const [
-        AccountAmountAllocation(
-          accountId: 'food',
-          amount: Money(minorUnits: 4000),
-        ),
+      originalCategoryAllocations: [
+        AccountAmountAllocation(accountId: 'food', amount: outstanding),
       ],
       refundedCategoryAllocations: const [],
     ),
-    advanceSummary: const AdvanceSummary(
-      advanceAmount: Money(minorUnits: 4000),
+    advanceSummary: AdvanceSummary(
+      advanceAmount: outstanding,
       receivedAmount: Money(minorUnits: 0),
-      outstanding: Money(minorUnits: 4000),
+      outstanding: outstanding,
       isClosed: false,
     ),
   );

@@ -6,6 +6,7 @@ import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
 import '../../../application/ledger/ledger_command_api.dart';
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_selection_purpose.dart';
@@ -48,7 +49,10 @@ class InstallmentRepaymentFormViewModel
     return InstallmentRepaymentFormState.loaded(
       contract: contract,
       accounts: accounts,
-      principalText: contract.repaymentProgress.remainingPrincipal.format(),
+      principalText: formatMoney(
+        contract.repaymentProgress.remainingPrincipal,
+        style: MoneyFormatStyle.plain,
+      ),
       occurredAt: DateTime.now(),
       paidFromAccountId: paidFromAccountId,
     );

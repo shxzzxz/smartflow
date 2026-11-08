@@ -29,6 +29,13 @@ void main() {
         ),
         '-3620.99',
       );
+      expect(
+        formatMoney(
+          const Money(minorUnits: 20010),
+          style: MoneyFormatStyle.plain,
+        ),
+        '200.1',
+      );
     });
 
     test('uses compact ten-thousand notation and trims trailing zeros', () {

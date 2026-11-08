@@ -82,7 +82,12 @@ class _AdvanceFormContentState extends ConsumerState<_AdvanceFormContent> {
   void initState() {
     super.initState();
     _amountController = TextEditingController(
-      text: widget.state.outstanding?.format() ?? '',
+      text: widget.state.outstanding == null
+          ? ''
+          : formatMoney(
+              widget.state.outstanding!,
+              style: MoneyFormatStyle.plain,
+            ),
     );
     _noteController = TextEditingController();
   }

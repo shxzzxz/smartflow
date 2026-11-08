@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_field.dart';
@@ -75,7 +76,9 @@ class _AdvanceSettlementFormPageState
     if (_hydratedAdvanceTransactionId != widget.advanceTransactionId) {
       syncTextControllerText(
         _amountController,
-        state.outstanding?.format() ?? '',
+        state.outstanding == null
+            ? ''
+            : formatMoney(state.outstanding!, style: MoneyFormatStyle.plain),
       );
       _hydratedAdvanceTransactionId = widget.advanceTransactionId;
     }

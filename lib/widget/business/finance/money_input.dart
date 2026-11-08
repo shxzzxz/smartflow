@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:remixicon/remixicon.dart';
 
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/token/form.dart';
+import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 
 const moneyInputMaxDigits = 12;
@@ -84,7 +86,7 @@ bool _isValidMoneyValueText(String text) {
   return text.replaceAll(RegExp(r'[-.]'), '').length <= moneyInputMaxDigits;
 }
 
-class MoneyPlainFormRow extends StatelessWidget {
+class MoneyPlainFormRow extends StatefulWidget {
   const MoneyPlainFormRow({
     required this.label,
     required this.controller,
@@ -109,19 +111,90 @@ class MoneyPlainFormRow extends StatelessWidget {
   final double minHeight;
 
   @override
+  State<MoneyPlainFormRow> createState() => _MoneyPlainFormRowState();
+}
+
+class _MoneyPlainFormRowState extends State<MoneyPlainFormRow> {
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AppPlainTextFormRow(
-      label: label,
-      controller: controller,
-      hintText: hintText,
-      supportingText: supportingText,
-      requiredIndicator: requiredIndicator,
+      label: widget.label,
+      controller: widget.controller,
+      focusNode: _focusNode,
+      hintText: widget.hintText,
+      supportingText: widget.supportingText,
+      suffixIcon: _MoneyInputClearButton(
+        label: widget.label,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        onChanged: widget.onChanged,
+      ),
+      requiredIndicator: widget.requiredIndicator,
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       inputFormatters: [moneyInputFormatter],
-      validator: validator,
-      onChanged: onChanged,
-      textAlign: textAlign,
-      minHeight: minHeight,
+      validator: widget.validator,
+      onChanged: widget.onChanged,
+      textAlign: widget.textAlign,
+      minHeight: widget.minHeight,
+    );
+  }
+}
+
+class _MoneyInputClearButton extends StatelessWidget {
+  const _MoneyInputClearButton({
+    required this.label,
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        return ListenableBuilder(
+          listenable: focusNode,
+          builder: (context, _) {
+            return SizedBox(
+              width: AppSpacing.space48,
+              height: AppSpacing.space48,
+              child: !focusNode.hasFocus || value.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        controller.clear();
+                        onChanged?.call('');
+                      },
+                      tooltip: '清空$label',
+                      icon: const Icon(
+                        RemixIcons.close_circle_line,
+                        size: AppSpacing.space18,
+                      ),
+                    ),
+            );
+          },
+        );
+      },
     );
   }
 }

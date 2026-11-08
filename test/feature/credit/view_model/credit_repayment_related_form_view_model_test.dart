@@ -294,7 +294,7 @@ void main() {
         noteText: '',
       );
 
-      expect(state.principalText, '100.00');
+      expect(state.principalText, '100');
       expect(outcome, isA<SubmitSuccess>());
       expect(repayment.prepaymentCommands.single.contractId, 'contract');
       expect(

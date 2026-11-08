@@ -17,6 +17,7 @@ class AppPlainTextFormRow extends FormField<String> {
     super.key,
     this.hintText,
     this.supportingText,
+    this.suffixIcon,
     this.requiredIndicator = false,
     this.keyboardType,
     this.inputFormatters,
@@ -40,6 +41,7 @@ class AppPlainTextFormRow extends FormField<String> {
   final TextEditingController controller;
   final String? hintText;
   final String? supportingText;
+  final Widget? suffixIcon;
   final bool requiredIndicator;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
@@ -58,6 +60,26 @@ class AppPlainTextFormRow extends FormField<String> {
   static Widget _buildField(FormFieldState<String> field) {
     final state = field as _AppPlainTextFormRowState;
     final widget = state.widget;
+    final textField = TextField(
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      decoration: appPlainInputDecoration(
+        field.context,
+        hintText: widget.hintText,
+      ),
+      keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
+      textInputAction: widget.textInputAction,
+      maxLines: widget.maxLines,
+      minLines: widget.minLines,
+      onChanged: state.handleUserChanged,
+      textAlign: widget.textAlign,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
+      enabled: widget.enabled,
+      autofocus: widget.autofocus,
+      style: field.context.appTextStyles.formValue,
+    );
 
     return AppPlainFormRow(
       label: widget.label,
@@ -67,26 +89,14 @@ class AppPlainTextFormRow extends FormField<String> {
       enabled: widget.enabled,
       labelWidth: widget.labelWidth,
       minHeight: widget.minHeight,
-      child: TextField(
-        controller: widget.controller,
-        focusNode: widget.focusNode,
-        decoration: appPlainInputDecoration(
-          field.context,
-          hintText: widget.hintText,
-        ),
-        keyboardType: widget.keyboardType,
-        inputFormatters: widget.inputFormatters,
-        textInputAction: widget.textInputAction,
-        maxLines: widget.maxLines,
-        minLines: widget.minLines,
-        onChanged: state.handleUserChanged,
-        textAlign: widget.textAlign,
-        readOnly: widget.readOnly,
-        onTap: widget.onTap,
-        enabled: widget.enabled,
-        autofocus: widget.autofocus,
-        style: field.context.appTextStyles.formValue,
-      ),
+      child: widget.suffixIcon == null
+          ? textField
+          : Row(
+              children: [
+                Expanded(child: textField),
+                widget.suffixIcon!,
+              ],
+            ),
     );
   }
 
