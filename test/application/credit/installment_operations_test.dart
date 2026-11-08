@@ -828,10 +828,12 @@ void main() {
         const RecalculateFromOperations(),
       );
       final result = await f.installments.listSchedules('loan');
-      expect(
-        result.map((row) => row.expectedPrincipal.minorUnits),
-        everyElement(2000000),
-      );
+      expect(result.map((row) => row.expectedPrincipal.minorUnits), [
+        2500000,
+        1833333,
+        1833333,
+        1833334,
+      ]);
       expect(result.first.status, InstallmentScheduleStatus.paid);
       final payment = await f.repayments.findRepayment(
         'payment-${original.first.id}',

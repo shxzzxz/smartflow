@@ -170,9 +170,9 @@ void main() {
       );
       var rows = await installments.listSchedules('loan');
       expect(rows.map((r) => r.expectedPrincipal.minorUnits), [
-        3000,
-        3000,
-        3000,
+        4000,
+        2500,
+        2500,
       ]);
       expect(rows.every((r) => !r.manuallyAdjusted), isTrue);
       expect(rows.map((r) => r.id), before.map((r) => r.id));
@@ -206,7 +206,7 @@ void main() {
             (await installments.listSchedules(
               'loan',
             )).first.expectedPrincipal.minorUnits,
-            3000,
+            4000,
           );
           throw StateError('failure after plan write');
         }),

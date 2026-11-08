@@ -1261,8 +1261,8 @@ void main() {
         if (prepayFirst) {
           await f.prepayExample(DateTime.utc(2024, 12, 13));
           final prepaid = await f.installments.listSchedules('example');
-          expect(prepaid[3].expectedPrincipal.minorUnits, 1540614);
-          expect(prepaid[3].expectedInterest.minorUnits, 56358);
+          expect(prepaid[3].expectedPrincipal.minorUnits, 1649959);
+          expect(prepaid[3].expectedInterest.minorUnits, 58370);
         }
         // 取值日已确定的结果可提前应用，1/2 仍是实际拆息日期。
         await f.service.runDue(DateTime.utc(2025, 1, 1));
@@ -1270,7 +1270,7 @@ void main() {
           (await f.installments.listSchedules(
             'example',
           ))[3].expectedPrincipal.minorUnits,
-          prepayFirst ? 1540614 : 1649959,
+          1649959,
         );
         expect((await f.records.list('example')).single.applied, isTrue);
         if (!prepayFirst) {
@@ -1290,9 +1290,7 @@ void main() {
           expect(after[i].expectedInterest, before[i].expectedInterest);
           expect(after[i].expectedFee, before[i].expectedFee);
         }
-        // P=140894.59；A0=15969.72；本金4=A0-round(P*4.8%/12)。
-        // 利息4=round(P*(4.8%*20/360+3.6%*11/360))=530.70。
-        // 第5期起固定额15898.56，末期吸收尾差。这些期望值按月供公式独立推导。
+        // 第4期保留原计划本金；提前还款从第5期起降低后续期供。
         expect(
           after
               .skip(3)
@@ -1303,15 +1301,15 @@ void main() {
                 ),
               ),
           [
-            (1540614, 53070),
-            (1552209, 37647),
-            (1556866, 32990),
-            (1561537, 28319),
-            (1566221, 23635),
-            (1570920, 18936),
-            (1575633, 14223),
-            (1580360, 9496),
-            (1585099, 4755),
+            (1649959, prepayFirst ? 53204 : 56137),
+            (1538684, 37319),
+            (1543301, 32702),
+            (1547930, 28073),
+            (1552574, 23429),
+            (1557232, 18771),
+            (1561904, 14099),
+            (1566589, 9414),
+            (1571286, 4714),
           ],
         );
         expect(
@@ -1631,11 +1629,10 @@ void main() {
   );
 
   test(
-    'prepayment resets whole-period opening principal to 80000 after repricing',
+    'prepayment preserves current principal and uses the reduced balance thereafter',
     () async {
       await f.service.runDue(DateTime(2026, 1, 5));
       final contract = (await f.installments.findContract('loan'))!;
-      // From an 80000 contract, reducing principal by 20000 means both rate segments use 60000.
       final updates = const InstallmentPlanEngine()
           .generate(
             contract.stageTerms.planTerms(
@@ -1655,7 +1652,7 @@ void main() {
             ),
           )
           .entries;
-      expect(updates.first.expectedInterest.minorUnits, 20800);
+      expect(updates.first.expectedInterest.minorUnits, 25733);
       expect(
         updates.fold<int>(0, (sum, r) => sum + r.expectedPrincipal.minorUnits),
         6000000,

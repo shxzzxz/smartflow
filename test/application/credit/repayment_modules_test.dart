@@ -922,11 +922,11 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
         );
         expect(
           recalculated[1].expectedPrincipal,
-          const Money(minorUnits: 30000),
+          const Money(minorUnits: 40000),
         );
         expect(
           recalculated[2].expectedPrincipal,
-          const Money(minorUnits: 30000),
+          const Money(minorUnits: 20000),
         );
         expect(
           recalculated[1].status,
@@ -1031,9 +1031,41 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
         );
         expect(recalculated.map((schedule) => schedule.expectedPrincipal), [
           const Money(minorUnits: 40000),
-          const Money(minorUnits: 25000),
-          const Money(minorUnits: 25000),
+          const Money(minorUnits: 40000),
+          const Money(minorUnits: 10000),
         ]);
+      },
+    );
+
+    test(
+      'full prepayment settles zero schedules and closes the contract',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final contractId = await fixture.seedContractWithSchedules(
+          principal: 2000,
+          schedulePrincipals: [2000],
+        );
+
+        await fixture.service.createContractPrepaymentRepayment(
+          credit.CreateContractPrepaymentRepaymentCommand(
+            contractId: contractId,
+            amount: _amount(principal: 2000),
+            repaymentDate: DateTime(2026, 7, 1),
+          ),
+        );
+
+        final schedule = (await fixture.installments.listSchedules(
+          contractId,
+        )).single;
+        expect(schedule.expectedPrincipal, Money.zero());
+        expect(schedule.expectedInterest, Money.zero());
+        expect(schedule.expectedFee, Money.zero());
+        expect(schedule.status, credit.InstallmentScheduleStatus.paid);
+        expect(
+          (await fixture.installments.findContract(contractId))!.status,
+          credit.InstallmentContractStatus.settled,
+        );
       },
     );
 
@@ -1074,7 +1106,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     });
 
     test(
-      'creates no-transaction prepayment without skipping pending rows',
+      'creates no-transaction prepayment without changing stored bill facts',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -1118,14 +1150,14 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           contractId,
         );
         expect(settledSchedules.map((schedule) => schedule.status).toSet(), {
-          credit.InstallmentScheduleStatus.pending,
+          credit.InstallmentScheduleStatus.paid,
         });
         expect(settledSchedules.map((schedule) => schedule.expectedPrincipal), [
           const Money(minorUnits: 0),
           const Money(minorUnits: 0),
         ]);
         final contract = await fixture.installments.findContract(contractId);
-        expect(contract!.status, credit.InstallmentContractStatus.active);
+        expect(contract!.status, credit.InstallmentContractStatus.settled);
         final bill = await fixture.bills.findBill('bill-1');
         expect(bill!.items.single.status, credit.BillItemStatus.pending);
         expect(bill.status, credit.BillStatus.billed);
@@ -1368,8 +1400,8 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           )).map((schedule) => schedule.status),
           [
             credit.InstallmentScheduleStatus.paid,
-            credit.InstallmentScheduleStatus.pending,
-            credit.InstallmentScheduleStatus.pending,
+            credit.InstallmentScheduleStatus.paid,
+            credit.InstallmentScheduleStatus.paid,
           ],
         );
 

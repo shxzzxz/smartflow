@@ -97,11 +97,13 @@ void main() {
       );
 
       expect(simulation.periods, hasLength(12));
-      expect(simulation.periods[5].principal, isNot(base.periods[5].principal));
-      for (var i = 0; i < 5; i++) {
+      for (var i = 0; i < 6; i++) {
         expect(simulation.periods[i].principal, base.periods[i].principal);
-        expect(simulation.periods[i].interest, base.periods[i].interest);
+        if (i < 5) {
+          expect(simulation.periods[i].interest, base.periods[i].interest);
+        }
       }
+      expect(simulation.periods[6].principal, isNot(base.periods[6].principal));
       final principalSum = simulation.periods.fold<int>(
         0,
         (sum, period) => sum + period.principal.minorUnits,
@@ -157,7 +159,10 @@ void main() {
         simulation.periods.first.interest,
         simulation.original.periods.first.interest,
       );
-      expect(simulation.periods[1].interest.minorUnits, 6000 * months);
+      expect(
+        simulation.periods[1].interest.minorUnits,
+        months == 3 ? 18300 : 73100,
+      );
       expect(simulation.periods[1].date, DateTime(2026, 1 + 2 * months, 1));
       expect(simulation.periods.last.remainingPrincipal, Money.zero());
     }
@@ -241,11 +246,11 @@ void main() {
         expect(simulation.periods.last.remainingPrincipal, Money.zero());
         expect(
           simulation.totalInterest.minorUnits,
-          prepaymentMinor == 10000 ? 3150 : 2000,
+          prepaymentMinor == 10000 ? 3177 : 1950,
         );
         expect(
           simulation.interestChange.minorUnits,
-          prepaymentMinor == 10000 ? -250 : -1400,
+          prepaymentMinor == 10000 ? -223 : -1450,
         );
       },
     );
@@ -280,7 +285,7 @@ void main() {
         ),
       ),
     );
-    expect(deferred.periods.map((p) => p.principal.minorUnits), [4500, 4500]);
+    expect(deferred.periods.map((p) => p.principal.minorUnits), [5000, 4000]);
     expect(deferred.periods.last.remainingPrincipal, Money.zero());
     expect(
       () => query.simulateChanges(
@@ -358,17 +363,15 @@ void main() {
             ),
           ),
         );
-        expect(result.periods.map((p) => p.principal.minorUnits), [
-          0,
-          0,
-          45000,
-          45000,
-        ]);
+        expect(
+          result.periods.map((p) => p.principal.minorUnits),
+          paid == 1 ? [0, 0, 45000, 45000] : [0, 0, 60000, 30000],
+        );
         expect(result.periods.map((p) => p.interest.minorUnits), [
           1200,
-          paid == 1 ? 900 : 1200,
-          900,
-          450,
+          paid == 1 ? 940 : 1200,
+          paid == 1 ? 900 : 910,
+          paid == 1 ? 450 : 300,
         ]);
         expect(result.periods.map((p) => p.fee.minorUnits), [
           1000,
@@ -376,7 +379,7 @@ void main() {
           2000,
           2000,
         ]);
-        expect(result.interestChange.minorUnits, paid == 1 ? -750 : -450);
+        expect(result.interestChange.minorUnits, paid == 1 ? -710 : -590);
         expect(result.totalFee.minorUnits, 6000);
         expect(result.stages.map((s) => s.index), [1, 2]);
         expect(result.periods.last.remainingPrincipal, Money.zero());

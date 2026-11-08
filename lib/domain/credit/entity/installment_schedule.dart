@@ -90,6 +90,10 @@ class InstallmentSchedule {
       expectedPrincipalMinor: expectedPrincipal.minorUnits,
       allocatedPrincipalMinor: allocatedPrincipalMinor,
       hasAllocation: hasAllocation,
+      hasExpectedRepayment:
+          expectedPrincipal.minorUnits != 0 ||
+          expectedInterest.minorUnits != 0 ||
+          expectedFee.minorUnits != 0,
     );
     if (_status == nextStatus) return false;
     _status = nextStatus;

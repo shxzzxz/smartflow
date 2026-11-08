@@ -56,6 +56,24 @@ void main() {
 
     expect(amount, const Money(minorUnits: 40000));
   });
+
+  test('uses paid principal instead of a prior status on regenerated rows', () {
+    final amount = policy.refundablePrincipal(
+      refundDate: DateTime(2026, 7, 10),
+      rows: [
+        _row(
+          id: 'future',
+          periodNo: 1,
+          date: DateTime(2026, 8, 10),
+          principal: const Money(minorUnits: 60000),
+          status: InstallmentScheduleStatus.paid,
+        ),
+      ],
+      paidPrincipalByScheduleId: {'future': const Money(minorUnits: 20000)},
+    );
+
+    expect(amount, const Money(minorUnits: 40000));
+  });
 }
 
 InstallmentPlanRow _row({

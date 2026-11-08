@@ -1,4 +1,6 @@
 import '../../../valobj/rate_change.dart';
+import '../../../valobj/installment_plan_operation.dart';
+import '../../../valobj/reference_rate.dart';
 import '../../../../../core/money/money.dart';
 import '../../../valobj/installment_enums.dart';
 import '../calculator/repayment_method_calculator.dart';
@@ -34,14 +36,14 @@ class InstallmentStageHandler {
     InstallmentStageContext context, {
     required Money openingPrincipal,
     required bool finalStage,
-    required List<int> reductions,
+    required List<List<PrincipalReduction>> reductions,
     required List<RateChange> changes,
   }) {
     final generation = BasePlanGenerationHandler(calculators: _calculators);
-    final principalHandler = PrincipalReductionHandler(generation);
+    const principalHandler = PrincipalReductionHandler();
     final repricingHandler = RepricingHandler(generation);
-    // 首期内及此前免还期的扣减都从本阶段计息起点生效。
-    final opening = principalHandler.deduct(openingPrincipal, reductions.first);
+    final opening = openingPrincipal;
+    var stageOpening = opening;
     var balance = opening;
     var target = generation.endPrincipalFor(
       context.stage,
@@ -57,30 +59,41 @@ class InstallmentStageHandler {
     final allocations = <InstallmentAmountAllocation>[];
 
     for (var i = 0; i < context.dates.length; i++) {
-      final openingRate = repricingHandler.rateAt(
-        rate,
-        context.periodRange(i).start,
-        changes,
+      final range = context.periodRange(i);
+      final openingReductions = [
+        for (final reduction in reductions[i])
+          if (!referenceDate(
+            reduction.date,
+          ).add(const Duration(days: 1)).isAfter(range.start))
+            reduction,
+      ];
+      final openingReductionMinor = openingReductions.fold<int>(
+        0,
+        (sum, reduction) => sum + reduction.principal.minorUnits,
       );
+      if (openingReductionMinor > 0) {
+        balance = principalHandler.deduct(balance, openingReductionMinor);
+        if (target.minorUnits > balance.minorUnits) target = balance;
+        projection = null;
+        changed = true;
+        if (i == 0) stageOpening = balance;
+      }
+      final inPeriodReductions = [
+        for (final reduction in reductions[i])
+          if (referenceDate(
+                reduction.date,
+              ).add(const Duration(days: 1)).isAfter(range.start) &&
+              referenceDate(
+                reduction.date,
+              ).add(const Duration(days: 1)).isBefore(range.end))
+            reduction,
+      ];
+      final openingRate = repricingHandler.rateAt(rate, range.start, changes);
       if (!repricingHandler.hasSameRate(context, openingRate, rate)) {
         projection = null;
         changed = true;
       }
       rate = openingRate;
-      if (i > 0 && reductions[i] != 0) {
-        final reduction = principalHandler.recalculate(
-          context,
-          periodIndex: i,
-          openingPrincipal: balance,
-          endPrincipal: target,
-          reductionMinor: reductions[i],
-          rate: rate,
-        );
-        balance = reduction.principal;
-        target = reduction.endPrincipal;
-        projection = reduction.projection;
-        changed = true;
-      }
       projection ??= generation.generate(
         context,
         periodIndex: i,
@@ -100,12 +113,32 @@ class InstallmentStageHandler {
       );
       projection = repricing.projection;
       changed = changed || repricing.changed;
-      allocations.add(repricing.allocation);
-      balance -= repricing.allocation.principal;
+      var allocation = repricing.allocation;
+      if (inPeriodReductions.isNotEmpty) {
+        final reduction = principalHandler.applyInPeriod(
+          context,
+          periodIndex: i,
+          openingPrincipal: balance,
+          openingRate: rate,
+          changes: changes,
+          reductions: inPeriodReductions,
+          currentAllocation: allocation,
+          rounding: context.rounding,
+        );
+        allocation = reduction.allocation;
+        balance -=
+            allocation.principal + Money(minorUnits: reduction.reductionMinor);
+        if (target.minorUnits > balance.minorUnits) target = balance;
+        projection = null;
+        changed = true;
+      } else {
+        balance -= allocation.principal;
+      }
+      allocations.add(allocation);
       rate = repricing.closingRate;
     }
     return InstallmentStageCalculation(
-      openingPrincipal: opening,
+      openingPrincipal: stageOpening,
       closingPrincipal: balance,
       calculation: RepaymentMethodCalculation(
         allocations: List.unmodifiable(allocations),

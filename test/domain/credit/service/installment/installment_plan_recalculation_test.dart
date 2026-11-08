@@ -29,31 +29,34 @@ void main() {
       ),
     ],
   );
-  test('a future reduction leaves previous calculated periods unchanged', () {
-    final input = terms();
-    final base = engine.generate(input);
-    final plan = engine.generate(
-      input,
-      operations: InstallmentPlanOperations(
-        principalReductions: [
-          PrincipalReduction(
-            date: DateTime(2026, 3, 20),
-            principal: const Money(minorUnits: 2000),
-          ),
-        ],
-      ),
-    );
-    expect(
-      plan.entries.take(2).map((row) => row.expectedPrincipal),
-      base.entries.take(2).map((row) => row.expectedPrincipal),
-    );
-    expect(plan.entries.map((row) => row.expectedPrincipal.minorUnits), [
-      2500,
-      2500,
-      1500,
-      1500,
-    ]);
-  });
+  test(
+    'a future reduction preserves its own period and changes later rows',
+    () {
+      final input = terms();
+      final base = engine.generate(input);
+      final plan = engine.generate(
+        input,
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(
+              date: DateTime(2026, 3, 20),
+              principal: const Money(minorUnits: 2000),
+            ),
+          ],
+        ),
+      );
+      expect(
+        plan.entries.take(2).map((row) => row.expectedPrincipal),
+        base.entries.take(2).map((row) => row.expectedPrincipal),
+      );
+      expect(plan.entries.map((row) => row.expectedPrincipal.minorUnits), [
+        2500,
+        2500,
+        2500,
+        500,
+      ]);
+    },
+  );
 
   test('removing or changing operations regenerates from original terms', () {
     final input = terms();

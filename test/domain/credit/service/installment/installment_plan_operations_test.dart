@@ -502,19 +502,23 @@ void main() {
         ),
       );
       expect(
-        within.entries.first.interestSegments.every(
-          (segment) => segment.principal == money(9000000),
+        within.entries.first.interestSegments.map(
+          (segment) => segment.principal,
         ),
-        isTrue,
+        [money(10000000), money(10000000), money(9000000)],
       );
-      expect(within.stages.single.openingPrincipal?.minorUnits, 9000000);
+      expect(within.stages.single.openingPrincipal?.minorUnits, 10000000);
       expect(
         within.entries.first.interestSegments.map(
           (segment) => segment.start.day,
         ),
-        [9, 15],
+        [9, 15, 21],
       );
-      for (final (day, firstInterest) in [(7, 27900), (8, 31000), (9, 31000)]) {
+      for (final (day, firstInterest, lastInterest) in [
+        (7, 30900, 27000),
+        (8, 31000, 27000),
+        (9, 31000, 27100),
+      ]) {
         final boundary = engine.generate(
           input,
           operations: InstallmentPlanOperations(
@@ -526,9 +530,97 @@ void main() {
         expect(
           boundary.entries.first.expectedInterest.minorUnits,
           firstInterest,
+          reason: 'reduction day $day',
         );
-        expect(boundary.entries.last.expectedInterest.minorUnits, 27000);
+        expect(boundary.entries.last.expectedInterest.minorUnits, lastInterest);
       }
+    },
+  );
+
+  test(
+    'in-period prepayment preserves current principal and splits interest',
+    () {
+      final plan = engine.generate(
+        InstallmentPlanTerms(
+          principal: money(120000),
+          borrowingDate: date(1, 8),
+          stages: [
+            stage(
+              month: 2,
+              count: 12,
+              method: InstallmentRepaymentMethod.equalPrincipal,
+            ),
+          ],
+        ),
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(date: date(1, 20), principal: money(20000)),
+          ],
+        ),
+      );
+
+      expect(plan.entries.first.expectedPrincipal.minorUnits, 10000);
+      expect(plan.entries.first.expectedInterest.minorUnits, 334);
+      expect(plan.entries.first.interestSegments, hasLength(2));
+      expect(
+        plan.entries.first.interestSegments.map(
+          (segment) => segment.principal.minorUnits,
+        ),
+        [120000, 100000],
+      );
+      expect(plan.entries.map((row) => row.expectedPrincipal.minorUnits), [
+        10000,
+        for (var i = 0; i < 10; i++) 8182,
+        8180,
+      ]);
+      expect(plan.stages.single.openingPrincipal, money(120000));
+      expect(
+        plan.entries.fold<int>(
+          20000,
+          (sum, row) => sum + row.expectedPrincipal.minorUnits,
+        ),
+        120000,
+      );
+    },
+  );
+
+  test(
+    'in-period prepayment caps current principal at the remaining balance',
+    () {
+      final plan = engine.generate(
+        InstallmentPlanTerms(
+          principal: money(120000),
+          borrowingDate: date(1, 8),
+          stages: [
+            stage(
+              month: 2,
+              count: 12,
+              method: InstallmentRepaymentMethod.equalPrincipal,
+            ),
+          ],
+        ),
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(date: date(1, 20), principal: money(115000)),
+          ],
+        ),
+      );
+
+      expect(plan.entries.first.expectedPrincipal.minorUnits, 5000);
+      expect(plan.entries.first.expectedInterest.minorUnits, 154);
+      expect(
+        plan.entries
+            .skip(1)
+            .every((row) => row.expectedPrincipal.minorUnits == 0),
+        isTrue,
+      );
+      expect(
+        plan.entries.fold<int>(
+          115000,
+          (sum, row) => sum + row.expectedPrincipal.minorUnits,
+        ),
+        120000,
+      );
     },
   );
 
@@ -564,20 +656,21 @@ void main() {
           ),
         );
         expect(plan.entries.first.expectedPrincipal.minorUnits, 1000000);
+        expect(plan.entries[1].expectedPrincipal.minorUnits, 1000000);
         expect(
           plan.entries
-              .skip(1)
-              .take(4)
+              .skip(2)
+              .take(3)
               .every((entry) => entry.expectedPrincipal.minorUnits == 0),
           isTrue,
         );
         expect(
           plan.stages.last.openingPrincipal?.minorUnits,
-          deduction == 5000000 ? 4000000 : 1000000,
+          deduction == 5000000 ? 3000000 : 0,
         );
         expect(
           plan.stages.last.closingPrincipal?.minorUnits,
-          deduction == 5000000 ? 2000000 : 1000000,
+          deduction == 5000000 ? 2000000 : 0,
         );
         expect(
           plan.entries.fold<int>(
@@ -722,19 +815,20 @@ void main() {
 
       expect(plan.entries.map((row) => row.expectedPrincipal.minorUnits), [
         20000,
-        10000,
-        16667,
-        11667,
-        41666,
+        20000,
+        13333,
+        13334,
+        33333,
       ]);
       expect(plan.entries.map((row) => row.expectedInterest.minorUnits), [
         360,
-        450,
-        // Stage two starts at its own 3.6%: 80000 * 3.6% / 12.
-        240,
-        // 53333 * (3.6% * 6 / 360 + 1.8% * (1 + 23 * 50%) / 360).
+        468,
+        // Stage two starts at its own 3.6%: 70000 * 3.6% / 12.
+        210,
+        // 56667 * 3.6% * 6 / 360 + 56667 * 1.8% * 6 / 360
+        // + 46667 * 1.8% * 16 / 360, then a 50% adjustment.
         65,
-        31,
+        25,
       ]);
       expect(plan.entries.map((row) => row.expectedFee.minorUnits), [
         51,
@@ -743,13 +837,13 @@ void main() {
         34,
         33,
       ]);
-      expect(plan.stages.last.openingPrincipal, money(80000));
+      expect(plan.stages.last.openingPrincipal, money(70000));
       expect(plan.stages.last.closingPrincipal, money(30000));
       expect(
         plan.entries[3].interestSegments.map(
           (segment) => segment.principal.minorUnits,
         ),
-        [53333, 53333],
+        [56667, 56667, 46667],
       );
     },
   );

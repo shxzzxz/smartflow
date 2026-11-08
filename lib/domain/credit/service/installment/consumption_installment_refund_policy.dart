@@ -18,7 +18,6 @@ class ConsumptionInstallmentRefundPolicy {
     var totalMinor = 0;
     for (final row in rows) {
       if (row.status == InstallmentScheduleStatus.skipped ||
-          row.status == InstallmentScheduleStatus.paid ||
           !_dateOnly(row.date).isAfter(cutoff)) {
         continue;
       }

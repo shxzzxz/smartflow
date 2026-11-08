@@ -131,7 +131,7 @@ class _InstallmentRepaymentFormPageState
           ),
           const SizedBox(height: AppSpacing.space24),
           const CreditRepaymentSubmitHint(
-            text: '本次本金从还款日期所在的计息期开始扣减，提交后重新计算还款计划。',
+            text: '本期计划本金保持不变，利息从还款日前后按剩余本金分段计算；提交后从下一期起重算后续期供。',
           ),
           AppSubmitButton(
             label: '提交并重算',

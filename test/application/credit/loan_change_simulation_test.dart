@@ -77,8 +77,8 @@ void main() {
         expect(result.original.totalInterest.minorUnits, 9000);
         expect(result.periods.map((p) => p.interest.minorUnits), [
           3100,
-          1520,
-          3570,
+          1660,
+          3906,
         ]);
         expect(result.periods.map((p) => p.principal.minorUnits), [
           0,
@@ -90,12 +90,12 @@ void main() {
           800000,
           0,
         ]);
-        expect(result.totalInterest.minorUnits, 8190);
-        expect(result.interestChange.minorUnits, -810);
-        expect(result.chargesChange.minorUnits, -810);
+        expect(result.totalInterest.minorUnits, 8666);
+        expect(result.interestChange.minorUnits, -334);
+        expect(result.chargesChange.minorUnits, -334);
         expect(result.totalFee.minorUnits, 900);
         expect(result.prepaymentPrincipal.minorUnits, 300000);
-        expect(result.totalRepayment.minorUnits, 1009090);
+        expect(result.totalRepayment.minorUnits, 1009566);
         expect(result.changedMetrics.isAvailable, isTrue);
         expect(result.changedMetrics.totalRepayment, result.totalRepayment);
         expect(

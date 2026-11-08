@@ -189,17 +189,18 @@ class InstallmentPlanEngine {
         policy: policy,
         rounding: terms.rounding,
       );
-      final deductions = <int>[];
+      final deductions = <List<PrincipalReduction>>[];
       for (var i = 0; i < dates.length; i++) {
-        var amount = 0;
+        final periodReductions = <PrincipalReduction>[];
+        final periodEnd = context.periodRange(i).end;
         // 还款后的计息日期才受影响；恰在本期还款日扣减时归入下一期。
         while (reductionIndex < reductions.length &&
-            referenceDate(reductions[reductionIndex].date)
-                .add(const Duration(days: 1))
-                .isBefore(context.periodRange(i).end)) {
-          amount += reductions[reductionIndex++].principal.minorUnits;
+            referenceDate(
+              reductions[reductionIndex].date,
+            ).add(const Duration(days: 1)).isBefore(periodEnd)) {
+          periodReductions.add(reductions[reductionIndex++]);
         }
-        deductions.add(amount);
+        deductions.add(List.unmodifiable(periodReductions));
       }
       final finalStage = index == terms.stages.length - 1;
       final stageCalculation = stageHandler.calculate(
