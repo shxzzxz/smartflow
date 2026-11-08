@@ -89,11 +89,23 @@ void main() {
       themeMode: ThemeMode.dark,
     );
 
+    final tabBar = find.byType(TabBar);
+    final categoryController = tester.widget<TabBar>(tabBar).controller!;
     for (final category in _showcaseCategoryLabels) {
       final categoryTab = find.text(category);
-      await tester.ensureVisible(categoryTab);
-      await tester.tap(categoryTab);
+      for (var attempt = 0; attempt < 10; attempt++) {
+        if (categoryTab.hitTestable().evaluate().isNotEmpty) break;
+        await tester.drag(tabBar, const Offset(-80, 0));
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(categoryTab.hitTestable(), findsOneWidget, reason: category);
+      await tester.tap(categoryTab.hitTestable());
       await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        categoryController.index,
+        _showcaseCategoryLabels.indexOf(category),
+        reason: category,
+      );
       if (category == '基础控件') {
         expect(
           find.text('FilledButton / OutlinedButton / TextButton'),

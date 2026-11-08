@@ -25,6 +25,7 @@ import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/transaction/transaction_amount_input.dart';
 import '../../../helper/fake_counterparty_repository.dart';
 import '../../../helper/sequential_id_generator.dart';
+import '../../../helper/test_app_database.dart';
 
 void main() {
   testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
@@ -1349,6 +1350,7 @@ Future<void> _pumpTransactionForm(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        testAppDatabaseOverride(),
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
         advanceOrchestrationAppServiceProvider.overrideWithValue(
           _FakeExpenseSceneOrchestrationAppService(fakeService),
