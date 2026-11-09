@@ -19,6 +19,7 @@ class ImportAnalysisCard extends StatelessWidget {
     required this.description,
     this.icon = RemixIcons.file_search_line,
     this.onViewAll,
+    this.footer,
     this.showViewAll = true,
     super.key,
   });
@@ -28,6 +29,7 @@ class ImportAnalysisCard extends StatelessWidget {
   final List<ImportAnalysisMetric> metrics;
   final String description;
   final VoidCallback? onViewAll;
+  final Widget? footer;
   final bool showViewAll;
 
   @override
@@ -89,6 +91,10 @@ class ImportAnalysisCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.space10),
             Text(description, style: context.appTextStyles.metricSupporting),
+            if (footer case final footer?) ...[
+              const SizedBox(height: AppSpacing.space12),
+              footer,
+            ],
           ],
         ),
       ),

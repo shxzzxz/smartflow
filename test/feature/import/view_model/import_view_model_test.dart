@@ -182,78 +182,134 @@ void main() {
       },
     );
 
-    test(
-      'confirms mapping configuration and saves it with the import',
-      () async {
-        final plan = _plan(groupCount: 1);
-        final workflow = _FakeImportWorkflowAppService(
-          reviewBuilder:
-              (
-                reviewPlan,
-                temporaryMappings,
-                plannedCreations,
-                groupMappingOverrides,
-              ) => _review(
-                reviewPlan,
-                temporaryMappings: temporaryMappings,
-                plannedCreations: plannedCreations.isEmpty
-                    ? {
-                        _mappingKey: ImportMappingCreation(
-                          name: '现金',
-                          descriptor: ImportTargetDescriptor.fundAccount,
-                        ),
-                      }
-                    : plannedCreations,
-                groups: [
-                  ImportGroupReview(
-                    index: 0,
-                    group: reviewPlan.groups.single,
-                    issues: const [],
-                    isExactDuplicate: false,
-                    isSuspectedDuplicate: false,
-                  ),
-                ],
-              ),
-        );
-        final container = _container(
-          planService: _FakeImportPlanAppService(plan),
-          workflow: workflow,
-          picker: _FakeImportFilePicker(_bundle()),
-        );
-        final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles(source: ImportSource.yimu);
-        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
+    test('confirms mappings and builds the preview review once', () async {
+      final plan = _plan(groupCount: 1);
+      final workflow = _FakeImportWorkflowAppService(
+        reviewBuilder:
+            (
+              reviewPlan,
+              temporaryMappings,
+              plannedCreations,
+              groupMappingOverrides,
+            ) => _review(
+              reviewPlan,
+              temporaryMappings: temporaryMappings,
+              plannedCreations: plannedCreations.isEmpty
+                  ? {
+                      _mappingKey: ImportMappingCreation(
+                        name: '现金',
+                        descriptor: ImportTargetDescriptor.fundAccount,
+                      ),
+                    }
+                  : plannedCreations,
+              groups: [
+                ImportGroupReview(
+                  index: 0,
+                  group: reviewPlan.groups.single,
+                  issues: const [],
+                  isExactDuplicate: false,
+                  isSuspectedDuplicate: false,
+                ),
+              ],
+            ),
+      );
+      final container = _container(
+        planService: _FakeImportPlanAppService(plan),
+        workflow: workflow,
+        picker: _FakeImportFilePicker(_bundle()),
+      );
+      final viewModel = container.read(importViewModelProvider.notifier);
+      await viewModel.pickFiles(source: ImportSource.yimu);
+      await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
-        viewModel.toggleSaveMappingConfiguration();
-        expect(
-          container.read(importViewModelProvider).saveMappingConfiguration,
-          isTrue,
-        );
-        viewModel.toggleSaveMappingConfiguration();
-        expect(
-          container.read(importViewModelProvider).saveMappingConfiguration,
-          isFalse,
-        );
-        viewModel.toggleSaveMappingConfiguration();
-        final confirmation = viewModel.confirmMappingConfiguration();
+      expect(
+        container.read(importViewModelProvider).saveMappingConfiguration,
+        isTrue,
+      );
+      viewModel.toggleSaveMappingConfiguration();
+      expect(
+        container.read(importViewModelProvider).saveMappingConfiguration,
+        isFalse,
+      );
+      viewModel.toggleSaveMappingConfiguration();
+      expect(
+        container.read(importViewModelProvider).saveMappingConfiguration,
+        isTrue,
+      );
+      final confirmation = await viewModel.confirmMappingConfiguration();
 
-        expect(confirmation, isA<ImportActionSuccess<void>>());
-        expect(
-          container.read(importViewModelProvider).mappingConfirmed,
-          isTrue,
-        );
-        expect(
-          container.read(importViewModelProvider).saveMappingConfiguration,
-          isTrue,
-        );
+      expect(confirmation, isA<ImportActionSuccess<void>>());
+      expect(workflow.reviewCalls, 1);
+      expect(container.read(importViewModelProvider).mappingConfirmed, isTrue);
+      expect(
+        container.read(importViewModelProvider).saveMappingConfiguration,
+        isTrue,
+      );
 
-        await viewModel.commitSelectedGroups();
+      expect(
+        await viewModel.preparePreview(),
+        isA<ImportActionSuccess<void>>(),
+      );
+      expect(workflow.reviewCalls, 2);
 
-        final command = workflow.commitCommands.single;
-        expect(command.saveMappingConfiguration, isTrue);
-        expect(command.plannedCreations, contains(_mappingKey));
-      },
-    );
+      await viewModel.commitSelectedGroups();
+
+      final command = workflow.commitCommands.single;
+      expect(command.saveMappingConfiguration, isTrue);
+      expect(command.plannedCreations, contains(_mappingKey));
+    });
+
+    test('passes the selected save option to import commit', () async {
+      final plan = _plan(groupCount: 1);
+      final workflow = _FakeImportWorkflowAppService(
+        reviewBuilder:
+            (
+              reviewPlan,
+              temporaryMappings,
+              plannedCreations,
+              groupMappingOverrides,
+            ) => _review(
+              reviewPlan,
+              temporaryMappings: {_mappingKey: 'cash', ...temporaryMappings},
+              effectiveMappings: {_mappingKey: 'cash', ...temporaryMappings},
+              plannedCreations: plannedCreations,
+              groups: [
+                ImportGroupReview(
+                  index: 0,
+                  group: reviewPlan.groups.single,
+                  issues: const [],
+                  isExactDuplicate: false,
+                  isSuspectedDuplicate: false,
+                ),
+              ],
+            ),
+      );
+      final container = _container(
+        planService: _FakeImportPlanAppService(plan),
+        workflow: workflow,
+        picker: _FakeImportFilePicker(_bundle()),
+      );
+      final viewModel = container.read(importViewModelProvider.notifier);
+      await viewModel.pickFiles(source: ImportSource.yimu);
+      await viewModel.parseSelectedFiles(source: ImportSource.yimu);
+
+      viewModel.toggleSaveMappingConfiguration();
+      final confirmation = await viewModel.confirmMappingConfiguration();
+
+      expect(confirmation, isA<ImportActionSuccess<void>>());
+      expect(container.read(importViewModelProvider).mappingConfirmed, isTrue);
+      expect(workflow.reviewCalls, 1);
+
+      expect(
+        await viewModel.preparePreview(),
+        isA<ImportActionSuccess<void>>(),
+      );
+      expect(workflow.reviewCalls, 2);
+
+      await viewModel.commitSelectedGroups();
+
+      expect(workflow.commitCommands.single.saveMappingConfiguration, isFalse);
+    });
 
     test(
       'requires mapping confirmation again after a mapping override',
@@ -301,7 +357,7 @@ void main() {
         await viewModel.pickFiles(source: ImportSource.yimu);
         await viewModel.parseSelectedFiles(source: ImportSource.yimu);
         expect(
-          viewModel.confirmMappingConfiguration(),
+          await viewModel.confirmMappingConfiguration(),
           isA<ImportActionSuccess<void>>(),
         );
         expect(
@@ -309,22 +365,37 @@ void main() {
           isTrue,
         );
 
+        final reviewsBeforeOverride = workflow.reviewCalls;
         final outcome = await viewModel.setMapping(_mappingKey, 'cash');
 
         expect(outcome, isA<ImportActionSuccess<void>>());
+        expect(workflow.reviewCalls, reviewsBeforeOverride);
         expect(
           container.read(importViewModelProvider).mappingConfirmed,
           isFalse,
         );
         expect(
+          container
+              .read(importViewModelProvider)
+              .review
+              ?.effectiveMappings[_mappingKey],
+          'cash',
+        );
+        expect(
           container.read(importViewModelProvider).saveMappingConfiguration,
-          isFalse,
+          isTrue,
         );
 
         expect(
-          viewModel.confirmMappingConfiguration(),
+          await viewModel.confirmMappingConfiguration(),
           isA<ImportActionSuccess<void>>(),
         );
+        expect(workflow.reviewCalls, reviewsBeforeOverride);
+        expect(
+          await viewModel.preparePreview(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        expect(workflow.reviewCalls, reviewsBeforeOverride + 1);
         await viewModel.setGroupMappingOverride(
           groupIndex: 0,
           key: _mappingKey,
@@ -431,6 +502,81 @@ void main() {
       expect(outcome, isA<ImportActionFailure<ImportCommitResult>>());
       expect(workflow.commitCommands, isEmpty);
     });
+
+    test(
+      'selects normal and reviewable exception groups but never blocked groups',
+      () async {
+        final plan = _plan(groupCount: 5);
+        final workflow = _FakeImportWorkflowAppService(
+          reviewBuilder:
+              (
+                reviewPlan,
+                temporaryMappings,
+                plannedCreations,
+                groupMappingOverrides,
+              ) => _review(
+                reviewPlan,
+                temporaryMappings: temporaryMappings,
+                plannedCreations: plannedCreations,
+                groups: [
+                  for (var index = 0; index < reviewPlan.groups.length; index++)
+                    ImportGroupReview(
+                      index: index,
+                      group: reviewPlan.groups[index],
+                      issues: switch (index) {
+                        1 => const [
+                          ImportIssue(
+                            code: 'warning',
+                            message: '需要确认。',
+                            severity: ImportIssueSeverity.warning,
+                          ),
+                        ],
+                        4 => const [
+                          ImportIssue(
+                            code: 'blocked',
+                            message: '无法导入。',
+                            severity: ImportIssueSeverity.blocking,
+                          ),
+                        ],
+                        _ => const [],
+                      },
+                      isExactDuplicate: index == 3,
+                      isSuspectedDuplicate: index == 2,
+                    ),
+                ],
+              ),
+        );
+        final container = _container(
+          planService: _FakeImportPlanAppService(plan),
+          workflow: workflow,
+          picker: _FakeImportFilePicker(_bundle()),
+        );
+        final viewModel = container.read(importViewModelProvider.notifier);
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
+
+        expect(container.read(importViewModelProvider).selectedGroupIndexes, {
+          0,
+        });
+
+        viewModel.selectAllSelectable(true);
+
+        final selected = container.read(importViewModelProvider);
+        expect(selected.selectedGroupIndexes, {0, 1, 2, 3});
+        expect(selected.confirmedWarningIndexes, {1});
+        expect(selected.confirmedSuspectedDuplicateIndexes, {2});
+        expect(selected.confirmedExactDuplicateIndexes, {3});
+        expect(selected.allSelectableSelected, isTrue);
+
+        viewModel.selectAllSelectable(false);
+
+        final cleared = container.read(importViewModelProvider);
+        expect(cleared.selectedGroupIndexes, isEmpty);
+        expect(cleared.confirmedWarningIndexes, isEmpty);
+        expect(cleared.confirmedSuspectedDuplicateIndexes, isEmpty);
+        expect(cleared.confirmedExactDuplicateIndexes, isEmpty);
+      },
+    );
 
     test(
       'loads a bundle and selects only importable transaction groups',
@@ -609,7 +755,11 @@ void main() {
 
         viewModel.setSuspectedDuplicateConfirmed(0, true);
         expect(
-          viewModel.confirmMappingConfiguration(),
+          await viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        expect(
+          await viewModel.preparePreview(),
           isA<ImportActionSuccess<void>>(),
         );
         final outcome = await viewModel.commitSelectedGroups();
@@ -623,6 +773,14 @@ void main() {
           container.read(importViewModelProvider).lastCommit?.batch?.id,
           'batch-1',
         );
+        expect(
+          container
+              .read(importViewModelProvider)
+              .batches
+              .map((batch) => batch.id),
+          ['batch-1'],
+        );
+        expect(workflow.reviewCalls, 2);
       },
     );
 
@@ -683,7 +841,11 @@ void main() {
           0,
         });
         expect(
-          viewModel.confirmMappingConfiguration(),
+          await viewModel.confirmMappingConfiguration(),
+          isA<ImportActionSuccess<void>>(),
+        );
+        expect(
+          await viewModel.preparePreview(),
           isA<ImportActionSuccess<void>>(),
         );
         final outcome = await viewModel.commitSelectedGroups();
@@ -706,6 +868,7 @@ void main() {
               .confirmedExactDuplicateIndexes,
           isEmpty,
         );
+        expect(workflow.reviewCalls, 2);
       },
     );
 
@@ -763,7 +926,11 @@ void main() {
         targetAccountId: 'cash-override',
       );
       expect(
-        viewModel.confirmMappingConfiguration(),
+        await viewModel.confirmMappingConfiguration(),
+        isA<ImportActionSuccess<void>>(),
+      );
+      expect(
+        await viewModel.preparePreview(),
         isA<ImportActionSuccess<void>>(),
       );
       await viewModel.commitSelectedGroups();
@@ -839,7 +1006,11 @@ void main() {
       );
       viewModel.setWarningConfirmed(0, true);
       expect(
-        viewModel.confirmMappingConfiguration(),
+        await viewModel.confirmMappingConfiguration(),
+        isA<ImportActionSuccess<void>>(),
+      );
+      expect(
+        await viewModel.preparePreview(),
         isA<ImportActionSuccess<void>>(),
       );
       await viewModel.commitSelectedGroups();

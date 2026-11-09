@@ -9,6 +9,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/import/import_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/import/page/import_page.dart';
 import 'package:smartflow/feature/import/presentation/import_presentation.dart';
 
@@ -225,11 +226,12 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(480, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final plan = _mappingPlan();
+    final workflow = _FakeWorkflow(_mappingReview(plan));
     await tester.pumpWidget(
       _app(
         planService: _FakePlanService(plan),
         picker: _FakePicker(_bundle()),
-        workflow: _FakeWorkflow(_mappingReview(plan)),
+        workflow: workflow,
       ),
     );
     await _selectAndParse(tester);
@@ -244,7 +246,7 @@ void main() {
     }
     expect(find.text('来源账户6'), findsNothing);
     expect(find.text('保存映射配置'), findsOneWidget);
-    expect(find.text('确认配置'), findsOneWidget);
+    expect(find.text('确认配置'), findsNothing);
 
     await tester.tap(find.text('查看全部').first);
     await tester.pumpAndSettle();
@@ -252,24 +254,50 @@ void main() {
     expect(find.text('账户与分类映射'), findsOneWidget);
     expect(find.text('来源账户6'), findsWidgets);
     expect(find.text('映射概览'), findsOneWidget);
+    expect(find.text('保存映射配置'), findsNothing);
+    expect(find.widgetWithText(AppHeaderTextButton, '确认'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('返回'));
+    await tester.tap(find.text('确认'));
     await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, '导入'))
-          .onPressed,
-      isNull,
-    );
-    await tester.tap(find.text('确认配置'));
-    await tester.pump();
-
+    expect(workflow.reviewCalls, 2);
     expect(
       tester
           .widget<FilledButton>(find.widgetWithText(FilledButton, '导入'))
           .onPressed,
       isNotNull,
     );
+  });
+
+  testWidgets('splits account and category mappings into separate cards', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan();
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_review(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
+
+    await tester.tap(find.text('查看全部').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('import-mapping-account-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('import-mapping-category-card')),
+      findsOneWidget,
+    );
+    expect(find.text('未提取到需要映射的来源账户。'), findsNothing);
+    expect(find.text('未提取到需要映射的来源分类。'), findsNothing);
+    expect(find.text('现金'), findsWidgets);
+    expect(find.text('餐饮'), findsWidgets);
   });
 
   testWidgets('opens all import previews as a page', (tester) async {
@@ -284,6 +312,7 @@ void main() {
       ),
     );
     await _selectAndParse(tester);
+    await _confirmMappingsAndPreparePreview(tester);
 
     await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
@@ -291,15 +320,18 @@ void main() {
     expect(find.text('导入预览'), findsOneWidget);
     expect(find.text('解析概览'), findsOneWidget);
     expect(find.text('餐饮'), findsWidgets);
+    expect(find.byType(AppHeaderTextButton), findsNWidgets(2));
+    expect(find.text('全不选'), findsOneWidget);
+    expect(find.text('确认'), findsOneWidget);
+    expect(find.text('清除'), findsNothing);
+    expect(find.byType(Checkbox), findsOneWidget);
     expect(find.byType(DraggableScrollableSheet), findsNothing);
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
     expect(find.text('解析概览'), findsNothing);
   });
 
-  testWidgets('confirms warning groups from the row details sheet', (
-    tester,
-  ) async {
+  testWidgets('shows confirmation details on the third row', (tester) async {
     await tester.binding.setSurfaceSize(const Size(480, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final plan = _plan();
@@ -311,31 +343,32 @@ void main() {
       ),
     );
     await _selectAndParse(tester);
+    await _confirmMappingsAndPreparePreview(tester);
 
     await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
 
     expect(find.text('有 1 条交易需要确认后才能导入。'), findsOneWidget);
-    expect(find.text('需确认'), findsOneWidget);
-    expect(find.byType(Checkbox), findsNothing);
+    expect(find.text('警告'), findsOneWidget);
+    expect(find.text('请确认这条交易的来源提示。'), findsOneWidget);
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
     expect(find.text('已选 0 笔'), findsOneWidget);
 
-    await tester.tap(find.text('餐饮'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('需要确认的原因'), findsOneWidget);
-    expect(find.text('请确认这条交易的来源提示。'), findsOneWidget);
-
-    await tester.tap(find.text('确认导入'));
+    await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
 
     expect(find.text('解析结果已准备，可查看全部交易预览。'), findsOneWidget);
     expect(find.text('有 1 条交易需要确认后才能导入。'), findsNothing);
     expect(find.text('已选 1 笔'), findsOneWidget);
-    expect(find.byType(Checkbox), findsNothing);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+
+    await tester.tap(find.text('确认'));
+    await tester.pumpAndSettle();
+    expect(find.text('解析概览'), findsNothing);
   });
 
-  testWidgets('excludes transactions in batch selection mode', (tester) async {
+  testWidgets('shows batch selection actions by default', (tester) async {
     await tester.binding.setSurfaceSize(const Size(480, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final plan = _plan();
@@ -347,29 +380,68 @@ void main() {
       ),
     );
     await _selectAndParse(tester);
+    await _confirmMappingsAndPreparePreview(tester);
 
     await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
 
-    expect(find.byType(Checkbox), findsNothing);
-    expect(find.text('已选 1 笔'), findsOneWidget);
-
-    await tester.tap(find.text('排除交易'));
-    await tester.pumpAndSettle();
-
     expect(find.byType(Checkbox), findsOneWidget);
-    expect(find.text('全选'), findsOneWidget);
-    expect(find.text('清除'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    expect(find.text('全不选'), findsOneWidget);
+    expect(find.text('已选 1 笔'), findsOneWidget);
+    expect(find.text('排除交易'), findsNothing);
+    expect(find.text('完成'), findsNothing);
 
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+    expect(find.text('已选 0 笔'), findsOneWidget);
+    expect(find.text('全选'), findsOneWidget);
 
-    await tester.tap(find.text('完成'));
+    await tester.tap(find.text('全选'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    expect(find.text('已选 1 笔'), findsOneWidget);
+    expect(find.text('全不选'), findsOneWidget);
+
+    await tester.tap(find.text('全不选'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
+    expect(find.text('已选 0 笔'), findsOneWidget);
+  });
+
+  testWidgets('keeps already imported rows unselected with a badge', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan();
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_exactDuplicateReview(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
+    await _confirmMappingsAndPreparePreview(tester);
+
+    await tester.tap(find.text('查看全部').last);
     await tester.pumpAndSettle();
 
-    expect(find.byType(Checkbox), findsNothing);
+    expect(find.text('精确重复'), findsOneWidget);
+    expect(find.text('该来源交易已导入，原交易仍存在。'), findsOneWidget);
+    expect(find.byType(Checkbox), findsOneWidget);
+    final checkbox = tester.widget<Checkbox>(find.byType(Checkbox));
+    expect(checkbox.value, isFalse);
+    expect(checkbox.onChanged, isNotNull);
     expect(find.text('已选 0 笔'), findsOneWidget);
+    expect(find.text('全选'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+    expect(find.text('已选 1 笔'), findsOneWidget);
   });
 
   testWidgets('shows parsing problems and skipped reasons on the issues page', (
@@ -399,6 +471,7 @@ void main() {
       ),
     );
     await _selectAndParse(tester);
+    await _confirmMappingsAndPreparePreview(tester);
 
     expect(find.text('解析详情'), findsNothing);
     await tester.tap(find.text('查看全部').last);
@@ -406,7 +479,11 @@ void main() {
 
     expect(find.text('解析详情'), findsOneWidget);
     expect(find.text('无法解析 1 · 已跳过 1'), findsOneWidget);
-    expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
+    expect(find.text('阻断'), findsOneWidget);
+    expect(find.text('来源账户缺失，无法生成交易。'), findsOneWidget);
+    final blockedCheckbox = tester.widget<Checkbox>(find.byType(Checkbox));
+    expect(blockedCheckbox.value, isFalse);
+    expect(blockedCheckbox.onChanged, isNull);
 
     await tester.tap(find.text('解析详情'));
     await tester.pumpAndSettle();
@@ -419,7 +496,8 @@ void main() {
 
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('来源账户缺失，无法生成交易。'), findsNothing);
+    expect(find.text('阻断'), findsOneWidget);
+    expect(find.text('来源账户缺失，无法生成交易。'), findsOneWidget);
   });
 
   testWidgets('collapses missing accounts into a single no-account mapping', (
@@ -599,6 +677,54 @@ void main() {
     expect(find.text('跳过 1 个交易组'), findsOneWidget);
     expect(find.text('撤销批次'), findsOneWidget);
   });
+
+  testWidgets('successful import shows a snackbar and returns to data import', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan();
+    final workflow = _FakeWorkflow(
+      _review(plan),
+      commitResult: ImportCommitResult(
+        batch: ImportBatch(
+          id: 'batch-success',
+          source: ImportSource.yimu,
+          status: ImportBatchStatus.imported,
+          importedGroupCount: 1,
+          createdTransactionCount: 1,
+          skippedGroupCount: 0,
+          importedAt: DateTime(2026, 7, 22),
+        ),
+        skippedGroupCount: 0,
+      ),
+    );
+    await tester.pumpWidget(
+      _pushedApp(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: workflow,
+      ),
+    );
+
+    await tester.tap(find.text('打开数据导入入口'));
+    await tester.pumpAndSettle();
+    await _selectAndParse(tester);
+
+    await tester.tap(find.text('查看全部').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确认'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '导入'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始导入'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('打开数据导入入口'), findsOneWidget);
+    expect(find.textContaining('导入成功：1 个交易组'), findsOneWidget);
+    expect(workflow.reviewCalls, 2);
+  });
 }
 
 Widget _app({
@@ -621,11 +747,50 @@ Widget _app({
   );
 }
 
+Widget _pushedApp({
+  required ImportPlanAppService planService,
+  required ImportWorkflowAppService workflow,
+  required ImportFilePicker picker,
+}) {
+  return ProviderScope(
+    overrides: [
+      importPlanAppServiceProvider.overrideWithValue(planService),
+      importWorkflowAppServiceProvider.overrideWithValue(workflow),
+      importFilePickerProvider.overrideWithValue(picker),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.light(),
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      const ImportProcessPage(source: ImportEntrySource.yimu),
+                ),
+              ),
+              child: const Text('打开数据导入入口'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 Future<void> _selectAndParse(WidgetTester tester) async {
   await tester.pump();
   await tester.tap(find.text('点击选择文件'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('解析文件'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _confirmMappingsAndPreparePreview(WidgetTester tester) async {
+  await tester.tap(find.text('查看全部').first);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('确认'));
   await tester.pumpAndSettle();
 }
 
@@ -890,6 +1055,27 @@ ImportPlanReview _warningReview(ImportParseResult plan) {
   );
 }
 
+ImportPlanReview _exactDuplicateReview(ImportParseResult plan) {
+  final base = _review(plan);
+  return ImportPlanReview(
+    plan: plan,
+    defaultMappings: base.defaultMappings,
+    effectiveMappings: base.effectiveMappings,
+    suggestions: base.suggestions,
+    targets: base.targets,
+    mappingItems: base.mappingItems,
+    groups: [
+      ImportGroupReview(
+        index: 0,
+        group: plan.groups.single,
+        issues: const [],
+        isExactDuplicate: true,
+        isSuspectedDuplicate: false,
+      ),
+    ],
+  );
+}
+
 ImportPlanReview _blockedReview(ImportParseResult plan) {
   final base = _review(plan);
   return ImportPlanReview(
@@ -954,10 +1140,12 @@ class _FakePlanService implements ImportPlanAppService {
 }
 
 class _FakeWorkflow implements ImportWorkflowAppService {
-  const _FakeWorkflow(this.planReview, {this.batches = const []});
+  _FakeWorkflow(this.planReview, {this.batches = const [], this.commitResult});
 
   final ImportPlanReview planReview;
   final List<ImportBatch> batches;
+  final ImportCommitResult? commitResult;
+  int reviewCalls = 0;
 
   @override
   Future<ImportPlanReview> review(
@@ -966,6 +1154,7 @@ class _FakeWorkflow implements ImportWorkflowAppService {
     Map<ImportMappingKey, ImportMappingCreation> plannedCreations = const {},
     Map<int, Map<ImportMappingKey, String>> groupMappingOverrides = const {},
   }) async {
+    reviewCalls += 1;
     final resolvedCreations = <ImportMappingKey, ImportMappingCreation>{
       ...planReview.plannedCreations,
       ...plannedCreations,
@@ -999,7 +1188,7 @@ class _FakeWorkflow implements ImportWorkflowAppService {
 
   @override
   Future<ImportCommitResult> commit(ImportCommitCommand command) async =>
-      ImportCommitResult(batch: null, skippedGroupCount: 1);
+      commitResult ?? ImportCommitResult(batch: null, skippedGroupCount: 1);
 
   @override
   Future<List<ImportBatch>> listBatches({ImportSource? source}) async =>

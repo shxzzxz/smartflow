@@ -133,6 +133,12 @@ class _Batches implements ImportBatchRepository {
   final void Function() fail;
 
   @override
+  Future<List<ImportBatchItem>> findActiveItems(ImportSource source) async {
+    if (stage == _FailureStage.preflight) fail();
+    return const [];
+  }
+
+  @override
   Future<ImportDuplicateMatch> findDuplicates({
     required ImportSource source,
     required String? sourceOperationKey,

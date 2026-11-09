@@ -185,10 +185,10 @@ String importMappingAnalysisDescription(ImportMappingAnalysisSummary summary) {
     return '有 ${summary.unmapped} 项来源账户或分类尚未完成映射，请查看全部处理。';
   }
   if (summary.pending > 0) {
-    return '有 ${summary.pending} 项将在导入时新建，请确认配置后继续。';
+    return '有 ${summary.pending} 项将在导入时新建，请确认映射关系后继续。';
   }
   if (summary.total == 0) return '解析结果中没有需要配置的账户或分类。';
-  return '映射配置已准备就绪，可确认配置后继续。';
+  return '映射配置已准备就绪，请确认映射关系后继续。';
 }
 
 ImportMappingAnalysisSummary summarizeImportMappings(ImportPlanReview review) {
@@ -352,6 +352,7 @@ TransactionRowPresentation _buildImportPreviewRow(
     draft.amount.abs(),
     style: MoneyFormatStyle.compact,
   );
+  final statusBadge = _importPreviewStatusBadge(groupReview);
   return TransactionRowPresentation(
     transactionId: 'import-group-${groupReview.index}',
     iconKey: null,
@@ -391,34 +392,65 @@ TransactionRowPresentation _buildImportPreviewRow(
           label: '${groupReview.group.children.length} 条子交易',
           tone: FinanceTone.info,
         ),
-      if (groupReview.isExactDuplicate)
-        const TransactionBadgePresentation(
-          label: '已导入',
-          tone: FinanceTone.info,
-        ),
-      if (groupReview.isBlocked)
-        const TransactionBadgePresentation(
-          label: '需处理',
-          tone: FinanceTone.equity,
-        ),
-      if (groupReview.isSuspectedDuplicate && !groupReview.isBlocked)
-        const TransactionBadgePresentation(
-          label: '疑似重复',
-          tone: FinanceTone.equity,
-        ),
-      if (groupReview.hasWarnings &&
-          !groupReview.isSuspectedDuplicate &&
-          !groupReview.isBlocked)
-        const TransactionBadgePresentation(
-          label: '需确认',
-          tone: FinanceTone.equity,
-        ),
+      ?statusBadge,
     ],
+    supportingText: _importPreviewSupportingText(groupReview),
     canQuickEdit: false,
-    selectable: showSelectionControls && groupReview.canSelect,
+    selectable: showSelectionControls,
+    selectionEnabled: groupReview.canSelect,
     selected: selectedGroupIndexes.contains(groupReview.index),
-    dimmed: !selectedGroupIndexes.contains(groupReview.index),
+    dimmed: false,
   );
+}
+
+TransactionBadgePresentation? _importPreviewStatusBadge(
+  ImportGroupReview groupReview,
+) {
+  if (groupReview.isBlocked) {
+    return const TransactionBadgePresentation(
+      label: '阻断',
+      tone: FinanceTone.primary,
+    );
+  }
+  if (groupReview.isExactDuplicate) {
+    return const TransactionBadgePresentation(
+      label: '精确重复',
+      tone: FinanceTone.info,
+    );
+  }
+  if (groupReview.isSuspectedDuplicate) {
+    return const TransactionBadgePresentation(
+      label: '疑似重复',
+      tone: FinanceTone.equity,
+    );
+  }
+  if (groupReview.issues.any((issue) => issue.isWarning)) {
+    return const TransactionBadgePresentation(
+      label: '警告',
+      tone: FinanceTone.equity,
+    );
+  }
+  return null;
+}
+
+String? _importPreviewSupportingText(ImportGroupReview groupReview) {
+  final messages = groupReview.isBlocked
+      ? {
+          for (final issue in groupReview.issues.where(
+            (issue) => issue.isBlocking,
+          ))
+            issue.message,
+        }.toList(growable: false)
+      : <String>{
+          if (groupReview.isExactDuplicate) '该来源交易已导入，原交易仍存在。',
+          if (groupReview.isSuspectedDuplicate) '与已有交易高度相似，但来源身份未精确匹配。',
+          for (final issue in groupReview.issues.where(
+            (issue) => issue.isWarning,
+          ))
+            issue.message,
+        }.toList(growable: false);
+  if (messages.isEmpty) return null;
+  return messages.join('；');
 }
 
 String _previewTitle(

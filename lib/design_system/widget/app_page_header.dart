@@ -4,6 +4,7 @@ import 'package:remixicon/remixicon.dart';
 import '../theme/app_text_styles.dart';
 import '../token/header.dart';
 import '../token/radius.dart';
+import '../token/spacing.dart';
 
 /// 页面头部。承载返回、标题和右上角操作，统一各页面的头部几何与控件规格。
 ///
@@ -37,7 +38,8 @@ class AppPageHeader extends StatelessWidget {
   final bool showBackButton;
   final VoidCallback? onBack;
 
-  /// 只放 [AppHeaderIconButton] 或 `AppPopupMenuButton`，尺寸由页头统一约束。
+  /// 只放 [AppHeaderIconButton]、[AppHeaderTextButton] 或
+  /// `AppPopupMenuButton`，尺寸由页头统一约束。
   final List<Widget> actions;
 
   @override
@@ -125,6 +127,38 @@ class AppHeaderIconButton extends StatelessWidget {
       icon: Icon(icon),
       tooltip: tooltip,
       style: appHeaderIconButtonStyle,
+    );
+  }
+}
+
+/// 页头右上角的文字操作，使用与图标操作一致的触控高度和圆角。
+class AppHeaderTextButton extends StatelessWidget {
+  const AppHeaderTextButton({
+    required this.label,
+    required this.onPressed,
+    super.key,
+  });
+
+  final String label;
+
+  /// 传 null 表示操作当前不可用。
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(
+          AppHeaderTokens.iconButtonSize,
+          AppHeaderTokens.iconButtonSize,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        ),
+      ),
+      child: Text(label),
     );
   }
 }

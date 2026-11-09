@@ -538,7 +538,8 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.pageHeader,
     category: '布局与容器',
     title: '页面头部',
-    componentNames: 'AppPageHeader / AppHeaderIconButton',
+    componentNames:
+        'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton',
     keywords: ['布局', '标题', '页头', '返回', '操作'],
   ),
   _ShowcaseExample(
@@ -2642,6 +2643,10 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
                 icon: RemixIcons.edit_line,
                 tooltip: '编辑',
                 onPressed: () => _showMessage('编辑'),
+              ),
+              AppHeaderTextButton(
+                label: '确认',
+                onPressed: () => _showMessage('确认'),
               ),
               const AppHeaderIconButton(
                 icon: RemixIcons.delete_bin_line,

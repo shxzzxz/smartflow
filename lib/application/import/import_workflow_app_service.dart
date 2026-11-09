@@ -128,6 +128,10 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     final sourceEntitiesBySourceKey = {
       for (final entity in plan.sourceEntities) entity.sourceEntityKey: entity,
     };
+    final duplicateMatches = await _duplicateMatchesForPlan(plan);
+    final targetCache = <String, ImportLedgerTarget?>{
+      for (final target in targets) target.id: target,
+    };
     final reviews = <ImportGroupReview>[];
     for (var index = 0; index < plan.groups.length; index++) {
       final group = plan.groups[index];
@@ -190,6 +194,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                 ImportMappingKey.fromEntity(entity): entity,
             },
             ledger: _ledger,
+            targetCache: targetCache,
           ),
         );
       } on ImportWorkflowException catch (exception) {
@@ -201,12 +206,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           ),
         );
       }
-      final duplicates = await _batches.findDuplicates(
-        source: plan.source,
-        sourceOperationKey: group.sourceOperationKey,
-        sourceOperationFingerprint: group.sourceOperationFingerprint,
-        fingerprintVersion: group.fingerprintVersion,
-      );
+      final duplicates = duplicateMatches[index]!;
       final exact = duplicates.hasExactMatch;
       final inPlanFingerprintDuplicate =
           currentFingerprints[_fingerprintKey(group)]! > 1;
@@ -270,6 +270,11 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           for (final entity in plan.sourceEntities)
             if (entity.isReviewPlaceholder) entity.sourceEntityKey: entity,
         };
+        final duplicateMatches = await _duplicateMatchesForPlan(plan);
+        final ledgerTargets = await _ledger.listTargets();
+        final targetCache = <String, ImportLedgerTarget?>{
+          for (final target in ledgerTargets) target.id: target,
+        };
         final importIndexes = <int>[];
 
         for (var index = 0; index < plan.groups.length; index++) {
@@ -304,12 +309,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
               groupIndex: index,
             );
           }
-          final duplicates = await _batches.findDuplicates(
-            source: plan.source,
-            sourceOperationKey: group.sourceOperationKey,
-            sourceOperationFingerprint: group.sourceOperationFingerprint,
-            fingerprintVersion: group.fingerprintVersion,
-          );
+          final duplicates = duplicateMatches[index]!;
           if (duplicates.hasExactMatch &&
               !command.confirmedExactDuplicateIndexes.contains(index)) {
             continue;
@@ -338,6 +338,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                   ImportMappingKey.fromEntity(entity): entity,
               },
               ledger: _ledger,
+              targetCache: targetCache,
             ),
           );
           importIndexes.add(index);
@@ -355,7 +356,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         );
         final createdMappings = <ImportMappingKey, String>{};
         final targetPathIndex = <String, String>{};
-        for (final target in await _ledger.listTargets()) {
+        for (final target in ledgerTargets) {
           if (target.isArchived) continue;
           targetPathIndex[_targetPathKey(target)] = target.id;
         }
@@ -399,6 +400,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
                     ImportMappingKey.fromEntity(entity): entity,
                 },
                 ledger: _ledger,
+                targetCache: targetCache,
               ),
             );
             createdTransactionCount += group.transactions.length;
@@ -1162,6 +1164,37 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     return counts;
   }
 
+  Future<Map<int, ImportDuplicateMatch>> _duplicateMatchesForPlan(
+    ImportParseResult plan,
+  ) async {
+    final activeItems = await _batches.findActiveItems(plan.source);
+    final exactByOperationKey = <String, ImportBatchItem>{};
+    final byFingerprint = <String, List<ImportBatchItem>>{};
+    for (final item in activeItems) {
+      final operationKey = item.sourceOperationKey;
+      if (operationKey != null) {
+        exactByOperationKey.putIfAbsent(operationKey, () => item);
+      }
+      byFingerprint
+          .putIfAbsent(
+            '${item.fingerprintVersion}:${item.sourceOperationFingerprint}',
+            () => [],
+          )
+          .add(item);
+    }
+    return {
+      for (var index = 0; index < plan.groups.length; index++)
+        index: ImportDuplicateMatch(
+          exactItem: switch (plan.groups[index].sourceOperationKey) {
+            final operationKey? => exactByOperationKey[operationKey],
+            null => null,
+          },
+          fingerprintItems:
+              byFingerprint[_fingerprintKey(plan.groups[index])] ?? const [],
+        ),
+    };
+  }
+
   String _fingerprintKey(ImportTransactionGroupDraft group) {
     return '${group.fingerprintVersion}:${group.sourceOperationFingerprint}';
   }
@@ -1662,7 +1695,8 @@ class _ResolutionContext {
     this.ghostMappingKeys = const {},
     this.sourceEntities = const {},
     required this.ledger,
-  });
+    Map<String, ImportLedgerTarget?>? targetCache,
+  }) : _targets = targetCache ?? {};
 
   final ImportSource source;
   final Map<ImportMappingKey, String> mappings;
@@ -1670,7 +1704,7 @@ class _ResolutionContext {
   final Set<ImportMappingKey> ghostMappingKeys;
   final Map<ImportMappingKey, ImportSourceEntity> sourceEntities;
   final ImportLedgerPort ledger;
-  final Map<String, ImportLedgerTarget?> _targets = {};
+  final Map<String, ImportLedgerTarget?> _targets;
   String? _ghostAccountId;
 
   Future<String> account(

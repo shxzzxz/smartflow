@@ -12,18 +12,19 @@ class DriftImportBatchRepository implements ImportBatchRepository {
 
   @override
   Future<ImportBatch?> findById(String batchId) async {
-    final row =
-        await (_database.select(_database.importBatches)
-          ..where((batch) => batch.id.equals(batchId))).getSingleOrNull();
+    final row = await (_database.select(
+      _database.importBatches,
+    )..where((batch) => batch.id.equals(batchId))).getSingleOrNull();
     return row == null ? null : _mapBatch(row);
   }
 
   @override
   Future<List<ImportBatch>> list({ImportSource? source}) async {
-    final query = _database.select(_database.importBatches)..orderBy([
-      (batch) => OrderingTerm.desc(batch.importedAt),
-      (batch) => OrderingTerm.desc(batch.id),
-    ]);
+    final query = _database.select(_database.importBatches)
+      ..orderBy([
+        (batch) => OrderingTerm.desc(batch.importedAt),
+        (batch) => OrderingTerm.desc(batch.id),
+      ]);
     if (source != null) {
       query.where((batch) => batch.source.equals(source.name));
     }
@@ -42,19 +43,23 @@ class DriftImportBatchRepository implements ImportBatchRepository {
   }
 
   @override
+  Future<List<ImportBatchItem>> findActiveItems(ImportSource source) {
+    return _findMatchingItems(source: source);
+  }
+
+  @override
   Future<ImportDuplicateMatch> findDuplicates({
     required ImportSource source,
     required String? sourceOperationKey,
     required String sourceOperationFingerprint,
     required int fingerprintVersion,
   }) async {
-    final exactItems =
-        sourceOperationKey == null
-            ? const <ImportBatchItem>[]
-            : await _findMatchingItems(
-              source: source,
-              operationKey: sourceOperationKey,
-            );
+    final exactItems = sourceOperationKey == null
+        ? const <ImportBatchItem>[]
+        : await _findMatchingItems(
+            source: source,
+            operationKey: sourceOperationKey,
+          );
     final fingerprintItems = await _findMatchingItems(
       source: source,
       fingerprint: sourceOperationFingerprint,
@@ -109,15 +114,16 @@ class DriftImportBatchRepository implements ImportBatchRepository {
     required DateTime revertedAt,
   }) async {
     await (_database.update(_database.importBatches)..where(
-      (batch) =>
-          batch.id.equals(batchId) &
-          batch.status.equals(ImportBatchStatus.imported.name),
-    )).write(
-      ImportBatchesCompanion(
-        status: const Value(ImportBatchStatus.reverted),
-        revertedAt: Value(revertedAt),
-      ),
-    );
+          (batch) =>
+              batch.id.equals(batchId) &
+              batch.status.equals(ImportBatchStatus.imported.name),
+        ))
+        .write(
+          ImportBatchesCompanion(
+            status: const Value(ImportBatchStatus.reverted),
+            revertedAt: Value(revertedAt),
+          ),
+        );
   }
 
   Future<List<ImportBatchItem>> _findMatchingItems({

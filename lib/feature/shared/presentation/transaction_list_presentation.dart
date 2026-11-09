@@ -97,6 +97,7 @@ class FinancialFeedRowPresentation {
     this.originalAmountText,
     this.selectable = false,
     this.selected = false,
+    this.selectionEnabled = true,
     this.dimmed = false,
     this.canOpenTransaction = true,
     this.supportingText,
@@ -119,6 +120,7 @@ class FinancialFeedRowPresentation {
   final TransactionAvatarKind? avatarKind;
   final bool selectable;
   final bool selected;
+  final bool selectionEnabled;
   final bool canOpenTransaction;
   final String? supportingText;
 
@@ -134,6 +136,7 @@ class FinancialFeedRowPresentation {
     String? supportingText,
     bool? selectable,
     bool? selected,
+    bool? selectionEnabled,
     bool? dimmed,
     bool? preferCategoryArtwork,
     String? iconKey,
@@ -159,6 +162,7 @@ class FinancialFeedRowPresentation {
       avatarKind: avatarKind ?? this.avatarKind,
       selectable: selectable ?? this.selectable,
       selected: selected ?? this.selected,
+      selectionEnabled: selectionEnabled ?? this.selectionEnabled,
       dimmed: dimmed ?? this.dimmed,
       canOpenTransaction: canOpenTransaction,
       supportingText: supportingText ?? this.supportingText,

@@ -8,6 +8,8 @@ abstract interface class ImportBatchRepository {
 
   Future<List<ImportBatchItem>> findItems(String batchId);
 
+  Future<List<ImportBatchItem>> findActiveItems(ImportSource source);
+
   Future<ImportDuplicateMatch> findDuplicates({
     required ImportSource source,
     required String? sourceOperationKey,

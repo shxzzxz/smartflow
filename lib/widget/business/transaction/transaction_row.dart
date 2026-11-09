@@ -76,7 +76,9 @@ class TransactionRow extends StatelessWidget {
                       height: AppSpacing.space40,
                       child: Checkbox(
                         value: presentation.selected,
-                        onChanged: onSelectionChanged == null
+                        onChanged:
+                            !presentation.selectionEnabled ||
+                                onSelectionChanged == null
                             ? null
                             : (value) => onSelectionChanged!(value ?? false),
                       ),

@@ -164,6 +164,27 @@ void main() {
     expect(tester.getSize(find.byTooltip('更多操作')), expected);
   });
 
+  testWidgets('page header supports a text action', (tester) async {
+    var confirmed = 0;
+    await tester.pumpWidget(
+      wrap(
+        AppPageHeader(
+          title: '导入预览',
+          actions: [
+            AppHeaderTextButton(label: '确认', onPressed: () => confirmed += 1),
+          ],
+        ),
+      ),
+    );
+
+    final button = find.widgetWithText(TextButton, '确认');
+    expect(button, findsOneWidget);
+    expect(tester.getSize(button).height, AppHeaderTokens.iconButtonSize);
+
+    await tester.tap(button);
+    expect(confirmed, 1);
+  });
+
   testWidgets('page header aligns edge glyphs to the content inset', (
     tester,
   ) async {

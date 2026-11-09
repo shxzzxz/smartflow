@@ -635,6 +635,7 @@ void main() {
 
     expect(find.text('页面头部'), findsOneWidget);
     expect(find.byType(AppPageHeader), findsWidgets);
+    expect(find.byType(AppHeaderTextButton), findsOneWidget);
     expect(find.byType(AppFormSection), findsNothing);
 
     await tester.enterText(find.byType(SearchBar), 'AppFormSection');

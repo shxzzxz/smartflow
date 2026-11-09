@@ -46,7 +46,8 @@ class ImportPageState {
     required List<ImportBatch> batches,
     required this.historyLoading,
     this.mappingConfirmed = false,
-    this.saveMappingConfiguration = false,
+    this.previewReady = false,
+    this.saveMappingConfiguration = true,
     this.selectedBundle,
     this.plan,
     this.review,
@@ -87,7 +88,8 @@ class ImportPageState {
       batches: const [],
       historyLoading: false,
       mappingConfirmed: false,
-      saveMappingConfiguration: false,
+      previewReady: false,
+      saveMappingConfiguration: true,
     );
   }
 
@@ -106,6 +108,7 @@ class ImportPageState {
   final List<ImportBatch> batches;
   final bool historyLoading;
   final bool mappingConfirmed;
+  final bool previewReady;
   final bool saveMappingConfiguration;
   final UiError? error;
   final ImportCommitResult? lastCommit;
@@ -161,15 +164,11 @@ class ImportPageState {
     }).length;
   }
 
-  bool get allDirectlyImportableSelected {
-    final directlyImportable = review?.groups.where(
-      (group) => group.canSelect && !group.requiresConfirmation,
-    );
-    return directlyImportable != null &&
-        directlyImportable.isNotEmpty &&
-        directlyImportable.every(
-          (group) => selectedGroupIndexes.contains(group.index),
-        );
+  bool get allSelectableSelected {
+    final selectable = review?.groups.where((group) => group.canSelect);
+    return selectable != null &&
+        selectable.isNotEmpty &&
+        selectable.every((group) => selectedGroupIndexes.contains(group.index));
   }
 
   ImportPageState copyWith({
@@ -188,6 +187,7 @@ class ImportPageState {
     List<ImportBatch>? batches,
     bool? historyLoading,
     bool? mappingConfirmed,
+    bool? previewReady,
     bool? saveMappingConfiguration,
     Object? error = _sentinel,
     Object? lastCommit = _sentinel,
@@ -216,6 +216,7 @@ class ImportPageState {
       batches: batches ?? this.batches,
       historyLoading: historyLoading ?? this.historyLoading,
       mappingConfirmed: mappingConfirmed ?? this.mappingConfirmed,
+      previewReady: previewReady ?? this.previewReady,
       saveMappingConfiguration:
           saveMappingConfiguration ?? this.saveMappingConfiguration,
       error: error == _sentinel ? this.error : error as UiError?,
@@ -275,7 +276,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
         error: null,
         lastCommit: null,
         mappingConfirmed: false,
-        saveMappingConfiguration: false,
+        previewReady: false,
+        saveMappingConfiguration: true,
       );
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception, stackTrace) {
@@ -323,7 +325,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
       error: null,
       lastCommit: null,
       mappingConfirmed: false,
-      saveMappingConfiguration: false,
+      previewReady: false,
+      saveMappingConfiguration: true,
     );
     late final ImportParseResult plan;
     try {
@@ -371,6 +374,9 @@ class ImportViewModel extends Notifier<ImportPageState> {
         groupMappingOverrides: const {},
         selectAllImportable: true,
       );
+      if (review.mappingItems.isEmpty && review.plan.sourceEntities.isEmpty) {
+        state = state.copyWith(mappingConfirmed: true, previewReady: true);
+      }
       return const ImportActionOutcome.success(null);
     } on AppException catch (exception, stackTrace) {
       logUiActionException(
@@ -499,45 +505,24 @@ class ImportViewModel extends Notifier<ImportPageState> {
         creations.remove(key);
     }
 
+    final nextReview = _applyMappingDecision(
+      review: review,
+      key: key,
+      decision: decision,
+      mappings: mappings,
+      creations: creations,
+    );
     state = state.copyWith(
-      phase: ImportPagePhase.reviewing,
+      phase: ImportPagePhase.review,
+      review: nextReview,
+      temporaryMappings: mappings,
       plannedCreations: creations,
       mappingConfirmed: false,
-      saveMappingConfiguration: false,
+      previewReady: false,
       error: null,
+      lastCommit: null,
     );
-    try {
-      final nextReview = await ref
-          .read(importWorkflowAppServiceProvider)
-          .review(
-            review.plan,
-            temporaryMappings: mappings,
-            plannedCreations: creations,
-            groupMappingOverrides: state.groupMappingOverrides,
-          );
-      _replaceReview(
-        nextReview,
-        temporaryMappings: mappings,
-        plannedCreations: nextReview.plannedCreations,
-        groupMappingOverrides: state.groupMappingOverrides,
-      );
-      return const ImportActionOutcome.success(null);
-    } on AppException catch (exception, stackTrace) {
-      logUiActionException(
-        _logger,
-        'Import mapping update',
-        exception,
-        stackTrace,
-      );
-      return _fail<void>(UiError.fromException(exception));
-    } on Exception catch (exception, stackTrace) {
-      _logger.severe(
-        'Import mapping update failed unexpectedly.',
-        exception,
-        stackTrace,
-      );
-      return _fail<void>(const UiError.unknown());
-    }
+    return const ImportActionOutcome.success(null);
   }
 
   ImportActionOutcome<void> toggleSaveMappingConfiguration() {
@@ -554,15 +539,70 @@ class ImportViewModel extends Notifier<ImportPageState> {
     return const ImportActionOutcome.success(null);
   }
 
-  ImportActionOutcome<void> confirmMappingConfiguration() {
-    if (state.review == null) {
+  Future<ImportActionOutcome<void>> confirmMappingConfiguration() async {
+    final review = state.review;
+    if (review == null) {
       return _invalid<void>('请先选择并解析导入资料包。');
     }
     if (state.missingMappingCount > 0) {
       return _invalid<void>('仍有来源账户或分类尚未配置。');
     }
-    state = state.copyWith(mappingConfirmed: true, error: null);
+    state = state.copyWith(
+      phase: ImportPagePhase.review,
+      mappingConfirmed: true,
+      previewReady: false,
+      error: null,
+    );
     return const ImportActionOutcome.success(null);
+  }
+
+  Future<ImportActionOutcome<void>> preparePreview() async {
+    final review = state.review;
+    if (review == null) {
+      return _invalid<void>('请先选择并解析导入资料包。');
+    }
+    if (!state.mappingConfirmed) {
+      return _invalid<void>('请先在账户与分类映射页面确认映射关系。');
+    }
+    state = state.copyWith(
+      phase: ImportPagePhase.reviewing,
+      previewReady: false,
+      error: null,
+    );
+    try {
+      final nextReview = await ref
+          .read(importWorkflowAppServiceProvider)
+          .review(
+            review.plan,
+            temporaryMappings: state.temporaryMappings,
+            plannedCreations: state.plannedCreations,
+            groupMappingOverrides: state.groupMappingOverrides,
+          );
+      _replaceReview(
+        nextReview,
+        temporaryMappings: state.temporaryMappings,
+        plannedCreations: nextReview.plannedCreations,
+        groupMappingOverrides: state.groupMappingOverrides,
+        mappingConfirmed: true,
+        previewReady: true,
+      );
+      return const ImportActionOutcome.success(null);
+    } on AppException catch (exception, stackTrace) {
+      logUiActionException(
+        _logger,
+        'Import preview preparation',
+        exception,
+        stackTrace,
+      );
+      return _fail<void>(UiError.fromException(exception));
+    } on Exception catch (exception, stackTrace) {
+      _logger.severe(
+        'Import preview preparation failed unexpectedly.',
+        exception,
+        stackTrace,
+      );
+      return _fail<void>(const UiError.unknown());
+    }
   }
 
   void setGroupSelected(int index, bool selected) {
@@ -605,26 +645,42 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
-  void selectAllImportable(bool selected) {
+  void selectAllSelectable(bool selected) {
     final review = state.review;
     if (review == null) return;
+    final selectableGroups = review.groups
+        .where((group) => group.canSelect)
+        .toList(growable: false);
     final indexes = selected
+        ? {for (final group in selectableGroups) group.index}
+        : <int>{};
+    final exact = selected
         ? {
-            for (final group in review.groups)
-              if (group.canSelect && !group.requiresConfirmation) group.index,
+            for (final group in selectableGroups)
+              if (group.isExactDuplicate) group.index,
+          }
+        : <int>{};
+    final suspected = selected
+        ? {
+            for (final group in selectableGroups)
+              if (!group.isExactDuplicate && group.isSuspectedDuplicate)
+                group.index,
+          }
+        : <int>{};
+    final warnings = selected
+        ? {
+            for (final group in selectableGroups)
+              if (!group.isExactDuplicate &&
+                  !group.isSuspectedDuplicate &&
+                  group.issues.any((issue) => issue.isWarning))
+                group.index,
           }
         : <int>{};
     state = state.copyWith(
       selectedGroupIndexes: indexes,
-      confirmedExactDuplicateIndexes: selected
-          ? state.confirmedExactDuplicateIndexes.intersection(indexes)
-          : const {},
-      confirmedSuspectedDuplicateIndexes: selected
-          ? state.confirmedSuspectedDuplicateIndexes.intersection(indexes)
-          : const {},
-      confirmedWarningIndexes: selected
-          ? state.confirmedWarningIndexes.intersection(indexes)
-          : const {},
+      confirmedExactDuplicateIndexes: exact,
+      confirmedSuspectedDuplicateIndexes: suspected,
+      confirmedWarningIndexes: warnings,
       lastCommit: null,
     );
   }
@@ -696,7 +752,10 @@ class ImportViewModel extends Notifier<ImportPageState> {
       return _invalid<ImportCommitResult>('请先选择并解析导入资料包。');
     }
     if (!state.mappingConfirmed) {
-      return _invalid<ImportCommitResult>('请先确认映射配置。');
+      return _invalid<ImportCommitResult>('请先确认映射关系。');
+    }
+    if (!state.previewReady) {
+      return _invalid<ImportCommitResult>('请先完成导入预览准备。');
     }
     if (state.selectedGroupIndexes.isEmpty) {
       return _invalid<ImportCommitResult>('请至少选择一个可导入交易组。');
@@ -720,61 +779,31 @@ class ImportViewModel extends Notifier<ImportPageState> {
         ),
       );
 
-      ImportPlanReview? refreshedReview;
-      List<ImportBatch>? batches;
-      UiError? refreshError;
-      final refreshedMappings = Map<ImportMappingKey, String>.of(
-        state.temporaryMappings,
-      )..addAll(result.createdMappings);
-      final remainingCreations =
-          Map<ImportMappingKey, ImportMappingCreation>.of(
-            state.plannedCreations,
-          )..removeWhere((key, _) => result.createdMappings.containsKey(key));
-      try {
-        refreshedReview = await service.review(
-          review.plan,
-          temporaryMappings: refreshedMappings,
-          plannedCreations: remainingCreations,
-          groupMappingOverrides: state.groupMappingOverrides,
-        );
-        batches = await service.listBatches(source: review.plan.source);
-      } on AppException catch (exception, stackTrace) {
-        logUiActionException(
-          _logger,
-          'Import commit refresh',
-          exception,
-          stackTrace,
-        );
-        refreshError = UiError.fromException(exception);
-      } on Exception catch (exception, stackTrace) {
-        _logger.severe(
-          'Import commit refresh failed unexpectedly.',
-          exception,
-          stackTrace,
-        );
-        refreshError = const UiError.unknown();
-      }
-
-      if (refreshedReview != null) {
-        _replaceReview(
-          refreshedReview,
-          temporaryMappings: refreshedMappings,
-          plannedCreations: refreshedReview.plannedCreations,
-          groupMappingOverrides: state.groupMappingOverrides,
-          lastCommit: result,
-          batches: batches,
-          error: refreshError,
-        );
-      } else {
-        state = state.copyWith(
-          phase: ImportPagePhase.review,
-          temporaryMappings: refreshedMappings,
-          plannedCreations: remainingCreations,
-          lastCommit: result,
-          batches: batches,
-          error: refreshError,
-        );
-      }
+      final batch = result.batch;
+      final batches = batch == null
+          ? state.batches
+          : [
+              batch,
+              ...state.batches.where((candidate) => candidate.id != batch.id),
+            ];
+      state = state.copyWith(
+        phase: ImportPagePhase.review,
+        lastCommit: result,
+        batches: batches,
+        selectedGroupIndexes: batch == null
+            ? state.selectedGroupIndexes
+            : const {},
+        confirmedExactDuplicateIndexes: batch == null
+            ? state.confirmedExactDuplicateIndexes
+            : const {},
+        confirmedSuspectedDuplicateIndexes: batch == null
+            ? state.confirmedSuspectedDuplicateIndexes
+            : const {},
+        confirmedWarningIndexes: batch == null
+            ? state.confirmedWarningIndexes
+            : const {},
+        error: null,
+      );
       return ImportActionOutcome.success(result);
     } on AppException catch (exception, stackTrace) {
       final groupIndex = exception is ImportWorkflowException
@@ -941,7 +970,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       plan: plan,
       error: null,
       mappingConfirmed: false,
-      saveMappingConfiguration: false,
+      previewReady: false,
       confirmedSuspectedDuplicateIndexes: state
           .confirmedSuspectedDuplicateIndexes
           .where((index) => index != editedGroupIndex)
@@ -984,6 +1013,106 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
+  ImportPlanReview _applyMappingDecision({
+    required ImportPlanReview review,
+    required ImportMappingKey key,
+    required ImportMappingDecision decision,
+    required Map<ImportMappingKey, String> mappings,
+    required Map<ImportMappingKey, ImportMappingCreation> creations,
+  }) {
+    final effectiveMappings = Map<ImportMappingKey, String>.of(
+      review.effectiveMappings,
+    );
+    ImportMappingReviewItem? updatedItem;
+    switch (decision) {
+      case ExistingTargetDecision decision:
+        effectiveMappings[key] = decision.targetId;
+        creations.remove(key);
+        final target = review.targets
+            .where((candidate) => candidate.id == decision.targetId)
+            .firstOrNull;
+        updatedItem = review.mappingItems
+            .where((item) => item.key == key)
+            .firstOrNull
+            ?.copyWith(
+              action: ImportMappingAction.map,
+              targetName: target?.name,
+              targetId: decision.targetId,
+              targetPath: target?.displayPath,
+              targetDescription: target == null
+                  ? null
+                  : importTargetDescription(target.descriptor),
+              decision: decision,
+            );
+      case PlannedCreationDecision decision:
+        effectiveMappings.remove(key);
+        creations[key] = decision.creation;
+        final creation = decision.creation;
+        updatedItem = review.mappingItems
+            .where((item) => item.key == key)
+            .firstOrNull
+            ?.copyWith(
+              action: ImportMappingAction.create,
+              targetName: creation.name,
+              targetId: null,
+              targetPath: creation.pathSegments.isEmpty
+                  ? creation.name
+                  : creation.pathSegments.join(' / '),
+              targetDescription: importTargetDescription(creation.descriptor),
+              decision: decision,
+            );
+      case UnresolvedDecision decision:
+        effectiveMappings.remove(key);
+        creations.remove(key);
+        final defaultTargetId = review.defaultMappings[key];
+        final defaultTarget = review.targets
+            .where(
+              (target) => target.id == defaultTargetId && !target.isArchived,
+            )
+            .firstOrNull;
+        final item = review.mappingItems
+            .where((item) => item.key == key)
+            .firstOrNull;
+        if (defaultTarget != null) {
+          effectiveMappings[key] = defaultTarget.id;
+          updatedItem = item?.copyWith(
+            action: ImportMappingAction.map,
+            targetName: defaultTarget.name,
+            targetId: defaultTarget.id,
+            targetPath: defaultTarget.displayPath,
+            targetDescription: importTargetDescription(
+              defaultTarget.descriptor,
+            ),
+            decision: ExistingTargetDecision(defaultTarget.id),
+          );
+        } else {
+          updatedItem = item?.copyWith(
+            action: ImportMappingAction.unresolved,
+            targetName: null,
+            targetId: null,
+            targetPath: null,
+            targetDescription: null,
+            decision: decision,
+          );
+        }
+    }
+    return ImportPlanReview(
+      plan: review.plan,
+      defaultMappings: review.defaultMappings,
+      effectiveMappings: effectiveMappings,
+      suggestions: review.suggestions,
+      plannedCreations: creations,
+      targets: review.targets,
+      compatibleTargetDescriptors: review.compatibleTargetDescriptors,
+      groupMappingOverrides: review.groupMappingOverrides,
+      mappingItems: [
+        for (final item in review.mappingItems)
+          if (item.key == key && updatedItem != null) updatedItem else item,
+      ],
+      groups: review.groups,
+    );
+  }
+
   Map<int, Map<ImportMappingKey, String>> _copyGroupOverrides(
     Map<int, Map<ImportMappingKey, String>> source,
   ) {
@@ -1007,22 +1136,22 @@ class ImportViewModel extends Notifier<ImportPageState> {
     required Map<ImportMappingKey, ImportMappingCreation> plannedCreations,
     required Map<int, Map<ImportMappingKey, String>> groupMappingOverrides,
     bool selectAllImportable = false,
+    bool? mappingConfirmed,
+    bool? previewReady,
     ImportCommitResult? lastCommit,
     List<ImportBatch>? batches,
     UiError? error,
   }) {
-    // Exact duplicates are excluded from retained selection: after a commit,
-    // the groups that became exact duplicates are the ones just imported.
-    final importable = {
+    final selectable = {
       for (final group in review.groups)
-        if (group.canSelect && !group.isExactDuplicate) group.index,
+        if (group.canSelect) group.index,
     };
     final selected = selectAllImportable
         ? {
             for (final group in review.groups)
               if (group.canSelect && !group.requiresConfirmation) group.index,
           }
-        : state.selectedGroupIndexes.intersection(importable);
+        : state.selectedGroupIndexes.intersection(selectable);
     final confirmedExactDuplicates = state.confirmedExactDuplicateIndexes
         .intersection(selected);
     final confirmed = state.confirmedSuspectedDuplicateIndexes.intersection(
@@ -1042,6 +1171,8 @@ class ImportViewModel extends Notifier<ImportPageState> {
       confirmedExactDuplicateIndexes: confirmedExactDuplicates,
       confirmedSuspectedDuplicateIndexes: confirmed,
       confirmedWarningIndexes: confirmedWarnings,
+      mappingConfirmed: mappingConfirmed ?? state.mappingConfirmed,
+      previewReady: previewReady ?? state.previewReady,
       lastCommit: lastCommit,
       batches: batches,
       error: error,

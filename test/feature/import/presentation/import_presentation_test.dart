@@ -204,11 +204,16 @@ void main() {
       _previewReview(exactDuplicate: true, includeWarning: false),
     );
     expect(exactDuplicate.single.rows.single.badges.map((b) => b.label), [
-      '已导入',
+      '精确重复',
     ]);
     expect(exactDuplicate.single.rows.single.selectable, isFalse);
+    expect(exactDuplicate.single.rows.single.selectionEnabled, isTrue);
     expect(exactDuplicate.single.rows.single.selected, isFalse);
-    expect(exactDuplicate.single.rows.single.dimmed, isTrue);
+    expect(exactDuplicate.single.rows.single.dimmed, isFalse);
+    expect(
+      exactDuplicate.single.rows.single.supportingText,
+      '该来源交易已导入，原交易仍存在。',
+    );
 
     final exactDuplicateSelectable = buildImportPreviewGroups(
       _previewReview(exactDuplicate: true, includeWarning: false),
@@ -217,6 +222,7 @@ void main() {
     );
     final selectableRow = exactDuplicateSelectable.single.rows.single;
     expect(selectableRow.selectable, isTrue);
+    expect(selectableRow.selectionEnabled, isTrue);
     expect(selectableRow.selected, isTrue);
     expect(selectableRow.dimmed, isFalse);
 
@@ -225,22 +231,37 @@ void main() {
       showSelectionControls: true,
     );
     expect(unselectedSelectable.single.rows.single.selectable, isTrue);
+    expect(unselectedSelectable.single.rows.single.selectionEnabled, isTrue);
     expect(unselectedSelectable.single.rows.single.selected, isFalse);
-    expect(unselectedSelectable.single.rows.single.dimmed, isTrue);
+    expect(unselectedSelectable.single.rows.single.dimmed, isFalse);
 
     final suspected = buildImportPreviewGroups(
-      _previewReview(suspectedDuplicate: true),
+      _previewReview(suspectedDuplicate: true, includeWarning: false),
     );
     expect(suspected.single.rows.single.badges.map((b) => b.label), ['疑似重复']);
+    expect(
+      suspected.single.rows.single.supportingText,
+      '与已有交易高度相似，但来源身份未精确匹配。',
+    );
 
-    final warning = buildImportPreviewGroups(_previewReview());
-    expect(warning.single.rows.single.badges.map((b) => b.label), ['需确认']);
+    final warning = buildImportPreviewGroups(
+      _previewReview(),
+      showSelectionControls: true,
+    );
+    expect(warning.single.rows.single.selectable, isTrue);
+    expect(warning.single.rows.single.selectionEnabled, isTrue);
+    expect(warning.single.rows.single.selected, isFalse);
+    expect(warning.single.rows.single.dimmed, isFalse);
+    expect(warning.single.rows.single.badges.map((b) => b.label), ['警告']);
+    expect(warning.single.rows.single.supportingText, '来源记录需要确认。');
 
     final blocked = buildImportPreviewGroups(
       _previewReview(blocking: true, includeWarning: true),
     );
-    expect(blocked.single.rows.single.badges.map((b) => b.label), ['需处理']);
+    expect(blocked.single.rows.single.badges.map((b) => b.label), ['阻断']);
     expect(blocked.single.rows.single.selectable, isFalse);
+    expect(blocked.single.rows.single.selectionEnabled, isFalse);
+    expect(blocked.single.rows.single.supportingText, '来源记录需要确认。');
   });
 
   test('counts a ghost placeholder as a handled mapping', () {

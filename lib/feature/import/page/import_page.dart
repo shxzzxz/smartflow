@@ -13,10 +13,10 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
-import '../../shared/presentation/transaction_list_presentation.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/import_presentation.dart';
 import '../view_model/import_view_model.dart';
@@ -55,15 +55,34 @@ class ImportMappingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(importViewModelProvider);
+    final notifier = ref.read(importViewModelProvider.notifier);
     final review = state.review;
     final summary = review == null
         ? const ImportMappingAnalysisSummary(mapped: 0, pending: 0, unmapped: 0)
         : summarizeImportMappings(review);
+    final mappingItems =
+        review?.mappingItems ?? const <ImportMappingReviewItem>[];
+    final accountItems = mappingItems
+        .where((item) => item.key.entityKind == ImportEntityKind.account)
+        .toList(growable: false);
+    final categoryItems = mappingItems
+        .where((item) => item.key.entityKind == ImportEntityKind.category)
+        .toList(growable: false);
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '账户与分类映射'),
+            AppPageHeader(
+              title: '账户与分类映射',
+              actions: [
+                AppHeaderTextButton(
+                  label: '确认',
+                  onPressed: state.isBusy || state.missingMappingCount > 0
+                      ? null
+                      : () => _confirm(context, notifier),
+                ),
+              ],
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.space16),
@@ -90,8 +109,20 @@ class ImportMappingPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.space16),
                   _MappingList(
+                    entityKind: ImportEntityKind.account,
+                    title: '账户',
+                    emptyMessage: '未提取到需要映射的来源账户。',
                     state: state,
-                    items: review == null ? const [] : review.mappingItems,
+                    items: accountItems,
+                    onSelectMapping: onSelectMapping,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  _MappingList(
+                    entityKind: ImportEntityKind.category,
+                    title: '分类',
+                    emptyMessage: '未提取到需要映射的来源分类。',
+                    state: state,
+                    items: categoryItems,
                     onSelectMapping: onSelectMapping,
                   ),
                 ],
@@ -102,28 +133,34 @@ class ImportMappingPage extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _confirm(BuildContext context, ImportViewModel notifier) async {
+    final outcome = await notifier.confirmMappingConfiguration();
+    if (!context.mounted) return;
+    if (outcome case ImportActionFailure<void>(:final error)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
 }
 
-class ImportPreviewPage extends ConsumerStatefulWidget {
+class ImportPreviewPage extends ConsumerWidget {
   const ImportPreviewPage({required this.review, super.key});
 
   final ImportPlanReview review;
 
   @override
-  ConsumerState<ImportPreviewPage> createState() => _ImportPreviewPageState();
-}
-
-class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
-  bool _selecting = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(importViewModelProvider);
-    final currentReview = state.review ?? widget.review;
+    final currentReview = state.review ?? review;
     final groups = buildImportPreviewGroups(
       currentReview,
       selectedGroupIndexes: state.selectedGroupIndexes,
-      showSelectionControls: _selecting,
+      showSelectionControls: true,
     );
     final summary = summarizeImportPreview(
       currentReview,
@@ -136,18 +173,33 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
         .where((group) => group.isBlocked)
         .toList(growable: false);
     final filteredRecords = currentReview.plan.filteredRecords;
-    final selectableGroups = currentReview.groups
+    final bulkSelectableCount = currentReview.groups
         .where((group) => group.canSelect)
-        .toList(growable: false);
-    final rowsById = {
-      for (final dayGroup in groups)
-        for (final row in dayGroup.rows) row.transactionId: row,
-    };
+        .length;
+    final notifier = ref.read(importViewModelProvider.notifier);
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '导入预览'),
+            AppPageHeader(
+              title: '导入预览',
+              actions: [
+                AppHeaderTextButton(
+                  label: state.allSelectableSelected ? '全不选' : '全选',
+                  onPressed: state.isBusy || bulkSelectableCount == 0
+                      ? null
+                      : () => notifier.selectAllSelectable(
+                          !state.allSelectableSelected,
+                        ),
+                ),
+                AppHeaderTextButton(
+                  label: '确认',
+                  onPressed: state.isBusy
+                      ? null
+                      : () => Navigator.of(context).maybePop(),
+                ),
+              ],
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -187,43 +239,33 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
                     _ImportPreviewDetailsEntry(
                       blockedCount: blockedGroups.length,
                       skippedCount: filteredRecords.length,
-                      onTap: () =>
-                          _openIssuesPage(blockedGroups, filteredRecords),
+                      onTap: () => _openIssuesPage(
+                        context,
+                        blockedGroups,
+                        filteredRecords,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                   ],
-                  if (selectableGroups.isNotEmpty) ...[
-                    _ImportPreviewSelectionToolbar(
-                      selecting: _selecting,
-                      selectedCount: state.selectedGroupIndexes.length,
-                      enabled: !state.isBusy,
-                      onEnterSelection: () => setState(() => _selecting = true),
-                      onExitSelection: () => setState(() => _selecting = false),
-                      onSelectAll: () =>
-                          _setGroupsSelected(selectableGroups, true),
-                      onClearAll: () =>
-                          _setGroupsSelected(selectableGroups, false),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '已选 ${state.selectedGroupIndexes.length} 笔',
+                      style: context.appTextStyles.listSupporting,
                     ),
-                    const SizedBox(height: AppSpacing.space8),
-                  ],
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
                   for (var index = 0; index < groups.length; index++) ...[
                     TransactionDayCard(
                       group: groups[index],
                       enableRowTap: !state.isBusy,
                       showDailyTotals: false,
                       onRowTap: (transactionId) => _handleRowTap(
+                        ref,
                         state,
                         currentReview,
                         transactionId,
-                        rowsById[transactionId],
                       ),
-                      onRowLongPress: state.isBusy
-                          ? null
-                          : (_) {
-                              if (!_selecting) {
-                                setState(() => _selecting = true);
-                              }
-                            },
                       onRowSelectionChanged: state.isBusy
                           ? null
                           : (transactionId, selected) {
@@ -249,6 +291,7 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
   }
 
   void _openIssuesPage(
+    BuildContext context,
     List<ImportGroupReview> blockedGroups,
     List<ImportFilteredRecord> filteredRecords,
   ) {
@@ -262,48 +305,22 @@ class _ImportPreviewPageState extends ConsumerState<ImportPreviewPage> {
     );
   }
 
-  void _setGroupsSelected(List<ImportGroupReview> groups, bool selected) {
-    final notifier = ref.read(importViewModelProvider.notifier);
-    for (final group in groups) {
-      notifier.setGroupSelection(group.index, selected);
-    }
-  }
-
   void _handleRowTap(
+    WidgetRef ref,
     ImportPageState state,
     ImportPlanReview review,
     String transactionId,
-    TransactionRowPresentation? row,
   ) {
     final groupIndex = _importGroupIndexFromRowId(transactionId);
     if (groupIndex == null) return;
     final group = review.groups[groupIndex];
-    if (_selecting) {
-      ref
-          .read(importViewModelProvider.notifier)
-          .setGroupSelection(
-            groupIndex,
-            !state.selectedGroupIndexes.contains(groupIndex),
-          );
-      return;
-    }
-    if (!group.canSelect || state.selectedGroupIndexes.contains(groupIndex)) {
-      return;
-    }
-    if (row == null) return;
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _ImportRowDetailsSheet(
-        groupReview: group,
-        row: row,
-        onConfirm: () {
-          ref
-              .read(importViewModelProvider.notifier)
-              .setGroupSelection(groupIndex, true);
-        },
-      ),
-    );
+    if (!group.canSelect) return;
+    ref
+        .read(importViewModelProvider.notifier)
+        .setGroupSelection(
+          groupIndex,
+          !state.selectedGroupIndexes.contains(groupIndex),
+        );
   }
 }
 
@@ -311,166 +328,6 @@ int? _importGroupIndexFromRowId(String transactionId) {
   const prefix = 'import-group-';
   if (!transactionId.startsWith(prefix)) return null;
   return int.tryParse(transactionId.substring(prefix.length));
-}
-
-class _ImportPreviewSelectionToolbar extends StatelessWidget {
-  const _ImportPreviewSelectionToolbar({
-    required this.selecting,
-    required this.selectedCount,
-    required this.enabled,
-    required this.onEnterSelection,
-    required this.onExitSelection,
-    required this.onSelectAll,
-    required this.onClearAll,
-  });
-
-  final bool selecting;
-  final int selectedCount;
-  final bool enabled;
-  final VoidCallback onEnterSelection;
-  final VoidCallback onExitSelection;
-  final VoidCallback onSelectAll;
-  final VoidCallback onClearAll;
-
-  @override
-  Widget build(BuildContext context) {
-    if (selecting) {
-      return Row(
-        children: [
-          TextButton(
-            onPressed: enabled ? onSelectAll : null,
-            child: const Text('全选'),
-          ),
-          TextButton(
-            onPressed: enabled ? onClearAll : null,
-            child: const Text('清除'),
-          ),
-          const Spacer(),
-          FilledButton(onPressed: onExitSelection, child: const Text('完成')),
-        ],
-      );
-    }
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            '已选 $selectedCount 笔',
-            style: context.appTextStyles.listSupporting,
-          ),
-        ),
-        TextButton(
-          onPressed: enabled ? onEnterSelection : null,
-          child: const Text('排除交易'),
-        ),
-      ],
-    );
-  }
-}
-
-class _ImportRowDetailsSheet extends StatelessWidget {
-  const _ImportRowDetailsSheet({
-    required this.groupReview,
-    required this.row,
-    required this.onConfirm,
-  });
-
-  final ImportGroupReview groupReview;
-  final TransactionRowPresentation row;
-  final VoidCallback onConfirm;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final reasons = <String>[
-      if (groupReview.isExactDuplicate) '与已导入的交易完全一致，确认后会重复导入。',
-      if (groupReview.isSuspectedDuplicate) '与已有交易高度相似，疑似重复。',
-      for (final issue in groupReview.issues.where((issue) => issue.isWarning))
-        issue.message,
-    ];
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(row.title, style: context.appTextStyles.listTitle),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '${row.subtitle} · ${row.amount.preciseText}',
-              style: context.appTextStyles.pageSubtitle,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Row(
-              children: [
-                Text('账户', style: context.appTextStyles.listSupporting),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(
-                  child: Text(
-                    _accountFlowLabel(row.accountFlow),
-                    style: context.appTextStyles.detailValue,
-                  ),
-                ),
-              ],
-            ),
-            if (reasons.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space12),
-              Text('需要确认的原因', style: context.appTextStyles.listSupporting),
-              const SizedBox(height: AppSpacing.space6),
-              for (final reason in reasons)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        RemixIcons.error_warning_line,
-                        size: AppSpacing.space18,
-                        color: _themeExtension(context).warning,
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          reason,
-                          style: context.appTextStyles.detailValue.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-            const SizedBox(height: AppSpacing.space16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  onConfirm();
-                },
-                icon: const Icon(RemixIcons.checkbox_circle_line),
-                label: const Text('确认导入'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _accountFlowLabel(TransactionAccountFlowPresentation flow) {
-    final out = flow.out?.label;
-    final in_ = flow.in_?.label;
-    if (out != null && in_ != null) return '$out ${flow.separator} $in_';
-    return out ?? in_ ?? '无账户';
-  }
 }
 
 class _ImportPreviewDetailsEntry extends StatelessWidget {
@@ -720,8 +577,6 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
                       onViewAllMappings: _viewAllMappings,
                       onToggleSaveMappingConfiguration:
                           _toggleSaveMappingConfiguration,
-                      onConfirmMappingConfiguration:
-                          _confirmMappingConfiguration,
                       onCommit: _commit,
                     )
                   : _UnavailableImportSource(source: widget.source),
@@ -786,25 +641,26 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     _showFailure(outcome);
   }
 
-  Future<void> _viewAllMappings() {
-    return Navigator.of(context).push<void>(
+  Future<void> _viewAllMappings() async {
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => ImportMappingPage(onSelectMapping: _selectMapping),
       ),
     );
+    if (!mounted) return;
+    final state = ref.read(importViewModelProvider);
+    if (!state.mappingConfirmed || state.previewReady) return;
+    final outcome = await ref
+        .read(importViewModelProvider.notifier)
+        .preparePreview();
+    if (!mounted) return;
+    _showFailure(outcome);
   }
 
   void _toggleSaveMappingConfiguration() {
     final outcome = ref
         .read(importViewModelProvider.notifier)
         .toggleSaveMappingConfiguration();
-    _showFailure(outcome);
-  }
-
-  void _confirmMappingConfiguration() {
-    final outcome = ref
-        .read(importViewModelProvider.notifier)
-        .confirmMappingConfiguration();
     _showFailure(outcome);
   }
 
@@ -837,13 +693,26 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     switch (outcome) {
       case ImportActionSuccess(:final value):
         final batch = value.batch;
-        final message = batch == null
-            ? '没有创建新批次，所选交易组均被跳过。'
-            : '导入完成：${batch.importedGroupCount} 个交易组，'
-                  '${batch.createdTransactionCount} 条交易。';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        if (batch == null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('没有创建新批次，所选交易组均被跳过。')));
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '导入成功：${batch.importedGroupCount} 个交易组，'
+              '${batch.createdTransactionCount} 条交易；'
+              '跳过 ${batch.skippedGroupCount} 个交易组。',
+            ),
+          ),
+        );
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          context.go('/import');
+        }
       case ImportActionFailure(:final error):
         _showError(error);
     }
@@ -1196,7 +1065,6 @@ class _ImportReviewTab extends StatelessWidget {
     required this.onClearError,
     required this.onViewAllMappings,
     required this.onToggleSaveMappingConfiguration,
-    required this.onConfirmMappingConfiguration,
     required this.onCommit,
   });
 
@@ -1208,7 +1076,6 @@ class _ImportReviewTab extends StatelessWidget {
   final VoidCallback onClearError;
   final VoidCallback onViewAllMappings;
   final VoidCallback onToggleSaveMappingConfiguration;
-  final VoidCallback onConfirmMappingConfiguration;
   final VoidCallback onCommit;
 
   @override
@@ -1262,7 +1129,6 @@ class _ImportReviewTab extends StatelessWidget {
                 onViewAll: onViewAllMappings,
                 onToggleSaveMappingConfiguration:
                     onToggleSaveMappingConfiguration,
-                onConfirmMappingConfiguration: onConfirmMappingConfiguration,
               ),
               const SizedBox(height: AppSpacing.space16),
               _ImportPreviewSection(state: state),
@@ -1299,7 +1165,8 @@ class _ImportReviewTab extends StatelessWidget {
                     onPressed:
                         state.isBusy ||
                             state.selectedGroupIndexes.isEmpty ||
-                            !state.mappingConfirmed
+                            !state.mappingConfirmed ||
+                            !state.previewReady
                         ? null
                         : onCommit,
                     icon: state.phase == ImportPagePhase.committing
@@ -1656,13 +1523,11 @@ class _MappingSection extends StatelessWidget {
     required this.state,
     required this.onViewAll,
     required this.onToggleSaveMappingConfiguration,
-    required this.onConfirmMappingConfiguration,
   });
 
   final ImportPageState state;
   final VoidCallback onViewAll;
   final VoidCallback onToggleSaveMappingConfiguration;
-  final VoidCallback onConfirmMappingConfiguration;
 
   @override
   Widget build(BuildContext context) {
@@ -1681,33 +1546,13 @@ class _MappingSection extends StatelessWidget {
           ],
           description: importMappingAnalysisDescription(summary),
           onViewAll: summary.total == 0 ? null : onViewAll,
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: state.isBusy || state.missingMappingCount > 0
-                    ? null
-                    : onToggleSaveMappingConfiguration,
-                icon: Icon(
-                  state.saveMappingConfiguration
-                      ? RemixIcons.checkbox_circle_fill
-                      : RemixIcons.save_line,
-                ),
-                label: const Text('保存映射配置'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space10),
-            Expanded(
-              child: FilledButton(
-                onPressed: state.isBusy || state.missingMappingCount > 0
-                    ? null
-                    : onConfirmMappingConfiguration,
-                child: const Text('确认配置'),
-              ),
-            ),
-          ],
+          footer: AppPlainSwitchRow(
+            label: '保存映射配置',
+            description: '导入成功后，下次自动沿用本次账户与分类选择',
+            value: state.saveMappingConfiguration,
+            enabled: !state.isBusy && state.missingMappingCount == 0,
+            onChanged: (_) => onToggleSaveMappingConfiguration(),
+          ),
         ),
       ],
     );
@@ -1716,35 +1561,64 @@ class _MappingSection extends StatelessWidget {
 
 class _MappingList extends StatelessWidget {
   const _MappingList({
+    required this.entityKind,
+    required this.title,
+    required this.emptyMessage,
     required this.state,
     required this.items,
     required this.onSelectMapping,
   });
 
+  final ImportEntityKind entityKind;
+  final String title;
+  final String emptyMessage;
   final ImportPageState state;
   final List<ImportMappingReviewItem> items;
   final ValueChanged<ImportMappingReviewItem> onSelectMapping;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const AppSurface(
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.space16),
-          child: Text('资料包未提取到需要映射的账户或类别。'),
-        ),
-      );
-    }
     return AppSurface(
+      key: ValueKey('import-mapping-${entityKind.name}-card'),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const ImportMappingHeader(),
-          for (final item in items)
-            _MappingItem(
-              state: state,
-              item: item,
-              onSelectMapping: onSelectMapping,
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(title, style: context.appTextStyles.groupTitle),
+                ),
+                Text(
+                  '${items.length} 项',
+                  style: context.appTextStyles.listSupporting,
+                ),
+              ],
             ),
+          ),
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                0,
+                AppSpacing.space16,
+                AppSpacing.space16,
+              ),
+              child: Text(
+                emptyMessage,
+                style: context.appTextStyles.pageSubtitle,
+              ),
+            )
+          else ...[
+            const ImportMappingHeader(),
+            for (final item in items)
+              _MappingItem(
+                state: state,
+                item: item,
+                onSelectMapping: onSelectMapping,
+              ),
+          ],
         ],
       ),
     );
@@ -2009,7 +1883,9 @@ class _ImportPreviewSection extends StatelessWidget {
             ImportAnalysisMetric(label: '无法解析', value: summary.unparsed),
           ],
           description: importPreviewAnalysisDescription(summary),
-          onViewAll: hasPreviewDetails ? () => _showAll(context, review) : null,
+          onViewAll: state.previewReady && hasPreviewDetails
+              ? () => _showAll(context, review)
+              : null,
         ),
       ],
     );

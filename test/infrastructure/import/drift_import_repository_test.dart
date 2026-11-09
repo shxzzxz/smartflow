@@ -161,6 +161,12 @@ void main() {
       );
       expect(match.exactItem?.id, 'item-live');
       expect(match.fingerprintItems.map((item) => item.id), ['item-live']);
+      expect(
+        (await repository.findActiveItems(
+          ImportSource.yimu,
+        )).map((item) => item.id),
+        ['item-live'],
+      );
     },
   );
 }

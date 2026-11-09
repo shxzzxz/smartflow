@@ -494,6 +494,107 @@ void main() {
     },
   );
 
+  test(
+    'reuses an existing-target mapping in the next import when saved',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.database.close);
+      const account = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:import-wallet',
+        displayName: '导入钱包',
+      );
+      const category = ImportSourceEntity(
+        source: ImportSource.yimu,
+        kind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:导入餐饮',
+        displayName: '导入餐饮',
+        categoryKind: ImportCategoryKind.expense,
+      );
+      const accountKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.account,
+        sourceEntityKey: 'account:import-wallet',
+      );
+      const categoryKey = ImportMappingKey(
+        source: ImportSource.yimu,
+        entityKind: ImportEntityKind.category,
+        sourceEntityKey: 'category:expense:导入餐饮',
+      );
+      final firstPlan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [account, category],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportExpenseDraft(
+              amount: Money.parse('18.00'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: 'account:import-wallet',
+                displayName: '导入钱包',
+              ),
+              category: const ImportCategoryReference(
+                sourceEntityKey: 'category:expense:导入餐饮',
+                path: '导入餐饮',
+                kind: ImportCategoryKind.expense,
+              ),
+              occurredAt: DateTime(2026, 4, 6),
+            ),
+            sourceOperationFingerprint: 'saved-mapping-first',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final firstReview = await fixture.service.review(firstPlan);
+      expect(
+        firstReview.plannedCreations.keys,
+        containsAll([accountKey, categoryKey]),
+      );
+
+      final selectedMappings = {accountKey: 'cash', categoryKey: 'food'};
+      final result = await fixture.service.commit(
+        ImportCommitCommand(
+          plan: firstPlan,
+          mappings: selectedMappings,
+          selectedGroupIndexes: const {0},
+          saveMappingConfiguration: true,
+        ),
+      );
+
+      expect(result.createdBatch, isTrue);
+      final secondPlan = ImportParseResult(
+        source: ImportSource.yimu,
+        sourceEntities: const [account, category],
+        groups: [
+          ImportTransactionGroupDraft(
+            topLevel: ImportExpenseDraft(
+              amount: Money.parse('20.00'),
+              paidFrom: const ImportAccountReference.source(
+                sourceEntityKey: 'account:import-wallet',
+                displayName: '导入钱包',
+              ),
+              category: const ImportCategoryReference(
+                sourceEntityKey: 'category:expense:导入餐饮',
+                path: '导入餐饮',
+                kind: ImportCategoryKind.expense,
+              ),
+              occurredAt: DateTime(2026, 4, 7),
+            ),
+            sourceOperationFingerprint: 'saved-mapping-second',
+            fingerprintVersion: 1,
+          ),
+        ],
+      );
+      final secondReview = await fixture.service.review(secondPlan);
+
+      expect(secondReview.defaultMappings[accountKey], 'cash');
+      expect(secondReview.defaultMappings[categoryKey], 'food');
+      expect(secondReview.effectiveMappings[accountKey], 'cash');
+      expect(secondReview.effectiveMappings[categoryKey], 'food');
+      expect(secondReview.plannedCreations, isEmpty);
+    },
+  );
+
   test('maps a missing settlement account to the ghost account', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.database.close);
@@ -1416,6 +1517,7 @@ ImportViewModel _preparedViewModel(_Fixture fixture, ImportPlanReview review) {
     review: review,
     selectedGroupIndexes: {0, 1},
     mappingConfirmed: true,
+    previewReady: true,
   );
   final container = ProviderContainer(
     overrides: [
