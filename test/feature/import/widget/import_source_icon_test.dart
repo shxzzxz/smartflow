@@ -38,6 +38,11 @@ void main() {
           background: colors.primaryContainer,
           foreground: colors.onPrimaryContainer,
         ),
+        ImportEntrySource.wechat => (
+          icon: Icons.chat_bubble_rounded,
+          background: colors.primaryContainer,
+          foreground: colors.onPrimaryContainer,
+        ),
         ImportEntrySource.unionPay => (
           icon: RemixIcons.bank_card_line,
           background: colors.secondaryContainer,

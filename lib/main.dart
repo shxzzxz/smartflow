@@ -10,6 +10,7 @@ import 'app/bootstrap.dart';
 import 'app/business_icon_provider.dart';
 import 'app/provider.dart';
 import 'app/provider_error_observer.dart';
+import 'infrastructure/import/wechat/wechat_category_lexicon_loader.dart';
 import 'widget/business/icon/business_icon_catalog.dart';
 
 Future<void> main() async {
@@ -22,6 +23,8 @@ Future<void> main() async {
     final logFileSink = await bootstrap();
     errorHandler.install();
     final iconCatalog = await BusinessIconCatalog.load(rootBundle);
+    final wechatCategoryLexicon = await const WechatCategoryLexiconLoader()
+        .load(rootBundle);
 
     runApp(
       ProviderScope(
@@ -29,6 +32,9 @@ Future<void> main() async {
         overrides: [
           appLogFileSinkProvider.overrideWithValue(logFileSink),
           businessIconCatalogProvider.overrideWithValue(iconCatalog),
+          wechatCategoryLexiconProvider.overrideWithValue(
+            wechatCategoryLexicon,
+          ),
         ],
         child: SmartFlowApp(scaffoldMessengerKey: appScaffoldMessengerKey),
       ),

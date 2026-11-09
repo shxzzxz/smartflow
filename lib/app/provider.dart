@@ -14,6 +14,7 @@ import '../infrastructure/import/ledger_import_port.dart';
 import '../infrastructure/import/platform_import_file_picker.dart';
 import '../infrastructure/import/repository/drift_import_batch_repository.dart';
 import '../infrastructure/import/repository/drift_import_mapping_repository.dart';
+import '../infrastructure/import/wechat/wechat_file_reader.dart';
 import '../infrastructure/import/yimu/yimu_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
@@ -96,6 +97,8 @@ import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
 import '../domain/import/port/import_file_reader.dart';
 import '../domain/import/source/alipay/alipay_import_parser.dart';
+import '../domain/import/source/wechat/wechat_category_lexicon.dart';
+import '../domain/import/source/wechat/wechat_import_parser.dart';
 import '../domain/import/source/yimu/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/bill_generation_suppression_repository.dart';
@@ -153,6 +156,13 @@ AppLogReader appLogReader(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+WechatCategoryLexicon wechatCategoryLexicon(Ref ref) {
+  throw UnimplementedError(
+    'wechatCategoryLexicon 必须在 ProviderScope 中 override。',
+  );
+}
+
+@Riverpod(keepAlive: true)
 ImportFilePicker importFilePicker(Ref ref) {
   return const PlatformImportFilePicker();
 }
@@ -168,6 +178,11 @@ ImportFileReader alipayFileReader(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+ImportFileReader wechatFileReader(Ref ref) {
+  return const WechatFileReader();
+}
+
+@Riverpod(keepAlive: true)
 YimuImportParser yimuImportParser(Ref ref) {
   return YimuImportParser(reader: ref.watch(yimuFileReaderProvider));
 }
@@ -178,11 +193,20 @@ AlipayImportParser alipayImportParser(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+WechatImportParser wechatImportParser(Ref ref) {
+  return WechatImportParser(
+    reader: ref.watch(wechatFileReaderProvider),
+    lexicon: ref.watch(wechatCategoryLexiconProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
 ImportPlanAppService importPlanAppService(Ref ref) {
   return ImportPlanAppServiceImpl(
     parsers: ImportParserRegistry([
       ref.watch(yimuImportParserProvider),
       ref.watch(alipayImportParserProvider),
+      ref.watch(wechatImportParserProvider),
     ]),
   );
 }

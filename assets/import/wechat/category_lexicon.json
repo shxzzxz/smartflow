@@ -1,0 +1,757 @@
+{
+  "schemaVersion": 1,
+  "source": "wechat",
+  "locale": "zh-CN",
+  "normalization": {
+    "trim": true,
+    "fullWidthToHalfWidth": true,
+    "asciiLowercase": true,
+    "collapseWhitespace": true
+  },
+  "defaultMatchMode": "containsAny",
+  "conflictPolicy": "unresolved",
+  "fallbackRules": [
+    {
+      "id": "income_fallback_other",
+      "direction": "income",
+      "priority": -100,
+      "categoryPath": [
+        "其他"
+      ],
+      "reason": "unmatched_or_conflict",
+      "warningCode": "category_fallback"
+    },
+    {
+      "id": "expense_fallback_other",
+      "direction": "expense",
+      "priority": -100,
+      "categoryPath": [
+        "其他"
+      ],
+      "reason": "unmatched_or_conflict",
+      "warningCode": "category_fallback"
+    }
+  ],
+  "directRules": [
+    {
+      "id": "income_refund",
+      "direction": "income",
+      "priority": 1000,
+      "conditions": {
+        "logic": "any",
+        "items": [
+          {
+            "field": "transactionType",
+            "operator": "contains",
+            "value": "退款"
+          },
+          {
+            "field": "status",
+            "operator": "equals",
+            "value": "已全额退款"
+          }
+        ]
+      },
+      "categoryPath": [
+        "其他"
+      ],
+      "reason": "refund_income"
+    }
+  ],
+  "keywordRules": [
+    {
+      "id": "expense_food_breakfast",
+      "direction": "expense",
+      "priority": 80,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "早餐",
+        "早点",
+        "包子",
+        "馒头",
+        "豆浆",
+        "油条",
+        "煎饼",
+        "粥铺",
+        "早餐店"
+      ],
+      "categoryPath": [
+        "食品餐饮",
+        "早餐"
+      ]
+    },
+    {
+      "id": "expense_food_noodles",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "牛肉面",
+        "拉面",
+        "刀削面",
+        "面馆",
+        "面食",
+        "米线",
+        "米粉",
+        "螺蛳粉",
+        "酸辣粉",
+        "饺子",
+        "馄饨"
+      ],
+      "categoryPath": [
+        "食品餐饮"
+      ]
+    },
+    {
+      "id": "expense_food_general",
+      "direction": "expense",
+      "priority": 70,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "餐饮",
+        "餐厅",
+        "饭店",
+        "饭馆",
+        "食堂",
+        "快餐",
+        "外卖",
+        "小吃",
+        "火锅",
+        "烧烤",
+        "烤肉",
+        "麻辣烫",
+        "冒菜",
+        "炸鸡",
+        "汉堡",
+        "披萨",
+        "寿司",
+        "料理",
+        "烘焙",
+        "蛋糕",
+        "甜品",
+        "零食",
+        "美食",
+        "麦当劳",
+        "肯德基",
+        "必胜客"
+      ],
+      "categoryPath": [
+        "食品餐饮"
+      ]
+    },
+    {
+      "id": "expense_food_tea",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "咖啡",
+        "奶茶",
+        "茶饮",
+        "果茶",
+        "柠檬茶",
+        "饮品",
+        "咖啡店",
+        "瑞幸",
+        "星巴克",
+        "喜茶",
+        "奈雪"
+      ],
+      "categoryPath": [
+        "食品餐饮",
+        "茶饮"
+      ]
+    },
+    {
+      "id": "expense_food_fresh",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "生鲜",
+        "买菜",
+        "菜市场",
+        "水果",
+        "蔬菜",
+        "肉店",
+        "海鲜",
+        "粮油",
+        "盒马",
+        "叮咚买菜",
+        "美团买菜"
+      ],
+      "categoryPath": [
+        "食品餐饮",
+        "食材生鲜"
+      ]
+    },
+    {
+      "id": "expense_personal_care",
+      "direction": "expense",
+      "priority": 72,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "剪发",
+        "理发",
+        "造型",
+        "美发",
+        "发型",
+        "烫发",
+        "染发",
+        "洗发",
+        "美容",
+        "美容院",
+        "美甲",
+        "皮肤管理",
+        "按摩",
+        "足疗",
+        "洗浴"
+      ],
+      "categoryPath": [
+        "其他"
+      ]
+    },
+    {
+      "id": "expense_transport_rail",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "铁路",
+        "火车",
+        "高铁",
+        "动车",
+        "12306"
+      ],
+      "categoryPath": [
+        "出行交通"
+      ]
+    },
+    {
+      "id": "expense_transport_ride",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "打车",
+        "出租车",
+        "网约车",
+        "滴滴",
+        "高德打车",
+        "花小猪",
+        "曹操出行",
+        "T3出行"
+      ],
+      "categoryPath": [
+        "出行交通",
+        "打车"
+      ]
+    },
+    {
+      "id": "expense_transport_public",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "地铁",
+        "轨道交通",
+        "公交",
+        "公交车",
+        "公共汽车",
+        "哈啰",
+        "青桔",
+        "美团单车",
+        "共享单车"
+      ],
+      "categoryPath": [
+        "出行交通"
+      ]
+    },
+    {
+      "id": "expense_transport_vehicle",
+      "direction": "expense",
+      "priority": 78,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "加油",
+        "石油",
+        "石化",
+        "充电桩",
+        "停车",
+        "停车费",
+        "高速",
+        "过路费"
+      ],
+      "categoryPath": [
+        "出行交通"
+      ]
+    },
+    {
+      "id": "expense_rent",
+      "direction": "expense",
+      "priority": 90,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "房租",
+        "租金",
+        "租房"
+      ],
+      "categoryPath": [
+        "居家生活",
+        "房租"
+      ]
+    },
+    {
+      "id": "expense_property",
+      "direction": "expense",
+      "priority": 90,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "物业",
+        "物业费"
+      ],
+      "categoryPath": [
+        "居家生活",
+        "物业"
+      ]
+    },
+    {
+      "id": "expense_utilities",
+      "direction": "expense",
+      "priority": 85,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "水费",
+        "电费",
+        "燃气",
+        "天然气",
+        "水电"
+      ],
+      "categoryPath": [
+        "居家生活",
+        "水电燃"
+      ]
+    },
+    {
+      "id": "expense_household_service",
+      "direction": "expense",
+      "priority": 72,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "家政",
+        "保洁",
+        "维修",
+        "搬家",
+        "家具",
+        "家电维修"
+      ],
+      "categoryPath": [
+        "居家生活"
+      ]
+    },
+    {
+      "id": "expense_shopping_general",
+      "direction": "expense",
+      "priority": 60,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "超市",
+        "便利店",
+        "商场",
+        "百货",
+        "购物",
+        "网购",
+        "电商",
+        "淘宝",
+        "天猫",
+        "京东",
+        "拼多多",
+        "唯品会",
+        "抖音商城"
+      ],
+      "categoryPath": [
+        "购物消费"
+      ]
+    },
+    {
+      "id": "expense_shopping_daily",
+      "direction": "expense",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "日用品",
+        "洗护",
+        "纸巾",
+        "洗衣液",
+        "牙膏",
+        "清洁用品"
+      ],
+      "categoryPath": [
+        "购物消费",
+        "日用品"
+      ]
+    },
+    {
+      "id": "expense_shopping_clothing",
+      "direction": "expense",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "衣服",
+        "服装",
+        "上衣",
+        "裤子",
+        "裙",
+        "鞋",
+        "运动鞋",
+        "帽子",
+        "箱包"
+      ],
+      "categoryPath": [
+        "购物消费",
+        "衣物"
+      ]
+    },
+    {
+      "id": "expense_shopping_digital",
+      "direction": "expense",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "手机",
+        "电脑",
+        "数码",
+        "耳机",
+        "键盘",
+        "鼠标",
+        "平板",
+        "相机",
+        "充电器"
+      ],
+      "categoryPath": [
+        "购物消费",
+        "手机数码"
+      ]
+    },
+    {
+      "id": "expense_entertainment",
+      "direction": "expense",
+      "priority": 72,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "电影",
+        "影院",
+        "影城",
+        "KTV",
+        "歌厅",
+        "游戏",
+        "Steam",
+        "桌游",
+        "剧本杀",
+        "密室",
+        "乐园",
+        "景区",
+        "门票"
+      ],
+      "categoryPath": [
+        "休闲娱乐"
+      ]
+    },
+    {
+      "id": "expense_education",
+      "direction": "expense",
+      "priority": 72,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "学费",
+        "课程",
+        "培训",
+        "教育",
+        "书店",
+        "图书",
+        "教材",
+        "考试",
+        "网课",
+        "知识付费"
+      ],
+      "categoryPath": [
+        "文化教育"
+      ]
+    },
+    {
+      "id": "expense_health",
+      "direction": "expense",
+      "priority": 82,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "医院",
+        "诊所",
+        "药房",
+        "药店",
+        "医疗",
+        "挂号",
+        "体检",
+        "口腔",
+        "牙科",
+        "眼科",
+        "门诊"
+      ],
+      "categoryPath": [
+        "健康医疗"
+      ]
+    },
+    {
+      "id": "expense_telecom",
+      "direction": "expense",
+      "priority": 82,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "话费",
+        "流量",
+        "手机充值",
+        "宽带",
+        "中国移动",
+        "中国电信",
+        "中国联通"
+      ],
+      "categoryPath": [
+        "通讯"
+      ]
+    },
+    {
+      "id": "expense_social",
+      "direction": "expense",
+      "priority": 68,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "红包",
+        "礼金",
+        "礼物",
+        "鲜花",
+        "花店",
+        "婚庆"
+      ],
+      "categoryPath": [
+        "人情社交"
+      ]
+    },
+    {
+      "id": "expense_charity",
+      "direction": "expense",
+      "priority": 82,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "慈善",
+        "捐赠",
+        "公益"
+      ],
+      "categoryPath": [
+        "其他",
+        "慈善捐助"
+      ]
+    },
+    {
+      "id": "income_salary",
+      "direction": "income",
+      "priority": 80,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "工资",
+        "薪资",
+        "薪酬",
+        "月薪",
+        "代发工资"
+      ],
+      "categoryPath": [
+        "工作",
+        "工资"
+      ]
+    },
+    {
+      "id": "income_bonus",
+      "direction": "income",
+      "priority": 80,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "奖金",
+        "绩效",
+        "年终奖",
+        "提成"
+      ],
+      "categoryPath": [
+        "工作",
+        "奖金"
+      ]
+    },
+    {
+      "id": "income_part_time",
+      "direction": "income",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "兼职",
+        "稿费",
+        "劳务",
+        "佣金",
+        "外包",
+        "设计费",
+        "咨询费",
+        "跑腿"
+      ],
+      "categoryPath": [
+        "兼职"
+      ]
+    },
+    {
+      "id": "income_investment",
+      "direction": "income",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "利息",
+        "分红",
+        "收益",
+        "理财收益",
+        "基金",
+        "股票"
+      ],
+      "categoryPath": [
+        "投资收益"
+      ]
+    },
+    {
+      "id": "income_discount",
+      "direction": "income",
+      "priority": 75,
+      "fields": [
+        "counterparty",
+        "product"
+      ],
+      "keywords": [
+        "优惠",
+        "立减",
+        "返现",
+        "红包抵扣"
+      ],
+      "categoryPath": [
+        "其他",
+        "优惠"
+      ]
+    },
+    {
+      "id": "income_general",
+      "direction": "income",
+      "priority": 20,
+      "fields": [
+        "transactionType"
+      ],
+      "keywords": [
+        "转账",
+        "群收款",
+        "二维码收款",
+        "其他"
+      ],
+      "categoryPath": [
+        "其他"
+      ]
+    },
+    {
+      "id": "expense_other_type",
+      "direction": "expense",
+      "priority": 10,
+      "fields": [
+        "transactionType"
+      ],
+      "keywords": [
+        "其他"
+      ],
+      "categoryPath": [
+        "其他"
+      ]
+    }
+  ]
+}

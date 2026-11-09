@@ -108,6 +108,7 @@ flutter:
     - assets/styles/category/color-shape/manifest.json
     - assets/styles/category/color-shape/icons/
     - assets/manual/
+    - assets/import/wechat/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

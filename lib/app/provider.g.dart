@@ -95,6 +95,54 @@ final class AppLogReaderProvider
 
 String _$appLogReaderHash() => r'33592558634ffd5d2acc71727ed069b198dde985';
 
+@ProviderFor(wechatCategoryLexicon)
+final wechatCategoryLexiconProvider = WechatCategoryLexiconProvider._();
+
+final class WechatCategoryLexiconProvider
+    extends
+        $FunctionalProvider<
+          WechatCategoryLexicon,
+          WechatCategoryLexicon,
+          WechatCategoryLexicon
+        >
+    with $Provider<WechatCategoryLexicon> {
+  WechatCategoryLexiconProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'wechatCategoryLexiconProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$wechatCategoryLexiconHash();
+
+  @$internal
+  @override
+  $ProviderElement<WechatCategoryLexicon> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  WechatCategoryLexicon create(Ref ref) {
+    return wechatCategoryLexicon(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WechatCategoryLexicon value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<WechatCategoryLexicon>(value),
+    );
+  }
+}
+
+String _$wechatCategoryLexiconHash() =>
+    r'c3c4cbc28e906bd1492c03d40564b479c9c45162';
+
 @ProviderFor(importFilePicker)
 final importFilePickerProvider = ImportFilePickerProvider._();
 
@@ -233,6 +281,52 @@ final class AlipayFileReaderProvider
 
 String _$alipayFileReaderHash() => r'2f9358ea3b2841e30f389f3a53171bdd67bac483';
 
+@ProviderFor(wechatFileReader)
+final wechatFileReaderProvider = WechatFileReaderProvider._();
+
+final class WechatFileReaderProvider
+    extends
+        $FunctionalProvider<
+          ImportFileReader,
+          ImportFileReader,
+          ImportFileReader
+        >
+    with $Provider<ImportFileReader> {
+  WechatFileReaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'wechatFileReaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$wechatFileReaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportFileReader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImportFileReader create(Ref ref) {
+    return wechatFileReader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportFileReader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportFileReader>(value),
+    );
+  }
+}
+
+String _$wechatFileReaderHash() => r'f122553fef70f530b63dc4cdc1f78b8de39aba55';
+
 @ProviderFor(yimuImportParser)
 final yimuImportParserProvider = YimuImportParserProvider._();
 
@@ -327,6 +421,54 @@ final class AlipayImportParserProvider
 String _$alipayImportParserHash() =>
     r'ec8f3f124510527c18e075e07bca87c078f6b46a';
 
+@ProviderFor(wechatImportParser)
+final wechatImportParserProvider = WechatImportParserProvider._();
+
+final class WechatImportParserProvider
+    extends
+        $FunctionalProvider<
+          WechatImportParser,
+          WechatImportParser,
+          WechatImportParser
+        >
+    with $Provider<WechatImportParser> {
+  WechatImportParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'wechatImportParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$wechatImportParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<WechatImportParser> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  WechatImportParser create(Ref ref) {
+    return wechatImportParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WechatImportParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<WechatImportParser>(value),
+    );
+  }
+}
+
+String _$wechatImportParserHash() =>
+    r'ca485220b980c166a7d3c46e191ca6bbe59a44db';
+
 @ProviderFor(importPlanAppService)
 final importPlanAppServiceProvider = ImportPlanAppServiceProvider._();
 
@@ -373,7 +515,7 @@ final class ImportPlanAppServiceProvider
 }
 
 String _$importPlanAppServiceHash() =>
-    r'460d99bc4c88cb15af98f86811eea86a8cd76d93';
+    r'76dc2f49265b9f3e6c3e515fcb9b3123b75811a9';
 
 @ProviderFor(importMappingRepository)
 final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();

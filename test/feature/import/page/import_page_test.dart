@@ -54,7 +54,7 @@ void main() {
 
     expect(find.text('数据导入'), findsOneWidget);
     expect(find.text('一木记账'), findsOneWidget);
-    expect(find.text('微信账单'), findsNothing);
+    expect(find.text('微信账单'), findsOneWidget);
     expect(find.text('支付宝账单'), findsOneWidget);
     expect(find.text('云闪付账单'), findsOneWidget);
     expect(find.text('其他格式'), findsOneWidget);
@@ -71,6 +71,17 @@ void main() {
 
     expect(find.text('支付宝账单'), findsOneWidget);
     expect(find.text('支持支付宝导出的交易明细 CSV 文件'), findsOneWidget);
+    expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
+  });
+
+  testWidgets('WeChat process page exposes its XLSX file hint', (tester) async {
+    await tester.pumpWidget(
+      _app(page: const ImportProcessPage(source: ImportEntrySource.wechat)),
+    );
+    await tester.pump();
+
+    expect(find.text('微信账单'), findsOneWidget);
+    expect(find.text('支持微信导出的账单 XLSX 文件'), findsOneWidget);
     expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
   });
 

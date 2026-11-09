@@ -5,7 +5,7 @@ import '../../core/patch/patch.dart';
 
 /// A supported external import source. Each source owns its file semantics;
 /// adding a source must not change the behavior of another source.
-enum ImportSource { yimu, alipay }
+enum ImportSource { yimu, alipay, wechat }
 
 enum ImportEntityKind { account, category }
 
