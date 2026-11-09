@@ -128,7 +128,7 @@ AmortizationPlan _plan() {
     originalAmount: const Money(minorUnits: 30000),
     cadenceUnit: AmortizationCadenceUnit.monthly,
     cadenceInterval: 1,
-    firstRecognitionAt: DateTime(2026, 1, 31),
+    firstRecognitionAt: DateTime.now().add(const Duration(days: 30)),
     recognitionCount: 3,
     initialTransactionId: 'amortization-tx',
   );

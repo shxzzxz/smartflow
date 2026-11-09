@@ -113,7 +113,7 @@ final class _AmortizationFormWorkflow {
                   state.mode == TransactionFormMode.expense
                       ? state.fromAccountId
                       : state.toAccountId,
-                  state.fundAccounts,
+                  state.settlementAccounts,
                 )
                 case final fundingAccountId?)
               AccountAmountAllocation(

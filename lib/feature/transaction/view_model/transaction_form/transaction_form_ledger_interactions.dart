@@ -205,7 +205,7 @@ extension LedgerTransactionFormInteractions on TransactionFormViewModel {
           _ => null,
         },
         current.isAmortization
-            ? current.fundAccounts
+            ? current.settlementAccounts
             : current.mode == TransactionFormMode.expense
             ? current.expenseSettlementAccounts
             : current.settlementAccounts,

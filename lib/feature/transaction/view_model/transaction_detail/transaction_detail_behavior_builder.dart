@@ -251,10 +251,16 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
       final amortizationSummary = summary is AmortizationBusinessActivitySummary
           ? summary
           : null;
+      final hasRefundableNet =
+          amortizationSummary != null &&
+          (amortizationSummary.recognizedAmount +
+                      amortizationSummary.remainingAmount)
+                  .minorUnits >
+              0;
       final canRefund =
           amortizationSummary != null &&
           amortizationSummary.status != AmortizationStatus.terminated &&
-          amortizationSummary.remainingAmount.minorUnits > 0;
+          hasRefundableNet;
       result.add(
         DetailActionButton(
           kind: DetailActionKind.refund,
@@ -262,9 +268,9 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
           primary: false,
           enabled: canRefund,
           route: '/transaction/${transaction.id}/refund',
-          deniedReason: _amortizationRefundDeniedReason(
-            amortizationSummary?.status,
-          ),
+          deniedReason: canRefund
+              ? null
+              : _amortizationRefundDeniedReason(amortizationSummary?.status),
         ),
       );
       result.add(
@@ -274,9 +280,11 @@ List<DetailActionButton> _buildTransactionDetailActionButtons(
           primary: false,
           enabled: canRefund,
           route: '/transaction/${transaction.id}/amortization-terminate',
-          deniedReason: _amortizationTerminationDeniedReason(
-            amortizationSummary?.status,
-          ),
+          deniedReason: canRefund
+              ? null
+              : _amortizationTerminationDeniedReason(
+                  amortizationSummary?.status,
+                ),
         ),
       );
     }

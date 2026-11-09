@@ -403,6 +403,7 @@ void main() {
         settlementAccounts: [
           _account('cash'),
           _account('credit', profileKey: AccountProfileKind.credit.key),
+          _account('payable', profileKey: AccountProfileKind.payable.key),
         ],
         fundAccounts: [_account('cash')],
         prepaidExpenseAccounts: [
@@ -458,7 +459,8 @@ void main() {
       await tester.tap(primaryAccount);
       await tester.pumpAndSettle();
       expect(find.text('cash'), findsWidgets);
-      expect(find.text('credit'), findsNothing);
+      expect(find.text('credit'), findsWidgets);
+      expect(find.text('payable'), findsWidgets);
       Navigator.of(
         tester.element(
           find.byKey(const ValueKey('account-picker-layout-toggle')),
@@ -512,6 +514,91 @@ void main() {
         find.byKey(const ValueKey('income-settlement-allocations')),
         findsOneWidget,
       );
+    },
+  );
+
+  testWidgets(
+    'uses normal settlement accounts for split amortization payments',
+    (tester) async {
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        settlementAccounts: [
+          _account('cash'),
+          _account('credit', profileKey: AccountProfileKind.credit.key),
+          _account('payable', profileKey: AccountProfileKind.payable.key),
+        ],
+        fundAccounts: [_account('cash')],
+        ordinaryReceivableAccounts: [
+          _account('receivable', profileKey: AccountProfileKind.receivable.key),
+        ],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final expenseAmortization = _sceneItem('expense', '摊销');
+      await tester.ensureVisible(expenseAmortization);
+      await tester.tap(expenseAmortization);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('toggle-transaction-entry-mode')),
+      );
+      await tester.pumpAndSettle();
+
+      final settlements = tester.widget<TransactionInlineAllocationColumn>(
+        find.byKey(const ValueKey('expense-settlement-allocations')),
+      );
+      expect(settlements.options.map((option) => option.accountId), [
+        'cash',
+        'credit',
+        'payable',
+      ]);
+    },
+  );
+
+  testWidgets(
+    'creates amortization with the default configuration without opening it',
+    (tester) async {
+      final amortizationService = _FakeAmortizationPlanAppService();
+      await _pumpTransactionForm(
+        tester,
+        _FakeTransactionPostingAppService(),
+        amortizationService: amortizationService,
+        settlementAccounts: [_account('cash')],
+        fundAccounts: [_account('cash')],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+      );
+
+      await tester.tap(find.text('场景'));
+      await tester.pumpAndSettle();
+      final expenseAmortization = _sceneItem('expense', '摊销');
+      await tester.ensureVisible(expenseAmortization);
+      await tester.tap(expenseAmortization);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('food'));
+      await tester.pump();
+      await tester.tap(find.text('1'));
+      await tester.pump();
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+
+      expect(amortizationService.commands, hasLength(1));
+      final command = amortizationService.commands.single;
+      expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
+      expect(command.cadenceInterval, 1);
+      expect(command.recognitionCount, 1);
+      expect(command.firstRecognitionAt.isAfter(command.occurredAt), isTrue);
     },
   );
 
@@ -1319,6 +1406,7 @@ Future<void> _pumpTransactionForm(
   List<Account> deferredIncomeAccounts = const [],
   List<CategoryNode>? expenseTree,
   List<CategoryNode>? incomeTree,
+  AmortizationPlanAppService? amortizationService,
   Widget formPage = const TransactionFormPage(),
 }) async {
   final accountOptions = TransactionAccountOptions.fromAccounts(
@@ -1352,6 +1440,10 @@ Future<void> _pumpTransactionForm(
       overrides: [
         testAppDatabaseOverride(),
         transactionPostingAppServiceProvider.overrideWithValue(fakeService),
+        if (amortizationService != null)
+          amortizationPlanAppServiceProvider.overrideWithValue(
+            amortizationService,
+          ),
         advanceOrchestrationAppServiceProvider.overrideWithValue(
           _FakeExpenseSceneOrchestrationAppService(fakeService),
         ),
@@ -1571,6 +1663,20 @@ class _FakeTransactionPostingAppService
   ) {
     throw UnimplementedError();
   }
+}
+
+class _FakeAmortizationPlanAppService implements AmortizationPlanAppService {
+  final commands = <CreateAmortizationPlanCommand>[];
+
+  @override
+  Future<String> createPlan(CreateAmortizationPlanCommand command) async {
+    commands.add(command);
+    return 'amortization-plan';
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeExpenseSceneOrchestrationAppService

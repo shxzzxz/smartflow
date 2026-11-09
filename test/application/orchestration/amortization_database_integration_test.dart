@@ -144,6 +144,35 @@ void main() {
     expect(inspection.snapshot.rows('amortization_allocations'), isNotEmpty);
   });
 
+  test('prepaid plans can be funded by a credit settlement account', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.close);
+
+    await fixture.service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: AmortizationKind.prepaidExpense,
+        total: _money(120000),
+        fundingAllocations: singleAllocation(
+          accountId: 'credit',
+          amount: _money(120000),
+        ),
+        deferralAccountId: 'prepaid',
+        recognitionAllocations: singleAllocation(
+          accountId: 'rent-expense',
+          amount: _money(120000),
+        ),
+        firstRecognitionAt: DateTime(2026, 5, 31),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 12,
+        occurredAt: DateTime(2026, 5, 1),
+      ),
+    );
+
+    expect(await fixture.balance('prepaid'), _money(120000));
+    expect(await fixture.balance('credit'), _money(120000));
+  });
+
   test(
     'ledger failure rolls back the initial transfer and plan write',
     () async {
@@ -683,6 +712,12 @@ class _Fixture {
     for (final account in [
       _account('fund', AccountType.asset, AccountSubtype.fund, 'ledger.fund'),
       _account('fund-2', AccountType.asset, AccountSubtype.fund, 'ledger.fund'),
+      _account(
+        'credit',
+        AccountType.liability,
+        AccountSubtype.payable,
+        'credit.credit',
+      ),
       _account(
         'prepaid',
         AccountType.asset,

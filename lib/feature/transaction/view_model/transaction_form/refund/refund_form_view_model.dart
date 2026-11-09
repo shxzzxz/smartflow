@@ -28,6 +28,7 @@ final _logger = Logger('feature.transaction.refund_form');
 @riverpod
 class RefundFormViewModel extends _$RefundFormViewModel {
   int _refundLimitRevision = 0;
+  AmortizationPlan? _amortizationPlan;
 
   @override
   Future<RefundFormState> build(
@@ -35,6 +36,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
     bool editing = false,
     bool amortizationTermination = false,
   }) async {
+    _amortizationPlan = null;
     final accounts = await ref.watch(
       accountsForSelectionPurposeProvider(
         AccountSelectionPurpose.settlement,
@@ -66,6 +68,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
           message: '摊销计划不存在',
         );
       }
+      _amortizationPlan = plan;
       return _buildAmortizationState(
         transactionId: transactionId,
         detail: detail,
@@ -195,10 +198,11 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       refund = null;
     }
 
+    final occurredAt = editing ? detail.occurredAt : DateTime.now();
     final availableCategories = termination
         ? editing
               ? plan.remainingCategoryAllocationsBeforeTermination
-              : plan.remainingCategoryAllocations
+              : plan.remainingCategoryAllocationsAt(occurredAt)
         : editing
         ? plan.categoryAllocationsExcludingRefund(refund!.id)
         : plan.currentCategoryAllocations;
@@ -234,7 +238,7 @@ class RefundFormViewModel extends _$RefundFormViewModel {
       settlementAllocations: settlementAllocations,
       remaining: remaining,
       refundToAccountId: refundToAccountId,
-      occurredAt: editing ? detail.occurredAt : DateTime.now(),
+      occurredAt: occurredAt,
       amountText: refund == null && terminationFact == null
           ? ''
           : formatMoney(
@@ -341,6 +345,22 @@ class RefundFormViewModel extends _$RefundFormViewModel {
   void setOccurredAt(DateTime value) {
     final current = state.asData?.value;
     if (current == null) return;
+    final plan = _amortizationPlan;
+    if (current.amortizationTermination &&
+        !current.editing &&
+        plan != null &&
+        plan.id == current.amortizationPlanId) {
+      final availableCategories = plan.remainingCategoryAllocationsAt(value);
+      _update(
+        (state) => state.copyWith(
+          occurredAt: value,
+          availableCategoryAllocations: availableCategories,
+          remaining: sumAllocations(availableCategories),
+          categoryAllocations: null,
+        ),
+      );
+      return;
+    }
     _update(
       (state) => state.copyWith(
         occurredAt: value,
@@ -950,6 +970,8 @@ class RefundFormState {
     Object? settlementAllocations = _sentinel,
     Object? refundablePrincipal = _sentinel,
     bool? refundLimitLoading,
+    List<AccountAmountAllocation>? availableCategoryAllocations,
+    Money? remaining,
     bool? submitting,
   }) {
     return RefundFormState(
@@ -971,8 +993,9 @@ class RefundFormState {
       message: message,
       accounts: accounts,
       categoryAccounts: categoryAccounts,
-      availableCategoryAllocations: availableCategoryAllocations,
-      remaining: remaining,
+      availableCategoryAllocations:
+          availableCategoryAllocations ?? this.availableCategoryAllocations,
+      remaining: remaining ?? this.remaining,
       occurredAt: occurredAt ?? this.occurredAt,
       refundToAccountId: refundToAccountId == _sentinel
           ? this.refundToAccountId

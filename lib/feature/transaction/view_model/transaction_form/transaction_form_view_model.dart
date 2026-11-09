@@ -244,6 +244,11 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (amount == null) {
       return _invalidCommand('请输入有效金额');
     }
+    final effectiveAmortizationConfiguration = current.isAmortization
+        ? amortizationConfiguration ??
+              current.initialValues.amortizationConfiguration ??
+              AmortizationConfigurationDraft.defaultFor(current.occurredAt)
+        : amortizationConfiguration;
     Money? feeAmount;
     if ((current.mode == TransactionFormMode.transfer ||
             current.isAmortization) &&
@@ -280,7 +285,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             feeAmount: feeAmount,
             note: trimToNull(noteText),
             consumptionInstallment: consumptionInstallment,
-            amortizationConfiguration: amortizationConfiguration,
+            amortizationConfiguration: effectiveAmortizationConfiguration,
           );
         } else {
           await workflow.edit(
@@ -290,7 +295,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amount: amount,
             feeAmount: feeAmount,
             note: trimToNull(noteText),
-            amortizationConfiguration: amortizationConfiguration,
+            amortizationConfiguration: effectiveAmortizationConfiguration,
           );
           final planId = _editAmortizationPlanId;
           if (planId != null) {
@@ -357,10 +362,10 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (!next.isAmortization) return next;
     return next.copyWith(
       fromAccountId: next.mode == TransactionFormMode.expense
-          ? effectiveAccountId(next.fromAccountId, next.fundAccounts)
+          ? effectiveAccountId(next.fromAccountId, next.settlementAccounts)
           : next.fromAccountId,
       toAccountId: next.mode == TransactionFormMode.income
-          ? effectiveAccountId(next.toAccountId, next.fundAccounts)
+          ? effectiveAccountId(next.toAccountId, next.settlementAccounts)
           : next.toAccountId,
       amortizationDeferralAccountId: effectiveAccountId(
         next.amortizationDeferralAccountId,

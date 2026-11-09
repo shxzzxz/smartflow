@@ -352,7 +352,9 @@ void main() {
       amortizationTermination: true,
     );
 
-    final state = await container.read(provider.future);
+    await container.read(provider.future);
+    container.read(provider.notifier).setOccurredAt(DateTime(2026, 1, 15));
+    final state = container.read(provider).requireValue;
 
     expect(state.amortizationTermination, isTrue);
     expect(state.remaining, const Money(minorUnits: 30000));
@@ -366,6 +368,64 @@ void main() {
     expect(command.categoryReturnAllocations, isEmpty);
     expect(command.settlementAllocations, isEmpty);
   });
+
+  test('loads refund form for a completed amortization plan', () async {
+    final created = _amortizationPlan();
+    final completed = created.withPeriods([
+      for (final period in created.periods)
+        period.posted('recognition-${period.sequenceNo}'),
+    ]);
+    final service = _FakeAmortizationPlanService();
+    final container = _amortizationContainer(plan: completed, service: service);
+    final provider = refundFormViewModelProvider('amortization-tx');
+
+    final state = await container.read(provider.future);
+    final outcome = await container
+        .read(provider.notifier)
+        .submit(amountText: '100', noteText: 'backfilled refund');
+
+    expect(completed.status, AmortizationStatus.completed);
+    expect(state.status, RefundFormStatus.loaded);
+    expect(state.availableCategoryAllocations.single.amount, _money(30000));
+    expect(outcome, isA<SubmitSuccess>());
+    expect(service.refundCommands.single.planId, completed.id);
+  });
+
+  test(
+    'loads termination form with categories after amortization completion',
+    () async {
+      final created = _amortizationPlan();
+      final completed = created.withPeriods([
+        for (final period in created.periods)
+          period.posted('recognition-${period.sequenceNo}'),
+      ]);
+      final service = _FakeAmortizationPlanService();
+      final container = _amortizationContainer(
+        plan: completed,
+        service: service,
+      );
+      final provider = refundFormViewModelProvider(
+        'amortization-tx',
+        amortizationTermination: true,
+      );
+
+      await container.read(provider.future);
+      container.read(provider.notifier).setOccurredAt(DateTime(2026, 2, 15));
+      final state = container.read(provider).requireValue;
+      final outcome = await container
+          .read(provider.notifier)
+          .submit(amountText: '100', noteText: '');
+
+      expect(completed.status, AmortizationStatus.completed);
+      expect(state.status, RefundFormStatus.loaded);
+      expect(state.availableCategoryAllocations.single.amount, _money(20000));
+      expect(state.remaining, _money(20000));
+      expect(outcome, isA<SubmitSuccess>());
+      final command = service.terminationCommands.single;
+      expect(command.terminatedAt, DateTime(2026, 2, 15));
+      expect(command.categoryReturnAllocations.single.amount, _money(10000));
+    },
+  );
 
   test('edits an amortization refund through the shared refund form', () async {
     final created = _amortizationPlan();

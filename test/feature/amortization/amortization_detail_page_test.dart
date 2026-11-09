@@ -50,6 +50,30 @@ void main() {
     expect(termination.onPressed, isNull);
   });
 
+  testWidgets('completed plan keeps refund and termination actions enabled', (
+    tester,
+  ) async {
+    final created = _plan(totalMinor: 30000, recognitionCount: 1);
+    final completed = created.withPeriods([
+      created.periods.single.posted('entry'),
+    ]);
+
+    await tester.pumpWidget(
+      _app(plan: completed, service: _FakeAmortizationPlanAppService()),
+    );
+    await tester.pumpAndSettle();
+
+    final refund = tester.widget<AppInlineActionButton>(
+      find.widgetWithText(AppInlineActionButton, '摊销退款'),
+    );
+    final termination = tester.widget<AppInlineActionButton>(
+      find.widgetWithText(AppInlineActionButton, '摊销终止'),
+    );
+    expect(completed.status, AmortizationStatus.completed);
+    expect(refund.onPressed, isNotNull);
+    expect(termination.onPressed, isNotNull);
+  });
+
   testWidgets('right swiping termination deletes that termination', (
     tester,
   ) async {

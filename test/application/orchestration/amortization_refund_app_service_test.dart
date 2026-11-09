@@ -326,6 +326,109 @@ void main() {
     },
   );
 
+  test('completed plan accepts a backfilled refund', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: AmortizationKind.prepaidExpense,
+        total: _money(30000),
+        fundingAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(30000),
+        ),
+        deferralAccountId: 'deferral',
+        recognitionAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(30000),
+        ),
+        firstRecognitionAt: DateTime(2026, 1, 31),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 3,
+        occurredAt: DateTime(2026, 1, 1),
+      ),
+    );
+    await service.generateDue(DateTime(2026, 3, 31));
+    expect(
+      (await repository.findById(planId))!.status,
+      AmortizationStatus.completed,
+    );
+
+    await service.refund(
+      CreateAmortizationRefundCommand(
+        planId: planId,
+        categoryAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(10000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(10000),
+        ),
+        occurredAt: DateTime(2026, 4, 1),
+      ),
+    );
+
+    final plan = (await repository.findById(planId))!;
+    expect(plan.refunds.single.amount, _money(10000));
+    expect(plan.netAmount, _money(20000));
+    expect(plan.status, AmortizationStatus.completed);
+    expect(ledger.transfers.last.amount, _money(10000));
+  });
+
+  test('completed plan accepts a backdated termination', () async {
+    final repository = _MemoryRepository();
+    final ledger = _FakeLedger();
+    final service = _service(repository, ledger);
+    final planId = await service.createPlan(
+      CreateAmortizationPlanCommand(
+        kind: AmortizationKind.prepaidExpense,
+        total: _money(30000),
+        fundingAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(30000),
+        ),
+        deferralAccountId: 'deferral',
+        recognitionAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(30000),
+        ),
+        firstRecognitionAt: DateTime(2026, 1, 31),
+        cadenceUnit: AmortizationCadenceUnit.monthly,
+        cadenceInterval: 1,
+        recognitionCount: 3,
+        occurredAt: DateTime(2026, 1, 1),
+      ),
+    );
+    await service.generateDue(DateTime(2026, 3, 31));
+    expect(
+      (await repository.findById(planId))!.status,
+      AmortizationStatus.completed,
+    );
+
+    await service.terminate(
+      TerminateAmortizationPlanCommand(
+        planId: planId,
+        terminatedAt: DateTime(2026, 2, 15),
+        categoryReturnAllocations: singleAllocation(
+          accountId: 'category-a',
+          amount: _money(5000),
+        ),
+        settlementAllocations: singleAllocation(
+          accountId: 'cash',
+          amount: _money(5000),
+        ),
+      ),
+    );
+
+    final plan = (await repository.findById(planId))!;
+    expect(plan.status, AmortizationStatus.terminated);
+    expect(plan.termination!.returnAmount, _money(5000));
+    expect(ledger.transfers.last.amount, _money(5000));
+  });
+
   test('editing a refund rewrites its transfer and rebases periods', () async {
     final repository = _MemoryRepository();
     final ledger = _FakeLedger();

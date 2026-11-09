@@ -33,7 +33,9 @@ class _CategoryEntryArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settlementAccounts = categoryType == AccountType.expense
+    final settlementAccounts = state.isAmortization
+        ? state.settlementAccounts
+        : categoryType == AccountType.expense
         ? state.expenseSettlementAccounts
         : state.settlementAccounts;
     if (state.entryMode == TransactionEntryMode.allocated) {

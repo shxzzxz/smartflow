@@ -125,6 +125,37 @@ void main() {
     expect(state.behavior.canEditPostedAt, isA<DetailEditAllowed>());
   });
 
+  test(
+    'completed amortization keeps refund and termination actions enabled',
+    () {
+      final state = _build(
+        purpose: BusinessPurpose.dailyExpense,
+        parentTransactionId: null,
+        businessItem: _amortizationItem(
+          factKind: AmortizationTransactionFactKind.initial,
+        ),
+        businessActivity: _amortizationActivity(
+          status: AmortizationStatus.completed,
+          originalAmount: const Money(minorUnits: 1000),
+          recognizedAmount: const Money(minorUnits: 1000),
+          remainingAmount: const Money(minorUnits: 0),
+          postedPeriodCount: 3,
+        ),
+      );
+
+      final refund = state.actionButtons.singleWhere(
+        (button) => button.kind == DetailActionKind.refund,
+      );
+      final terminate = state.actionButtons.singleWhere(
+        (button) => button.kind == DetailActionKind.amortizationTermination,
+      );
+      expect(refund.enabled, isTrue);
+      expect(refund.deniedReason, isNull);
+      expect(terminate.enabled, isTrue);
+      expect(terminate.deniedReason, isNull);
+    },
+  );
+
   test('amortization refund routes to refund edit and refund deletion', () {
     final state = _build(
       purpose: BusinessPurpose.transfer,

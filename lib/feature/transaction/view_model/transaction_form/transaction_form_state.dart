@@ -97,7 +97,9 @@ class TransactionFormState {
       fromAccountId:
           mode == TransactionFormMode.expense &&
               initialAmortizationKind == AmortizationKind.prepaidExpense
-          ? fromAccountId ?? accountOptions.fundAccounts.firstOrNull?.id
+          ? fromAccountId ??
+                accountOptions.fundAccounts.firstOrNull?.id ??
+                accountOptions.settlementAccounts.firstOrNull?.id
           : fromAccountId,
       toAccountId:
           mode == TransactionFormMode.lending ||
@@ -105,7 +107,9 @@ class TransactionFormState {
           ? null
           : mode == TransactionFormMode.income &&
                 initialAmortizationKind == AmortizationKind.deferredIncome
-          ? toAccountId ?? accountOptions.fundAccounts.firstOrNull?.id
+          ? toAccountId ??
+                accountOptions.fundAccounts.firstOrNull?.id ??
+                accountOptions.settlementAccounts.firstOrNull?.id
           : toAccountId,
       ordinaryReceivableAccountId: mode == TransactionFormMode.lending
           ? toAccountId

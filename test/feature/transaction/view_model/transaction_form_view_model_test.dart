@@ -62,6 +62,7 @@ void main() {
         expect(prepaid.incomeScene, TransactionIncomeScene.ordinary);
         expect(prepaid.fromAccountId, 'cash');
         expect(prepaid.amortizationDeferralAccountId, 'prepaid');
+        expect(prepaid.initialValues.amortizationConfiguration, isNull);
 
         final deferred = container
             .read(
@@ -76,6 +77,39 @@ void main() {
         expect(deferred.incomeScene, TransactionIncomeScene.amortization);
         expect(deferred.toAccountId, 'cash');
         expect(deferred.amortizationDeferralAccountId, 'deferred');
+      },
+    );
+
+    test(
+      'defaults prepaid amortization to a credit settlement account without funds',
+      () {
+        final container = _container(
+          settlementAccounts: [
+            _account(
+              'credit',
+              type: AccountType.liability,
+              profileKey: AccountProfileKind.credit.key,
+            ),
+          ],
+          prepaidExpenseAccounts: [
+            _account(
+              'prepaid',
+              profileKey: AccountProfileKind.prepaidExpense.key,
+            ),
+          ],
+        );
+
+        final state = container
+            .read(
+              transactionFormViewModelProvider(
+                initialMode: TransactionFormMode.expense,
+                initialAmortizationKind: AmortizationKind.prepaidExpense,
+                initialAmortizationDeferralAccountId: 'prepaid',
+              ),
+            )
+            .requireValue!;
+
+        expect(state.fromAccountId, 'credit');
       },
     );
 
@@ -473,6 +507,96 @@ void main() {
     });
 
     test(
+      'creates prepaid amortization from a selected credit settlement account',
+      () async {
+        final amortizationService = _FakeAmortizationPlanAppService();
+        final container = _container(
+          amortizationService: amortizationService,
+          settlementAccounts: [
+            _account('cash'),
+            _account(
+              'credit',
+              type: AccountType.liability,
+              profileKey: AccountProfileKind.credit.key,
+            ),
+          ],
+          fundAccounts: [_account('cash')],
+          prepaidExpenseAccounts: [
+            _account(
+              'prepaid',
+              profileKey: AccountProfileKind.prepaidExpense.key,
+            ),
+          ],
+        );
+        final viewModel = container.read(_provider().notifier);
+
+        viewModel
+          ..setFromAccountId('credit')
+          ..setExpenseScene(TransactionExpenseScene.amortization)
+          ..setExpenseCategory(rootId: 'food', categoryId: 'lunch');
+
+        final state = container.read(_provider()).requireValue!;
+        expect(state.fromAccountId, 'credit');
+
+        final outcome = await viewModel.submit(
+          amountText: '1200',
+          noteText: '',
+          amortizationConfiguration: AmortizationConfigurationDraft(
+            firstRecognitionAt: DateTime(2026, 4, 15),
+            cadenceUnit: AmortizationCadenceUnit.monthly,
+            cadenceInterval: 1,
+            recognitionCount: 12,
+          ),
+        );
+
+        expect(
+          outcome,
+          isA<SubmitSuccess>(),
+          reason: outcome is SubmitFailure ? outcome.error.message : null,
+        );
+        expect(
+          amortizationService
+              .commands
+              .single
+              .fundingAllocations
+              .single
+              .accountId,
+          'credit',
+        );
+      },
+    );
+
+    test('keeps a credit account when moving amortization to split entry', () {
+      final container = _container(
+        settlementAccounts: [
+          _account('cash'),
+          _account(
+            'credit',
+            type: AccountType.liability,
+            profileKey: AccountProfileKind.credit.key,
+          ),
+        ],
+        fundAccounts: [_account('cash')],
+        prepaidExpenseAccounts: [
+          _account(
+            'prepaid',
+            profileKey: AccountProfileKind.prepaidExpense.key,
+          ),
+        ],
+      );
+      final viewModel = container.read(_provider().notifier);
+
+      viewModel
+        ..setExpenseScene(TransactionExpenseScene.amortization)
+        ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
+        ..setFromAccountId('credit')
+        ..useAllocatedEntry(const Money(minorUnits: 120000));
+
+      final state = container.read(_provider()).requireValue!;
+      expect(state.settlementAllocations.single.accountId, 'credit');
+    });
+
+    test(
       'creates amortization with multiple categories and funding accounts',
       () async {
         final amortizationService = _FakeAmortizationPlanAppService();
@@ -663,6 +787,7 @@ void main() {
           amortizationInitialDetail: initialDetail,
           amortizationService: amortizationService,
           accountsById: {cash.id: cash, prepaid.id: prepaid, lunch.id: lunch},
+          settlementAccounts: [cash],
           fundAccounts: [cash],
           prepaidExpenseAccounts: [prepaid],
           expenseTree: [
@@ -712,30 +837,37 @@ void main() {
       },
     );
 
-    test('requires amortization configuration before submit', () async {
-      final amortizationService = _FakeAmortizationPlanAppService();
-      final container = _container(
-        amortizationService: amortizationService,
-        settlementAccounts: [_account('cash')],
-        prepaidExpenseAccounts: [
-          _account(
-            'prepaid',
-            profileKey: AccountProfileKind.prepaidExpense.key,
-          ),
-        ],
-      );
-      final viewModel = container.read(_provider().notifier);
+    test(
+      'uses the current transaction date for an omitted configuration',
+      () async {
+        final amortizationService = _FakeAmortizationPlanAppService();
+        final container = _container(
+          amortizationService: amortizationService,
+          settlementAccounts: [_account('cash')],
+          prepaidExpenseAccounts: [
+            _account(
+              'prepaid',
+              profileKey: AccountProfileKind.prepaidExpense.key,
+            ),
+          ],
+        );
+        final viewModel = container.read(_provider().notifier);
 
-      viewModel
-        ..setExpenseScene(TransactionExpenseScene.amortization)
-        ..setExpenseCategory(rootId: 'food', categoryId: 'lunch');
+        viewModel
+          ..setExpenseScene(TransactionExpenseScene.amortization)
+          ..setExpenseCategory(rootId: 'food', categoryId: 'lunch')
+          ..setOccurredAt(DateTime(2026, 1, 31, 18, 30));
 
-      final outcome = await viewModel.submit(amountText: '100', noteText: '');
+        final outcome = await viewModel.submit(amountText: '100', noteText: '');
 
-      expect(outcome, isA<SubmitFailure>());
-      expect((outcome as SubmitFailure).error.message, '请先完成摊销配置');
-      expect(amortizationService.commands, isEmpty);
-    });
+        expect(outcome, isA<SubmitSuccess>());
+        final command = amortizationService.commands.single;
+        expect(command.cadenceUnit, AmortizationCadenceUnit.monthly);
+        expect(command.cadenceInterval, 1);
+        expect(command.recognitionCount, 1);
+        expect(command.firstRecognitionAt, DateTime(2026, 2, 28));
+      },
+    );
 
     test('creates a transaction with the selected counterparty id', () async {
       final posting = _FakeTransactionPostingAppService();

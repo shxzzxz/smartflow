@@ -107,7 +107,7 @@ class _Body extends ConsumerWidget {
     final plan = state.plan;
     final canCreateRefund =
         plan.status != AmortizationStatus.terminated &&
-        plan.remainingAmount.minorUnits > 0;
+        plan.netAmount.minorUnits > 0;
     final canTerminate = canCreateRefund;
     return ListView(
       padding: const EdgeInsets.fromLTRB(

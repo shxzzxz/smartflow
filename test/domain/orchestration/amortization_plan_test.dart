@@ -350,6 +350,42 @@ void main() {
 
     expect(terminated.terminationRecognitionCategoryAllocations, isEmpty);
   });
+
+  test(
+    'termination-date remaining subtracts recognized net-period amounts',
+    () {
+      final created = _plan(totalMinor: 120000, recognitionCount: 4);
+      final refunded = created.withRefund(
+        AmortizationRefund(
+          id: 'refund',
+          planId: created.id,
+          categoryAllocations: singleAllocation(
+            accountId: 'category-a',
+            amount: const Money(minorUnits: 30000),
+          ),
+          settlementAllocations: singleAllocation(
+            accountId: 'account-c',
+            amount: const Money(minorUnits: 30000),
+          ),
+          transferTransactionId: 'refund-transfer',
+        ),
+      );
+      final plan = refunded.withPeriods([
+        refunded.periods[0].posted('recognition-1'),
+        refunded.periods[1].posted('recognition-2'),
+        ...refunded.periods.skip(2),
+      ]);
+
+      final remaining = plan.remainingCategoryAllocationsAt(
+        DateTime(2026, 3, 1),
+      );
+
+      expect(plan.netAmount, const Money(minorUnits: 90000));
+      expect(plan.recognizedAmount, const Money(minorUnits: 45000));
+      expect(remaining.single.accountId, 'category-a');
+      expect(remaining.single.amount, const Money(minorUnits: 45000));
+    },
+  );
 }
 
 AmortizationPlan _plan({

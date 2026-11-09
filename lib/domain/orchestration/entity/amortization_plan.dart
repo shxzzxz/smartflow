@@ -303,6 +303,41 @@ class AmortizationPlan {
           reductions: recognizedCategoryAllocations,
         );
 
+  /// Category balance that would remain if the plan were terminated on
+  /// [cutoff]. Pending periods due by the cutoff are included because
+  /// termination generates them before closing the plan.
+  List<AccountAmountAllocation> remainingCategoryAllocationsAt(
+    DateTime cutoff,
+  ) {
+    final recognized = <String, int>{};
+    final order = <String>[];
+    for (final period in periods) {
+      if (period.amount.minorUnits <= 0 ||
+          (!period.isPosted && !period.isPending) ||
+          _dateOnly(period.dueAt).isAfter(_dateOnly(cutoff))) {
+        continue;
+      }
+      for (final allocation in period.categoryAllocations) {
+        if (!recognized.containsKey(allocation.accountId)) {
+          order.add(allocation.accountId);
+        }
+        recognized[allocation.accountId] =
+            (recognized[allocation.accountId] ?? 0) +
+            allocation.amount.minorUnits;
+      }
+    }
+    return subtractAllocations(
+      base: currentCategoryAllocations,
+      reductions: [
+        for (final accountId in order)
+          AccountAmountAllocation(
+            accountId: accountId,
+            amount: Money(minorUnits: recognized[accountId]!),
+          ),
+      ],
+    );
+  }
+
   /// Category balance available immediately before an existing termination.
   List<AccountAmountAllocation>
   get remainingCategoryAllocationsBeforeTermination => subtractAllocations(

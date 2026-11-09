@@ -76,16 +76,6 @@ _TransactionModeTab _modeTabFor(TransactionFormMode mode) {
   };
 }
 
-DateTime _oneMonthAfter(DateTime value) {
-  final month = DateTime(value.year, value.month + 1);
-  final lastDay = DateTime(month.year, month.month + 1, 0).day;
-  return DateTime(
-    month.year,
-    month.month,
-    value.day > lastDay ? lastDay : value.day,
-  );
-}
-
 class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
     this.editTransactionId,
@@ -438,7 +428,7 @@ class _TransactionFormContentState
                       mode: formState.mode,
                       occurredAt: formState.occurredAt,
                       moneyAccounts: amortization
-                          ? formState.fundAccounts
+                          ? formState.settlementAccounts
                           : formState.mode == TransactionFormMode.expense
                           ? expenseSettlementAccounts
                           : settlementAccounts,
@@ -834,12 +824,7 @@ class _TransactionFormContentState
   ) async {
     final initial =
         _amortizationConfiguration ??
-        AmortizationConfigurationDraft(
-          firstRecognitionAt: _oneMonthAfter(formState.occurredAt),
-          cadenceUnit: AmortizationCadenceUnit.monthly,
-          cadenceInterval: 1,
-          recognitionCount: 1,
-        );
+        AmortizationConfigurationDraft.defaultFor(formState.occurredAt);
     final configuration = await Navigator.of(context)
         .push<AmortizationConfigurationDraft>(
           MaterialPageRoute(
@@ -883,10 +868,6 @@ class _TransactionFormContentState
     final amortizationConfiguration = formState.isAmortization
         ? _amortizationConfiguration
         : null;
-    if (formState.isAmortization && amortizationConfiguration == null) {
-      _showError('请先完成摊销配置');
-      return;
-    }
 
     final outcome = await ref
         .read(_formProvider.notifier)

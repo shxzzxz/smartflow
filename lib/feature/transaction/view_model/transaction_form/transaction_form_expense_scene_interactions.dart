@@ -44,11 +44,13 @@ extension ExpenseSceneTransactionFormInteractions on TransactionFormViewModel {
           .firstOrNull;
       final consumptionAccountId =
           currentCreditAccount?.id ?? current.creditAccounts.firstOrNull?.id;
-      final currentFundingAccount = current.fundAccounts
+      final currentSettlementAccount = current.settlementAccounts
           .where((account) => account.id == current.fromAccountId)
           .firstOrNull;
-      final amortizationFundingAccountId =
-          currentFundingAccount?.id ?? current.fundAccounts.firstOrNull?.id;
+      final amortizationSettlementAccountId =
+          currentSettlementAccount?.id ??
+          current.fundAccounts.firstOrNull?.id ??
+          current.settlementAccounts.firstOrNull?.id;
       final currentDeferralAccount = current.prepaidExpenseAccounts
           .where(
             (account) => account.id == current.amortizationDeferralAccountId,
@@ -66,7 +68,8 @@ extension ExpenseSceneTransactionFormInteractions on TransactionFormViewModel {
         fromAccountId: switch (value) {
           TransactionExpenseScene.consumptionInstallment =>
             consumptionAccountId,
-          TransactionExpenseScene.amortization => amortizationFundingAccountId,
+          TransactionExpenseScene.amortization =>
+            amortizationSettlementAccountId,
           _ => current.fromAccountId,
         },
         expenseScene: value,
@@ -92,7 +95,7 @@ extension ExpenseSceneTransactionFormInteractions on TransactionFormViewModel {
       final enteringAmortization =
           value == TransactionIncomeScene.amortization &&
           current.incomeScene != value;
-      final currentFundingAccount = current.fundAccounts
+      final currentSettlementAccount = current.settlementAccounts
           .where((account) => account.id == current.toAccountId)
           .firstOrNull;
       final currentDeferralAccount = current.deferredIncomeAccounts
@@ -112,7 +115,9 @@ extension ExpenseSceneTransactionFormInteractions on TransactionFormViewModel {
             ? const []
             : current.settlementAllocations,
         toAccountId: value == TransactionIncomeScene.amortization
-            ? currentFundingAccount?.id ?? current.fundAccounts.firstOrNull?.id
+            ? currentSettlementAccount?.id ??
+                  current.fundAccounts.firstOrNull?.id ??
+                  current.settlementAccounts.firstOrNull?.id
             : current.toAccountId,
         expenseScene: TransactionExpenseScene.ordinary,
         incomeScene: value,
