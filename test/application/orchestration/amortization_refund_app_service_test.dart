@@ -827,6 +827,7 @@ AmortizationPlanAppService _service(
     ledger: ledger,
     transactionRunner: const _Runner(),
     idGenerator: SequentialIdGenerator(prefix: 'plan'),
+    now: () => DateTime(2026, 1, 1),
   );
 }
 

@@ -173,6 +173,21 @@ void main() {
     expect(await fixture.balance('credit'), _money(120000));
   });
 
+  test('creating a backfilled plan posts periods due by now', () async {
+    final fixture = await _Fixture.create(now: DateTime(2026, 3, 15));
+    addTearDown(fixture.close);
+
+    final planId = await fixture.service.createPlan(_command());
+    final plan = (await fixture.repository.findById(planId))!;
+
+    expect(plan.postedPeriodCount, 2);
+    expect(plan.periods[0].isPosted, isTrue);
+    expect(plan.periods[1].isPosted, isTrue);
+    expect(plan.periods[2].isPending, isTrue);
+    expect(await fixture.balance('prepaid'), _money(10000));
+    expect(await fixture.balance('rent-expense'), _money(20000));
+  });
+
   test(
     'ledger failure rolls back the initial transfer and plan write',
     () async {
@@ -207,13 +222,14 @@ void main() {
   );
 
   test('outer failure after save rolls back ledger and plan writes', () async {
-    final fixture = await _Fixture.create();
+    final fixture = await _Fixture.create(now: DateTime(2026, 3, 15));
     addTearDown(fixture.close);
     final service = AmortizationPlanAppServiceImpl(
       repository: _FailAfterSaveRepository(fixture.database),
       ledger: fixture.ledger,
       transactionRunner: fixture.runner,
       idGenerator: fixture.ids,
+      now: () => DateTime(2026, 3, 15),
     );
 
     await expectLater(
@@ -706,7 +722,7 @@ class _Fixture {
   final SequentialIdGenerator ids;
   final AmortizationPlanAppServiceImpl service;
 
-  static Future<_Fixture> create() async {
+  static Future<_Fixture> create({DateTime? now}) async {
     final database = createTestDatabase();
     final accounts = DriftAccountRepository(database);
     for (final account in [
@@ -774,6 +790,7 @@ class _Fixture {
       ledger: ledger,
       transactionRunner: runner,
       idGenerator: ids,
+      now: () => now ?? DateTime(2026, 1, 1),
     );
     return _Fixture._(
       database: database,

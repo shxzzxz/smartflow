@@ -78,17 +78,20 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
     required AmortizationLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
+    DateTime Function()? now,
   }) : _repository = repository,
        _ledger = ledger,
        _recalculator = AmortizationPlanRecalculator(ledger),
        _transactionRunner = transactionRunner,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _now = now ?? DateTime.now;
 
   final AmortizationRepository _repository;
   final AmortizationLedgerPort _ledger;
   final AmortizationPlanRecalculator _recalculator;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
+  final DateTime Function() _now;
 
   @override
   Future<String> createPlan(CreateAmortizationPlanCommand command) {
@@ -145,7 +148,8 @@ class AmortizationPlanAppServiceImpl implements AmortizationPlanAppService {
         recognitionCount: command.recognitionCount,
         initialTransactionId: initialTransactionId,
       );
-      await _repository.save(plan);
+      final reconciled = await _recalculator.generateDue(plan, _now());
+      await _repository.save(reconciled);
       return planId;
     });
   }
