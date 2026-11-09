@@ -5,8 +5,8 @@ import 'import_parser_registry.dart';
 /// Parses an in-memory import bundle into a source-neutral import plan.
 ///
 /// Source dispatch belongs at this application seam so the feature layer does
-/// not call a concrete domain parser directly. The first release intentionally
-/// supports only 一木记账.
+/// not call a concrete domain parser directly. Concrete parser registration is
+/// composed by the application provider layer.
 abstract interface class ImportPlanAppService {
   ImportParseResult parse({
     required ImportSource source,

@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import '../../core/money/money.dart';
 import '../../core/patch/patch.dart';
 
-/// A supported external import source. The enum intentionally has one value in
-/// the first release; adding a source must not change the Yimu semantics.
-enum ImportSource { yimu }
+/// A supported external import source. Each source owns its file semantics;
+/// adding a source must not change the behavior of another source.
+enum ImportSource { yimu, alipay }
 
 enum ImportEntityKind { account, category }
 

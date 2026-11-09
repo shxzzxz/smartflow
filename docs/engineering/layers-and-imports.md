@@ -206,6 +206,9 @@ lib/infrastructure/database/table/*
 
 ## Import 边界
 
+- 每种外部导入来源拥有独立的 `domain/import/source/<source>/` 模块，外部入口统一实现 `ImportSourceParser`；账单、资金流、解析单元和来源支持函数在该模块内部组织，不进入通用导入模型或工作流。
+- 来源专用的文件读取策略位于 `infrastructure/import/<source>/`。CSV / XLSX 等通用物理格式能力可以放在 `infrastructure/import/`，但编码、前导区和表头定位等来源语义由对应来源 adapter 负责。
+- feature / application 必须显式传递 `ImportSource` 来选择 parser、文件选择和来源历史；不得在通用 ViewModel 或工作流中写死具体来源。
 - `domain/*` 不依赖 `application/`、`infrastructure/`、`feature/`、`app/`、Drift、Riverpod。
 - `domain/*` 不依赖 application query DTO / read model / scope filter。
 - `application/*` 可以依赖一个或多个 `domain/*`；`application/<domain>/<capability>/query` 可定义纯读侧查询接口、查询参数与 read model。

@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/import/service/yimu_file_handlers.dart';
-import 'package:smartflow/domain/import/service/yimu_file_type.dart';
-import 'package:smartflow/domain/import/port/yimu_workbook_reader.dart';
+import 'package:smartflow/domain/import/port/import_file_reader.dart';
+import 'package:smartflow/domain/import/source/yimu/yimu_file_handlers.dart';
+import 'package:smartflow/domain/import/source/yimu/yimu_file_type.dart';
 
 void main() {
   test('each file handler validates its own template structure', () {
     final issues = const YimuBillFileHandler().validate(
       fileName: '账单.xls',
-      sheet: YimuSheet(
+      sheet: ImportTabularSheet(
         name: '账单',
         headers: const ['日期', '收支类型', '金额'],
         rows: const [
@@ -26,7 +26,7 @@ void main() {
     final fact = const YimuBillFileHandler().handle(
       fileIndex: 2,
       fileName: '账单.xls',
-      sheet: YimuSheet(
+      sheet: ImportTabularSheet(
         name: '账单',
         headers: const ['日期', '收支类型', '金额', '类别', '账户'],
         rows: const [
@@ -63,7 +63,7 @@ void main() {
     final fact = const YimuBillFileHandler().handle(
       fileIndex: 0,
       fileName: '账单.xls',
-      sheet: YimuSheet(
+      sheet: ImportTabularSheet(
         name: '账单',
         rows: const [
           {
@@ -92,7 +92,7 @@ void main() {
     final fact = const YimuTransferFileHandler().handle(
       fileIndex: 1,
       fileName: '转账.xls',
-      sheet: YimuSheet(
+      sheet: ImportTabularSheet(
         name: '转账',
         rows: const [
           {
@@ -123,7 +123,7 @@ void main() {
     final fact = const YimuDebtFileHandler().handle(
       fileIndex: 0,
       fileName: '债务.xls',
-      sheet: YimuSheet(
+      sheet: ImportTabularSheet(
         name: '债务',
         rows: const [
           {

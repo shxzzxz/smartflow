@@ -1,4 +1,4 @@
-import '../import_models.dart';
+import '../../import_models.dart';
 
 enum YimuFileType {
   bill(key: 'bill', label: '账单'),

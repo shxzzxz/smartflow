@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/import/import_models.dart';
-import 'package:smartflow/domain/import/port/yimu_workbook_reader.dart';
+import 'package:smartflow/domain/import/port/import_file_reader.dart';
 import 'package:smartflow/domain/import/service/source_parsing_models.dart';
-import 'package:smartflow/domain/import/service/yimu_file_type.dart';
-import 'package:smartflow/domain/import/service/yimu_import_parser.dart';
+import 'package:smartflow/domain/import/source/yimu/yimu_file_type.dart';
+import 'package:smartflow/domain/import/source/yimu/yimu_import_parser.dart';
 
 void main() {
   test('turns a refunded expense into a gross expense and refund child', () {
@@ -763,36 +763,36 @@ void main() {
 
   test('treats duplicate auto-detected file roles as a bundle fatal error', () {
     final reader = _FakeReader({
-      '账单.xls': YimuWorkbook(
+      '账单.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '账单',
             rows: const [_fixtureBillRow],
             headers: _billHeaders,
           ),
         ],
       ),
-      '账单副本.xls': YimuWorkbook(
+      '账单副本.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '账单',
             rows: const [_fixtureBillRow],
             headers: _billHeaders,
           ),
         ],
       ),
-      '转账.xls': YimuWorkbook(
+      '转账.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '转账',
             rows: const [_fixtureTransferRow],
             headers: _transferHeaders,
           ),
         ],
       ),
-      '债务.xls': YimuWorkbook(
+      '债务.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '转账',
             rows: const [_fixtureDebtRow],
             headers: _transferHeaders,
@@ -818,21 +818,23 @@ void main() {
 
   test('isolates an empty worksheet when other files remain usable', () {
     final reader = _FakeReader({
-      '账单.xls': YimuWorkbook(
-        sheets: [YimuSheet(name: '账单', rows: const [], headers: const [])],
-      ),
-      '转账.xls': YimuWorkbook(
+      '账单.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(name: '账单', rows: const [], headers: const []),
+        ],
+      ),
+      '转账.xls': ImportTabularFile(
+        sheets: [
+          ImportTabularSheet(
             name: '转账',
             rows: const [_fixtureTransferRow],
             headers: _transferHeaders,
           ),
         ],
       ),
-      '债务.xls': YimuWorkbook(
+      '债务.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '债务',
             rows: const [_fixtureDebtRow],
             headers: _transferHeaders,
@@ -856,17 +858,27 @@ void main() {
 
   test('reports no usable files when every worksheet is empty', () {
     final reader = _FakeReader({
-      '账单.xls': YimuWorkbook(
-        sheets: [YimuSheet(name: '账单', rows: const [], headers: _billHeaders)],
-      ),
-      '转账.xls': YimuWorkbook(
+      '账单.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(name: '转账', rows: const [], headers: _transferHeaders),
+          ImportTabularSheet(name: '账单', rows: const [], headers: _billHeaders),
         ],
       ),
-      '债务.xls': YimuWorkbook(
+      '转账.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(name: '债务', rows: const [], headers: _transferHeaders),
+          ImportTabularSheet(
+            name: '转账',
+            rows: const [],
+            headers: _transferHeaders,
+          ),
+        ],
+      ),
+      '债务.xls': ImportTabularFile(
+        sheets: [
+          ImportTabularSheet(
+            name: '债务',
+            rows: const [],
+            headers: _transferHeaders,
+          ),
         ],
       ),
     });
@@ -888,9 +900,9 @@ void main() {
   test('rejects a bill sheet missing a rule-required header', () {
     final headers = [..._billHeaders]..remove('报销明细');
     final reader = _FakeReader({
-      '账单.xls': YimuWorkbook(
+      '账单.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '账单',
             rows: const [
               {
@@ -906,18 +918,18 @@ void main() {
           ),
         ],
       ),
-      '转账.xls': YimuWorkbook(
+      '转账.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '转账',
             rows: const [_fixtureTransferRow],
             headers: _transferHeaders,
           ),
         ],
       ),
-      '债务.xls': YimuWorkbook(
+      '债务.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '债务',
             rows: const [_fixtureDebtRow],
             headers: _transferHeaders,
@@ -966,9 +978,9 @@ YimuImportParser _parser({
 }) {
   return YimuImportParser(
     reader: _FakeReader({
-      '账单.xls': YimuWorkbook(
+      '账单.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '账单',
             rows: billRows.isEmpty ? const [_fixtureBillRow] : billRows,
             headers: _billHeaders,
@@ -976,9 +988,9 @@ YimuImportParser _parser({
         ],
       ),
       if (includeTransfer)
-        '转账.xls': YimuWorkbook(
+        '转账.xls': ImportTabularFile(
           sheets: [
-            YimuSheet(
+            ImportTabularSheet(
               name: '转账',
               rows: transferRows.isEmpty
                   ? const [_fixtureTransferRow]
@@ -987,9 +999,9 @@ YimuImportParser _parser({
             ),
           ],
         ),
-      '债务.xls': YimuWorkbook(
+      '债务.xls': ImportTabularFile(
         sheets: [
-          YimuSheet(
+          ImportTabularSheet(
             name: '转账',
             rows: debtRows.isEmpty ? const [_fixtureDebtRow] : debtRows,
             headers: _transferHeaders,
@@ -1017,13 +1029,13 @@ List<ImportTransactionGroupDraft> _groups(ImportParseResult result) {
       .toList(growable: false);
 }
 
-class _FakeReader implements YimuWorkbookReader {
+class _FakeReader implements ImportFileReader {
   _FakeReader(this.workbooks);
 
-  final Map<String, YimuWorkbook> workbooks;
+  final Map<String, ImportTabularFile> workbooks;
 
   @override
-  YimuWorkbook read(ImportFilePayload file) {
+  ImportTabularFile read(ImportFilePayload file) {
     final workbook = workbooks[file.name];
     if (workbook == null) {
       throw FormatException('missing workbook: ${file.name}');
@@ -1032,11 +1044,11 @@ class _FakeReader implements YimuWorkbookReader {
   }
 }
 
-class _ThrowingReader implements YimuWorkbookReader {
+class _ThrowingReader implements ImportFileReader {
   const _ThrowingReader();
 
   @override
-  YimuWorkbook read(ImportFilePayload file) {
+  ImportTabularFile read(ImportFilePayload file) {
     throw Exception('decoder-secret');
   }
 }

@@ -23,6 +23,10 @@ class ImportSourceIcon extends StatelessWidget {
         background: colors.primaryContainer,
         foreground: colors.onPrimaryContainer,
       ),
+      ImportEntrySource.alipay => (
+        background: colors.primaryContainer,
+        foreground: colors.onPrimaryContainer,
+      ),
       ImportEntrySource.unionPay => (
         background: colors.secondaryContainer,
         foreground: colors.onSecondaryContainer,
@@ -34,6 +38,7 @@ class ImportSourceIcon extends StatelessWidget {
     };
     final icon = switch (source) {
       ImportEntrySource.yimu => Icons.energy_savings_leaf_rounded,
+      ImportEntrySource.alipay => Icons.account_balance_wallet_rounded,
       ImportEntrySource.unionPay => RemixIcons.bank_card_line,
       ImportEntrySource.generic => RemixIcons.file_excel_2_line,
     };

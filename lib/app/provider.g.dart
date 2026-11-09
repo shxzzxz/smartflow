@@ -141,10 +141,10 @@ final class ImportFilePickerProvider
 
 String _$importFilePickerHash() => r'95569b885181e28944e6b8019baa8e883a1f2529';
 
-@ProviderFor(importFileReader)
-final importFileReaderProvider = ImportFileReaderProvider._();
+@ProviderFor(yimuFileReader)
+final yimuFileReaderProvider = YimuFileReaderProvider._();
 
-final class ImportFileReaderProvider
+final class YimuFileReaderProvider
     extends
         $FunctionalProvider<
           ImportFileReader,
@@ -152,19 +152,19 @@ final class ImportFileReaderProvider
           ImportFileReader
         >
     with $Provider<ImportFileReader> {
-  ImportFileReaderProvider._()
+  YimuFileReaderProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'importFileReaderProvider',
+        name: r'yimuFileReaderProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$importFileReaderHash();
+  String debugGetCreateSourceHash() => _$yimuFileReaderHash();
 
   @$internal
   @override
@@ -173,7 +173,7 @@ final class ImportFileReaderProvider
 
   @override
   ImportFileReader create(Ref ref) {
-    return importFileReader(ref);
+    return yimuFileReader(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -185,7 +185,53 @@ final class ImportFileReaderProvider
   }
 }
 
-String _$importFileReaderHash() => r'4f7c5ab4c9f51b35e5ff05cb87504bccfc3a24f8';
+String _$yimuFileReaderHash() => r'042e9068448c97c81fec8c00abfaa3464b71add8';
+
+@ProviderFor(alipayFileReader)
+final alipayFileReaderProvider = AlipayFileReaderProvider._();
+
+final class AlipayFileReaderProvider
+    extends
+        $FunctionalProvider<
+          ImportFileReader,
+          ImportFileReader,
+          ImportFileReader
+        >
+    with $Provider<ImportFileReader> {
+  AlipayFileReaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'alipayFileReaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$alipayFileReaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportFileReader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImportFileReader create(Ref ref) {
+    return alipayFileReader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportFileReader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportFileReader>(value),
+    );
+  }
+}
+
+String _$alipayFileReaderHash() => r'2f9358ea3b2841e30f389f3a53171bdd67bac483';
 
 @ProviderFor(yimuImportParser)
 final yimuImportParserProvider = YimuImportParserProvider._();
@@ -231,7 +277,55 @@ final class YimuImportParserProvider
   }
 }
 
-String _$yimuImportParserHash() => r'b73e011f5e310d2b8d3097c39fce279af69d1ab1';
+String _$yimuImportParserHash() => r'fd35fe9c35468bb7305d9e2ebc2654350abfed63';
+
+@ProviderFor(alipayImportParser)
+final alipayImportParserProvider = AlipayImportParserProvider._();
+
+final class AlipayImportParserProvider
+    extends
+        $FunctionalProvider<
+          AlipayImportParser,
+          AlipayImportParser,
+          AlipayImportParser
+        >
+    with $Provider<AlipayImportParser> {
+  AlipayImportParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'alipayImportParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$alipayImportParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<AlipayImportParser> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AlipayImportParser create(Ref ref) {
+    return alipayImportParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AlipayImportParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AlipayImportParser>(value),
+    );
+  }
+}
+
+String _$alipayImportParserHash() =>
+    r'ec8f3f124510527c18e075e07bca87c078f6b46a';
 
 @ProviderFor(importPlanAppService)
 final importPlanAppServiceProvider = ImportPlanAppServiceProvider._();
@@ -279,7 +373,7 @@ final class ImportPlanAppServiceProvider
 }
 
 String _$importPlanAppServiceHash() =>
-    r'3e8b1bb7069bcee123b514ea83d4621c620a5fc7';
+    r'460d99bc4c88cb15af98f86811eea86a8cd76d93';
 
 @ProviderFor(importMappingRepository)
 final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();

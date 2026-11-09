@@ -33,12 +33,15 @@ class PlatformImportFilePicker implements ImportFilePicker {
   const PlatformImportFilePicker();
 
   @override
-  Future<ImportBundle?> pickYimuBundle() async {
+  Future<ImportBundle?> pickBundle({required ImportSource source}) async {
     final List<PlatformFile> result;
     try {
       result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ['csv', 'xlsx'],
+        allowedExtensions: switch (source) {
+          ImportSource.yimu => const ['csv', 'xlsx'],
+          ImportSource.alipay => const ['csv'],
+        },
       );
     } on Exception catch (error, stackTrace) {
       throw InfrastructureException(

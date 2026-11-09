@@ -9,11 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import '../core/logging/app_log_file_sink.dart';
 import '../core/logging/app_log_reader.dart';
 import '../infrastructure/database/database_provider.dart';
+import '../infrastructure/import/alipay/alipay_file_reader.dart';
 import '../infrastructure/import/ledger_import_port.dart';
 import '../infrastructure/import/platform_import_file_picker.dart';
 import '../infrastructure/import/repository/drift_import_batch_repository.dart';
 import '../infrastructure/import/repository/drift_import_mapping_repository.dart';
-import '../infrastructure/import/tabular_file_readers.dart';
+import '../infrastructure/import/yimu/yimu_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
@@ -94,7 +95,8 @@ import '../domain/import/port/import_batch_repository.dart';
 import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
 import '../domain/import/port/import_file_reader.dart';
-import '../domain/import/service/yimu_import_parser.dart';
+import '../domain/import/source/alipay/alipay_import_parser.dart';
+import '../domain/import/source/yimu/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
 import '../domain/credit/port/bill_generation_suppression_repository.dart';
 import '../domain/credit/port/credit_account_repository.dart';
@@ -156,19 +158,32 @@ ImportFilePicker importFilePicker(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-ImportFileReader importFileReader(Ref ref) {
-  return ImportFileReaderRegistry();
+ImportFileReader yimuFileReader(Ref ref) {
+  return YimuFileReader();
+}
+
+@Riverpod(keepAlive: true)
+ImportFileReader alipayFileReader(Ref ref) {
+  return const AlipayFileReader();
 }
 
 @Riverpod(keepAlive: true)
 YimuImportParser yimuImportParser(Ref ref) {
-  return YimuImportParser(reader: ref.watch(importFileReaderProvider));
+  return YimuImportParser(reader: ref.watch(yimuFileReaderProvider));
+}
+
+@Riverpod(keepAlive: true)
+AlipayImportParser alipayImportParser(Ref ref) {
+  return AlipayImportParser(reader: ref.watch(alipayFileReaderProvider));
 }
 
 @Riverpod(keepAlive: true)
 ImportPlanAppService importPlanAppService(Ref ref) {
   return ImportPlanAppServiceImpl(
-    parsers: ImportParserRegistry([ref.watch(yimuImportParserProvider)]),
+    parsers: ImportParserRegistry([
+      ref.watch(yimuImportParserProvider),
+      ref.watch(alipayImportParserProvider),
+    ]),
   );
 }
 

@@ -7,39 +7,6 @@ import 'package:excel_community/excel_community.dart';
 import '../../domain/import/import_models.dart';
 import '../../domain/import/port/import_file_reader.dart';
 
-/// Dispatches physical file formats without exposing decoder packages to the
-/// source parser.
-class ImportFileReaderRegistry implements ImportFileReader {
-  ImportFileReaderRegistry({
-    ImportFileReader csvReader = const CsvFileReader(),
-    ImportFileReader xlsxReader = const XlsxFileReader(),
-  }) : _readers = {'.csv': csvReader, '.xlsx': xlsxReader};
-
-  final Map<String, ImportFileReader> _readers;
-
-  @override
-  ImportTabularFile read(ImportFilePayload file) {
-    final extension = _extension(file.name);
-    final reader = _readers[extension];
-    if (reader == null) {
-      throw ImportFileReadException.unsupportedFormat(file.name);
-    }
-    try {
-      return reader.read(file);
-    } on ImportFileReadException {
-      rethrow;
-    } catch (error, stackTrace) {
-      throw ImportFileReadException.decodeFailed(file.name, error, stackTrace);
-    }
-  }
-
-  static String _extension(String fileName) {
-    final dot = fileName.lastIndexOf('.');
-    if (dot < 0) return '';
-    return fileName.substring(dot).trim().toLowerCase();
-  }
-}
-
 class CsvFileReader implements ImportFileReader {
   const CsvFileReader();
 
@@ -122,10 +89,9 @@ class XlsxFileReader implements ImportFileReader {
     for (final sourceRow in sourceRows.skip(1)) {
       rows.add({
         for (var index = 0; index < headers.length; index++)
-          headers[index]:
-              index < sourceRow.length
-                  ? _cellValue(sourceRow[index]?.value)
-                  : null,
+          headers[index]: index < sourceRow.length
+              ? _cellValue(sourceRow[index]?.value)
+              : null,
       });
     }
     return ImportTabularSheet(name: name, headers: headers, rows: rows);

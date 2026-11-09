@@ -4,9 +4,9 @@ import 'package:smartflow/application/import/import_plan_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/import/import_models.dart';
+import 'package:smartflow/domain/import/port/import_file_reader.dart';
 import 'package:smartflow/domain/import/port/import_source_parser.dart';
-import 'package:smartflow/domain/import/port/yimu_workbook_reader.dart';
-import 'package:smartflow/domain/import/service/yimu_import_parser.dart';
+import 'package:smartflow/domain/import/source/yimu/yimu_import_parser.dart';
 
 void main() {
   test('dispatches parsing through the source parser registry', () {
@@ -20,6 +20,19 @@ void main() {
 
     expect(parser.receivedBundle, same(bundle));
     expect(result.source, ImportSource.yimu);
+  });
+
+  test('dispatches a non-Yimu source without workflow changes', () {
+    final parser = _RecordingParser(ImportSource.alipay);
+    final service = ImportPlanAppServiceImpl(
+      parsers: ImportParserRegistry([parser]),
+    );
+    final bundle = ImportBundle(files: const []);
+
+    final result = service.parse(source: ImportSource.alipay, bundle: bundle);
+
+    expect(parser.receivedBundle, same(bundle));
+    expect(result.source, ImportSource.alipay);
   });
 
   test('draft edit clears only parser issues repaired by edited fields', () {
@@ -149,18 +162,20 @@ ImportPlanAppServiceImpl _service() {
   );
 }
 
-class _UnusedReader implements YimuWorkbookReader {
+class _UnusedReader implements ImportFileReader {
   const _UnusedReader();
 
   @override
-  YimuWorkbook read(ImportFilePayload file) => throw UnimplementedError();
+  ImportTabularFile read(ImportFilePayload file) => throw UnimplementedError();
 }
 
 class _RecordingParser implements ImportSourceParser {
+  _RecordingParser([this.source = ImportSource.yimu]);
+
   ImportBundle? receivedBundle;
 
   @override
-  ImportSource get source => ImportSource.yimu;
+  final ImportSource source;
 
   @override
   ImportParseResult parse(ImportBundle bundle) {

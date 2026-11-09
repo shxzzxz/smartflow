@@ -237,14 +237,19 @@ class ImportViewModel extends Notifier<ImportPageState> {
   @override
   ImportPageState build() => ImportPageState.initial();
 
-  Future<ImportActionOutcome<void>> pickFiles({bool append = false}) async {
+  Future<ImportActionOutcome<void>> pickFiles({
+    required ImportSource source,
+    bool append = false,
+  }) async {
     state = state.copyWith(
       phase: ImportPagePhase.pickingFiles,
       error: null,
       lastCommit: null,
     );
     try {
-      final bundle = await ref.read(importFilePickerProvider).pickYimuBundle();
+      final bundle = await ref
+          .read(importFilePickerProvider)
+          .pickBundle(source: source);
       if (bundle == null) {
         state = state.copyWith(phase: _settledPhase);
         return const ImportActionOutcome.success(null);
@@ -286,15 +291,20 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
-  Future<ImportActionOutcome<void>> parseSelectedFiles() async {
+  Future<ImportActionOutcome<void>> parseSelectedFiles({
+    required ImportSource source,
+  }) async {
     final bundle = state.selectedBundle;
     if (bundle == null || bundle.files.isEmpty) {
       return _invalid<void>('请先选择要导入的文件。');
     }
-    return loadBundle(bundle);
+    return loadBundle(source: source, bundle: bundle);
   }
 
-  Future<ImportActionOutcome<void>> loadBundle(ImportBundle bundle) async {
+  Future<ImportActionOutcome<void>> loadBundle({
+    required ImportSource source,
+    required ImportBundle bundle,
+  }) async {
     state = state.copyWith(
       phase: ImportPagePhase.parsing,
       selectedBundle: bundle,
@@ -320,7 +330,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
       await Future<void>.delayed(Duration.zero);
       plan = ref
           .read(importPlanAppServiceProvider)
-          .parse(source: ImportSource.yimu, bundle: bundle);
+          .parse(source: source, bundle: bundle);
     } on AppException catch (exception, stackTrace) {
       logUiActionException(
         _logger,
@@ -402,7 +412,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   }) async {
     final plan = state.plan;
     if (plan == null || state.review == null) {
-      return _invalid<void>('请先选择并解析一木资料包。');
+      return _invalid<void>('请先选择并解析导入资料包。');
     }
     if (groupIndex < 0 || groupIndex >= plan.groups.length) {
       return _invalid<void>('找不到要编辑的交易组。');
@@ -434,7 +444,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   }) async {
     final plan = state.plan;
     if (plan == null || state.review == null) {
-      return _invalid<void>('请先选择并解析一木资料包。');
+      return _invalid<void>('请先选择并解析导入资料包。');
     }
     if (groupIndex < 0 || groupIndex >= plan.groups.length) {
       return _invalid<void>('找不到要编辑的交易组。');
@@ -471,7 +481,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
     ImportMappingDecision decision,
   ) async {
     final review = state.review;
-    if (review == null) return _invalid<void>('请先选择并解析一木资料包。');
+    if (review == null) return _invalid<void>('请先选择并解析导入资料包。');
 
     final mappings = Map<ImportMappingKey, String>.of(state.temporaryMappings);
     final creations = Map<ImportMappingKey, ImportMappingCreation>.of(
@@ -532,7 +542,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
 
   ImportActionOutcome<void> toggleSaveMappingConfiguration() {
     if (state.review == null) {
-      return _invalid<void>('请先选择并解析一木资料包。');
+      return _invalid<void>('请先选择并解析导入资料包。');
     }
     if (state.missingMappingCount > 0) {
       return _invalid<void>('仍有来源账户或分类尚未配置。');
@@ -546,7 +556,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
 
   ImportActionOutcome<void> confirmMappingConfiguration() {
     if (state.review == null) {
-      return _invalid<void>('请先选择并解析一木资料包。');
+      return _invalid<void>('请先选择并解析导入资料包。');
     }
     if (state.missingMappingCount > 0) {
       return _invalid<void>('仍有来源账户或分类尚未配置。');
@@ -683,7 +693,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
   Future<ImportActionOutcome<ImportCommitResult>> commitSelectedGroups() async {
     final review = state.review;
     if (review == null) {
-      return _invalid<ImportCommitResult>('请先选择并解析一木资料包。');
+      return _invalid<ImportCommitResult>('请先选择并解析导入资料包。');
     }
     if (!state.mappingConfirmed) {
       return _invalid<ImportCommitResult>('请先确认映射配置。');
@@ -727,7 +737,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
           plannedCreations: remainingCreations,
           groupMappingOverrides: state.groupMappingOverrides,
         );
-        batches = await service.listBatches(source: ImportSource.yimu);
+        batches = await service.listBatches(source: review.plan.source);
       } on AppException catch (exception, stackTrace) {
         logUiActionException(
           _logger,
@@ -789,12 +799,14 @@ class ImportViewModel extends Notifier<ImportPageState> {
     }
   }
 
-  Future<ImportActionOutcome<List<ImportBatch>>> loadHistory() async {
+  Future<ImportActionOutcome<List<ImportBatch>>> loadHistory({
+    ImportSource? source,
+  }) async {
     state = state.copyWith(historyLoading: true, error: null);
     try {
       final batches = await ref
           .read(importWorkflowAppServiceProvider)
-          .listBatches(source: ImportSource.yimu);
+          .listBatches(source: source);
       state = state.copyWith(historyLoading: false, batches: batches);
       return ImportActionOutcome.success(batches);
     } on AppException catch (exception, stackTrace) {
@@ -820,7 +832,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
     try {
       final service = ref.read(importWorkflowAppServiceProvider);
       final reverted = await service.revertBatch(batchId);
-      final batches = await service.listBatches(source: ImportSource.yimu);
+      final batches = await service.listBatches(source: reverted.source);
       ImportPlanReview? review = state.review;
       if (review != null) {
         review = await service.review(

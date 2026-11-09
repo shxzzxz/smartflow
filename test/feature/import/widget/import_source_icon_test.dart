@@ -33,6 +33,11 @@ void main() {
           background: colors.primaryContainer,
           foreground: colors.onPrimaryContainer,
         ),
+        ImportEntrySource.alipay => (
+          icon: Icons.account_balance_wallet_rounded,
+          background: colors.primaryContainer,
+          foreground: colors.onPrimaryContainer,
+        ),
         ImportEntrySource.unionPay => (
           icon: RemixIcons.bank_card_line,
           background: colors.secondaryContainer,

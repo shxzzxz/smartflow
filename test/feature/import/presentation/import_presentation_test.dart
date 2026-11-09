@@ -106,8 +106,13 @@ void main() {
   });
 
   test('formats import entry routes and task names', () {
+    expect(importEntrySourceFromRoute('alipay'), ImportEntrySource.alipay);
     expect(importEntrySourceFromRoute('union-pay'), ImportEntrySource.unionPay);
     expect(ImportEntrySource.generic.routeValue, 'generic');
+    expect(ImportEntrySource.yimu.domainSource, ImportSource.yimu);
+    expect(ImportEntrySource.alipay.domainSource, ImportSource.alipay);
+    expect(ImportEntrySource.unionPay.domainSource, isNull);
+    expect(importSourceLabel(ImportSource.alipay), '支付宝账单');
     expect(
       formatImportTaskName(
         ImportBatch(

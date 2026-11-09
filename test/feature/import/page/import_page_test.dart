@@ -55,10 +55,23 @@ void main() {
     expect(find.text('数据导入'), findsOneWidget);
     expect(find.text('一木记账'), findsOneWidget);
     expect(find.text('微信账单'), findsNothing);
-    expect(find.text('支付宝账单'), findsNothing);
+    expect(find.text('支付宝账单'), findsOneWidget);
     expect(find.text('云闪付账单'), findsOneWidget);
     expect(find.text('其他格式'), findsOneWidget);
     expect(find.text('查看全部'), findsOneWidget);
+  });
+
+  testWidgets('Alipay process page exposes its CSV-only file hint', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(page: const ImportProcessPage(source: ImportEntrySource.alipay)),
+    );
+    await tester.pump();
+
+    expect(find.text('支付宝账单'), findsOneWidget);
+    expect(find.text('支持支付宝导出的交易明细 CSV 文件'), findsOneWidget);
+    expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
   });
 
   testWidgets('shows fatal package issues and keeps the workflow retryable', (
@@ -905,7 +918,8 @@ class _FakePicker implements ImportFilePicker {
   final ImportBundle? bundle;
 
   @override
-  Future<ImportBundle?> pickYimuBundle() async => bundle;
+  Future<ImportBundle?> pickBundle({required ImportSource source}) async =>
+      bundle;
 }
 
 class _FakePlanService implements ImportPlanAppService {

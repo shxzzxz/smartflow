@@ -12,6 +12,46 @@ import 'package:smartflow/feature/import/view_model/import_view_model.dart';
 
 void main() {
   group('ImportViewModel', () {
+    test('forwards the selected source to file picking and parsing', () async {
+      final plan = _plan(groupCount: 1).copyWith(source: ImportSource.alipay);
+      final picker = _FakeImportFilePicker(_bundle());
+      final planService = _FakeImportPlanAppService(plan);
+      final workflow = _FakeImportWorkflowAppService(
+        reviewBuilder:
+            (
+              reviewPlan,
+              temporaryMappings,
+              plannedCreations,
+              groupMappingOverrides,
+            ) => _review(
+              reviewPlan,
+              temporaryMappings: temporaryMappings,
+              plannedCreations: plannedCreations,
+              groups: [
+                ImportGroupReview(
+                  index: 0,
+                  group: reviewPlan.groups.single,
+                  issues: const [],
+                  isExactDuplicate: false,
+                  isSuspectedDuplicate: false,
+                ),
+              ],
+            ),
+      );
+      final container = _container(
+        planService: planService,
+        workflow: workflow,
+        picker: picker,
+      );
+      final viewModel = container.read(importViewModelProvider.notifier);
+
+      await viewModel.pickFiles(source: ImportSource.alipay);
+      await viewModel.parseSelectedFiles(source: ImportSource.alipay);
+
+      expect(picker.pickedSource, ImportSource.alipay);
+      expect(planService.parsedSource, ImportSource.alipay);
+    });
+
     test(
       'keeps same-name files so the parser can report duplicate roles',
       () async {
@@ -46,8 +86,8 @@ void main() {
         );
         final viewModel = container.read(importViewModelProvider.notifier);
 
-        await viewModel.pickFiles();
-        await viewModel.pickFiles(append: true);
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.pickFiles(source: ImportSource.yimu, append: true);
 
         expect(
           container.read(importViewModelProvider).selectedBundle?.files,
@@ -129,8 +169,8 @@ void main() {
         );
 
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
         final state = container.read(importViewModelProvider);
         expect(state.review?.effectiveMappings[_mappingKey], 'cash');
@@ -181,8 +221,8 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
         viewModel.toggleSaveMappingConfiguration();
         expect(
@@ -258,8 +298,8 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
         expect(
           viewModel.confirmMappingConfiguration(),
           isA<ImportActionSuccess<void>>(),
@@ -330,8 +370,8 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
         const creation = ImportMappingCreation(
           name: '现金借款',
           descriptor: ImportTargetDescriptor.loanAccount,
@@ -383,8 +423,8 @@ void main() {
         picker: _FakeImportFilePicker(_bundle()),
       );
       final viewModel = container.read(importViewModelProvider.notifier);
-      await viewModel.pickFiles();
-      await viewModel.parseSelectedFiles();
+      await viewModel.pickFiles(source: ImportSource.yimu);
+      await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
       final outcome = await viewModel.commitSelectedGroups();
 
@@ -448,7 +488,7 @@ void main() {
 
         final pickOutcome = await container
             .read(importViewModelProvider.notifier)
-            .pickFiles();
+            .pickFiles(source: ImportSource.yimu);
 
         expect(pickOutcome, isA<ImportActionSuccess<void>>());
         expect(
@@ -467,7 +507,7 @@ void main() {
 
         final parseOutcome = await container
             .read(importViewModelProvider.notifier)
-            .parseSelectedFiles();
+            .parseSelectedFiles(source: ImportSource.yimu);
 
         expect(parseOutcome, isA<ImportActionSuccess<void>>());
         final state = container.read(importViewModelProvider);
@@ -495,9 +535,11 @@ void main() {
         picker: _FakeImportFilePicker(_bundle()),
       );
       final viewModel = container.read(importViewModelProvider.notifier);
-      await viewModel.pickFiles();
+      await viewModel.pickFiles(source: ImportSource.yimu);
 
-      final outcome = await viewModel.parseSelectedFiles();
+      final outcome = await viewModel.parseSelectedFiles(
+        source: ImportSource.yimu,
+      );
 
       expect(outcome, isA<ImportActionFailure<void>>());
       final state = container.read(importViewModelProvider);
@@ -562,8 +604,8 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
         viewModel.setSuspectedDuplicateConfirmed(0, true);
         expect(
@@ -629,8 +671,8 @@ void main() {
           picker: _FakeImportFilePicker(_bundle()),
         );
         final viewModel = container.read(importViewModelProvider.notifier);
-        await viewModel.pickFiles();
-        await viewModel.parseSelectedFiles();
+        await viewModel.pickFiles(source: ImportSource.yimu);
+        await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
         expect(
           container.read(importViewModelProvider).selectedGroupIndexes,
@@ -703,8 +745,8 @@ void main() {
         picker: _FakeImportFilePicker(_bundle()),
       );
       final viewModel = container.read(importViewModelProvider.notifier);
-      await viewModel.pickFiles();
-      await viewModel.parseSelectedFiles();
+      await viewModel.pickFiles(source: ImportSource.yimu);
+      await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
       await viewModel.editGroupDraft(
         groupIndex: 0,
@@ -788,8 +830,8 @@ void main() {
         picker: _FakeImportFilePicker(_bundle()),
       );
       final viewModel = container.read(importViewModelProvider.notifier);
-      await viewModel.pickFiles();
-      await viewModel.parseSelectedFiles();
+      await viewModel.pickFiles(source: ImportSource.yimu);
+      await viewModel.parseSelectedFiles(source: ImportSource.yimu);
 
       expect(
         container.read(importViewModelProvider).selectedGroupIndexes,
@@ -911,12 +953,16 @@ const _mappingKey = ImportMappingKey(
 );
 
 class _FakeImportFilePicker implements ImportFilePicker {
-  const _FakeImportFilePicker(this.bundle);
+  _FakeImportFilePicker(this.bundle);
 
   final ImportBundle? bundle;
+  ImportSource? pickedSource;
 
   @override
-  Future<ImportBundle?> pickYimuBundle() async => bundle;
+  Future<ImportBundle?> pickBundle({required ImportSource source}) async {
+    pickedSource = source;
+    return bundle;
+  }
 }
 
 class _SequenceImportFilePicker implements ImportFilePicker {
@@ -925,7 +971,7 @@ class _SequenceImportFilePicker implements ImportFilePicker {
   final List<ImportBundle?> _bundles;
 
   @override
-  Future<ImportBundle?> pickYimuBundle() async {
+  Future<ImportBundle?> pickBundle({required ImportSource source}) async {
     if (_bundles.isEmpty) return null;
     return _bundles.removeAt(0);
   }
@@ -937,6 +983,7 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
   final ImportParseResult plan;
   final bool throwOnParse;
   int parseCalls = 0;
+  ImportSource? parsedSource;
 
   @override
   ImportParseResult parse({
@@ -944,6 +991,7 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
     required ImportBundle bundle,
   }) {
     parseCalls += 1;
+    parsedSource = source;
     if (throwOnParse) throw Exception('parse failed');
     return plan;
   }

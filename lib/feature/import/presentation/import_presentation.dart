@@ -6,32 +6,49 @@ import '../../../core/money/money_formatter.dart';
 import '../../../widget/business/finance/finance_tone.dart';
 import '../../shared/presentation/transaction_list_presentation.dart';
 
-enum ImportEntrySource { yimu, unionPay, generic }
+enum ImportEntrySource { yimu, alipay, unionPay, generic }
 
 extension ImportEntrySourcePresentation on ImportEntrySource {
   String get routeValue => switch (this) {
     ImportEntrySource.yimu => 'yimu',
+    ImportEntrySource.alipay => 'alipay',
     ImportEntrySource.unionPay => 'union-pay',
     ImportEntrySource.generic => 'generic',
   };
 
   String get label => switch (this) {
     ImportEntrySource.yimu => '一木记账',
+    ImportEntrySource.alipay => '支付宝账单',
     ImportEntrySource.unionPay => '云闪付账单',
     ImportEntrySource.generic => '其他格式',
   };
 
   String get description => switch (this) {
     ImportEntrySource.yimu => '从一木记账备份文件导入',
+    ImportEntrySource.alipay => '导入支付宝交易明细',
     ImportEntrySource.unionPay => '导入云闪付交易记录',
     ImportEntrySource.generic => '支持 CSV、Excel 等格式文件',
   };
 
-  bool get isAvailable => this == ImportEntrySource.yimu;
+  ImportSource? get domainSource => switch (this) {
+    ImportEntrySource.yimu => ImportSource.yimu,
+    ImportEntrySource.alipay => ImportSource.alipay,
+    ImportEntrySource.unionPay || ImportEntrySource.generic => null,
+  };
+
+  String get fileSelectionHint => switch (this) {
+    ImportEntrySource.yimu => '支持一木导出的账单、转账和债务 CSV 或 XLSX 文件；XLS 文件请先另存为这两种格式',
+    ImportEntrySource.alipay => '支持支付宝导出的交易明细 CSV 文件',
+    ImportEntrySource.unionPay => '当前尚未开放云闪付账单导入',
+    ImportEntrySource.generic => '当前尚未开放通用格式导入',
+  };
+
+  bool get isAvailable => domainSource != null;
 }
 
 ImportEntrySource importEntrySourceFromRoute(String? value) {
   return switch (value) {
+    'alipay' => ImportEntrySource.alipay,
     'union-pay' => ImportEntrySource.unionPay,
     'generic' => ImportEntrySource.generic,
     _ => ImportEntrySource.yimu,
@@ -41,6 +58,7 @@ ImportEntrySource importEntrySourceFromRoute(String? value) {
 String importSourceLabel(ImportSource source) {
   return switch (source) {
     ImportSource.yimu => ImportEntrySource.yimu.label,
+    ImportSource.alipay => ImportEntrySource.alipay.label,
   };
 }
 

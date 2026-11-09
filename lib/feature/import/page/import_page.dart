@@ -733,17 +733,21 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
   }
 
   Future<void> _pickFiles({required bool append}) async {
+    final source = widget.source.domainSource;
+    if (source == null) return;
     final outcome = await ref
         .read(importViewModelProvider.notifier)
-        .pickFiles(append: append);
+        .pickFiles(source: source, append: append);
     if (!mounted) return;
     _showFailure(outcome);
   }
 
   Future<void> _parseFiles() async {
+    final source = widget.source.domainSource;
+    if (source == null) return;
     final outcome = await ref
         .read(importViewModelProvider.notifier)
-        .parseSelectedFiles();
+        .parseSelectedFiles(source: source);
     if (!mounted) return;
     _showFailure(outcome);
   }
@@ -1385,7 +1389,10 @@ class _ImportFilesSection extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.space8),
                 if (files.isEmpty) ...[
-                  _UploadDropzone(onTap: controlsDisabled ? null : onAddFiles),
+                  _UploadDropzone(
+                    description: source.fileSelectionHint,
+                    onTap: controlsDisabled ? null : onAddFiles,
+                  ),
                 ] else ...[
                   for (var index = 0; index < files.length; index++) ...[
                     _ImportFileRow(
@@ -1434,8 +1441,9 @@ class _ImportFilesSection extends StatelessWidget {
 }
 
 class _UploadDropzone extends StatelessWidget {
-  const _UploadDropzone({this.onTap});
+  const _UploadDropzone({required this.description, this.onTap});
 
+  final String description;
   final VoidCallback? onTap;
 
   @override
@@ -1470,7 +1478,7 @@ class _UploadDropzone extends StatelessWidget {
                 horizontal: AppSpacing.space16,
               ),
               child: Text(
-                '支持一木导出的账单、转账和债务 CSV 或 XLSX 文件；XLS 文件请先另存为这两种格式',
+                description,
                 textAlign: TextAlign.center,
                 style: context.appTextStyles.pageSubtitle,
               ),
