@@ -254,6 +254,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       displayPath: target.displayPath,
       descriptor: target.descriptor,
       isArchived: target.isArchived,
+      iconKey: target.iconKey,
+      parentId: target.parentId,
     );
   }
 

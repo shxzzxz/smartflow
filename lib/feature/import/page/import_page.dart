@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/import/import_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/component.dart';
@@ -16,6 +17,9 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../shared/account_profile/account_profile_kind.dart';
+import '../../../widget/business/account/account_picker_sheet.dart';
+import '../../../widget/business/category/category_picker_sheet.dart';
 import '../../../widget/business/transaction/transaction_day_card.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/import_presentation.dart';
@@ -145,7 +149,6 @@ class ImportMappingPage extends ConsumerWidget {
     }
     Navigator.of(context).maybePop();
   }
-
 }
 
 class ImportPreviewPage extends ConsumerWidget {
@@ -631,7 +634,6 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
         hasTemporaryOverride:
             state.temporaryMappings.containsKey(key) ||
             state.plannedCreations.containsKey(key),
-        restoreLabel: '恢复默认映射',
       ),
     );
     if (!mounted || selection == null) return;
@@ -1652,6 +1654,10 @@ class _MappingItem extends StatelessWidget {
         ? '${target!.displayPath}（已归档）'
         : item.targetPath ?? item.targetName ?? '待配置';
     return ImportMappingItem(
+      key: ValueKey(
+        'import-mapping-item-${item.key.entityKind.name}-'
+        '${item.key.sourceEntityKey}',
+      ),
       sourceLabel: item.sourceName,
       sourceKindLabel: item.sourceDescription,
       targetLabel: targetLabel,
@@ -1672,33 +1678,55 @@ class _MappingItem extends StatelessWidget {
   }
 }
 
-class _MappingTargetSheet extends StatefulWidget {
+class _MappingTargetSheet extends StatelessWidget {
   const _MappingTargetSheet({
     required this.item,
     required this.selectedDecision,
     required this.hasTemporaryOverride,
-    this.restoreLabel = '恢复默认映射',
   });
 
   final ImportMappingReviewItem item;
   final ImportMappingDecision selectedDecision;
   final bool hasTemporaryOverride;
-  final String restoreLabel;
 
-  @override
-  State<_MappingTargetSheet> createState() => _MappingTargetSheetState();
-}
-
-class _MappingTargetSheetState extends State<_MappingTargetSheet> {
   @override
   Widget build(BuildContext context) {
+    final selectedTargetId = selectedDecision is ExistingTargetDecision
+        ? (selectedDecision as ExistingTargetDecision).targetId
+        : null;
+    final picker = item.key.entityKind == ImportEntityKind.category
+        ? CategoryPickerSheet(
+            sections: _categoryPickerSections(item.existingTargetOptions),
+            selectableIds: {
+              for (final target in item.existingTargetOptions) target.id,
+            },
+            selectedId: selectedTargetId,
+            onCategoryTap: (targetId) => Navigator.of(context).pop(
+              _MappingSelection(decision: ExistingTargetDecision(targetId)),
+            ),
+          )
+        : AccountPickerOptionsSheet(
+            accounts: [
+              for (final target in item.existingTargetOptions)
+                AccountPickerOption(
+                  id: target.id,
+                  name: target.name,
+                  iconKey: target.iconKey,
+                  profileKey: _accountProfileKey(target.descriptor),
+                ),
+            ],
+            selectedId: selectedTargetId,
+            onAccountTap: (target) => Navigator.of(context).pop(
+              _MappingSelection(decision: ExistingTargetDecision(target.id)),
+            ),
+          );
+    final sheetHeight = (MediaQuery.sizeOf(context).height * 0.55)
+        .clamp(320.0, 440.0)
+        .toDouble();
     return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.78,
-        ),
+      child: SizedBox(
+        height: sheetHeight,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -1708,139 +1736,235 @@ class _MappingTargetSheetState extends State<_MappingTargetSheet> {
                 AppSpacing.space16,
                 AppSpacing.space8,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    widget.item.sourceName,
-                    style: context.appTextStyles.subsectionTitle,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.sourceName,
+                          style: context.appTextStyles.subsectionTitle,
+                        ),
+                        const SizedBox(height: AppSpacing.space4),
+                        Text(
+                          item.sourceDescription,
+                          style: context.appTextStyles.pageSubtitle,
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    widget.item.sourceDescription,
-                    style: context.appTextStyles.pageSubtitle,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: AppListTokens.dividerThickness),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  if (widget.hasTemporaryOverride)
-                    ListTile(
-                      leading: const Icon(RemixIcons.restart_line),
-                      title: Text(widget.restoreLabel),
-                      onTap: () => Navigator.of(context).pop(
+                  if (item.creationOptions.isNotEmpty)
+                    _MappingActionButton(
+                      key: const ValueKey('import-mapping-create'),
+                      label: '新建',
+                      onPressed: () => _selectCreation(context),
+                    ),
+                  if (hasTemporaryOverride)
+                    _MappingActionButton(
+                      key: const ValueKey('import-mapping-default'),
+                      label: '默认',
+                      onPressed: () => Navigator.of(context).pop(
                         const _MappingSelection(
                           decision: UnresolvedDecision('恢复默认映射'),
                         ),
                       ),
                     ),
-                  if (widget.item.existingTargetOptions.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.space16,
-                        AppSpacing.space10,
-                        AppSpacing.space16,
-                        AppSpacing.space4,
-                      ),
-                      child: Text(
-                        '映射到已有目标',
-                        style: context.appTextStyles.listSupporting,
-                      ),
-                    ),
-                  for (final target in widget.item.existingTargetOptions)
-                    ListTile(
-                      leading: Icon(
-                        _isExistingTargetSelected(target)
-                            ? RemixIcons.checkbox_circle_fill
-                            : RemixIcons.checkbox_blank_circle_line,
-                      ),
-                      title: Text(target.displayPath),
-                      subtitle: target.displayPath == target.name
-                          ? Text(importTargetDescription(target.descriptor))
-                          : Text(
-                              '${target.name} · '
-                              '${importTargetDescription(target.descriptor)}',
-                            ),
-                      onTap: () => Navigator.of(context).pop(
-                        _MappingSelection(
-                          decision: ExistingTargetDecision(target.id),
-                        ),
-                      ),
-                    ),
-                  if (widget.item.creationOptions.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.space16,
-                        AppSpacing.space10,
-                        AppSpacing.space16,
-                        AppSpacing.space4,
-                      ),
-                      child: Text(
-                        '导入时新增',
-                        style: context.appTextStyles.listSupporting,
-                      ),
-                    ),
-                  for (final creation in widget.item.creationOptions)
-                    ListTile(
-                      leading: Icon(
-                        _isCreationSelected(creation)
-                            ? RemixIcons.checkbox_circle_fill
-                            : RemixIcons.checkbox_blank_circle_line,
-                      ),
-                      title: Text(
-                        '新增${importTargetDescription(creation.descriptor)}',
-                      ),
-                      subtitle: Text(
-                        [
-                          if (creation.pathSegments.isNotEmpty)
-                            creation.pathSegments.join(' / ')
-                          else
-                            creation.name,
-                          ?creation.defaultParametersHint,
-                        ].join(' · '),
-                      ),
-                      onTap: () => Navigator.of(context).pop(
-                        _MappingSelection(
-                          decision: PlannedCreationDecision(creation),
-                        ),
-                      ),
-                    ),
-                  if (widget.item.existingTargetOptions.isEmpty &&
-                      widget.item.creationOptions.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(AppSpacing.space20),
-                      child: Text(
-                        '暂无角色兼容的可用目标。',
-                        textAlign: TextAlign.center,
-                        style: context.appTextStyles.pageSubtitle,
-                      ),
-                    ),
                 ],
               ),
             ),
+            const Divider(height: AppListTokens.dividerThickness),
+            Expanded(child: picker),
           ],
         ),
       ),
     );
   }
 
-  bool _isExistingTargetSelected(ImportMappingTarget target) {
-    final decision = widget.selectedDecision;
-    return decision is ExistingTargetDecision && decision.targetId == target.id;
+  Future<void> _selectCreation(BuildContext context) async {
+    if (item.creationOptions.length == 1) {
+      Navigator.of(context).pop(
+        _MappingSelection(
+          decision: PlannedCreationDecision(item.creationOptions.first),
+        ),
+      );
+      return;
+    }
+    final creation = await showModalBottomSheet<ImportMappingCreation>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _MappingCreationSheet(
+        sourceName: item.sourceName,
+        options: item.creationOptions,
+      ),
+    );
+    if (creation == null || !context.mounted) return;
+    Navigator.of(
+      context,
+    ).pop(_MappingSelection(decision: PlannedCreationDecision(creation)));
   }
+}
 
-  bool _isCreationSelected(ImportMappingCreation creation) {
-    final decision = widget.selectedDecision;
-    return decision is PlannedCreationDecision &&
-        decision.creation.name == creation.name &&
-        decision.creation.descriptor == creation.descriptor &&
-        decision.creation.pathSegments.join('/') ==
-            creation.pathSegments.join('/');
+class _MappingActionButton extends StatelessWidget {
+  const _MappingActionButton({
+    required this.label,
+    required this.onPressed,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(0, AppComponentTokens.controlMinHeight),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space8),
+      ),
+      child: Text(label),
+    );
   }
+}
+
+class _MappingCreationSheet extends StatelessWidget {
+  const _MappingCreationSheet({
+    required this.sourceName,
+    required this.options,
+  });
+
+  final String sourceName;
+  final List<ImportMappingCreation> options;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              0,
+              AppSpacing.space16,
+              AppSpacing.space8,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '新建$sourceName',
+                  style: context.appTextStyles.subsectionTitle,
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  '选择要创建的账户或分类类型',
+                  style: context.appTextStyles.pageSubtitle,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: AppListTokens.dividerThickness),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final creation in options)
+                  ListTile(
+                    key: ValueKey(
+                      'import-mapping-create-${creation.descriptor.name}',
+                    ),
+                    leading: const Icon(RemixIcons.add_line),
+                    title: Text(importTargetDescription(creation.descriptor)),
+                    subtitle: creation.defaultParametersHint == null
+                        ? null
+                        : Text(creation.defaultParametersHint!),
+                    onTap: () => Navigator.of(context).pop(creation),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String? _accountProfileKey(ImportTargetDescriptor descriptor) {
+  return switch (descriptor) {
+    ImportTargetDescriptor.fundAccount => AccountProfileKind.fund.key,
+    ImportTargetDescriptor.advanceAccount =>
+      AccountProfileKind.reimbursement.key,
+    ImportTargetDescriptor.receivableAccount =>
+      AccountProfileKind.receivable.key,
+    ImportTargetDescriptor.prepaidExpenseAccount =>
+      AccountProfileKind.prepaidExpense.key,
+    ImportTargetDescriptor.payableAccount => AccountProfileKind.payable.key,
+    ImportTargetDescriptor.deferredIncomeAccount =>
+      AccountProfileKind.deferredIncome.key,
+    ImportTargetDescriptor.creditAccount => AccountProfileKind.credit.key,
+    ImportTargetDescriptor.loanAccount => AccountProfileKind.loan.key,
+    ImportTargetDescriptor.incomeCategory ||
+    ImportTargetDescriptor.expenseCategory ||
+    ImportTargetDescriptor.ghostAccount ||
+    ImportTargetDescriptor.unsupported => null,
+  };
+}
+
+List<CategoryPickerSection> _categoryPickerSections(
+  List<ImportMappingTarget> targets,
+) {
+  final expenseTargets = targets
+      .where(
+        (target) => target.descriptor == ImportTargetDescriptor.expenseCategory,
+      )
+      .toList(growable: false);
+  final incomeTargets = targets
+      .where(
+        (target) => target.descriptor == ImportTargetDescriptor.incomeCategory,
+      )
+      .toList(growable: false);
+  return [
+    if (expenseTargets.isNotEmpty)
+      CategoryPickerSection(
+        type: AccountType.expense,
+        label: '支出',
+        nodes: _categoryPickerRoots(expenseTargets),
+      ),
+    if (incomeTargets.isNotEmpty)
+      CategoryPickerSection(
+        type: AccountType.income,
+        label: '收入',
+        nodes: _categoryPickerRoots(incomeTargets),
+      ),
+  ];
+}
+
+List<CategoryPickerNode> _categoryPickerRoots(
+  List<ImportMappingTarget> targets,
+) {
+  final targetIds = {for (final target in targets) target.id};
+  return [
+    for (final target in targets)
+      if (target.parentId == null || !targetIds.contains(target.parentId))
+        CategoryPickerNode(
+          id: target.id,
+          label: target.name,
+          iconKey: target.iconKey,
+          children: [
+            for (final child in targets)
+              if (child.parentId == target.id)
+                CategoryPickerNode(
+                  id: child.id,
+                  label: child.name,
+                  iconKey: child.iconKey,
+                ),
+          ],
+        ),
+  ];
 }
 
 class _MappingSelection {

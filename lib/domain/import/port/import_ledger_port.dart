@@ -8,6 +8,8 @@ class ImportLedgerTarget {
     required this.displayPath,
     required this.descriptor,
     required this.isArchived,
+    this.iconKey,
+    this.parentId,
   });
 
   final String id;
@@ -15,6 +17,8 @@ class ImportLedgerTarget {
   final String displayPath;
   final ImportTargetDescriptor descriptor;
   final bool isArchived;
+  final String? iconKey;
+  final String? parentId;
 }
 
 class ImportLedgerTargetCreation {

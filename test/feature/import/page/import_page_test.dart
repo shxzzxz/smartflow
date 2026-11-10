@@ -12,6 +12,8 @@ import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/import/page/import_page.dart';
 import 'package:smartflow/feature/import/presentation/import_presentation.dart';
+import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
+import 'package:smartflow/widget/business/category/category_picker_sheet.dart';
 
 void main() {
   testWidgets('upload dropzone picks files and keeps package actions visible', (
@@ -310,6 +312,106 @@ void main() {
     expect(find.text('未提取到需要映射的来源分类。'), findsNothing);
     expect(find.text('现金'), findsWidgets);
     expect(find.text('餐饮'), findsWidgets);
+  });
+
+  testWidgets('opens account and category targets in their dedicated pickers', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _plan();
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_review(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
+    await tester.tap(find.text('查看全部').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('import-mapping-item-account-account:cash')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountPickerOptionsSheet), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('account-picker-account-cash')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey('import-mapping-item-category-category:expense:餐饮'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CategoryPickerSheet), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('category-picker-option-food')),
+      findsOneWidget,
+    );
+    final pickerSize = tester.getSize(find.byType(CategoryPickerSheet));
+    expect(pickerSize.height, lessThanOrEqualTo(440));
+
+    await tester.tap(
+      find.byKey(const ValueKey('category-picker-root-transport')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.getSize(find.byType(CategoryPickerSheet)), pickerSize);
+    await tester.tap(
+      find.byKey(const ValueKey('category-picker-option-transport')),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('shows creation and restore actions directly in the header', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final plan = _mappingPlan();
+    await tester.pumpWidget(
+      _app(
+        planService: _FakePlanService(plan),
+        picker: _FakePicker(_bundle()),
+        workflow: _FakeWorkflow(_mappingReview(plan)),
+      ),
+    );
+    await _selectAndParse(tester);
+    await tester.tap(find.text('查看全部').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey('import-mapping-item-account-account:source-2'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('新建'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('import-mapping-create')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey('import-mapping-item-account-account:source-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('account-picker-account-cash')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey('import-mapping-item-account-account:source-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('默认'), findsOneWidget);
   });
 
   testWidgets('opens all import previews as a page', (tester) async {
@@ -862,6 +964,15 @@ ImportPlanReview _mappingReview(ImportParseResult plan) {
         targetId: 'cash',
         targetPath: '现金',
         targetDescription: '资金账户',
+        existingTargetOptions: const [
+          ImportMappingTarget(
+            id: 'cash',
+            name: '现金',
+            displayPath: '现金',
+            descriptor: ImportTargetDescriptor.fundAccount,
+            isArchived: false,
+          ),
+        ],
         decision: const ExistingTargetDecision('cash'),
       ),
       for (var index = 2; index <= 6; index++)
@@ -995,6 +1106,21 @@ ImportPlanReview _review(ImportParseResult plan) {
         descriptor: ImportTargetDescriptor.expenseCategory,
         isArchived: false,
       ),
+      ImportMappingTarget(
+        id: 'lunch',
+        name: '午餐',
+        displayPath: '餐饮 / 午餐',
+        descriptor: ImportTargetDescriptor.expenseCategory,
+        isArchived: false,
+        parentId: 'food',
+      ),
+      ImportMappingTarget(
+        id: 'transport',
+        name: '交通',
+        displayPath: '交通',
+        descriptor: ImportTargetDescriptor.expenseCategory,
+        isArchived: false,
+      ),
     ],
     mappingItems: [
       ImportMappingReviewItem(
@@ -1010,6 +1136,15 @@ ImportPlanReview _review(ImportParseResult plan) {
         targetId: 'cash',
         targetPath: '现金',
         targetDescription: '资金账户',
+        existingTargetOptions: const [
+          ImportMappingTarget(
+            id: 'cash',
+            name: '现金',
+            displayPath: '现金',
+            descriptor: ImportTargetDescriptor.fundAccount,
+            isArchived: false,
+          ),
+        ],
         decision: const ExistingTargetDecision('cash'),
       ),
       ImportMappingReviewItem(
@@ -1025,6 +1160,30 @@ ImportPlanReview _review(ImportParseResult plan) {
         targetId: 'food',
         targetPath: '餐饮',
         targetDescription: '支出分类',
+        existingTargetOptions: const [
+          ImportMappingTarget(
+            id: 'food',
+            name: '餐饮',
+            displayPath: '餐饮',
+            descriptor: ImportTargetDescriptor.expenseCategory,
+            isArchived: false,
+          ),
+          ImportMappingTarget(
+            id: 'lunch',
+            name: '午餐',
+            displayPath: '餐饮 / 午餐',
+            descriptor: ImportTargetDescriptor.expenseCategory,
+            isArchived: false,
+            parentId: 'food',
+          ),
+          ImportMappingTarget(
+            id: 'transport',
+            name: '交通',
+            displayPath: '交通',
+            descriptor: ImportTargetDescriptor.expenseCategory,
+            isArchived: false,
+          ),
+        ],
         decision: const ExistingTargetDecision('food'),
       ),
     ],

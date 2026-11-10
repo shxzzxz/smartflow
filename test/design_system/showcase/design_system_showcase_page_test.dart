@@ -450,6 +450,25 @@ void main() {
     expect(find.text('午餐'), findsNothing);
   });
 
+  testWidgets('shows the category picker and switches root navigation', (
+    tester,
+  ) async {
+    await pumpShowcase(tester);
+
+    await tester.enterText(find.byType(SearchBar), 'CategoryPickerSheet');
+    await tester.pumpAndSettle();
+
+    expect(find.text('分类分级单选'), findsOneWidget);
+    expect(find.text('午餐'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('category-picker-root-cat-salary')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('基本工资'), findsOneWidget);
+  });
+
   testWidgets('keeps adaptive money text separate from money text', (
     tester,
   ) async {

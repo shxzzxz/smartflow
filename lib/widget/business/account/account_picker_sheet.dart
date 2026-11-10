@@ -63,9 +63,32 @@ Future<AccountPickerSheetSelection?> showOptionalAccountPickerSheet({
   );
 }
 
+class AccountPickerOption {
+  const AccountPickerOption({
+    required this.id,
+    required this.name,
+    this.iconKey,
+    this.profileKey,
+  });
+
+  factory AccountPickerOption.fromAccount(Account account) {
+    return AccountPickerOption(
+      id: account.id,
+      name: account.name,
+      iconKey: account.iconKey,
+      profileKey: account.profileKey,
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? iconKey;
+  final String? profileKey;
+}
+
 enum _AccountPickerLayout { list, grouped }
 
-class AccountPickerSheet extends StatefulWidget {
+class AccountPickerSheet extends StatelessWidget {
   const AccountPickerSheet({
     required this.accounts,
     required this.selectedId,
@@ -86,10 +109,60 @@ class AccountPickerSheet extends StatefulWidget {
   final ValueChanged<Account> onAccountTap;
 
   @override
-  State<AccountPickerSheet> createState() => _AccountPickerSheetState();
+  Widget build(BuildContext context) {
+    final maxHeight =
+        MediaQuery.sizeOf(context).height *
+        AppComponentTokens.selectionSheetMaxHeightFactor;
+    final accountsById = {for (final account in accounts) account.id: account};
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: SafeArea(
+        child: AccountPickerOptionsSheet(
+          accounts: [
+            for (final account in accounts)
+              AccountPickerOption.fromAccount(account),
+          ],
+          selectedId: selectedId,
+          noneLabel: noneLabel,
+          onNoneTap: onNoneTap,
+          onAccountTap: (option) {
+            final account = accountsById[option.id];
+            if (account != null) onAccountTap(account);
+          },
+          topActionLabel: topActionLabel,
+          onTopAction: onTopAction,
+        ),
+      ),
+    );
+  }
 }
 
-class _AccountPickerSheetState extends State<AccountPickerSheet> {
+class AccountPickerOptionsSheet extends StatefulWidget {
+  const AccountPickerOptionsSheet({
+    required this.accounts,
+    required this.selectedId,
+    required this.onAccountTap,
+    super.key,
+    this.noneLabel,
+    this.onNoneTap,
+    this.topActionLabel,
+    this.onTopAction,
+  });
+
+  final List<AccountPickerOption> accounts;
+  final String? selectedId;
+  final String? noneLabel;
+  final VoidCallback? onNoneTap;
+  final String? topActionLabel;
+  final VoidCallback? onTopAction;
+  final ValueChanged<AccountPickerOption> onAccountTap;
+
+  @override
+  State<AccountPickerOptionsSheet> createState() =>
+      _AccountPickerOptionsSheetState();
+}
+
+class _AccountPickerOptionsSheetState extends State<AccountPickerOptionsSheet> {
   _AccountPickerLayout _layout = _AccountPickerLayout.list;
   String? _selectedGroupKey;
 
@@ -167,7 +240,7 @@ class _AccountPickerSheetState extends State<AccountPickerSheet> {
               )
             else
               Flexible(
-                child: _AccountPickerAccountList(
+                child: _AccountPickerOptionList(
                   key: const ValueKey('account-picker-flat-list'),
                   listKey: const ValueKey('account-picker-accounts-list'),
                   accounts: widget.accounts,
@@ -232,7 +305,7 @@ class _AccountPickerSheetState extends State<AccountPickerSheet> {
                   AppSpacing.space16,
                   AppSpacing.space8,
                 ),
-                child: _AccountPickerAccountList(
+                child: _AccountPickerOptionList(
                   key: const ValueKey('account-picker-grouped-account-list'),
                   listKey: ValueKey(
                     'account-picker-accounts-grouped-${activeGroup.key}',
@@ -379,8 +452,8 @@ class _AccountPickerGroupItem extends StatelessWidget {
   }
 }
 
-class _AccountPickerAccountList extends StatelessWidget {
-  const _AccountPickerAccountList({
+class _AccountPickerOptionList extends StatelessWidget {
+  const _AccountPickerOptionList({
     required this.listKey,
     required this.accounts,
     required this.selectedId,
@@ -391,11 +464,11 @@ class _AccountPickerAccountList extends StatelessWidget {
   });
 
   final Key listKey;
-  final List<Account> accounts;
+  final List<AccountPickerOption> accounts;
   final String? selectedId;
   final String? noneLabel;
   final VoidCallback? onNoneTap;
-  final ValueChanged<Account> onAccountTap;
+  final ValueChanged<AccountPickerOption> onAccountTap;
 
   @override
   Widget build(BuildContext context) {
@@ -437,16 +510,17 @@ class _AccountPickerGroup {
 
   final String key;
   final String label;
-  final List<Account> accounts;
+  final List<AccountPickerOption> accounts;
 }
 
 const _otherAccountGroupKey = '__other__';
 
-List<_AccountPickerGroup> _groupAccounts(List<Account> accounts) {
-  final accountsByProfile = <AccountProfileKind, List<Account>>{
-    for (final profile in AccountProfileKind.values) profile: <Account>[],
+List<_AccountPickerGroup> _groupAccounts(List<AccountPickerOption> accounts) {
+  final accountsByProfile = <AccountProfileKind, List<AccountPickerOption>>{
+    for (final profile in AccountProfileKind.values)
+      profile: <AccountPickerOption>[],
   };
-  final otherAccounts = <Account>[];
+  final otherAccounts = <AccountPickerOption>[];
   for (final account in accounts) {
     final profile = AccountProfileKind.fromKey(account.profileKey);
     if (profile == null) {
@@ -472,7 +546,10 @@ List<_AccountPickerGroup> _groupAccounts(List<Account> accounts) {
   ];
 }
 
-String? _initialGroupKey(List<Account> accounts, String? selectedId) {
+String? _initialGroupKey(
+  List<AccountPickerOption> accounts,
+  String? selectedId,
+) {
   for (final account in accounts) {
     if (account.id != selectedId) continue;
     return AccountProfileKind.fromKey(account.profileKey)?.key ??

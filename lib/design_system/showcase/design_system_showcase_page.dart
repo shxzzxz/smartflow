@@ -13,6 +13,7 @@ import 'package:smartflow/widget/business/analytics/chart/app_chart_empty_state.
 import 'package:smartflow/widget/business/analytics/chart/app_donut_chart.dart';
 import 'package:smartflow/widget/business/category/category_avatar.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
+import 'package:smartflow/widget/business/category/category_picker_sheet.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
 import 'package:smartflow/widget/business/finance/finance_summary_row.dart';
@@ -117,6 +118,7 @@ enum _ShowcaseExampleKind {
   groupedChoiceGrid,
   iconCatalogPicker,
   categoryGridPicker,
+  categoryPicker,
   cascadeMultiSelect,
   submitButton,
   chips,
@@ -345,6 +347,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     keywords: ['分类', '选择', '网格', '子分类'],
   ),
   _ShowcaseExample(
+    kind: _ShowcaseExampleKind.categoryPicker,
+    category: '选择器与弹层',
+    title: '分类分级单选',
+    componentNames: 'CategoryPickerSheet',
+    keywords: ['分类', '单选', '根分类', '子分类', '分级'],
+  ),
+  _ShowcaseExample(
     kind: _ShowcaseExampleKind.cascadeMultiSelect,
     category: '选择器与弹层',
     title: '级联多选',
@@ -538,8 +547,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.pageHeader,
     category: '布局与容器',
     title: '页面头部',
-    componentNames:
-        'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton',
+    componentNames: 'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton',
     keywords: ['布局', '标题', '页头', '返回', '操作'],
   ),
   _ShowcaseExample(
@@ -824,6 +832,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   String? _selectedGroupedChoiceId = 'expense-ordinary';
   String? _selectedCategoryRootId = 'cat-dining';
   String? _selectedCategoryId = 'cat-breakfast';
+  String? _selectedPickerCategoryId = 'cat-lunch';
   Set<String> _selectedCascadeValues = {'parent', 'child'};
 
   @override
@@ -1002,6 +1011,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.groupedChoiceGrid => _groupedChoiceGridPreview(),
       _ShowcaseExampleKind.iconCatalogPicker => _iconCatalogPickerPreview(),
       _ShowcaseExampleKind.categoryGridPicker => _categoryGridPickerPreview(),
+      _ShowcaseExampleKind.categoryPicker => _categoryPickerPreview(),
       _ShowcaseExampleKind.cascadeMultiSelect => _cascadeMultiSelectPreview(),
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
@@ -1722,6 +1732,60 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       }),
       onAddRoot: () => _showMessage('新增一级分类'),
       onAddChild: (_) => _showMessage('新增子分类'),
+    );
+  }
+
+  Widget _categoryPickerPreview() {
+    final sections = [
+      CategoryPickerSection(
+        type: AccountType.expense,
+        label: '支出',
+        nodes: [
+          for (final node in _sampleCategoryNodes)
+            CategoryPickerNode(
+              id: node.account.id,
+              label: node.account.name,
+              iconKey: node.account.iconKey,
+              children: [
+                for (final child in node.children)
+                  CategoryPickerNode(
+                    id: child.id,
+                    label: child.name,
+                    iconKey: child.iconKey,
+                  ),
+              ],
+            ),
+        ],
+      ),
+      const CategoryPickerSection(
+        type: AccountType.income,
+        label: '收入',
+        nodes: [
+          CategoryPickerNode(
+            id: 'cat-salary',
+            label: '工资',
+            children: [
+              CategoryPickerNode(id: 'cat-salary-base', label: '基本工资'),
+            ],
+          ),
+        ],
+      ),
+    ];
+    return SizedBox(
+      height: 380,
+      child: CategoryPickerSheet(
+        sections: sections,
+        selectableIds: {
+          for (final section in sections)
+            for (final root in section.nodes) ...[
+              root.id,
+              for (final child in root.children) child.id,
+            ],
+        },
+        selectedId: _selectedPickerCategoryId,
+        onCategoryTap: (categoryId) =>
+            setState(() => _selectedPickerCategoryId = categoryId),
+      ),
     );
   }
 

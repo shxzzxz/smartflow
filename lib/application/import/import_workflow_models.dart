@@ -145,6 +145,8 @@ class ImportMappingTarget {
     required this.displayPath,
     required this.descriptor,
     required this.isArchived,
+    this.iconKey,
+    this.parentId,
   });
 
   final String id;
@@ -152,6 +154,8 @@ class ImportMappingTarget {
   final String displayPath;
   final ImportTargetDescriptor descriptor;
   final bool isArchived;
+  final String? iconKey;
+  final String? parentId;
 }
 
 class ImportMappingKey {

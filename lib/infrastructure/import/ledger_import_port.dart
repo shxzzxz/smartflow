@@ -597,6 +597,8 @@ class LedgerImportPort implements ImportLedgerPort {
           : '$parentName / ${account.name}',
       isArchived: account.isArchived,
       descriptor: _descriptorForAccount(account),
+      iconKey: account.iconKey,
+      parentId: account.parentId,
     );
   }
 

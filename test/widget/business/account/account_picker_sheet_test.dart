@@ -201,6 +201,41 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('信用账户'), findsWidgets);
   });
+
+  testWidgets('轻量账户选项复用列表与分组选择', (tester) async {
+    AccountPickerOption? selected;
+    await tester.pumpWidget(
+      _testApp(
+        AccountPickerOptionsSheet(
+          accounts: const [
+            AccountPickerOption(
+              id: 'cash',
+              name: '现金',
+              profileKey: 'ledger.fund',
+            ),
+            AccountPickerOption(
+              id: 'credit',
+              name: '信用卡',
+              profileKey: 'credit.credit',
+            ),
+          ],
+          selectedId: 'cash',
+          onAccountTap: (option) => selected = option,
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('列表'));
+    await tester.pumpAndSettle();
+    expect(find.text('资金账户'), findsOneWidget);
+    expect(find.text('信用账户'), findsOneWidget);
+
+    await tester.tap(find.text('信用账户'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('信用卡'));
+
+    expect(selected?.id, 'credit');
+  });
 }
 
 Widget _testApp(Widget child, {TextScaler? textScaler}) {
