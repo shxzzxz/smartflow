@@ -882,8 +882,9 @@ class _TransactionFormContentState
 
     switch (outcome) {
       case SubmitSuccess():
-        if (widget.editTransactionId != null) {
-          context.go('/');
+        final editTransactionId = widget.editTransactionId;
+        if (editTransactionId != null) {
+          context.pop(editTransactionId);
         } else {
           context.pop();
         }

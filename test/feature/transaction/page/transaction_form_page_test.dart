@@ -1300,6 +1300,76 @@ void main() {
     },
   );
 
+  testWidgets('edit submit returns to the caller with the transaction id', (
+    tester,
+  ) async {
+    final accounts = {'cash': _account('cash'), 'food': _category('food')};
+    final orchestration = _FakeExpenseSceneOrchestrationAppService(
+      _FakeTransactionPostingAppService(),
+    );
+    String? returnedId;
+    final router = GoRouter(
+      initialLocation: '/caller',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: Text('首页')),
+        ),
+        GoRoute(
+          path: '/caller',
+          builder: (context, state) => Scaffold(
+            body: TextButton(
+              key: const ValueKey('open-edit-form'),
+              onPressed: () async {
+                returnedId = await context.push<String>(
+                  '/transaction/tx-1/edit',
+                );
+              },
+              child: const Text('调用页'),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/transaction/:id/edit',
+          builder: (context, state) =>
+              const TransactionFormPage(editTransactionId: 'tx-1'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          testAppDatabaseOverride(),
+          ..._editQueryOverrides(accounts),
+          transactionDetailProvider(
+            'tx-1',
+          ).overrideWithValue(AsyncData(_transactionDetail('tx-1'))),
+          transactionPostingAppServiceProvider.overrideWithValue(
+            _FakeTransactionPostingAppService(),
+          ),
+          advanceOrchestrationAppServiceProvider.overrideWithValue(
+            orchestration,
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('open-edit-form')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('完成'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(orchestration.editCommands, hasLength(1));
+    expect(returnedId, 'tx-1');
+    expect(find.text('调用页'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.toString(), '/caller');
+  });
+
   testWidgets('does not reuse controllers between transaction ids', (
     tester,
   ) async {
@@ -1681,9 +1751,10 @@ class _FakeAmortizationPlanAppService implements AmortizationPlanAppService {
 
 class _FakeExpenseSceneOrchestrationAppService
     implements AdvanceOrchestrationAppService {
-  const _FakeExpenseSceneOrchestrationAppService(this.posting);
+  _FakeExpenseSceneOrchestrationAppService(this.posting);
 
   final _FakeTransactionPostingAppService posting;
+  final editCommands = <EditExpenseSceneWorkflowCommand>[];
 
   @override
   Future<String> createExpenseScene(
@@ -1708,6 +1779,17 @@ class _FakeExpenseSceneOrchestrationAppService
       ),
     );
     return result.transactionId;
+  }
+
+  @override
+  Future<String> editExpenseScene(
+    EditExpenseSceneWorkflowCommand command,
+  ) async {
+    if (command.target is! OrdinaryExpenseSceneTarget) {
+      throw UnimplementedError('advance edit is not used in this test');
+    }
+    editCommands.add(command);
+    return command.transactionId;
   }
 
   @override
