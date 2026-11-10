@@ -397,12 +397,24 @@ void main() {
       'marks borrowing owner when disbursement transaction is created',
       () async {
         final fixture = _Fixture();
+        final borrowingAt = DateTime(2026, 6, 1, 14, 30);
 
         final result = await fixture.disbursement.create(
-          _createDisbursementCommand(disbursementAccountId: 'asset-cash'),
+          _createDisbursementCommand(
+            disbursementAccountId: 'asset-cash',
+            borrowingDate: borrowingAt,
+          ),
         );
 
         expect(result.disbursementTransactionId, 'tx-borrowing-1');
+        expect(
+          fixture.posting.borrowingCommands.single.occurredAt,
+          borrowingAt,
+        );
+        expect(
+          fixture.installments.contracts[result.contractId]!.borrowingDate,
+          DateTime(2026, 6, 1),
+        );
         expect(
           fixture.posting.borrowingCommands.single.receiveAccountId,
           'asset-cash',
@@ -650,7 +662,7 @@ void main() {
           CreateDisbursementInstallmentCommand(
             liabilityAccountId: 'loan-liability',
             principal: const Money(minorUnits: 120000),
-            borrowingDate: DateTime(2026, 6, 14),
+            borrowingAt: DateTime(2026, 6, 14),
             stageTerms: InstallmentContractTerms.singleStage(
               id: 'stage-1',
               totalPeriods: 12,
@@ -890,7 +902,7 @@ CreateDisbursementInstallmentCommand _createDisbursementCommand({
     liabilityAccountId: liabilityAccountId,
     disbursementAccountId: disbursementAccountId,
     principal: const Money(minorUnits: 120000),
-    borrowingDate: borrowingDate ?? DateTime(2026, 6, 1),
+    borrowingAt: borrowingDate ?? DateTime(2026, 6, 1),
     stageTerms: InstallmentContractTerms.singleStage(
       id: 'stage-1',
       totalPeriods: 2,

@@ -76,7 +76,7 @@ class DisbursementInstallmentAppServiceImpl
               CreditLedgerPostBorrowingCommand(
                 amount: command.principal,
                 liabilityAccountId: command.liabilityAccountId,
-                occurredAt: command.borrowingDate,
+                occurredAt: command.borrowingAt,
                 receiveAccountId: disbursementAccountId,
                 counterpartyId: command.counterpartyId,
                 note: command.note,
@@ -90,7 +90,7 @@ class DisbursementInstallmentAppServiceImpl
         terms: InstallmentOriginationTerms(
           name: command.name,
           principal: command.principal,
-          borrowingDate: command.borrowingDate,
+          borrowingDate: _dateOnly(command.borrowingAt),
           note: command.note,
           stageTerms: stageTerms,
         ),
@@ -135,3 +135,6 @@ class DisbursementInstallmentAppServiceImpl
     );
   }
 }
+
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);

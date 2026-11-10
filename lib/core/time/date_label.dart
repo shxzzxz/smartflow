@@ -4,6 +4,13 @@ String formatDateLabel(DateTime date) {
       '${date.day.toString().padLeft(2, '0')}';
 }
 
+/// `yyyy-MM-dd HH:mm` 展示标签。
+String formatDateTimeLabel(DateTime dateTime) {
+  return '${formatDateLabel(dateTime)} '
+      '${dateTime.hour.toString().padLeft(2, '0')}:'
+      '${dateTime.minute.toString().padLeft(2, '0')}';
+}
+
 /// `yyyyMMdd` 日期名称。
 String formatCompactDate(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}'

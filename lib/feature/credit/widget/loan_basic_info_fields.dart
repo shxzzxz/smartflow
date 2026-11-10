@@ -7,13 +7,14 @@ import '../../../design_system/widget/app_plain_form_row.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 
-/// 本金和借款日；账户、放款与账单上下文由所在页面组合。
+/// 本金和借款日期/时间；账户、放款与账单上下文由所在页面组合。
 class LoanBasicInfoFields extends StatelessWidget {
   const LoanBasicInfoFields({
     required TextEditingController principalController,
     required this.borrowingDate,
     required ValueChanged<DateTime> onBorrowingDateChanged,
     this.onPrincipalChanged,
+    this.selectTime = false,
     super.key,
   }) : principalController = principalController,
        onBorrowingDateChanged = onBorrowingDateChanged,
@@ -26,13 +27,15 @@ class LoanBasicInfoFields extends StatelessWidget {
   }) : principal = principal,
        principalController = null,
        onBorrowingDateChanged = null,
-       onPrincipalChanged = null;
+       onPrincipalChanged = null,
+       selectTime = false;
 
   final TextEditingController? principalController;
   final Money? principal;
   final DateTime borrowingDate;
   final ValueChanged<DateTime>? onBorrowingDateChanged;
   final ValueChanged<String>? onPrincipalChanged;
+  final bool selectTime;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -49,15 +52,23 @@ class LoanBasicInfoFields extends StatelessWidget {
         AppPlainValueRow(label: '本金', value: principal!.format()),
       if (onBorrowingDateChanged case final onChanged?)
         DateTimePlainFormRow(
-          label: '借款日期',
+          label: selectTime ? '借款时间' : '借款日期',
           dateTime: borrowingDate,
-          value: formatDateLabel(borrowingDate),
+          value: selectTime
+              ? formatDateTimeLabel(borrowingDate)
+              : formatDateLabel(borrowingDate),
           onTap: (onSelected) async {
-            final date = await showAppDatePicker(
-              context: context,
-              initialDate: borrowingDate,
-              title: '选择借款日期',
-            );
+            final date = selectTime
+                ? await showAppDateTimePicker(
+                    context: context,
+                    initialDateTime: borrowingDate,
+                    title: '选择借款时间',
+                  )
+                : await showAppDatePicker(
+                    context: context,
+                    initialDate: borrowingDate,
+                    title: '选择借款日期',
+                  );
             if (context.mounted && date != null) onSelected(date);
           },
           onChanged: (date) {

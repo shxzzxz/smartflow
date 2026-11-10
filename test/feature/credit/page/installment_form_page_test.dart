@@ -9,6 +9,7 @@ import 'package:smartflow/infrastructure/credit/initial_installment_products.dar
 import 'package:smartflow/core/money/rounding_mode.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/feature/credit/page/installment_form_page.dart';
@@ -144,6 +145,7 @@ void main() {
 
       expect(find.byType(AppFormSection), findsWidgets);
       expect(find.text('分期配置'), findsOneWidget);
+      expect(find.text('借款时间'), findsOneWidget);
       expect(find.text('放款信息'), findsNothing);
       expect(find.text('分期设置'), findsNothing);
       expect(find.text('计算约定'), findsNothing);
@@ -154,7 +156,15 @@ void main() {
       final provider = installmentFormViewModelProvider(
         const InstallmentFormArgs(liabilityAccountId: 'loan'),
       );
-      container.read(provider.notifier).setBorrowingDate(DateTime(2026, 1, 1));
+      container
+          .read(provider.notifier)
+          .setBorrowingAt(DateTime(2026, 1, 1, 14, 30));
+      await tester.pumpAndSettle();
+      expect(find.text('2026-01-01 14:30'), findsOneWidget);
+      await tester.tap(find.text('2026-01-01 14:30'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDateTimePickerDialog), findsOneWidget);
+      Navigator.of(tester.element(find.byType(AppDateTimePickerDialog))).pop();
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '12000');
       final note = find.descendant(
@@ -181,7 +191,7 @@ void main() {
       final page = tester.widget<LoanConfigurationPage>(
         find.byType(LoanConfigurationPage),
       );
-      expect(page.installment!.borrowingDate, DateTime(2026, 1, 1));
+      expect(page.installment!.borrowingDate, DateTime(2026, 1, 1, 14, 30));
       final stageId = page.installment!.terms.stages.single.id;
       await tester.enterText(find.byType(TextField).first, '18000');
       final periods = find.descendant(
@@ -232,8 +242,8 @@ void main() {
       );
       expect(
         (container.read(provider).requireValue as InstallmentFormLoaded)
-            .borrowingDate,
-        DateTime(2026, 1, 1),
+            .borrowingAt,
+        DateTime(2026, 1, 1, 14, 30),
       );
       expect(tester.takeException(), isNull);
     },

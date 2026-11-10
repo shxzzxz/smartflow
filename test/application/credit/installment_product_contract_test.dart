@@ -424,7 +424,7 @@ CreateDisbursementInstallmentCommand _command(
   name: name,
   liabilityAccountId: 'loan-account',
   principal: Money(minorUnits: principal),
-  borrowingDate: DateTime(2026),
+  borrowingAt: DateTime(2026),
   stageTerms: InstallmentContractTerms(
     stages: [
       InstallmentContractStage(

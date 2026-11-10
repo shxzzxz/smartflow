@@ -39,7 +39,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
     return InstallmentFormLoaded(
       liability: liability,
       fundAccounts: fundAccounts,
-      borrowingDate: now,
+      borrowingAt: now,
       termsDraft: InstallmentTermsDraft.loan(now),
     );
   }
@@ -64,18 +64,30 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
   );
   void setTermsDraft(InstallmentTermsDraft value) =>
       _updateLoaded((s) => s.copyWith(termsDraft: value));
-  void applyConfiguration(InstallmentConfigurationDraft value) => _updateLoaded(
-    (s) => s.copyWith(
-      borrowingDate: value.borrowingDate,
-      termsDraft: value.terms,
-      productId: value.productId,
-      productName: value.productName,
-    ),
-  );
-  void setBorrowingDate(DateTime value) => _updateLoaded((s) {
+  void applyConfiguration(InstallmentConfigurationDraft value) =>
+      _updateLoaded((s) {
+        final current = s.borrowingAt;
+        final date = value.borrowingDate;
+        return s.copyWith(
+          borrowingAt: DateTime(
+            date.year,
+            date.month,
+            date.day,
+            current.hour,
+            current.minute,
+            current.second,
+            current.millisecond,
+            current.microsecond,
+          ),
+          termsDraft: value.terms,
+          productId: value.productId,
+          productName: value.productName,
+        );
+      });
+  void setBorrowingAt(DateTime value) => _updateLoaded((s) {
     final stages = s.termsDraft.stages;
     final defaultFirst = IntervalRepaymentDates.addMonthsClamped(
-      s.borrowingDate,
+      s.borrowingAt,
       1,
     );
     final first = stages.first;
@@ -89,7 +101,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
             ),
           )
         : s.termsDraft;
-    return s.copyWith(borrowingDate: value, termsDraft: next);
+    return s.copyWith(borrowingAt: value, termsDraft: next);
   });
   void setDisbursementAccountId(String? value) =>
       _updateLoaded((s) => s.copyWith(disbursementAccountId: value));
@@ -111,7 +123,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
             .calculate(
               current.termsDraft.contractTerms().planTerms(
                 principal,
-                current.borrowingDate,
+                current.borrowingAt,
               ),
             );
       });
@@ -145,7 +157,7 @@ class InstallmentFormViewModel extends _$InstallmentFormViewModel {
                       ? current.disbursementAccountId
                       : null,
                   principal: principal,
-                  borrowingDate: current.borrowingDate,
+                  borrowingAt: current.borrowingAt,
                   note: trimToNull(noteText),
                   stageTerms: current.termsDraft.contractTerms(),
                 ),
@@ -208,7 +220,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   const InstallmentFormLoaded({
     required this.liability,
     required this.fundAccounts,
-    required this.borrowingDate,
+    required this.borrowingAt,
     required this.termsDraft,
     this.disbursementAccountId,
     this.productId,
@@ -218,13 +230,13 @@ class InstallmentFormLoaded extends InstallmentFormState {
   });
   final Account liability;
   final List<Account> fundAccounts;
-  final DateTime borrowingDate;
+  final DateTime borrowingAt;
   final InstallmentTermsDraft termsDraft;
   final String? disbursementAccountId, productId, productName;
   final bool createDisbursementTransaction, submitting;
   bool get isDisbursement => true;
   InstallmentFormLoaded copyWith({
-    DateTime? borrowingDate,
+    DateTime? borrowingAt,
     InstallmentTermsDraft? termsDraft,
     Object? disbursementAccountId = _sentinel,
     String? productId,
@@ -234,7 +246,7 @@ class InstallmentFormLoaded extends InstallmentFormState {
   }) => InstallmentFormLoaded(
     liability: liability,
     fundAccounts: fundAccounts,
-    borrowingDate: borrowingDate ?? this.borrowingDate,
+    borrowingAt: borrowingAt ?? this.borrowingAt,
     termsDraft: termsDraft ?? this.termsDraft,
     disbursementAccountId: disbursementAccountId == _sentinel
         ? this.disbursementAccountId

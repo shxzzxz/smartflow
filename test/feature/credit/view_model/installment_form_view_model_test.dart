@@ -91,6 +91,7 @@ void main() {
         installmentFormViewModelProvider(args).notifier,
       );
       viewModel.setDisbursementAccountId('cash');
+      viewModel.setBorrowingAt(DateTime(2026, 7, 12, 14, 30));
       viewModel.setTermsDraft(
         InstallmentTermsDraft(
           stages: [
@@ -123,6 +124,7 @@ void main() {
       expect(command.liabilityAccountId, 'loan');
       expect(command.disbursementAccountId, 'cash');
       expect(command.principal, const Money(minorUnits: 1234));
+      expect(command.borrowingAt, DateTime(2026, 7, 12, 14, 30));
       expect(command.stageTerms.totalPeriods, 12);
       expect(command.stageTerms.firstDate, DateTime(2026, 8, 12));
       expect(command.stageTerms.lastDate, DateTime(2027, 7, 12));

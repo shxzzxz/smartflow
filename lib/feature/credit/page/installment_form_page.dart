@@ -111,8 +111,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               LoanBasicInfoFields(
                 principalController: _principalController,
-                borrowingDate: state.borrowingDate,
-                onBorrowingDateChanged: notifier.setBorrowingDate,
+                borrowingDate: state.borrowingAt,
+                onBorrowingDateChanged: notifier.setBorrowingAt,
+                selectTime: true,
               ),
               AppPlainSwitchRow(
                 label: '创建交易',
@@ -173,7 +174,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     FocusScope.of(context).unfocus();
     final initial = InstallmentConfigurationDraft(
       principal: Money.tryParse(_principalController.text.trim()),
-      borrowingDate: state.borrowingDate,
+      borrowingDate: state.borrowingAt,
       terms: state.termsDraft,
       productId: state.productId,
       productName: state.productName,

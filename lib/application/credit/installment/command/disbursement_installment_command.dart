@@ -6,7 +6,7 @@ class CreateDisbursementInstallmentCommand {
     this.name,
     required this.liabilityAccountId,
     required this.principal,
-    required this.borrowingDate,
+    required this.borrowingAt,
     this.disbursementAccountId,
     this.note,
     this.counterpartyId,
@@ -20,8 +20,8 @@ class CreateDisbursementInstallmentCommand {
   final String? disbursementAccountId;
   final Money principal;
 
-  /// 借款日期，同时作为借入交易的业务时间。
-  final DateTime borrowingDate;
+  /// 借款时间，同时作为借入交易的业务时间；日期部分作为合同借款日。
+  final DateTime borrowingAt;
 
   final String? note;
   final String? counterpartyId;
