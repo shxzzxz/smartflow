@@ -807,6 +807,10 @@ void main() {
               kind: TransactionAdjustmentKind.transferFee,
               amount: Money(minorUnits: 300),
             ),
+            TransactionAdjustment(
+              kind: TransactionAdjustmentKind.transferDiscount,
+              amount: Money(minorUnits: 200),
+            ),
           ],
         ),
         accountLookup: _lookup,
@@ -1587,6 +1591,7 @@ TransactionReadModel _item({
               TransactionAdjustmentKind.repaymentInterest ||
               TransactionAdjustmentKind.receivableCollectionInterest =>
                 TransactionRole.interest,
+              TransactionAdjustmentKind.transferDiscount ||
               TransactionAdjustmentKind.repaymentDiscount =>
                 TransactionRole.discount,
               TransactionAdjustmentKind.receivableCollectionPrincipal =>

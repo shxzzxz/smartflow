@@ -414,7 +414,9 @@ class PostingEngine {
     Map<SystemKey, String> systemAccountIds = const {},
   }) {
     final fee = instruction.feeAmount;
+    final discount = instruction.discountAmount;
     final hasFee = fee != null && fee.minorUnits > 0;
+    final hasDiscount = discount != null && discount.minorUnits > 0;
     if (instruction.amount.minorUnits <= 0) {
       return LedgerViolationReason.transferAmountNotPositive.throwException(
         message: 'Transfer amount must be positive.',
@@ -446,14 +448,40 @@ class PostingEngine {
         message: 'Transfer fee cannot be negative.',
       );
     }
+    if (discount != null && discount.minorUnits < 0) {
+      return LedgerViolationReason.transferDiscountNegative.throwException(
+        message: 'Transfer discount cannot be negative.',
+      );
+    }
+    if (hasDiscount && discount.minorUnits > instruction.amount.minorUnits) {
+      return LedgerViolationReason.transferDiscountExceedsAmount.throwException(
+        message: 'Transfer discount cannot exceed the transfer amount.',
+      );
+    }
     if (hasFee && instruction.outgoingAllocations.length != 1) {
       return LedgerViolationReason.transferFeeRequiresSingleOutgoingAccount
+          .throwException();
+    }
+    if (hasDiscount && instruction.outgoingAllocations.length != 1) {
+      return LedgerViolationReason.transferDiscountRequiresSingleOutgoingAccount
           .throwException();
     }
     if (hasFee && systemAccountIds[SystemKey.feeExpense] == null) {
       return LedgerViolationReason.transferFeeAccountRequired.throwException(
         message: 'Transfer fee account is required.',
       );
+    }
+    if (hasDiscount && systemAccountIds[SystemKey.discountIncome] == null) {
+      return LedgerViolationReason.transferDiscountAccountRequired
+          .throwException(message: 'Transfer discount account is required.');
+    }
+    final actualOutflow =
+        instruction.amount +
+        (hasFee ? fee : Money.zero()) -
+        (hasDiscount ? discount : Money.zero());
+    if (actualOutflow.minorUnits <= 0) {
+      return LedgerViolationReason.transferActualOutflowNotPositive
+          .throwException(message: 'Transfer actual outflow must be positive.');
     }
 
     final transactionId = _idGenerator.newId();
@@ -491,9 +519,16 @@ class PostingEngine {
           if (hasFee)
             _line(
               transactionId: transactionId,
-              lineNo: lineNo,
+              lineNo: lineNo++,
               role: TransactionRole.fee,
               amount: fee,
+            ),
+          if (hasDiscount)
+            _line(
+              transactionId: transactionId,
+              lineNo: lineNo,
+              role: TransactionRole.discount,
+              amount: discount,
             ),
         ],
       ),

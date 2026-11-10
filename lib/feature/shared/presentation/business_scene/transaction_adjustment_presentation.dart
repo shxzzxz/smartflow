@@ -4,6 +4,7 @@ import 'package:smartflow/core/money/money_formatter.dart';
 
 enum TransactionAdjustmentKind {
   transferFee,
+  transferDiscount,
   refund,
   advanceReceived,
   receivableCollectionPrincipal,
@@ -39,6 +40,7 @@ List<String> adjustmentSupportingParts(TransactionReadModel transaction) {
 String adjustmentSupportingLabel(TransactionAdjustment adjustment) {
   final label = switch (adjustment.kind) {
     TransactionAdjustmentKind.transferFee => '手续费',
+    TransactionAdjustmentKind.transferDiscount => '优惠',
     TransactionAdjustmentKind.refund => '已退',
     TransactionAdjustmentKind.advanceReceived => '已到账',
     TransactionAdjustmentKind.receivableCollectionPrincipal => '本金',
@@ -77,6 +79,10 @@ List<TransactionAdjustment> transactionAdjustments(TransactionReadModel item) {
       add(
         TransactionAdjustmentKind.transferFee,
         item.amountOf(TransactionRole.fee),
+      );
+      add(
+        TransactionAdjustmentKind.transferDiscount,
+        item.amountOf(TransactionRole.discount),
       );
     case BusinessPurpose.dailyExpense:
       add(

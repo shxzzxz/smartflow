@@ -302,6 +302,57 @@ void main() {
     },
   );
 
+  test(
+    'transfer fee and discount adjust source while recipient receives full amount',
+    () async {
+      final result = await posting.createTransfer(
+        CreateTransferCommand.simple(
+          amount: Money.parse('100'),
+          feeAmount: Money.parse('5'),
+          discountAmount: Money.parse('2'),
+          fromAccountId: 'cash',
+          toAccountId: 'bank',
+          occurredAt: date,
+        ),
+      );
+      final original = await transactions.findCompleteById(
+        result.transactionId,
+      );
+
+      expect(
+        original!.entries
+            .singleWhere((entry) => entry.accountId == 'cash')
+            .amount,
+        Money.parse('103'),
+      );
+      expect(
+        original.entries
+            .singleWhere((entry) => entry.accountId == 'bank')
+            .amount,
+        Money.parse('100'),
+      );
+      expect(original.amountOf(TransactionRole.discount), Money.parse('2'));
+      await expectReporting(500, 500, income: 200);
+
+      await editing.editTransfer(
+        EditTransferCommand(
+          transactionId: result.transactionId,
+          discountAmount: Money.zero(),
+        ),
+      );
+
+      final edited = await transactions.findCompleteById(result.transactionId);
+      expect(
+        edited!.entries
+            .singleWhere((entry) => entry.accountId == 'cash')
+            .amount,
+        Money.parse('105'),
+      );
+      expect(edited.linesOf(TransactionRole.discount), isEmpty);
+      await expectReporting(500, 500);
+    },
+  );
+
   test('pure transfer retains flags when a fee is later added', () async {
     final result = await posting.createTransfer(
       CreateTransferCommand.simple(

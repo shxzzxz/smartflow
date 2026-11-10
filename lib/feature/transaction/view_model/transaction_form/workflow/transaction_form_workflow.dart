@@ -26,6 +26,7 @@ final class _TransactionFormWorkflowDispatcher {
     required TransactionFormState state,
     required Money amount,
     required Money? feeAmount,
+    Money? discountAmount,
     required String? note,
     required ConsumptionInstallmentConfiguration? consumptionInstallment,
     required AmortizationConfigurationDraft? amortizationConfiguration,
@@ -70,6 +71,7 @@ final class _TransactionFormWorkflowDispatcher {
         state: state,
         amount: amount,
         feeAmount: feeAmount,
+        discountAmount: discountAmount,
         note: note,
       ),
     };
@@ -81,6 +83,7 @@ final class _TransactionFormWorkflowDispatcher {
     required String? amortizationPlanId,
     required Money amount,
     required Money? feeAmount,
+    Money? discountAmount,
     required String? note,
     required AmortizationConfigurationDraft? amortizationConfiguration,
   }) {
@@ -119,6 +122,7 @@ final class _TransactionFormWorkflowDispatcher {
         transactionId: transactionId,
         amount: amount,
         feeAmount: feeAmount,
+        discountAmount: discountAmount,
         note: note,
       ),
     };

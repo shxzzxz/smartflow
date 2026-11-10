@@ -150,6 +150,13 @@ void main() {
             role: TransactionRole.fee,
             amount: Money(minorUnits: 300),
           ),
+          TransactionLine(
+            id: 'discount',
+            transactionId: 'tx-1',
+            lineNo: 3,
+            role: TransactionRole.discount,
+            amount: Money(minorUnits: 200),
+          ),
         ],
       );
 
@@ -162,6 +169,7 @@ void main() {
 
       expect(snapshot.mode, TransactionFormMode.transfer);
       expect(snapshot.feeText, '3');
+      expect(snapshot.discountText, '2');
     });
 
     test('trims insignificant decimal zeros for editing', () {

@@ -76,6 +76,7 @@ class CreateTransferCommand {
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
+    this.discountAmount,
     this.counterpartyId,
     this.note,
     this.ownership,
@@ -93,6 +94,7 @@ class CreateTransferCommand {
     required DateTime occurredAt,
     DateTime? postedAt,
     Money? feeAmount,
+    Money? discountAmount,
     String? counterpartyId,
     String? note,
     TransactionOwnership? ownership,
@@ -114,6 +116,7 @@ class CreateTransferCommand {
       occurredAt: occurredAt,
       postedAt: postedAt,
       feeAmount: feeAmount,
+      discountAmount: discountAmount,
       counterpartyId: counterpartyId,
       note: note,
       ownership: ownership,
@@ -130,6 +133,7 @@ class CreateTransferCommand {
   final DateTime occurredAt;
   final DateTime? postedAt;
   final Money? feeAmount;
+  final Money? discountAmount;
   final String? counterpartyId;
   final String? note;
   final TransactionOwnership? ownership;
@@ -517,6 +521,7 @@ class EditTransferCommand {
     this.incomingAllocations,
     this.occurredAt,
     this.feeAmount,
+    this.discountAmount,
     this.counterpartyId,
     this.note,
     this.isExcludedFromStats,
@@ -532,6 +537,9 @@ class EditTransferCommand {
 
   /// `null` 表示不修改；`Money.zero()` 表示移除手续费。
   final Money? feeAmount;
+
+  /// `null` 表示不修改；`Money.zero()` 表示移除优惠。
+  final Money? discountAmount;
   final Patch<String?>? counterpartyId;
   final Patch<String?>? note;
   final bool? isExcludedFromStats;

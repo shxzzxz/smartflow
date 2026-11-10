@@ -252,7 +252,13 @@ void main() {
     expect(find.text('已收 40.00 / 应收 100.00'), findsOneWidget);
   });
 
-  testWidgets('shows the transfer fee in transaction details', (tester) async {
+  testWidgets('shows transfer fee, discount, and actual outflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -269,8 +275,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('手续费'), findsOneWidget);
-    expect(find.text('3.00'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('detail-transfer-adjustment-row')),
+      findsOneWidget,
+    );
+    expect(find.text('转账调整'), findsOneWidget);
+    final summary = tester.widget<Text>(
+      find.byKey(const ValueKey('detail-transfer-adjustment-value')),
+    );
+    expect(
+      summary.textSpan?.toPlainText(),
+      '手续费 3.00  ·  优惠 2.00  ·  实际扣款 21.00',
+    );
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('detail-category-card')),
@@ -1083,6 +1099,13 @@ TransactionReadModel _transferDetail() {
         lineNo: 3,
         role: TransactionRole.fee,
         amount: Money(minorUnits: 300),
+      ),
+      TransactionLine(
+        id: 'transfer-discount',
+        transactionId: 'transfer',
+        lineNo: 4,
+        role: TransactionRole.discount,
+        amount: Money(minorUnits: 200),
       ),
     ],
   );

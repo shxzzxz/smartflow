@@ -255,37 +255,143 @@ void main() {
       expect(edited.isExcludedFromBudget, isTrue);
     });
 
-    test('transfer edit patch preserves posting time and accepts zero fee', () {
-      const ownership = TransactionOwnership(
-        ownerType: 'orchestration.amortization',
-        ownerId: 'plan',
+    test(
+      'transfer edit patch preserves posting time and accepts zero adjustments',
+      () {
+        const ownership = TransactionOwnership(
+          ownerType: 'orchestration.amortization',
+          ownerId: 'plan',
+        );
+        final current = TransferInstruction.simple(
+          amount: Money.parse('12.30'),
+          fromAccountId: 'cash',
+          toAccountId: 'bank',
+          feeAmount: Money.parse('1.00'),
+          discountAmount: Money.parse('0.50'),
+          occurredAt: DateTime(2026, 5, 1),
+          postedAt: DateTime(2026, 5, 2),
+          ownership: ownership,
+          isExcludedFromStats: true,
+          isExcludedFromBudget: true,
+        );
+
+        final edited = TransferEditPatch(
+          amount: Money.parse('20.00'),
+          feeAmount: Money.zero(),
+          discountAmount: Money.zero(),
+        ).applyTo(current);
+
+        expect(edited.amount, Money.parse('20.00'));
+        expect(edited.feeAmount, Money.zero());
+        expect(edited.discountAmount, Money.zero());
+        expect(edited.postedAt, current.postedAt);
+        expect(edited.ownership, ownership);
+        expect(edited.isExcludedFromStats, isTrue);
+        expect(edited.isExcludedFromBudget, isTrue);
+
+        final unchanged = const TransferEditPatch().applyTo(current);
+        expect(unchanged.feeAmount, current.feeAmount);
+        expect(unchanged.discountAmount, current.discountAmount);
+      },
+    );
+
+    test('creates a discounted transfer with fee and discount together', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
       );
-      final current = TransferInstruction.simple(
-        amount: Money.parse('12.30'),
-        fromAccountId: 'cash',
-        toAccountId: 'bank',
-        feeAmount: Money.parse('1.00'),
-        occurredAt: DateTime(2026, 5, 1),
-        postedAt: DateTime(2026, 5, 2),
-        ownership: ownership,
-        isExcludedFromStats: true,
-        isExcludedFromBudget: true,
+      final transaction = engine.createTransfer(
+        TransferInstruction.simple(
+          amount: Money.parse('100'),
+          fromAccountId: 'cash',
+          toAccountId: 'bank',
+          feeAmount: Money.parse('5'),
+          discountAmount: Money.parse('2'),
+          occurredAt: DateTime(2026, 5, 1),
+        ),
+        systemAccountIds: const {
+          SystemKey.feeExpense: 'fee-expense',
+          SystemKey.discountIncome: 'discount-income',
+        },
       );
 
-      final edited = TransferEditPatch(
-        amount: Money.parse('20.00'),
-        feeAmount: Money.zero(),
-      ).applyTo(current);
+      expect(transaction.lines.map((line) => line.role), [
+        TransactionRole.settlementOut,
+        TransactionRole.settlementIn,
+        TransactionRole.fee,
+        TransactionRole.discount,
+      ]);
+      expect(entriesAreBalanced(transaction.entries), isTrue);
+      expect(
+        transaction.entries
+            .singleWhere((entry) => entry.accountId == 'cash')
+            .amount,
+        Money.parse('103'),
+      );
+      expect(
+        transaction.entries
+            .singleWhere((entry) => entry.accountId == 'fee-expense')
+            .amount,
+        Money.parse('5'),
+      );
+      expect(
+        transaction.entries
+            .singleWhere((entry) => entry.accountId == 'discount-income')
+            .amount,
+        Money.parse('2'),
+      );
+    });
 
-      expect(edited.amount, Money.parse('20.00'));
-      expect(edited.feeAmount, Money.zero());
-      expect(edited.postedAt, current.postedAt);
-      expect(edited.ownership, ownership);
-      expect(edited.isExcludedFromStats, isTrue);
-      expect(edited.isExcludedFromBudget, isTrue);
+    test(
+      'transfer discount reduces source while recipient gets full amount',
+      () {
+        final engine = PostingEngine(
+          idGenerator: SequentialIdGenerator(prefix: 'tx'),
+        );
+        final transaction = engine.createTransfer(
+          TransferInstruction.simple(
+            amount: Money.parse('10000'),
+            fromAccountId: 'cash',
+            toAccountId: 'bank',
+            discountAmount: Money.parse('5'),
+            occurredAt: DateTime(2026, 5, 1),
+          ),
+          systemAccountIds: const {SystemKey.discountIncome: 'discount-income'},
+        );
 
-      final unchanged = const TransferEditPatch().applyTo(current);
-      expect(unchanged.feeAmount, current.feeAmount);
+        expect(entriesAreBalanced(transaction.entries), isTrue);
+        expect(
+          transaction.entries
+              .singleWhere((entry) => entry.accountId == 'cash')
+              .amount,
+          Money.parse('9995'),
+        );
+        expect(
+          transaction.entries
+              .singleWhere((entry) => entry.accountId == 'bank')
+              .amount,
+          Money.parse('10000'),
+        );
+      },
+    );
+
+    test('rejects transfer discount above the transfer amount', () {
+      final engine = PostingEngine(
+        idGenerator: SequentialIdGenerator(prefix: 'tx'),
+      );
+
+      expect(
+        () => engine.createTransfer(
+          TransferInstruction.simple(
+            amount: Money.parse('100'),
+            fromAccountId: 'cash',
+            toAccountId: 'bank',
+            discountAmount: Money.parse('101'),
+            occurredAt: DateTime(2026, 5, 1),
+          ),
+          systemAccountIds: const {SystemKey.discountIncome: 'discount-income'},
+        ),
+        throwsA(isA<BusinessException>()),
+      );
     });
 
     test('creates a balanced transfer from multiple accounts', () {

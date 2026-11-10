@@ -147,6 +147,7 @@ class TransactionEditAppServiceImpl
             outgoingAllocations: cmd.outgoingAllocations,
             incomingAllocations: cmd.incomingAllocations,
             feeAmount: cmd.feeAmount,
+            discountAmount: cmd.discountAmount,
           ),
         ),
       ),

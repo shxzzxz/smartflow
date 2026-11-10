@@ -189,6 +189,7 @@ class DefaultPostingInstructionResolver implements PostingInstructionResolver {
       outgoingAllocations: outgoingAllocations,
       incomingAllocations: incomingAllocations,
       feeAmount: transaction.amountOf(TransactionRole.fee),
+      discountAmount: transaction.amountOf(TransactionRole.discount),
       occurredAt: transaction.occurredAt,
       postedAt: transaction.postedAt,
       counterpartyId: transaction.counterpartyId,

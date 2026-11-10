@@ -327,6 +327,7 @@ class TransferInstruction extends PostingInstruction {
     required this.occurredAt,
     this.postedAt,
     this.feeAmount,
+    this.discountAmount,
     this.counterpartyId,
     this.note,
     this.ownership,
@@ -343,6 +344,7 @@ class TransferInstruction extends PostingInstruction {
     required DateTime occurredAt,
     DateTime? postedAt,
     Money? feeAmount,
+    Money? discountAmount,
     String? counterpartyId,
     String? note,
     TransactionOwnership? ownership,
@@ -363,6 +365,7 @@ class TransferInstruction extends PostingInstruction {
       occurredAt: occurredAt,
       postedAt: postedAt,
       feeAmount: feeAmount,
+      discountAmount: discountAmount,
       counterpartyId: counterpartyId,
       note: note,
       ownership: ownership,
@@ -376,6 +379,7 @@ class TransferInstruction extends PostingInstruction {
   final List<AccountAmountAllocation> outgoingAllocations;
   final List<AccountAmountAllocation> incomingAllocations;
   final Money? feeAmount;
+  final Money? discountAmount;
   final DateTime occurredAt;
   final DateTime? postedAt;
   final String? counterpartyId;
@@ -1008,6 +1012,7 @@ class TransferEditPatch extends PostingEditPatch {
     this.outgoingAllocations,
     this.incomingAllocations,
     this.feeAmount,
+    this.discountAmount,
   });
 
   final Money? amount;
@@ -1016,6 +1021,9 @@ class TransferEditPatch extends PostingEditPatch {
 
   /// `null` 表示不修改；零金额表示无手续费。
   final Money? feeAmount;
+
+  /// `null` 表示不修改；零金额表示无优惠。
+  final Money? discountAmount;
 
   @override
   BusinessPurpose get targetPurpose => BusinessPurpose.transfer;
@@ -1049,6 +1057,7 @@ class TransferEditPatch extends PostingEditPatch {
         outgoingAllocations: nextOutgoing,
         incomingAllocations: nextIncoming,
         feeAmount: feeAmount ?? current.feeAmount,
+        discountAmount: discountAmount ?? current.discountAmount,
         occurredAt: current.occurredAt,
         postedAt: current.postedAt,
         counterpartyId: current.counterpartyId,

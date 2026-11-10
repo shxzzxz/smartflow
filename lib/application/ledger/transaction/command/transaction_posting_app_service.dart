@@ -218,6 +218,7 @@ class TransactionPostingAppServiceImpl
           occurredAt: command.occurredAt,
           postedAt: command.postedAt,
           feeAmount: command.feeAmount,
+          discountAmount: command.discountAmount,
           counterpartyId: command.counterpartyId,
           note: command.note,
           ownership: command.ownership,

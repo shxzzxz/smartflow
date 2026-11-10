@@ -14,6 +14,7 @@ final class _LedgerTransactionFormWorkflow {
     required TransactionFormState state,
     required Money amount,
     required Money? feeAmount,
+    required Money? discountAmount,
     required String? note,
   }) async {
     switch (state.mode) {
@@ -49,6 +50,7 @@ final class _LedgerTransactionFormWorkflow {
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
             feeAmount: feeAmount,
+            discountAmount: discountAmount,
             occurredAt: state.occurredAt,
             counterpartyId: state.counterpartyId,
             note: note,
@@ -122,6 +124,7 @@ final class _LedgerTransactionFormWorkflow {
     required String transactionId,
     required Money amount,
     required Money? feeAmount,
+    required Money? discountAmount,
     required String? note,
   }) async {
     final notePatch = stringPatch(note);
@@ -168,6 +171,7 @@ final class _LedgerTransactionFormWorkflow {
               amount: amount,
             ),
             feeAmount: feeAmount,
+            discountAmount: discountAmount,
             occurredAt: state.occurredAt,
             counterpartyId: counterpartyId,
             note: notePatch,

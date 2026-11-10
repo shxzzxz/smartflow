@@ -171,6 +171,7 @@ class LedgerPostingService {
     return switch (instruction) {
       TransferInstruction i => {
         if (_isPositive(i.feeAmount)) SystemKey.feeExpense,
+        if (_isPositive(i.discountAmount)) SystemKey.discountIncome,
       },
       RepaymentInstruction i => {
         if (_isPositive(i.interest)) SystemKey.interestExpense,

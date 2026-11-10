@@ -223,6 +223,7 @@ class TransactionFormEditSnapshot {
     required this.excludeBudget,
     this.counterpartyId,
     this.feeText = '',
+    this.discountText = '',
     this.advanceAmountText = '',
     this.advanceScenario = AdvanceScenario.reimbursement,
     this.advanceTrackingMode = AdvanceTrackingMode.itemized,
@@ -249,6 +250,7 @@ class TransactionFormEditSnapshot {
   final bool excludeBudget;
   final String? counterpartyId;
   final String feeText;
+  final String discountText;
   final String advanceAmountText;
   final AdvanceScenario advanceScenario;
   final AdvanceTrackingMode advanceTrackingMode;
@@ -397,6 +399,7 @@ TransactionFormEditSnapshot transactionFormEditSnapshot({
         mode: TransactionFormMode.transfer,
         amountText: amountText,
         feeText: _lineAmountText(detail, TransactionRole.fee),
+        discountText: _lineAmountText(detail, TransactionRole.discount),
         noteText: noteText,
         counterpartyId: transaction.counterpartyId,
         occurredAt: transaction.occurredAt,

@@ -369,6 +369,26 @@ enum LedgerViolationReason {
     LedgerErrorCode.transactionInvalidCommand,
     'A transfer fee requires exactly one outgoing account.',
   ),
+  transferDiscountAccountRequired(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Transfer discount account is required.',
+  ),
+  transferDiscountNegative(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Transfer discount cannot be negative.',
+  ),
+  transferDiscountExceedsAmount(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Transfer discount cannot exceed the transfer amount.',
+  ),
+  transferDiscountRequiresSingleOutgoingAccount(
+    LedgerErrorCode.transactionInvalidCommand,
+    'A transfer discount requires exactly one outgoing account.',
+  ),
+  transferActualOutflowNotPositive(
+    LedgerErrorCode.transactionInvalidCommand,
+    'Transfer actual outflow must be positive.',
+  ),
   transferInstructionUnresolvable(
     LedgerErrorCode.transactionPostingFailed,
     'Transfer accounts cannot be resolved.',

@@ -159,7 +159,10 @@ const _allowedPurposesByRole = <TransactionRole, Set<BusinessPurpose>>{
     BusinessPurpose.transfer,
     BusinessPurpose.debtRepayment,
   },
-  TransactionRole.discount: {BusinessPurpose.debtRepayment},
+  TransactionRole.discount: {
+    BusinessPurpose.transfer,
+    BusinessPurpose.debtRepayment,
+  },
   TransactionRole.refundOffset: {BusinessPurpose.refund},
   TransactionRole.advanceExpenseCategory: {
     BusinessPurpose.advance,

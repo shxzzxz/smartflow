@@ -83,7 +83,7 @@ class _TransactionMetadataActionRow extends StatelessWidget {
 }
 
 class _MainAccountPickerSection extends StatelessWidget {
-  const _MainAccountPickerSection({required this.children});
+  const _MainAccountPickerSection({required this.children, super.key});
 
   final List<Widget> children;
 
@@ -195,16 +195,93 @@ class _MainAccountPickerTile extends StatelessWidget {
   }
 }
 
-class _MainFeeInputTile extends StatelessWidget {
-  const _MainFeeInputTile({required this.controller, super.key});
+class _TransferActualOutflowSummary extends StatelessWidget {
+  const _TransferActualOutflowSummary({
+    required this.amountController,
+    required this.feeController,
+    required this.discountController,
+  });
 
+  final TextEditingController amountController;
+  final TextEditingController feeController;
+  final TextEditingController discountController;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        amountController,
+        feeController,
+        discountController,
+      ]),
+      builder: (context, _) {
+        final amount = Money.tryParse(amountController.text);
+        if (amount == null || amount.minorUnits <= 0) {
+          return const SizedBox.shrink();
+        }
+        final fee = Money.tryParse(feeController.text) ?? Money.zero();
+        final discount =
+            Money.tryParse(discountController.text) ?? Money.zero();
+        final actualOutflow = amount + fee - discount;
+        return Padding(
+          key: const ValueKey('transfer-actual-outflow-summary'),
+          padding: const EdgeInsets.only(top: AppSpacing.space8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '实际扣款 ${actualOutflow.format()}',
+              style: context.appTextStyles.formSupporting.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+String? _validateTransferDiscountValue(
+  String? value, {
+  required String amountText,
+  required String feeText,
+}) {
+  final amountError = validateOptionalNonNegativeMoneyText(value);
+  if (amountError != null) return amountError;
+  final amount = Money.tryParse(amountText);
+  final discount = Money.tryParse(value);
+  if (amount != null &&
+      discount != null &&
+      discount.minorUnits > amount.minorUnits) {
+    return '不能超过转账金额';
+  }
+  if (amount != null && discount != null) {
+    final fee = Money.tryParse(feeText) ?? Money.zero();
+    if ((amount + fee - discount).minorUnits <= 0) {
+      return '实际扣款必须大于 0';
+    }
+  }
+  return null;
+}
+
+class _MainTransferAdjustmentTile extends StatelessWidget {
+  const _MainTransferAdjustmentTile({
+    required this.label,
+    required this.icon,
+    required this.controller,
+    required this.validator,
+    super.key,
+  });
+
+  final String label;
+  final IconData icon;
   final TextEditingController controller;
+  final FormFieldValidator<String> validator;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-
     return Material(
       color: colors.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(AppRadius.radiusMd),
@@ -216,16 +293,16 @@ class _MainFeeInputTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(
+            SizedBox(
               width: AppSpacing.space32,
-              child: Center(child: Icon(RemixIcons.swap_box_line, size: 28)),
+              child: Center(child: Icon(icon, size: 28)),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('手续费', style: textStyles.formLabel),
+                  Text(label, style: textStyles.formLabel),
                   const SizedBox(height: AppSpacing.space2),
                   AppPlainTextFormField(
                     controller: controller,
@@ -234,7 +311,7 @@ class _MainFeeInputTile extends StatelessWidget {
                       decimal: true,
                     ),
                     inputFormatters: [moneyInputFormatter],
-                    validator: validateOptionalNonNegativeMoneyText,
+                    validator: validator,
                     textAlign: TextAlign.left,
                     style: textStyles.formValue,
                   ),

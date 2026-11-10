@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
@@ -1035,7 +1034,7 @@ void main() {
   });
 
   testWidgets(
-    'places a direct fee input below transfer accounts without overlapping the amount panel',
+    'places transfer fee and discount under destination and actual outflow below options',
     (tester) async {
       // Pin this geometry assertion to the target phone viewport instead of the
       // default 800x600 test view.
@@ -1051,38 +1050,68 @@ void main() {
       await tester.tap(find.text('转账'));
       await tester.pumpAndSettle();
 
-      final feeInput = find.byKey(const ValueKey('transfer-fee-input'));
+      final accountCard = find.byKey(const ValueKey('transfer-account-card'));
       final toAccountTile = find.byKey(
         const ValueKey('transfer-to-account-tile'),
       );
-      final amountInput = find.byType(TransactionAmountInput);
+      final feeInput = find.byKey(const ValueKey('transfer-fee-input'));
+      final discountInput = find.byKey(
+        const ValueKey('transfer-discount-input'),
+      );
+      final actualOutflowSummary = find.byKey(
+        const ValueKey('transfer-actual-outflow-summary'),
+      );
 
-      expect(feeInput, findsOneWidget);
+      expect(actualOutflowSummary, findsNothing);
+      expect(accountCard, findsOneWidget);
       expect(toAccountTile, findsOneWidget);
-      expect(amountInput, findsOneWidget);
-      expect(find.text('手续费'), findsOneWidget);
+      expect(feeInput, findsOneWidget);
+      expect(discountInput, findsOneWidget);
       expect(find.text('转出账户'), findsOneWidget);
       expect(find.text('转入账户'), findsOneWidget);
       expect(
+        find.descendant(of: accountCard, matching: feeInput),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: accountCard, matching: discountInput),
+        findsOneWidget,
+      );
+      expect(
+        tester.getRect(feeInput).top,
+        greaterThanOrEqualTo(tester.getRect(toAccountTile).bottom),
+      );
+      expect(
+        tester.getRect(discountInput).top,
+        greaterThanOrEqualTo(tester.getRect(feeInput).bottom),
+      );
+
+      tester
+              .widget<TextFormField>(
+                find.byKey(const ValueKey('transaction-amount-input')),
+              )
+              .controller!
+              .text =
+          '100';
+      await tester.pump();
+      await tester.enterText(
+        find.descendant(of: feeInput, matching: find.byType(TextFormField)),
+        '5',
+      );
+      await tester.enterText(
         find.descendant(
-          of: feeInput,
-          matching: find.byIcon(RemixIcons.swap_box_line),
+          of: discountInput,
+          matching: find.byType(TextFormField),
         ),
-        findsOneWidget,
+        '2',
       );
+      await tester.pump();
+
+      expect(actualOutflowSummary, findsOneWidget);
+      expect(find.text('实际扣款 103.00'), findsOneWidget);
       expect(
-        find.descendant(of: feeInput, matching: find.text('0.00')),
-        findsOneWidget,
-      );
-      expect(find.text('0.00（可选）'), findsNothing);
-      final feeRect = tester.getRect(feeInput);
-      final toAccountRect = tester.getRect(toAccountTile);
-      final amountRect = tester.getRect(amountInput);
-      expect(feeRect.top, greaterThanOrEqualTo(toAccountRect.bottom));
-      expect(feeRect.bottom, lessThanOrEqualTo(amountRect.top));
-      expect(
-        find.descendant(of: feeInput, matching: find.text('¥')),
-        findsNothing,
+        tester.getTopLeft(actualOutflowSummary).dy,
+        greaterThan(tester.getTopLeft(find.text('不计收支')).dy),
       );
     },
   );

@@ -232,6 +232,7 @@ class TransactionFormState {
         fee: fee.minorUnits == 0
             ? ''
             : formatMoney(fee, style: MoneyFormatStyle.plain),
+        discount: '',
         note: initialTransaction.note ?? '',
         amortizationConfiguration: configuration,
       ),
@@ -447,6 +448,7 @@ class TransactionFormInitialValues {
   const TransactionFormInitialValues({
     this.amount = '',
     this.fee = '',
+    this.discount = '',
     this.note = '',
     this.amortizationConfiguration,
   });
@@ -457,12 +459,14 @@ class TransactionFormInitialValues {
     return TransactionFormInitialValues(
       amount: snapshot.amountText,
       fee: snapshot.feeText,
+      discount: snapshot.discountText,
       note: snapshot.noteText,
     );
   }
 
   final String amount;
   final String fee;
+  final String discount;
   final String note;
   final AmortizationConfigurationDraft? amortizationConfiguration;
 }

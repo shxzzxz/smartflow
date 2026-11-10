@@ -235,6 +235,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     required String amountText,
     required String noteText,
     String? feeText,
+    String? discountText,
     ConsumptionInstallmentConfiguration? consumptionInstallment,
     AmortizationConfigurationDraft? amortizationConfiguration,
   }) async {
@@ -264,6 +265,28 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
         feeAmount = parsedFee;
       }
     }
+    Money? discountAmount;
+    if (current.mode == TransactionFormMode.transfer && discountText != null) {
+      final trimmedDiscount = discountText.trim();
+      if (trimmedDiscount.isEmpty) {
+        discountAmount = Money.zero();
+      } else {
+        final parsedDiscount = Money.tryParse(trimmedDiscount);
+        if (parsedDiscount == null || parsedDiscount.minorUnits < 0) {
+          return _invalidCommand('请输入有效优惠');
+        }
+        if (parsedDiscount.minorUnits > amount.minorUnits) {
+          return _invalidCommand('优惠不能超过转账金额');
+        }
+        discountAmount = parsedDiscount;
+      }
+    }
+    final actualOutflow =
+        amount + (feeAmount ?? Money.zero()) - (discountAmount ?? Money.zero());
+    if (current.mode == TransactionFormMode.transfer &&
+        actualOutflow.minorUnits <= 0) {
+      return _invalidCommand('实际扣款必须大于 0');
+    }
 
     _update((current) => current.copyWith(submitting: true));
     try {
@@ -283,6 +306,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             state: current,
             amount: amount,
             feeAmount: feeAmount,
+            discountAmount: discountAmount,
             note: trimToNull(noteText),
             consumptionInstallment: consumptionInstallment,
             amortizationConfiguration: effectiveAmortizationConfiguration,
@@ -294,6 +318,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
             amortizationPlanId: _editAmortizationPlanId,
             amount: amount,
             feeAmount: feeAmount,
+            discountAmount: discountAmount,
             note: trimToNull(noteText),
             amortizationConfiguration: effectiveAmortizationConfiguration,
           );

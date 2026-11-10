@@ -1452,6 +1452,7 @@ void main() {
       final outcome = await viewModel.submit(
         amountText: '50',
         feeText: '3',
+        discountText: '2',
         noteText: '',
       );
 
@@ -1460,6 +1461,7 @@ void main() {
       expect(command.outgoingAllocations.single.accountId, 'cash');
       expect(command.incomingAllocations.single.accountId, 'bank');
       expect(command.feeAmount, const Money(minorUnits: 300));
+      expect(command.discountAmount, const Money(minorUnits: 200));
       expect(command.counterpartyId, 'cp-ziroom');
     });
 
@@ -1476,14 +1478,21 @@ void main() {
 
       final state = container.read(provider).requireValue!;
       expect(state.initialValues.fee, '3');
+      expect(state.initialValues.discount, '2');
 
       final outcome = await container
           .read(provider.notifier)
-          .submit(amountText: '20', feeText: '', noteText: '');
+          .submit(
+            amountText: '20',
+            feeText: '',
+            discountText: '',
+            noteText: '',
+          );
 
       expect(outcome, isA<SubmitSuccess>());
       final command = editService.transferCommands.single;
       expect(command.feeAmount, Money.zero());
+      expect(command.discountAmount, Money.zero());
     });
 
     test('sets a transfer fee while editing', () async {
@@ -1540,6 +1549,28 @@ void main() {
       final outcome = await viewModel.submit(
         amountText: '50',
         feeText: '-1',
+        noteText: '',
+      );
+
+      expect(outcome, isA<SubmitFailure>());
+      expect(posting.transferCommands, isEmpty);
+    });
+
+    test('rejects transfer discount above the transfer amount', () async {
+      final posting = _FakeTransactionPostingAppService();
+      final container = _container(
+        postingService: posting,
+        settlementAccounts: [_account('cash'), _account('bank')],
+      );
+      final viewModel = container.read(_provider().notifier);
+      viewModel
+        ..setMode(TransactionFormMode.transfer)
+        ..setFromAccountId('cash')
+        ..setToAccountId('bank');
+
+      final outcome = await viewModel.submit(
+        amountText: '50',
+        discountText: '51',
         noteText: '',
       );
 
@@ -2215,6 +2246,7 @@ TransactionReadModel _aaAdvanceDetail() {
 TransactionReadModel _transferTransactionDetail() {
   const amount = Money(minorUnits: 2000);
   const fee = Money(minorUnits: 300);
+  const discount = Money(minorUnits: 200);
   const lines = [
     TransactionLine(
       id: 'transfer-out',
@@ -2238,6 +2270,13 @@ TransactionReadModel _transferTransactionDetail() {
       lineNo: 3,
       role: TransactionRole.fee,
       amount: fee,
+    ),
+    TransactionLine(
+      id: 'transfer-discount',
+      transactionId: 'transfer-1',
+      lineNo: 4,
+      role: TransactionRole.discount,
+      amount: discount,
     ),
   ];
   return TransactionReadModel.fromTransaction(

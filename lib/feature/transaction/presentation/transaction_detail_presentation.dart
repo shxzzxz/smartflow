@@ -215,6 +215,24 @@ Money? transactionTransferFee(TransactionReadModel detail) {
   return amount.minorUnits > 0 ? amount : null;
 }
 
+Money? transactionTransferDiscount(TransactionReadModel detail) {
+  if (detail.businessPurpose != BusinessPurpose.transfer) {
+    return null;
+  }
+  final amount = sumTransactionLineAmount(detail, TransactionRole.discount);
+  return amount.minorUnits > 0 ? amount : null;
+}
+
+Money? transactionTransferActualOutflow(TransactionReadModel detail) {
+  if (detail.businessPurpose != BusinessPurpose.transfer) {
+    return null;
+  }
+  final fee = transactionTransferFee(detail) ?? Money.zero();
+  final discount = transactionTransferDiscount(detail) ?? Money.zero();
+  if (fee.minorUnits == 0 && discount.minorUnits == 0) return null;
+  return detail.primaryAmount + fee - discount;
+}
+
 MoneySemantic semanticForTransactionPurpose(BusinessPurpose purpose) {
   return switch (purpose) {
     BusinessPurpose.dailyExpense ||

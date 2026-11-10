@@ -158,7 +158,7 @@ void main() {
     expect(breakdown.items.map((item) => item.title), ['现金', '银行卡']);
   });
 
-  test('transfer fee is read from the fee line', () {
+  test('transfer adjustments are read from fee and discount lines', () {
     final detail = _detail(BusinessPurpose.transfer, const [
       TransactionLine(
         id: 'fee',
@@ -167,8 +167,17 @@ void main() {
         role: TransactionRole.fee,
         amount: Money(minorUnits: 300),
       ),
+      TransactionLine(
+        id: 'discount',
+        transactionId: 'tx',
+        lineNo: 2,
+        role: TransactionRole.discount,
+        amount: Money(minorUnits: 200),
+      ),
     ]);
     expect(transactionTransferFee(detail)?.minorUnits, 300);
+    expect(transactionTransferDiscount(detail)?.minorUnits, 200);
+    expect(transactionTransferActualOutflow(detail)?.minorUnits, 10100);
   });
 }
 

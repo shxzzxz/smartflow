@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/ledger/ledger_command_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
 import '../../../application/transaction_view/transaction_view_query_api.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
+import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_page_header.dart';
@@ -137,6 +140,8 @@ class _DetailBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final transferFee = transactionTransferFee(state.detail);
+    final transferDiscount = transactionTransferDiscount(state.detail);
     return Column(
       children: [
         Expanded(
@@ -155,6 +160,10 @@ class _DetailBody extends ConsumerWidget {
                   refund: state.refund,
                   advance: state.advance,
                 ),
+              ],
+              if (transferFee != null || transferDiscount != null) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _TransferAdjustmentCard(detail: state.detail),
               ],
               const SizedBox(height: AppSpacing.space12),
               _PrimaryMetaCard(
@@ -514,6 +523,76 @@ class _RefundAdvanceCard extends StatelessWidget {
   }
 }
 
+class _TransferAdjustmentCard extends StatelessWidget {
+  const _TransferAdjustmentCard({required this.detail});
+
+  final TransactionReadModel detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final fee = transactionTransferFee(detail) ?? Money.zero();
+    final discount = transactionTransferDiscount(detail) ?? Money.zero();
+    final actualOutflow = transactionTransferActualOutflow(detail)!;
+    final colors = Theme.of(context).colorScheme;
+    final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    final baseStyle = context.appTextStyles.formSupporting;
+    return _RowCard(
+      rows: [
+        AppPlainValueRow(
+          key: const ValueKey('detail-transfer-adjustment-row'),
+          label: '转账调整',
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text.rich(
+              key: const ValueKey('detail-transfer-adjustment-value'),
+              TextSpan(
+                style: baseStyle,
+                children: [
+                  TextSpan(
+                    text: '手续费 ',
+                    style: baseStyle.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                  TextSpan(
+                    text: fee.format(),
+                    style: baseStyle.copyWith(
+                      color: financeColors.expense,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '  ·  优惠 ',
+                    style: baseStyle.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                  TextSpan(
+                    text: discount.format(),
+                    style: baseStyle.copyWith(
+                      color: financeColors.income,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '  ·  实际扣款 ',
+                    style: baseStyle.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                  TextSpan(
+                    text: actualOutflow.format(),
+                    style: baseStyle.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _BusinessModulesCard extends StatelessWidget {
   const _BusinessModulesCard({required this.modules});
 
@@ -557,7 +636,6 @@ class _PrimaryMetaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final note = state.noteText;
-    final transferFee = transactionTransferFee(state.detail);
     final hasNote = note != null && note.isNotEmpty;
     final colors = Theme.of(context).colorScheme;
     return _RowCard(
@@ -587,15 +665,6 @@ class _PrimaryMetaCard extends StatelessWidget {
                     iconKey: row.endpoint.iconKey,
                   ),
               ],
-              style: context.appTextStyles.formValue,
-            ),
-          ),
-        if (transferFee != null)
-          AppPlainValueRow(
-            label: '手续费',
-            child: MoneyText(
-              money: transferFee,
-              semantic: MoneySemantic.expense,
               style: context.appTextStyles.formValue,
             ),
           ),

@@ -169,6 +169,7 @@ class _TransactionFormContentState
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
   late final TextEditingController _feeController;
+  late final TextEditingController _discountController;
   late final TextEditingController _noteController;
   InstallmentConfigurationDraft? _installmentConfiguration;
   AmortizationConfigurationDraft? _amortizationConfiguration;
@@ -179,6 +180,7 @@ class _TransactionFormContentState
     final initialValues = widget.formState.initialValues;
     _amountController = TextEditingController(text: initialValues.amount);
     _feeController = TextEditingController(text: initialValues.fee);
+    _discountController = TextEditingController(text: initialValues.discount);
     _noteController = TextEditingController(text: initialValues.note);
     _amortizationConfiguration = initialValues.amortizationConfiguration;
   }
@@ -187,6 +189,7 @@ class _TransactionFormContentState
   void dispose() {
     _amountController.dispose();
     _feeController.dispose();
+    _discountController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -303,6 +306,7 @@ class _TransactionFormContentState
                       ),
                     if (formState.mode == TransactionFormMode.transfer)
                       _MainAccountPickerSection(
+                        key: const ValueKey('transfer-account-card'),
                         children: [
                           _MainAccountPickerTile(
                             label: '转出账户',
@@ -327,9 +331,25 @@ class _TransactionFormContentState
                                 .setToAccountId(value),
                           ),
                           const SizedBox(height: AppSpacing.space8),
-                          _MainFeeInputTile(
+                          _MainTransferAdjustmentTile(
                             key: const ValueKey('transfer-fee-input'),
+                            label: '手续费',
+                            icon: RemixIcons.swap_box_line,
                             controller: _feeController,
+                            validator: validateOptionalNonNegativeMoneyText,
+                          ),
+                          const SizedBox(height: AppSpacing.space8),
+                          _MainTransferAdjustmentTile(
+                            key: const ValueKey('transfer-discount-input'),
+                            label: '优惠',
+                            icon: RemixIcons.price_tag_3_line,
+                            controller: _discountController,
+                            validator: (value) =>
+                                _validateTransferDiscountValue(
+                                  value,
+                                  amountText: _amountController.text,
+                                  feeText: _feeController.text,
+                                ),
                           ),
                         ],
                       ),
@@ -477,6 +497,12 @@ class _TransactionFormContentState
                           .read(_formProvider.notifier)
                           .setExcludeBudget(value),
                     ),
+                    if (formState.mode == TransactionFormMode.transfer)
+                      _TransferActualOutflowSummary(
+                        amountController: _amountController,
+                        feeController: _feeController,
+                        discountController: _discountController,
+                      ),
                     if (formState.mode == TransactionFormMode.expense &&
                         formState.expenseScene.isAdvance &&
                         formState.advanceReceivableAccountId != null)
@@ -874,6 +900,7 @@ class _TransactionFormContentState
         .submit(
           amountText: _amountController.text,
           feeText: _feeController.text,
+          discountText: _discountController.text,
           noteText: _noteController.text,
           consumptionInstallment: consumptionConfiguration,
           amortizationConfiguration: amortizationConfiguration,
