@@ -111,6 +111,8 @@ void main() {
     expect(importEntrySourceFromRoute('jd'), ImportEntrySource.jd);
     expect(importEntrySourceFromRoute('union-pay'), ImportEntrySource.unionPay);
     expect(ImportEntrySource.generic.routeValue, 'generic');
+    expect(ImportEntrySource.jd.importHint, '先享后付会识别成付款日交易');
+    expect(ImportEntrySource.alipay.importHint, isNull);
     expect(ImportEntrySource.yimu.domainSource, ImportSource.yimu);
     expect(ImportEntrySource.wechat.domainSource, ImportSource.wechat);
     expect(ImportEntrySource.alipay.domainSource, ImportSource.alipay);

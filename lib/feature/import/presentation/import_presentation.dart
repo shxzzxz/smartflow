@@ -53,6 +53,11 @@ extension ImportEntrySourcePresentation on ImportEntrySource {
     ImportEntrySource.generic => '当前尚未开放通用格式导入',
   };
 
+  String? get importHint => switch (this) {
+    ImportEntrySource.jd => '先享后付会识别成付款日交易',
+    _ => null,
+  };
+
   bool get isAvailable => domainSource != null;
 }
 

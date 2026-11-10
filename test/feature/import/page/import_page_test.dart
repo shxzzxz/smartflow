@@ -60,6 +60,7 @@ void main() {
     expect(find.text('微信账单'), findsOneWidget);
     expect(find.text('支付宝账单'), findsOneWidget);
     expect(find.text('京东商城账单'), findsOneWidget);
+    expect(find.text('先享后付会识别成付款日交易'), findsNothing);
     expect(find.text('云闪付账单'), findsOneWidget);
     expect(find.text('其他格式'), findsOneWidget);
     expect(find.text('查看全部'), findsOneWidget);
@@ -75,6 +76,7 @@ void main() {
 
     expect(find.text('支付宝账单'), findsOneWidget);
     expect(find.text('支持支付宝导出的交易明细 CSV 文件'), findsOneWidget);
+    expect(find.text('先享后付会识别成付款日交易'), findsNothing);
     expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
   });
 
@@ -86,6 +88,7 @@ void main() {
 
     expect(find.text('微信账单'), findsOneWidget);
     expect(find.text('支持微信导出的账单 XLSX 文件'), findsOneWidget);
+    expect(find.text('先享后付会识别成付款日交易'), findsNothing);
     expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
   });
 
@@ -97,6 +100,7 @@ void main() {
 
     expect(find.text('京东商城账单'), findsOneWidget);
     expect(find.text('支持京东商城导出的交易流水 CSV 文件'), findsOneWidget);
+    expect(find.text('先享后付会识别成付款日交易'), findsOneWidget);
     expect(find.textContaining('XLS 文件请先另存为'), findsNothing);
   });
 

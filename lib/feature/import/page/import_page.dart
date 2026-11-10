@@ -1106,6 +1106,10 @@ class _ImportReviewTab extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.space16),
             ],
+            if (source.importHint case final hint?) ...[
+              AppStatusBanner(message: hint, tone: AppStatusBannerTone.info),
+              const SizedBox(height: AppSpacing.space16),
+            ],
             _ImportFilesSection(
               source: source,
               state: state,
