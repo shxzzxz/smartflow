@@ -23,7 +23,7 @@ void main() {
         direction: '收入',
         amount: '23.22',
         status: '赎回成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '其他',
         transactionId: 'income-1',
         merchantOrderId: 'merchant-2',
@@ -42,7 +42,7 @@ void main() {
         direction: '',
         amount: '1.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '其他',
         transactionId: 'unknown-1',
         merchantOrderId: 'merchant-4',
@@ -68,7 +68,40 @@ void main() {
     expect(income.amount, Money.parse('23.22'));
     expect(income.category.path, '其他');
     expect(income.note, '虚构小金库收益');
-    expect(income.receiveAccount.sourceEntityKey, 'account:京东小金库');
+    expect(income.receiveAccount.sourceEntityKey, 'account:余额');
+  });
+
+  test('filters JD Xiaojinku payment methods before parsing facts', () {
+    final result = _parser([
+      _row(
+        direction: '收入',
+        amount: '199.99',
+        status: '赎回成功',
+        paymentMethod: '京东小金库',
+        category: '投资理财',
+        transactionId: 'xiaojinku-income',
+        merchantOrderId: 'merchant-xiaojinku-income',
+      ),
+      _row(
+        direction: '支出',
+        date: 'invalid-date',
+        amount: 'invalid-amount',
+        status: '买入成功',
+        paymentMethod: ' 京东小金库 ',
+        category: '',
+        transactionId: '',
+        merchantOrderId: '',
+      ),
+    ]).parse(_bundle());
+
+    expect(result.fatalIssues, isEmpty);
+    expect(result.groups, isEmpty);
+    expect(result.sourceAccounts, isEmpty);
+    expect(result.issues, isEmpty);
+    expect(result.filteredRecords.map((record) => record.reasonCode), [
+      'jd_xiaojinku_payment_method',
+      'jd_xiaojinku_payment_method',
+    ]);
   });
 
   test('maps 先享后付 to payable and applies other account profiles', () {
@@ -86,7 +119,7 @@ void main() {
         direction: '支出',
         amount: '11.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '数码电器',
         transactionId: 'fund',
         merchantOrderId: 'merchant-fund',
@@ -122,7 +155,7 @@ void main() {
       accounts['account:先享后付']?.preferredTargetDescriptor,
       ImportTargetDescriptor.payableAccount,
     );
-    expect(accounts['account:京东小金库']?.allowedTargetDescriptors, {
+    expect(accounts['account:余额']?.allowedTargetDescriptors, {
       ImportTargetDescriptor.fundAccount,
     });
     expect(accounts['account:示例银行(0002)']?.allowedTargetDescriptors, {
@@ -179,7 +212,7 @@ void main() {
         direction: '支出',
         amount: '0.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '其他',
         transactionId: 'zero',
         merchantOrderId: 'merchant-zero',
@@ -217,7 +250,7 @@ void main() {
         direction: '支出',
         amount: '10.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '数码电器',
         transactionId: 'same-parent',
         merchantOrderId: 'merchant-a',
@@ -246,7 +279,7 @@ void main() {
         direction: '支出',
         amount: '10.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '数码电器',
         transactionId: 'duplicate',
         merchantOrderId: 'merchant-duplicate',
@@ -255,7 +288,7 @@ void main() {
         direction: '收入',
         amount: '11.00',
         status: '交易成功',
-        paymentMethod: '京东小金库',
+        paymentMethod: '余额',
         category: '其他',
         transactionId: 'duplicate',
         merchantOrderId: 'merchant-duplicate',
@@ -311,7 +344,7 @@ Map<String, Object?> _expenseRow() {
     direction: '支出',
     amount: '25.00',
     status: '交易成功',
-    paymentMethod: '京东小金库',
+    paymentMethod: '余额',
     category: '其他',
     transactionId: 'expense-1',
     merchantOrderId: 'merchant-1',

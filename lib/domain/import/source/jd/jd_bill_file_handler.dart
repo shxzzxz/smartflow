@@ -10,6 +10,8 @@ import 'jd_file_type.dart';
 class JdBillFileHandler {
   const JdBillFileHandler();
 
+  static const xiaojinkuPaymentMethod = '京东小金库';
+
   static const requiredHeaders = {
     '交易时间',
     '商户名称',
@@ -60,9 +62,11 @@ class JdBillFileHandler {
 
     final direction = _text(row, '收/支');
     final status = _text(row, '交易状态');
+    final paymentMethod = _text(row, '收/付款方式');
     final issues = <ImportIssue>[];
     final filterReason = _filterReason(
       direction: direction,
+      paymentMethod: paymentMethod,
       rowNumber: rowNumber,
       issues: issues,
     );
@@ -105,7 +109,7 @@ class JdBillFileHandler {
       occurredAt: _date(row['交易时间'], issues, rowNumber),
       amount: amount,
       categoryPath: _text(row, '交易分类'),
-      paymentMethod: _text(row, '收/付款方式'),
+      paymentMethod: paymentMethod,
       note: _text(row, '交易说明'),
       sourceOperationKey: _operationKey(row, issues, rowNumber),
       filterReason: null,
@@ -115,9 +119,13 @@ class JdBillFileHandler {
 
   JdBillFilterReason? _filterReason({
     required String? direction,
+    required String? paymentMethod,
     required int rowNumber,
     required List<ImportIssue> issues,
   }) {
+    if (paymentMethod == xiaojinkuPaymentMethod) {
+      return JdBillFilterReason.xiaojinkuPaymentMethod;
+    }
     if (direction == '不计收支') {
       return JdBillFilterReason.directionNotSupported;
     }

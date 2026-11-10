@@ -2,16 +2,23 @@ import '../../../../core/money/money.dart';
 import '../../import_models.dart';
 import '../../service/source_parsing_models.dart';
 
-enum JdBillFilterReason { directionNotSupported, unknownDirection, zeroAmount }
+enum JdBillFilterReason {
+  xiaojinkuPaymentMethod,
+  directionNotSupported,
+  unknownDirection,
+  zeroAmount,
+}
 
 extension JdBillFilterReasonDescription on JdBillFilterReason {
   String get reasonCode => switch (this) {
+    JdBillFilterReason.xiaojinkuPaymentMethod => 'jd_xiaojinku_payment_method',
     JdBillFilterReason.directionNotSupported => 'jd_direction_not_supported',
     JdBillFilterReason.unknownDirection => 'jd_direction_unknown',
     JdBillFilterReason.zeroAmount => 'jd_amount_zero',
   };
 
   String get reason => switch (this) {
+    JdBillFilterReason.xiaojinkuPaymentMethod => '京东收/付款方式为京东小金库，不导入该交易。',
     JdBillFilterReason.directionNotSupported => '京东收/支不是收入或支出。',
     JdBillFilterReason.unknownDirection => '京东收/支为空或无法识别。',
     JdBillFilterReason.zeroAmount => '京东交易金额为 0。',
