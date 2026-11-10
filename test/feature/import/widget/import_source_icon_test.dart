@@ -43,6 +43,11 @@ void main() {
           background: colors.primaryContainer,
           foreground: colors.onPrimaryContainer,
         ),
+        ImportEntrySource.jd => (
+          icon: Icons.shopping_bag_rounded,
+          background: colors.primaryContainer,
+          foreground: colors.onPrimaryContainer,
+        ),
         ImportEntrySource.unionPay => (
           icon: RemixIcons.bank_card_line,
           background: colors.secondaryContainer,

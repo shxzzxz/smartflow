@@ -60,4 +60,45 @@ void main() {
       isFalse,
     );
   });
+
+  test('ordinary expense settlement accepts a payable account', () {
+    const payable = ImportSourceEntity(
+      source: ImportSource.jd,
+      kind: ImportEntityKind.account,
+      sourceEntityKey: 'account:先享后付',
+      displayName: '先享后付',
+      allowedTargetDescriptors: {ImportTargetDescriptor.payableAccount},
+    );
+    final requirements = ImportTargetCompatibilityPolicy.requirementsForDraft(
+      ImportExpenseDraft(
+        amount: Money.parse('10'),
+        paidFrom: const ImportAccountReference.source(
+          sourceEntityKey: 'account:先享后付',
+          displayName: '先享后付',
+        ),
+        category: const ImportCategoryReference(
+          sourceEntityKey: 'category:expense:其他',
+          path: '其他',
+          kind: ImportCategoryKind.expense,
+        ),
+        occurredAt: DateTime(2026, 1, 1),
+      ),
+    ).toList(growable: false);
+
+    expect(
+      requirements
+          .singleWhere(
+            (requirement) => requirement.sourceEntityKey == 'account:先享后付',
+          )
+          .descriptors,
+      contains(ImportTargetDescriptor.payableAccount),
+    );
+    expect(
+      ImportTargetCompatibilityPolicy.supportsEntity(
+        payable,
+        ImportTargetDescriptor.payableAccount,
+      ),
+      isTrue,
+    );
+  });
 }

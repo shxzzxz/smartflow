@@ -327,6 +327,52 @@ final class WechatFileReaderProvider
 
 String _$wechatFileReaderHash() => r'f122553fef70f530b63dc4cdc1f78b8de39aba55';
 
+@ProviderFor(jdFileReader)
+final jdFileReaderProvider = JdFileReaderProvider._();
+
+final class JdFileReaderProvider
+    extends
+        $FunctionalProvider<
+          ImportFileReader,
+          ImportFileReader,
+          ImportFileReader
+        >
+    with $Provider<ImportFileReader> {
+  JdFileReaderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'jdFileReaderProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$jdFileReaderHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImportFileReader> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImportFileReader create(Ref ref) {
+    return jdFileReader(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImportFileReader value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImportFileReader>(value),
+    );
+  }
+}
+
+String _$jdFileReaderHash() => r'db82f4662c2a1781242212bbdfb949d8ed7e053c';
+
 @ProviderFor(yimuImportParser)
 final yimuImportParserProvider = YimuImportParserProvider._();
 
@@ -469,6 +515,47 @@ final class WechatImportParserProvider
 String _$wechatImportParserHash() =>
     r'ca485220b980c166a7d3c46e191ca6bbe59a44db';
 
+@ProviderFor(jdImportParser)
+final jdImportParserProvider = JdImportParserProvider._();
+
+final class JdImportParserProvider
+    extends $FunctionalProvider<JdImportParser, JdImportParser, JdImportParser>
+    with $Provider<JdImportParser> {
+  JdImportParserProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'jdImportParserProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$jdImportParserHash();
+
+  @$internal
+  @override
+  $ProviderElement<JdImportParser> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  JdImportParser create(Ref ref) {
+    return jdImportParser(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(JdImportParser value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<JdImportParser>(value),
+    );
+  }
+}
+
+String _$jdImportParserHash() => r'2eaf94e48bf79743e3eac241ce983346d84eec5b';
+
 @ProviderFor(importPlanAppService)
 final importPlanAppServiceProvider = ImportPlanAppServiceProvider._();
 
@@ -515,7 +602,7 @@ final class ImportPlanAppServiceProvider
 }
 
 String _$importPlanAppServiceHash() =>
-    r'76dc2f49265b9f3e6c3e515fcb9b3123b75811a9';
+    r'847fd16ba0ad2f1802bb83718893cd8a76cf7e50';
 
 @ProviderFor(importMappingRepository)
 final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();

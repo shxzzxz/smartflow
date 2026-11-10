@@ -42,6 +42,7 @@ class PlatformImportFilePicker implements ImportFilePicker {
           ImportSource.yimu => const ['csv', 'xlsx'],
           ImportSource.alipay => const ['csv'],
           ImportSource.wechat => const ['xlsx'],
+          ImportSource.jd => const ['csv'],
         },
       );
     } on Exception catch (error, stackTrace) {

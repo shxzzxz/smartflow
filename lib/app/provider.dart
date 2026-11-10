@@ -10,6 +10,7 @@ import '../core/logging/app_log_file_sink.dart';
 import '../core/logging/app_log_reader.dart';
 import '../infrastructure/database/database_provider.dart';
 import '../infrastructure/import/alipay/alipay_file_reader.dart';
+import '../infrastructure/import/jd/jd_file_reader.dart';
 import '../infrastructure/import/ledger_import_port.dart';
 import '../infrastructure/import/platform_import_file_picker.dart';
 import '../infrastructure/import/repository/drift_import_batch_repository.dart';
@@ -97,6 +98,7 @@ import '../domain/import/port/import_ledger_port.dart';
 import '../domain/import/port/import_mapping_repository.dart';
 import '../domain/import/port/import_file_reader.dart';
 import '../domain/import/source/alipay/alipay_import_parser.dart';
+import '../domain/import/source/jd/jd_import_parser.dart';
 import '../domain/import/source/wechat/wechat_category_lexicon.dart';
 import '../domain/import/source/wechat/wechat_import_parser.dart';
 import '../domain/import/source/yimu/yimu_import_parser.dart';
@@ -183,6 +185,11 @@ ImportFileReader wechatFileReader(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+ImportFileReader jdFileReader(Ref ref) {
+  return const JdFileReader();
+}
+
+@Riverpod(keepAlive: true)
 YimuImportParser yimuImportParser(Ref ref) {
   return YimuImportParser(reader: ref.watch(yimuFileReaderProvider));
 }
@@ -201,12 +208,18 @@ WechatImportParser wechatImportParser(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+JdImportParser jdImportParser(Ref ref) {
+  return JdImportParser(reader: ref.watch(jdFileReaderProvider));
+}
+
+@Riverpod(keepAlive: true)
 ImportPlanAppService importPlanAppService(Ref ref) {
   return ImportPlanAppServiceImpl(
     parsers: ImportParserRegistry([
       ref.watch(yimuImportParserProvider),
       ref.watch(alipayImportParserProvider),
       ref.watch(wechatImportParserProvider),
+      ref.watch(jdImportParserProvider),
     ]),
   );
 }
