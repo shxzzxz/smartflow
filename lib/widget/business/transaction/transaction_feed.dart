@@ -19,6 +19,7 @@ class TransactionFeedScrollView extends StatefulWidget {
     this.emptyState,
     this.groupEmptyMessage,
     this.showDailyTotals = true,
+    this.showClosingBalance = true,
     this.hasMore = false,
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
@@ -44,6 +45,7 @@ class TransactionFeedScrollView extends StatefulWidget {
   /// 分组固定存在但当天没有交易时的空态文案（日历页按日分页时使用）。
   final String? groupEmptyMessage;
   final bool showDailyTotals;
+  final bool showClosingBalance;
   final bool hasMore;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
@@ -114,6 +116,7 @@ class _TransactionFeedScrollViewState extends State<TransactionFeedScrollView> {
                   EmptyTransactionCard(message: widget.emptyMessage),
               groupEmptyMessage: widget.groupEmptyMessage,
               showDailyTotals: widget.showDailyTotals,
+              showClosingBalance: widget.showClosingBalance,
               onRowTap: widget.onRowTap,
               onRowLongPress: widget.onRowLongPress,
               onRowQuickEdit: widget.onRowQuickEdit,
@@ -142,6 +145,7 @@ class _TransactionFeedSliver extends StatelessWidget {
     required this.emptyState,
     required this.groupEmptyMessage,
     required this.showDailyTotals,
+    required this.showClosingBalance,
     required this.onRowTap,
     required this.onRowLongPress,
     required this.onRowQuickEdit,
@@ -157,6 +161,7 @@ class _TransactionFeedSliver extends StatelessWidget {
   final Widget emptyState;
   final String? groupEmptyMessage;
   final bool showDailyTotals;
+  final bool showClosingBalance;
   final ValueChanged<String>? onRowTap;
   final ValueChanged<String>? onRowLongPress;
   final ValueChanged<String>? onRowQuickEdit;
@@ -205,13 +210,15 @@ class _TransactionFeedSliver extends StatelessWidget {
         }
         return Padding(
           padding: EdgeInsets.only(
-            bottom:
-                index < groups.length - 1 || hasFooter ? AppSpacing.space10 : 0,
+            bottom: index < groups.length - 1 || hasFooter
+                ? AppSpacing.space10
+                : 0,
           ),
           child: TransactionDayCard(
             group: groups[index],
             emptyMessage: groupEmptyMessage,
             showDailyTotals: showDailyTotals,
+            showClosingBalance: showClosingBalance,
             onRowTap: onRowTap,
             onRowLongPress: onRowLongPress,
             onRowQuickEdit: onRowQuickEdit,

@@ -58,24 +58,28 @@ class TransactionDayGroup {
     required this.rows,
     required this.incomeMinor,
     required this.expenseMinor,
+    this.closingBalance,
   });
 
   final DateTime date;
   final List<TransactionRowPresentation> rows;
   final int incomeMinor;
   final int expenseMinor;
+  final Money? closingBalance;
 
   TransactionDayGroup copyWith({
     DateTime? date,
     List<TransactionRowPresentation>? rows,
     int? incomeMinor,
     int? expenseMinor,
+    Money? closingBalance,
   }) {
     return TransactionDayGroup(
       date: date ?? this.date,
       rows: rows ?? this.rows,
       incomeMinor: incomeMinor ?? this.incomeMinor,
       expenseMinor: expenseMinor ?? this.expenseMinor,
+      closingBalance: closingBalance ?? this.closingBalance,
     );
   }
 }

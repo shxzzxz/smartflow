@@ -40,6 +40,54 @@ void main() {
     });
 
     test(
+      'shows each day closing balance from the current account balance',
+      () async {
+        final transactionService = _FakeTransactionFeedQueryService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: {
+            ..._accounts,
+            'cash': _account(
+              'cash',
+              '现金',
+              iconKey: 'cash',
+              balanceMinor: 87000,
+            ),
+          },
+        );
+        final container = _container(transactionService, accountService);
+
+        final sub = container.listen(
+          accountTransactionsViewModelProvider('cash'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountLookupProvider.future);
+        await container.pump();
+        transactionService.emit([
+          _entry(
+            'newest',
+            occurredAt: DateTime(2026, 7, 14, 18),
+            settlementDeltaMinor: 10000,
+          ),
+          _entry(
+            'older',
+            occurredAt: DateTime(2026, 7, 13, 9),
+            settlementDeltaMinor: -3000,
+          ),
+        ]);
+        await _flush();
+
+        final loaded =
+            container.read(accountTransactionsViewModelProvider('cash'))
+                as AccountTransactionsLoaded;
+        expect(loaded.groups.map((group) => group.closingBalance?.minorUnits), [
+          87000,
+          77000,
+        ]);
+      },
+    );
+
+    test(
       'shows parent and child rows with actual account net impact',
       () async {
         final transactionService = _FakeTransactionFeedQueryService();
@@ -303,13 +351,14 @@ Account _account(
   String name, {
   AccountType type = AccountType.asset,
   String? iconKey,
+  int balanceMinor = 0,
 }) {
   return Account(
     id: id,
     name: name,
     type: type,
     iconKey: iconKey,
-    balance: const Money(minorUnits: 0),
+    balance: Money(minorUnits: balanceMinor),
   );
 }
 

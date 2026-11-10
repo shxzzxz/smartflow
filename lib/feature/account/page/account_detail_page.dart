@@ -10,6 +10,7 @@ import '../../../design_system/token/component.dart';
 import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../design_system/widget/app_detail_summary_card.dart';
 import '../../../design_system/widget/app_inline_action_button.dart';
@@ -24,13 +25,29 @@ import '../view_model/account_view.dart';
 import '../widget/account_bill_list.dart';
 import '../widget/account_credit_summary_list.dart';
 
-class AccountDetailPage extends ConsumerWidget {
+class AccountDetailPage extends ConsumerStatefulWidget {
   const AccountDetailPage({required this.accountId, super.key});
 
   final String accountId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountDetailPage> createState() => _AccountDetailPageState();
+}
+
+class _AccountDetailPageState extends ConsumerState<AccountDetailPage> {
+  bool _showClosingBalance = false;
+
+  @override
+  void didUpdateWidget(covariant AccountDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.accountId != widget.accountId) {
+      _showClosingBalance = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accountId = widget.accountId;
     final state = ref.watch(accountDetailViewModelProvider(accountId));
     final loadedAccount = state is AccountDetailLoaded ? state.account : null;
 
@@ -47,23 +64,38 @@ class AccountDetailPage extends ConsumerWidget {
                     icon: RemixIcons.edit_line,
                     tooltip: '编辑账户',
                   ),
-                if (loadedAccount != null && !loadedAccount.isArchived)
-                  AppHeaderIconButton(
-                    onPressed: () => _confirmArchive(context, ref),
-                    icon: RemixIcons.archive_line,
-                    tooltip: '归档账户',
-                  ),
                 if (loadedAccount != null && loadedAccount.isArchived)
                   AppHeaderIconButton(
-                    onPressed: () => _restore(context, ref),
+                    onPressed: () => _restore(context),
                     icon: RemixIcons.restart_line,
                     tooltip: '恢复账户',
                   ),
                 if (loadedAccount != null && loadedAccount.isArchived)
                   AppHeaderIconButton(
-                    onPressed: () => _confirmPermanentDelete(context, ref),
+                    onPressed: () => _confirmPermanentDelete(context),
                     icon: RemixIcons.delete_bin_line,
                     tooltip: '永久删除账户',
+                  ),
+                if (loadedAccount != null)
+                  AppPopupMenuButton(
+                    tooltip: '更多操作',
+                    icon: RemixIcons.more_2_line,
+                    items: [
+                      AppPopupMenuToggle(
+                        label: '余额显示',
+                        icon: RemixIcons.eye_line,
+                        value: _showClosingBalance,
+                        onChanged: (value) {
+                          setState(() => _showClosingBalance = value);
+                        },
+                      ),
+                      if (!loadedAccount.isArchived)
+                        AppPopupMenuAction(
+                          label: '归档账户',
+                          icon: RemixIcons.archive_line,
+                          onPressed: () => _confirmArchive(context),
+                        ),
+                    ],
                   ),
               ],
             ),
@@ -84,6 +116,7 @@ class AccountDetailPage extends ConsumerWidget {
                     contracts: contracts,
                     bills: bills,
                     creditOverview: creditOverview,
+                    showClosingBalance: _showClosingBalance,
                     onLoadMoreTransactions: () => ref
                         .read(
                           accountDetailViewModelProvider(accountId).notifier,
@@ -105,9 +138,9 @@ class AccountDetailPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _restore(BuildContext context, WidgetRef ref) async {
+  Future<void> _restore(BuildContext context) async {
     final outcome = await ref
-        .read(accountDetailViewModelProvider(accountId).notifier)
+        .read(accountDetailViewModelProvider(widget.accountId).notifier)
         .restoreAccount();
     if (!context.mounted) return;
     switch (outcome) {
@@ -122,7 +155,7 @@ class AccountDetailPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmArchive(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmArchive(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -145,7 +178,7 @@ class AccountDetailPage extends ConsumerWidget {
     if (!context.mounted || confirmed != true) return;
 
     final outcome = await ref
-        .read(accountDetailViewModelProvider(accountId).notifier)
+        .read(accountDetailViewModelProvider(widget.accountId).notifier)
         .archiveAccount();
     if (!context.mounted) return;
 
@@ -159,10 +192,7 @@ class AccountDetailPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmPermanentDelete(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _confirmPermanentDelete(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -189,7 +219,7 @@ class AccountDetailPage extends ConsumerWidget {
     if (!context.mounted || confirmed != true) return;
 
     final outcome = await ref
-        .read(accountDetailViewModelProvider(accountId).notifier)
+        .read(accountDetailViewModelProvider(widget.accountId).notifier)
         .deletePermanently();
     if (!context.mounted) return;
 
@@ -212,6 +242,7 @@ class _AccountDetailContent extends StatelessWidget {
     required this.contracts,
     required this.bills,
     required this.creditOverview,
+    required this.showClosingBalance,
     required this.onLoadMoreTransactions,
   });
 
@@ -221,6 +252,7 @@ class _AccountDetailContent extends StatelessWidget {
   final AccountContractsState contracts;
   final AccountBillsState bills;
   final AccountCreditOverviewState creditOverview;
+  final bool showClosingBalance;
   final VoidCallback onLoadMoreTransactions;
 
   @override
@@ -297,6 +329,7 @@ class _AccountDetailContent extends StatelessWidget {
       emptyMessage: '暂无账户交易',
       emptyState: feed.emptyState,
       showDailyTotals: false,
+      showClosingBalance: showClosingBalance,
       hasMore: feed.hasMore,
       isLoadingMore: feed.isLoadingMore,
       loadMoreErrorMessage: feed.loadMoreErrorMessage,

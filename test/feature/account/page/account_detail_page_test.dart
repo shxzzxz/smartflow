@@ -182,6 +182,59 @@ void main() {
     expect(find.text('账户仅在没有任何业务数据时才能删除。永久删除后无法恢复。'), findsOneWidget);
   });
 
+  testWidgets('toggles page balances from the more menu', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final account = _account(
+      kind: AccountProfileKind.fund,
+      balanceMinor: 123400,
+    );
+
+    await tester.pumpWidget(
+      _app(
+        account: account,
+        transactions: AccountTransactionsState.loaded(
+          groups: [
+            TransactionDayGroup(
+              date: DateTime(2026, 7, 14),
+              rows: const [],
+              incomeMinor: 0,
+              expenseMinor: 0,
+              closingBalance: const Money(minorUnits: 87000),
+            ),
+          ],
+          hasMore: false,
+          isLoadingMore: false,
+        ),
+      ),
+    );
+
+    expect(find.text('1234.00'), findsOneWidget);
+    expect(find.text('余额 '), findsNothing);
+    expect(find.text('870'), findsNothing);
+    expect(find.byTooltip('归档账户'), findsNothing);
+
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('余额显示'), findsOneWidget);
+    expect(find.text('归档账户'), findsOneWidget);
+
+    await tester.tap(find.text('余额显示'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1234.00'), findsOneWidget);
+    expect(find.text('870'), findsOneWidget);
+    expect(find.text('余额 '), findsOneWidget);
+
+    await tester.tap(find.text('余额显示'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1234.00'), findsOneWidget);
+    expect(find.text('870'), findsNothing);
+    expect(find.text('余额 '), findsNothing);
+  });
+
   testWidgets('archives an account after confirmation', (tester) async {
     final account = _account(kind: AccountProfileKind.fund);
     final detailState = AccountDetailPageState.loaded(
@@ -228,7 +281,10 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byTooltip('归档账户'));
+    expect(find.byTooltip('归档账户'), findsNothing);
+    await tester.tap(find.byTooltip('更多操作'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('归档账户'));
     await tester.pumpAndSettle();
     expect(find.text('归档账户？'), findsOneWidget);
     expect(find.text('归档后账户将不再用于新交易，历史数据会保留且可以恢复。'), findsOneWidget);
@@ -501,15 +557,16 @@ Widget _app({
   List<BillSummaryReadModel> bills = const [],
   AccountCreditOverviewState creditOverview =
       const AccountCreditOverviewState.notApplicable(),
+  AccountTransactionsState transactions = const AccountTransactionsState.loaded(
+    groups: [],
+    hasMore: false,
+    isLoadingMore: false,
+  ),
 }) {
   final state = AccountDetailPageState.loaded(
     account: account,
     actions: accountDetailActions(account),
-    transactions: const AccountTransactionsState.loaded(
-      groups: [],
-      hasMore: false,
-      isLoadingMore: false,
-    ),
+    transactions: transactions,
     contracts: const AccountContractsState.loaded(contracts: []),
     bills: AccountBillsState.loaded(bills: bills),
     creditOverview: creditOverview,
@@ -582,12 +639,13 @@ BillSummaryReadModel _bill(int year, int month) {
 AccountView _account({
   required AccountProfileKind kind,
   bool isArchived = false,
+  int balanceMinor = 0,
 }) {
   return AccountView(
     id: 'account',
     name: '测试账户',
     kind: kind,
-    balance: Money.zero(),
+    balance: Money(minorUnits: balanceMinor),
     iconKey: kind.iconKey,
     isArchived: isArchived,
     creditLimit: kind == AccountProfileKind.credit

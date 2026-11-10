@@ -1,8 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../application/transaction_view/transaction_view_query_api.dart';
+import '../../../core/money/money.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
+import '../presentation/account_transaction_balance.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 
 part 'account_transactions_view_model.g.dart';
@@ -20,6 +22,7 @@ class AccountTransactionPaging extends _$AccountTransactionPaging {
 @riverpod
 class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
   List<TransactionFeedEntry> _previousItems = const [];
+  Money? _previousAccountBalance;
 
   @override
   AccountTransactionsState build(String accountId) {
@@ -38,11 +41,13 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
     if (lookup == null) {
       return const AccountTransactionsState.loading();
     }
+    final currentBalance = lookup.find(accountId)?.balance;
 
     if (_previousItems.isNotEmpty && transactions.isLoading) {
       return _loaded(
         items: _previousItems,
         accountLookup: lookup,
+        currentBalance: _previousAccountBalance ?? currentBalance,
         hasMore: true,
         isLoadingMore: true,
       );
@@ -52,6 +57,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
       AsyncData(:final value) => _loaded(
         items: _previousItems = value,
         accountLookup: lookup,
+        currentBalance: currentBalance,
         hasMore: value.length == limit,
         isLoadingMore: false,
       ),
@@ -61,6 +67,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             : _loaded(
                 items: _previousItems,
                 accountLookup: lookup,
+                currentBalance: _previousAccountBalance ?? currentBalance,
                 hasMore: true,
                 isLoadingMore: false,
                 loadMoreErrorMessage: '加载更多交易失败，请重试',
@@ -71,6 +78,7 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
             : _loaded(
                 items: _previousItems,
                 accountLookup: lookup,
+                currentBalance: _previousAccountBalance ?? currentBalance,
                 hasMore: true,
                 isLoadingMore: true,
               ),
@@ -100,16 +108,29 @@ class AccountTransactionsViewModel extends _$AccountTransactionsViewModel {
   AccountTransactionsLoaded _loaded({
     required List<TransactionFeedEntry> items,
     required AccountLookup accountLookup,
+    required Money? currentBalance,
     required bool hasMore,
     required bool isLoadingMore,
     String? loadMoreErrorMessage,
   }) {
+    final groups = groupTransactionFeedEntriesByDay(
+      entries: items,
+      accountLookup: accountLookup,
+      amountSource: TransactionAccountImpactAmountSource(accountId),
+    );
+    final closingBalances = currentBalance == null
+        ? const <DateTime, Money>{}
+        : accountDailyClosingBalances(
+            transactions: items.map((entry) => entry.transaction),
+            accountId: accountId,
+            currentBalance: currentBalance,
+          );
+    _previousAccountBalance = currentBalance;
     return AccountTransactionsLoaded(
-      groups: groupTransactionFeedEntriesByDay(
-        entries: items,
-        accountLookup: accountLookup,
-        amountSource: TransactionAccountImpactAmountSource(accountId),
-      ),
+      groups: [
+        for (final group in groups)
+          group.copyWith(closingBalance: closingBalances[group.date]),
+      ],
       hasMore: hasMore,
       isLoadingMore: isLoadingMore,
       loadMoreErrorMessage: loadMoreErrorMessage,

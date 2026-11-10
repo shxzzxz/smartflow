@@ -24,6 +24,7 @@ class TransactionDayCard extends StatelessWidget {
     this.enableRowTap = true,
     this.enableRowQuickEdit = true,
     this.showDailyTotals = true,
+    this.showClosingBalance = true,
   });
 
   final TransactionDayGroup group;
@@ -36,6 +37,7 @@ class TransactionDayCard extends StatelessWidget {
   final bool enableRowTap;
   final bool enableRowQuickEdit;
   final bool showDailyTotals;
+  final bool showClosingBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,11 @@ class TransactionDayCard extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space8,
           ),
-          child: _DayHeader(group: group, showDailyTotals: showDailyTotals),
+          child: _DayHeader(
+            group: group,
+            showDailyTotals: showDailyTotals,
+            showClosingBalance: showClosingBalance,
+          ),
         ),
         if (group.rows.isEmpty)
           EmptyTransactionCard(message: emptyMessage ?? '本月暂无交易记录')
@@ -125,10 +131,15 @@ class TransactionDayCard extends StatelessWidget {
 }
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.group, required this.showDailyTotals});
+  const _DayHeader({
+    required this.group,
+    required this.showDailyTotals,
+    required this.showClosingBalance,
+  });
 
   final TransactionDayGroup group;
   final bool showDailyTotals;
+  final bool showClosingBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -152,23 +163,57 @@ class _DayHeader extends StatelessWidget {
             Text(weekdayLabel(group.date), style: textStyles.listSupporting),
           ],
         ),
-        if (showDailyTotals)
+        if (showDailyTotals ||
+            (showClosingBalance && group.closingBalance != null))
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DayTotal(
-                label: '收入',
-                amountMinor: group.incomeMinor,
-                color: financeColors.income,
-              ),
-              const SizedBox(width: AppSpacing.space12),
-              _DayTotal(
-                label: '支出',
-                amountMinor: group.expenseMinor,
-                color: financeColors.expense,
-              ),
+              if (showDailyTotals) ...[
+                _DayTotal(
+                  label: '收入',
+                  amountMinor: group.incomeMinor,
+                  color: financeColors.income,
+                ),
+                const SizedBox(width: AppSpacing.space12),
+                _DayTotal(
+                  label: '支出',
+                  amountMinor: group.expenseMinor,
+                  color: financeColors.expense,
+                ),
+              ],
+              if (showDailyTotals &&
+                  showClosingBalance &&
+                  group.closingBalance != null)
+                const SizedBox(width: AppSpacing.space12),
+              if (showClosingBalance && group.closingBalance != null)
+                _DayClosingBalance(balance: group.closingBalance!),
             ],
           ),
+      ],
+    );
+  }
+}
+
+class _DayClosingBalance extends StatelessWidget {
+  const _DayClosingBalance({required this.balance});
+
+  final Money balance;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('余额 ', style: textStyles.listSupporting),
+        SectionMoneyText(
+          money: balance,
+          style: textStyles.amountCompact.copyWith(
+            color: balance.minorUnits < 0 ? colors.error : colors.onSurface,
+          ),
+        ),
       ],
     );
   }
