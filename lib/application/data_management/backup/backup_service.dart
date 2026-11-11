@@ -183,13 +183,20 @@ class BackupService {
     if (!hasPreferences) {
       throw const BackupValidationException('备份缺少 preferences.json。');
     }
-    final requiredTables = manifest.backupSchemaVersion < 10
-        ? <String>{
-            for (final table in BackupTables.all)
-              if (!BackupTables.insurance.contains(table)) table,
-            ...BackupTables.insuranceV9,
-          }
-        : BackupTables.all;
+    final requiredTables = switch (manifest.backupSchemaVersion) {
+      < 10 => <String>{
+        for (final table in BackupTables.all)
+          if (!BackupTables.insurance.contains(table) &&
+              table != 'account_reconciliation_snapshots')
+            table,
+        ...BackupTables.insuranceV9,
+      },
+      10 => <String>{
+        for (final table in BackupTables.all)
+          if (table != 'account_reconciliation_snapshots') table,
+      },
+      _ => BackupTables.all,
+    };
     for (final table in requiredTables) {
       if (!tables.containsKey(table)) {
         throw BackupValidationException('备份缺少业务表文件: $table');
@@ -217,6 +224,7 @@ class BackupService {
     ) {
       upgraded = switch (version) {
         9 => _upgradeBackupV9ToV10(upgraded),
+        10 => _upgradeBackupV10ToV11(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -276,6 +284,15 @@ class BackupService {
       tables.remove(table);
     }
     return snapshot.copyWith(tables: tables);
+  }
+
+  static BackupSnapshot _upgradeBackupV10ToV11(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'account_reconciliation_snapshots': const <BackupJson>[],
+      },
+    );
   }
 
   static BackupJson _socialInsuranceRowFromLegacy(
@@ -501,6 +518,25 @@ class BackupService {
     }
     for (final row in snapshot.rows('budgets')) {
       _optionalText(row, 'accountId', 'budgets.accountId');
+    }
+    for (final row in snapshot.rows('account_reconciliation_snapshots')) {
+      _requiredReference(
+        row,
+        'accountId',
+        accounts,
+        'account_reconciliation_snapshots.accountId',
+      );
+      final dateKey = row['ledgerDateKey'];
+      final transactionCount = row['transactionCount'];
+      if (dateKey is! int ||
+          dateKey < 19000101 ||
+          dateKey > 21001231 ||
+          transactionCount is! int ||
+          transactionCount <= 0) {
+        throw const BackupValidationException('对账快照的日期或交易数量无效。');
+      }
+      _backupDate(row['latestTransactionUpdatedAt'], '对账快照最新更新时间');
+      _backupDate(row['confirmedAt'], '对账快照确认时间');
     }
     for (final row in snapshot.rows('credit_liability_accounts')) {
       _requiredReference(
@@ -1575,6 +1611,12 @@ class BackupService {
             (row['yearMonth'] as String).isEmpty) {
           throw BackupValidationException('表 $table 存在无效复合主键。');
         }
+      } else if (table == 'account_reconciliation_snapshots') {
+        if (row['accountId'] is! String ||
+            (row['accountId'] as String).isEmpty ||
+            row['ledgerDateKey'] is! int) {
+          throw BackupValidationException('表 $table 存在无效复合主键。');
+        }
       } else if (row['id'] is! String || row['id'] == '') {
         throw BackupValidationException('表 $table 存在无效主键。');
       }
@@ -1588,6 +1630,8 @@ class BackupService {
           ? '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}'
           : table == 'social_contribution_records'
           ? '${row['socialInsuranceId']}\u0000${row['yearMonth']}'
+          : table == 'account_reconciliation_snapshots'
+          ? '${row['accountId']}\u0000${row['ledgerDateKey']}'
           : '${row['id']}';
       if (result.containsKey(identity)) {
         throw BackupValidationException('表 $table 存在重复主键。');

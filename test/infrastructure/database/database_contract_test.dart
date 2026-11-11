@@ -6,18 +6,28 @@ import 'package:smartflow/core/persistence/persistence_baseline.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
-  test('fresh databases create the current v61 schema', () async {
+  test('fresh databases create the current v62 schema', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.read<int>('user_version'), 61);
+    expect(version.read<int>('user_version'), 62);
     expect(
       await db
           .customSelect(
             "SELECT name FROM sqlite_master "
             "WHERE type = 'table' AND name = 'advance_cases'",
+          )
+          .get(),
+      isNotEmpty,
+    );
+    expect(
+      await db
+          .customSelect(
+            "SELECT name FROM sqlite_master "
+            "WHERE type = 'table' "
+            "AND name = 'account_reconciliation_snapshots'",
           )
           .get(),
       isNotEmpty,

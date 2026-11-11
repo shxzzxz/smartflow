@@ -59,6 +59,8 @@ class TransactionDayGroup {
     required this.incomeMinor,
     required this.expenseMinor,
     this.closingBalance,
+    this.closingBalanceLabel = '余额',
+    this.warning,
   });
 
   final DateTime date;
@@ -66,6 +68,8 @@ class TransactionDayGroup {
   final int incomeMinor;
   final int expenseMinor;
   final Money? closingBalance;
+  final String closingBalanceLabel;
+  final String? warning;
 
   TransactionDayGroup copyWith({
     DateTime? date,
@@ -73,6 +77,8 @@ class TransactionDayGroup {
     int? incomeMinor,
     int? expenseMinor,
     Money? closingBalance,
+    String? closingBalanceLabel,
+    String? warning,
   }) {
     return TransactionDayGroup(
       date: date ?? this.date,
@@ -80,6 +86,8 @@ class TransactionDayGroup {
       incomeMinor: incomeMinor ?? this.incomeMinor,
       expenseMinor: expenseMinor ?? this.expenseMinor,
       closingBalance: closingBalance ?? this.closingBalance,
+      closingBalanceLabel: closingBalanceLabel ?? this.closingBalanceLabel,
+      warning: warning ?? this.warning,
     );
   }
 }

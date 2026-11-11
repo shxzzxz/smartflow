@@ -218,6 +218,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('余额显示'), findsOneWidget);
+    expect(find.text('对账'), findsOneWidget);
     expect(find.text('归档账户'), findsOneWidget);
 
     await tester.tap(find.text('余额显示'));

@@ -152,6 +152,41 @@ void main() {
     expect(restored.amountMinor, 1000);
   });
 
+  test('round-trips account reconciliation snapshots', () async {
+    await database
+        .into(database.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            id: 'cash',
+            name: '现金',
+            accountType: AccountType.asset,
+          ),
+        );
+    await database
+        .into(database.accountReconciliationSnapshots)
+        .insert(
+          AccountReconciliationSnapshotsCompanion.insert(
+            accountId: 'cash',
+            ledgerDateKey: 20260702,
+            latestTransactionUpdatedAt: DateTime(2026, 7, 2, 12),
+            transactionCount: 3,
+            confirmedAt: DateTime(2026, 7, 3),
+          ),
+        );
+
+    final snapshot = await gateway.readSnapshot();
+    expect(snapshot.rows('account_reconciliation_snapshots'), hasLength(1));
+    await database.delete(database.accountReconciliationSnapshots).go();
+    await gateway.replaceSnapshot(snapshot);
+
+    final restored = await database
+        .select(database.accountReconciliationSnapshots)
+        .getSingle();
+    expect(restored.accountId, 'cash');
+    expect(restored.ledgerDateKey, 20260702);
+    expect(restored.transactionCount, 3);
+  });
+
   test(
     'serializes settings preferences without exporting metadata internals',
     () async {

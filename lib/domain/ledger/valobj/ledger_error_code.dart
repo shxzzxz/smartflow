@@ -34,6 +34,10 @@ enum LedgerErrorCode implements AppErrorCode {
     code: 'ledger.account.in_use',
     defaultMessage: '账户存在业务数据，无法永久删除。',
   ),
+  reconciliationInvalidCommand(
+    code: 'ledger.reconciliation.invalid_command',
+    defaultMessage: '对账范围不完整或不合法。',
+  ),
   categoryNotFound(code: 'ledger.category.not_found', defaultMessage: '分类不存在。'),
   categoryUnavailable(
     code: 'ledger.category.unavailable',

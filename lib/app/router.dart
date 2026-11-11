@@ -12,6 +12,7 @@ import '../design_system/showcase/design_system_showcase_page.dart';
 import '../feature/account/page/account_detail_page.dart';
 import '../feature/account/page/account_bills_page.dart';
 import '../feature/account/page/account_installments_page.dart';
+import '../feature/account/page/account_reconciliation_page.dart';
 import '../feature/account/page/account_form_page.dart';
 import '../feature/account/page/accounts_page.dart';
 import '../feature/account/page/archived_accounts_page.dart';
@@ -377,6 +378,11 @@ final appRouter = GoRouter(
       path: '/account/:id/edit',
       builder: (context, state) =>
           AccountFormPage(accountId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/account/:id/reconcile',
+      builder: (context, state) =>
+          AccountReconciliationPage(accountId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/account/:id/bills',

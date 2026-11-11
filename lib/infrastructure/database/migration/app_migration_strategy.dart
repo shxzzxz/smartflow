@@ -128,6 +128,9 @@ Future<void> _upgrade(
           'DROP TABLE social_pension_insurances',
         );
       },
+      from61To62: (migration, schema) async {
+        await migration.createTable(schema.accountReconciliationSnapshots);
+      },
     )(migrator, from, to);
   });
 }

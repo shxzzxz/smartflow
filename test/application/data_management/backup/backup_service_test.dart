@@ -42,7 +42,7 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 10);
+      expect(inspected.manifest.backupSchemaVersion, 11);
       expect(inspected.manifest.schemaVersion, 61);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
@@ -80,7 +80,7 @@ void main() {
         final inspection = await v61Service.inspect(oldDirectory);
         final diff = await v61Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 10);
+        expect(inspection.manifest.backupSchemaVersion, 11);
         expect(inspection.manifest.schemaVersion, 60);
         expect(diff.itemFor('preferences').added, 1);
         expect(v61Gateway.replaceCount, 1);
@@ -157,6 +157,22 @@ void main() {
       );
     });
 
+    test('migrates a v10 backup with an empty reconciliation table', () async {
+      await service.createBackup(tempDirectory);
+      await _removeBackupTable(
+        tempDirectory,
+        'account_reconciliation_snapshots',
+      );
+      await _rewriteBackupSchemaVersion(tempDirectory, 10);
+
+      final inspection = await service.inspect(tempDirectory);
+
+      expect(
+        inspection.snapshot.rows('account_reconciliation_snapshots'),
+        isEmpty,
+      );
+    });
+
     test('rejects obsolete backup format versions', () async {
       await service.createBackup(tempDirectory);
       final manifestFile = File('${tempDirectory.path}/manifest.json');
@@ -192,7 +208,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 11;
+      manifest['backupSchemaVersion'] = 12;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -201,7 +217,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 11'),
+            contains('backupSchemaVersion 12'),
           ),
         ),
       );
@@ -250,7 +266,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 10);
+        expect(manifest.backupSchemaVersion, 11);
       },
     );
   });

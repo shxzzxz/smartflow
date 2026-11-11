@@ -553,7 +553,13 @@ final class TransactionFeedProvider
         $StreamProvider<List<TransactionFeedEntry>> {
   TransactionFeedProvider._({
     required TransactionFeedFamily super.from,
-    required ({String? settlementAccountId, int limit, int offset})
+    required ({
+      String? settlementAccountId,
+      DateTime? occurredFrom,
+      DateTime? occurredUntil,
+      int? limit,
+      int offset,
+    })
     super.argument,
   }) : super(
          retry: null,
@@ -582,10 +588,19 @@ final class TransactionFeedProvider
   @override
   Stream<List<TransactionFeedEntry>> create(Ref ref) {
     final argument =
-        this.argument as ({String? settlementAccountId, int limit, int offset});
+        this.argument
+            as ({
+              String? settlementAccountId,
+              DateTime? occurredFrom,
+              DateTime? occurredUntil,
+              int? limit,
+              int offset,
+            });
     return transactionFeed(
       ref,
       settlementAccountId: argument.settlementAccountId,
+      occurredFrom: argument.occurredFrom,
+      occurredUntil: argument.occurredUntil,
       limit: argument.limit,
       offset: argument.offset,
     );
@@ -602,13 +617,19 @@ final class TransactionFeedProvider
   }
 }
 
-String _$transactionFeedHash() => r'41c0d9bd078bc36bdb9028c2dce72201efb583a6';
+String _$transactionFeedHash() => r'365d7fa096b4a58369f1bb8ae6492f1f8ded3c89';
 
 final class TransactionFeedFamily extends $Family
     with
         $FunctionalFamilyOverride<
           Stream<List<TransactionFeedEntry>>,
-          ({String? settlementAccountId, int limit, int offset})
+          ({
+            String? settlementAccountId,
+            DateTime? occurredFrom,
+            DateTime? occurredUntil,
+            int? limit,
+            int offset,
+          })
         > {
   TransactionFeedFamily._()
     : super(
@@ -621,11 +642,15 @@ final class TransactionFeedFamily extends $Family
 
   TransactionFeedProvider call({
     String? settlementAccountId,
-    int limit = 50,
+    DateTime? occurredFrom,
+    DateTime? occurredUntil,
+    int? limit = 50,
     int offset = 0,
   }) => TransactionFeedProvider._(
     argument: (
       settlementAccountId: settlementAccountId,
+      occurredFrom: occurredFrom,
+      occurredUntil: occurredUntil,
       limit: limit,
       offset: offset,
     ),

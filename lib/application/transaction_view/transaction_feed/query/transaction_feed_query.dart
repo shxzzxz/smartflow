@@ -18,7 +18,7 @@ final class TransactionFeedQuery {
     this.tagIds,
     this.counterpartyId,
     this.untaggedOnly = false,
-  }) : assert(limit > 0),
+  }) : assert(limit == null || limit > 0),
        assert(offset >= 0),
        assert(before == null || offset == 0),
        assert(!untaggedOnly || tagIds == null),
@@ -32,7 +32,7 @@ final class TransactionFeedQuery {
   final DateTime? occurredFrom;
   final DateTime? occurredUntil;
   final bool includeChildTransactions;
-  final int limit;
+  final int? limit;
   final int offset;
   final TransactionListCursor? before;
   final TransactionScopeFilter scope;

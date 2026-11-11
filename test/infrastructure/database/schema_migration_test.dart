@@ -9,6 +9,7 @@ import 'package:smartflow/infrastructure/database/app_database.dart';
 
 import '../../generated_migrations/schema.dart';
 import '../../generated_migrations/schema_v60.dart' as v60;
+import '../../generated_migrations/schema_v61.dart' as v61;
 
 void main() {
   late SchemaVerifier verifier;
@@ -105,7 +106,29 @@ void main() {
         );
       },
       oldVersion: 60,
-      newVersion: 61,
+      newVersion: 62,
+    );
+  });
+
+  test('migrates v61 data to the v62 reconciliation snapshot table', () async {
+    await verifier.testWithDataIntegrity<v61.DatabaseAtV61, AppDatabase>(
+      createOld: v61.DatabaseAtV61.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {},
+      validateItems: (db) async {
+        final tables =
+            (await db
+                    .customSelect(
+                      "SELECT name FROM sqlite_master WHERE type = 'table'",
+                    )
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(tables, contains('account_reconciliation_snapshots'));
+      },
+      oldVersion: 61,
+      newVersion: 62,
     );
   });
 

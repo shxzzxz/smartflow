@@ -144,7 +144,10 @@ class _MoneyPlainFormRowState extends State<MoneyPlainFormRow> {
         onChanged: widget.onChanged,
       ),
       requiredIndicator: widget.requiredIndicator,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: const TextInputType.numberWithOptions(
+        decimal: true,
+        signed: true,
+      ),
       inputFormatters: [moneyInputFormatter],
       validator: widget.validator,
       onChanged: widget.onChanged,

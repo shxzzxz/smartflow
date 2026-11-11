@@ -11,6 +11,7 @@ import 'package:smartflow/domain/ledger/valobj/ledger_error_code.dart';
 import 'package:smartflow/domain/ledger/valobj/posting_instruction.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
+import '../../reconciliation/port/account_reconciliation_repository.dart';
 import 'account_command.dart';
 
 abstract interface class AccountAppService {
@@ -39,12 +40,14 @@ class AccountAppServiceImpl
     required IdGenerator idGenerator,
     AccountFactory accountFactory = const AccountFactory(),
     AccountGroupRepository? accountGroups,
+    AccountReconciliationRepository? reconciliationSnapshots,
   }) : _runner = transactionRunner,
        _ledgerPostingService = ledgerPostingService,
        _transactionRepository = transactionRepository,
        _idGenerator = idGenerator,
        _accountFactory = accountFactory,
-       _accountGroups = accountGroups;
+       _accountGroups = accountGroups,
+       _reconciliationSnapshots = reconciliationSnapshots;
 
   final AccountRepository _repository;
   final LedgerPostingService _ledgerPostingService;
@@ -53,6 +56,7 @@ class AccountAppServiceImpl
   final IdGenerator _idGenerator;
   final AccountFactory _accountFactory;
   final AccountGroupRepository? _accountGroups;
+  final AccountReconciliationRepository? _reconciliationSnapshots;
 
   @override
   Future<Account> createAccount(CreateAccountCommand command) async {
@@ -208,6 +212,7 @@ class AccountAppServiceImpl
         throw BusinessException(LedgerErrorCode.accountInUse);
       }
 
+      await _reconciliationSnapshots?.deleteForAccount(account.id);
       await _repository.delete(account.id);
     });
   }

@@ -89,6 +89,12 @@ class _AccountDetailPageState extends ConsumerState<AccountDetailPage> {
                           setState(() => _showClosingBalance = value);
                         },
                       ),
+                      AppPopupMenuAction(
+                        label: '对账',
+                        icon: RemixIcons.file_list_3_line,
+                        onPressed: () =>
+                            context.push('/account/$accountId/reconcile'),
+                      ),
                       if (!loadedAccount.isArchived)
                         AppPopupMenuAction(
                           label: '归档账户',

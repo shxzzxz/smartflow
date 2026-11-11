@@ -21,6 +21,8 @@ export 'category/command/category_command.dart';
 export 'category/command/category_transaction_migration_app_service.dart';
 export 'counterparty/command/counterparty_application_service.dart';
 export 'counterparty/query/counterparty_read_models.dart';
+export 'reconciliation/command/account_reconciliation_app_service.dart';
+export 'reconciliation/command/account_reconciliation_command.dart';
 export 'transaction/command/transaction_command.dart';
 export 'transaction/command/transaction_cleanup_app_service.dart';
 export 'transaction/command/transaction_batch_command.dart';

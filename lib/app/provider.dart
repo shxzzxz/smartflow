@@ -18,6 +18,7 @@ import '../infrastructure/import/repository/drift_import_mapping_repository.dart
 import '../infrastructure/import/wechat/wechat_file_reader.dart';
 import '../infrastructure/import/yimu/yimu_file_reader.dart';
 import '../infrastructure/ledger/repository/drift_account_query_repository.dart';
+import '../infrastructure/ledger/repository/drift_account_reconciliation_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_repository.dart';
 import '../infrastructure/ledger/repository/drift_account_group_repository.dart';
 import '../infrastructure/ledger/repository/drift_budget_query_source.dart';
@@ -62,6 +63,7 @@ import '../infrastructure/shared/uuid_id_generator.dart';
 import '../application/ledger/ledger_command_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/ledger/ledger_query_port_api.dart';
+import '../application/ledger/reconciliation/port/account_reconciliation_repository.dart';
 import '../application/transaction_view/transaction_view_query_api.dart';
 import '../application/transaction_view/business_activity/source/advance_business_activity_source.dart';
 import '../application/transaction_view/business_activity/source/amortization_business_activity_source.dart';
@@ -503,6 +505,28 @@ AccountAppServiceImpl _buildAccountAppService(Ref ref) {
     transactionRepository: ref.watch(ledgerRepositoryProvider),
     idGenerator: ref.watch(idGeneratorProvider),
     accountGroups: ref.watch(accountGroupRepositoryProvider),
+    reconciliationSnapshots: ref.watch(accountReconciliationRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AccountReconciliationRepository accountReconciliationRepository(Ref ref) {
+  return DriftAccountReconciliationRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+AccountReconciliationQueryService accountReconciliationQueryService(Ref ref) {
+  return AccountReconciliationQueryServiceImpl(
+    ref.watch(accountReconciliationRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+AccountReconciliationAppService accountReconciliationAppService(Ref ref) {
+  return AccountReconciliationAppServiceImpl(
+    accounts: ref.watch(accountRepositoryProvider),
+    snapshots: ref.watch(accountReconciliationRepositoryProvider),
+    transactionRunner: ref.watch(transactionRunnerProvider),
   );
 }
 

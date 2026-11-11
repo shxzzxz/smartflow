@@ -1444,6 +1444,422 @@ class AccountGroupsCompanion extends UpdateCompanion<AccountGroupRow> {
   }
 }
 
+class $AccountReconciliationSnapshotsTable
+    extends AccountReconciliationSnapshots
+    with
+        TableInfo<
+          $AccountReconciliationSnapshotsTable,
+          AccountReconciliationSnapshotRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AccountReconciliationSnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ledgerDateKeyMeta = const VerificationMeta(
+    'ledgerDateKey',
+  );
+  @override
+  late final GeneratedColumn<int> ledgerDateKey = GeneratedColumn<int>(
+    'ledger_date_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latestTransactionUpdatedAtMeta =
+      const VerificationMeta('latestTransactionUpdatedAt');
+  @override
+  late final GeneratedColumn<DateTime> latestTransactionUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'latest_transaction_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _transactionCountMeta = const VerificationMeta(
+    'transactionCount',
+  );
+  @override
+  late final GeneratedColumn<int> transactionCount = GeneratedColumn<int>(
+    'transaction_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _confirmedAtMeta = const VerificationMeta(
+    'confirmedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> confirmedAt = GeneratedColumn<DateTime>(
+    'confirmed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    ledgerDateKey,
+    latestTransactionUpdatedAt,
+    transactionCount,
+    confirmedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'account_reconciliation_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AccountReconciliationSnapshotRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('ledger_date_key')) {
+      context.handle(
+        _ledgerDateKeyMeta,
+        ledgerDateKey.isAcceptableOrUnknown(
+          data['ledger_date_key']!,
+          _ledgerDateKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_ledgerDateKeyMeta);
+    }
+    if (data.containsKey('latest_transaction_updated_at')) {
+      context.handle(
+        _latestTransactionUpdatedAtMeta,
+        latestTransactionUpdatedAt.isAcceptableOrUnknown(
+          data['latest_transaction_updated_at']!,
+          _latestTransactionUpdatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_latestTransactionUpdatedAtMeta);
+    }
+    if (data.containsKey('transaction_count')) {
+      context.handle(
+        _transactionCountMeta,
+        transactionCount.isAcceptableOrUnknown(
+          data['transaction_count']!,
+          _transactionCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionCountMeta);
+    }
+    if (data.containsKey('confirmed_at')) {
+      context.handle(
+        _confirmedAtMeta,
+        confirmedAt.isAcceptableOrUnknown(
+          data['confirmed_at']!,
+          _confirmedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_confirmedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {accountId, ledgerDateKey};
+  @override
+  AccountReconciliationSnapshotRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AccountReconciliationSnapshotRow(
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      ledgerDateKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ledger_date_key'],
+      )!,
+      latestTransactionUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}latest_transaction_updated_at'],
+      )!,
+      transactionCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_count'],
+      )!,
+      confirmedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}confirmed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AccountReconciliationSnapshotsTable createAlias(String alias) {
+    return $AccountReconciliationSnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class AccountReconciliationSnapshotRow extends DataClass
+    implements Insertable<AccountReconciliationSnapshotRow> {
+  final String accountId;
+  final int ledgerDateKey;
+  final DateTime latestTransactionUpdatedAt;
+  final int transactionCount;
+  final DateTime confirmedAt;
+  const AccountReconciliationSnapshotRow({
+    required this.accountId,
+    required this.ledgerDateKey,
+    required this.latestTransactionUpdatedAt,
+    required this.transactionCount,
+    required this.confirmedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['account_id'] = Variable<String>(accountId);
+    map['ledger_date_key'] = Variable<int>(ledgerDateKey);
+    map['latest_transaction_updated_at'] = Variable<DateTime>(
+      latestTransactionUpdatedAt,
+    );
+    map['transaction_count'] = Variable<int>(transactionCount);
+    map['confirmed_at'] = Variable<DateTime>(confirmedAt);
+    return map;
+  }
+
+  AccountReconciliationSnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return AccountReconciliationSnapshotsCompanion(
+      accountId: Value(accountId),
+      ledgerDateKey: Value(ledgerDateKey),
+      latestTransactionUpdatedAt: Value(latestTransactionUpdatedAt),
+      transactionCount: Value(transactionCount),
+      confirmedAt: Value(confirmedAt),
+    );
+  }
+
+  factory AccountReconciliationSnapshotRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AccountReconciliationSnapshotRow(
+      accountId: serializer.fromJson<String>(json['accountId']),
+      ledgerDateKey: serializer.fromJson<int>(json['ledgerDateKey']),
+      latestTransactionUpdatedAt: serializer.fromJson<DateTime>(
+        json['latestTransactionUpdatedAt'],
+      ),
+      transactionCount: serializer.fromJson<int>(json['transactionCount']),
+      confirmedAt: serializer.fromJson<DateTime>(json['confirmedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'accountId': serializer.toJson<String>(accountId),
+      'ledgerDateKey': serializer.toJson<int>(ledgerDateKey),
+      'latestTransactionUpdatedAt': serializer.toJson<DateTime>(
+        latestTransactionUpdatedAt,
+      ),
+      'transactionCount': serializer.toJson<int>(transactionCount),
+      'confirmedAt': serializer.toJson<DateTime>(confirmedAt),
+    };
+  }
+
+  AccountReconciliationSnapshotRow copyWith({
+    String? accountId,
+    int? ledgerDateKey,
+    DateTime? latestTransactionUpdatedAt,
+    int? transactionCount,
+    DateTime? confirmedAt,
+  }) => AccountReconciliationSnapshotRow(
+    accountId: accountId ?? this.accountId,
+    ledgerDateKey: ledgerDateKey ?? this.ledgerDateKey,
+    latestTransactionUpdatedAt:
+        latestTransactionUpdatedAt ?? this.latestTransactionUpdatedAt,
+    transactionCount: transactionCount ?? this.transactionCount,
+    confirmedAt: confirmedAt ?? this.confirmedAt,
+  );
+  AccountReconciliationSnapshotRow copyWithCompanion(
+    AccountReconciliationSnapshotsCompanion data,
+  ) {
+    return AccountReconciliationSnapshotRow(
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      ledgerDateKey: data.ledgerDateKey.present
+          ? data.ledgerDateKey.value
+          : this.ledgerDateKey,
+      latestTransactionUpdatedAt: data.latestTransactionUpdatedAt.present
+          ? data.latestTransactionUpdatedAt.value
+          : this.latestTransactionUpdatedAt,
+      transactionCount: data.transactionCount.present
+          ? data.transactionCount.value
+          : this.transactionCount,
+      confirmedAt: data.confirmedAt.present
+          ? data.confirmedAt.value
+          : this.confirmedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AccountReconciliationSnapshotRow(')
+          ..write('accountId: $accountId, ')
+          ..write('ledgerDateKey: $ledgerDateKey, ')
+          ..write('latestTransactionUpdatedAt: $latestTransactionUpdatedAt, ')
+          ..write('transactionCount: $transactionCount, ')
+          ..write('confirmedAt: $confirmedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    accountId,
+    ledgerDateKey,
+    latestTransactionUpdatedAt,
+    transactionCount,
+    confirmedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AccountReconciliationSnapshotRow &&
+          other.accountId == this.accountId &&
+          other.ledgerDateKey == this.ledgerDateKey &&
+          other.latestTransactionUpdatedAt == this.latestTransactionUpdatedAt &&
+          other.transactionCount == this.transactionCount &&
+          other.confirmedAt == this.confirmedAt);
+}
+
+class AccountReconciliationSnapshotsCompanion
+    extends UpdateCompanion<AccountReconciliationSnapshotRow> {
+  final Value<String> accountId;
+  final Value<int> ledgerDateKey;
+  final Value<DateTime> latestTransactionUpdatedAt;
+  final Value<int> transactionCount;
+  final Value<DateTime> confirmedAt;
+  final Value<int> rowid;
+  const AccountReconciliationSnapshotsCompanion({
+    this.accountId = const Value.absent(),
+    this.ledgerDateKey = const Value.absent(),
+    this.latestTransactionUpdatedAt = const Value.absent(),
+    this.transactionCount = const Value.absent(),
+    this.confirmedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AccountReconciliationSnapshotsCompanion.insert({
+    required String accountId,
+    required int ledgerDateKey,
+    required DateTime latestTransactionUpdatedAt,
+    required int transactionCount,
+    required DateTime confirmedAt,
+    this.rowid = const Value.absent(),
+  }) : accountId = Value(accountId),
+       ledgerDateKey = Value(ledgerDateKey),
+       latestTransactionUpdatedAt = Value(latestTransactionUpdatedAt),
+       transactionCount = Value(transactionCount),
+       confirmedAt = Value(confirmedAt);
+  static Insertable<AccountReconciliationSnapshotRow> custom({
+    Expression<String>? accountId,
+    Expression<int>? ledgerDateKey,
+    Expression<DateTime>? latestTransactionUpdatedAt,
+    Expression<int>? transactionCount,
+    Expression<DateTime>? confirmedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (accountId != null) 'account_id': accountId,
+      if (ledgerDateKey != null) 'ledger_date_key': ledgerDateKey,
+      if (latestTransactionUpdatedAt != null)
+        'latest_transaction_updated_at': latestTransactionUpdatedAt,
+      if (transactionCount != null) 'transaction_count': transactionCount,
+      if (confirmedAt != null) 'confirmed_at': confirmedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AccountReconciliationSnapshotsCompanion copyWith({
+    Value<String>? accountId,
+    Value<int>? ledgerDateKey,
+    Value<DateTime>? latestTransactionUpdatedAt,
+    Value<int>? transactionCount,
+    Value<DateTime>? confirmedAt,
+    Value<int>? rowid,
+  }) {
+    return AccountReconciliationSnapshotsCompanion(
+      accountId: accountId ?? this.accountId,
+      ledgerDateKey: ledgerDateKey ?? this.ledgerDateKey,
+      latestTransactionUpdatedAt:
+          latestTransactionUpdatedAt ?? this.latestTransactionUpdatedAt,
+      transactionCount: transactionCount ?? this.transactionCount,
+      confirmedAt: confirmedAt ?? this.confirmedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (ledgerDateKey.present) {
+      map['ledger_date_key'] = Variable<int>(ledgerDateKey.value);
+    }
+    if (latestTransactionUpdatedAt.present) {
+      map['latest_transaction_updated_at'] = Variable<DateTime>(
+        latestTransactionUpdatedAt.value,
+      );
+    }
+    if (transactionCount.present) {
+      map['transaction_count'] = Variable<int>(transactionCount.value);
+    }
+    if (confirmedAt.present) {
+      map['confirmed_at'] = Variable<DateTime>(confirmedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AccountReconciliationSnapshotsCompanion(')
+          ..write('accountId: $accountId, ')
+          ..write('ledgerDateKey: $ledgerDateKey, ')
+          ..write('latestTransactionUpdatedAt: $latestTransactionUpdatedAt, ')
+          ..write('transactionCount: $transactionCount, ')
+          ..write('confirmedAt: $confirmedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppMetadataTable extends AppMetadata
     with TableInfo<$AppMetadataTable, AppMetadataRow> {
   @override
@@ -24127,6 +24543,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
   late final $AccountGroupsTable accountGroups = $AccountGroupsTable(this);
+  late final $AccountReconciliationSnapshotsTable
+  accountReconciliationSnapshots = $AccountReconciliationSnapshotsTable(this);
   late final $AppMetadataTable appMetadata = $AppMetadataTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $TransactionLinesTable transactionLines = $TransactionLinesTable(
@@ -24216,6 +24634,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     accounts,
     accountGroups,
+    accountReconciliationSnapshots,
     appMetadata,
     transactions,
     transactionLines,
@@ -24939,6 +25358,236 @@ typedef $$AccountGroupsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $AccountGroupsTable, AccountGroupRow>,
       ),
       AccountGroupRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AccountReconciliationSnapshotsTableCreateCompanionBuilder =
+    AccountReconciliationSnapshotsCompanion Function({
+      required String accountId,
+      required int ledgerDateKey,
+      required DateTime latestTransactionUpdatedAt,
+      required int transactionCount,
+      required DateTime confirmedAt,
+      Value<int> rowid,
+    });
+typedef $$AccountReconciliationSnapshotsTableUpdateCompanionBuilder =
+    AccountReconciliationSnapshotsCompanion Function({
+      Value<String> accountId,
+      Value<int> ledgerDateKey,
+      Value<DateTime> latestTransactionUpdatedAt,
+      Value<int> transactionCount,
+      Value<DateTime> confirmedAt,
+      Value<int> rowid,
+    });
+
+class $$AccountReconciliationSnapshotsTableFilterComposer
+    extends Composer<_$AppDatabase, $AccountReconciliationSnapshotsTable> {
+  $$AccountReconciliationSnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ledgerDateKey => $composableBuilder(
+    column: $table.ledgerDateKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get latestTransactionUpdatedAt => $composableBuilder(
+    column: $table.latestTransactionUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get transactionCount => $composableBuilder(
+    column: $table.transactionCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get confirmedAt => $composableBuilder(
+    column: $table.confirmedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AccountReconciliationSnapshotsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AccountReconciliationSnapshotsTable> {
+  $$AccountReconciliationSnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ledgerDateKey => $composableBuilder(
+    column: $table.ledgerDateKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get latestTransactionUpdatedAt =>
+      $composableBuilder(
+        column: $table.latestTransactionUpdatedAt,
+        builder: (column) => ColumnOrderings(column),
+      );
+
+  ColumnOrderings<int> get transactionCount => $composableBuilder(
+    column: $table.transactionCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get confirmedAt => $composableBuilder(
+    column: $table.confirmedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AccountReconciliationSnapshotsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AccountReconciliationSnapshotsTable> {
+  $$AccountReconciliationSnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<int> get ledgerDateKey => $composableBuilder(
+    column: $table.ledgerDateKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get latestTransactionUpdatedAt =>
+      $composableBuilder(
+        column: $table.latestTransactionUpdatedAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get transactionCount => $composableBuilder(
+    column: $table.transactionCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get confirmedAt => $composableBuilder(
+    column: $table.confirmedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AccountReconciliationSnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AccountReconciliationSnapshotsTable,
+          AccountReconciliationSnapshotRow,
+          $$AccountReconciliationSnapshotsTableFilterComposer,
+          $$AccountReconciliationSnapshotsTableOrderingComposer,
+          $$AccountReconciliationSnapshotsTableAnnotationComposer,
+          $$AccountReconciliationSnapshotsTableCreateCompanionBuilder,
+          $$AccountReconciliationSnapshotsTableUpdateCompanionBuilder,
+          (
+            AccountReconciliationSnapshotRow,
+            BaseReferences<
+              _$AppDatabase,
+              $AccountReconciliationSnapshotsTable,
+              AccountReconciliationSnapshotRow
+            >,
+          ),
+          AccountReconciliationSnapshotRow,
+          PrefetchHooks Function()
+        > {
+  $$AccountReconciliationSnapshotsTableTableManager(
+    _$AppDatabase db,
+    $AccountReconciliationSnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AccountReconciliationSnapshotsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AccountReconciliationSnapshotsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AccountReconciliationSnapshotsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> accountId = const Value.absent(),
+                Value<int> ledgerDateKey = const Value.absent(),
+                Value<DateTime> latestTransactionUpdatedAt =
+                    const Value.absent(),
+                Value<int> transactionCount = const Value.absent(),
+                Value<DateTime> confirmedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AccountReconciliationSnapshotsCompanion(
+                accountId: accountId,
+                ledgerDateKey: ledgerDateKey,
+                latestTransactionUpdatedAt: latestTransactionUpdatedAt,
+                transactionCount: transactionCount,
+                confirmedAt: confirmedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String accountId,
+                required int ledgerDateKey,
+                required DateTime latestTransactionUpdatedAt,
+                required int transactionCount,
+                required DateTime confirmedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AccountReconciliationSnapshotsCompanion.insert(
+                accountId: accountId,
+                ledgerDateKey: ledgerDateKey,
+                latestTransactionUpdatedAt: latestTransactionUpdatedAt,
+                transactionCount: transactionCount,
+                confirmedAt: confirmedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AccountReconciliationSnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AccountReconciliationSnapshotsTable,
+      AccountReconciliationSnapshotRow,
+      $$AccountReconciliationSnapshotsTableFilterComposer,
+      $$AccountReconciliationSnapshotsTableOrderingComposer,
+      $$AccountReconciliationSnapshotsTableAnnotationComposer,
+      $$AccountReconciliationSnapshotsTableCreateCompanionBuilder,
+      $$AccountReconciliationSnapshotsTableUpdateCompanionBuilder,
+      (
+        AccountReconciliationSnapshotRow,
+        BaseReferences<
+          _$AppDatabase,
+          $AccountReconciliationSnapshotsTable,
+          AccountReconciliationSnapshotRow
+        >,
+      ),
+      AccountReconciliationSnapshotRow,
       PrefetchHooks Function()
     >;
 typedef $$AppMetadataTableCreateCompanionBuilder =
@@ -36515,6 +37164,12 @@ class $AppDatabaseManager {
       $$AccountsTableTableManager(_db, _db.accounts);
   $$AccountGroupsTableTableManager get accountGroups =>
       $$AccountGroupsTableTableManager(_db, _db.accountGroups);
+  $$AccountReconciliationSnapshotsTableTableManager
+  get accountReconciliationSnapshots =>
+      $$AccountReconciliationSnapshotsTableTableManager(
+        _db,
+        _db.accountReconciliationSnapshots,
+      );
   $$AppMetadataTableTableManager get appMetadata =>
       $$AppMetadataTableTableManager(_db, _db.appMetadata);
   $$TransactionsTableTableManager get transactions =>

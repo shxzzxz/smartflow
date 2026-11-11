@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
+import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -163,6 +164,14 @@ class _DayHeader extends StatelessWidget {
             Text(weekdayLabel(group.date), style: textStyles.listSupporting),
           ],
         ),
+        if (group.warning case final warning?)
+          AppStatusBadge(
+            presentation: AppStatusBadgePresentation(
+              label: warning,
+              tone: AppStatusTone.warning,
+            ),
+            size: AppStatusBadgeSize.compact,
+          ),
         if (showDailyTotals ||
             (showClosingBalance && group.closingBalance != null))
           Row(
@@ -186,7 +195,10 @@ class _DayHeader extends StatelessWidget {
                   group.closingBalance != null)
                 const SizedBox(width: AppSpacing.space12),
               if (showClosingBalance && group.closingBalance != null)
-                _DayClosingBalance(balance: group.closingBalance!),
+                _DayClosingBalance(
+                  label: group.closingBalanceLabel,
+                  balance: group.closingBalance!,
+                ),
             ],
           ),
       ],
@@ -195,8 +207,9 @@ class _DayHeader extends StatelessWidget {
 }
 
 class _DayClosingBalance extends StatelessWidget {
-  const _DayClosingBalance({required this.balance});
+  const _DayClosingBalance({required this.label, required this.balance});
 
+  final String label;
   final Money balance;
 
   @override
@@ -207,7 +220,7 @@ class _DayClosingBalance extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('余额 ', style: textStyles.listSupporting),
+        Text('$label ', style: textStyles.listSupporting),
         SectionMoneyText(
           money: balance,
           style: textStyles.amountCompact.copyWith(

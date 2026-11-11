@@ -2423,6 +2423,160 @@ final class AccountAppServiceProvider
 
 String _$accountAppServiceHash() => r'736ee1eac5eca85ba33219f4dec87ad1468dd8c5';
 
+@ProviderFor(accountReconciliationRepository)
+final accountReconciliationRepositoryProvider =
+    AccountReconciliationRepositoryProvider._();
+
+final class AccountReconciliationRepositoryProvider
+    extends
+        $FunctionalProvider<
+          AccountReconciliationRepository,
+          AccountReconciliationRepository,
+          AccountReconciliationRepository
+        >
+    with $Provider<AccountReconciliationRepository> {
+  AccountReconciliationRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountReconciliationRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountReconciliationRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountReconciliationRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountReconciliationRepository create(Ref ref) {
+    return accountReconciliationRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountReconciliationRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountReconciliationRepository>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$accountReconciliationRepositoryHash() =>
+    r'7cf89c8868127f0785847c41342fe42152bf6d16';
+
+@ProviderFor(accountReconciliationQueryService)
+final accountReconciliationQueryServiceProvider =
+    AccountReconciliationQueryServiceProvider._();
+
+final class AccountReconciliationQueryServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountReconciliationQueryService,
+          AccountReconciliationQueryService,
+          AccountReconciliationQueryService
+        >
+    with $Provider<AccountReconciliationQueryService> {
+  AccountReconciliationQueryServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountReconciliationQueryServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() =>
+      _$accountReconciliationQueryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountReconciliationQueryService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountReconciliationQueryService create(Ref ref) {
+    return accountReconciliationQueryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountReconciliationQueryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountReconciliationQueryService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$accountReconciliationQueryServiceHash() =>
+    r'46de92a109d3b5daefad2fe6c267b468e12e790a';
+
+@ProviderFor(accountReconciliationAppService)
+final accountReconciliationAppServiceProvider =
+    AccountReconciliationAppServiceProvider._();
+
+final class AccountReconciliationAppServiceProvider
+    extends
+        $FunctionalProvider<
+          AccountReconciliationAppService,
+          AccountReconciliationAppService,
+          AccountReconciliationAppService
+        >
+    with $Provider<AccountReconciliationAppService> {
+  AccountReconciliationAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'accountReconciliationAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountReconciliationAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<AccountReconciliationAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AccountReconciliationAppService create(Ref ref) {
+    return accountReconciliationAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AccountReconciliationAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AccountReconciliationAppService>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$accountReconciliationAppServiceHash() =>
+    r'8e0764705e7c500401a66f4459003c6673a03d46';
+
 @ProviderFor(accountGroupAppService)
 final accountGroupAppServiceProvider = AccountGroupAppServiceProvider._();
 

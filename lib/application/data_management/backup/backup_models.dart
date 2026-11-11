@@ -10,6 +10,7 @@ class BackupTables {
   static const all = <String>[
     'accounts',
     'account_groups',
+    'account_reconciliation_snapshots',
     'transactions',
     'transaction_lines',
     'entries',
@@ -86,6 +87,7 @@ class BackupTables {
     if (const {
       'accounts',
       'account_groups',
+      'account_reconciliation_snapshots',
       'transactions',
       'transaction_lines',
       'entries',
@@ -266,7 +268,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 10;
+  static const currentBackupSchemaVersion = 11;
   static const minimumSupportedBackupSchemaVersion =
       PersistenceBaseline.backupSchemaVersion;
 
@@ -414,6 +416,7 @@ class BackupDiff {
         return '交易组';
       }
       if (table == 'budgets') return '预算';
+      if (table == 'account_reconciliation_snapshots') return '对账快照';
       if (BackupTables.insurance.contains(table)) return '保险';
       if (table == 'advance_cases') return '垫付编排';
       if (table.startsWith('amortization_')) {
@@ -594,6 +597,9 @@ String _rowIdentity(BackupJson row, String table) {
   }
   if (table == 'bill_generation_suppressions') {
     return '${row['accountId']}\u0000${row['period']}';
+  }
+  if (table == 'account_reconciliation_snapshots') {
+    return '${row['accountId']}\u0000${row['ledgerDateKey']}';
   }
   if (table == 'commercial_insurance_insured_people') {
     return '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}';

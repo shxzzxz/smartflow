@@ -85,7 +85,9 @@ Stream<MonthlyBudgetReport> monthlyBudgetReport(Ref ref, DateTime month) {
 Stream<List<TransactionFeedEntry>> transactionFeed(
   Ref ref, {
   String? settlementAccountId,
-  int limit = 50,
+  DateTime? occurredFrom,
+  DateTime? occurredUntil,
+  int? limit = 50,
   int offset = 0,
 }) {
   return ref
@@ -98,6 +100,8 @@ Stream<List<TransactionFeedEntry>> transactionFeed(
                 : {settlementAccountId},
           ),
           includeChildTransactions: settlementAccountId != null,
+          occurredFrom: occurredFrom,
+          occurredUntil: occurredUntil,
           limit: limit,
           offset: offset,
         ).toTransactionListQuery(),

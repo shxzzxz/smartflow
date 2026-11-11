@@ -54,6 +54,11 @@ class DriftBackupGateway
         'accounts': (await database.select(database.accounts).get()).map(_json),
         'account_groups': (await database.select(database.accountGroups).get())
             .map(_json),
+        'account_reconciliation_snapshots':
+            (await database
+                    .select(database.accountReconciliationSnapshots)
+                    .get())
+                .map(_json),
         'advance_cases': (await database.select(database.advanceCases).get())
             .map(_json),
         'amortization_plans':
@@ -238,6 +243,7 @@ class DriftBackupGateway
         'counterparties',
         'budgets',
         'tags',
+        'account_reconciliation_snapshots',
         'accounts',
         'account_groups',
       ]) {
@@ -291,6 +297,16 @@ class DriftBackupGateway
           snapshot
               .rows('accounts')
               .map((row) => AccountRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.accountReconciliationSnapshots,
+          snapshot
+              .rows('account_reconciliation_snapshots')
+              .map(
+                (row) => AccountReconciliationSnapshotRow.fromJson(
+                  row,
+                ).toCompanion(true),
+              ),
         );
         batch.insertAll(
           database.advanceCases,
@@ -590,6 +606,9 @@ class DriftBackupGateway
       return row.toJson().cast<String, Object?>();
     }
     if (row is AccountGroupRow) {
+      return row.toJson().cast<String, Object?>();
+    }
+    if (row is AccountReconciliationSnapshotRow) {
       return row.toJson().cast<String, Object?>();
     }
     if (row is AdvanceCaseRow) {

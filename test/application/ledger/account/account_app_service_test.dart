@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
+import 'package:smartflow/application/ledger/reconciliation/port/account_reconciliation_repository.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/id/id_generator.dart';
 import 'package:smartflow/core/money/money.dart';
@@ -114,11 +115,16 @@ void main() {
         () async {
           final account = _account('cash', archived: true);
           final repository = _FakeAccountRepository([account]);
-          final service = _service(repository);
+          final snapshots = _FakeReconciliationRepository();
+          final service = _service(
+            repository,
+            reconciliationSnapshots: snapshots,
+          );
 
           await service.deleteAccount(const DeleteAccountCommand(id: 'cash'));
 
           expect(repository.contains('cash'), isFalse);
+          expect(snapshots.deletedAccountIds, ['cash']);
         },
       );
 
@@ -219,6 +225,7 @@ AccountAppServiceImpl _service(
   AccountRepository repository, {
   TransactionRunner transactionRunner = const _PassthroughTransactionRunner(),
   Map<String, int> entryCounts = const {},
+  AccountReconciliationRepository? reconciliationSnapshots,
 }) {
   return AccountAppServiceImpl(
     repository,
@@ -226,7 +233,20 @@ AccountAppServiceImpl _service(
     ledgerPostingService: _UnusedLedgerPostingService(),
     transactionRepository: _FakeTransactionRepository(entryCounts),
     idGenerator: const _UnusedIdGenerator(),
+    reconciliationSnapshots: reconciliationSnapshots,
   );
+}
+
+class _FakeReconciliationRepository implements AccountReconciliationRepository {
+  final deletedAccountIds = <String>[];
+
+  @override
+  Future<void> deleteForAccount(String accountId) async {
+    deletedAccountIds.add(accountId);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Account _account(
