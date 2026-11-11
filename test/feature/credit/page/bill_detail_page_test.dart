@@ -52,12 +52,71 @@ void main() {
 
     expect(find.byType(AppDetailSummaryCard), findsOneWidget);
     final settledStatus = tester.widget<Text>(find.text('已了结'));
-    final successColor =
-        AppTheme.light().extension<AppThemeExtension>()!.success;
+    final successColor = AppTheme.light()
+        .extension<AppThemeExtension>()!
+        .success;
     expect(settledStatus.style?.color, successColor);
     expect(find.text('还款'), findsOneWidget);
     expect(find.text('账单分期'), findsOneWidget);
     expect(find.text('刷新'), findsOneWidget);
+  });
+
+  testWidgets('shows installment contract name and current period', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final detail = BillDetailReadModel(
+      summary: BillSummaryReadModel(
+        id: 'bill',
+        accountId: 'account',
+        period: BillPeriod(year: 2026, month: 7),
+        status: BillStatus.billed,
+        expectedPrincipal: const Money(minorUnits: 1000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        pendingPrincipal: const Money(minorUnits: 1000),
+        itemCount: 1,
+        overdueItemCount: 0,
+      ),
+      items: [
+        BillItemReadModel(
+          id: 'item',
+          itemType: BillItemType.installment,
+          status: BillItemStatus.pending,
+          repaymentDate: DateTime(2026, 7, 20),
+          expectedPrincipal: const Money(minorUnits: 1000),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          allocated: RepaymentAmountDto.zero,
+          isOverdue: false,
+          installmentType: InstallmentType.disbursement,
+          contractId: 'contract',
+          scheduleId: 'schedule',
+          contractName: '借呗',
+          periodNo: 3,
+        ),
+      ],
+      repayments: const [],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          billDetailViewModelProvider(
+            'bill',
+          ).overrideWith(() => _FixedBillDetailViewModel(detail)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const BillDetailPage(billId: 'bill'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('借呗 第3期'), findsOneWidget);
+    expect(find.text('贷款分期'), findsOneWidget);
   });
 
   testWidgets('shows repayment date breakdown total and swipe actions', (

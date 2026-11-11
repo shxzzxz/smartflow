@@ -17,6 +17,30 @@ String billItemLabel(BillItemReadModel item) {
   };
 }
 
+String billItemTitle(BillItemReadModel item) {
+  if (item.itemType == BillItemType.consumption) {
+    return billItemCompactName(item);
+  }
+  final contractName = _contractName(item);
+  final periodNo = item.periodNo;
+  if (contractName != null && periodNo != null) {
+    return '$contractName 第$periodNo期';
+  }
+  if (contractName != null) return contractName;
+  if (periodNo != null) return '${billItemLabel(item)} 第$periodNo期';
+  return billItemLabel(item);
+}
+
+String billItemCompactName(BillItemReadModel item) {
+  if (item.itemType == BillItemType.consumption) return '本期消费';
+  return _contractName(item) ?? billItemLabel(item);
+}
+
+String? _contractName(BillItemReadModel item) {
+  final name = item.contractName?.trim();
+  return name == null || name.isEmpty ? null : name;
+}
+
 String? billItemDestination(BillItemReadModel item) {
   if (item.itemType != BillItemType.installment) return null;
   final contractId = item.contractId;
@@ -63,15 +87,17 @@ BillItemRowPresentation billItemRowPresentation(BillItemReadModel item) {
     leadingIcon: item.itemType == BillItemType.consumption
         ? RemixIcons.shopping_bag_3_line
         : RemixIcons.calendar_schedule_line,
-    title: billItemLabel(item),
+    title: billItemTitle(item),
     supportingTexts: [
+      if (item.itemType == BillItemType.installment)
+        AppSupportingText(billItemLabel(item)),
       AppSupportingText('还款 ${formatDateLabel(item.repaymentDate)}'),
       if (item.itemType == BillItemType.consumption &&
           item.startInclusive != null &&
           item.endInclusive != null)
         AppSupportingText(
-          '统计 ${formatDateLabel(item.startInclusive!)} - '
-          '${formatDateLabel(item.endInclusive!)}',
+          '统计 ${_formatMonthDay(item.startInclusive!)} - '
+          '${_formatMonthDay(item.endInclusive!)}',
         ),
     ],
     amount: item.remainingTotal,
@@ -80,4 +106,9 @@ BillItemRowPresentation billItemRowPresentation(BillItemReadModel item) {
       isOverdue: item.isOverdue,
     ),
   );
+}
+
+String _formatMonthDay(DateTime date) {
+  return '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }

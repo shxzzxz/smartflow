@@ -5,8 +5,11 @@ import 'package:smartflow/application/credit/credit_query_api.dart'
 import 'package:smartflow/application/ledger/ledger_query_api.dart' as ledger;
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/credit/entity/bill.dart';
+import 'package:smartflow/domain/credit/entity/installment_contract.dart';
+import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_installment_repository.dart';
@@ -66,6 +69,18 @@ void main() {
       expect(detail.summary.status, credit.BillStatus.billed);
     },
   );
+
+  test('bill detail includes installment contract name and period', () async {
+    final fixture = _Fixture();
+    addTearDown(fixture.close);
+    await fixture.seedInstallmentBill();
+
+    final detail = await fixture.query.findBillDetail('bill-1');
+
+    final item = detail!.items.single;
+    expect(item.contractName, '借呗');
+    expect(item.periodNo, 3);
+  });
 }
 
 class _Fixture {
@@ -141,6 +156,65 @@ class _Fixture {
         ],
       ),
     );
+  }
+
+  Future<void> seedInstallmentBill() async {
+    final schedule = InstallmentSchedule(
+      id: 'schedule-1',
+      contractId: 'contract-1',
+      periodNo: 3,
+      expectedRepaymentDate: DateTime(2026, 6, 25),
+      expectedPrincipal: const Money(minorUnits: 1000),
+      expectedInterest: Money.zero(),
+      expectedFee: Money.zero(),
+      status: credit.InstallmentScheduleStatus.pending,
+      createdAt: DateTime(2026, 1, 1),
+    );
+    await installments.insertAggregate(
+      InstallmentContract(
+        id: 'contract-1',
+        name: '借呗',
+        liabilityAccountId: 'credit-1',
+        installmentType: credit.InstallmentType.disbursement,
+        principal: const Money(minorUnits: 3000),
+        borrowingDate: DateTime(2026, 1, 1),
+        status: credit.InstallmentContractStatus.active,
+        createdAt: DateTime(2026, 1, 1),
+        stageTerms: InstallmentContractTerms.singleStage(
+          id: 'stage-1',
+          totalPeriods: 3,
+          firstDate: DateTime(2026, 4, 25),
+          lastDate: DateTime(2026, 6, 25),
+          method: credit.InstallmentRepaymentMethod.equalPrincipal,
+          accrual: credit.InterestAccrualMethod.monthly,
+          feeMinor: 0,
+        ),
+        schedules: [schedule],
+      ),
+    );
+    await bills.saveBill(
+      Bill(
+        id: 'bill-1',
+        accountId: 'credit-1',
+        period: credit.BillPeriod.fromInt(202606),
+        status: credit.BillStatus.billed,
+        items: const [],
+      ),
+    );
+    await bills.replaceBillItems('bill-1', [
+      BillItem(
+        id: 'bill-item-1',
+        billId: 'bill-1',
+        itemType: credit.BillItemType.installment,
+        repaymentDate: DateTime(2026, 6, 25),
+        expectedPrincipal: const Money(minorUnits: 1000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        status: credit.BillItemStatus.pending,
+        contractId: 'contract-1',
+        scheduleId: 'schedule-1',
+      ),
+    ]);
   }
 
   Future<void> close() => database.close();

@@ -83,6 +83,8 @@ class BillItemReadModel {
     this.installmentType,
     this.contractId,
     this.scheduleId,
+    this.contractName,
+    this.periodNo,
   });
 
   final String id;
@@ -101,6 +103,8 @@ class BillItemReadModel {
   final InstallmentType? installmentType;
   final String? contractId;
   final String? scheduleId;
+  final String? contractName;
+  final int? periodNo;
 
   Money get remainingPrincipal =>
       _remaining(expectedPrincipal, allocated.principal);

@@ -504,7 +504,7 @@ List<BillRepaymentAllocationLine> _allocationLines(
           billItemId: item.id,
           itemType: item.itemType,
           repaymentDate: item.repaymentDate,
-          label: billItemLabel(item),
+          label: billItemCompactName(item),
           expected: credit.RepaymentAmountBreakdown(
             principal: item.expectedPrincipal,
             interest: item.expectedInterest,

@@ -139,7 +139,7 @@ void main() {
     expect(find.text('息'), findsOneWidget);
     expect(find.text('费'), findsOneWidget);
     expect(find.text('优'), findsOneWidget);
-    expect(find.text('消费'), findsNWidgets(2));
+    expect(find.text('本期消费'), findsNWidgets(2));
     expect(find.byKey(const ValueKey('bill-item-1-principal')), findsOneWidget);
     expect(find.text('账单'), findsNothing);
     expect(find.text('剩余本金'), findsNothing);
@@ -226,6 +226,32 @@ void main() {
     );
     expect(allocation.allocated.principal, const Money(minorUnits: 3000));
   });
+
+  testWidgets('shows contract names in installment allocation rows', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          billDetailProvider.overrideWith(
+            (ref, id) async => _billDetailWithTwoInstallments(),
+          ),
+          accountsForSelectionPurposeProvider.overrideWith(
+            (ref, purpose) => Stream.value(const <Account>[]),
+          ),
+        ],
+        child: const MaterialApp(home: BillRepaymentFormPage(billId: 'bill')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('借呗'), findsOneWidget);
+    expect(find.text('白条'), findsOneWidget);
+    expect(find.text('借呗 第3期'), findsNothing);
+  });
 }
 
 Account _account(String id, AccountType type) {
@@ -270,6 +296,56 @@ credit_query.BillDetailReadModel _billDetailWithTwoConsumptionItems() {
         expectedFee: Money.zero(),
         allocated: credit_query.RepaymentAmountDto.zero,
         isOverdue: false,
+      ),
+    ],
+    repayments: const [],
+  );
+}
+
+credit_query.BillDetailReadModel _billDetailWithTwoInstallments() {
+  final period = credit_query.BillPeriod(year: 2026, month: 6);
+  final summary = credit_query.BillSummaryReadModel(
+    id: 'bill',
+    accountId: 'loan',
+    period: period,
+    status: credit_query.BillStatus.billed,
+    expectedPrincipal: const Money(minorUnits: 10000),
+    expectedInterest: Money.zero(),
+    expectedFee: Money.zero(),
+    pendingPrincipal: const Money(minorUnits: 10000),
+    itemCount: 2,
+    overdueItemCount: 0,
+  );
+  return credit_query.BillDetailReadModel(
+    summary: summary,
+    items: [
+      credit_query.BillItemReadModel(
+        id: 'bill-item-1',
+        itemType: credit_query.BillItemType.installment,
+        status: credit_query.BillItemStatus.pending,
+        repaymentDate: DateTime(2026, 6, 20),
+        expectedPrincipal: const Money(minorUnits: 5000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        allocated: credit_query.RepaymentAmountDto.zero,
+        isOverdue: false,
+        installmentType: credit_query.InstallmentType.disbursement,
+        contractName: '借呗',
+        periodNo: 3,
+      ),
+      credit_query.BillItemReadModel(
+        id: 'bill-item-2',
+        itemType: credit_query.BillItemType.installment,
+        status: credit_query.BillItemStatus.pending,
+        repaymentDate: DateTime(2026, 6, 20),
+        expectedPrincipal: const Money(minorUnits: 5000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        allocated: credit_query.RepaymentAmountDto.zero,
+        isOverdue: false,
+        installmentType: credit_query.InstallmentType.purchase,
+        contractName: '白条',
+        periodNo: 2,
       ),
     ],
     repayments: const [],

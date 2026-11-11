@@ -9,6 +9,7 @@ import '../../../core/money/money.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/bill_item_presentation.dart';
 import '../presentation/bill_repayment_allocation.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
@@ -293,6 +294,7 @@ List<BillRepaymentAllocationLine> _conversionLines(
           billItemId: item.id,
           itemType: item.itemType,
           repaymentDate: item.repaymentDate,
+          label: billItemCompactName(item),
           expected: credit.RepaymentAmountBreakdown(
             principal: item.expectedPrincipal,
             interest: Money.zero(),

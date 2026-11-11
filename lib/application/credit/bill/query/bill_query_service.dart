@@ -82,15 +82,23 @@ class BillQueryServiceImpl implements BillQueryService {
     );
     final creditAccount = await _creditAccounts.findByAccountId(bill.accountId);
     final contracts = await _contractsById(bill.accountId);
+    final schedulesById = {
+      for (final contract in contracts.values)
+        for (final schedule in contract.schedules) schedule.id: schedule,
+    };
     final repayments = await _repaymentsForBill(bill);
     final items = <BillItemReadModel>[];
     for (final item in bill.items) {
+      final schedule = item.scheduleId == null
+          ? null
+          : schedulesById[item.scheduleId!];
       items.add(
         _itemForBill(
           item: item,
           now: now,
           accountKind: creditAccount?.kind,
           contract: contracts[item.contractId],
+          periodNo: schedule?.periodNo,
           allocated:
               allocatedByItemId[item.id] ?? RepaymentAmountBreakdown.zero,
         ),
@@ -166,6 +174,7 @@ class BillQueryServiceImpl implements BillQueryService {
     required DateTime now,
     required CreditLiabilityAccountKind? accountKind,
     required InstallmentContract? contract,
+    required int? periodNo,
     required RepaymentAmountBreakdown allocated,
   }) {
     return BillItemReadModel(
@@ -184,6 +193,8 @@ class BillQueryServiceImpl implements BillQueryService {
       installmentType: contract?.installmentType,
       contractId: item.contractId,
       scheduleId: item.scheduleId,
+      contractName: contract?.name,
+      periodNo: periodNo,
       isOverdue:
           _isOutstanding(item.status) &&
           _dateOnly(item.repaymentDate).isBefore(_dateOnly(now)),

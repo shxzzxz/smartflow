@@ -646,8 +646,10 @@ class _AllocationSummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
-    final cellStyle = (emphasize ? styles.formLabel : styles.listSupporting)
-        .copyWith(color: color ?? colors.onSurface);
+    final cellStyle = styles.listSupporting.copyWith(
+      color: color ?? colors.onSurface,
+      fontWeight: emphasize ? FontWeight.w600 : null,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space4,

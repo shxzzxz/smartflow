@@ -40,6 +40,54 @@ void main() {
     expect(billItemDestination(item), isNull);
   });
 
+  test('installment bill item uses contract name and current period', () {
+    for (final installmentType in InstallmentType.values) {
+      final item = BillItemReadModel(
+        id: 'item-1',
+        itemType: BillItemType.installment,
+        status: BillItemStatus.pending,
+        repaymentDate: DateTime(2026, 7, 20),
+        expectedPrincipal: const Money(minorUnits: 10000),
+        expectedInterest: Money.zero(),
+        expectedFee: Money.zero(),
+        allocated: RepaymentAmountDto.zero,
+        isOverdue: false,
+        installmentType: installmentType,
+        contractName: '借呗',
+        periodNo: 3,
+      );
+
+      expect(billItemTitle(item), '借呗 第3期');
+      expect(billItemCompactName(item), '借呗');
+      expect(billItemRowPresentation(item).title, '借呗 第3期');
+    }
+  });
+
+  test('consumption bill item uses current-period name', () {
+    final item = BillItemReadModel(
+      id: 'item-1',
+      itemType: BillItemType.consumption,
+      status: BillItemStatus.pending,
+      repaymentDate: DateTime(2026, 7, 20),
+      startInclusive: DateTime(2026, 11, 8),
+      endInclusive: DateTime(2026, 12, 7),
+      expectedPrincipal: const Money(minorUnits: 10000),
+      expectedInterest: Money.zero(),
+      expectedFee: Money.zero(),
+      allocated: RepaymentAmountDto.zero,
+      isOverdue: false,
+    );
+
+    expect(billItemTitle(item), '本期消费');
+    expect(billItemCompactName(item), '本期消费');
+    final presentation = billItemRowPresentation(item);
+    expect(presentation.title, '本期消费');
+    expect(
+      presentation.supportingTexts.map((text) => text.text),
+      contains('统计 11-08 - 12-07'),
+    );
+  });
+
   test('bill item remaining total includes interest and fee', () {
     final item = BillItemReadModel(
       id: 'item-1',
