@@ -38,3 +38,23 @@ class DisbursementInstallmentResult {
   final String contractId;
   final String? disbursementTransactionId;
 }
+
+class CreateDisbursementTransactionCommand {
+  const CreateDisbursementTransactionCommand({
+    required this.contractId,
+    required this.receiveAccountId,
+    required this.occurredAt,
+  });
+
+  final String contractId;
+  final String receiveAccountId;
+
+  /// 交易业务时间，默认当前时间，可按实际补录调整。
+  final DateTime occurredAt;
+}
+
+class CreateDisbursementTransactionResult {
+  const CreateDisbursementTransactionResult({required this.transactionId});
+
+  final String transactionId;
+}

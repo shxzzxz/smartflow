@@ -4,6 +4,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/credit/credit_command_api.dart';
 import '../../../application/credit/credit_query_api.dart';
+import '../../../application/ledger/ledger_query_api.dart';
+import '../../../shared/account_profile/account_selection_purpose.dart';
+import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/installment_query_providers.dart';
@@ -25,6 +28,16 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     final repricing = await ref.watch(
       installmentRepricingProvider(contractId).future,
     );
+    final needsBorrowingTransaction =
+        detail.installment.installmentType == InstallmentType.disbursement &&
+        detail.installment.sourceRefId == null;
+    final fundAccounts = needsBorrowingTransaction
+        ? await ref.watch(
+            accountsForSelectionPurposeProvider(
+              AccountSelectionPurpose.fund,
+            ).future,
+          )
+        : const <Account>[];
     final activities = await ref.watch(
       installmentActivitiesProvider(contractId).future,
     );
@@ -33,6 +46,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       schedules: detail.schedules,
       repricing: repricing,
       activities: activities,
+      fundAccounts: fundAccounts,
     );
   }
 
@@ -71,6 +85,34 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
     });
   }
 
+  Future<UiActionOutcome<String>> createBorrowingTransaction({
+    required String receiveAccountId,
+    required DateTime occurredAt,
+  }) async {
+    final loaded = _loadedOrNull();
+    if (loaded == null) return _invalidAction('分期尚未加载');
+    if (loaded.installment.installmentType != InstallmentType.disbursement ||
+        loaded.installment.sourceRefId != null) {
+      return _invalidAction('当前分期无需补建放款交易');
+    }
+    if (!loaded.fundAccounts.any((account) => account.id == receiveAccountId)) {
+      return _invalidAction('请选择有效的到账账户');
+    }
+    return guardUiAction(_logger, 'Create disbursement transaction', () async {
+      final result = await ref
+          .read(disbursementInstallmentAppServiceProvider)
+          .createBorrowingTransaction(
+            CreateDisbursementTransactionCommand(
+              contractId: loaded.installment.id,
+              receiveAccountId: receiveAccountId,
+              occurredAt: occurredAt,
+            ),
+          );
+      _invalidateInstallment(loaded.installment);
+      return result.transactionId;
+    });
+  }
+
   Future<UiActionOutcome<void>> confirmRepricing() async {
     final loaded = _loadedOrNull();
     if (loaded == null) return _invalidAction('分期尚未加载');
@@ -103,6 +145,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
         schedules: loaded.schedules,
         repricing: loaded.repricing,
         activities: loaded.activities,
+        fundAccounts: loaded.fundAccounts,
         confirmingRepricing: value,
       ),
     );
@@ -210,7 +253,7 @@ class InstallmentDetailViewModel extends _$InstallmentDetailViewModel {
       );
   }
 
-  UiActionOutcome<void> _invalidAction(String message) {
+  UiActionOutcome<T> _invalidAction<T>(String message) {
     return UiActionOutcome.failure(
       UiError(
         code: CreditErrorCode.contractInvalidCommand.code,
@@ -234,6 +277,7 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
     required this.schedules,
     required this.repricing,
     required this.activities,
+    this.fundAccounts = const [],
     this.confirmingRepricing = false,
   });
 
@@ -241,6 +285,7 @@ class InstallmentDetailLoaded extends InstallmentDetailState {
   final List<InstallmentScheduleDTO> schedules;
   final InstallmentRepricingDTO? repricing;
   final List<ContractActivity> activities;
+  final List<Account> fundAccounts;
   final bool confirmingRepricing;
 
   List<InstallmentScheduleItemState> get scheduleItems => [

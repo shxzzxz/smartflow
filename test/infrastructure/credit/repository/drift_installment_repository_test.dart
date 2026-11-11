@@ -161,6 +161,29 @@ void main() {
       expect(loaded.sourceRefId, 'purchase-transaction');
     });
 
+    test('persists a borrowing transaction linked after creation', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final repository = DriftInstallmentRepository(database);
+      final contract = _contract(id: 'recorded-contract');
+
+      await repository.insertAggregate(contract);
+      final loaded = (await repository.findContract(contract.id))!;
+      expect(loaded.sourceRefId, isNull);
+
+      loaded.attachDisbursementTransaction('borrowing-transaction');
+      await repository.saveAggregate(loaded);
+
+      final persisted = (await repository.findContract(contract.id))!;
+      expect(persisted.sourceRefId, 'borrowing-transaction');
+      expect(
+        await repository.findContractByDisbursementTransaction(
+          'borrowing-transaction',
+        ),
+        isNotNull,
+      );
+    });
+
     test('rejects a second contract for the same typed source fact', () async {
       final database = createTestDatabase();
       addTearDown(database.close);

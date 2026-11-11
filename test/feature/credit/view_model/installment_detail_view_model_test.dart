@@ -4,11 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/credit/view_model/installment_detail_view_model.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   group('InstallmentDetailViewModel', () {
@@ -87,6 +90,30 @@ void main() {
 
       expect(outcome, isA<UiActionSuccess<void>>());
       expect(disbursement.deleteCommands.single.contractId, 'contract-1');
+    });
+
+    test('creates a borrowing transaction for a recorded contract', () async {
+      final disbursement = _FakeDisbursementInstallmentAppService();
+      final container = _container(
+        contract: _contract(sourceRefId: null),
+        disbursement: disbursement,
+      );
+      await container.read(
+        installmentDetailViewModelProvider('contract-1').future,
+      );
+
+      final outcome = await container
+          .read(installmentDetailViewModelProvider('contract-1').notifier)
+          .createBorrowingTransaction(
+            receiveAccountId: 'cash',
+            occurredAt: DateTime(2026, 1, 1, 14, 30),
+          );
+
+      expect(outcome, isA<UiActionSuccess<String>>());
+      final command = disbursement.createBorrowingCommands.single;
+      expect(command.contractId, 'contract-1');
+      expect(command.receiveAccountId, 'cash');
+      expect(command.occurredAt, DateTime(2026, 1, 1, 14, 30));
     });
 
     test('purchase installment deletion uses the consumption module', () async {
@@ -300,6 +327,20 @@ ProviderContainer _container({
   final planService = service?.planService ?? _FakeInstallmentPlanAppService();
   final container = ProviderContainer(
     overrides: [
+      accountsForSelectionPurposeProvider.overrideWith(
+        (ref, purpose) => Stream.value(
+          purpose == AccountSelectionPurpose.fund
+              ? [
+                  Account(
+                    id: 'cash',
+                    name: '现金',
+                    type: AccountType.asset,
+                    balance: Money.zero(),
+                  ),
+                ]
+              : const <Account>[],
+        ),
+      ),
       installmentStatusRepairAppServiceProvider.overrideWithValue(
         statusRepair ?? _FakeStatusRepairAppService(),
       ),
@@ -344,7 +385,10 @@ InstallmentDTO _contract({
     liabilityAccountId: 'loan',
     installmentType: type,
     sourceRefId: sourceRefId,
-    disbursementAccountId: type == InstallmentType.disbursement ? 'cash' : null,
+    disbursementAccountId:
+        type == InstallmentType.disbursement && sourceRefId != null
+        ? 'cash'
+        : null,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: InstallmentContractStatus.active,
@@ -446,6 +490,17 @@ class _FakeDisbursementInstallmentAppService
 
   final Object? deleteException;
   final deleteCommands = <DeleteInstallmentCommand>[];
+  final createBorrowingCommands = <CreateDisbursementTransactionCommand>[];
+
+  @override
+  Future<CreateDisbursementTransactionResult> createBorrowingTransaction(
+    CreateDisbursementTransactionCommand command,
+  ) async {
+    createBorrowingCommands.add(command);
+    return const CreateDisbursementTransactionResult(
+      transactionId: 'tx-borrowing-1',
+    );
+  }
 
   @override
   Future<void> delete(DeleteInstallmentCommand command) async {

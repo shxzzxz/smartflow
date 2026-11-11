@@ -432,6 +432,85 @@ void main() {
     );
 
     test(
+      'creates and links a borrowing transaction for a recorded contract',
+      () async {
+        final fixture = _Fixture();
+        final created = await fixture.disbursement.create(
+          _createDisbursementCommand(disbursementAccountId: null),
+        );
+        final occurredAt = DateTime(2026, 7, 15, 14, 30);
+
+        final result = await fixture.disbursement.createBorrowingTransaction(
+          CreateDisbursementTransactionCommand(
+            contractId: created.contractId,
+            receiveAccountId: 'asset-cash',
+            occurredAt: occurredAt,
+          ),
+        );
+
+        expect(result.transactionId, 'tx-borrowing-1');
+        final command = fixture.posting.borrowingCommands.single;
+        expect(command.amount, const Money(minorUnits: 120000));
+        expect(command.liabilityAccountId, 'loan-liability');
+        expect(command.receiveAccountId, 'asset-cash');
+        expect(command.occurredAt, occurredAt);
+        final ownership = fixture.update.ownershipCommands.single.ownership;
+        expect(ownership.ownerType, installmentOwnerType);
+        expect(ownership.ownerId, created.contractId);
+        final contract = fixture.installments.contracts[created.contractId]!;
+        expect(contract.sourceRefId, result.transactionId);
+      },
+    );
+
+    test('rejects duplicate borrowing transactions', () async {
+      final fixture = _Fixture();
+      final created = await fixture.disbursement.create(
+        _createDisbursementCommand(disbursementAccountId: null),
+      );
+
+      await fixture.disbursement.createBorrowingTransaction(
+        CreateDisbursementTransactionCommand(
+          contractId: created.contractId,
+          receiveAccountId: 'asset-cash',
+          occurredAt: DateTime(2026, 7, 15),
+        ),
+      );
+      await expectLater(
+        fixture.disbursement.createBorrowingTransaction(
+          CreateDisbursementTransactionCommand(
+            contractId: created.contractId,
+            receiveAccountId: 'asset-bank',
+            occurredAt: DateTime(2026, 7, 16),
+          ),
+        ),
+        throwsA(isA<BusinessException>()),
+      );
+      expect(fixture.posting.borrowingCommands, hasLength(1));
+    });
+
+    test(
+      'does not create a borrowing transaction for another contract type',
+      () async {
+        final fixture = _Fixture();
+        fixture.installments.putContract(
+          _purchaseContract(id: 'purchase-contract'),
+        );
+
+        await expectLater(
+          fixture.disbursement.createBorrowingTransaction(
+            CreateDisbursementTransactionCommand(
+              contractId: 'purchase-contract',
+              receiveAccountId: 'asset-cash',
+              occurredAt: DateTime(2026, 6, 1),
+            ),
+          ),
+          throwsA(isA<BusinessException>()),
+        );
+        expect(fixture.posting.borrowingCommands, isEmpty);
+      },
+    );
+
+    test(
       'updates contract details through the dedicated details command',
       () async {
         final fixture = _Fixture();

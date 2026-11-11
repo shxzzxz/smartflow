@@ -207,7 +207,7 @@ class DriftInstallmentRepository
               name: Value(contract.name),
               dayCount: Value(encodeDayCount(contract.stageTerms.dayCount)),
               rounding: Value(contract.stageTerms.rounding.name),
-
+              sourceRefId: Value(contract.sourceRefId),
               borrowingDate: Value(contract.borrowingDate),
 
               status: Value(contract.status),

@@ -19,6 +19,10 @@ abstract interface class DisbursementInstallmentAppService {
     CreateDisbursementInstallmentCommand command,
   );
 
+  Future<CreateDisbursementTransactionResult> createBorrowingTransaction(
+    CreateDisbursementTransactionCommand command,
+  );
+
   Future<void> delete(DeleteInstallmentCommand command);
 }
 
@@ -107,6 +111,55 @@ class DisbursementInstallmentAppServiceImpl
       return DisbursementInstallmentResult(
         contractId: contractId,
         disbursementTransactionId: borrowing?.transactionId,
+      );
+    });
+  }
+
+  @override
+  Future<CreateDisbursementTransactionResult> createBorrowingTransaction(
+    CreateDisbursementTransactionCommand command,
+  ) {
+    return _runner.run(() async {
+      final contract = await _installments.findContract(command.contractId);
+      if (contract == null) {
+        throw BusinessException(CreditErrorCode.contractNotFound);
+      }
+      if (contract.installmentType != InstallmentType.disbursement) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '只有放款分期支持补建放款交易',
+        );
+      }
+      if (contract.sourceRefId != null) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '该分期已关联放款交易',
+        );
+      }
+      final receiveAccountId = command.receiveAccountId.trim();
+      if (receiveAccountId.isEmpty) {
+        throw BusinessException(
+          CreditErrorCode.contractInvalidCommand,
+          message: '请选择放款入账账户',
+        );
+      }
+      final borrowing = await _ledger.postBorrowing(
+        CreditLedgerPostBorrowingCommand(
+          amount: contract.principal,
+          liabilityAccountId: contract.liabilityAccountId,
+          occurredAt: command.occurredAt,
+          receiveAccountId: receiveAccountId,
+          note: contract.note,
+        ),
+      );
+      await _ledger.updateOwnership(
+        transactionId: borrowing.transactionId,
+        ownership: _installmentOwnership(contract.id),
+      );
+      contract.attachDisbursementTransaction(borrowing.transactionId);
+      await _installments.saveAggregate(contract);
+      return CreateDisbursementTransactionResult(
+        transactionId: borrowing.transactionId,
       );
     });
   }

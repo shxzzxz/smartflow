@@ -23,6 +23,7 @@ import '../presentation/contract_status_validation_presentation.dart';
 import '../presentation/installment_schedule_presentation.dart';
 import '../presentation/installment_stage_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
+import '../widget/create_disbursement_transaction_dialog.dart';
 import '../widget/installment_schedule_view.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
@@ -53,6 +54,15 @@ class InstallmentDetailPage extends ConsumerWidget {
                     icon: RemixIcons.more_2_fill,
                     tooltip: '更多',
                     items: [
+                      if (loaded.installment.installmentType ==
+                              InstallmentType.disbursement &&
+                          loaded.installment.sourceRefId == null)
+                        AppPopupMenuAction(
+                          label: '补建放款交易',
+                          icon: RemixIcons.add_circle_line,
+                          onPressed: () =>
+                              _createBorrowingTransaction(context, ref, loaded),
+                        ),
                       AppPopupMenuAction(
                         label: '重定价',
                         icon: RemixIcons.percent_line,
@@ -138,6 +148,30 @@ class InstallmentDetailPage extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  Future<void> _createBorrowingTransaction(
+    BuildContext context,
+    WidgetRef ref,
+    InstallmentDetailLoaded loaded,
+  ) async {
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CreateDisbursementTransactionDialog(
+        installment: loaded.installment,
+        fundAccounts: loaded.fundAccounts,
+        submit: ({required receiveAccountId, required occurredAt}) => ref
+            .read(installmentDetailViewModelProvider(contractId).notifier)
+            .createBorrowingTransaction(
+              receiveAccountId: receiveAccountId,
+              occurredAt: occurredAt,
+            ),
+      ),
+    );
+    if (created != true || !context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('放款交易已创建并关联到当前分期')));
   }
 
   Future<void> _confirmStatusValidation(

@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
 import 'package:smartflow/application/credit/credit_query_api.dart';
+import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
@@ -16,6 +17,8 @@ import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/rate_change.dart';
 import 'package:smartflow/feature/credit/page/installment_detail_page.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
+import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/shared/account_profile/account_selection_purpose.dart';
 
 void main() {
   testWidgets(
@@ -33,6 +36,7 @@ void main() {
       expect(find.byTooltip('删除分期'), findsNothing);
       await tester.tap(find.byTooltip('更多'));
       await tester.pumpAndSettle();
+      expect(find.text('补建放款交易'), findsNothing);
       expect(find.text('重定价'), findsOneWidget);
       expect(find.text('利息调整'), findsOneWidget);
       await tester.tap(find.text('删除分期'));
@@ -41,6 +45,46 @@ void main() {
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'recorded disbursement contract creates a linked borrowing transaction',
+    (tester) async {
+      final disbursement = _FakeDisbursementInstallmentAppService();
+      await tester.pumpWidget(
+        _app(
+          service: _FakeInstallmentContractAppService(),
+          scheduleStatus: InstallmentScheduleStatus.pending,
+          disbursementService: disbursement,
+          hasBorrowingTransaction: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('该分期未关联放款交易'), findsNothing);
+      await tester.tap(find.byTooltip('更多'));
+      await tester.pumpAndSettle();
+      expect(find.text('补建放款交易'), findsOneWidget);
+      await tester.tap(find.text('补建放款交易'));
+      await tester.pumpAndSettle();
+      expect(find.text('补建放款交易'), findsOneWidget);
+
+      await tester.tap(find.text('请选择到账账户'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('现金'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '创建交易'));
+      await tester.pumpAndSettle();
+
+      final command = disbursement.createBorrowingCommands.single;
+      expect(command.contractId, 'contract-1');
+      expect(command.receiveAccountId, 'cash');
+      final now = DateTime.now();
+      expect(command.occurredAt.year, now.year);
+      expect(command.occurredAt.month, now.month);
+      expect(command.occurredAt.day, now.day);
+      expect(find.text('放款交易已创建并关联到当前分期'), findsOneWidget);
     },
   );
   testWidgets(
@@ -292,19 +336,41 @@ Widget _app({
   List<ContractActivity> activities = const [],
   InstallmentRepricingAppService? repricingService,
   List<String> Function()? unconfirmedRepricingIds,
+  _FakeDisbursementInstallmentAppService? disbursementService,
+  bool hasBorrowingTransaction = true,
 }) {
   final planService = service.planService;
   final container = ProviderContainer(
     overrides: [
+      accountsForSelectionPurposeProvider.overrideWith(
+        (ref, purpose) => Stream.value(
+          purpose == AccountSelectionPurpose.fund
+              ? [
+                  Account(
+                    id: 'cash',
+                    name: '现金',
+                    type: AccountType.asset,
+                    balance: Money.zero(),
+                  ),
+                ]
+              : const <Account>[],
+        ),
+      ),
       installmentStatusRepairAppServiceProvider.overrideWithValue(
         statusRepair ?? _FakeStatusRepairAppService(),
       ),
       installmentProvider.overrideWith(
-        (ref, contractId) async => _contract(status: contractStatus),
+        (ref, contractId) async => _contract(
+          status: contractStatus,
+          hasBorrowingTransaction: hasBorrowingTransaction,
+        ),
       ),
       installmentDetailProvider.overrideWith(
         (ref, contractId) async => InstallmentDetailDTO(
-          installment: _contract(status: contractStatus),
+          installment: _contract(
+            status: contractStatus,
+            hasBorrowingTransaction: hasBorrowingTransaction,
+          ),
           schedules: [
             for (var period = 1; period <= scheduleCount; period++)
               _schedule(scheduleStatus, period: period),
@@ -336,6 +402,9 @@ Widget _app({
         (ref, contractId) async => activities,
       ),
       installmentContractAppServiceProvider.overrideWithValue(service),
+      disbursementInstallmentAppServiceProvider.overrideWithValue(
+        disbursementService ?? _FakeDisbursementInstallmentAppService(),
+      ),
       installmentPlanAppServiceProvider.overrideWithValue(planService),
       if (repricingService != null)
         installmentRepricingAppServiceProvider.overrideWithValue(
@@ -357,13 +426,15 @@ Widget _app({
 
 InstallmentDTO _contract({
   InstallmentContractStatus status = InstallmentContractStatus.active,
+  bool hasBorrowingTransaction = true,
 }) {
   return InstallmentDTO(
     id: 'contract-1',
     name: '家庭贷款',
     liabilityAccountId: 'loan',
     installmentType: InstallmentType.disbursement,
-    disbursementAccountId: 'cash',
+    sourceRefId: hasBorrowingTransaction ? 'tx-borrowing-1' : null,
+    disbursementAccountId: hasBorrowingTransaction ? 'cash' : null,
     principal: const Money(minorUnits: 10000),
     borrowingDate: DateTime(2026, 1, 1),
     status: status,
@@ -470,6 +541,25 @@ class _FakeRepaymentAppService implements BillRepaymentAppService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDisbursementInstallmentAppService
+    implements DisbursementInstallmentAppService {
+  final createBorrowingCommands = <CreateDisbursementTransactionCommand>[];
+
+  @override
+  Future<CreateDisbursementTransactionResult> createBorrowingTransaction(
+    CreateDisbursementTransactionCommand command,
+  ) async {
+    createBorrowingCommands.add(command);
+    return const CreateDisbursementTransactionResult(
+      transactionId: 'tx-borrowing-1',
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
 }
 
 class _FakeStatusRepairAppService implements InstallmentStatusRepairAppService {

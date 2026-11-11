@@ -38,7 +38,7 @@ class InstallmentContract {
     String? name,
     required this.liabilityAccountId,
     required this.installmentType,
-    this.sourceRefId,
+    String? sourceRefId,
     required this.principal,
     required this.borrowingDate,
     required InstallmentContractStatus status,
@@ -50,23 +50,12 @@ class InstallmentContract {
     List<InstallmentRepricing> repricings = const [],
     this.interestAdjustments = const [],
   }) : name = name ?? formatCompactDate(borrowingDate),
+       _sourceRefId = _validateSourceRef(installmentType, sourceRefId),
        _status = status,
        _stageTerms = stageTerms,
        _schedules = List.unmodifiable(schedules),
        _repricingConfigurations = List.unmodifiable(repricingConfigurations),
        _repricings = List.unmodifiable(repricings) {
-    final reference = sourceRefId;
-    final normalizedSource = reference == null || reference.trim().isEmpty
-        ? null
-        : reference;
-    if (sourceRefId != null && normalizedSource == null ||
-        installmentType != InstallmentType.disbursement &&
-            normalizedSource == null) {
-      throw BusinessException(
-        CreditErrorCode.contractInvalidCommand,
-        message: '账单分期和消费分期必须关联来源事实',
-      );
-    }
     _validateSchedules(_schedules);
   }
 
@@ -74,7 +63,8 @@ class InstallmentContract {
   String name;
   final String liabilityAccountId;
   final InstallmentType installmentType;
-  final String? sourceRefId;
+  String? _sourceRefId;
+  String? get sourceRefId => _sourceRefId;
   final Money principal;
 
   /// 本笔贷款起算日；仅在合同创建时确定。
@@ -140,6 +130,30 @@ class InstallmentContract {
         PatchClear<String>() => null,
       };
     }
+  }
+
+  /// 记录型放款分期在后续补建借入交易时建立来源引用。
+  void attachDisbursementTransaction(String transactionId) {
+    if (installmentType != InstallmentType.disbursement) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '只有放款分期可以关联借入交易',
+      );
+    }
+    if (_sourceRefId != null) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '该分期已关联放款交易',
+      );
+    }
+    final normalized = transactionId.trim();
+    if (normalized.isEmpty) {
+      throw BusinessException(
+        CreditErrorCode.contractInvalidCommand,
+        message: '放款交易不存在',
+      );
+    }
+    _sourceRefId = normalized;
   }
 
   void markSchedulePaid(String scheduleId) {
@@ -323,4 +337,19 @@ class InstallmentContract {
       );
     }
   }
+}
+
+String? _validateSourceRef(
+  InstallmentType installmentType,
+  String? sourceRefId,
+) {
+  final normalized = sourceRefId?.trim();
+  if (sourceRefId != null && (normalized == null || normalized.isEmpty) ||
+      installmentType != InstallmentType.disbursement && normalized == null) {
+    throw BusinessException(
+      CreditErrorCode.contractInvalidCommand,
+      message: '账单分期和消费分期必须关联来源事实',
+    );
+  }
+  return normalized;
 }
