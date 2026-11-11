@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../core/persistence/persistence_baseline.dart';
+
 /// The logical tables included in a SmartFlow backup.
 class BackupTables {
   BackupTables._();
@@ -61,8 +63,8 @@ class BackupTables {
     'social_contribution_records',
   };
 
-  /// Insurance tables written by backup contracts before v10.
-  static const insuranceV8 = <String>{
+  /// Insurance tables written by the v9 backup contract.
+  static const insuranceV9 = <String>{
     'insured_people',
     'commercial_insurances',
     'commercial_insurance_insured_people',
@@ -75,24 +77,10 @@ class BackupTables {
     'social_pension_contribution_records',
   };
 
-  static const _legacySocialTables = <String>{
-    'social_medical_insurances',
-    'social_medical_contribution_records',
-    'social_pension_insurances',
-    'social_pension_contribution_records',
-  };
-
-  /// Tables used by supported backup contracts before v7.
-  static const legacy = <String>{
-    'amortization_entries',
-    'amortization_entry_allocations',
-  };
-
   static bool accepts(String table) =>
       table == 'preferences' ||
       all.contains(table) ||
-      legacy.contains(table) ||
-      _legacySocialTables.contains(table);
+      insuranceV9.contains(table);
 
   static String sectionFor(String table) {
     if (const {
@@ -143,7 +131,9 @@ class BackupTables {
         table == 'amortization_allocations') {
       return 'orchestration';
     }
-    if (insurance.contains(table)) return 'insurance';
+    if (insurance.contains(table) || insuranceV9.contains(table)) {
+      return 'insurance';
+    }
     throw ArgumentError('Unknown backup table: $table');
   }
 }
@@ -177,7 +167,7 @@ class BackupSnapshot {
   }) : tables = {
          for (final table in BackupTables.all)
            table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
-         for (final table in BackupTables.legacy)
+         for (final table in BackupTables.insuranceV9)
            if (tables.containsKey(table))
              table: List.unmodifiable(tables[table] ?? const <BackupJson>[]),
        },
@@ -270,14 +260,15 @@ class BackupManifest {
   });
 
   /// First supported logical-backup contract. Older formats are rejected.
-  static const currentFormatVersion = 3;
+  static const currentFormatVersion = PersistenceBaseline.backupFormatVersion;
 
   /// Current logical data contract.
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
   static const currentBackupSchemaVersion = 10;
-  static const minimumSupportedBackupSchemaVersion = 1;
+  static const minimumSupportedBackupSchemaVersion =
+      PersistenceBaseline.backupSchemaVersion;
 
   final int formatVersion;
   final int backupSchemaVersion;

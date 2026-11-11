@@ -183,46 +183,16 @@ class BackupService {
     if (!hasPreferences) {
       throw const BackupValidationException('备份缺少 preferences.json。');
     }
-    final socialTables = {
-      ...BackupTables.insuranceV8.where((table) => table.startsWith('social_')),
-      'social_insurances',
-      'social_contribution_records',
-    };
     final requiredTables = manifest.backupSchemaVersion < 10
-        ? [
+        ? <String>{
             for (final table in BackupTables.all)
-              if (!socialTables.contains(table)) table,
-          ]
+              if (!BackupTables.insurance.contains(table)) table,
+            ...BackupTables.insuranceV9,
+          }
         : BackupTables.all;
     for (final table in requiredTables) {
       if (!tables.containsKey(table)) {
-        if (manifest.backupSchemaVersion < 3 &&
-            table == 'installment_refund_reductions') {
-          continue;
-        }
-        if (manifest.backupSchemaVersion < 7 &&
-            table.startsWith('amortization_')) {
-          continue;
-        }
-        if (manifest.backupSchemaVersion < 8 &&
-            BackupTables.insuranceV8.contains(table)) {
-          continue;
-        }
         throw BackupValidationException('备份缺少业务表文件: $table');
-      }
-    }
-    if (manifest.backupSchemaVersion >= 8 &&
-        manifest.backupSchemaVersion < 10) {
-      final hasLegacySocial =
-          tables.containsKey('social_medical_insurances') &&
-          tables.containsKey('social_medical_contribution_records') &&
-          tables.containsKey('social_pension_insurances') &&
-          tables.containsKey('social_pension_contribution_records');
-      final hasUnifiedSocial =
-          tables.containsKey('social_insurances') &&
-          tables.containsKey('social_contribution_records');
-      if (!hasLegacySocial && !hasUnifiedSocial) {
-        throw const BackupValidationException('备份缺少社保业务表文件。');
       }
     }
     final preferences = (tables.remove('preferences')!.single);
@@ -246,14 +216,6 @@ class BackupService {
       version++
     ) {
       upgraded = switch (version) {
-        1 => _upgradeBackupV1ToV2(upgraded),
-        2 => _upgradeBackupV2ToV3(upgraded),
-        3 => _upgradeBackupV3ToV4(upgraded),
-        4 => _upgradeBackupV4ToV5(upgraded),
-        5 => _upgradeBackupV5ToV6(upgraded),
-        6 => _upgradeBackupV6ToV7(upgraded),
-        7 => _upgradeBackupV7ToV8(upgraded),
-        8 => _upgradeBackupV8ToV9(upgraded),
         9 => _upgradeBackupV9ToV10(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
@@ -262,32 +224,6 @@ class BackupService {
       };
     }
     return upgraded;
-  }
-
-  static BackupSnapshot _upgradeBackupV7ToV8(BackupSnapshot snapshot) {
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        for (final table in BackupTables.insuranceV8)
-          table: snapshot.rows(table),
-      },
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV8ToV9(BackupSnapshot snapshot) {
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'insured_people': [
-          for (final row in snapshot.rows('insured_people'))
-            Map<String, Object?>.from(row)
-              ..putIfAbsent('relationship', () => MemberRelationship.other.name)
-              ..putIfAbsent('gender', () => MemberGender.unknown.name)
-              ..putIfAbsent('note', () => null)
-              ..putIfAbsent('avatarPreset', () => MemberAvatarPreset.blue.name),
-        ],
-      },
-    );
   }
 
   static BackupSnapshot _upgradeBackupV9ToV10(BackupSnapshot snapshot) {
@@ -313,7 +249,8 @@ class BackupService {
           (value) => value == 'custom' ? ResponsibilityKind.other.name : value,
         ),
     ];
-    if (!snapshot.tables.containsKey('social_insurances')) {
+    if (snapshot.rows('social_insurances').isEmpty &&
+        snapshot.rows('social_contribution_records').isEmpty) {
       tables['social_insurances'] = [
         for (final row in snapshot.rows('social_medical_insurances'))
           _socialInsuranceRowFromLegacy(row, SocialInsuranceType.medical),
@@ -333,7 +270,7 @@ class BackupService {
           ),
       ];
     }
-    for (final table in BackupTables.insuranceV8.where(
+    for (final table in BackupTables.insuranceV9.where(
       (table) => table.startsWith('social_'),
     )) {
       tables.remove(table);
@@ -355,356 +292,6 @@ class BackupService {
     return Map<String, Object?>.from(row)
       ..['socialInsuranceId'] = row[legacyIdKey]
       ..remove(legacyIdKey);
-  }
-
-  static BackupSnapshot _upgradeBackupV1ToV2(BackupSnapshot snapshot) {
-    final accounts = [
-      for (final row in snapshot.rows('accounts'))
-        Map<String, Object?>.from(row)
-          ..remove('creditLimitMinor')
-          ..remove('billingDay')
-          ..remove('repaymentDay'),
-    ];
-    return snapshot.copyWith(
-      tables: {...snapshot.tables, 'accounts': accounts},
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV2ToV3(BackupSnapshot snapshot) {
-    final contracts = [
-      for (final row in snapshot.rows('installment_contracts'))
-        {...row, 'purchaseTransactionId': row['purchaseTransactionId']},
-    ];
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'installment_contracts': contracts,
-        'installment_refund_reductions': snapshot.rows(
-          'installment_refund_reductions',
-        ),
-      },
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV3ToV4(BackupSnapshot snapshot) {
-    final billContractByRepaymentId = <String, String>{};
-    final contracts = [
-      for (final row in snapshot.rows('installment_contracts'))
-        () {
-          final installmentType = row['sourceType'];
-          if (installmentType is! String) {
-            throw const BackupValidationException(
-              'installment_contracts.sourceType 缺失。',
-            );
-          }
-          final sourceRefId = switch (installmentType) {
-            'disbursement' => row['disbursementTransactionId'],
-            'billConversion' => row['sourceRepaymentId'],
-            'purchase' => row['purchaseTransactionId'],
-            _ => null,
-          };
-          if (installmentType == 'billConversion' && sourceRefId is String) {
-            billContractByRepaymentId[sourceRefId] = '${row['id']}';
-          }
-          return Map<String, Object?>.from(row)
-            ..remove('sourceType')
-            ..remove('disbursementAccountId')
-            ..remove('disbursementTransactionId')
-            ..remove('sourceRepaymentId')
-            ..remove('purchaseTransactionId')
-            ..['installmentType'] = installmentType
-            ..['sourceRefId'] = sourceRefId;
-        }(),
-    ];
-    final repayments = [
-      for (final row in snapshot.rows('repayments'))
-        {
-          ...row,
-          'generatedContractId': row['repaymentType'] == 'INSTALLMENT'
-              ? billContractByRepaymentId[row['id']]
-              : null,
-        },
-    ];
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'installment_contracts': contracts,
-        'repayments': repayments,
-      },
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV4ToV5(BackupSnapshot snapshot) {
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'amortization_plans': snapshot.rows('amortization_plans'),
-        'amortization_entries': snapshot.rows('amortization_entries'),
-      },
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV5ToV6(BackupSnapshot snapshot) {
-    final categoryByPlanId = {
-      for (final row in snapshot.rows('amortization_plans'))
-        '${row['id']}': row['categoryAccountId'],
-    };
-    final plans = [
-      for (final row in snapshot.rows('amortization_plans'))
-        Map<String, Object?>.from(row)..remove('categoryAccountId'),
-    ];
-    final allocations = [
-      for (final entry in snapshot.rows('amortization_entries'))
-        {
-          'id': '${entry['id']}:allocation:1',
-          'entryId': entry['id'],
-          'lineNo': 1,
-          'accountId': categoryByPlanId[entry['planId']],
-          'amountMinor': entry['amountMinor'],
-          'createdAt': entry['createdAt'],
-          'updatedAt': entry['updatedAt'],
-        },
-    ];
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'amortization_plans': plans,
-        'amortization_entry_allocations': allocations,
-      },
-    );
-  }
-
-  static BackupSnapshot _upgradeBackupV6ToV7(BackupSnapshot snapshot) {
-    final plans = snapshot.rows('amortization_plans');
-    final entries = snapshot.rows('amortization_entries');
-    final entryAllocations = snapshot.rows('amortization_entry_allocations');
-    final planIdByEntryId = {
-      for (final entry in entries) '${entry['id']}': '${entry['planId']}',
-    };
-    final categoryByPlan = <String, Map<String, int>>{};
-    for (final allocation in entryAllocations) {
-      final planId = planIdByEntryId['${allocation['entryId']}'];
-      final accountId = allocation['accountId'];
-      final amount = allocation['amountMinor'];
-      if (planId == null || accountId is! String || amount is! int) continue;
-      (categoryByPlan[planId] ??= {})[accountId] =
-          (categoryByPlan[planId]![accountId] ?? 0) + amount;
-    }
-
-    final linesByTransaction = <String, List<BackupJson>>{};
-    for (final line in snapshot.rows('transaction_lines')) {
-      final transactionId = line['transactionId'];
-      if (transactionId is String) {
-        (linesByTransaction[transactionId] ??= []).add(line);
-      }
-    }
-
-    final fundingAllocations = <BackupJson>[];
-    final planAllocations = <BackupJson>[];
-    for (final plan in plans) {
-      final planId = '${plan['id']}';
-      final initialTransactionId = plan['initialTransactionId'];
-      if (initialTransactionId is String) {
-        final role = plan['kind'] == 'prepaidExpense'
-            ? 'settlementOut'
-            : 'settlementIn';
-        var lineNo = 1;
-        for (final line
-            in linesByTransaction[initialTransactionId] ?? const []) {
-          if (line['role'] != role ||
-              line['accountId'] is! String ||
-              line['amountMinor'] is! int) {
-            continue;
-          }
-          fundingAllocations.add(
-            _allocationRow(
-              subjectType: 'plan',
-              subjectId: planId,
-              dimension: 'funding',
-              lineNo: lineNo++,
-              accountId: line['accountId']! as String,
-              amountMinor: line['amountMinor']! as int,
-              createdAt: plan['createdAt'],
-              updatedAt: plan['updatedAt'],
-            ),
-          );
-        }
-      }
-      var categoryLineNo = 1;
-      final categories = (categoryByPlan[planId] ?? const {}).entries.toList()
-        ..sort((left, right) => left.key.compareTo(right.key));
-      for (final category in categories) {
-        planAllocations.add(
-          _allocationRow(
-            subjectType: 'plan',
-            subjectId: planId,
-            dimension: 'category',
-            lineNo: categoryLineNo++,
-            accountId: category.key,
-            amountMinor: category.value,
-            createdAt: plan['createdAt'],
-            updatedAt: plan['updatedAt'],
-          ),
-        );
-      }
-    }
-
-    final periodAllocations = [
-      for (final allocation in entryAllocations)
-        _allocationRow(
-          subjectType: 'period',
-          subjectId: '${allocation['entryId']}',
-          dimension: 'category',
-          lineNo: allocation['lineNo'] as int,
-          accountId: allocation['accountId'] as String,
-          amountMinor: allocation['amountMinor'] as int,
-          createdAt: allocation['createdAt'],
-          updatedAt: allocation['updatedAt'],
-        ),
-    ];
-    final periods = [
-      for (final entry in entries)
-        {
-          'id': entry['id'],
-          'planId': entry['planId'],
-          'sequenceNo': entry['sequenceNo'],
-          'dueAt': entry['dueAt'],
-          'amountMinor': entry['amountMinor'],
-          'transactionId': entry['transactionId'],
-          'status': switch (entry) {
-            {'canceledAt': final Object? value} when value != null =>
-              'canceled',
-            {'transactionId': final Object? value} when value != null =>
-              'posted',
-            {'amountMinor': 0} => 'zero',
-            _ => 'pending',
-          },
-          'createdAt': entry['createdAt'],
-          'updatedAt': entry['updatedAt'],
-        },
-    ];
-
-    final terminations = <BackupJson>[];
-    final terminationAllocations = <BackupJson>[];
-    for (final plan in plans) {
-      if (plan['terminatedAt'] == null) continue;
-      final planId = '${plan['id']}';
-      final terminationId = '$planId:termination';
-      terminations.add({
-        'id': terminationId,
-        'planId': planId,
-        'terminatedAt': plan['terminatedAt'],
-        'recognitionTransactionId': plan['terminationRecognitionTransactionId'],
-        'returnTransactionId': plan['refundTransactionId'],
-        'createdAt': plan['updatedAt'],
-        'updatedAt': plan['updatedAt'],
-      });
-      final refundAmount = plan['refundAmountMinor'];
-      final categories = categoryByPlan[planId];
-      if (refundAmount is int &&
-          refundAmount > 0 &&
-          categories != null &&
-          categories.isNotEmpty) {
-        final accountIds = categories.keys.toList()..sort();
-        terminationAllocations.add(
-          _allocationRow(
-            subjectType: 'termination',
-            subjectId: terminationId,
-            dimension: 'category',
-            lineNo: 1,
-            accountId: accountIds.first,
-            amountMinor: refundAmount,
-            createdAt: plan['updatedAt'],
-            updatedAt: plan['updatedAt'],
-          ),
-        );
-      }
-      final refundTransactionId = plan['refundTransactionId'];
-      if (refundTransactionId is String) {
-        final role = plan['kind'] == 'prepaidExpense'
-            ? 'settlementIn'
-            : 'settlementOut';
-        var lineNo = 1;
-        for (final line
-            in linesByTransaction[refundTransactionId] ?? const []) {
-          if (line['role'] != role ||
-              line['accountId'] is! String ||
-              line['amountMinor'] is! int) {
-            continue;
-          }
-          terminationAllocations.add(
-            _allocationRow(
-              subjectType: 'termination',
-              subjectId: terminationId,
-              dimension: 'settlement',
-              lineNo: lineNo++,
-              accountId: line['accountId']! as String,
-              amountMinor: line['amountMinor']! as int,
-              createdAt: plan['updatedAt'],
-              updatedAt: plan['updatedAt'],
-            ),
-          );
-        }
-      }
-    }
-
-    final upgradedPlans = [
-      for (final plan in plans)
-        {
-          for (final key in const [
-            'id',
-            'kind',
-            'deferralAccountId',
-            'totalAmountMinor',
-            'cadenceUnit',
-            'cadenceInterval',
-            'firstRecognitionAt',
-            'recognitionCount',
-            'initialTransactionId',
-            'createdAt',
-            'updatedAt',
-          ])
-            key: plan[key],
-        },
-    ];
-    return snapshot.copyWith(
-      tables: {
-        ...snapshot.tables,
-        'amortization_plans': upgradedPlans,
-        'amortization_periods': periods,
-        'amortization_refunds': const <BackupJson>[],
-        'amortization_terminations': terminations,
-        'amortization_allocations': [
-          ...planAllocations,
-          ...fundingAllocations,
-          ...periodAllocations,
-          ...terminationAllocations,
-        ],
-      },
-    );
-  }
-
-  static BackupJson _allocationRow({
-    required String subjectType,
-    required String subjectId,
-    required String dimension,
-    required int lineNo,
-    required String accountId,
-    required int amountMinor,
-    required Object? createdAt,
-    required Object? updatedAt,
-  }) {
-    return {
-      'id': '$subjectType:$subjectId:$dimension:$lineNo',
-      'subjectType': subjectType,
-      'subjectId': subjectId,
-      'dimension': dimension,
-      'lineNo': lineNo,
-      'accountId': accountId,
-      'amountMinor': amountMinor,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
-    };
   }
 
   Future<BackupDiff> compare(Object source) async {

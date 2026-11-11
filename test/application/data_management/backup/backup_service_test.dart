@@ -43,7 +43,7 @@ void main() {
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
       expect(inspected.manifest.backupSchemaVersion, 10);
-      expect(inspected.manifest.schemaVersion, 55);
+      expect(inspected.manifest.schemaVersion, 61);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
 
@@ -61,174 +61,33 @@ void main() {
     test(
       'uses the backup contract instead of the source database version',
       () async {
-        final oldDirectory = Directory('${tempDirectory.path}/v49-backup')
+        final oldDirectory = Directory('${tempDirectory.path}/v60-backup')
           ..createSync();
-        final v49Service = BackupService(
-          gateway: FakeBackupGateway(_emptySnapshot(), schemaVersion: 49),
+        final v60Service = BackupService(
+          gateway: FakeBackupGateway(_emptySnapshot(), schemaVersion: 60),
           packageStore: const FileBackupPackageStore(),
         );
-        await v49Service.createBackup(oldDirectory);
-        final v50Gateway = FakeBackupGateway(
+        await v60Service.createBackup(oldDirectory);
+        final v61Gateway = FakeBackupGateway(
           BackupSnapshot(),
-          schemaVersion: 50,
+          schemaVersion: 61,
         );
-        final v50Service = BackupService(
-          gateway: v50Gateway,
+        final v61Service = BackupService(
+          gateway: v61Gateway,
           packageStore: const FileBackupPackageStore(),
         );
 
-        final inspection = await v50Service.inspect(oldDirectory);
-        final diff = await v50Service.restore(oldDirectory);
+        final inspection = await v61Service.inspect(oldDirectory);
+        final diff = await v61Service.restore(oldDirectory);
 
         expect(inspection.manifest.backupSchemaVersion, 10);
-        expect(inspection.manifest.schemaVersion, 49);
+        expect(inspection.manifest.schemaVersion, 60);
         expect(diff.itemFor('preferences').added, 1);
-        expect(v50Gateway.replaceCount, 1);
+        expect(v61Gateway.replaceCount, 1);
       },
     );
 
-    test('migrates v1 backups without legacy account credit columns', () async {
-      final legacyDirectory = Directory('${tempDirectory.path}/v1-backup')
-        ..createSync();
-      final legacySnapshot = _emptySnapshot(
-        accounts: [
-          {
-            'id': 'credit',
-            'name': '信用卡',
-            'accountType': 'liability',
-            'accountSubtype': 'payable',
-            'accountProfileKey': 'credit.credit',
-            'groupId': null,
-            'parentId': null,
-            'balanceMinor': 0,
-            'iconKey': null,
-            'note': null,
-            'creditLimitMinor': 100000,
-            'billingDay': 5,
-            'repaymentDay': 25,
-            'sortOrder': 0,
-            'isHidden': false,
-            'archivedAt': null,
-            'systemKey': null,
-            'source': 'user',
-            'version': 0,
-            'createdAt': '2026-01-01T00:00:00.000Z',
-            'updatedAt': '2026-01-01T00:00:00.000Z',
-          },
-        ],
-      );
-      final legacyService = BackupService(
-        gateway: FakeBackupGateway(legacySnapshot, schemaVersion: 49),
-        packageStore: const FileBackupPackageStore(),
-      );
-      await legacyService.createBackup(legacyDirectory);
-      await _rewriteBackupSchemaVersion(legacyDirectory, 1);
-
-      final inspection = await service.inspect(legacyDirectory);
-      final account = inspection.snapshot.rows('accounts').single;
-
-      expect(inspection.manifest.backupSchemaVersion, 1);
-      expect(account.containsKey('creditLimitMinor'), isFalse);
-      expect(account.containsKey('billingDay'), isFalse);
-      expect(account.containsKey('repaymentDay'), isFalse);
-      expect(account['accountProfileKey'], 'credit.credit');
-    });
-
-    test(
-      'migrates v2 backups before requiring refund reduction data',
-      () async {
-        await service.createBackup(tempDirectory);
-        await _removeBackupTable(
-          tempDirectory,
-          'installment_refund_reductions',
-        );
-        await _rewriteBackupSchemaVersion(tempDirectory, 2);
-
-        final inspection = await service.inspect(tempDirectory);
-
-        expect(inspection.manifest.backupSchemaVersion, 2);
-        expect(
-          inspection.snapshot.rows('installment_refund_reductions'),
-          isEmpty,
-        );
-      },
-    );
-
-    test('migrates v4 backups before requiring amortization tables', () async {
-      await service.createBackup(tempDirectory);
-      for (final table in const [
-        'amortization_plans',
-        'amortization_periods',
-        'amortization_refunds',
-        'amortization_terminations',
-        'amortization_allocations',
-      ]) {
-        await _removeBackupTable(tempDirectory, table);
-      }
-      await _rewriteBackupSchemaVersion(tempDirectory, 4);
-
-      final inspection = await service.inspect(tempDirectory);
-
-      expect(inspection.snapshot.rows('amortization_plans'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_periods'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
-    });
-
-    test('migrates v5 backups before requiring amortization records', () async {
-      await service.createBackup(tempDirectory);
-      for (final table in const [
-        'amortization_plans',
-        'amortization_periods',
-        'amortization_refunds',
-        'amortization_terminations',
-        'amortization_allocations',
-      ]) {
-        await _removeBackupTable(tempDirectory, table);
-      }
-      await _rewriteBackupSchemaVersion(tempDirectory, 5);
-
-      final inspection = await service.inspect(tempDirectory);
-
-      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
-    });
-
-    test('migrates v6 backups to the refund-safe snapshot', () async {
-      await service.createBackup(tempDirectory);
-      for (final table in const [
-        'amortization_plans',
-        'amortization_periods',
-        'amortization_refunds',
-        'amortization_terminations',
-        'amortization_allocations',
-      ]) {
-        await _removeBackupTable(tempDirectory, table);
-      }
-      await _rewriteBackupSchemaVersion(tempDirectory, 6);
-
-      final inspection = await service.inspect(tempDirectory);
-
-      expect(inspection.snapshot.rows('amortization_periods'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_refunds'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_terminations'), isEmpty);
-      expect(inspection.snapshot.rows('amortization_allocations'), isEmpty);
-    });
-
-    test('migrates v7 backups before requiring insurance tables', () async {
-      await service.createBackup(tempDirectory);
-      for (final table in BackupTables.insurance) {
-        await _removeBackupTable(tempDirectory, table);
-      }
-      await _rewriteBackupSchemaVersion(tempDirectory, 7);
-
-      final inspection = await service.inspect(tempDirectory);
-
-      expect(inspection.manifest.backupSchemaVersion, 7);
-      for (final table in BackupTables.insurance) {
-        expect(inspection.snapshot.rows(table), isEmpty);
-      }
-    });
-
-    test('migrates v8 members to the expanded profile fields', () async {
+    test('migrates the v9 release backup baseline', () async {
       gateway.snapshot = _emptySnapshot(
         tables: {
           'insured_people': [
@@ -247,40 +106,55 @@ void main() {
         },
       );
       await service.createBackup(tempDirectory);
-      await _rewriteBackupNdjson(
+      for (final table in const [
+        'social_insurances',
+        'social_contribution_records',
+      ]) {
+        await _removeBackupTable(tempDirectory, table);
+      }
+      await _addBackupTable(tempDirectory, 'social_medical_insurances', [
+        {
+          'id': 'medical-1',
+          'insuredPersonId': 'person-1',
+          'region': '上海',
+          'participantType': 'employee',
+          'createdAt': '2026-01-01T00:00:00.000Z',
+          'updatedAt': '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+      await _addBackupTable(
         tempDirectory,
-        'insurance/insured_people.ndjson',
+        'social_medical_contribution_records',
         [
           {
-            'id': 'person-1',
-            'name': '张三',
-            'birthDate': '1990-06-15T00:00:00.000',
-            'createdAt': '2026-01-01T00:00:00.000Z',
-            'updatedAt': '2026-01-01T00:00:00.000Z',
+            'socialMedicalInsuranceId': 'medical-1',
+            'yearMonth': '2026-01',
+            'contributionBaseMinor': 800000,
           },
         ],
       );
-      await _rewriteBackupSchemaVersion(tempDirectory, 8);
+      await _addBackupTable(tempDirectory, 'social_pension_insurances', []);
+      await _addBackupTable(
+        tempDirectory,
+        'social_pension_contribution_records',
+        [],
+      );
+      await _rewriteBackupSchemaVersion(tempDirectory, 9);
 
       final inspection = await service.inspect(tempDirectory);
-      final member = inspection.snapshot.rows('insured_people').single;
 
-      expect(member['relationship'], 'other');
-      expect(member['gender'], 'unknown');
-      expect(member['note'], isNull);
-      expect(member['avatarPreset'], 'blue');
-    });
-
-    test('keeps legacy amortization rows available for migration', () {
-      final snapshot = BackupSnapshot(
-        tables: {
-          'amortization_entries': [
-            {'id': 'legacy-period', 'planId': 'legacy-plan'},
-          ],
-        },
+      expect(inspection.manifest.backupSchemaVersion, 9);
+      final social = inspection.snapshot.rows('social_insurances').single;
+      expect(social['insuranceType'], 'medical');
+      expect(social['insuredPersonId'], 'person-1');
+      final contribution = inspection.snapshot
+          .rows('social_contribution_records')
+          .single;
+      expect(contribution['socialInsuranceId'], 'medical-1');
+      expect(
+        inspection.snapshot.tables,
+        isNot(contains('social_medical_insurances')),
       );
-
-      expect(snapshot.rows('amortization_entries'), hasLength(1));
     });
 
     test('rejects obsolete backup format versions', () async {
@@ -294,6 +168,22 @@ void main() {
       expect(
         () => service.inspect(tempDirectory),
         throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects backups before the v9 release baseline', () async {
+      await service.createBackup(tempDirectory);
+      await _rewriteBackupSchemaVersion(tempDirectory, 8);
+
+      expect(
+        () => service.inspect(tempDirectory),
+        throwsA(
+          isA<BackupValidationException>().having(
+            (error) => error.message,
+            'message',
+            contains('backupSchemaVersion 8'),
+          ),
+        ),
       );
     });
 
@@ -510,7 +400,7 @@ BackupSnapshot _emptySnapshot({
 }
 
 class FakeBackupGateway implements BackupSnapshotGateway {
-  FakeBackupGateway(this.snapshot, {this.schemaVersion = 55});
+  FakeBackupGateway(this.snapshot, {this.schemaVersion = 61});
 
   BackupSnapshot snapshot;
   int replaceCount = 0;
@@ -539,22 +429,32 @@ Future<void> _rewriteBackupSchemaVersion(
   await file.writeAsString(jsonEncode(manifest));
 }
 
-Future<void> _rewriteBackupNdjson(
+Future<void> _addBackupTable(
   Directory directory,
-  String path,
+  String table,
   List<Map<String, Object?>> rows,
 ) async {
+  final path = '${BackupTables.sectionFor(table)}/$table.ndjson';
   final file = File('${directory.path}/$path');
-  final bytes = utf8.encode('${rows.map(jsonEncode).join('\n')}\n');
+  file.parent.createSync(recursive: true);
+  final buffer = StringBuffer();
+  for (final row in rows) {
+    buffer.writeln(jsonEncode(row));
+  }
+  final bytes = utf8.encode(buffer.toString());
   await file.writeAsBytes(bytes);
 
   final manifestFile = File('${directory.path}/manifest.json');
   final manifest =
       jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
   final files = (manifest['requiredFiles'] as List).cast<Map>();
-  final descriptor = files.singleWhere((entry) => entry['path'] == path);
-  descriptor['byteCount'] = bytes.length;
-  descriptor['sha256'] = sha256.convert(bytes).toString();
+  files.add({
+    'path': path,
+    'table': table,
+    'rowCount': rows.length,
+    'byteCount': bytes.length,
+    'sha256': sha256.convert(bytes).toString(),
+  });
   await manifestFile.writeAsString(jsonEncode(manifest));
 }
 

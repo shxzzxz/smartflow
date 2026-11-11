@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/persistence/persistence_baseline.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
@@ -96,7 +97,8 @@ void main() {
 
     final baseline = AppDatabase(NativeDatabase(file));
     await baseline.customSelect('SELECT 1').get();
-    await baseline.customStatement('PRAGMA user_version = 48');
+    final preBaselineVersion = PersistenceBaseline.databaseSchemaVersion - 1;
+    await baseline.customStatement('PRAGMA user_version = $preBaselineVersion');
     await baseline.close();
 
     final current = AppDatabase(NativeDatabase(file));
@@ -108,7 +110,7 @@ void main() {
         isA<UnsupportedError>().having(
           (error) => error.message,
           'message',
-          contains('v48 is no longer supported'),
+          contains('v$preBaselineVersion is no longer supported'),
         ),
       ),
     );

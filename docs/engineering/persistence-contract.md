@@ -1,6 +1,17 @@
 # 持久化与版本演进契约
 
-本文件定义 SmartFlow 数据库 schema、逻辑备份和交易导入接口的兼容、变更与验证规则。数据库首个受支持基线为 schema v49，逻辑备份首个受支持契约为 format 3 / `backupSchemaVersion` 1；当前版本分别以 `AppDatabase.schemaVersion` 和 `BackupManifest.currentBackupSchemaVersion` 为准。基线决策背景见 [ADR-0021](../adr/0021-发布前持久化基线契约.md)。
+本文件定义 SmartFlow 数据库 schema、逻辑备份和交易导入接口的兼容、变更与验证规则，也是当前兼容基线的权威来源。基线的可执行常量集中在 [`PersistenceBaseline`](../../lib/core/persistence/persistence_baseline.dart)；当前实现版本仍分别以 `AppDatabase.schemaVersion` 和 `BackupManifest.currentBackupSchemaVersion` 为准。
+
+## 当前基线
+
+| 项目 | 当前基线 | 权威定义 |
+| --- | --- | --- |
+| 基线起始应用版本 | `0.9.5-dev.1` | `PersistenceBaseline.appVersion` |
+| 数据库 schema | v60 | `PersistenceBaseline.databaseSchemaVersion` |
+| 备份 format | 3 | `PersistenceBaseline.backupFormatVersion` |
+| 备份逻辑契约 | `backupSchemaVersion` 9 | `PersistenceBaseline.backupSchemaVersion` |
+
+基线是随发布边界调整的兼容状态，不属于稳定的架构决策。调整基线时同步更新 `PersistenceBaseline`、本表、结构快照、生成迁移与测试，并删除不再承诺兼容的旧链路；不要求为每次基线调整新增或修改 ADR。ADR 只记录长期有效的兼容原则和取舍，[ADR-0021](../adr/0021-发布前持久化基线契约.md) 仅作为历史背景。
 
 ## 支持范围
 
@@ -10,7 +21,7 @@
 - 备份中的数据库 `schemaVersion` 只记录导出环境，不参与兼容判断。
 - 交易导入：账户与分类目标统一使用 `ImportTargetDescriptor`，不使用粗粒度兼容 `kind`。
 
-`drift_schemas/` 保留首个基线到最新版本的结构快照，其中 `drift_schema_v49.json` 是首个受支持基线。
+`drift_schemas/` 保留首个基线到最新版本的结构快照，其中 `drift_schema_v60.json` 是首个受支持基线。
 
 ## 数据库变更流程
 
@@ -47,7 +58,7 @@ fvm dart run drift_dev schema generate drift_schemas/ test/generated_migrations/
 
 ## 枚举与 wire code
 
-- `textEnum` 或备份中的既有文本值从 v49 起视为稳定的持久化 code。
+- `textEnum` 或备份中的既有文本值从 v60 起视为稳定的持久化 code。
 - 重命名领域枚举时，默认保持 wire code 不变。
 - 确实需要改变 wire code 时，新增显式数据库迁移或备份格式迁移，并增加旧 code 的恢复测试。
 - 不使用 `intEnum` 序号承诺持久化身份，避免枚举插入或重排造成静默错读。

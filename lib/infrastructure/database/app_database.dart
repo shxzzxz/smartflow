@@ -108,7 +108,7 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
-  /// v49 is the first supported persistence contract. See ADR-0021.
+  /// The first supported schema is defined by `PersistenceBaseline`.
   @override
   int get schemaVersion => 61;
 

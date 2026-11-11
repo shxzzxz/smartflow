@@ -4,17 +4,6 @@
 //
 import 'package:drift/drift.dart';
 import 'package:drift/internal/migrations.dart';
-import 'schema_v49.dart' as v49;
-import 'schema_v50.dart' as v50;
-import 'schema_v51.dart' as v51;
-import 'schema_v52.dart' as v52;
-import 'schema_v53.dart' as v53;
-import 'schema_v54.dart' as v54;
-import 'schema_v55.dart' as v55;
-import 'schema_v56.dart' as v56;
-import 'schema_v57.dart' as v57;
-import 'schema_v58.dart' as v58;
-import 'schema_v59.dart' as v59;
 import 'schema_v60.dart' as v60;
 import 'schema_v61.dart' as v61;
 
@@ -22,28 +11,6 @@ class GeneratedHelper implements SchemaInstantiationHelper {
   @override
   GeneratedDatabase databaseForVersion(QueryExecutor db, int version) {
     switch (version) {
-      case 49:
-        return v49.DatabaseAtV49(db);
-      case 50:
-        return v50.DatabaseAtV50(db);
-      case 51:
-        return v51.DatabaseAtV51(db);
-      case 52:
-        return v52.DatabaseAtV52(db);
-      case 53:
-        return v53.DatabaseAtV53(db);
-      case 54:
-        return v54.DatabaseAtV54(db);
-      case 55:
-        return v55.DatabaseAtV55(db);
-      case 56:
-        return v56.DatabaseAtV56(db);
-      case 57:
-        return v57.DatabaseAtV57(db);
-      case 58:
-        return v58.DatabaseAtV58(db);
-      case 59:
-        return v59.DatabaseAtV59(db);
       case 60:
         return v60.DatabaseAtV60(db);
       case 61:
@@ -53,19 +20,5 @@ class GeneratedHelper implements SchemaInstantiationHelper {
     }
   }
 
-  static const versions = const [
-    49,
-    50,
-    51,
-    52,
-    53,
-    54,
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-  ];
+  static const versions = const [60, 61];
 }
