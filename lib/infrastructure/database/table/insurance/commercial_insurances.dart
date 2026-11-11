@@ -16,13 +16,12 @@ class CommercialInsurances extends Table {
   BoolColumn get lifetime => boolean().withDefault(const Constant(false))();
   IntColumn get coverageAmountMinor =>
       integer().named('coverage_amount_minor').nullable()();
-  TextColumn get coverageAmountNote =>
-      text().named('coverage_amount_note').nullable()();
   IntColumn get premiumAmountMinor =>
       integer().named('premium_amount_minor').nullable()();
   TextColumn get premiumFrequency =>
       textEnum<PremiumFrequency>().named('premium_frequency').nullable()();
-  TextColumn get premiumNote => text().named('premium_note').nullable()();
+  IntColumn get premiumTermCount =>
+      integer().named('premium_term_count').nullable()();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>
@@ -40,5 +39,6 @@ class CommercialInsurances extends Table {
     'CHECK (lifetime = 0 OR coverage_end_date IS NULL)',
     'CHECK (coverage_amount_minor IS NULL OR coverage_amount_minor >= 0)',
     'CHECK (premium_amount_minor IS NULL OR premium_amount_minor >= 0)',
+    'CHECK (premium_term_count IS NULL OR premium_term_count > 0)',
   ];
 }

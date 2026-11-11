@@ -21,7 +21,7 @@ final class SocialInsuranceDetailViewModelProvider
         > {
   SocialInsuranceDetailViewModelProvider._({
     required SocialInsuranceDetailViewModelFamily super.from,
-    required (String, InsuranceSourceType) super.argument,
+    required String super.argument,
   }) : super(
          retry: null,
          name: r'socialInsuranceDetailViewModelProvider',
@@ -37,7 +37,7 @@ final class SocialInsuranceDetailViewModelProvider
   String toString() {
     return r'socialInsuranceDetailViewModelProvider'
         ''
-        '$argument';
+        '($argument)';
   }
 
   @$internal
@@ -57,7 +57,7 @@ final class SocialInsuranceDetailViewModelProvider
 }
 
 String _$socialInsuranceDetailViewModelHash() =>
-    r'790700f67d1c331e58af2d27916a246406d0f81e';
+    r'1af3a8c46cd7ecd503a993ae99aaa82e2cf337ac';
 
 final class SocialInsuranceDetailViewModelFamily extends $Family
     with
@@ -66,7 +66,7 @@ final class SocialInsuranceDetailViewModelFamily extends $Family
           AsyncValue<SocialInsuranceDetailState?>,
           SocialInsuranceDetailState?,
           FutureOr<SocialInsuranceDetailState?>,
-          (String, InsuranceSourceType)
+          String
         > {
   SocialInsuranceDetailViewModelFamily._()
     : super(
@@ -77,13 +77,11 @@ final class SocialInsuranceDetailViewModelFamily extends $Family
         isAutoDispose: true,
       );
 
-  SocialInsuranceDetailViewModelProvider call(
-    String insuranceId,
-    InsuranceSourceType sourceType,
-  ) => SocialInsuranceDetailViewModelProvider._(
-    argument: (insuranceId, sourceType),
-    from: this,
-  );
+  SocialInsuranceDetailViewModelProvider call(String insuranceId) =>
+      SocialInsuranceDetailViewModelProvider._(
+        argument: insuranceId,
+        from: this,
+      );
 
   @override
   String toString() => r'socialInsuranceDetailViewModelProvider';
@@ -91,14 +89,10 @@ final class SocialInsuranceDetailViewModelFamily extends $Family
 
 abstract class _$SocialInsuranceDetailViewModel
     extends $AsyncNotifier<SocialInsuranceDetailState?> {
-  late final _$args = ref.$arg as (String, InsuranceSourceType);
-  String get insuranceId => _$args.$1;
-  InsuranceSourceType get sourceType => _$args.$2;
+  late final _$args = ref.$arg as String;
+  String get insuranceId => _$args;
 
-  FutureOr<SocialInsuranceDetailState?> build(
-    String insuranceId,
-    InsuranceSourceType sourceType,
-  );
+  FutureOr<SocialInsuranceDetailState?> build(String insuranceId);
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -119,6 +113,6 @@ abstract class _$SocialInsuranceDetailViewModel
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
+    return element.handleCreate(ref, () => build(_$args));
   }
 }

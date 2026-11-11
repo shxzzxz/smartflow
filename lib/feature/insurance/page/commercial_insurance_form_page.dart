@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/insurance/insurance_query_api.dart';
-import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_choice_chip_group.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
@@ -19,7 +18,6 @@ import '../../../widget/business/finance/money_input.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_form_view_model.dart';
-import '../widget/insurance_responsibility_editor.dart';
 
 class CommercialInsuranceFormPage extends ConsumerWidget {
   const CommercialInsuranceFormPage({
@@ -114,9 +112,8 @@ class _CommercialInsuranceFormContentState
   late final TextEditingController _insurerController;
   late final TextEditingController _productFormController;
   late final TextEditingController _coverageAmountController;
-  late final TextEditingController _coverageAmountNoteController;
   late final TextEditingController _premiumAmountController;
-  late final TextEditingController _premiumNoteController;
+  late final TextEditingController _premiumTermCountController;
 
   @override
   void initState() {
@@ -128,13 +125,12 @@ class _CommercialInsuranceFormContentState
     _coverageAmountController = TextEditingController(
       text: initial.coverageAmount,
     );
-    _coverageAmountNoteController = TextEditingController(
-      text: initial.coverageAmountNote,
-    );
     _premiumAmountController = TextEditingController(
       text: initial.premiumAmount,
     );
-    _premiumNoteController = TextEditingController(text: initial.premiumNote);
+    _premiumTermCountController = TextEditingController(
+      text: initial.premiumTermCount,
+    );
   }
 
   @override
@@ -143,9 +139,8 @@ class _CommercialInsuranceFormContentState
     _insurerController.dispose();
     _productFormController.dispose();
     _coverageAmountController.dispose();
-    _coverageAmountNoteController.dispose();
     _premiumAmountController.dispose();
-    _premiumNoteController.dispose();
+    _premiumTermCountController.dispose();
     super.dispose();
   }
 
@@ -210,7 +205,6 @@ class _CommercialInsuranceFormContentState
                 label: '产品形态',
                 controller: _productFormController,
                 hintText: '例如：定期寿险、增额终身寿',
-                supportingText: '可选，用于补充产品名称之外的形态说明。',
               ),
             ],
           ),
@@ -225,7 +219,6 @@ class _CommercialInsuranceFormContentState
               ),
               AppPlainSwitchRow(
                 label: '终身保障',
-                description: '开启后不记录保障结束日期。',
                 value: state.lifetime,
                 onChanged: notifier.setLifetime,
               ),
@@ -247,17 +240,11 @@ class _CommercialInsuranceFormContentState
                 hintText: '可选',
                 validator: validateOptionalNonNegativeMoneyText,
               ),
-              AppPlainTextFormRow(
-                label: '保额说明',
-                controller: _coverageAmountNoteController,
-                hintText: '例如：共享保额、按比例报销',
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space16),
           AppFormSection(
             title: '缴费计划',
-            description: '仅记录缴费摘要，不生成缴费期次或账务交易。',
             children: [
               AppPlainChoiceChipFormRow<PremiumFrequency>(
                 key: const ValueKey('commercial-premium-frequency-choice'),
@@ -273,23 +260,31 @@ class _CommercialInsuranceFormContentState
                 ],
                 onChanged: notifier.setPremiumFrequency,
               ),
+              AppPlainIntegerFormRow(
+                label: '缴费期数',
+                controller: _premiumTermCountController,
+                hintText: '可选，例如：20',
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final count = int.tryParse(text);
+                  if (count == null || count <= 0) {
+                    return '请输入正整数';
+                  }
+                  return null;
+                },
+              ),
               MoneyPlainFormRow(
-                label: '缴费金额',
+                label: '期缴金额',
                 controller: _premiumAmountController,
                 hintText: '可选',
                 validator: validateOptionalNonNegativeMoneyText,
-              ),
-              AppPlainTextFormRow(
-                label: '缴费说明',
-                controller: _premiumNoteController,
-                hintText: '例如：首年优惠',
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.space16),
           AppFormSection(
             title: '被保险人',
-            description: '一张商业保险可同时关联多个被保险人。',
             children: [
               for (
                 var index = 0;
@@ -301,9 +296,10 @@ class _CommercialInsuranceFormContentState
                     'commercial-insured-person-'
                     '${state.insuredPeople[index].id}',
                   ),
-                  label: state.insuredPeople[index].name,
-                  description:
-                      '出生：${insuranceDateLabel(state.insuredPeople[index].birthDate)}',
+                  label:
+                      '${state.insuredPeople[index].name} · '
+                      '${state.insuredPeople[index].relationship.label} · '
+                      '${state.insuredPeople[index].ageAt(DateTime.now())} 岁',
                   value: state.insuredPersonIds.contains(
                     state.insuredPeople[index].id,
                   ),
@@ -315,15 +311,6 @@ class _CommercialInsuranceFormContentState
                   const AppListDivider(),
               ],
             ],
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          _ResponsibilityEditor(
-            responsibilities: state.responsibilities,
-            onAdd: () => _editResponsibility(notifier, null),
-            onEdit: (responsibility) =>
-                _editResponsibility(notifier, responsibility),
-            onDelete: (responsibility) =>
-                _deleteResponsibility(context, notifier, responsibility),
           ),
           const SizedBox(height: AppSpacing.space24),
           AppSubmitButton(
@@ -364,44 +351,6 @@ class _CommercialInsuranceFormContentState
     if (selected != null) notifier.setCoverageEndDate(selected);
   }
 
-  Future<void> _editResponsibility(
-    CommercialInsuranceFormViewModel notifier,
-    InsuranceResponsibilityDraft? existing,
-  ) async {
-    final result = await showInsuranceResponsibilityEditor(
-      context: context,
-      existing: existing,
-      newResponsibilityId: notifier.newResponsibilityDraftId,
-      newPointId: notifier.newPointDraftId,
-    );
-    if (result != null) notifier.upsertResponsibility(result);
-  }
-
-  Future<void> _deleteResponsibility(
-    BuildContext context,
-    CommercialInsuranceFormViewModel notifier,
-    InsuranceResponsibilityDraft responsibility,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除保障责任'),
-        content: Text('确定删除“${responsibility.name}”及其全部责任要点吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) notifier.removeResponsibility(responsibility.id);
-  }
-
   Future<void> _submit(
     BuildContext context,
     CommercialInsuranceFormViewModel notifier,
@@ -413,9 +362,8 @@ class _CommercialInsuranceFormContentState
       insurerNameText: _insurerController.text,
       productFormText: _productFormController.text,
       coverageAmountText: _coverageAmountController.text,
-      coverageAmountNoteText: _coverageAmountNoteController.text,
       premiumAmountText: _premiumAmountController.text,
-      premiumNoteText: _premiumNoteController.text,
+      premiumTermCountText: _premiumTermCountController.text,
     );
     if (!context.mounted) return;
     switch (outcome) {
@@ -444,117 +392,6 @@ class _NoInsuredPeople extends StatelessWidget {
         onPressed: onAdd,
         icon: const Icon(RemixIcons.add_line),
         label: const Text('添加被保险人'),
-      ),
-    );
-  }
-}
-
-class _ResponsibilityEditor extends StatelessWidget {
-  const _ResponsibilityEditor({
-    required this.responsibilities,
-    required this.onAdd,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final List<InsuranceResponsibilityDraft> responsibilities;
-  final VoidCallback onAdd;
-  final ValueChanged<InsuranceResponsibilityDraft> onEdit;
-  final ValueChanged<InsuranceResponsibilityDraft> onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppFormSection(
-          title: '保障责任',
-          description: '责任要点用于记录摘要，完整合同依据保存在附件中。',
-          trailing: TextButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(RemixIcons.add_line, size: AppSpacing.space16),
-            label: const Text('新增'),
-          ),
-          children: responsibilities.isEmpty
-              ? [
-                  const AppEmptyState(
-                    title: '还没有保障责任项',
-                    message: '可先保存基础信息，之后继续补充责任项。',
-                    layout: AppEmptyStateLayout.inline,
-                  ),
-                ]
-              : [
-                  for (
-                    var index = 0;
-                    index < responsibilities.length;
-                    index++
-                  ) ...[
-                    _ResponsibilityDraftRow(
-                      draft: responsibilities[index],
-                      onEdit: () => onEdit(responsibilities[index]),
-                      onDelete: () => onDelete(responsibilities[index]),
-                    ),
-                    if (index < responsibilities.length - 1)
-                      const AppListDivider(),
-                  ],
-                ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ResponsibilityDraftRow extends StatelessWidget {
-  const _ResponsibilityDraftRow({
-    required this.draft,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final InsuranceResponsibilityDraft draft;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      key: ValueKey('commercial-responsibility-${draft.id}'),
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: onEdit,
-              borderRadius: BorderRadius.circular(AppSpacing.space8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.space4,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(draft.name, style: context.appTextStyles.listTitle),
-                    const SizedBox(height: AppSpacing.space4),
-                    Text(
-                      '${draft.kind.label} · ${draft.points.isEmpty ? '暂无责任要点' : '${draft.points.length} 条责任要点'}',
-                      style: context.appTextStyles.listSupporting,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: onEdit,
-            tooltip: '编辑保障责任',
-            icon: const Icon(RemixIcons.edit_line),
-          ),
-          IconButton(
-            onPressed: onDelete,
-            tooltip: '删除保障责任',
-            icon: const Icon(RemixIcons.delete_bin_line),
-          ),
-        ],
       ),
     );
   }

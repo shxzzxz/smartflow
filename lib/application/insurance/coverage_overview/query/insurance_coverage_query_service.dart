@@ -15,12 +15,7 @@ abstract interface class InsuranceCoverageQueryService {
   Future<CommercialInsuranceDetail?> commercialInsuranceDetail(
     String insuranceId,
   );
-  Future<SocialMedicalInsuranceDetail?> socialMedicalInsuranceDetail(
-    String insuranceId,
-  );
-  Future<SocialPensionInsuranceDetail?> socialPensionInsuranceDetail(
-    String insuranceId,
-  );
+  Future<SocialInsuranceDetail?> socialInsuranceDetail(String insuranceId);
 }
 
 class InsuranceCoverageQueryServiceImpl
@@ -77,19 +72,15 @@ class InsuranceCoverageQueryServiceImpl
   Future<List<InsuranceMemberListItem>> listMembers() async {
     final people = await _insuredPeople.list();
     final commercial = await _commercialInsurances.list();
-    final medical = await _socialInsurances.listMedical();
-    final pension = await _socialInsurances.listPension();
+    final social = await _socialInsurances.list();
     final counts = <String, int>{};
     for (final insurance in commercial) {
       for (final personId in insurance.insuredPersonIds) {
         counts[personId] = (counts[personId] ?? 0) + 1;
       }
     }
-    final medicalPeople = {
-      for (final insurance in medical) insurance.insuredPersonId,
-    };
-    final pensionPeople = {
-      for (final insurance in pension) insurance.insuredPersonId,
+    final socialPeople = {
+      for (final insurance in social) insurance.insuredPersonId,
     };
     final asOf = _now();
     return [
@@ -102,8 +93,7 @@ class InsuranceCoverageQueryServiceImpl
           avatarPreset: person.avatarPreset,
           age: person.ageAt(asOf),
           commercialInsuranceCount: counts[person.id] ?? 0,
-          hasSocialMedical: medicalPeople.contains(person.id),
-          hasSocialPension: pensionPeople.contains(person.id),
+          hasSocialInsurance: socialPeople.contains(person.id),
         ),
     ];
   }
@@ -141,10 +131,7 @@ class InsuranceCoverageQueryServiceImpl
       commercialInsurances: await _commercialInsurances.list(
         insuredPersonId: insuredPersonId,
       ),
-      socialMedicalInsurances: await _socialInsurances.listMedical(
-        insuredPersonId: insuredPersonId,
-      ),
-      socialPensionInsurances: await _socialInsurances.listPension(
+      socialInsurances: await _socialInsurances.list(
         insuredPersonId: insuredPersonId,
       ),
       asOf: asOf,
@@ -169,35 +156,19 @@ class InsuranceCoverageQueryServiceImpl
       insurance: insurance,
       insuredPeople: people,
       status: insurance.statusAt(_now()),
+      asOf: _now(),
     );
   }
 
   @override
-  Future<SocialMedicalInsuranceDetail?> socialMedicalInsuranceDetail(
+  Future<SocialInsuranceDetail?> socialInsuranceDetail(
     String insuranceId,
   ) async {
-    final insurance = await _socialInsurances.findMedical(insuranceId);
+    final insurance = await _socialInsurances.find(insuranceId);
     if (insurance == null) return null;
     final person = await _insuredPeople.find(insurance.insuredPersonId);
     if (person == null) return null;
-    return SocialMedicalInsuranceDetail(
-      insurance: insurance,
-      insuredPerson: person,
-    );
-  }
-
-  @override
-  Future<SocialPensionInsuranceDetail?> socialPensionInsuranceDetail(
-    String insuranceId,
-  ) async {
-    final insurance = await _socialInsurances.findPension(insuranceId);
-    if (insurance == null) return null;
-    final person = await _insuredPeople.find(insurance.insuredPersonId);
-    if (person == null) return null;
-    return SocialPensionInsuranceDetail(
-      insurance: insurance,
-      insuredPerson: person,
-    );
+    return SocialInsuranceDetail(insurance: insurance, insuredPerson: person);
   }
 }
 

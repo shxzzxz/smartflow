@@ -46,10 +46,8 @@ class BackupTables {
     'coverage_responsibilities',
     'responsibility_points',
     'insurance_attachments',
-    'social_medical_insurances',
-    'social_medical_contribution_records',
-    'social_pension_insurances',
-    'social_pension_contribution_records',
+    'social_insurances',
+    'social_contribution_records',
   ];
 
   static const insurance = <String>{
@@ -59,6 +57,25 @@ class BackupTables {
     'coverage_responsibilities',
     'responsibility_points',
     'insurance_attachments',
+    'social_insurances',
+    'social_contribution_records',
+  };
+
+  /// Insurance tables written by backup contracts before v10.
+  static const insuranceV8 = <String>{
+    'insured_people',
+    'commercial_insurances',
+    'commercial_insurance_insured_people',
+    'coverage_responsibilities',
+    'responsibility_points',
+    'insurance_attachments',
+    'social_medical_insurances',
+    'social_medical_contribution_records',
+    'social_pension_insurances',
+    'social_pension_contribution_records',
+  };
+
+  static const _legacySocialTables = <String>{
     'social_medical_insurances',
     'social_medical_contribution_records',
     'social_pension_insurances',
@@ -72,7 +89,10 @@ class BackupTables {
   };
 
   static bool accepts(String table) =>
-      table == 'preferences' || all.contains(table) || legacy.contains(table);
+      table == 'preferences' ||
+      all.contains(table) ||
+      legacy.contains(table) ||
+      _legacySocialTables.contains(table);
 
   static String sectionFor(String table) {
     if (const {
@@ -256,7 +276,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 9;
+  static const currentBackupSchemaVersion = 10;
   static const minimumSupportedBackupSchemaVersion = 1;
 
   final int formatVersion;
@@ -587,11 +607,8 @@ String _rowIdentity(BackupJson row, String table) {
   if (table == 'commercial_insurance_insured_people') {
     return '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}';
   }
-  if (table == 'social_medical_contribution_records' ||
-      table == 'social_pension_contribution_records') {
-    final insuranceId =
-        row['socialMedicalInsuranceId'] ?? row['socialPensionInsuranceId'];
-    return '$insuranceId\u0000${row['yearMonth']}';
+  if (table == 'social_contribution_records') {
+    return '${row['socialInsuranceId']}\u0000${row['yearMonth']}';
   }
   return '${row['id']}';
 }

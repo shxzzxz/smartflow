@@ -37,11 +37,7 @@ void main() {
         null,
         'person-1',
       );
-      final social = socialInsuranceFormViewModelProvider(
-        null,
-        InsuranceSourceType.socialMedical,
-        'person-1',
-      );
+      final social = socialInsuranceFormViewModelProvider(null, 'person-1');
       final insuredPerson = insuredPersonFormViewModelProvider('person-1');
       await container.read(commercial.future);
       await container.read(social.future);
@@ -105,12 +101,6 @@ class _FakeInsuranceCoverageQueryService
   ) => throw UnimplementedError();
 
   @override
-  Future<SocialMedicalInsuranceDetail?> socialMedicalInsuranceDetail(
-    String insuranceId,
-  ) => throw UnimplementedError();
-
-  @override
-  Future<SocialPensionInsuranceDetail?> socialPensionInsuranceDetail(
-    String insuranceId,
-  ) => throw UnimplementedError();
+  Future<SocialInsuranceDetail?> socialInsuranceDetail(String insuranceId) =>
+      throw UnimplementedError();
 }

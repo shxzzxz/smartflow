@@ -53,10 +53,8 @@ import 'table/insurance/commercial_insurance_insured_people.dart';
 import 'table/insurance/coverage_responsibilities.dart';
 import 'table/insurance/responsibility_points.dart';
 import 'table/insurance/insurance_attachments.dart';
-import 'table/insurance/social_medical_insurances.dart';
-import 'table/insurance/social_medical_contribution_records.dart';
-import 'table/insurance/social_pension_insurances.dart';
-import 'table/insurance/social_pension_contribution_records.dart';
+import 'table/insurance/social_insurances.dart';
+import 'table/insurance/social_contribution_records.dart';
 
 part 'app_database.g.dart';
 
@@ -103,10 +101,8 @@ part 'app_database.g.dart';
     CoverageResponsibilities,
     ResponsibilityPoints,
     InsuranceAttachments,
-    SocialMedicalInsurances,
-    SocialMedicalContributionRecords,
-    SocialPensionInsurances,
-    SocialPensionContributionRecords,
+    SocialInsurances,
+    SocialContributionRecords,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -114,7 +110,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v49 is the first supported persistence contract. See ADR-0021.
   @override
-  int get schemaVersion => 60;
+  int get schemaVersion => 61;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

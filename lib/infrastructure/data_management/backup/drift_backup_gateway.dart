@@ -156,23 +156,10 @@ class DriftBackupGateway
             (await database.select(database.insuranceAttachments).get()).map(
               _json,
             ),
-        'social_medical_insurances':
-            (await database.select(database.socialMedicalInsurances).get()).map(
-              _json,
-            ),
-        'social_medical_contribution_records':
-            (await database
-                    .select(database.socialMedicalContributionRecords)
-                    .get())
-                .map(_json),
-        'social_pension_insurances':
-            (await database.select(database.socialPensionInsurances).get()).map(
-              _json,
-            ),
-        'social_pension_contribution_records':
-            (await database
-                    .select(database.socialPensionContributionRecords)
-                    .get())
+        'social_insurances':
+            (await database.select(database.socialInsurances).get()).map(_json),
+        'social_contribution_records':
+            (await database.select(database.socialContributionRecords).get())
                 .map(_json),
       };
       final metadata = await (database.select(
@@ -216,10 +203,8 @@ class DriftBackupGateway
         'commercial_insurance_insured_people',
         'insurance_attachments',
         'commercial_insurances',
-        'social_medical_contribution_records',
-        'social_medical_insurances',
-        'social_pension_contribution_records',
-        'social_pension_insurances',
+        'social_contribution_records',
+        'social_insurances',
         'insured_people',
         'installment_repricing_records',
         'installment_repricing_configs',
@@ -563,41 +548,18 @@ class DriftBackupGateway
               ),
         );
         batch.insertAll(
-          database.socialMedicalInsurances,
+          database.socialInsurances,
           snapshot
-              .rows('social_medical_insurances')
+              .rows('social_insurances')
+              .map((row) => SocialInsuranceRow.fromJson(row).toCompanion(true)),
+        );
+        batch.insertAll(
+          database.socialContributionRecords,
+          snapshot
+              .rows('social_contribution_records')
               .map(
                 (row) =>
-                    SocialMedicalInsuranceRow.fromJson(row).toCompanion(true),
-              ),
-        );
-        batch.insertAll(
-          database.socialMedicalContributionRecords,
-          snapshot
-              .rows('social_medical_contribution_records')
-              .map(
-                (row) => SocialMedicalContributionRecordRow.fromJson(
-                  row,
-                ).toCompanion(true),
-              ),
-        );
-        batch.insertAll(
-          database.socialPensionInsurances,
-          snapshot
-              .rows('social_pension_insurances')
-              .map(
-                (row) =>
-                    SocialPensionInsuranceRow.fromJson(row).toCompanion(true),
-              ),
-        );
-        batch.insertAll(
-          database.socialPensionContributionRecords,
-          snapshot
-              .rows('social_pension_contribution_records')
-              .map(
-                (row) => SocialPensionContributionRecordRow.fromJson(
-                  row,
-                ).toCompanion(true),
+                    SocialContributionRecordRow.fromJson(row).toCompanion(true),
               ),
         );
       });
@@ -744,16 +706,10 @@ class DriftBackupGateway
     if (row is InsuranceAttachmentRow) {
       return row.toJson().cast<String, Object?>();
     }
-    if (row is SocialMedicalInsuranceRow) {
+    if (row is SocialInsuranceRow) {
       return row.toJson().cast<String, Object?>();
     }
-    if (row is SocialMedicalContributionRecordRow) {
-      return row.toJson().cast<String, Object?>();
-    }
-    if (row is SocialPensionInsuranceRow) {
-      return row.toJson().cast<String, Object?>();
-    }
-    if (row is SocialPensionContributionRecordRow) {
+    if (row is SocialContributionRecordRow) {
       return row.toJson().cast<String, Object?>();
     }
     throw ArgumentError('Unsupported backup row: ${row.runtimeType}');

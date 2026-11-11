@@ -12705,6 +12705,1134 @@ final class Schema60 extends i0.VersionedSchema {
   );
 }
 
+final class Schema61 extends i0.VersionedSchema {
+  Schema61({required super.database}) : super(version: 61);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    accounts,
+    accountGroups,
+    appMetadata,
+    transactions,
+    transactionLines,
+    entries,
+    tags,
+    transactionTags,
+    counterparties,
+    budgets,
+    creditLiabilityAccounts,
+    bills,
+    billItems,
+    billGenerationSuppressions,
+    installmentContracts,
+    installmentProducts,
+    installmentProductStageConfigs,
+    installmentStageConfigs,
+    installmentSchedules,
+    referenceRates,
+    installmentRepricingRecords,
+    installmentRepricingConfigs,
+    installmentInterestAdjustments,
+    installmentRefundReductions,
+    repayments,
+    repaymentItems,
+    importEntityMappings,
+    importBatches,
+    importBatchItems,
+    advanceCases,
+    amortizationPlans,
+    amortizationPeriods,
+    amortizationRefunds,
+    amortizationTerminations,
+    amortizationAllocations,
+    insuredPeople,
+    commercialInsurances,
+    commercialInsuranceInsuredPeople,
+    coverageResponsibilities,
+    responsibilityPoints,
+    insuranceAttachments,
+    socialInsurances,
+    socialContributionRecords,
+    installmentRepricingRecordsPendingIdx,
+    installmentRepricingConfigsActiveIdx,
+  ];
+  late final Shape0 accounts = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'accounts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'UNIQUE(system_key)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 accountGroups = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'account_groups',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_10,
+        _column_15,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 appMetadata = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'app_metadata',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY("key")'],
+      columns: [_column_18, _column_19, _column_17],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 transactions = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'transactions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+        _column_24,
+        _column_9,
+        _column_25,
+        _column_26,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 transactionLines = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'transaction_lines',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'UNIQUE(transaction_id, line_no)'],
+      columns: [
+        _column_0,
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+        _column_35,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 entries = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'entries',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_31,
+        _column_36,
+        _column_37,
+        _column_35,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 tags = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'tags',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_0, _column_1, _column_10, _column_16, _column_17],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 transactionTags = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'transaction_tags',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(transaction_id, tag_id)'],
+      columns: [_column_31, _column_38],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape8 counterparties = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'counterparties',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_0, _column_1, _column_16, _column_17],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape9 budgets = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'budgets',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'CHECK(amount_minor >= 0)'],
+      columns: [
+        _column_0,
+        _column_39,
+        _column_34,
+        _column_35,
+        _column_10,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape10 creditLiabilityAccounts = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'credit_liability_accounts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(account_id)',
+        'CHECK(credit_limit_minor IS NULL OR credit_limit_minor >= 0)',
+        'CHECK(billing_day IS NULL OR billing_day BETWEEN 1 AND 28)',
+        'CHECK(repayment_day IS NULL OR repayment_day BETWEEN 1 AND 28)',
+        'CHECK((kind = \'credit\' AND billing_day IS NOT NULL AND repayment_day IS NOT NULL)OR(kind = \'loan\' AND billing_day IS NULL AND repayment_day IS NULL))',
+      ],
+      columns: [
+        _column_0,
+        _column_36,
+        _column_40,
+        _column_41,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape11 bills = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'bills',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'UNIQUE(account_id, period)'],
+      columns: [
+        _column_0,
+        _column_36,
+        _column_45,
+        _column_46,
+        _column_47,
+        _column_48,
+        _column_49,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 billItems = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'bill_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(expected_principal_minor >= 0)',
+        'CHECK(expected_interest_minor >= 0)',
+        'CHECK(expected_fee_minor >= 0)',
+        'CHECK((item_type = \'consumption\' AND contract_id IS NULL AND schedule_id IS NULL)OR(item_type = \'installment\' AND contract_id IS NOT NULL))',
+      ],
+      columns: [
+        _column_0,
+        _column_50,
+        _column_51,
+        _column_52,
+        _column_53,
+        _column_54,
+        _column_55,
+        _column_56,
+        _column_57,
+        _column_58,
+        _column_59,
+        _column_60,
+        _column_49,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 billGenerationSuppressions = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'bill_generation_suppressions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(account_id, period)'],
+      columns: [_column_36, _column_45, _column_16],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape31 installmentContracts = Shape31(
+    source: i0.VersionedTable(
+      entityName: 'installment_contracts',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(principal_minor > 0)',
+        'CHECK(installment_type IN (\'disbursement\', \'billConversion\', \'purchase\'))',
+        'CHECK(installment_type = \'disbursement\' OR source_ref_id IS NOT NULL)',
+        'UNIQUE(installment_type, source_ref_id)',
+      ],
+      columns: [
+        _column_0,
+        _column_61,
+        _column_62,
+        _column_63,
+        _column_64,
+        _column_154,
+        _column_155,
+        _column_69,
+        _column_70,
+        _column_49,
+        _column_9,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape15 installmentProducts = Shape15(
+    source: i0.VersionedTable(
+      entityName: 'installment_products',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_71,
+        _column_62,
+        _column_63,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape16 installmentProductStageConfigs = Shape16(
+    source: i0.VersionedTable(
+      entityName: 'installment_product_stage_configs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(product_id, position)',
+        'CHECK(position >= 0)',
+        'CHECK(stage_kind IN (\'deferment\', \'repayment\'))',
+        'CHECK(interval_months IS NULL OR interval_months > 0)',
+        'CHECK(rate_type IS NULL OR rate_type IN (\'fixed\', \'lprOneYear\', \'lprFiveYearPlus\', \'loanBenchmarkShortTerm\', \'loanBenchmarkLongTerm\'))',
+        'CHECK(repricing_cycle_months IS NULL OR repricing_cycle_months IN (3, 6, 12))',
+        'CHECK(in_period_repricing_policy IS NULL OR in_period_repricing_policy IN (\'preservePrincipal\', \'dynamicPeriodRate\'))',
+        'CHECK(tail_difference IS NULL OR tail_difference = \'lastPeriod\')',
+        'CHECK(stage_kind != \'deferment\' OR(repayment_method IS NULL AND interval_months IS NULL AND rate_type IS NULL AND rate_period IS NULL AND accrual IS NULL AND amount_algorithm IS NULL AND repricing_cycle_months IS NULL AND in_period_repricing_policy IS NULL AND tail_difference IS NULL))',
+        'CHECK(stage_kind != \'repayment\' OR(repayment_method IS NOT NULL AND tail_difference IS NOT NULL))',
+        'CHECK(repayment_method = \'equalInstallment\' OR(amount_algorithm IS NULL AND in_period_repricing_policy IS NULL))',
+        'CHECK(rate_type != \'fixed\' OR repricing_cycle_months IS NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_72,
+        _column_73,
+        _column_74,
+        _column_75,
+        _column_76,
+        _column_77,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape17 installmentStageConfigs = Shape17(
+    source: i0.VersionedTable(
+      entityName: 'installment_stage_configs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(stage_kind IN (\'deferment\', \'repayment\'))',
+        'CHECK(position >= 0)',
+        'UNIQUE(contract_id, position)',
+        'CHECK(interval_months IS NULL OR interval_months > 0)',
+        'CHECK(periods IS NULL OR periods > 0)',
+        'CHECK(initial_rate_ppm IS NULL OR initial_rate_ppm >= 0)',
+        'CHECK((initial_rate_ppm IS NULL)=(rate_period IS NULL))',
+        'CHECK(first_date IS NULL OR end_date >= first_date)',
+        'CHECK(tail_difference IS NULL OR tail_difference = \'lastPeriod\')',
+        'CHECK(in_period_repricing_policy IS NULL OR in_period_repricing_policy IN (\'preservePrincipal\', \'dynamicPeriodRate\'))',
+        'CHECK(end_principal_minor IS NULL OR end_principal_minor >= 0)',
+        'CHECK(fee_minor IS NULL OR fee_minor >= 0)',
+        'CHECK(fixed_amount_minor IS NULL OR fixed_amount_minor > 0)',
+        'CHECK(stage_kind != \'deferment\' OR(repayment_method IS NULL AND interval_months IS NULL AND rate_period IS NULL AND accrual IS NULL AND amount_algorithm IS NULL AND periods IS NULL AND initial_rate_ppm IS NULL AND end_principal_minor IS NULL AND fixed_amount_minor IS NULL AND fee_minor IS NULL AND first_date IS NULL AND accrual_start_date IS NULL AND tail_difference IS NULL AND in_period_repricing_policy IS NULL))',
+        'CHECK(stage_kind != \'repayment\' OR(repayment_method IS NOT NULL AND first_date IS NOT NULL AND tail_difference IS NOT NULL))',
+        'CHECK(repayment_method = \'equalInstallment\' OR(amount_algorithm IS NULL AND fixed_amount_minor IS NULL))',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_73,
+        _column_74,
+        _column_75,
+        _column_76,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_85,
+        _column_86,
+        _column_82,
+        _column_83,
+        _column_87,
+        _column_88,
+        _column_89,
+        _column_90,
+        _column_91,
+        _column_92,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape18 installmentSchedules = Shape18(
+    source: i0.VersionedTable(
+      entityName: 'installment_schedules',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(contract_id, period_no)',
+        'CHECK(period_no > 0)',
+        'CHECK(expected_principal_minor >= 0)',
+        'CHECK(expected_interest_minor >= 0)',
+        'CHECK(expected_fee_minor >= 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_93,
+        _column_94,
+        _column_95,
+        _column_96,
+        _column_97,
+        _column_98,
+        _column_49,
+        _column_9,
+        _column_99,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape19 referenceRates = Shape19(
+    source: i0.VersionedTable(
+      entityName: 'reference_rates',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(type, rate_date)',
+        'CHECK(type IN (\'lprOneYear\', \'lprFiveYearPlus\', \'loanBenchmarkShortTerm\', \'loanBenchmarkLongTerm\'))',
+        'CHECK(rate_ppm >= 0)',
+      ],
+      columns: [_column_100, _column_101, _column_102, _column_103, _column_16],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape20 installmentRepricingRecords = Shape20(
+    source: i0.VersionedTable(
+      entityName: 'installment_repricing_records',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(contract_id, stage_id, effective_date)',
+        'CHECK(pricing_method IN (\'direct\', \'reference\'))',
+        'CHECK((pricing_method = \'direct\' AND rate_ppm IS NOT NULL AND rate_period IS NOT NULL AND reset_date IS NULL AND reference_rate_date IS NULL AND reference_rate_type IS NULL AND reference_rate_ppm IS NULL AND spread_bp IS NULL AND source IS NULL)OR(pricing_method = \'reference\' AND rate_ppm IS NULL AND rate_period IS NULL AND reset_date IS NOT NULL AND reference_rate_date IS NOT NULL AND reference_rate_type IS NOT NULL AND reference_rate_ppm IS NOT NULL AND spread_bp IS NOT NULL AND source IS NOT NULL))',
+        'CHECK(rate_ppm >= 0)',
+        'CHECK(rate_period IN (\'annual\', \'monthly\', \'daily\'))',
+        'CHECK(status IN (\'pending\', \'applied\', \'userConfirmed\'))',
+        'CHECK(reference_rate_type IN (\'lprOneYear\', \'lprFiveYearPlus\', \'loanBenchmarkShortTerm\', \'loanBenchmarkLongTerm\'))',
+        'CHECK(reference_rate_ppm >= 0 AND reference_rate_ppm + spread_bp * 100 >= 0)',
+        'CHECK(reference_rate_date <= reset_date AND reset_date <= effective_date)',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_104,
+        _column_105,
+        _column_106,
+        _column_107,
+        _column_78,
+        _column_108,
+        _column_109,
+        _column_110,
+        _column_111,
+        _column_112,
+        _column_113,
+        _column_114,
+        _column_16,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape21 installmentRepricingConfigs = Shape21(
+    source: i0.VersionedTable(
+      entityName: 'installment_repricing_configs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(contract_id, stage_id, effective_from)',
+        'CHECK(cycle_months IN (3, 6, 12))',
+        'CHECK(first_effective_date >= first_reset_date)',
+        'CHECK(last_generated_date IS NULL OR last_generated_date >= effective_from)',
+        'CHECK(reference_rate_type IN (\'lprOneYear\', \'lprFiveYearPlus\', \'loanBenchmarkShortTerm\', \'loanBenchmarkLongTerm\'))',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_104,
+        _column_115,
+        _column_116,
+        _column_117,
+        _column_118,
+        _column_119,
+        _column_120,
+        _column_121,
+        _column_122,
+        _column_16,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape22 installmentInterestAdjustments = Shape22(
+    source: i0.VersionedTable(
+      entityName: 'installment_interest_adjustments',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(ratio_ppm >= 0)',
+        'CHECK(end_date > start_date)',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_123,
+        _column_90,
+        _column_124,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape30 installmentRefundReductions = Shape30(
+    source: i0.VersionedTable(
+      entityName: 'installment_refund_reductions',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(refund_transaction_id)',
+        'CHECK(principal_minor > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_84,
+        _column_153,
+        _column_69,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape32 repayments = Shape32(
+    source: i0.VersionedTable(
+      entityName: 'repayments',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(repayment_type IN (\'BILL\', \'INSTALLMENT\', \'PREPAYMENT\', \'UNATTRIBUTED\'))',
+        'CHECK(target_type IN (\'BILL\', \'CONTRACT\', \'ACCOUNT\'))',
+        'CHECK((repayment_type IN (\'BILL\', \'INSTALLMENT\') AND target_type = \'BILL\')OR(repayment_type = \'PREPAYMENT\' AND target_type = \'CONTRACT\')OR(repayment_type = \'UNATTRIBUTED\' AND target_type = \'ACCOUNT\'))',
+        'CHECK(repayment_type <> \'INSTALLMENT\' OR transaction_id IS NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_125,
+        _column_126,
+        _column_127,
+        _column_128,
+        _column_156,
+        _column_57,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape24 repaymentItems = Shape24(
+    source: i0.VersionedTable(
+      entityName: 'repayment_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(allocated_principal_minor >= 0)',
+        'CHECK(allocated_interest_minor >= 0)',
+        'CHECK(allocated_fee_minor >= 0)',
+        'CHECK(allocated_discount_minor >= 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_129,
+        _column_130,
+        _column_131,
+        _column_132,
+        _column_133,
+        _column_134,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape25 importEntityMappings = Shape25(
+    source: i0.VersionedTable(
+      entityName: 'import_entity_mappings',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_103,
+        _column_135,
+        _column_136,
+        _column_137,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape26 importBatches = Shape26(
+    source: i0.VersionedTable(
+      entityName: 'import_batches',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_103,
+        _column_49,
+        _column_138,
+        _column_139,
+        _column_140,
+        _column_141,
+        _column_142,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape27 importBatchItems = Shape27(
+    source: i0.VersionedTable(
+      entityName: 'import_batch_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_143,
+        _column_144,
+        _column_145,
+        _column_146,
+        _column_147,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape28 advanceCases = Shape28(
+    source: i0.VersionedTable(
+      entityName: 'advance_cases',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(tracking_mode = \'itemized\' OR receivable_account_id IS NOT NULL)',
+        'CHECK(scenario = \'aa\' OR aa_people_count IS NULL)',
+        'CHECK(scenario != \'aa\' OR(aa_people_count IS NOT NULL AND aa_people_count >= 2 AND aa_people_count <= 99))',
+      ],
+      columns: [
+        _column_0,
+        _column_148,
+        _column_149,
+        _column_150,
+        _column_151,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape37 amortizationPlans = Shape37(
+    source: i0.VersionedTable(
+      entityName: 'amortization_plans',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(total_amount_minor > 0)',
+        'CHECK(cadence_interval > 0)',
+        'CHECK(recognition_count > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_40,
+        _column_157,
+        _column_159,
+        _column_160,
+        _column_161,
+        _column_162,
+        _column_163,
+        _column_166,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape38 amortizationPeriods = Shape38(
+    source: i0.VersionedTable(
+      entityName: 'amortization_periods',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(plan_id, sequence_no)',
+        'UNIQUE(transaction_id)',
+        'CHECK(sequence_no > 0)',
+        'CHECK(amount_minor >= 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_171,
+        _column_172,
+        _column_173,
+        _column_35,
+        _column_128,
+        _column_49,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape39 amortizationRefunds = Shape39(
+    source: i0.VersionedTable(
+      entityName: 'amortization_refunds',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'UNIQUE(transfer_transaction_id)'],
+      columns: [_column_0, _column_171, _column_176, _column_16, _column_17],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape40 amortizationTerminations = Shape40(
+    source: i0.VersionedTable(
+      entityName: 'amortization_terminations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(plan_id)',
+        'UNIQUE(recognition_transaction_id)',
+        'UNIQUE(return_transaction_id)',
+        'CHECK(recognition_transaction_id IS NOT NULL OR return_transaction_id IS NOT NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_171,
+        _column_177,
+        _column_178,
+        _column_179,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape41 amortizationAllocations = Shape41(
+    source: i0.VersionedTable(
+      entityName: 'amortization_allocations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'UNIQUE(subject_type, subject_id, dimension, line_no)',
+        'UNIQUE(subject_type, subject_id, dimension, account_id)',
+        'CHECK(line_no > 0)',
+        'CHECK(amount_minor > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_180,
+        _column_181,
+        _column_182,
+        _column_32,
+        _column_36,
+        _column_35,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape51 insuredPeople = Shape51(
+    source: i0.VersionedTable(
+      entityName: 'insured_people',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'CHECK(length(trim(name)) > 0)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_183,
+        _column_209,
+        _column_210,
+        _column_9,
+        _column_211,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape52 commercialInsurances = Shape52(
+    source: i0.VersionedTable(
+      entityName: 'commercial_insurances',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(length(trim(name)) > 0)',
+        'CHECK(length(trim(insurer_name)) > 0)',
+        'CHECK(coverage_end_date IS NULL OR coverage_end_date >= coverage_start_date)',
+        'CHECK(lifetime = 0 OR coverage_end_date IS NULL)',
+        'CHECK(coverage_amount_minor IS NULL OR coverage_amount_minor >= 0)',
+        'CHECK(premium_amount_minor IS NULL OR premium_amount_minor >= 0)',
+        'CHECK(premium_term_count IS NULL OR premium_term_count > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_184,
+        _column_185,
+        _column_186,
+        _column_187,
+        _column_188,
+        _column_189,
+        _column_190,
+        _column_192,
+        _column_193,
+        _column_212,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape44 commercialInsuranceInsuredPeople = Shape44(
+    source: i0.VersionedTable(
+      entityName: 'commercial_insurance_insured_people',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(commercial_insurance_id, insured_person_id)',
+      ],
+      columns: [_column_195, _column_196],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape45 coverageResponsibilities = Shape45(
+    source: i0.VersionedTable(
+      entityName: 'coverage_responsibilities',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(length(trim(name)) > 0)',
+        'CHECK(sort_order >= 0)',
+      ],
+      columns: [_column_0, _column_195, _column_40, _column_1, _column_197],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape46 responsibilityPoints = Shape46(
+    source: i0.VersionedTable(
+      entityName: 'responsibility_points',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(length(trim(label)) > 0)',
+        'CHECK(length(trim(value)) > 0)',
+        'CHECK(sort_order >= 0)',
+      ],
+      columns: [_column_0, _column_198, _column_199, _column_19, _column_197],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape47 insuranceAttachments = Shape47(
+    source: i0.VersionedTable(
+      entityName: 'insurance_attachments',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK(length(trim(file_name)) > 0)',
+        'CHECK(length(trim(storage_key)) > 0)',
+        'CHECK(length(trim(mime_type)) > 0)',
+      ],
+      columns: [
+        _column_0,
+        _column_195,
+        _column_200,
+        _column_201,
+        _column_202,
+        _column_16,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape53 socialInsurances = Shape53(
+    source: i0.VersionedTable(
+      entityName: 'social_insurances',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'CHECK(length(trim(region)) > 0)'],
+      columns: [
+        _column_0,
+        _column_196,
+        _column_203,
+        _column_213,
+        _column_204,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape54 socialContributionRecords = Shape54(
+    source: i0.VersionedTable(
+      entityName: 'social_contribution_records',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(social_insurance_id, year_month)',
+        'CHECK(contribution_base_minor >= 0)',
+      ],
+      columns: [_column_214, _column_206, _column_207],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index installmentRepricingRecordsPendingIdx = i1.Index(
+    'installment_repricing_records_pending_idx',
+    'CREATE INDEX installment_repricing_records_pending_idx ON installment_repricing_records (contract_id) WHERE status = \'pending\'',
+  );
+  final i1.Index installmentRepricingConfigsActiveIdx = i1.Index(
+    'installment_repricing_configs_active_idx',
+    'CREATE INDEX installment_repricing_configs_active_idx ON installment_repricing_configs (contract_id) WHERE generation_completed = 0',
+  );
+}
+
+class Shape52 extends i0.VersionedTable {
+  Shape52({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get insurerName =>
+      columnsByName['insurer_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get category =>
+      columnsByName['category']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get productForm =>
+      columnsByName['product_form']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get coverageStartDate =>
+      columnsByName['coverage_start_date']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get coverageEndDate =>
+      columnsByName['coverage_end_date']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lifetime =>
+      columnsByName['lifetime']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get coverageAmountMinor =>
+      columnsByName['coverage_amount_minor']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get premiumAmountMinor =>
+      columnsByName['premium_amount_minor']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get premiumFrequency =>
+      columnsByName['premium_frequency']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get premiumTermCount =>
+      columnsByName['premium_term_count']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<int> _column_212(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'premium_term_count',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+
+class Shape53 extends i0.VersionedTable {
+  Shape53({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get insuredPersonId =>
+      columnsByName['insured_person_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get region =>
+      columnsByName['region']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get insuranceType =>
+      columnsByName['insurance_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get participantType =>
+      columnsByName['participant_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_213(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'insurance_type',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape54 extends i0.VersionedTable {
+  Shape54({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get socialInsuranceId =>
+      columnsByName['social_insurance_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get yearMonth =>
+      columnsByName['year_month']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get contributionBaseMinor =>
+      columnsByName['contribution_base_minor']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_214(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'social_insurance_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema50 schema) from49To50,
   required Future<void> Function(i1.Migrator m, Schema51 schema) from50To51,
@@ -12717,6 +13845,7 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema58 schema) from57To58,
   required Future<void> Function(i1.Migrator m, Schema59 schema) from58To59,
   required Future<void> Function(i1.Migrator m, Schema60 schema) from59To60,
+  required Future<void> Function(i1.Migrator m, Schema61 schema) from60To61,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -12775,6 +13904,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from59To60(migrator, schema);
         return 60;
+      case 60:
+        final schema = Schema61(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from60To61(migrator, schema);
+        return 61;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -12793,6 +13927,7 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema58 schema) from57To58,
   required Future<void> Function(i1.Migrator m, Schema59 schema) from58To59,
   required Future<void> Function(i1.Migrator m, Schema60 schema) from59To60,
+  required Future<void> Function(i1.Migrator m, Schema61 schema) from60To61,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from49To50: from49To50,
@@ -12806,5 +13941,6 @@ i1.OnUpgrade stepByStep({
     from57To58: from57To58,
     from58To59: from58To59,
     from59To60: from59To60,
+    from60To61: from60To61,
   ),
 );

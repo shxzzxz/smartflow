@@ -9,7 +9,6 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import 'insurance_members_view_model.dart';
 import 'insurance_overview_view_model.dart';
 import 'member_coverage_view_model.dart';
-import 'social_insurance_detail_view_model.dart';
 
 part 'social_insurance_form_view_model.g.dart';
 
@@ -22,10 +21,8 @@ class SocialInsuranceFormViewModel extends _$SocialInsuranceFormViewModel {
   @override
   Future<SocialInsuranceFormState?> build(
     String? insuranceId,
-    InsuranceSourceType sourceType,
     String? initialInsuredPersonId,
   ) async {
-    if (sourceType == InsuranceSourceType.commercial) return null;
     final query = ref.watch(insuranceCoverageQueryServiceProvider);
     final people = await query.listInsuredPeople();
     if (insuranceId == null) {
@@ -33,37 +30,32 @@ class SocialInsuranceFormViewModel extends _$SocialInsuranceFormViewModel {
           .where((item) => item.id == initialInsuredPersonId)
           .firstOrNull;
       return _initializedState ??= SocialInsuranceFormState.initial(
-        sourceType: sourceType,
         insuredPeople: people,
         initialInsuredPersonId:
             initialPerson?.id ?? (people.length == 1 ? people.single.id : null),
       );
     }
 
-    final detail = switch (sourceType) {
-      InsuranceSourceType.socialMedical =>
-        await query.socialMedicalInsuranceDetail(insuranceId),
-      InsuranceSourceType.socialPension =>
-        await query.socialPensionInsuranceDetail(insuranceId),
-      InsuranceSourceType.commercial => null,
-    };
+    final detail = await query.socialInsuranceDetail(insuranceId);
     if (detail == null) return null;
-    final next = switch (detail) {
-      SocialMedicalInsuranceDetail() => SocialInsuranceFormState.fromMedical(
-        detail,
-        insuredPeople: people,
-      ),
-      SocialPensionInsuranceDetail() => SocialInsuranceFormState.fromPension(
-        detail,
-        insuredPeople: people,
-      ),
-      _ => null,
-    };
-    return next == null ? null : (_initializedState ??= next);
+    return _initializedState ??= SocialInsuranceFormState.fromDetail(
+      detail,
+      insuredPeople: people,
+    );
   }
 
   void setInsuredPersonId(String value) {
-    _update((current) => current.copyWith(insuredPersonId: value));
+    _update((current) {
+      if (current.identityLocked) return current;
+      return current.copyWith(insuredPersonId: value);
+    });
+  }
+
+  void setInsuranceType(SocialInsuranceType value) {
+    _update((current) {
+      if (current.identityLocked) return current;
+      return current.copyWith(insuranceType: value);
+    });
   }
 
   void setParticipantType(SocialParticipantType value) {
@@ -84,27 +76,23 @@ class SocialInsuranceFormViewModel extends _$SocialInsuranceFormViewModel {
     _update((value) => value.copyWith(submitting: true));
     try {
       final outcome = await guardUiAction(_logger, 'Save social insurance', () {
-        final command = SaveSocialInsuranceCommand(
-          id: current.id,
-          insuredPersonId: current.insuredPersonId!,
-          region: region,
-          participantType: current.participantType,
-          contributionRecords: current.contributionRecords,
-        );
-        final service = ref.read(socialInsuranceAppServiceProvider);
-        return switch (current.sourceType) {
-          InsuranceSourceType.socialMedical => service.saveMedical(command),
-          InsuranceSourceType.socialPension => service.savePension(command),
-          InsuranceSourceType.commercial => Future<String>.error(
-            StateError('Commercial insurance is not a social record.'),
-          ),
-        };
+        return ref
+            .read(socialInsuranceAppServiceProvider)
+            .save(
+              SaveSocialInsuranceCommand(
+                id: current.id,
+                insuredPersonId: current.insuredPersonId!,
+                region: region,
+                insuranceType: current.insuranceType,
+                participantType: current.participantType,
+                contributionRecords: current.contributionRecords,
+              ),
+            );
       });
       if (outcome is UiActionSuccess<String>) {
         ref.invalidate(insuranceMembersViewModelProvider);
         ref.invalidate(insuranceOverviewViewModelProvider);
         ref.invalidate(memberCoverageViewModelProvider);
-        ref.invalidate(socialInsuranceDetailViewModelProvider);
       }
       return outcome;
     } finally {
@@ -133,8 +121,8 @@ class SocialInsuranceFormViewModel extends _$SocialInsuranceFormViewModel {
 
 class SocialInsuranceFormState {
   SocialInsuranceFormState({
-    required this.sourceType,
     required this.insuredPeople,
+    required this.insuranceType,
     required this.participantType,
     required List<SocialContributionRecord> contributionRecords,
     this.id,
@@ -145,45 +133,28 @@ class SocialInsuranceFormState {
   }) : contributionRecords = List.unmodifiable(contributionRecords);
 
   factory SocialInsuranceFormState.initial({
-    required InsuranceSourceType sourceType,
     required List<InsuredPerson> insuredPeople,
     String? initialInsuredPersonId,
   }) {
     return SocialInsuranceFormState(
-      sourceType: sourceType,
       insuredPeople: List.unmodifiable(insuredPeople),
       insuredPersonId: initialInsuredPersonId,
+      insuranceType: SocialInsuranceType.medical,
       participantType: SocialParticipantType.employee,
       contributionRecords: const [],
     );
   }
 
-  factory SocialInsuranceFormState.fromMedical(
-    SocialMedicalInsuranceDetail detail, {
+  factory SocialInsuranceFormState.fromDetail(
+    SocialInsuranceDetail detail, {
     required List<InsuredPerson> insuredPeople,
   }) {
     return SocialInsuranceFormState(
       id: detail.insurance.id,
-      sourceType: InsuranceSourceType.socialMedical,
       insuredPeople: List.unmodifiable(insuredPeople),
       insuredPersonId: detail.insuredPerson.id,
       region: detail.insurance.region,
-      participantType: detail.insurance.participantType,
-      contributionRecords: _sorted(detail.insurance.contributionRecords),
-      identityLocked: true,
-    );
-  }
-
-  factory SocialInsuranceFormState.fromPension(
-    SocialPensionInsuranceDetail detail, {
-    required List<InsuredPerson> insuredPeople,
-  }) {
-    return SocialInsuranceFormState(
-      id: detail.insurance.id,
-      sourceType: InsuranceSourceType.socialPension,
-      insuredPeople: List.unmodifiable(insuredPeople),
-      insuredPersonId: detail.insuredPerson.id,
-      region: detail.insurance.region,
+      insuranceType: detail.insurance.insuranceType,
       participantType: detail.insurance.participantType,
       contributionRecords: _sorted(detail.insurance.contributionRecords),
       identityLocked: true,
@@ -191,25 +162,23 @@ class SocialInsuranceFormState {
   }
 
   final String? id;
-  final InsuranceSourceType sourceType;
   final List<InsuredPerson> insuredPeople;
   final String? insuredPersonId;
   final String region;
+  final SocialInsuranceType insuranceType;
   final SocialParticipantType participantType;
   final List<SocialContributionRecord> contributionRecords;
   final bool identityLocked;
   final bool submitting;
-
-  String get pageTitle => sourceType.label;
 
   InsuredPerson? get insuredPerson =>
       insuredPeople.where((person) => person.id == insuredPersonId).firstOrNull;
 
   SocialInsuranceFormState copyWith({
     String? id,
-    InsuranceSourceType? sourceType,
     String? insuredPersonId,
     String? region,
+    SocialInsuranceType? insuranceType,
     SocialParticipantType? participantType,
     List<SocialContributionRecord>? contributionRecords,
     bool? identityLocked,
@@ -217,10 +186,10 @@ class SocialInsuranceFormState {
   }) {
     return SocialInsuranceFormState(
       id: id ?? this.id,
-      sourceType: sourceType ?? this.sourceType,
       insuredPeople: insuredPeople,
       insuredPersonId: insuredPersonId ?? this.insuredPersonId,
       region: region ?? this.region,
+      insuranceType: insuranceType ?? this.insuranceType,
       participantType: participantType ?? this.participantType,
       contributionRecords: contributionRecords ?? this.contributionRecords,
       identityLocked: identityLocked ?? this.identityLocked,

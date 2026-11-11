@@ -19,13 +19,13 @@ class InsuranceResponsibilityInput {
   const InsuranceResponsibilityInput({
     this.id,
     required this.kind,
-    this.name,
+    required this.name,
     required this.points,
   });
 
   final String? id;
   final ResponsibilityKind kind;
-  final String? name;
+  final String name;
   final List<InsuranceResponsibilityPointInput> points;
 }
 
@@ -40,7 +40,7 @@ class SaveCommercialInsuranceCommand {
     this.coverageAmount,
     this.premiumPlan,
     required this.insuredPersonIds,
-    required this.responsibilities,
+    this.responsibilities,
   });
 
   final String? id;
@@ -52,5 +52,7 @@ class SaveCommercialInsuranceCommand {
   final CoverageAmount? coverageAmount;
   final PremiumPlan? premiumPlan;
   final List<String> insuredPersonIds;
-  final List<InsuranceResponsibilityInput> responsibilities;
+
+  /// `null` keeps the responsibilities currently stored on an existing policy.
+  final List<InsuranceResponsibilityInput>? responsibilities;
 }

@@ -102,6 +102,9 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
                         coverageTermLabel: insuranceCoverageTermCompactLabel(
                           insurance.coverageTerm,
                         ),
+                        coverageTermEnded:
+                            !insurance.coverageTerm.lifetime &&
+                            insurance.coverageTerm.endDate != null,
                         premiumLabel:
                             insurance.premiumPlan?.frequency.label ??
                             PremiumFrequency.other.label,
@@ -115,7 +118,12 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
                           InsuranceKeyValueRow(
                             label: '被保险人',
                             value: detail.insuredPeople
-                                .map((person) => person.name)
+                                .map(
+                                  (person) =>
+                                      '${person.name} · '
+                                      '${person.relationship.label} · '
+                                      '${person.ageAt(detail.asOf)} 岁',
+                                )
                                 .join('、'),
                           ),
                           InsuranceKeyValueRow(
@@ -137,9 +145,9 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space20),
                       _ResponsibilitySection(
                         responsibilities: insurance.responsibilities,
-                        onOpen: (responsibilityId) => context.push(
+                        onManage: () => context.push(
                           '/insurance/commercial/$insuranceId/'
-                          'responsibilities/$responsibilityId',
+                          'responsibilities',
                         ),
                       ),
                       const SizedBox(height: AppSpacing.space20),
@@ -274,25 +282,28 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
 class _ResponsibilitySection extends StatelessWidget {
   const _ResponsibilitySection({
     required this.responsibilities,
-    required this.onOpen,
+    required this.onManage,
   });
 
   final List<CoverageResponsibility> responsibilities;
-  final ValueChanged<String> onOpen;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const AppSectionHeader(title: '保障责任'),
+        AppSectionHeader(
+          title: '保障责任',
+          trailing: TextButton(onPressed: onManage, child: const Text('详情')),
+        ),
         const SizedBox(height: AppSpacing.space8),
         if (responsibilities.isEmpty)
           AppSurface(
             border: true,
             child: const AppEmptyState(
               title: '还没有保障责任项',
-              message: '可在编辑商业保险时补充责任项和责任要点。',
+              message: '点击详情添加责任项和责任要点。',
               layout: AppEmptyStateLayout.inline,
             ),
           )
@@ -301,10 +312,7 @@ class _ResponsibilitySection extends StatelessWidget {
             border: true,
             children: [
               for (final responsibility in responsibilities)
-                InsuranceResponsibilityTile(
-                  responsibility: responsibility,
-                  onTap: () => onOpen(responsibility.id),
-                ),
+                InsuranceResponsibilityTile(responsibility: responsibility),
             ],
           ),
       ],

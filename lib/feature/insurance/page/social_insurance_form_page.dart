@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../application/insurance/insurance_query_api.dart';
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_choice_chip_group.dart';
 import '../../../design_system/widget/app_dropdown.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_form_section.dart';
@@ -18,13 +19,11 @@ import '../view_model/social_insurance_form_view_model.dart';
 
 class SocialInsuranceFormPage extends ConsumerWidget {
   const SocialInsuranceFormPage({
-    required this.sourceType,
     this.insuranceId,
     this.initialInsuredPersonId,
     super.key,
   });
 
-  final InsuranceSourceType sourceType;
   final String? insuranceId;
   final String? initialInsuredPersonId;
 
@@ -32,13 +31,10 @@ class SocialInsuranceFormPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = socialInsuranceFormViewModelProvider(
       insuranceId,
-      sourceType,
       initialInsuredPersonId,
     );
     final state = ref.watch(provider);
-    final title = insuranceId == null
-        ? '新增${sourceType.label}'
-        : '编辑${sourceType.label}';
+    final title = insuranceId == null ? '新增社保' : '编辑社保';
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
@@ -64,8 +60,7 @@ class SocialInsuranceFormPage extends ConsumerWidget {
                     );
                   }
                   return _SocialInsuranceFormContent(
-                    key: ValueKey('${sourceType.name}:${insuranceId ?? 'new'}'),
-                    sourceType: sourceType,
+                    key: ValueKey('social-insurance-${insuranceId ?? 'new'}'),
                     insuranceId: insuranceId,
                     initialInsuredPersonId: initialInsuredPersonId,
                     initialState: value,
@@ -91,14 +86,12 @@ class SocialInsuranceFormPage extends ConsumerWidget {
 
 class _SocialInsuranceFormContent extends ConsumerStatefulWidget {
   const _SocialInsuranceFormContent({
-    required this.sourceType,
     required this.initialState,
     this.insuranceId,
     this.initialInsuredPersonId,
     super.key,
   });
 
-  final InsuranceSourceType sourceType;
   final String? insuranceId;
   final String? initialInsuredPersonId;
   final SocialInsuranceFormState initialState;
@@ -130,7 +123,6 @@ class _SocialInsuranceFormContentState
     final state = widget.initialState;
     final provider = socialInsuranceFormViewModelProvider(
       widget.insuranceId,
-      widget.sourceType,
       widget.initialInsuredPersonId,
     );
     final notifier = ref.read(provider.notifier);
@@ -147,34 +139,39 @@ class _SocialInsuranceFormContentState
         children: [
           AppFormSection(
             title: '参保信息',
-            description: locked ? '参保地区或参保类型发生变化时，请新建一条社保记录以保留历史。' : null,
+            description: locked ? '参保信息发生变化时，请新建社保记录以保留历史。' : null,
             children: [
-              AppPlainFormRow(
-                label: '参保人',
-                requiredIndicator: true,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: AppDropdown<String?>(
-                    value: state.insuredPersonId,
-                    tooltip: '选择参保人',
-                    options: [
-                      const AppSelectOption(value: null, label: '请选择'),
-                      for (final person in state.insuredPeople)
-                        AppSelectOption(value: person.id, label: person.name),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) notifier.setInsuredPersonId(value);
-                    },
+              if (locked)
+                AppPlainValueRow(
+                  label: '参保人',
+                  value: state.insuredPerson?.name ?? '',
+                )
+              else
+                AppPlainFormRow(
+                  label: '参保人',
+                  requiredIndicator: true,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AppDropdown<String?>(
+                      value: state.insuredPersonId,
+                      tooltip: '选择参保人',
+                      options: [
+                        const AppSelectOption(value: null, label: '请选择'),
+                        for (final person in state.insuredPeople)
+                          AppSelectOption(value: person.id, label: person.name),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) notifier.setInsuredPersonId(value);
+                      },
+                    ),
                   ),
                 ),
-              ),
               AppPlainTextFormRow(
                 label: '参保地区',
                 controller: _regionController,
                 hintText: '例如：上海市',
                 requiredIndicator: true,
                 readOnly: locked,
-                supportingText: locked ? '编辑时不可修改，请新建记录。' : null,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return '请输入参保地区';
@@ -182,28 +179,31 @@ class _SocialInsuranceFormContentState
                   return null;
                 },
               ),
-              if (locked)
-                AppPlainValueRow(
-                  label: '参保类型',
-                  value: state.participantType.label,
-                )
-              else
-                AppPlainFormRow(
-                  label: '参保类型',
-                  requiredIndicator: true,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppDropdown<SocialParticipantType>(
-                      value: state.participantType,
-                      tooltip: '选择参保类型',
-                      options: [
-                        for (final type in SocialParticipantType.values)
-                          AppSelectOption(value: type, label: type.label),
-                      ],
-                      onChanged: notifier.setParticipantType,
-                    ),
-                  ),
-                ),
+              AppPlainChoiceChipFormRow<SocialInsuranceType>(
+                key: const ValueKey('social-type-choice'),
+                label: '社保类型',
+                value: state.insuranceType,
+                requiredIndicator: true,
+                enabled: !locked,
+                options: [
+                  for (final type in SocialInsuranceType.values)
+                    AppChoiceChipOption(value: type, label: type.label),
+                ],
+                onChanged: notifier.setInsuranceType,
+              ),
+              AppPlainChoiceChipFormRow<SocialParticipantType>(
+                key: const ValueKey('social-participant-type-choice'),
+                label: '参保类型',
+                value: state.participantType,
+                requiredIndicator: true,
+                enabled: !locked,
+                reservedRows: 1,
+                options: [
+                  for (final type in SocialParticipantType.values)
+                    AppChoiceChipOption(value: type, label: type.label),
+                ],
+                onChanged: notifier.setParticipantType,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.space24),

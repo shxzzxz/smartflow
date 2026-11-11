@@ -78,12 +78,8 @@ Future<void> _createInsuranceIndexes(AppDatabase database) async {
     'ON insurance_attachments (commercial_insurance_id, created_at)',
   );
   await database.customStatement(
-    'CREATE INDEX social_medical_insurances_person_idx '
-    'ON social_medical_insurances (insured_person_id)',
-  );
-  await database.customStatement(
-    'CREATE INDEX social_pension_insurances_person_idx '
-    'ON social_pension_insurances (insured_person_id)',
+    'CREATE INDEX social_insurances_person_idx '
+    'ON social_insurances (insured_person_id)',
   );
 }
 

@@ -416,6 +416,78 @@ Future<void> _upgrade(
           'DROP TABLE insured_people_v59_legacy',
         );
       },
+      from60To61: (migration, schema) async {
+        await migration.alterTable(
+          TableMigration(
+            schema.commercialInsurances,
+            newColumns: [schema.commercialInsurances.premiumTermCount],
+            columnTransformer: {
+              schema.commercialInsurances.premiumTermCount: const Constant(
+                null,
+              ),
+            },
+          ),
+        );
+        await migration.database.customStatement(
+          "UPDATE commercial_insurances "
+          "SET premium_frequency = 'other' "
+          "WHERE premium_frequency IN ('quarterly', 'semiAnnual')",
+        );
+        await migration.database.customStatement(
+          "UPDATE coverage_responsibilities "
+          "SET kind = 'other' "
+          "WHERE kind = 'custom'",
+        );
+
+        await migration.createTable(schema.socialInsurances);
+        await migration.createTable(schema.socialContributionRecords);
+        await migration.database.customStatement(
+          'INSERT INTO social_insurances '
+          '(id, insured_person_id, region, insurance_type, participant_type, '
+          'created_at, updated_at) '
+          "SELECT id, insured_person_id, region, 'medical', participant_type, "
+          'created_at, updated_at '
+          'FROM social_medical_insurances',
+        );
+        await migration.database.customStatement(
+          'INSERT INTO social_insurances '
+          '(id, insured_person_id, region, insurance_type, participant_type, '
+          'created_at, updated_at) '
+          "SELECT id, insured_person_id, region, 'pension', participant_type, "
+          'created_at, updated_at '
+          'FROM social_pension_insurances',
+        );
+        await migration.database.customStatement(
+          'INSERT INTO social_contribution_records '
+          '(social_insurance_id, year_month, contribution_base_minor) '
+          'SELECT social_medical_insurance_id, year_month, '
+          'contribution_base_minor '
+          'FROM social_medical_contribution_records',
+        );
+        await migration.database.customStatement(
+          'INSERT INTO social_contribution_records '
+          '(social_insurance_id, year_month, contribution_base_minor) '
+          'SELECT social_pension_insurance_id, year_month, '
+          'contribution_base_minor '
+          'FROM social_pension_contribution_records',
+        );
+        await migration.database.customStatement(
+          'CREATE INDEX social_insurances_person_idx '
+          'ON social_insurances (insured_person_id)',
+        );
+        await migration.database.customStatement(
+          'DROP TABLE social_medical_contribution_records',
+        );
+        await migration.database.customStatement(
+          'DROP TABLE social_pension_contribution_records',
+        );
+        await migration.database.customStatement(
+          'DROP TABLE social_medical_insurances',
+        );
+        await migration.database.customStatement(
+          'DROP TABLE social_pension_insurances',
+        );
+      },
     )(migrator, from, to);
   });
 }

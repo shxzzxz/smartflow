@@ -1,8 +1,7 @@
 import '../../../../core/money/money.dart';
 import '../../../../domain/insurance/entity/commercial_insurance.dart';
 import '../../../../domain/insurance/entity/insured_person.dart';
-import '../../../../domain/insurance/entity/social_medical_insurance.dart';
-import '../../../../domain/insurance/entity/social_pension_insurance.dart';
+import '../../../../domain/insurance/entity/social_insurance.dart';
 import '../../../../domain/insurance/valobj/insurance_enums.dart';
 
 class InsuranceMemberListItem {
@@ -14,8 +13,7 @@ class InsuranceMemberListItem {
     required this.avatarPreset,
     required this.age,
     required this.commercialInsuranceCount,
-    required this.hasSocialMedical,
-    required this.hasSocialPension,
+    required this.hasSocialInsurance,
   });
 
   final String insuredPersonId;
@@ -25,8 +23,7 @@ class InsuranceMemberListItem {
   final MemberAvatarPreset avatarPreset;
   final int age;
   final int commercialInsuranceCount;
-  final bool hasSocialMedical;
-  final bool hasSocialPension;
+  final bool hasSocialInsurance;
 }
 
 class InsuranceListItem {
@@ -83,16 +80,14 @@ class MemberCoverageOverview {
     required this.insuredPerson,
     required this.age,
     required this.commercialInsurances,
-    required this.socialMedicalInsurances,
-    required this.socialPensionInsurances,
+    required this.socialInsurances,
     required this.asOf,
   });
 
   final InsuredPerson insuredPerson;
   final int age;
   final List<CommercialInsurance> commercialInsurances;
-  final List<SocialMedicalInsurance> socialMedicalInsurances;
-  final List<SocialPensionInsurance> socialPensionInsurances;
+  final List<SocialInsurance> socialInsurances;
   final DateTime asOf;
 
   int get activeCommercialInsuranceCount => commercialInsurances
@@ -117,19 +112,11 @@ class MemberCoverageOverview {
         subtitle: '${insurance.insurerName} · ${insurance.category.label}',
         summary: _commercialSummary(insurance, asOf),
       ),
-    for (final insurance in socialMedicalInsurances)
+    for (final insurance in socialInsurances)
       InsuranceListItem(
-        sourceType: InsuranceSourceType.socialMedical,
+        sourceType: InsuranceSourceType.social,
         insuranceId: insurance.id,
-        title: InsuranceSourceType.socialMedical.label,
-        subtitle: '${insurance.region} · ${insurance.participantType.label}',
-        summary: '${insurance.contributionRecords.length} 条缴费记录',
-      ),
-    for (final insurance in socialPensionInsurances)
-      InsuranceListItem(
-        sourceType: InsuranceSourceType.socialPension,
-        insuranceId: insurance.id,
-        title: InsuranceSourceType.socialPension.label,
+        title: '社保${insurance.insuranceType.label}',
         subtitle: '${insurance.region} · ${insurance.participantType.label}',
         summary: '${insurance.contributionRecords.length} 条缴费记录',
       ),
@@ -150,30 +137,22 @@ class CommercialInsuranceDetail {
     required this.insurance,
     required this.insuredPeople,
     required this.status,
+    required this.asOf,
   });
 
   final CommercialInsurance insurance;
   final List<InsuredPerson> insuredPeople;
   final InsuranceCoverageStatus status;
+  final DateTime asOf;
 }
 
-class SocialMedicalInsuranceDetail {
-  const SocialMedicalInsuranceDetail({
+class SocialInsuranceDetail {
+  const SocialInsuranceDetail({
     required this.insurance,
     required this.insuredPerson,
   });
 
-  final SocialMedicalInsurance insurance;
-  final InsuredPerson insuredPerson;
-}
-
-class SocialPensionInsuranceDetail {
-  const SocialPensionInsuranceDetail({
-    required this.insurance,
-    required this.insuredPerson,
-  });
-
-  final SocialPensionInsurance insurance;
+  final SocialInsurance insurance;
   final InsuredPerson insuredPerson;
 }
 

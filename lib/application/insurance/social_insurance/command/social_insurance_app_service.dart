@@ -1,7 +1,6 @@
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/id/id_generator.dart';
-import '../../../../domain/insurance/entity/social_medical_insurance.dart';
-import '../../../../domain/insurance/entity/social_pension_insurance.dart';
+import '../../../../domain/insurance/entity/social_insurance.dart';
 import '../../../../domain/insurance/port/insured_person_repository.dart';
 import '../../../../domain/insurance/port/social_insurance_repository.dart';
 import '../../../../domain/insurance/valobj/insurance_enums.dart';
@@ -10,10 +9,8 @@ import '../../../shared/transaction_runner.dart';
 import 'social_insurance_command.dart';
 
 abstract interface class SocialInsuranceAppService {
-  Future<String> saveMedical(SaveSocialInsuranceCommand command);
-  Future<void> deleteMedical(String id);
-  Future<String> savePension(SaveSocialInsuranceCommand command);
-  Future<void> deletePension(String id);
+  Future<String> save(SaveSocialInsuranceCommand command);
+  Future<void> delete(String id);
 }
 
 class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
@@ -36,84 +33,45 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
   final DateTime Function() _now;
 
   @override
-  Future<String> saveMedical(SaveSocialInsuranceCommand command) {
+  Future<String> save(SaveSocialInsuranceCommand command) {
     return _runner.run(() async {
       final now = _now();
       final previous = command.id == null
           ? null
-          : await _insurances.findMedical(command.id!);
+          : await _insurances.find(command.id!);
       if (command.id != null && previous == null) {
         throw BusinessException(InsuranceErrorCode.socialInsuranceNotFound);
       }
       _ensureHistoryStable(
         previous: previous,
         region: command.region,
+        insuranceType: command.insuranceType,
         participantType: command.participantType,
       );
       await _ensurePerson(command.insuredPersonId);
-      final insurance = SocialMedicalInsurance(
+      final insurance = SocialInsurance(
         id: previous?.id ?? _ids.newId(),
         insuredPersonId: command.insuredPersonId,
         region: command.region,
+        insuranceType: command.insuranceType,
         participantType: command.participantType,
         contributionRecords: command.contributionRecords,
         createdAt: previous?.createdAt ?? now,
         updatedAt: now,
       );
       _validate(insurance.validate);
-      await _insurances.saveMedical(insurance);
+      await _insurances.save(insurance);
       return insurance.id;
     });
   }
 
   @override
-  Future<void> deleteMedical(String id) {
+  Future<void> delete(String id) {
     return _runner.run(() async {
-      if (await _insurances.findMedical(id) == null) {
+      if (await _insurances.find(id) == null) {
         throw BusinessException(InsuranceErrorCode.socialInsuranceNotFound);
       }
-      await _insurances.deleteMedical(id);
-    });
-  }
-
-  @override
-  Future<String> savePension(SaveSocialInsuranceCommand command) {
-    return _runner.run(() async {
-      final now = _now();
-      final previous = command.id == null
-          ? null
-          : await _insurances.findPension(command.id!);
-      if (command.id != null && previous == null) {
-        throw BusinessException(InsuranceErrorCode.socialInsuranceNotFound);
-      }
-      _ensureHistoryStable(
-        previous: previous,
-        region: command.region,
-        participantType: command.participantType,
-      );
-      await _ensurePerson(command.insuredPersonId);
-      final insurance = SocialPensionInsurance(
-        id: previous?.id ?? _ids.newId(),
-        insuredPersonId: command.insuredPersonId,
-        region: command.region,
-        participantType: command.participantType,
-        contributionRecords: command.contributionRecords,
-        createdAt: previous?.createdAt ?? now,
-        updatedAt: now,
-      );
-      _validate(insurance.validate);
-      await _insurances.savePension(insurance);
-      return insurance.id;
-    });
-  }
-
-  @override
-  Future<void> deletePension(String id) {
-    return _runner.run(() async {
-      if (await _insurances.findPension(id) == null) {
-        throw BusinessException(InsuranceErrorCode.socialInsuranceNotFound);
-      }
-      await _insurances.deletePension(id);
+      await _insurances.delete(id);
     });
   }
 
@@ -124,25 +82,21 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
   }
 
   void _ensureHistoryStable({
-    required Object? previous,
+    required SocialInsurance? previous,
     required String region,
+    required SocialInsuranceType insuranceType,
     required SocialParticipantType participantType,
   }) {
     if (previous == null) return;
     final normalizedRegion = region.trim();
-    final changed = switch (previous) {
-      SocialMedicalInsurance() =>
+    final changed =
         previous.region != normalizedRegion ||
-            previous.participantType != participantType,
-      SocialPensionInsurance() =>
-        previous.region != normalizedRegion ||
-            previous.participantType != participantType,
-      _ => true,
-    };
+        previous.insuranceType != insuranceType ||
+        previous.participantType != participantType;
     if (!changed) return;
     throw BusinessException(
       InsuranceErrorCode.invalidCommand,
-      message: '参保地区或参保类型发生变化时，请新建社保记录以保留历史。',
+      message: '社保类型、参保地区或参保类型发生变化时，请新建社保记录以保留历史。',
     );
   }
 

@@ -1,11 +1,12 @@
 import '../valobj/insurance_enums.dart';
 import '../valobj/social_contribution_record.dart';
 
-class SocialPensionInsurance {
-  SocialPensionInsurance({
+class SocialInsurance {
+  SocialInsurance({
     required this.id,
     required this.insuredPersonId,
     required String region,
+    required this.insuranceType,
     required this.participantType,
     required List<SocialContributionRecord> contributionRecords,
     required this.createdAt,
@@ -16,6 +17,7 @@ class SocialPensionInsurance {
   final String id;
   final String insuredPersonId;
   final String region;
+  final SocialInsuranceType insuranceType;
   final SocialParticipantType participantType;
   final List<SocialContributionRecord> contributionRecords;
   final DateTime createdAt;

@@ -6,6 +6,7 @@ class SaveSocialInsuranceCommand {
     this.id,
     required this.insuredPersonId,
     required this.region,
+    required this.insuranceType,
     required this.participantType,
     required this.contributionRecords,
   });
@@ -13,6 +14,7 @@ class SaveSocialInsuranceCommand {
   final String? id;
   final String insuredPersonId;
   final String region;
+  final SocialInsuranceType insuranceType;
   final SocialParticipantType participantType;
   final List<SocialContributionRecord> contributionRecords;
 }

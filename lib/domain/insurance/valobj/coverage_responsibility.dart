@@ -33,21 +33,6 @@ class CoverageResponsibility {
   }) : name = name.trim(),
        points = List.unmodifiable(points);
 
-  factory CoverageResponsibility.controlled({
-    required String id,
-    required ResponsibilityKind kind,
-    required List<ResponsibilityPoint> points,
-    required int order,
-  }) {
-    return CoverageResponsibility(
-      id: id,
-      kind: kind,
-      name: kind.controlledName,
-      points: points,
-      order: order,
-    );
-  }
-
   final String id;
   final ResponsibilityKind kind;
   final String name;
@@ -55,17 +40,8 @@ class CoverageResponsibility {
   final int order;
 
   void validate() {
-    if (id.trim().isEmpty || order < 0) {
+    if (id.trim().isEmpty || name.isEmpty || order < 0) {
       throw ArgumentError('Coverage responsibility identity is invalid.');
-    }
-    if (kind == ResponsibilityKind.custom) {
-      if (name.isEmpty) {
-        throw ArgumentError('Custom responsibility name is required.');
-      }
-    } else if (name != kind.controlledName) {
-      throw ArgumentError(
-        'Controlled responsibility name must match its kind.',
-      );
     }
     final pointIds = <String>{};
     final labels = <String>{};

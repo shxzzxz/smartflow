@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 
 void main() {
-  test('fresh databases create the current v60 schema', () async {
+  test('fresh databases create the current v61 schema', () async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
 
-    expect(version.read<int>('user_version'), 60);
+    expect(version.read<int>('user_version'), 61);
     expect(
       await db
           .customSelect(
@@ -43,14 +43,12 @@ void main() {
             "'coverage_responsibilities', "
             "'responsibility_points', "
             "'insurance_attachments', "
-            "'social_medical_insurances', "
-            "'social_medical_contribution_records', "
-            "'social_pension_insurances', "
-            "'social_pension_contribution_records'"
+            "'social_insurances', "
+            "'social_contribution_records'"
             ')',
           )
           .get(),
-      hasLength(10),
+      hasLength(8),
     );
     expect(
       await db
@@ -61,12 +59,11 @@ void main() {
             "'coverage_responsibilities_insurance_idx', "
             "'responsibility_points_responsibility_idx', "
             "'insurance_attachments_insurance_idx', "
-            "'social_medical_insurances_person_idx', "
-            "'social_pension_insurances_person_idx'"
+            "'social_insurances_person_idx'"
             ')',
           )
           .get(),
-      hasLength(6),
+      hasLength(5),
     );
 
     final accountColumns = await db

@@ -215,6 +215,7 @@ return $default(_that.periodNo,_that.date,_that.principal,_that.interest,_that.f
 class _InstallmentContractDraftRow extends InstallmentContractDraftRow {
   const _InstallmentContractDraftRow({required this.periodNo, required this.date, required this.principal, required this.interest, required this.fee, required this.status, this.scheduleId}): super._();
 
+
 @override final  int periodNo;
 @override final  DateTime date;
 @override final  Money principal;

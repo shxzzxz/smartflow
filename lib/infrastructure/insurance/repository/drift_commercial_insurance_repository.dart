@@ -73,12 +73,11 @@ class DriftCommercialInsuranceRepository
               coverageAmountMinor: Value(
                 insurance.coverageAmount?.amount?.minorUnits,
               ),
-              coverageAmountNote: Value(insurance.coverageAmount?.note),
               premiumAmountMinor: Value(
                 insurance.premiumPlan?.amount?.minorUnits,
               ),
               premiumFrequency: Value(insurance.premiumPlan?.frequency),
-              premiumNote: Value(insurance.premiumPlan?.note),
+              premiumTermCount: Value(insurance.premiumPlan?.termCount),
               createdAt: Value(insurance.createdAt),
               updatedAt: Value(insurance.updatedAt),
             ),
@@ -261,14 +260,12 @@ class DriftCommercialInsuranceRepository
             endDate: row.coverageEndDate,
             lifetime: row.lifetime,
           ),
-          coverageAmount:
-              row.coverageAmountMinor == null && row.coverageAmountNote == null
+          coverageAmount: row.coverageAmountMinor == null
               ? null
               : CoverageAmount(
                   amount: row.coverageAmountMinor == null
                       ? null
                       : Money(minorUnits: row.coverageAmountMinor!),
-                  note: row.coverageAmountNote,
                 ),
           premiumPlan: row.premiumFrequency == null
               ? null
@@ -277,7 +274,7 @@ class DriftCommercialInsuranceRepository
                       ? null
                       : Money(minorUnits: row.premiumAmountMinor!),
                   frequency: row.premiumFrequency!,
-                  note: row.premiumNote,
+                  termCount: row.premiumTermCount,
                 ),
           insuredPersonIds: linksByInsurance[row.id] ?? const [],
           responsibilities: responsibilitiesByInsurance[row.id] ?? const [],

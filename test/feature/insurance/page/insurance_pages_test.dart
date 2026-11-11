@@ -11,10 +11,10 @@ import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_choice_chip_group.dart';
+import 'package:smartflow/design_system/widget/app_surface.dart';
 import 'package:smartflow/domain/insurance/entity/commercial_insurance.dart';
 import 'package:smartflow/domain/insurance/entity/insured_person.dart';
-import 'package:smartflow/domain/insurance/entity/social_medical_insurance.dart';
-import 'package:smartflow/domain/insurance/entity/social_pension_insurance.dart';
+import 'package:smartflow/domain/insurance/entity/social_insurance.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_amount.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_responsibility.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_term.dart';
@@ -23,9 +23,9 @@ import 'package:smartflow/domain/insurance/valobj/social_contribution_record.dar
 import 'package:smartflow/feature/insurance/page/commercial_insurance_detail_page.dart';
 import 'package:smartflow/feature/insurance/page/commercial_insurance_form_page.dart';
 import 'package:smartflow/feature/insurance/page/commercial_insurance_list_page.dart';
+import 'package:smartflow/feature/insurance/page/commercial_insurance_responsibilities_page.dart';
 import 'package:smartflow/feature/insurance/page/insurance_members_page.dart';
 import 'package:smartflow/feature/insurance/page/insurance_overview_page.dart';
-import 'package:smartflow/feature/insurance/page/insurance_responsibility_detail_page.dart';
 import 'package:smartflow/feature/insurance/page/insured_person_form_page.dart';
 import 'package:smartflow/feature/insurance/page/member_coverage_page.dart';
 import 'package:smartflow/feature/insurance/page/social_insurance_detail_page.dart';
@@ -247,6 +247,10 @@ void main() {
           builder: (context, state) =>
               Scaffold(body: Text('保单:${state.pathParameters['id']}')),
         ),
+        GoRoute(
+          path: '/insurance/social/new',
+          builder: (context, state) => const Scaffold(body: Text('新增社保表单')),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -266,11 +270,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('coverage-social-medical-medical-1')),
+      find.byKey(const ValueKey('coverage-social-medical-1')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('coverage-social-pension-pension-1')),
+      find.byKey(const ValueKey('coverage-social-pension-1')),
       findsOneWidget,
     );
     const commercialAddKey = ValueKey('coverage-add-commercial');
@@ -291,9 +295,8 @@ void main() {
     }
     await tester.tap(find.byKey(socialAddKey));
     await tester.pumpAndSettle();
-    expect(find.text('新增社保医保'), findsOneWidget);
-    expect(find.text('新增社保养老'), findsOneWidget);
-    await tester.tapAt(const Offset(AppSpacing.space4, AppSpacing.space4));
+    expect(find.text('新增社保表单'), findsOneWidget);
+    router.pop();
     await tester.pumpAndSettle();
     final titleRect = tester.getRect(find.text('家庭医疗险'));
     final badgeRect = tester.getRect(find.text('保障中'));
@@ -349,13 +352,6 @@ void main() {
           builder: (context, state) => const CommercialInsuranceListPage(),
         ),
         GoRoute(
-          path: '/insurance/commercial/:id/responsibilities/:responsibilityId',
-          builder: (context, state) => InsuranceResponsibilityDetailPage(
-            insuranceId: state.pathParameters['id']!,
-            responsibilityId: state.pathParameters['responsibilityId']!,
-          ),
-        ),
-        GoRoute(
           path: '/insurance/commercial/:id',
           builder: (context, state) => CommercialInsuranceDetailPage(
             insuranceId: state.pathParameters['id']!,
@@ -381,15 +377,33 @@ void main() {
 
     expect(find.text('保单详情'), findsOneWidget);
     expect(find.text('保障责任'), findsOneWidget);
+    expect(find.text('保障期限至'), findsOneWidget);
+    expect(find.text('详情'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.textContaining('张一 · 其他 ·'),
+      find.byType(Scrollable).first,
+      const Offset(0, -300),
+    );
+    expect(find.textContaining('张一 · 其他 ·'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(
-      find.byKey(const ValueKey('insurance-responsibility-responsibility-1')),
+    final responsibilityTile = find.byKey(
+      const ValueKey('insurance-responsibility-responsibility-1'),
     );
+    expect(
+      find.descendant(of: responsibilityTile, matching: find.text('医疗')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: responsibilityTile, matching: find.text('住院报销')),
+      findsNothing,
+    );
+
+    await tester.tap(responsibilityTile);
     await tester.pumpAndSettle();
 
-    expect(find.text('保障责任详情'), findsOneWidget);
-    expect(find.text('住院报销'), findsOneWidget);
+    expect(find.text('保单详情'), findsOneWidget);
+    expect(find.text('保障责任详情'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -400,10 +414,7 @@ void main() {
       database,
     ).save(_person('person-1', '张一'));
     final router = _formRouter(
-      const SocialInsuranceFormPage(
-        sourceType: InsuranceSourceType.socialMedical,
-        initialInsuredPersonId: 'person-1',
-      ),
+      const SocialInsuranceFormPage(initialInsuredPersonId: 'person-1'),
     );
     addTearDown(router.dispose);
 
@@ -411,18 +422,194 @@ void main() {
     await tester.tap(find.text('打开表单'));
     await tester.pumpAndSettle();
     expect(find.text('缴费记录'), findsNothing);
+    expect(find.byKey(const ValueKey('social-type-choice')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('social-participant-type-choice')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('生育'));
+    await tester.tap(find.text('居民'));
     await tester.enterText(find.byType(TextField), '上海');
     await tester.ensureVisible(find.text('保存记录'));
     await tester.tap(find.text('保存记录'));
     await tester.pumpAndSettle();
 
     expect(find.text('打开表单'), findsOneWidget);
-    final records = await DriftSocialInsuranceRepository(
-      database,
-    ).listMedical();
+    final records = await DriftSocialInsuranceRepository(database).list();
     expect(records.single.region, '上海');
     expect(records.single.insuredPersonId, 'person-1');
+    expect(records.single.insuranceType, SocialInsuranceType.maternity);
+    expect(records.single.participantType, SocialParticipantType.resident);
     expect(records.single.contributionRecords, isEmpty);
+  });
+
+  testWidgets('manages policy responsibilities from the detail page', (
+    tester,
+  ) async {
+    await _seedMembers(database);
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              const CommercialInsuranceDetailPage(insuranceId: 'commercial-1'),
+        ),
+        GoRoute(
+          path: '/insurance/commercial/:id/responsibilities',
+          builder: (context, state) => CommercialInsuranceResponsibilitiesPage(
+            insuranceId: state.pathParameters['id']!,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await _pumpRouter(tester, database, queryService, router);
+
+    await tester.tap(find.text('详情'));
+    await tester.pumpAndSettle();
+    expect(find.text('保障责任'), findsOneWidget);
+    expect(find.text('家庭医疗险'), findsNothing);
+    expect(find.text('责任列表'), findsNothing);
+    expect(find.text('保存责任'), findsNothing);
+    expect(find.byTooltip('新增卡片'), findsOneWidget);
+    expect(find.text('住院报销'), findsOneWidget);
+    expect(find.byTooltip('新增要点'), findsOneWidget);
+    expect(find.byTooltip('编辑卡片'), findsOneWidget);
+    expect(find.byTooltip('删除卡片'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('新增要点'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), '门诊医疗');
+    await tester.enterText(find.byType(TextField).at(1), '年度限额 5 万');
+    await tester.tap(find.text('添加'));
+    await tester.pumpAndSettle();
+    expect(find.text('门诊医疗'), findsOneWidget);
+    var detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.single.points.map(
+        (point) => point.label,
+      ),
+      contains('门诊医疗'),
+    );
+
+    await tester.tap(find.text('门诊医疗'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), '年度限额 6 万');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(find.text('年度限额 6 万'), findsOneWidget);
+    detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.single.points
+          .singleWhere((point) => point.label == '门诊医疗')
+          .value,
+      '年度限额 6 万',
+    );
+
+    await tester.longPress(find.text('门诊医疗'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    expect(find.text('门诊医疗'), findsNothing);
+    detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.single.points.map(
+        (point) => point.label,
+      ),
+      isNot(contains('门诊医疗')),
+    );
+
+    await tester.tap(find.byTooltip('新增卡片'));
+    await tester.pumpAndSettle();
+    expect(find.text('责任要点'), findsNothing);
+    await tester.enterText(find.byType(TextField).first, '质子重离子医疗');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(find.text('质子重离子医疗'), findsOneWidget);
+
+    detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.map((item) => item.name),
+      contains('质子重离子医疗'),
+    );
+    expect(
+      detail.insurance.responsibilities
+          .singleWhere((item) => item.name == '质子重离子医疗')
+          .points,
+      isEmpty,
+    );
+
+    final newCard = find.ancestor(
+      of: find.text('质子重离子医疗'),
+      matching: find.byType(AppSurface),
+    );
+    await tester.tap(
+      find.descendant(of: newCard, matching: find.byTooltip('编辑卡片')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '质子重离子治疗');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.map((item) => item.name),
+      contains('质子重离子治疗'),
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('质子重离子治疗'),
+          matching: find.byType(AppSurface),
+        ),
+        matching: find.byTooltip('删除卡片'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+    detail = await queryService.commercialInsuranceDetail('commercial-1');
+    expect(
+      detail!.insurance.responsibilities.map((item) => item.name),
+      isNot(contains('质子重离子治疗')),
+    );
+  });
+
+  testWidgets('responsibility cards fit a phone-width layout', (tester) async {
+    await _seedMembers(database);
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              const CommercialInsuranceResponsibilitiesPage(
+                insuranceId: 'commercial-1',
+              ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await _pumpRouter(
+      tester,
+      database,
+      queryService,
+      router,
+      size: const Size(390, 844),
+    );
+
+    expect(
+      find.byKey(const ValueKey('manage-responsibility-responsibility-1')),
+      findsOneWidget,
+    );
+    expect(find.text('保障责任'), findsOneWidget);
+    expect(find.byTooltip('新增卡片'), findsOneWidget);
+    expect(find.text('住院报销'), findsOneWidget);
+    expect(find.byTooltip('新增要点'), findsOneWidget);
+    expect(find.byTooltip('编辑卡片'), findsOneWidget);
+    expect(find.byTooltip('删除卡片'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('adds a contribution record from social insurance detail', (
@@ -433,10 +620,8 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => const SocialInsuranceDetailPage(
-            insuranceId: 'medical-1',
-            sourceType: InsuranceSourceType.socialMedical,
-          ),
+          builder: (context, state) =>
+              const SocialInsuranceDetailPage(insuranceId: 'medical-1'),
         ),
       ],
     );
@@ -456,7 +641,7 @@ void main() {
     expect(find.text('2 条'), findsOneWidget);
     final records = await DriftSocialInsuranceRepository(
       database,
-    ).findMedical('medical-1');
+    ).find('medical-1');
     expect(records!.contributionRecords, hasLength(2));
   });
 
@@ -498,11 +683,13 @@ void main() {
     };
     expect(categoryRows, hasLength(1));
 
-    const frequencyLabels = ['一次性', '月缴', '季缴', '半年缴', '年缴', '其他'];
+    const frequencyLabels = ['一次性', '月缴', '年缴', '其他'];
     final frequencyRows = {
       for (final label in frequencyLabels) rowPosition(frequencyRow, label),
     };
-    expect(frequencyRows, hasLength(2));
+    expect(frequencyRows, hasLength(1));
+    expect(find.text('季缴'), findsNothing);
+    expect(find.text('半年缴'), findsNothing);
 
     final categoryHeight = tester.getSize(categoryRow).height;
     await tester.ensureVisible(frequencyRow);
@@ -528,6 +715,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), '百万医疗');
     await tester.enterText(find.byType(TextField).at(1), '示例保险');
+    expect(find.text('保额说明'), findsNothing);
+    expect(find.text('缴费说明'), findsNothing);
+    expect(find.text('保障责任'), findsNothing);
+    expect(find.text('缴费期数'), findsOneWidget);
+    expect(find.text('期缴金额'), findsOneWidget);
+    expect(find.textContaining('张一 · 其他 ·'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(4), '20');
     expect(
       find.byType(AppPlainChoiceChipFormRow<CommercialInsuranceCategory>),
       findsOneWidget,
@@ -565,6 +759,7 @@ void main() {
     expect(records.single.insuredPersonIds, ['person-1']);
     expect(records.single.category, CommercialInsuranceCategory.accident);
     expect(records.single.premiumPlan?.frequency, PremiumFrequency.other);
+    expect(records.single.premiumPlan?.termCount, 20);
   });
 }
 
@@ -631,7 +826,7 @@ Future<void> _seedMembers(AppDatabase database) async {
         CoverageResponsibility(
           id: 'responsibility-1',
           kind: ResponsibilityKind.medical,
-          name: '医疗',
+          name: '住院医疗',
           points: const [
             ResponsibilityPoint(
               id: 'point-1',
@@ -648,11 +843,12 @@ Future<void> _seedMembers(AppDatabase database) async {
       updatedAt: createdAt,
     ),
   );
-  await social.saveMedical(
-    SocialMedicalInsurance(
+  await social.save(
+    SocialInsurance(
       id: 'medical-1',
       insuredPersonId: 'person-1',
       region: '上海',
+      insuranceType: SocialInsuranceType.medical,
       participantType: SocialParticipantType.employee,
       contributionRecords: [
         SocialContributionRecord(
@@ -664,11 +860,12 @@ Future<void> _seedMembers(AppDatabase database) async {
       updatedAt: createdAt,
     ),
   );
-  await social.savePension(
-    SocialPensionInsurance(
+  await social.save(
+    SocialInsurance(
       id: 'pension-1',
       insuredPersonId: 'person-1',
       region: '上海',
+      insuranceType: SocialInsuranceType.pension,
       participantType: SocialParticipantType.employee,
       contributionRecords: const [],
       createdAt: createdAt,

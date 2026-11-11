@@ -9,12 +9,14 @@ class InsurancePolicyFactsPanel extends StatelessWidget {
     required this.coverageAmountLabel,
     required this.coverageTermLabel,
     required this.premiumLabel,
+    required this.coverageTermEnded,
     super.key,
   });
 
   final String coverageAmountLabel;
   final String coverageTermLabel;
   final String premiumLabel;
+  final bool coverageTermEnded;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,10 @@ class InsurancePolicyFactsPanel extends StatelessWidget {
       child: InsuranceMetricStrip(
         metrics: [
           InsuranceMetric(label: '保额', value: coverageAmountLabel),
-          InsuranceMetric(label: '保障期限', value: coverageTermLabel),
+          InsuranceMetric(
+            label: coverageTermEnded ? '保障期限至' : '保障期限',
+            value: coverageTermLabel,
+          ),
           InsuranceMetric(label: '缴费方式', value: premiumLabel),
         ],
       ),

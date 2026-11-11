@@ -45,6 +45,7 @@ void main() {
           coverageAmountMinor: const Value(100000000),
           premiumFrequency: const Value(PremiumFrequency.annual),
           premiumAmountMinor: const Value(500000),
+          premiumTermCount: const Value(20),
           createdAt: Value(createdAt),
           updatedAt: Value(createdAt),
         ),
@@ -87,41 +88,39 @@ void main() {
           createdAt: Value(createdAt),
         ),
       ]);
-      batch.insertAll(source.socialMedicalInsurances, [
-        SocialMedicalInsurancesCompanion.insert(
+      batch.insertAll(source.socialInsurances, [
+        SocialInsurancesCompanion.insert(
           id: 'medical-1',
           insuredPersonId: 'person-1',
           region: '上海',
+          insuranceType: SocialInsuranceType.medical,
           participantType: SocialParticipantType.employee,
           createdAt: Value(createdAt),
           updatedAt: Value(createdAt),
         ),
-      ]);
-      batch.insertAll(source.socialMedicalContributionRecords, [
-        SocialMedicalContributionRecordsCompanion.insert(
-          socialMedicalInsuranceId: 'medical-1',
-          yearMonth: '2026-01',
-          contributionBaseMinor: 800000,
-        ),
-        SocialMedicalContributionRecordsCompanion.insert(
-          socialMedicalInsuranceId: 'medical-1',
-          yearMonth: '2026-02',
-          contributionBaseMinor: 820000,
-        ),
-      ]);
-      batch.insertAll(source.socialPensionInsurances, [
-        SocialPensionInsurancesCompanion.insert(
+        SocialInsurancesCompanion.insert(
           id: 'pension-1',
           insuredPersonId: 'person-2',
           region: '北京',
+          insuranceType: SocialInsuranceType.pension,
           participantType: SocialParticipantType.resident,
           createdAt: Value(createdAt),
           updatedAt: Value(createdAt),
         ),
       ]);
-      batch.insertAll(source.socialPensionContributionRecords, [
-        SocialPensionContributionRecordsCompanion.insert(
-          socialPensionInsuranceId: 'pension-1',
+      batch.insertAll(source.socialContributionRecords, [
+        SocialContributionRecordsCompanion.insert(
+          socialInsuranceId: 'medical-1',
+          yearMonth: '2026-01',
+          contributionBaseMinor: 800000,
+        ),
+        SocialContributionRecordsCompanion.insert(
+          socialInsuranceId: 'medical-1',
+          yearMonth: '2026-02',
+          contributionBaseMinor: 820000,
+        ),
+        SocialContributionRecordsCompanion.insert(
+          socialInsuranceId: 'pension-1',
           yearMonth: '2026-01',
           contributionBaseMinor: 500000,
         ),
@@ -131,7 +130,7 @@ void main() {
     final snapshot = await DriftBackupGateway(source).readSnapshot();
     expect(snapshot.rows('insured_people'), hasLength(2));
     expect(snapshot.rows('commercial_insurance_insured_people'), hasLength(2));
-    expect(snapshot.rows('social_medical_contribution_records'), hasLength(2));
+    expect(snapshot.rows('social_contribution_records'), hasLength(3));
     BackupService.validateSnapshot(snapshot);
 
     await DriftBackupGateway(target).replaceSnapshot(snapshot);
@@ -157,21 +156,10 @@ void main() {
       await target.select(target.insuranceAttachments).get(),
       hasLength(1),
     );
+    expect(await target.select(target.socialInsurances).get(), hasLength(2));
     expect(
-      await target.select(target.socialMedicalInsurances).get(),
-      hasLength(1),
-    );
-    expect(
-      await target.select(target.socialMedicalContributionRecords).get(),
-      hasLength(2),
-    );
-    expect(
-      await target.select(target.socialPensionInsurances).get(),
-      hasLength(1),
-    );
-    expect(
-      await target.select(target.socialPensionContributionRecords).get(),
-      hasLength(1),
+      await target.select(target.socialContributionRecords).get(),
+      hasLength(3),
     );
   });
 }

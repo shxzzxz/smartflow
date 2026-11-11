@@ -4,7 +4,6 @@ import '../feature/credit/page/installment_product_edit_page.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
-import '../application/insurance/insurance_query_api.dart';
 import '../application/ledger/ledger_query_api.dart';
 import '../application/orchestration/orchestration_command_api.dart';
 import '../core/time/month_key.dart';
@@ -50,10 +49,10 @@ import '../feature/import/page/import_page.dart';
 import '../feature/import/presentation/import_presentation.dart';
 import '../feature/insurance/page/commercial_insurance_detail_page.dart';
 import '../feature/insurance/page/commercial_insurance_form_page.dart';
+import '../feature/insurance/page/commercial_insurance_responsibilities_page.dart';
 import '../feature/insurance/page/commercial_insurance_list_page.dart';
 import '../feature/insurance/page/insurance_members_page.dart';
 import '../feature/insurance/page/insurance_overview_page.dart';
-import '../feature/insurance/page/insurance_responsibility_detail_page.dart';
 import '../feature/insurance/page/insured_person_form_page.dart';
 import '../feature/insurance/page/member_coverage_page.dart';
 import '../feature/insurance/page/social_insurance_detail_page.dart';
@@ -533,10 +532,9 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
-          path: 'commercial/:id/responsibilities/:responsibilityId',
-          builder: (context, state) => InsuranceResponsibilityDetailPage(
+          path: 'commercial/:id/responsibilities',
+          builder: (context, state) => CommercialInsuranceResponsibilitiesPage(
             insuranceId: state.pathParameters['id']!,
-            responsibilityId: state.pathParameters['responsibilityId']!,
           ),
         ),
         GoRoute(
@@ -550,44 +548,19 @@ final appRouter = GoRouter(
           builder: (context, state) => const CommercialInsuranceListPage(),
         ),
         GoRoute(
-          path: 'social-medical/new',
+          path: 'social/new',
           builder: (context, state) => SocialInsuranceFormPage(
-            sourceType: InsuranceSourceType.socialMedical,
             initialInsuredPersonId: state.uri.queryParameters['personId'],
           ),
         ),
         GoRoute(
-          path: 'social-medical/:id/edit',
-          builder: (context, state) => SocialInsuranceFormPage(
-            sourceType: InsuranceSourceType.socialMedical,
-            insuranceId: state.pathParameters['id']!,
-          ),
+          path: 'social/:id/edit',
+          builder: (context, state) =>
+              SocialInsuranceFormPage(insuranceId: state.pathParameters['id']!),
         ),
         GoRoute(
-          path: 'social-medical/:id',
+          path: 'social/:id',
           builder: (context, state) => SocialInsuranceDetailPage(
-            sourceType: InsuranceSourceType.socialMedical,
-            insuranceId: state.pathParameters['id']!,
-          ),
-        ),
-        GoRoute(
-          path: 'social-pension/new',
-          builder: (context, state) => SocialInsuranceFormPage(
-            sourceType: InsuranceSourceType.socialPension,
-            initialInsuredPersonId: state.uri.queryParameters['personId'],
-          ),
-        ),
-        GoRoute(
-          path: 'social-pension/:id/edit',
-          builder: (context, state) => SocialInsuranceFormPage(
-            sourceType: InsuranceSourceType.socialPension,
-            insuranceId: state.pathParameters['id']!,
-          ),
-        ),
-        GoRoute(
-          path: 'social-pension/:id',
-          builder: (context, state) => SocialInsuranceDetailPage(
-            sourceType: InsuranceSourceType.socialPension,
             insuranceId: state.pathParameters['id']!,
           ),
         ),

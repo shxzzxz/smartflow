@@ -5,7 +5,6 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../application/insurance/insurance_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/token/component.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_list_divider.dart';
@@ -50,22 +49,8 @@ class MemberCoveragePage extends ConsumerWidget {
               );
             }
             final socialRows = [
-              for (final insurance in value.socialMedicalInsurances)
-                _SocialRow(
-                  id: insurance.id,
-                  sourceType: InsuranceSourceType.socialMedical,
-                  region: insurance.region,
-                  participantType: insurance.participantType,
-                  recordCount: insurance.contributionRecords.length,
-                ),
-              for (final insurance in value.socialPensionInsurances)
-                _SocialRow(
-                  id: insurance.id,
-                  sourceType: InsuranceSourceType.socialPension,
-                  region: insurance.region,
-                  participantType: insurance.participantType,
-                  recordCount: insurance.contributionRecords.length,
-                ),
+              for (final insurance in value.socialInsurances)
+                _SocialRow(insurance: insurance),
             ];
             return Column(
               children: [
@@ -94,23 +79,10 @@ class MemberCoveragePage extends ConsumerWidget {
                           ),
                         ),
                         AppPopupMenuAction(
-                          label: '新增社保医保',
-                          icon: RemixIcons.hospital_line,
-                          onPressed: () => context.push(
-                            _newRoute(
-                              '/insurance/social-medical/new',
-                              insuredPersonId,
-                            ),
-                          ),
-                        ),
-                        AppPopupMenuAction(
-                          label: '新增社保养老',
+                          label: '新增社保',
                           icon: RemixIcons.hand_heart_line,
                           onPressed: () => context.push(
-                            _newRoute(
-                              '/insurance/social-pension/new',
-                              insuredPersonId,
-                            ),
+                            _newRoute('/insurance/social/new', insuredPersonId),
                           ),
                         ),
                       ],
@@ -187,31 +159,12 @@ class MemberCoveragePage extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.space20),
                       _CoverageSection(
                         title: '社保',
-                        trailing: _SectionAddMenuButton(
+                        trailing: _SectionAddButton(
                           key: const ValueKey('coverage-add-social'),
                           tooltip: '新增社保记录',
-                          items: [
-                            AppPopupMenuAction(
-                              label: '新增社保医保',
-                              icon: RemixIcons.hospital_line,
-                              onPressed: () => context.push(
-                                _newRoute(
-                                  '/insurance/social-medical/new',
-                                  insuredPersonId,
-                                ),
-                              ),
-                            ),
-                            AppPopupMenuAction(
-                              label: '新增社保养老',
-                              icon: RemixIcons.hand_heart_line,
-                              onPressed: () => context.push(
-                                _newRoute(
-                                  '/insurance/social-pension/new',
-                                  insuredPersonId,
-                                ),
-                              ),
-                            ),
-                          ],
+                          onPressed: () => context.push(
+                            _newRoute('/insurance/social/new', insuredPersonId),
+                          ),
                         ),
                         emptyMessage: '还没有社保记录',
                         children: [
@@ -270,35 +223,6 @@ class _SectionAddButton extends StatelessWidget {
   }
 }
 
-class _SectionAddMenuButton extends StatelessWidget {
-  const _SectionAddMenuButton({
-    required this.tooltip,
-    required this.items,
-    super.key,
-  });
-
-  final String tooltip;
-  final List<AppPopupMenuEntry> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return MenuAnchor(
-      style: const MenuStyle(
-        minimumSize: WidgetStatePropertyAll(
-          Size(AppComponentTokens.menuMinWidth, 0),
-        ),
-      ),
-      menuChildren: items.cast<Widget>(),
-      builder: (context, controller, child) {
-        return _SectionAddButton(
-          tooltip: tooltip,
-          onPressed: controller.isOpen ? controller.close : controller.open,
-        );
-      },
-    );
-  }
-}
-
 class _CoverageSection extends StatelessWidget {
   const _CoverageSection({
     required this.title,
@@ -334,47 +258,40 @@ class _CoverageSection extends StatelessWidget {
 }
 
 class _SocialRow extends StatelessWidget {
-  const _SocialRow({
-    required this.id,
-    required this.sourceType,
-    required this.region,
-    required this.participantType,
-    required this.recordCount,
-  });
+  const _SocialRow({required this.insurance});
 
-  final String id;
-  final InsuranceSourceType sourceType;
-  final String region;
-  final SocialParticipantType participantType;
-  final int recordCount;
+  final SocialInsurance insurance;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      key: ValueKey('coverage-${_routeSegment(sourceType)}-$id'),
-      onTap: () => context.push('/insurance/${_routeSegment(sourceType)}/$id'),
+      key: ValueKey('coverage-social-${insurance.id}'),
+      onTap: () => context.push('/insurance/social/${insurance.id}'),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
           children: [
-            InsuranceCategoryIcon.social(sourceType: sourceType, size: 40),
+            InsuranceCategoryIcon.social(
+              insuranceType: insurance.insuranceType,
+              size: 40,
+            ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    sourceType.label,
+                    '社保${insurance.insuranceType.label}',
                     style: context.appTextStyles.listTitle,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    '$region · ${participantType.label}',
+                    '${insurance.region} · ${insurance.participantType.label}',
                     style: context.appTextStyles.listSupporting,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    '$recordCount 条缴费记录',
+                    '${insurance.contributionRecords.length} 条缴费记录',
                     style: context.appTextStyles.listSupporting,
                   ),
                 ],
@@ -389,13 +306,5 @@ class _SocialRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _routeSegment(InsuranceSourceType type) {
-    return switch (type) {
-      InsuranceSourceType.socialMedical => 'social-medical',
-      InsuranceSourceType.socialPension => 'social-pension',
-      InsuranceSourceType.commercial => 'commercial',
-    };
   }
 }

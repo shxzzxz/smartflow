@@ -19,21 +19,13 @@ import '../view_model/social_insurance_detail_view_model.dart';
 import '../widget/social_contribution_editor.dart';
 
 class SocialInsuranceDetailPage extends ConsumerWidget {
-  const SocialInsuranceDetailPage({
-    required this.insuranceId,
-    required this.sourceType,
-    super.key,
-  });
+  const SocialInsuranceDetailPage({required this.insuranceId, super.key});
 
   final String insuranceId;
-  final InsuranceSourceType sourceType;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = socialInsuranceDetailViewModelProvider(
-      insuranceId,
-      sourceType,
-    );
+    final provider = socialInsuranceDetailViewModelProvider(insuranceId);
     final asyncDetail = ref.watch(provider);
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -50,7 +42,7 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
             if (detail == null) {
               return Column(
                 children: [
-                  AppPageHeader(title: sourceType.label),
+                  const AppPageHeader(title: '社保详情'),
                   const Expanded(child: Center(child: Text('社保记录不存在'))),
                 ],
               );
@@ -58,16 +50,14 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
             return Column(
               children: [
                 AppPageHeader(
-                  title: sourceType.label,
+                  title: '社保${detail.insuranceType.label}',
                   subtitle: detail.insuredPersonName,
                   actions: [
                     AppHeaderIconButton(
                       icon: RemixIcons.edit_line,
                       tooltip: '编辑社保记录',
-                      onPressed: () => context.push(
-                        '/insurance/${_routeSegment(sourceType)}/'
-                        '$insuranceId/edit',
-                      ),
+                      onPressed: () =>
+                          context.push('/insurance/social/$insuranceId/edit'),
                     ),
                     AppPopupMenuButton(
                       tooltip: '社保记录操作',
@@ -76,8 +66,11 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
                         AppPopupMenuAction(
                           label: '删除社保记录',
                           icon: RemixIcons.delete_bin_line,
-                          onPressed: () =>
-                              _delete(context, ref.read(provider.notifier)),
+                          onPressed: () => _delete(
+                            context,
+                            ref.read(provider.notifier),
+                            detail.insuranceType.label,
+                          ),
                         ),
                       ],
                     ),
@@ -105,6 +98,11 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
                               ),
                               const SizedBox(height: AppSpacing.space10),
                               _SummaryRow(label: '参保地区', value: detail.region),
+                              const SizedBox(height: AppSpacing.space10),
+                              _SummaryRow(
+                                label: '社保类型',
+                                value: detail.insuranceType.label,
+                              ),
                               const SizedBox(height: AppSpacing.space10),
                               _SummaryRow(
                                 label: '参保类型',
@@ -184,11 +182,12 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
   Future<void> _delete(
     BuildContext context,
     SocialInsuranceDetailViewModel notifier,
+    String insuranceTypeLabel,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('删除${sourceType.label}'),
+        title: Text('删除社保$insuranceTypeLabel'),
         content: const Text('确定删除该社保记录及其全部缴费记录吗？'),
         actions: [
           TextButton(
@@ -282,14 +281,6 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  String _routeSegment(InsuranceSourceType type) {
-    return switch (type) {
-      InsuranceSourceType.socialMedical => 'social-medical',
-      InsuranceSourceType.socialPension => 'social-pension',
-      InsuranceSourceType.commercial => 'commercial',
-    };
   }
 }
 

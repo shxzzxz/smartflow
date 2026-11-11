@@ -2,11 +2,13 @@ import 'package:drift/drift.dart';
 
 import '../../../../domain/insurance/valobj/insurance_enums.dart';
 
-@DataClassName('SocialPensionInsuranceRow')
-class SocialPensionInsurances extends Table {
+@DataClassName('SocialInsuranceRow')
+class SocialInsurances extends Table {
   TextColumn get id => text()();
   TextColumn get insuredPersonId => text().named('insured_person_id')();
   TextColumn get region => text()();
+  TextColumn get insuranceType =>
+      textEnum<SocialInsuranceType>().named('insurance_type')();
   TextColumn get participantType =>
       textEnum<SocialParticipantType>().named('participant_type')();
   DateTimeColumn get createdAt =>

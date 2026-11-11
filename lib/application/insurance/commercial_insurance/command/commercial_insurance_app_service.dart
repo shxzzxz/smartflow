@@ -7,7 +7,6 @@ import '../../../../domain/insurance/port/commercial_insurance_repository.dart';
 import '../../../../domain/insurance/port/insured_person_repository.dart';
 import '../../../../domain/insurance/valobj/coverage_responsibility.dart';
 import '../../../../domain/insurance/valobj/insurance_attachment.dart';
-import '../../../../domain/insurance/valobj/insurance_enums.dart';
 import '../../../../domain/insurance/valobj/insurance_error_code.dart';
 import '../../../shared/transaction_runner.dart';
 import '../../attachment/port/insurance_attachment_storage.dart';
@@ -70,56 +69,12 @@ class CommercialInsuranceAppServiceImpl
         }
       }
 
-      final previousResponsibilityIds = {
-        for (final item in previous?.responsibilities ?? const []) item.id,
-      };
-      final previousPointIds = {
-        for (final item in previous?.responsibilities ?? const [])
-          for (final point in item.points) point.id,
-      };
-      final responsibilities = <CoverageResponsibility>[];
-      for (
-        var responsibilityIndex = 0;
-        responsibilityIndex < command.responsibilities.length;
-        responsibilityIndex++
-      ) {
-        final input = command.responsibilities[responsibilityIndex];
-        final responsibilityId =
-            input.id != null && previousResponsibilityIds.contains(input.id)
-            ? input.id!
-            : _ids.newId();
-        final points = <ResponsibilityPoint>[];
-        for (
-          var pointIndex = 0;
-          pointIndex < input.points.length;
-          pointIndex++
-        ) {
-          final point = input.points[pointIndex];
-          final pointId =
-              point.id != null && previousPointIds.contains(point.id)
-              ? point.id!
-              : _ids.newId();
-          points.add(
-            ResponsibilityPoint(
-              id: pointId,
-              label: point.label.trim(),
-              value: point.value.trim(),
-              order: pointIndex,
-            ),
-          );
-        }
-        responsibilities.add(
-          CoverageResponsibility(
-            id: responsibilityId,
-            kind: input.kind,
-            name: input.kind == ResponsibilityKind.custom
-                ? (input.name ?? '').trim()
-                : input.kind.controlledName,
-            points: points,
-            order: responsibilityIndex,
-          ),
-        );
-      }
+      final responsibilities = command.responsibilities == null
+          ? previous?.responsibilities ?? const <CoverageResponsibility>[]
+          : _buildResponsibilities(
+              command.responsibilities!,
+              previous: previous,
+            );
 
       final insurance = CommercialInsurance(
         id: previous?.id ?? _ids.newId(),
@@ -267,6 +222,64 @@ class CommercialInsuranceAppServiceImpl
       throw BusinessException(InsuranceErrorCode.commercialInsuranceNotFound);
     }
     return insurance;
+  }
+
+  List<CoverageResponsibility> _buildResponsibilities(
+    List<InsuranceResponsibilityInput> inputs, {
+    required CommercialInsurance? previous,
+  }) {
+    final previousResponsibilityIds = <String>{
+      for (final item in previous?.responsibilities ?? const []) item.id,
+    };
+    final previousPointIds = <String>{
+      for (final item in previous?.responsibilities ?? const [])
+        for (final point in item.points) point.id,
+    };
+    return [
+      for (
+        var responsibilityIndex = 0;
+        responsibilityIndex < inputs.length;
+        responsibilityIndex++
+      )
+        _buildResponsibility(
+          inputs[responsibilityIndex],
+          order: responsibilityIndex,
+          previousResponsibilityIds: previousResponsibilityIds,
+          previousPointIds: previousPointIds,
+        ),
+    ];
+  }
+
+  CoverageResponsibility _buildResponsibility(
+    InsuranceResponsibilityInput input, {
+    required int order,
+    required Set<String> previousResponsibilityIds,
+    required Set<String> previousPointIds,
+  }) {
+    final responsibilityId =
+        input.id != null && previousResponsibilityIds.contains(input.id)
+        ? input.id!
+        : _ids.newId();
+    final points = [
+      for (var pointIndex = 0; pointIndex < input.points.length; pointIndex++)
+        ResponsibilityPoint(
+          id:
+              input.points[pointIndex].id != null &&
+                  previousPointIds.contains(input.points[pointIndex].id)
+              ? input.points[pointIndex].id!
+              : _ids.newId(),
+          label: input.points[pointIndex].label.trim(),
+          value: input.points[pointIndex].value.trim(),
+          order: pointIndex,
+        ),
+    ];
+    return CoverageResponsibility(
+      id: responsibilityId,
+      kind: input.kind,
+      name: input.name,
+      points: points,
+      order: order,
+    );
   }
 
   CommercialInsurance _copyWithAttachments(

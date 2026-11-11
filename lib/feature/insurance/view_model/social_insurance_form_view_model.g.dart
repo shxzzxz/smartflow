@@ -21,7 +21,7 @@ final class SocialInsuranceFormViewModelProvider
         > {
   SocialInsuranceFormViewModelProvider._({
     required SocialInsuranceFormViewModelFamily super.from,
-    required (String?, InsuranceSourceType, String?) super.argument,
+    required (String?, String?) super.argument,
   }) : super(
          retry: null,
          name: r'socialInsuranceFormViewModelProvider',
@@ -57,7 +57,7 @@ final class SocialInsuranceFormViewModelProvider
 }
 
 String _$socialInsuranceFormViewModelHash() =>
-    r'72172292a144e106e63c19fa974fe7e2b9b9acbc';
+    r'e44e9387addd04813b730a03ea8edc7a76d1f7ae';
 
 final class SocialInsuranceFormViewModelFamily extends $Family
     with
@@ -66,7 +66,7 @@ final class SocialInsuranceFormViewModelFamily extends $Family
           AsyncValue<SocialInsuranceFormState?>,
           SocialInsuranceFormState?,
           FutureOr<SocialInsuranceFormState?>,
-          (String?, InsuranceSourceType, String?)
+          (String?, String?)
         > {
   SocialInsuranceFormViewModelFamily._()
     : super(
@@ -79,10 +79,9 @@ final class SocialInsuranceFormViewModelFamily extends $Family
 
   SocialInsuranceFormViewModelProvider call(
     String? insuranceId,
-    InsuranceSourceType sourceType,
     String? initialInsuredPersonId,
   ) => SocialInsuranceFormViewModelProvider._(
-    argument: (insuranceId, sourceType, initialInsuredPersonId),
+    argument: (insuranceId, initialInsuredPersonId),
     from: this,
   );
 
@@ -92,14 +91,12 @@ final class SocialInsuranceFormViewModelFamily extends $Family
 
 abstract class _$SocialInsuranceFormViewModel
     extends $AsyncNotifier<SocialInsuranceFormState?> {
-  late final _$args = ref.$arg as (String?, InsuranceSourceType, String?);
+  late final _$args = ref.$arg as (String?, String?);
   String? get insuranceId => _$args.$1;
-  InsuranceSourceType get sourceType => _$args.$2;
-  String? get initialInsuredPersonId => _$args.$3;
+  String? get initialInsuredPersonId => _$args.$2;
 
   FutureOr<SocialInsuranceFormState?> build(
     String? insuranceId,
-    InsuranceSourceType sourceType,
     String? initialInsuredPersonId,
   );
   @$mustCallSuper
@@ -122,9 +119,6 @@ abstract class _$SocialInsuranceFormViewModel
               Object?,
               Object?
             >;
-    return element.handleCreate(
-      ref,
-      () => build(_$args.$1, _$args.$2, _$args.$3),
-    );
+    return element.handleCreate(ref, () => build(_$args.$1, _$args.$2));
   }
 }

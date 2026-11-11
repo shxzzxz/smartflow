@@ -42,7 +42,7 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 9);
+      expect(inspected.manifest.backupSchemaVersion, 10);
       expect(inspected.manifest.schemaVersion, 55);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
@@ -80,7 +80,7 @@ void main() {
         final inspection = await v50Service.inspect(oldDirectory);
         final diff = await v50Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 9);
+        expect(inspection.manifest.backupSchemaVersion, 10);
         expect(inspection.manifest.schemaVersion, 49);
         expect(diff.itemFor('preferences').added, 1);
         expect(v50Gateway.replaceCount, 1);
@@ -302,7 +302,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 10;
+      manifest['backupSchemaVersion'] = 11;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -311,7 +311,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 10'),
+            contains('backupSchemaVersion 11'),
           ),
         ),
       );
@@ -360,7 +360,7 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 9);
+        expect(manifest.backupSchemaVersion, 10);
       },
     );
   });

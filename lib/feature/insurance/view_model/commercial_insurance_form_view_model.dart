@@ -22,7 +22,6 @@ final _logger = Logger('feature.insurance.commercial_form');
 class CommercialInsuranceFormViewModel
     extends _$CommercialInsuranceFormViewModel {
   CommercialInsuranceFormState? _initializedState;
-  var _draftSequence = 0;
 
   @override
   Future<CommercialInsuranceFormState?> build(
@@ -79,57 +78,13 @@ class CommercialInsuranceFormViewModel
     });
   }
 
-  void upsertResponsibility(InsuranceResponsibilityDraft draft) {
-    _update((current) {
-      final next = [...current.responsibilities];
-      final index = next.indexWhere((item) => item.id == draft.id);
-      if (index == -1) {
-        next.add(draft);
-      } else {
-        next[index] = draft;
-      }
-      return current.copyWith(responsibilities: next);
-    });
-  }
-
-  void removeResponsibility(String id) {
-    _update(
-      (current) => current.copyWith(
-        responsibilities: [
-          for (final item in current.responsibilities)
-            if (item.id != id) item,
-        ],
-      ),
-    );
-  }
-
-  InsuranceResponsibilityDraft newResponsibilityDraft({
-    required ResponsibilityKind kind,
-    String? customName,
-  }) {
-    return InsuranceResponsibilityDraft(
-      id: '__draft__${_draftSequence++}',
-      kind: kind,
-      name: kind == ResponsibilityKind.custom
-          ? (customName ?? '').trim()
-          : kind.controlledName,
-      points: const [],
-    );
-  }
-
-  String newResponsibilityDraftId() =>
-      '__draft_responsibility__${_draftSequence++}';
-
-  String newPointDraftId() => '__draft_point__${_draftSequence++}';
-
   Future<UiActionOutcome<String>> save({
     required String nameText,
     required String insurerNameText,
     required String productFormText,
     required String coverageAmountText,
-    required String coverageAmountNoteText,
     required String premiumAmountText,
-    required String premiumNoteText,
+    required String premiumTermCountText,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalid('商业保险表单尚未加载');
@@ -143,16 +98,17 @@ class CommercialInsuranceFormViewModel
       return _invalid('请至少选择一个被保险人');
     }
 
-    final coverageAmount = _coverageAmount(
-      amountText: coverageAmountText,
-      noteText: coverageAmountNoteText,
-    );
+    final coverageAmount = _coverageAmount(amountText: coverageAmountText);
     if (coverageAmount.error != null) {
       return _invalid(coverageAmount.error!);
     }
     final premiumAmount = _moneyOrNull(premiumAmountText);
     if (premiumAmount.invalid || (premiumAmount.money?.minorUnits ?? 0) < 0) {
-      return _invalid('请输入有效的缴费金额');
+      return _invalid('请输入有效的期缴金额');
+    }
+    final premiumTermCount = _positiveIntegerOrNull(premiumTermCountText);
+    if (premiumTermCount.invalid) {
+      return _invalid('缴费期数必须为正整数');
     }
     final coverageTerm = CoverageTerm(
       startDate: current.coverageStartDate,
@@ -184,25 +140,9 @@ class CommercialInsuranceFormViewModel
                 premiumPlan: PremiumPlan(
                   amount: premiumAmount.money,
                   frequency: current.premiumFrequency,
-                  note: _nullIfBlank(premiumNoteText),
+                  termCount: premiumTermCount.value,
                 ),
                 insuredPersonIds: current.insuredPersonIds,
-                responsibilities: [
-                  for (final responsibility in current.responsibilities)
-                    InsuranceResponsibilityInput(
-                      id: responsibility.isNew ? null : responsibility.id,
-                      kind: responsibility.kind,
-                      name: responsibility.name,
-                      points: [
-                        for (final point in responsibility.points)
-                          InsuranceResponsibilityPointInput(
-                            id: point.isNew ? null : point.id,
-                            label: point.label,
-                            value: point.value,
-                          ),
-                      ],
-                    ),
-                ],
               ),
             ),
       );
@@ -230,10 +170,7 @@ class CommercialInsuranceFormViewModel
         : _MoneyResult(money: money);
   }
 
-  _CoverageAmountResult _coverageAmount({
-    required String amountText,
-    required String noteText,
-  }) {
+  _CoverageAmountResult _coverageAmount({required String amountText}) {
     final amount = _moneyOrNull(amountText);
     if (amount.invalid) {
       return const _CoverageAmountResult(error: '请输入有效的保额');
@@ -241,13 +178,18 @@ class CommercialInsuranceFormViewModel
     if ((amount.money?.minorUnits ?? 0) < 0) {
       return const _CoverageAmountResult(error: '保额不能为负');
     }
-    final note = _nullIfBlank(noteText);
-    if (amount.money == null && note == null) {
-      return const _CoverageAmountResult();
-    }
     return _CoverageAmountResult(
-      value: CoverageAmount(amount: amount.money, note: note),
+      value: amount.money == null ? null : CoverageAmount(amount: amount.money),
     );
+  }
+
+  _IntegerResult _positiveIntegerOrNull(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return const _IntegerResult();
+    final value = int.tryParse(trimmed);
+    return value == null || value <= 0
+        ? const _IntegerResult.invalid()
+        : _IntegerResult(value: value);
   }
 
   void _update(
@@ -276,12 +218,10 @@ class CommercialInsuranceFormState {
     required this.lifetime,
     required this.premiumFrequency,
     required List<String> insuredPersonIds,
-    required List<InsuranceResponsibilityDraft> responsibilities,
     this.id,
     this.coverageEndDate,
     this.submitting = false,
-  }) : insuredPersonIds = List.unmodifiable(insuredPersonIds),
-       responsibilities = List.unmodifiable(responsibilities);
+  }) : insuredPersonIds = List.unmodifiable(insuredPersonIds);
 
   factory CommercialInsuranceFormState.initial({
     required List<InsuredPerson> insuredPeople,
@@ -296,7 +236,6 @@ class CommercialInsuranceFormState {
       lifetime: false,
       premiumFrequency: PremiumFrequency.other,
       insuredPersonIds: [?initialInsuredPersonId],
-      responsibilities: const [],
     );
   }
 
@@ -317,10 +256,6 @@ class CommercialInsuranceFormState {
       premiumFrequency:
           insurance.premiumPlan?.frequency ?? PremiumFrequency.other,
       insuredPersonIds: insurance.insuredPersonIds,
-      responsibilities: [
-        for (final item in insurance.responsibilities)
-          InsuranceResponsibilityDraft.fromDomain(item),
-      ],
     );
   }
 
@@ -332,7 +267,6 @@ class CommercialInsuranceFormState {
   final DateTime? coverageEndDate;
   final bool lifetime;
   final List<String> insuredPersonIds;
-  final List<InsuranceResponsibilityDraft> responsibilities;
   final PremiumFrequency premiumFrequency;
   final bool submitting;
 
@@ -342,7 +276,6 @@ class CommercialInsuranceFormState {
     Object? coverageEndDate = _sentinel,
     bool? lifetime,
     List<String>? insuredPersonIds,
-    List<InsuranceResponsibilityDraft>? responsibilities,
     PremiumFrequency? premiumFrequency,
     bool? submitting,
   }) {
@@ -357,7 +290,6 @@ class CommercialInsuranceFormState {
           : coverageEndDate as DateTime?,
       lifetime: lifetime ?? this.lifetime,
       insuredPersonIds: insuredPersonIds ?? this.insuredPersonIds,
-      responsibilities: responsibilities ?? this.responsibilities,
       premiumFrequency: premiumFrequency ?? this.premiumFrequency,
       submitting: submitting ?? this.submitting,
     );
@@ -370,9 +302,8 @@ class CommercialInsuranceFormInitialValues {
     this.insurerName = '',
     this.productForm = '',
     this.coverageAmount = '',
-    this.coverageAmountNote = '',
     this.premiumAmount = '',
-    this.premiumNote = '',
+    this.premiumTermCount = '',
   });
 
   factory CommercialInsuranceFormInitialValues.fromInsurance(
@@ -383,9 +314,8 @@ class CommercialInsuranceFormInitialValues {
       insurerName: insurance.insurerName,
       productForm: insurance.productForm ?? '',
       coverageAmount: insuranceMoneyInputText(insurance.coverageAmount?.amount),
-      coverageAmountNote: insurance.coverageAmount?.note ?? '',
       premiumAmount: insuranceMoneyInputText(insurance.premiumPlan?.amount),
-      premiumNote: insurance.premiumPlan?.note ?? '',
+      premiumTermCount: insurance.premiumPlan?.termCount?.toString() ?? '',
     );
   }
 
@@ -393,61 +323,8 @@ class CommercialInsuranceFormInitialValues {
   final String insurerName;
   final String productForm;
   final String coverageAmount;
-  final String coverageAmountNote;
   final String premiumAmount;
-  final String premiumNote;
-}
-
-class InsurancePointDraft {
-  const InsurancePointDraft({
-    required this.id,
-    required this.label,
-    required this.value,
-  });
-
-  factory InsurancePointDraft.fromDomain(ResponsibilityPoint point) {
-    return InsurancePointDraft(
-      id: point.id,
-      label: point.label,
-      value: point.value,
-    );
-  }
-
-  final String id;
-  final String label;
-  final String value;
-
-  bool get isNew => id.startsWith('__draft');
-}
-
-class InsuranceResponsibilityDraft {
-  const InsuranceResponsibilityDraft({
-    required this.id,
-    required this.kind,
-    required this.name,
-    required this.points,
-  });
-
-  factory InsuranceResponsibilityDraft.fromDomain(
-    CoverageResponsibility responsibility,
-  ) {
-    return InsuranceResponsibilityDraft(
-      id: responsibility.id,
-      kind: responsibility.kind,
-      name: responsibility.name,
-      points: [
-        for (final point in responsibility.points)
-          InsurancePointDraft.fromDomain(point),
-      ],
-    );
-  }
-
-  final String id;
-  final ResponsibilityKind kind;
-  final String name;
-  final List<InsurancePointDraft> points;
-
-  bool get isNew => id.startsWith('__draft');
+  final String premiumTermCount;
 }
 
 class _MoneyResult {
@@ -463,6 +340,14 @@ class _CoverageAmountResult {
 
   final CoverageAmount? value;
   final String? error;
+}
+
+class _IntegerResult {
+  const _IntegerResult({this.value}) : invalid = false;
+  const _IntegerResult.invalid() : value = null, invalid = true;
+
+  final int? value;
+  final bool invalid;
 }
 
 const Object _sentinel = Object();

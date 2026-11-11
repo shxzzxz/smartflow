@@ -4,8 +4,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/insurance/entity/commercial_insurance.dart';
 import 'package:smartflow/domain/insurance/entity/insured_person.dart';
-import 'package:smartflow/domain/insurance/entity/social_medical_insurance.dart';
-import 'package:smartflow/domain/insurance/entity/social_pension_insurance.dart';
+import 'package:smartflow/domain/insurance/entity/social_insurance.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_amount.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_responsibility.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_term.dart';
@@ -95,23 +94,21 @@ void main() {
       );
     });
 
-    test('requires controlled responsibility names to match their kind', () {
-      final responsibility = CoverageResponsibility(
-        id: 'responsibility',
-        kind: ResponsibilityKind.medical,
-        name: '自定义医疗',
-        points: const [],
-        order: 0,
-      );
-
-      expect(responsibility.validate, throwsArgumentError);
-    });
-
-    test('requires custom responsibility names and unique point labels', () {
+    test('accepts descriptive names and requires unique point labels', () {
       expect(
         () => CoverageResponsibility(
-          id: 'custom',
-          kind: ResponsibilityKind.custom,
+          id: 'responsibility',
+          kind: ResponsibilityKind.medical,
+          name: '质子重离子医疗',
+          points: const [],
+          order: 0,
+        ).validate(),
+        returnsNormally,
+      );
+      expect(
+        () => CoverageResponsibility(
+          id: 'medical',
+          kind: ResponsibilityKind.medical,
           name: '  ',
           points: const [],
           order: 0,
@@ -150,27 +147,18 @@ void main() {
         month: MonthKey(year: 2026, month: 1),
         contributionBase: Money(minorUnits: 800000),
       );
-      final medical = SocialMedicalInsurance(
+      final insurance = SocialInsurance(
         id: 'medical',
         insuredPersonId: 'person',
         region: '上海',
-        participantType: SocialParticipantType.employee,
-        contributionRecords: [record, record],
-        createdAt: DateTime(2026, 1, 1),
-        updatedAt: DateTime(2026, 1, 1),
-      );
-      final pension = SocialPensionInsurance(
-        id: 'pension',
-        insuredPersonId: 'person',
-        region: '上海',
+        insuranceType: SocialInsuranceType.medical,
         participantType: SocialParticipantType.employee,
         contributionRecords: [record, record],
         createdAt: DateTime(2026, 1, 1),
         updatedAt: DateTime(2026, 1, 1),
       );
 
-      expect(medical.validate, throwsArgumentError);
-      expect(pension.validate, throwsArgumentError);
+      expect(insurance.validate, throwsArgumentError);
     });
 
     test('rejects negative contribution bases', () {

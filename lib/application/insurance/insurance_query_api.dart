@@ -3,8 +3,7 @@ library;
 
 export '../../domain/insurance/entity/commercial_insurance.dart';
 export '../../domain/insurance/entity/insured_person.dart';
-export '../../domain/insurance/entity/social_medical_insurance.dart';
-export '../../domain/insurance/entity/social_pension_insurance.dart';
+export '../../domain/insurance/entity/social_insurance.dart';
 export '../../domain/insurance/valobj/coverage_responsibility.dart';
 export '../../domain/insurance/valobj/insurance_attachment.dart';
 export '../../domain/insurance/valobj/insurance_enums.dart';

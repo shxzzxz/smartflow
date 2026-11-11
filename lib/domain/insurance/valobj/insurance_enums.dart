@@ -13,8 +13,6 @@ enum CommercialInsuranceCategory {
 enum PremiumFrequency {
   oneTime('一次性'),
   monthly('月缴'),
-  quarterly('季缴'),
-  semiAnnual('半年缴'),
   annual('年缴'),
   other('其他');
 
@@ -29,14 +27,11 @@ enum ResponsibilityKind {
   accident('意外'),
   life('寿险'),
   disability('伤残'),
-  other('其他'),
-  custom('自定义');
+  other('其他');
 
   const ResponsibilityKind(this.label);
 
   final String label;
-
-  String get controlledName => label;
 }
 
 enum SocialParticipantType {
@@ -44,6 +39,18 @@ enum SocialParticipantType {
   resident('居民');
 
   const SocialParticipantType(this.label);
+
+  final String label;
+}
+
+enum SocialInsuranceType {
+  medical('医保'),
+  pension('养老'),
+  workInjury('工伤'),
+  maternity('生育'),
+  unemployment('失业');
+
+  const SocialInsuranceType(this.label);
 
   final String label;
 }
@@ -96,8 +103,7 @@ enum InsuranceCoverageStatus {
 
 enum InsuranceSourceType {
   commercial('商业保险'),
-  socialMedical('社保医保'),
-  socialPension('社保养老');
+  social('社保');
 
   const InsuranceSourceType(this.label);
 

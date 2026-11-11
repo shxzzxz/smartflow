@@ -1,12 +1,11 @@
 import '../../../core/money/money.dart';
 
 class CoverageAmount {
-  const CoverageAmount({this.amount, this.note});
+  const CoverageAmount({this.amount});
 
   final Money? amount;
-  final String? note;
 
-  bool get isEmpty => amount == null && (note == null || note!.trim().isEmpty);
+  bool get isEmpty => amount == null;
 
   void validate() {
     final amount = this.amount;

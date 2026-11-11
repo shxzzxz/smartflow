@@ -19,6 +19,7 @@ import '../../generated_migrations/schema_v56.dart' as v56;
 import '../../generated_migrations/schema_v57.dart' as v57;
 import '../../generated_migrations/schema_v58.dart' as v58;
 import '../../generated_migrations/schema_v59.dart' as v59;
+import '../../generated_migrations/schema_v60.dart' as v60;
 
 void main() {
   late SchemaVerifier verifier;
@@ -98,7 +99,7 @@ void main() {
         expect(columnNames, isNot(contains('repayment_day')));
       },
       oldVersion: 49,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -139,7 +140,7 @@ void main() {
         expect(refundIndexes, hasLength(1));
       },
       oldVersion: 50,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -178,7 +179,7 @@ void main() {
         expect(indexes, hasLength(1));
       },
       oldVersion: 52,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -384,7 +385,7 @@ void main() {
           );
         },
         oldVersion: 55,
-        newVersion: 60,
+        newVersion: 61,
       );
     },
   );
@@ -408,7 +409,7 @@ void main() {
         );
       },
       oldVersion: 56,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -426,10 +427,8 @@ void main() {
           'coverage_responsibilities',
           'responsibility_points',
           'insurance_attachments',
-          'social_medical_insurances',
-          'social_medical_contribution_records',
-          'social_pension_insurances',
-          'social_pension_contribution_records',
+          'social_insurances',
+          'social_contribution_records',
         };
         final tables =
             (await db
@@ -446,8 +445,7 @@ void main() {
           'coverage_responsibilities_insurance_idx',
           'responsibility_points_responsibility_idx',
           'insurance_attachments_insurance_idx',
-          'social_medical_insurances_person_idx',
-          'social_pension_insurances_person_idx',
+          'social_insurances_person_idx',
         };
         final indexes =
             (await db
@@ -460,7 +458,7 @@ void main() {
         expect(indexes, containsAll(expectedIndexes));
       },
       oldVersion: 57,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -541,7 +539,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 60);
+    await verifier.migrateAndValidate(db, 61);
     final people = await (db.select(
       db.insuredPeople,
     )..orderBy([(row) => OrderingTerm(expression: row.id)])).get();
@@ -589,7 +587,7 @@ void main() {
         expect(person.avatarPreset, MemberAvatarPreset.green);
       },
       oldVersion: 59,
-      newVersion: 60,
+      newVersion: 61,
     );
   });
 
@@ -743,6 +741,111 @@ void main() {
       );
     },
   );
+
+  test('migrates v60 insurance records into the unified social model', () async {
+    await verifier.testWithDataIntegrity<v60.DatabaseAtV60, AppDatabase>(
+      createOld: v60.DatabaseAtV60.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {
+        batch.customStatement(
+          'INSERT INTO insured_people '
+          '(id, name, birth_date, relationship, gender, avatar_preset) '
+          "VALUES ('person-1', '张一', ?, 'self', 'unknown', 'blue')",
+          [DateTime(1990, 6, 15).millisecondsSinceEpoch],
+        );
+        batch.customStatement(
+          'INSERT INTO commercial_insurances '
+          '(id, name, insurer_name, category, coverage_start_date, '
+          'premium_frequency) '
+          "VALUES ('commercial-1', '医疗险', '示例保险', 'medical', ?, "
+          "'quarterly')",
+          [DateTime(2025, 1, 1).millisecondsSinceEpoch],
+        );
+        batch.customStatement(
+          'INSERT INTO coverage_responsibilities '
+          '(id, commercial_insurance_id, kind, name, sort_order) '
+          "VALUES ('responsibility-1', 'commercial-1', 'custom', "
+          "'质子重离子医疗', 0)",
+        );
+        batch.customStatement(
+          'INSERT INTO social_medical_insurances '
+          '(id, insured_person_id, region, participant_type) '
+          "VALUES ('medical-1', 'person-1', '上海', 'employee')",
+        );
+        batch.customStatement(
+          'INSERT INTO social_medical_contribution_records '
+          '(social_medical_insurance_id, year_month, contribution_base_minor) '
+          "VALUES ('medical-1', '2026-01', 800000)",
+        );
+        batch.customStatement(
+          'INSERT INTO social_pension_insurances '
+          '(id, insured_person_id, region, participant_type) '
+          "VALUES ('pension-1', 'person-1', '北京', 'resident')",
+        );
+        batch.customStatement(
+          'INSERT INTO social_pension_contribution_records '
+          '(social_pension_insurance_id, year_month, contribution_base_minor) '
+          "VALUES ('pension-1', '2026-02', 500000)",
+        );
+      },
+      validateItems: (db) async {
+        final commercial = await db.select(db.commercialInsurances).getSingle();
+        expect(commercial.premiumTermCount, isNull);
+        expect(commercial.premiumFrequency, PremiumFrequency.other);
+        final commercialColumns =
+            (await db
+                    .customSelect('PRAGMA table_info(commercial_insurances)')
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(commercialColumns, contains('premium_term_count'));
+        expect(
+          commercialColumns,
+          isNot(
+            anyOf(contains('coverage_amount_note'), contains('premium_note')),
+          ),
+        );
+
+        final responsibility = await db
+            .select(db.coverageResponsibilities)
+            .getSingle();
+        expect(responsibility.kind, ResponsibilityKind.other);
+        expect(responsibility.name, '质子重离子医疗');
+
+        final social = await db.select(db.socialInsurances).get();
+        expect(social.map((row) => row.insuranceType), [
+          SocialInsuranceType.medical,
+          SocialInsuranceType.pension,
+        ]);
+        final contributions = await db
+            .select(db.socialContributionRecords)
+            .get();
+        expect(contributions, hasLength(2));
+
+        final tables =
+            (await db
+                    .customSelect(
+                      "SELECT name FROM sqlite_master WHERE type = 'table'",
+                    )
+                    .get())
+                .map((row) => row.read<String>('name'))
+                .toSet();
+        expect(tables, containsAll({'social_insurances'}));
+        expect(
+          tables,
+          isNot(
+            anyOf(
+              contains('social_medical_insurances'),
+              contains('social_pension_insurances'),
+            ),
+          ),
+        );
+      },
+      oldVersion: 60,
+      newVersion: 61,
+    );
+  });
 
   test('failed v50 to v51 migration keeps version and data intact', () async {
     final directory = await Directory.systemTemp.createTemp(

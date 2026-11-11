@@ -12,15 +12,14 @@ class InsuranceCategoryIcon extends StatelessWidget {
     super.key,
     this.size = 44,
   }) : _category = category,
-       _sourceType = null,
+       _socialInsuranceType = null,
        _responsibilityKind = null;
 
   const InsuranceCategoryIcon.social({
-    required InsuranceSourceType sourceType,
+    required SocialInsuranceType insuranceType,
     super.key,
     this.size = 44,
-  }) : assert(sourceType != InsuranceSourceType.commercial),
-       _sourceType = sourceType,
+  }) : _socialInsuranceType = insuranceType,
        _category = null,
        _responsibilityKind = null;
 
@@ -30,10 +29,10 @@ class InsuranceCategoryIcon extends StatelessWidget {
     this.size = 44,
   }) : _responsibilityKind = kind,
        _category = null,
-       _sourceType = null;
+       _socialInsuranceType = null;
 
   final CommercialInsuranceCategory? _category;
-  final InsuranceSourceType? _sourceType;
+  final SocialInsuranceType? _socialInsuranceType;
   final ResponsibilityKind? _responsibilityKind;
   final double size;
 
@@ -84,20 +83,28 @@ class InsuranceCategoryIcon extends StatelessWidget {
       };
     }
 
-    final sourceType = _sourceType;
-    if (sourceType != null) {
-      return switch (sourceType) {
-        InsuranceSourceType.socialMedical => _InsuranceVisual(
+    final socialInsuranceType = _socialInsuranceType;
+    if (socialInsuranceType != null) {
+      return switch (socialInsuranceType) {
+        SocialInsuranceType.medical => _InsuranceVisual(
           RemixIcons.hospital_fill,
           extension.chart3,
         ),
-        InsuranceSourceType.socialPension => _InsuranceVisual(
+        SocialInsuranceType.pension => _InsuranceVisual(
           RemixIcons.hand_heart_fill,
           extension.warning,
         ),
-        InsuranceSourceType.commercial => _InsuranceVisual(
-          RemixIcons.shield_check_fill,
-          colors.primary,
+        SocialInsuranceType.workInjury => _InsuranceVisual(
+          RemixIcons.shield_cross_fill,
+          extension.info,
+        ),
+        SocialInsuranceType.maternity => _InsuranceVisual(
+          RemixIcons.heart_pulse_fill,
+          extension.chart5,
+        ),
+        SocialInsuranceType.unemployment => _InsuranceVisual(
+          RemixIcons.briefcase_fill,
+          colors.onSurfaceVariant,
         ),
       };
     }
@@ -123,7 +130,7 @@ class InsuranceCategoryIcon extends StatelessWidget {
         RemixIcons.user_heart_fill,
         extension.warning,
       ),
-      ResponsibilityKind.other || ResponsibilityKind.custom => _InsuranceVisual(
+      ResponsibilityKind.other => _InsuranceVisual(
         RemixIcons.shield_keyhole_fill,
         colors.onSurfaceVariant,
       ),

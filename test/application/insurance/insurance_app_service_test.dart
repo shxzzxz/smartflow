@@ -96,6 +96,7 @@ void main() {
           responsibilities: const [
             InsuranceResponsibilityInput(
               kind: ResponsibilityKind.medical,
+              name: '一般医疗',
               points: [
                 InsuranceResponsibilityPointInput(
                   label: '住院报销',
@@ -274,20 +275,22 @@ void main() {
         month: MonthKey(year: 2026, month: 1),
         contributionBase: Money(minorUnits: 800000),
       );
-      final medicalId = await socialService.saveMedical(
+      final medicalId = await socialService.save(
         SaveSocialInsuranceCommand(
           insuredPersonId: person,
           region: '上海',
+          insuranceType: SocialInsuranceType.medical,
           participantType: SocialParticipantType.employee,
           contributionRecords: [contribution],
         ),
       );
 
       await expectLater(
-        socialService.saveMedical(
+        socialService.save(
           SaveSocialInsuranceCommand(
             insuredPersonId: person,
             region: '上海',
+            insuranceType: SocialInsuranceType.medical,
             participantType: SocialParticipantType.employee,
             contributionRecords: [contribution, contribution],
           ),
@@ -301,16 +304,17 @@ void main() {
         ),
       );
       expect(
-        (await socialInsurances.findMedical(medicalId))!.contributionRecords,
+        (await socialInsurances.find(medicalId))!.contributionRecords,
         hasLength(1),
       );
 
       await expectLater(
-        socialService.saveMedical(
+        socialService.save(
           SaveSocialInsuranceCommand(
             id: medicalId,
             insuredPersonId: person,
             region: '北京',
+            insuranceType: SocialInsuranceType.medical,
             participantType: SocialParticipantType.employee,
             contributionRecords: [contribution],
           ),
@@ -318,33 +322,36 @@ void main() {
         throwsA(isA<BusinessException>()),
       );
       await expectLater(
-        socialService.saveMedical(
+        socialService.save(
           SaveSocialInsuranceCommand(
             id: medicalId,
             insuredPersonId: person,
             region: '上海',
+            insuranceType: SocialInsuranceType.medical,
             participantType: SocialParticipantType.resident,
             contributionRecords: [contribution],
           ),
         ),
         throwsA(isA<BusinessException>()),
       );
-      expect((await socialInsurances.findMedical(medicalId))!.region, '上海');
+      expect((await socialInsurances.find(medicalId))!.region, '上海');
 
-      final pensionId = await socialService.savePension(
+      final pensionId = await socialService.save(
         SaveSocialInsuranceCommand(
           insuredPersonId: person,
           region: '上海',
+          insuranceType: SocialInsuranceType.pension,
           participantType: SocialParticipantType.employee,
           contributionRecords: const [],
         ),
       );
       await expectLater(
-        socialService.savePension(
+        socialService.save(
           SaveSocialInsuranceCommand(
             id: pensionId,
             insuredPersonId: person,
             region: '上海',
+            insuranceType: SocialInsuranceType.pension,
             participantType: SocialParticipantType.employee,
             contributionRecords: [contribution, contribution],
           ),
@@ -400,6 +407,7 @@ SaveCommercialInsuranceCommand _commercialCommand(
     responsibilities: const [
       InsuranceResponsibilityInput(
         kind: ResponsibilityKind.medical,
+        name: '一般医疗',
         points: [
           InsuranceResponsibilityPointInput(label: '住院报销', value: '最高 100 万元'),
         ],
