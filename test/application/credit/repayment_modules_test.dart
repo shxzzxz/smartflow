@@ -241,7 +241,7 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
     }
 
     test(
-      'prepayment time edit saves time without recalculating schedules',
+      'prepayment time edit recalculates schedules from the new settlement date',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -265,6 +265,11 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
         final before = await fixture.database
             .select(fixture.database.installmentSchedules)
             .get();
+        expect(before.map((row) => row.expectedPrincipalMinor), [
+          30000,
+          25000,
+          25000,
+        ]);
         fixture.transactionQuery.details[result.transactionId!] =
             _transactionDetail(
               transactionId: result.transactionId!,
@@ -282,12 +287,14 @@ BEGIN SELECT RAISE(ABORT, 'repayment write failed'); END
           ))!.repaymentDate,
           DateTime(2026, 9, 1, 8, 30),
         );
-        expect(
-          await fixture.database
-              .select(fixture.database.installmentSchedules)
-              .get(),
-          before,
-        );
+        final after = await fixture.database
+            .select(fixture.database.installmentSchedules)
+            .get();
+        expect(after.map((row) => row.expectedPrincipalMinor), [
+          30000,
+          30000,
+          20000,
+        ]);
       },
     );
 

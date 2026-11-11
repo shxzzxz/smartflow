@@ -537,6 +537,28 @@ void main() {
     },
   );
 
+  test('repayment-day prepayment settles the current period interest', () {
+    final plan = engine.generate(
+      terms(stage(count: 2)),
+      operations: InstallmentPlanOperations(
+        principalReductions: [
+          PrincipalReduction(
+            date: date(9, 8),
+            principal: money(1000000),
+            settlesAccruedInterest: true,
+          ),
+        ],
+      ),
+    );
+
+    expect(plan.entries.first.expectedInterest, Money.zero());
+    expect(
+      plan.entries.first.interestSegments.every((segment) => segment.isSettled),
+      isTrue,
+    );
+    expect(plan.stages.single.openingPrincipal, money(10000000));
+  });
+
   test(
     'in-period prepayment preserves current principal and splits interest',
     () {
@@ -580,6 +602,208 @@ void main() {
           (sum, row) => sum + row.expectedPrincipal.minorUnits,
         ),
         120000,
+      );
+    },
+  );
+
+  test(
+    'prepayment settlement removes only interest accrued through its date',
+    () {
+      final input = InstallmentPlanTerms(
+        principal: money(800000),
+        borrowingDate: DateTime(2026, 1, 1),
+        stages: [
+          AmortizingStage(
+            dates: IntervalRepaymentDates(
+              firstDate: DateTime(2026, 2, 1),
+              count: 1,
+            ),
+            method: InstallmentRepaymentMethod.interestFirst,
+            accrual: InterestAccrualMethod.daily,
+            rate: const InterestRate(
+              ppm: 36000,
+              period: InterestRatePeriod.annual,
+            ),
+          ),
+        ],
+      );
+      final plan = engine.generate(
+        input,
+        operations: InstallmentPlanOperations(
+          principalReductions: [
+            PrincipalReduction(
+              date: DateTime(2026, 1, 6),
+              principal: money(200000),
+              settlesAccruedInterest: true,
+            ),
+            PrincipalReduction(
+              date: DateTime(2026, 1, 16),
+              principal: money(200000),
+              settlesAccruedInterest: true,
+            ),
+          ],
+        ),
+      );
+
+      expect(plan.entries.single.expectedInterest.minorUnits, 640);
+      expect(
+        plan.entries.single.interestSegments.map(
+          (segment) => segment.isSettled,
+        ),
+        [true, true, false],
+      );
+    },
+  );
+
+  test('interest-only prepayment still settles accrued interest', () {
+    final input = InstallmentPlanTerms(
+      principal: money(800000),
+      borrowingDate: DateTime(2026, 1, 1),
+      stages: [
+        AmortizingStage(
+          dates: IntervalRepaymentDates(
+            firstDate: DateTime(2026, 2, 1),
+            count: 1,
+          ),
+          method: InstallmentRepaymentMethod.interestFirst,
+          accrual: InterestAccrualMethod.daily,
+          rate: const InterestRate(
+            ppm: 36000,
+            period: InterestRatePeriod.annual,
+          ),
+        ),
+      ],
+    );
+    final plan = engine.generate(
+      input,
+      operations: InstallmentPlanOperations(
+        principalReductions: [
+          PrincipalReduction(
+            date: DateTime(2026, 1, 16),
+            principal: Money.zero(),
+            settlesAccruedInterest: true,
+          ),
+        ],
+      ),
+    );
+
+    expect(plan.entries.single.expectedPrincipal.minorUnits, 800000);
+    expect(plan.entries.single.expectedInterest.minorUnits, 1280);
+  });
+
+  test('interest adjustments apply only to the unsettled tail', () {
+    final input = InstallmentPlanTerms(
+      principal: money(800000),
+      borrowingDate: DateTime(2026, 1, 1),
+      stages: [
+        AmortizingStage(
+          dates: IntervalRepaymentDates(
+            firstDate: DateTime(2026, 2, 1),
+            count: 1,
+          ),
+          method: InstallmentRepaymentMethod.interestFirst,
+          accrual: InterestAccrualMethod.daily,
+          rate: const InterestRate(
+            ppm: 36000,
+            period: InterestRatePeriod.annual,
+          ),
+        ),
+      ],
+    );
+    final plan = engine.generate(
+      input,
+      operations: InstallmentPlanOperations(
+        principalReductions: [
+          PrincipalReduction(
+            date: DateTime(2026, 1, 16),
+            principal: Money.zero(),
+            settlesAccruedInterest: true,
+          ),
+        ],
+        interestAdjustments: [
+          InterestAdjustment(
+            start: DateTime(2026, 1, 1),
+            end: DateTime(2026, 2, 1),
+            ratioPpm: 500000,
+          ),
+        ],
+      ),
+    );
+
+    expect(plan.entries.single.expectedInterest.minorUnits, 640);
+  });
+
+  test(
+    'refund reductions retain accrued interest independently of prepayments',
+    () {
+      final input = InstallmentPlanTerms(
+        principal: money(800000),
+        borrowingDate: DateTime(2026, 1, 1),
+        stages: [
+          AmortizingStage(
+            dates: IntervalRepaymentDates(
+              firstDate: DateTime(2026, 2, 1),
+              count: 1,
+            ),
+            method: InstallmentRepaymentMethod.interestFirst,
+            accrual: InterestAccrualMethod.daily,
+            rate: const InterestRate(
+              ppm: 36000,
+              period: InterestRatePeriod.annual,
+            ),
+          ),
+        ],
+      );
+      InstallmentPlan calculate(List<PrincipalReduction> reductions) =>
+          engine.generate(
+            input,
+            operations: InstallmentPlanOperations(
+              principalReductions: reductions,
+            ),
+          );
+
+      final refunds = calculate([
+        PrincipalReduction(
+          date: DateTime(2026, 1, 6),
+          principal: money(200000),
+        ),
+        PrincipalReduction(
+          date: DateTime(2026, 1, 16),
+          principal: money(200000),
+        ),
+      ]);
+      expect(refunds.entries.single.expectedInterest.minorUnits, 1640);
+
+      final refundThenPrepayment = calculate([
+        PrincipalReduction(
+          date: DateTime(2026, 1, 6),
+          principal: money(200000),
+        ),
+        PrincipalReduction(
+          date: DateTime(2026, 1, 16),
+          principal: money(200000),
+          settlesAccruedInterest: true,
+        ),
+      ]);
+      expect(
+        refundThenPrepayment.entries.single.expectedInterest.minorUnits,
+        640,
+      );
+
+      final prepaymentThenRefund = calculate([
+        PrincipalReduction(
+          date: DateTime(2026, 1, 6),
+          principal: money(200000),
+          settlesAccruedInterest: true,
+        ),
+        PrincipalReduction(
+          date: DateTime(2026, 1, 16),
+          principal: money(200000),
+        ),
+      ]);
+      expect(
+        prepaymentThenRefund.entries.single.expectedInterest.minorUnits,
+        1240,
       );
     },
   );

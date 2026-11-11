@@ -37,6 +37,7 @@ class InstallmentStageHandler {
     required Money openingPrincipal,
     required bool finalStage,
     required List<List<PrincipalReduction>> reductions,
+    required List<DateTime?> interestSettledThrough,
     required List<RateChange> changes,
   }) {
     final generation = BasePlanGenerationHandler(calculators: _calculators);
@@ -114,7 +115,8 @@ class InstallmentStageHandler {
       projection = repricing.projection;
       changed = changed || repricing.changed;
       var allocation = repricing.allocation;
-      if (inPeriodReductions.isNotEmpty) {
+      final settledThrough = interestSettledThrough[i];
+      if (inPeriodReductions.isNotEmpty || settledThrough != null) {
         final reduction = principalHandler.applyInPeriod(
           context,
           periodIndex: i,
@@ -124,6 +126,7 @@ class InstallmentStageHandler {
           reductions: inPeriodReductions,
           currentAllocation: allocation,
           rounding: context.rounding,
+          interestSettledThrough: settledThrough,
         );
         allocation = reduction.allocation;
         balance -=

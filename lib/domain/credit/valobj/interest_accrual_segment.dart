@@ -18,6 +18,7 @@ class InterestAccrualSegment {
     required this.exactInterestMinor,
     DateTime? unitStart,
     DateTime? unitEnd,
+    this.isSettled = false,
   }) : unitStart = unitStart ?? start,
        unitEnd = unitEnd ?? end;
 
@@ -31,6 +32,23 @@ class InterestAccrualSegment {
   final InterestAccrualMethod accrual;
   final DayCountConvention dayCount;
   final Rational exactInterestMinor;
+
+  /// 该片段利息已由提前还款结清，不再作为计划待还金额。
+  final bool isSettled;
+
+  InterestAccrualSegment withSettlement({required bool isSettled}) =>
+      InterestAccrualSegment(
+        start: start,
+        end: end,
+        unitStart: unitStart,
+        unitEnd: unitEnd,
+        principal: principal,
+        rate: rate,
+        accrual: accrual,
+        dayCount: dayCount,
+        exactInterestMinor: exactInterestMinor,
+        isSettled: isSettled,
+      );
 
   Rational interestWithin(DateTime from, DateTime until) {
     if (accrual != InterestAccrualMethod.daily) return exactInterestMinor;

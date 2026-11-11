@@ -6,12 +6,19 @@ import 'credit_error_code.dart';
 import 'reference_rate.dart';
 import 'rate_change.dart';
 
-/// 只表达影响计算的本金事实，不包含还款状态或息费。
+/// 计划计算使用的本金扣减事实；可同时表达结清已产生利息，不包含实际息费金额。
 class PrincipalReduction {
-  const PrincipalReduction({required this.date, required this.principal});
+  const PrincipalReduction({
+    required this.date,
+    required this.principal,
+    this.settlesAccruedInterest = false,
+  });
 
   final DateTime date;
   final Money principal;
+
+  /// 是否结清截至 [date] 已产生的利息。
+  final bool settlesAccruedInterest;
 }
 
 /// 调整区间为 (start, end]，与计息周期使用相同的日期边界。

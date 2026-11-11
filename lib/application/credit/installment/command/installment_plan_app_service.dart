@@ -237,10 +237,12 @@ class InstallmentPlanAppService {
       principalReductions: [
         for (final repayment in repayments)
           if (repayment.repaymentType == RepaymentType.prepayment &&
-              repayment.totalAllocated().principal.minorUnits > 0)
+              (repayment.totalAllocated().principal.minorUnits > 0 ||
+                  repayment.totalAllocated().interest.minorUnits > 0))
             PrincipalReduction(
               date: repayment.repaymentDate,
               principal: repayment.totalAllocated().principal,
+              settlesAccruedInterest: true,
             ),
         for (final reduction in refundReductions)
           if (reduction.refundTransactionId != excludedRefundTransactionId)
@@ -437,10 +439,23 @@ String _day(DateTime value) =>
 
 Object _operationFacts(InstallmentPlanOperations operations) => [
   [
-    for (final value in [
-      ...operations.principalReductions,
-    ]..sort((a, b) => a.date.compareTo(b.date)))
-      [_day(value.date), value.principal.minorUnits],
+    for (final value
+        in [...operations.principalReductions]..sort((a, b) {
+          final byDate = a.date.compareTo(b.date);
+          if (byDate != 0) return byDate;
+          final bySettlement = a.settlesAccruedInterest ? 1 : 0;
+          final comparedSettlement = bySettlement.compareTo(
+            b.settlesAccruedInterest ? 1 : 0,
+          );
+          return comparedSettlement != 0
+              ? comparedSettlement
+              : a.principal.minorUnits.compareTo(b.principal.minorUnits);
+        }))
+      [
+        _day(value.date),
+        value.principal.minorUnits,
+        value.settlesAccruedInterest,
+      ],
   ],
   [
     for (final entry

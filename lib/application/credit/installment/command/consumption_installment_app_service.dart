@@ -18,7 +18,6 @@ import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_plan_change.dart';
-import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
 
 import 'installment_command.dart';
 import 'installment_contract_removal_app_service.dart';
@@ -240,7 +239,6 @@ class ConsumptionInstallmentAppServiceImpl
         command.amount,
         '退款到账分配合计必须等于退款金额',
       );
-      final remaining = await _remainingPrincipal(contract.id);
       final refundable = await refundablePrincipal(
         contractId: contract.id,
         refundDate: command.occurredAt,
@@ -276,10 +274,6 @@ class ConsumptionInstallmentAppServiceImpl
         await _plans.applyAutomaticChange(
           contract.id,
           const RecalculateFromOperations(),
-        );
-        await _refreshContractStatus(
-          contract.id,
-          hasRemainingPrincipal: remaining.minorUnits > principal.minorUnits,
         );
       }
       return ConsumptionInstallmentRefundResult(
@@ -351,10 +345,6 @@ class ConsumptionInstallmentAppServiceImpl
         amount,
         '退款到账分配合计必须等于退款金额',
       );
-      final remaining = await _remainingPrincipal(
-        contract.id,
-        excludedRefundTransactionId: command.transactionId,
-      );
       final refundable = await refundablePrincipal(
         contractId: contract.id,
         refundDate: occurredAt,
@@ -401,10 +391,6 @@ class ConsumptionInstallmentAppServiceImpl
           contract.id,
           const RecalculateFromOperations(),
         );
-        await _refreshContractStatus(
-          contract.id,
-          hasRemainingPrincipal: remaining.minorUnits > principal.minorUnits,
-        );
       }
       return ConsumptionInstallmentRefundResult(
         refundTransactionId: command.transactionId,
@@ -425,11 +411,6 @@ class ConsumptionInstallmentAppServiceImpl
       await _plans.applyAutomaticChange(
         existing.contractId,
         const RecalculateFromOperations(),
-      );
-      final remaining = await _remainingPrincipal(existing.contractId);
-      await _refreshContractStatus(
-        existing.contractId,
-        hasRemainingPrincipal: remaining.minorUnits > 0,
       );
     });
   }
@@ -516,55 +497,6 @@ class ConsumptionInstallmentAppServiceImpl
     return paidBySchedule;
   }
 
-  Future<Money> _remainingPrincipal(
-    String contractId, {
-    String? excludedRefundTransactionId,
-  }) async {
-    final contract = await _installments.findContract(contractId);
-    if (contract == null) {
-      throw BusinessException(CreditErrorCode.contractNotFound);
-    }
-    final bills = await _bills.listBillsByAccount(contract.liabilityAccountId);
-    final itemIds = {
-      for (final bill in bills)
-        for (final item in bill.items)
-          if (item.contractId == contractId) item.id,
-    };
-    final allocated = await _repayments.aggregateItemsByBillItemIds(itemIds);
-    final paidPrincipal = allocated.values.fold<Money>(
-      Money.zero(),
-      (sum, amount) => sum + amount.principal,
-    );
-    final prepayments = await _repayments.listByTarget(
-      RepaymentTargetType.contract,
-      contractId,
-    );
-    final prepaymentPrincipal = prepayments
-        .where(
-          (repayment) => repayment.repaymentType == RepaymentType.prepayment,
-        )
-        .fold<Money>(
-          Money.zero(),
-          (sum, repayment) => sum + repayment.totalAllocated().principal,
-        );
-    final refunds = await _refundReductions.listByContract(contractId);
-    final refundPrincipal = refunds
-        .where(
-          (reduction) =>
-              reduction.refundTransactionId != excludedRefundTransactionId,
-        )
-        .fold<Money>(
-          Money.zero(),
-          (sum, reduction) => sum + reduction.principal,
-        );
-    final remaining =
-        contract.principal -
-        paidPrincipal -
-        prepaymentPrincipal -
-        refundPrincipal;
-    return remaining.minorUnits < 0 ? Money.zero() : remaining;
-  }
-
   Money _liabilityPrincipal(
     InstallmentContract contract,
     List<ConsumptionInstallmentAllocation> allocations,
@@ -622,18 +554,6 @@ class ConsumptionInstallmentAppServiceImpl
         amount: allocation.amount,
       ),
   ];
-
-  Future<void> _refreshContractStatus(
-    String contractId, {
-    required bool hasRemainingPrincipal,
-  }) async {
-    final contract = await _installments.findContract(contractId);
-    if (contract == null) return;
-    contract.refreshStatusFromPrincipal(
-      hasRemainingPrincipal: hasRemainingPrincipal,
-    );
-    await _installments.saveAggregate(contract);
-  }
 
   CreditLedgerOwnership _installmentOwnership(String contractId) {
     return CreditLedgerOwnership(

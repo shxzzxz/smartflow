@@ -54,6 +54,7 @@ class LoanChangeViewModel extends _$LoanChangeViewModel {
         reduction: PrincipalReduction(
           date: referenceDate(date),
           principal: principal,
+          settlesAccruedInterest: true,
         ),
       ),
     );

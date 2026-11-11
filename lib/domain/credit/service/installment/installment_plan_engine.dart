@@ -88,7 +88,17 @@ class InstallmentPlanEngine {
     terms.validateStageKinds();
     final custom = terms.isCustom;
     final reductions = [...operations.principalReductions]
-      ..sort((a, b) => referenceDate(a.date).compareTo(referenceDate(b.date)));
+      ..sort((a, b) {
+        final byDate = referenceDate(a.date).compareTo(referenceDate(b.date));
+        if (byDate != 0) return byDate;
+        final bySettlement = a.settlesAccruedInterest ? 1 : 0;
+        final comparedSettlement = bySettlement.compareTo(
+          b.settlesAccruedInterest ? 1 : 0,
+        );
+        return comparedSettlement != 0
+            ? comparedSettlement
+            : a.principal.minorUnits.compareTo(b.principal.minorUnits);
+      });
     final rateChanges = {
       for (final entry in operations.rateChangesByStage.entries)
         entry.key: [...entry.value]
@@ -190,9 +200,11 @@ class InstallmentPlanEngine {
         rounding: terms.rounding,
       );
       final deductions = <List<PrincipalReduction>>[];
+      final interestSettledThrough = <DateTime?>[];
       for (var i = 0; i < dates.length; i++) {
         final periodReductions = <PrincipalReduction>[];
-        final periodEnd = context.periodRange(i).end;
+        final periodRange = context.periodRange(i);
+        final periodEnd = periodRange.end;
         // 还款后的计息日期才受影响；恰在本期还款日扣减时归入下一期。
         while (reductionIndex < reductions.length &&
             referenceDate(
@@ -201,6 +213,23 @@ class InstallmentPlanEngine {
           periodReductions.add(reductions[reductionIndex++]);
         }
         deductions.add(List.unmodifiable(periodReductions));
+        final settledThrough =
+            [
+              for (final reduction in reductions)
+                if (reduction.settlesAccruedInterest &&
+                    referenceDate(
+                      reduction.date,
+                    ).add(const Duration(days: 1)).isAfter(periodRange.start) &&
+                    !referenceDate(
+                      reduction.date,
+                    ).add(const Duration(days: 1)).isAfter(periodEnd))
+                  referenceDate(reduction.date).add(const Duration(days: 1)),
+            ].fold<DateTime?>(
+              null,
+              (latest, value) =>
+                  latest == null || value.isAfter(latest) ? value : latest,
+            );
+        interestSettledThrough.add(settledThrough);
       }
       final finalStage = index == terms.stages.length - 1;
       final stageCalculation = stageHandler.calculate(
@@ -208,6 +237,7 @@ class InstallmentPlanEngine {
         openingPrincipal: opening,
         finalStage: finalStage,
         reductions: deductions,
+        interestSettledThrough: interestSettledThrough,
         changes: repayment.method == InstallmentRepaymentMethod.flatFee
             ? []
             : rateChanges[index] ?? [],

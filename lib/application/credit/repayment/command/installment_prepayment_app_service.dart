@@ -105,7 +105,7 @@ class InstallmentPrepaymentAppServiceImpl
         ],
       )..validateAgainstLedgerTransaction(total);
       await _repayments.saveRepayment(repayment);
-      if (total.principal.minorUnits > 0) {
+      if (total.principal.minorUnits > 0 || total.interest.minorUnits > 0) {
         await _plans.applyAutomaticChange(
           contract.id,
           const RecalculateFromOperations(),
@@ -129,6 +129,15 @@ class InstallmentPrepaymentAppServiceImpl
         allowedTypes: const {RepaymentType.prepayment},
       );
       await _transactions.editTransaction(repayment, command);
+      final allocated = repayment.totalAllocated();
+      if (command.occurredAt != null &&
+          (allocated.principal.minorUnits > 0 ||
+              allocated.interest.minorUnits > 0)) {
+        await _plans.applyAutomaticChange(
+          repayment.targetId,
+          const RecalculateFromOperations(),
+        );
+      }
     });
   }
 
@@ -143,13 +152,13 @@ class InstallmentPrepaymentAppServiceImpl
     if (contract == null) {
       throw BusinessException(CreditErrorCode.contractNotFound);
     }
-    final changesPrincipal =
-        repayment.totalAllocated().principal.minorUnits > 0;
+    final allocated = repayment.totalAllocated();
     final transaction = await _transactions.loadParentTransaction(repayment);
     return _transactionRunner.run<void>(() async {
       await _transactions.deleteParentTransaction(transaction);
       await _repayments.deleteRepayment(repayment.id);
-      if (changesPrincipal) {
+      if (allocated.principal.minorUnits > 0 ||
+          allocated.interest.minorUnits > 0) {
         await _plans.applyAutomaticChange(
           contract.id,
           const RecalculateFromOperations(),
