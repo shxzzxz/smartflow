@@ -235,11 +235,7 @@ final class AccountReconciliationLoaded extends AccountReconciliationPageState {
   final int unconfirmedDayCount;
   final bool submitting;
 
-  bool get canConfirm {
-    final balanceText = expectedBalanceText.trim();
-    final validOptionalBalance = balanceText.isEmpty || expectedBalance != null;
-    return validOptionalBalance && !submitting;
-  }
+  bool get canConfirm => !submitting;
 }
 
 class AccountReconciliationSelectionState {

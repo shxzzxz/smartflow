@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../../core/money/money.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
@@ -28,7 +27,6 @@ class AccountReconciliationPage extends ConsumerStatefulWidget {
 
 class _AccountReconciliationPageState
     extends ConsumerState<AccountReconciliationPage> {
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _expectedBalanceController;
 
   @override
@@ -76,7 +74,6 @@ class _AccountReconciliationPageState
               child: switch (state) {
                 AccountReconciliationLoaded() => _LoadedContent(
                   state: state,
-                  formKey: _formKey,
                   expectedBalanceController: _expectedBalanceController,
                   onPickRange: () => _pickRange(state),
                   onExpectedBalanceChanged: (value) => ref
@@ -119,7 +116,6 @@ class _AccountReconciliationPageState
   }
 
   Future<void> _confirm(AccountReconciliationLoaded state) async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
     if (state.changedDayCount > 0) {
       final confirmed = await showDialog<bool>(
         context: context,
@@ -165,14 +161,12 @@ class _AccountReconciliationPageState
 class _LoadedContent extends StatelessWidget {
   const _LoadedContent({
     required this.state,
-    required this.formKey,
     required this.expectedBalanceController,
     required this.onPickRange,
     required this.onExpectedBalanceChanged,
   });
 
   final AccountReconciliationLoaded state;
-  final GlobalKey<FormState> formKey;
   final TextEditingController expectedBalanceController;
   final VoidCallback onPickRange;
   final ValueChanged<String> onExpectedBalanceChanged;
@@ -187,49 +181,45 @@ class _LoadedContent extends StatelessWidget {
         AppSpacing.space24,
       ),
       leading: [
-        Form(
-          key: formKey,
-          child: AppFormSection(
-            title: '对账范围',
-            description: '结束日期望余额用于从结束日向前推算每日期望余额',
-            children: [
-              AppPlainFormRow(
-                label: '日期范围',
-                onTap: onPickRange,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: AppSpacing.space4),
-                        child: AppPlainValueText(
-                          text:
-                              '${_dateLabel(state.from)} - '
-                              '${_dateLabel(state.untilInclusive)}',
-                        ),
+        AppFormSection(
+          title: '对账范围',
+          description: '结束日期望余额用于从结束日向前推算每日期望余额',
+          children: [
+            AppPlainFormRow(
+              label: '日期范围',
+              onTap: onPickRange,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AppSpacing.space4),
+                      child: AppPlainValueText(
+                        text:
+                            '${_dateLabel(state.from)} - '
+                            '${_dateLabel(state.untilInclusive)}',
                       ),
                     ),
-                    SizedBox(
-                      width: AppSpacing.space48,
-                      height: AppSpacing.space48,
-                      child: Center(
-                        child: Icon(
-                          RemixIcons.arrow_right_s_line,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                  ),
+                  SizedBox(
+                    width: AppSpacing.space48,
+                    height: AppSpacing.space48,
+                    child: Center(
+                      child: Icon(
+                        RemixIcons.arrow_right_s_line,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              MoneyPlainFormRow(
-                label: '期望余额',
-                controller: expectedBalanceController,
-                hintText: '结束日期望余额',
-                validator: _validateExpectedBalance,
-                onChanged: onExpectedBalanceChanged,
-              ),
-            ],
-          ),
+            ),
+            MoneyPlainFormRow(
+              label: '期望余额',
+              controller: expectedBalanceController,
+              hintText: '结束日期望余额',
+              onChanged: onExpectedBalanceChanged,
+            ),
+          ],
         ),
         if (state.changedDayCount > 0) ...[
           const SizedBox(height: AppSpacing.space12),
@@ -253,12 +243,6 @@ class _LoadedContent extends StatelessWidget {
       showDailyTotals: false,
       showClosingBalance: true,
     );
-  }
-
-  String? _validateExpectedBalance(String? value) {
-    final text = value?.trim() ?? '';
-    if (text.isEmpty) return null;
-    return Money.tryParse(text) == null ? '请输入有效金额' : null;
   }
 
   String _dateLabel(DateTime value) {

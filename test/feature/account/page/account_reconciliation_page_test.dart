@@ -17,7 +17,7 @@ import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
 
 void main() {
-  test('allows an empty expected balance but rejects invalid text', () {
+  test('confirmation does not depend on the expected balance text', () {
     final account = _account();
     AccountReconciliationLoaded state({
       required String expectedBalanceText,
@@ -42,7 +42,7 @@ void main() {
     );
     expect(
       state(expectedBalanceText: '-', expectedBalance: null).canConfirm,
-      isFalse,
+      isTrue,
     );
   });
 
@@ -258,6 +258,89 @@ void main() {
       ),
     );
     expect(headerButton.onPressed, isNotNull);
+  });
+
+  testWidgets('confirms after the reconciliation range scrolls offscreen', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(480, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final appService = _FakeReconciliationAppService();
+    final account = _account();
+    final router = GoRouter(
+      initialLocation: '/account/${account.id}/reconcile',
+      routes: [
+        GoRoute(
+          path: '/account/:id',
+          builder: (context, state) => const Scaffold(body: Text('账户详情')),
+        ),
+        GoRoute(
+          path: '/account/:id/reconcile',
+          builder: (context, state) =>
+              AccountReconciliationPage(accountId: state.pathParameters['id']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    final state = AccountReconciliationLoaded(
+      account: account,
+      from: DateTime(2026, 7, 1),
+      untilInclusive: DateTime(2026, 7, 31),
+      expectedBalanceText: '-',
+      expectedBalance: null,
+      groups: [
+        for (var index = 0; index < 10; index++)
+          TransactionDayGroup(
+            date: DateTime(2026, 7, 31).subtract(Duration(days: index)),
+            rows: const [],
+            incomeMinor: 0,
+            expenseMinor: 0,
+            warning: '该日流水与上次确认时不同',
+          ),
+      ],
+      changedDayCount: 0,
+      unconfirmedDayCount: 0,
+      submitting: false,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountReconciliationViewModelProvider(
+            account.id,
+          ).overrideWith(() => _FixedReconciliationViewModel(state)),
+          accountReconciliationSelectionProvider(account.id).overrideWith(
+            () => _FixedReconciliationSelection(
+              AccountReconciliationSelectionState(
+                from: state.from,
+                untilInclusive: state.untilInclusive,
+                expectedBalanceText: '-',
+                submitting: false,
+              ),
+            ),
+          ),
+          accountReconciliationAppServiceProvider.overrideWithValue(appService),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -1200));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+
+    await tester.tap(find.widgetWithText(AppHeaderTextButton, '确认'));
+    await tester.pumpAndSettle();
+
+    expect(appService.commands, hasLength(1));
+    expect(
+      router.routerDelegate.currentConfiguration.uri.toString(),
+      '/account/account',
+    );
   });
 }
 
