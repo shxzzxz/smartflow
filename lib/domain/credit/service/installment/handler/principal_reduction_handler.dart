@@ -37,6 +37,7 @@ class PrincipalReductionHandler {
     required List<PrincipalReduction> reductions,
     required InstallmentAmountAllocation currentAllocation,
     required RoundingMode rounding,
+    required DateTime? interestSettledThrough,
   }) {
     final reductionMinor = reductions.fold<int>(
       0,
@@ -62,10 +63,12 @@ class PrincipalReductionHandler {
       openingRate: openingRate,
       changes: changes,
       reductions: reductions,
+      interestSettledThrough: interestSettledThrough,
     );
     final interest = segments.fold<Rational>(
       Rational.zero,
-      (sum, segment) => sum + segment.exactInterestMinor,
+      (sum, segment) =>
+          segment.isSettled ? sum : sum + segment.exactInterestMinor,
     );
     return (
       allocation: InstallmentAmountAllocation(
@@ -84,6 +87,7 @@ class PrincipalReductionHandler {
     required InterestRate? openingRate,
     required List<RateChange> changes,
     required List<PrincipalReduction> reductions,
+    required DateTime? interestSettledThrough,
   }) {
     final range = context.periodRange(periodIndex);
     final principalEvents = [
@@ -147,6 +151,11 @@ class PrincipalReductionHandler {
         rateIndex++;
       }
     }
-    return segments;
+    if (interestSettledThrough == null) return segments;
+    final settledThrough = referenceDate(interestSettledThrough);
+    return List.unmodifiable([
+      for (final segment in segments)
+        segment.withSettlement(isSettled: !segment.end.isAfter(settledThrough)),
+    ]);
   }
 }

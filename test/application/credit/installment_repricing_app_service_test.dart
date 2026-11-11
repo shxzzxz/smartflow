@@ -1262,7 +1262,7 @@ void main() {
           await f.prepayExample(DateTime.utc(2024, 12, 13));
           final prepaid = await f.installments.listSchedules('example');
           expect(prepaid[3].expectedPrincipal.minorUnits, 1649959);
-          expect(prepaid[3].expectedInterest.minorUnits, 58370);
+          expect(prepaid[3].expectedInterest.minorUnits, 56358);
         }
         // 取值日已确定的结果可提前应用，1/2 仍是实际拆息日期。
         await f.service.runDue(DateTime.utc(2025, 1, 1));
@@ -1301,7 +1301,7 @@ void main() {
                 ),
               ),
           [
-            (1649959, prepayFirst ? 53204 : 56137),
+            (1649959, prepayFirst ? 51192 : 9863),
             (1538684, 37319),
             (1543301, 32702),
             (1547930, 28073),

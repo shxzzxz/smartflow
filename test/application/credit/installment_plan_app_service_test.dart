@@ -222,6 +222,69 @@ void main() {
   );
 
   test(
+    'prepayment records settle accrued interest in automatic plans',
+    () async {
+      final ids = SequentialIdGenerator(prefix: 'interest-plan');
+      final aggregate = const InstallmentContractOriginationService()
+          .originateDisbursement(
+            contractId: 'interest-loan',
+            liabilityAccountId: 'interest-account',
+            createdAt: DateTime(2026),
+            newScheduleId: ids.newId,
+            terms: InstallmentOriginationTerms(
+              principal: const Money(minorUnits: 800000),
+              borrowingDate: DateTime(2026, 1, 1),
+              stageTerms: InstallmentContractTerms.singleStage(
+                totalPeriods: 1,
+                firstDate: DateTime(2026, 2, 1),
+                method: InstallmentRepaymentMethod.interestFirst,
+                accrual: InterestAccrualMethod.daily,
+                ratePeriod: InterestRatePeriod.annual,
+                ratePpm: 36000,
+              ),
+            ),
+          );
+      await installments.insertAggregate(aggregate.contract);
+
+      Future<void> savePrepayment(
+        String id,
+        DateTime repaymentDate,
+        int principal,
+      ) => repayments.saveRepayment(
+        Repayment(
+          id: id,
+          repaymentType: RepaymentType.prepayment,
+          targetType: RepaymentTargetType.contract,
+          targetId: 'interest-loan',
+          repaymentDate: repaymentDate,
+          items: [
+            RepaymentItem(
+              id: '$id-item',
+              repaymentId: id,
+              allocated: RepaymentAmountBreakdown(
+                principal: Money(minorUnits: principal),
+                interest: Money.zero(),
+                fee: Money.zero(),
+                discount: Money.zero(),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      await savePrepayment('prepayment-a', DateTime(2026, 1, 6), 200000);
+      await savePrepayment('prepayment-b', DateTime(2026, 1, 16), 200000);
+      await service.applyAutomaticChange(
+        'interest-loan',
+        const RecalculateFromOperations(),
+      );
+
+      final rows = await installments.listSchedules('interest-loan');
+      expect(rows.single.expectedInterest.minorUnits, 640);
+    },
+  );
+
+  test(
     'terms rebuild replaces manual expectations across all statuses and repairs states',
     () async {
       final contract = (await installments.findContract('loan'))!;

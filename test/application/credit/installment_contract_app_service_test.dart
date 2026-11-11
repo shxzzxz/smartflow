@@ -101,7 +101,7 @@ void main() {
       () async {
         final fixture = _Fixture();
         fixture.installments.putContract(
-          _purchaseContract(id: 'purchase-contract'),
+          _purchaseContract(id: 'purchase-contract', ratePpm: 36000),
         );
         fixture.installments.putSchedules('purchase-contract', [
           _schedule(
@@ -167,7 +167,13 @@ void main() {
         );
         expect(
           fixture.installments.contracts['purchase-contract']!.status,
-          InstallmentContractStatus.settled,
+          InstallmentContractStatus.active,
+        );
+        expect(
+          (await fixture.installments.listSchedules(
+            'purchase-contract',
+          )).any((row) => row.expectedInterest.minorUnits > 0),
+          isTrue,
         );
 
         await fixture.consumption.editRefund(
@@ -946,7 +952,7 @@ InstallmentContract _contract({
   );
 }
 
-InstallmentContract _purchaseContract({required String id}) {
+InstallmentContract _purchaseContract({required String id, int? ratePpm}) {
   return InstallmentContract(
     id: id,
     liabilityAccountId: 'credit-liability',
@@ -963,6 +969,8 @@ InstallmentContract _purchaseContract({required String id}) {
       lastDate: DateTime(2026, 8, 10),
       method: InstallmentRepaymentMethod.equalPrincipal,
       accrual: InterestAccrualMethod.daily,
+      ratePeriod: ratePpm == null ? null : InterestRatePeriod.annual,
+      ratePpm: ratePpm,
     ),
   );
 }

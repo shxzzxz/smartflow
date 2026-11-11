@@ -44,6 +44,7 @@ class InterestAdjustmentHandler {
   ) {
     var interest = Rational.zero;
     for (final segment in segments) {
+      if (segment.isSettled) continue;
       interest += segment.exactInterestMinor;
       for (final adjustment in adjustments) {
         final (:start, :end) = adjustment.accrualRange;

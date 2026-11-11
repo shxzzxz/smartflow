@@ -226,12 +226,6 @@ class InstallmentContract {
     );
   }
 
-  void refreshStatusFromPrincipal({required bool hasRemainingPrincipal}) {
-    _status = hasRemainingPrincipal
-        ? InstallmentContractStatus.active
-        : InstallmentContractStatus.settled;
-  }
-
   /// 自动计算与人工编辑分别应用，避免自动重算被标记为人工调整。
   void applyPlanChange(
     InstallmentPlanChangeSet change, {

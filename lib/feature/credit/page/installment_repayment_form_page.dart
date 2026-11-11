@@ -131,7 +131,7 @@ class _InstallmentRepaymentFormPageState
           ),
           const SizedBox(height: AppSpacing.space24),
           const CreditRepaymentSubmitHint(
-            text: '本期计划本金保持不变，利息从还款日前后按剩余本金分段计算；提交后从下一期起重算后续期供。',
+            text: '本期计划本金保持不变，截至还款日已产生利息默认结清；计划只保留之后按剩余本金产生的利息尾段，并重算后续期供。',
           ),
           AppSubmitButton(
             label: '提交并重算',
