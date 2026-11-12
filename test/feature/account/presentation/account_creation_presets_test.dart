@@ -29,12 +29,16 @@ void main() {
     final boc = accountCreationPresetForId('boc')!;
 
     expect(boc.kind, AccountProfileKind.fund);
-    expect(boc.iconKey, 'boc_debit_card');
+    expect(boc.iconKey, 'builtin:account:brand:boc_debit_card');
     expect(boc.defaultName, '中国银行');
     expect(boc.routeLocation, '/account/new?preset=boc');
     expect(
       accountCreationPresetForId('huabei')!.kind,
       AccountProfileKind.credit,
+    );
+    expect(
+      accountCreationPresetForId('huabei')!.iconKey,
+      'builtin:account:brand:huabei',
     );
     expect(accountCreationPresetForId('jiebei')!.kind, AccountProfileKind.loan);
     expect(

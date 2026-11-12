@@ -164,6 +164,7 @@ void main() {
       expect(command.type, AccountType.asset);
       expect(command.openingBalance, const Money(minorUnits: 1234));
       expect(command.note, 'daily account');
+      expect(command.iconKey, 'builtin:account:rounded-line:bank-account');
     });
 
     for (final kind in [
@@ -220,6 +221,10 @@ void main() {
       expect(command.creditLimit, const Money(minorUnits: 100000));
       expect(command.billingDay, 5);
       expect(command.repaymentDay, 25);
+      expect(
+        command.iconKey,
+        'builtin:account:rounded-line:cmb_credit_card',
+      );
     });
 
     test('creates loan account without cycle parameters', () async {

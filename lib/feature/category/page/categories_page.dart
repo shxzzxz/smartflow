@@ -290,7 +290,7 @@ class _RootCategoryRow extends StatelessWidget {
           children: [
             BusinessIconBubble(
               size: AppSpacing.space32,
-              child: BusinessIcon(iconKey: node.account.iconKey, size: 24),
+              child: BusinessIcon(iconRef: node.account.iconKey, size: 24),
             ),
             const SizedBox(width: AppSpacing.space14),
             Expanded(
@@ -362,7 +362,7 @@ class _ChildCategoryRow extends StatelessWidget {
           children: [
             BusinessIconBubble(
               size: AppSpacing.space28,
-              child: BusinessIcon(iconKey: category.iconKey, size: 20),
+              child: BusinessIcon(iconRef: category.iconKey, size: 20),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(

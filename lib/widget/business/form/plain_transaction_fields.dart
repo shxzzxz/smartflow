@@ -408,7 +408,7 @@ class AccountPlainValue extends StatelessWidget {
           dimension: AppSpacing.space20,
           child: Center(
             child: BusinessIcon(
-              iconKey: account.iconKey,
+              iconRef: account.iconKey,
               size: AppSpacing.space20,
               usage: BusinessIconUsage.account,
             ),

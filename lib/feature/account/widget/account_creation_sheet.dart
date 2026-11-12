@@ -47,7 +47,7 @@ class _AccountCreationSheet extends StatelessWidget {
                           value: preset,
                           label: preset.label,
                           iconBuilder: (context, size) => BusinessIcon(
-                            iconKey: preset.iconKey,
+                            iconRef: preset.iconKey,
                             size: size,
                             usage: BusinessIconUsage.account,
                           ),

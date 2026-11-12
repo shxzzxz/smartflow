@@ -19,7 +19,7 @@ class CategoryAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BusinessIconBubble(
       size: size,
-      child: BusinessIcon(iconKey: iconKey, size: iconSize ?? size * 0.7),
+      child: BusinessIcon(iconRef: iconKey, size: iconSize ?? size * 0.7),
     );
   }
 }

@@ -10,7 +10,11 @@ import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 14;
+const currentBuiltinDataVersion = 16;
+
+const _accountIconStyleSettingKey = 'settings.account_icon_style';
+const _categoryIconStyleSettingKey = 'settings.category_icon_style';
+const _defaultIconGroupId = 'rounded-line';
 
 const _uuid = Uuid();
 
@@ -95,6 +99,12 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
       await _ensureInitialAccountGroups(database);
       await _assignInitialAmortizationAccountGroups(database);
       await _seedDefaultAmortizationAccounts(database);
+    }
+    if (version < 15) {
+      await _upgradeCategoryIconsV15(database);
+    }
+    if (version < 16) {
+      await _upgradeIconReferencesV16(database);
     }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
@@ -528,6 +538,176 @@ Future<void> _upgradeBuiltinIncomeIcons(AppDatabase database) async {
   );
 }
 
+Future<void> _upgradeCategoryIconsV15(AppDatabase database) async {
+  await _updateCategoryIcon(
+    database,
+    name: '早餐',
+    type: AccountType.expense,
+    parentName: '食品餐饮',
+    iconKey: 'breakfast',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '食材生鲜',
+    type: AccountType.expense,
+    parentName: '食品餐饮',
+    iconKey: 'fresh-food',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '日用品',
+    type: AccountType.expense,
+    parentName: '购物消费',
+    iconKey: 'daily-supplies',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '水电燃',
+    type: AccountType.expense,
+    parentName: '居家生活',
+    iconKey: 'electricity-bill',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '通讯',
+    type: AccountType.expense,
+    iconKey: 'sim-card',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '文化教育',
+    type: AccountType.expense,
+    iconKey: 'education',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '休闲娱乐',
+    type: AccountType.expense,
+    iconKey: 'leisure',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '工作',
+    type: AccountType.income,
+    iconKey: 'briefcase',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '工资',
+    type: AccountType.income,
+    parentName: '工作',
+    iconKey: 'salary',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '借出',
+    type: AccountType.expense,
+    parentName: '其他',
+    iconKey: 'lend-out',
+  );
+  await _updateCategoryIcon(
+    database,
+    name: '借入',
+    type: AccountType.income,
+    parentName: '其他',
+    iconKey: 'borrow-in',
+  );
+}
+
+Future<void> _upgradeIconReferencesV16(AppDatabase database) async {
+  final settings =
+      await (database.select(database.appMetadata)..where(
+            (row) => row.key.isIn([
+              _accountIconStyleSettingKey,
+              _categoryIconStyleSettingKey,
+            ]),
+          ))
+          .get();
+  final settingValues = {for (final row in settings) row.key: row.value};
+  final accountGroupId = _nonEmptyOr(
+    settingValues[_accountIconStyleSettingKey],
+    _defaultIconGroupId,
+  );
+  final categoryGroupId = _nonEmptyOr(
+    settingValues[_categoryIconStyleSettingKey],
+    _defaultIconGroupId,
+  );
+  final rows = await (database.select(
+    database.accounts,
+  )..where((row) => row.iconKey.isNotNull())).get();
+
+  for (final row in rows) {
+    final iconKey = row.iconKey?.trim();
+    if (iconKey == null || iconKey.isEmpty || _isIconReference(iconKey)) {
+      continue;
+    }
+    final isCategory =
+        row.accountType == AccountType.income ||
+        row.accountType == AccountType.expense;
+    final groupId = isCategory
+        ? categoryGroupId
+        : _brandAccountIconKeys.contains(iconKey)
+        ? 'brand'
+        : accountGroupId;
+    final type = isCategory ? 'category' : 'account';
+    await (database.update(
+      database.accounts,
+    )..where((account) => account.id.equals(row.id))).write(
+      AccountsCompanion(
+        iconKey: Value('builtin:$type:$groupId:$iconKey'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  await (database.delete(database.appMetadata)..where(
+        (row) => row.key.isIn([
+          _accountIconStyleSettingKey,
+          _categoryIconStyleSettingKey,
+        ]),
+      ))
+      .go();
+}
+
+String _nonEmptyOr(String? value, String fallback) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty ? fallback : normalized;
+}
+
+bool _isIconReference(String value) => value.split(':').length == 4;
+
+const _brandAccountIconKeys = <String>{
+  'alipay',
+  'wechat_pay',
+  'icbc',
+  'ccb',
+  'cmb_credit_card',
+  'boc_debit_card',
+  'abc',
+  'bocom',
+  'psbc',
+  'citic',
+  'ceb',
+  'cmbc',
+  'cib',
+  'spdb',
+  'pab',
+  'cgb',
+  'huabei',
+  'jiebei',
+  'jd_baitiao',
+  'jd',
+  'meituan',
+  'duxiaoman',
+  'china_development_bank',
+  'douyin_change',
+  'douyin_pay_later',
+  'fangxin_loan',
+  '360_jietiao',
+  'jd_jintiao',
+  'xiaohongshu',
+};
+
 Future<void> _upgradeDiscountIncome(AppDatabase database) async {
   final other = await _findBuiltinAccount(
     database,
@@ -806,12 +986,12 @@ const _expenseCategories = [
     sortOrder: 20,
     children: [
       _BuiltinCategory(name: '茶饮', iconKey: 'drinks-line', sortOrder: 10),
-      _BuiltinCategory(name: '早餐', iconKey: 'cup-line', sortOrder: 20),
+      _BuiltinCategory(name: '早餐', iconKey: 'breakfast', sortOrder: 20),
       _BuiltinCategory(name: '午餐', iconKey: 'bowl-line', sortOrder: 30),
       _BuiltinCategory(name: '晚餐', iconKey: 'dinner', sortOrder: 40),
       _BuiltinCategory(name: '酒水', iconKey: 'drink', sortOrder: 50),
       _BuiltinCategory(name: '休闲零食', iconKey: 'snack', sortOrder: 60),
-      _BuiltinCategory(name: '食材生鲜', iconKey: 'cabbage', sortOrder: 70),
+      _BuiltinCategory(name: '食材生鲜', iconKey: 'fresh-food', sortOrder: 70),
       _BuiltinCategory(name: '粮油调味', iconKey: 'rice', sortOrder: 80),
     ],
   ),
@@ -821,7 +1001,7 @@ const _expenseCategories = [
     iconKey: 'shopping',
     sortOrder: 30,
     children: [
-      _BuiltinCategory(name: '日用品', iconKey: 'shopping', sortOrder: 10),
+      _BuiltinCategory(name: '日用品', iconKey: 'daily-supplies', sortOrder: 10),
       _BuiltinCategory(name: '衣物', iconKey: 't-shirt-line', sortOrder: 20),
       _BuiltinCategory(name: '手机数码', iconKey: 'phone', sortOrder: 30),
     ],
@@ -833,7 +1013,7 @@ const _expenseCategories = [
     sortOrder: 40,
     children: [
       _BuiltinCategory(name: '房租', iconKey: 'home-office-line', sortOrder: 10),
-      _BuiltinCategory(name: '水电燃', iconKey: 'flashlight-line', sortOrder: 20),
+      _BuiltinCategory(name: '水电燃', iconKey: 'electricity-bill', sortOrder: 20),
       _BuiltinCategory(name: '物业', iconKey: 'building-2-line', sortOrder: 30),
     ],
   ),
@@ -851,7 +1031,7 @@ const _expenseCategories = [
   _BuiltinCategory(
     name: '休闲娱乐',
     type: AccountType.expense,
-    iconKey: 'gamepad-line',
+    iconKey: 'leisure',
     sortOrder: 60,
     children: [
       _BuiltinCategory(name: '电影', iconKey: 'movie', sortOrder: 10),
@@ -861,7 +1041,7 @@ const _expenseCategories = [
   _BuiltinCategory(
     name: '文化教育',
     type: AccountType.expense,
-    iconKey: 'book',
+    iconKey: 'education',
     sortOrder: 70,
   ),
   _BuiltinCategory(
@@ -873,7 +1053,7 @@ const _expenseCategories = [
   _BuiltinCategory(
     name: '通讯',
     type: AccountType.expense,
-    iconKey: 'phone',
+    iconKey: 'sim-card',
     sortOrder: 90,
   ),
   _BuiltinCategory(
@@ -895,7 +1075,7 @@ const _expenseCategories = [
         sortOrder: 30,
         systemKey: SystemKey.feeExpense,
       ),
-      _BuiltinCategory(name: '借出', iconKey: 'logout-box-r-line', sortOrder: 40),
+      _BuiltinCategory(name: '借出', iconKey: 'lend-out', sortOrder: 40),
     ],
   ),
 ];
@@ -904,10 +1084,10 @@ const _incomeCategories = [
   _BuiltinCategory(
     name: '工作',
     type: AccountType.income,
-    iconKey: 'briefcase-line',
+    iconKey: 'briefcase',
     sortOrder: 10,
     children: [
-      _BuiltinCategory(name: '工资', iconKey: 'wallet-3-line', sortOrder: 10),
+      _BuiltinCategory(name: '工资', iconKey: 'salary', sortOrder: 10),
       _BuiltinCategory(name: '奖金', iconKey: 'trophy-line', sortOrder: 20),
     ],
   ),
@@ -929,7 +1109,7 @@ const _incomeCategories = [
     iconKey: 'more-2-line',
     sortOrder: 40,
     children: [
-      _BuiltinCategory(name: '借入', iconKey: 'hand-coin-line', sortOrder: 10),
+      _BuiltinCategory(name: '借入', iconKey: 'borrow-in', sortOrder: 10),
       _BuiltinCategory(
         name: '垫付补偿',
         iconKey: 'currency-line',

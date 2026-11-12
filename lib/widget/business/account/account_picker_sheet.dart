@@ -591,7 +591,7 @@ class _AccountPickerRow extends StatelessWidget {
                 child: iconKey == null
                     ? null
                     : BusinessIcon(
-                        iconKey: iconKey,
+                        iconRef: iconKey,
                         size: AppSpacing.space20,
                         usage: BusinessIconUsage.account,
                       ),

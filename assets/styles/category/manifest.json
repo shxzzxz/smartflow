@@ -1,16 +1,22 @@
 {
-  "styles": [
+  "groups": [
     {
       "id": "rounded-line",
-      "name": "圆角线性"
+      "name": "圆角线性",
+      "kind": "style",
+      "manifest": "assets/styles/category/rounded-line/manifest.json"
     },
     {
       "id": "soft-duotone",
-      "name": "柔和双色"
+      "name": "柔和双色",
+      "kind": "style",
+      "manifest": "assets/styles/category/soft-duotone/manifest.json"
     },
     {
       "id": "color-shape",
-      "name": "彩色面形"
+      "name": "彩色面形",
+      "kind": "style",
+      "manifest": "assets/styles/category/color-shape/manifest.json"
     }
   ]
 }

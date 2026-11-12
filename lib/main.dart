@@ -11,7 +11,7 @@ import 'app/business_icon_provider.dart';
 import 'app/provider.dart';
 import 'app/provider_error_observer.dart';
 import 'infrastructure/import/wechat/wechat_category_lexicon_loader.dart';
-import 'widget/business/icon/business_icon_catalog.dart';
+import 'widget/business/icon/business_icon_registry.dart';
 
 Future<void> main() async {
   final errorHandler = AppGlobalErrorHandler(
@@ -22,7 +22,7 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
     final logFileSink = await bootstrap();
     errorHandler.install();
-    final iconCatalog = await BusinessIconCatalog.load(rootBundle);
+    final iconRegistry = await BusinessIconRegistry.load(rootBundle);
     final wechatCategoryLexicon = await const WechatCategoryLexiconLoader()
         .load(rootBundle);
 
@@ -31,7 +31,7 @@ Future<void> main() async {
         observers: [AppProviderErrorObserver()],
         overrides: [
           appLogFileSinkProvider.overrideWithValue(logFileSink),
-          businessIconCatalogProvider.overrideWithValue(iconCatalog),
+          businessIconRegistryProvider.overrideWithValue(iconRegistry),
           wechatCategoryLexiconProvider.overrideWithValue(
             wechatCategoryLexicon,
           ),

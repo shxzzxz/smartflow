@@ -310,4 +310,196 @@ void main() {
         .getSingle();
     expect(name.read<String>('name'), '垫付补偿');
   });
+
+  test('v14 upgrade repairs built-in category icon mappings', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    const mappings = [
+      (
+        name: '早餐',
+        type: AccountType.expense,
+        oldIcon: 'cup-line',
+        icon: 'breakfast',
+      ),
+      (
+        name: '食材生鲜',
+        type: AccountType.expense,
+        oldIcon: 'cabbage',
+        icon: 'fresh-food',
+      ),
+      (
+        name: '日用品',
+        type: AccountType.expense,
+        oldIcon: 'shopping',
+        icon: 'daily-supplies',
+      ),
+      (
+        name: '水电燃',
+        type: AccountType.expense,
+        oldIcon: 'flashlight-line',
+        icon: 'electricity-bill',
+      ),
+      (
+        name: '通讯',
+        type: AccountType.expense,
+        oldIcon: 'phone',
+        icon: 'sim-card',
+      ),
+      (
+        name: '文化教育',
+        type: AccountType.expense,
+        oldIcon: 'book',
+        icon: 'education',
+      ),
+      (
+        name: '休闲娱乐',
+        type: AccountType.expense,
+        oldIcon: 'gamepad-line',
+        icon: 'leisure',
+      ),
+      (
+        name: '工作',
+        type: AccountType.income,
+        oldIcon: 'briefcase-line',
+        icon: 'briefcase',
+      ),
+      (
+        name: '工资',
+        type: AccountType.income,
+        oldIcon: 'wallet-3-line',
+        icon: 'salary',
+      ),
+      (
+        name: '借出',
+        type: AccountType.expense,
+        oldIcon: 'logout-box-r-line',
+        icon: 'lend-out',
+      ),
+      (
+        name: '借入',
+        type: AccountType.income,
+        oldIcon: 'hand-coin-line',
+        icon: 'borrow-in',
+      ),
+    ];
+
+    for (final mapping in mappings) {
+      await (database.update(database.accounts)..where(
+            (row) =>
+                row.name.equals(mapping.name) &
+                row.accountType.equalsValue(mapping.type) &
+                row.source.equalsValue(AccountSource.builtin),
+          ))
+          .write(AccountsCompanion(iconKey: Value(mapping.oldIcon)));
+    }
+    await (database.update(database.appMetadata)
+          ..where((row) => row.key.equals(builtinDataVersionKey)))
+        .write(const AppMetadataCompanion(value: Value('14')));
+
+    await ensureBuiltinData(database);
+
+    for (final mapping in mappings) {
+      final account =
+          await (database.select(database.accounts)..where(
+                (row) =>
+                    row.name.equals(mapping.name) &
+                    row.accountType.equalsValue(mapping.type),
+              ))
+              .getSingle();
+      expect(
+        account.iconKey,
+        'builtin:category:rounded-line:${mapping.icon}',
+        reason: '${mapping.name} should use ${mapping.icon}',
+      );
+    }
+    final version = await (database.select(
+      database.appMetadata,
+    )..where((row) => row.key.equals(builtinDataVersionKey))).getSingle();
+    expect(version.value, currentBuiltinDataVersion.toString());
+  });
+
+  test(
+    'v15 upgrade normalizes icon refs and removes icon style settings',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      await database.batch((batch) {
+        batch.insertAllOnConflictUpdate(database.appMetadata, [
+          AppMetadataCompanion.insert(
+            key: 'settings.account_icon_style',
+            value: 'soft-duotone',
+          ),
+          AppMetadataCompanion.insert(
+            key: 'settings.category_icon_style',
+            value: 'color-shape',
+          ),
+        ]);
+        batch.insertAll(database.accounts, [
+          AccountsCompanion.insert(
+            id: 'icon-generic',
+            name: '资金',
+            accountType: AccountType.asset,
+            iconKey: const Value('bank-card'),
+          ),
+          AccountsCompanion.insert(
+            id: 'icon-brand',
+            name: '支付宝',
+            accountType: AccountType.asset,
+            iconKey: const Value('alipay'),
+          ),
+          AccountsCompanion.insert(
+            id: 'icon-category',
+            name: '餐饮',
+            accountType: AccountType.expense,
+            iconKey: const Value('meal'),
+          ),
+          AccountsCompanion.insert(
+            id: 'icon-exact',
+            name: '自定义',
+            accountType: AccountType.asset,
+            iconKey: const Value('user:account:mine:custom'),
+          ),
+        ]);
+      });
+      await (database.update(database.appMetadata)
+            ..where((row) => row.key.equals(builtinDataVersionKey)))
+          .write(const AppMetadataCompanion(value: Value('15')));
+
+      await ensureBuiltinData(database);
+
+      expect(
+        await _accountIcon(database, 'icon-generic'),
+        'builtin:account:soft-duotone:bank-card',
+      );
+      expect(
+        await _accountIcon(database, 'icon-brand'),
+        'builtin:account:brand:alipay',
+      );
+      expect(
+        await _accountIcon(database, 'icon-category'),
+        'builtin:category:color-shape:meal',
+      );
+      expect(
+        await _accountIcon(database, 'icon-exact'),
+        'user:account:mine:custom',
+      );
+      expect(
+        await (database.select(database.appMetadata)..where(
+              (row) => row.key.isIn([
+                'settings.account_icon_style',
+                'settings.category_icon_style',
+              ]),
+            ))
+            .get(),
+        isEmpty,
+      );
+    },
+  );
+}
+
+Future<String?> _accountIcon(AppDatabase database, String id) async {
+  final row = await (database.select(
+    database.accounts,
+  )..where((account) => account.id.equals(id))).getSingle();
+  return row.iconKey;
 }

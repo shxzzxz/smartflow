@@ -1656,10 +1656,10 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       choices: [
         for (final spec in specs)
           IconChoiceGridItem(
-            iconKey: spec.iconKey,
+            iconKey: spec.ref.id,
             label: spec.label,
             iconBuilder: (context, size) =>
-                BusinessIcon(iconKey: spec.iconKey, size: size),
+                BusinessIcon(iconRef: spec.ref.id, size: size),
           ),
       ],
       selectedKey: _selectedIconKey,
@@ -1711,7 +1711,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   Widget _iconCatalogPickerPreview() {
     return IconCatalogPicker(
       usage: BusinessIconUsage.expenseCategory,
-      selectedKey: _selectedIconKey,
+      selectedRef: _selectedIconKey,
       onChanged: (value) => setState(() => _selectedIconKey = value),
     );
   }
@@ -2439,11 +2439,20 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           child: Wrap(
             spacing: AppSpacing.space12,
             children: [
-              BusinessIcon(iconKey: 'meal', size: 28),
-              BusinessIcon(iconKey: 'metro', size: 28),
-              BusinessIcon(iconKey: 'salary', size: 28),
               BusinessIcon(
-                iconKey: 'alipay',
+                iconRef: 'builtin:category:rounded-line:meal',
+                size: 28,
+              ),
+              BusinessIcon(
+                iconRef: 'builtin:category:rounded-line:metro',
+                size: 28,
+              ),
+              BusinessIcon(
+                iconRef: 'builtin:category:rounded-line:salary',
+                size: 28,
+              ),
+              BusinessIcon(
+                iconRef: 'builtin:account:brand:alipay',
                 usage: BusinessIconUsage.account,
                 size: 28,
               ),
@@ -2459,13 +2468,19 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
               BusinessIconBubble(
                 size: 40,
                 label: '未选中',
-                child: BusinessIcon(iconKey: 'meal', size: 24),
+                child: BusinessIcon(
+                  iconRef: 'builtin:category:rounded-line:meal',
+                  size: 24,
+                ),
               ),
               BusinessIconBubble(
                 size: 40,
                 selected: true,
                 label: '选中',
-                child: BusinessIcon(iconKey: 'meal', size: 24),
+                child: BusinessIcon(
+                  iconRef: 'builtin:category:rounded-line:meal',
+                  size: 24,
+                ),
               ),
             ],
           ),

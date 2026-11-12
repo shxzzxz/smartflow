@@ -202,7 +202,7 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
                       children: [
                         IconCatalogPicker(
                           usage: BusinessIconUsage.account,
-                          selectedKey: formState.iconKey,
+                          selectedRef: formState.iconKey,
                           onChanged: notifier.setIconKey,
                         ),
                       ],
@@ -355,6 +355,12 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final formState = ref
+        .read(accountFormViewModelProvider(widget.accountId))
+        .requireValue!;
+    final iconRef = BusinessIconScope.of(
+      context,
+    ).canonicalizeIconRef(formState.iconKey, BusinessIconType.account);
 
     final outcome = await ref
         .read(accountFormViewModelProvider(widget.accountId).notifier)
@@ -363,6 +369,7 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
           openingBalanceText: _openingBalanceController.text,
           creditLimitText: _creditLimitController.text,
           noteText: _noteController.text,
+          iconRef: iconRef,
         );
     if (!mounted) return;
 

@@ -506,7 +506,7 @@ class _AllocationAmountRowState extends State<_AllocationAmountRow> {
       child: Row(
         children: [
           BusinessIcon(
-            iconKey: widget.option.iconKey,
+            iconRef: widget.option.iconKey,
             usage: widget.option.iconUsage,
             size: 20,
           ),

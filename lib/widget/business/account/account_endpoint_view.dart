@@ -52,7 +52,7 @@ class AccountEndpointView extends StatelessWidget {
           dimension: iconSize,
           child: Center(
             child: BusinessIcon(
-              iconKey: endpoint.iconKey,
+              iconRef: endpoint.iconKey,
               size: iconSize,
               usage: BusinessIconUsage.account,
             ),
@@ -112,7 +112,7 @@ class AccountEndpointGroupView extends StatelessWidget {
             Tooltip(
               message: visible[index].label,
               child: BusinessIcon(
-                iconKey: visible[index].iconKey,
+                iconRef: visible[index].iconKey,
                 size: iconSize,
                 usage: BusinessIconUsage.account,
               ),

@@ -48,9 +48,9 @@ const _showcaseCategoryLabels = [
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  late BusinessIconCatalog iconCatalog;
+  late BusinessIconRegistry iconCatalog;
   setUpAll(() async {
-    iconCatalog = await BusinessIconCatalog.load(rootBundle);
+    iconCatalog = await BusinessIconRegistry.load(rootBundle);
   });
 
   Future<void> pumpShowcase(
@@ -72,7 +72,7 @@ void main() {
           child: child!,
         ),
         home: BusinessIconScope(
-          catalog: iconCatalog,
+          registry: iconCatalog,
           child: const DesignSystemShowcasePage(),
         ),
       ),

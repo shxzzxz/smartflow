@@ -52,7 +52,7 @@ class AccountListRow extends StatelessWidget {
                 BusinessIconBubble(
                   size: AppSpacing.space32,
                   child: BusinessIcon(
-                    iconKey: account.iconKey,
+                    iconRef: account.iconKey,
                     size: AppSpacing.space28,
                     usage: BusinessIconUsage.account,
                   ),

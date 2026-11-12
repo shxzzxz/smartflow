@@ -108,8 +108,6 @@ class AppSettings {
     this.calendarHeatMetric = CalendarHeatMetric.expense,
     this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
     this.transactionListDisplayMode = TransactionListDisplayMode.standard,
-    this.accountIconStyle = '',
-    this.categoryIconStyle = '',
   });
 
   final bool showAddTransactionFab;
@@ -121,9 +119,6 @@ class AppSettings {
   final CalendarHeatMetric calendarHeatMetric;
   final CashflowPeriodMetric cashflowPeriodMetric;
   final TransactionListDisplayMode transactionListDisplayMode;
-  // Empty selects the first style declared in that type's manifest.
-  final String accountIconStyle;
-  final String categoryIconStyle;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
@@ -135,8 +130,6 @@ class AppSettings {
     CalendarHeatMetric? calendarHeatMetric,
     CashflowPeriodMetric? cashflowPeriodMetric,
     TransactionListDisplayMode? transactionListDisplayMode,
-    String? accountIconStyle,
-    String? categoryIconStyle,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -154,8 +147,6 @@ class AppSettings {
       cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
       transactionListDisplayMode:
           transactionListDisplayMode ?? this.transactionListDisplayMode,
-      accountIconStyle: accountIconStyle ?? this.accountIconStyle,
-      categoryIconStyle: categoryIconStyle ?? this.categoryIconStyle,
     );
   }
 }

@@ -34,7 +34,7 @@ Future<void> showCategoryActionSheet(
             ListTile(
               leading: BusinessIconBubble(
                 size: AppSpacing.space32,
-                child: BusinessIcon(iconKey: category.iconKey, size: 24),
+                child: BusinessIcon(iconRef: category.iconKey, size: 24),
               ),
               title: Text(category.name),
               subtitle: isRoot ? null : const Text('子分类'),
@@ -153,7 +153,7 @@ Future<void> showCategoryMoveSheet(
               ListTile(
                 leading: BusinessIconBubble(
                   size: AppSpacing.space32,
-                  child: BusinessIcon(iconKey: target.iconKey, size: 24),
+                  child: BusinessIcon(iconRef: target.iconKey, size: 24),
                 ),
                 title: Text(target.name),
                 onTap: () => Navigator.of(sheetContext).pop(target.id),
@@ -413,7 +413,7 @@ class _MigrationTargetSheetState extends ConsumerState<_MigrationTargetSheet> {
                       leading: BusinessIconBubble(
                         size: AppSpacing.space32,
                         child: BusinessIcon(
-                          iconKey: candidate.iconKey,
+                          iconRef: candidate.iconKey,
                           size: 24,
                         ),
                       ),

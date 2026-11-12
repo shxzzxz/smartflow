@@ -235,7 +235,7 @@ class _AccountSelectorChip extends StatelessWidget {
     final leading = effective == null
         ? null
         : BusinessIcon(
-            iconKey: effective.iconKey,
+            iconRef: effective.iconKey,
             size: 14,
             usage: BusinessIconUsage.account,
           );

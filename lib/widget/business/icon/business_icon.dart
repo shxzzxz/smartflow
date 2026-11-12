@@ -11,14 +11,14 @@ final _logger = Logger('widget.business.icon');
 
 class BusinessIcon extends StatefulWidget {
   const BusinessIcon({
-    required this.iconKey,
+    required this.iconRef,
     super.key,
     this.size = 24,
     this.color,
     this.usage = BusinessIconUsage.expenseCategory,
   });
 
-  final String? iconKey;
+  final String? iconRef;
   final double size;
   final Color? color;
   final BusinessIconUsage usage;
@@ -37,7 +37,7 @@ class _BusinessIconState extends State<BusinessIcon> {
         widget.color ?? IconTheme.of(context).color ?? colors.onSurfaceVariant;
     final spec = BusinessIconScope.of(
       context,
-    ).resolve(widget.iconKey, widget.usage);
+    ).resolve(widget.iconRef, widget.usage);
     Widget fallback() => Icon(
       switch (widget.usage) {
         BusinessIconUsage.account => RemixIcons.bank_line,

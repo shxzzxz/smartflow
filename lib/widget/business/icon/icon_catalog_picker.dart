@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
 import 'package:smartflow/design_system/theme/app_text_styles.dart';
+import 'package:smartflow/design_system/widget/app_choice_chip_group.dart';
 import 'package:smartflow/design_system/token/radius.dart';
 import 'package:smartflow/design_system/token/spacing.dart';
 
@@ -12,13 +13,13 @@ import 'icon_choice_grid.dart';
 class IconCatalogPicker extends StatefulWidget {
   const IconCatalogPicker({
     required this.usage,
-    required this.selectedKey,
+    required this.selectedRef,
     required this.onChanged,
     super.key,
   });
 
   final BusinessIconUsage usage;
-  final String? selectedKey;
+  final String? selectedRef;
   final ValueChanged<String> onChanged;
 
   @override
@@ -27,20 +28,41 @@ class IconCatalogPicker extends StatefulWidget {
 
 class _IconCatalogPickerState extends State<IconCatalogPicker> {
   var _query = '';
+  String? _selectedGroupIdentity;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final specs = BusinessIconScope.of(
-      context,
-    ).search(usage: widget.usage, query: _query);
+    final scope = BusinessIconScope.of(context);
+    final type = widget.usage == BusinessIconUsage.account
+        ? BusinessIconType.account
+        : BusinessIconType.category;
+    final selectedSpec = scope.resolve(widget.selectedRef, widget.usage);
+    final selectedGroup = selectedSpec == null
+        ? null
+        : scope.groupForRef(selectedSpec.ref);
+    final fallbackGroup = selectedGroup ?? scope.defaultGroupFor(type);
+    final effectiveGroup = scope.groupsFor(type).where((group) {
+      final expectedIdentity =
+          _selectedGroupIdentity ?? fallbackGroup?.identity;
+      return group.identity == expectedIdentity;
+    }).firstOrNull;
+    final searching = _query.trim().isNotEmpty;
+    final specs = scope.search(
+      usage: widget.usage,
+      groupId: searching ? null : effectiveGroup?.id,
+      origin: searching ? null : effectiveGroup?.origin,
+      query: _query,
+    );
     final choices = [
       for (final spec in specs)
         IconChoiceGridItem(
-          iconKey: spec.iconKey,
-          label: spec.label,
+          iconKey: spec.ref.id,
+          label: searching
+              ? '${spec.label} · ${scope.groupForRef(spec.ref)?.name ?? spec.groupId}'
+              : spec.label,
           iconBuilder: (context, size) => BusinessIcon(
-            iconKey: spec.iconKey,
+            iconRef: spec.ref.id,
             usage: widget.usage,
             size: size,
           ),
@@ -65,7 +87,7 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
                   child: BusinessIconBubble(
                     size: 32,
                     child: BusinessIcon(
-                      iconKey: widget.selectedKey,
+                      iconRef: widget.selectedRef,
                       usage: widget.usage,
                       size: 28,
                     ),
@@ -91,6 +113,19 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
           ],
         ),
         const SizedBox(height: AppSpacing.space12),
+        if (!searching && effectiveGroup != null)
+          AppChoiceChipGroup<String>(
+            key: const ValueKey('business-icon-group-choice'),
+            selected: effectiveGroup.identity,
+            size: AppChoiceChipSize.compact,
+            options: [
+              for (final group in scope.groupsFor(type))
+                AppChoiceChipOption(value: group.identity, label: group.name),
+            ],
+            onChanged: (identity) =>
+                setState(() => _selectedGroupIdentity = identity),
+          ),
+        if (!searching) const SizedBox(height: AppSpacing.space12),
         if (choices.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
@@ -99,7 +134,7 @@ class _IconCatalogPickerState extends State<IconCatalogPicker> {
         else
           IconChoiceGrid(
             choices: choices,
-            selectedKey: null,
+            selectedKey: selectedSpec?.ref.id,
             onChanged: widget.onChanged,
             maxVisibleRows: 3,
           ),

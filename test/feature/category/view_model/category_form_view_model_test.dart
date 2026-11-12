@@ -94,6 +94,7 @@ void main() {
       expect(outcome, isA<SubmitSuccess>());
       expect(container.read(provider).requireValue!.submitting, false);
       final command = service.createCommands.single;
+      expect(command.iconKey, 'builtin:category:rounded-line:more-2-line');
       expect(command.name, 'Salary');
       expect(command.type, AccountType.income);
       expect(command.parentId, 'parent-1');

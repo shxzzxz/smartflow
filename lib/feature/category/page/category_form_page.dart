@@ -128,19 +128,17 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
   Widget _buildFormScaffold(BuildContext context, CategoryFormState formState) {
     final colors = Theme.of(context).colorScheme;
     final notifier = ref.read(_formProvider.notifier);
-    final parentTree =
-        formState.type == AccountType.income
-            ? formState.incomeTree
-            : formState.expenseTree;
+    final parentTree = formState.type == AccountType.income
+        ? formState.incomeTree
+        : formState.expenseTree;
     final parentOptions = categoryParentOptions(
       nodes: parentTree,
       type: formState.type,
       editingCategoryId: widget.categoryId,
     );
-    final effectiveParent =
-        parentOptions
-            .where((parent) => parent.id == formState.parentId)
-            .firstOrNull;
+    final effectiveParent = parentOptions
+        .where((parent) => parent.id == formState.parentId)
+        .firstOrNull;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -172,7 +170,7 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
                       children: [
                         IconCatalogPicker(
                           usage: _iconUsageForType(formState.type),
-                          selectedKey: formState.iconKey,
+                          selectedRef: formState.iconKey,
                           onChanged: notifier.setIconKey,
                         ),
                       ],
@@ -186,20 +184,18 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
                           requiredIndicator: true,
                           controller: _nameController,
                           hintText: '请输入分类名称',
-                          validator:
-                              (value) =>
-                                  value == null || value.trim().isEmpty
-                                      ? '请输入分类名称'
-                                      : null,
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                              ? '请输入分类名称'
+                              : null,
                         ),
                         AppPlainSelectFormRow<String>(
                           label: '父分类',
                           value: formState.parentId,
                           valueText: effectiveParent?.name ?? '无',
                           placeholder: '无',
-                          onTap:
-                              (onSelected) =>
-                                  _showParentSheet(parentOptions, onSelected),
+                          onTap: (onSelected) =>
+                              _showParentSheet(parentOptions, onSelected),
                           onChanged: notifier.setParentId,
                         ),
                       ],
@@ -275,10 +271,18 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final formState = ref.read(_formProvider).requireValue!;
+    final iconRef = BusinessIconScope.of(
+      context,
+    ).canonicalizeIconRef(formState.iconKey, BusinessIconType.category);
 
     final outcome = await ref
         .read(_formProvider.notifier)
-        .submit(nameText: _nameController.text, noteText: _noteController.text);
+        .submit(
+          nameText: _nameController.text,
+          noteText: _noteController.text,
+          iconRef: iconRef,
+        );
     if (!mounted) return;
 
     switch (outcome) {
@@ -328,13 +332,12 @@ class _CategoryFormHeader extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: submitting ? null : onSave,
-              child:
-                  submitting
-                      ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('保存'),
+              child: submitting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存'),
             ),
           ),
           Text(title, style: context.appTextStyles.sectionTitleStrong),
@@ -396,8 +399,9 @@ class _TypeTab extends StatelessWidget {
                 style: textStyles
                     .segmentedControlLabel(selected: selected)
                     .copyWith(
-                      color:
-                          selected ? colors.primary : colors.onSurfaceVariant,
+                      color: selected
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
                     ),
               ),
             ),

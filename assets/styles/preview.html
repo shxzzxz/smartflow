@@ -39,21 +39,22 @@
     <h1>SmartFlow 图标预览</h1>
     <nav aria-label="预览设置">
       <label>类型 <select id="type"><option value="account">账户</option><option value="category">分类</option></select></label>
-      <label>风格 <select id="style" disabled></select></label>
+      <label>分组 <select id="style" disabled></select></label>
       <label>图标 <select id="filter"></select></label>
       <label>尺寸 <select id="size"><option>14</option><option>20</option><option>24</option><option selected>32</option><option>48</option></select>px</label>
       <button id="theme" aria-pressed="false">深色背景</button>
     </nav>
     <p id="status" role="status"></p>
     <div id="panels"></div>
-    <footer>点击图标打开 SVG。账户、分类分别选择风格；图标直接读取本目录 JSON 与 SVG，无需生成预览。</footer>
+    <footer>点击图标打开 SVG。账户、分类可按风格或品牌分组浏览；完整引用由来源、类型、分组和 key 组成。</footer>
   </main>
   <script>
     const $ = id => document.getElementById(id);
-    const selectedStyles = {account:'all',category:'all'};
+    const selectedGroups = {account:'all',category:'all'};
     const jsonCache = new Map();
     const svgCache = new Map();
     let revision = 0;
+    const projectRoot = new URL('../../', location.href);
     const node = (tag, className='', text) => {
       const el = document.createElement(tag);
       el.className=className;
@@ -90,28 +91,33 @@
       try {
         const index = await read(`${type}/manifest.json`,jsonCache,true);
         if (current!==revision) return;
-        const options = [{id:'all',name:'全部风格'},...index.styles];
-        if (!options.some(s=>s.id===selectedStyles[type])) selectedStyles[type]='all';
+        const options = [{id:'all',name:'全部分组'},...index.groups];
+        if (!options.some(s=>s.id===selectedGroups[type])) selectedGroups[type]='all';
         $('style').replaceChildren();
-        options.forEach(s=>$('style').add(new Option(s.name,s.id,false,s.id===selectedStyles[type])));
+        options.forEach(s=>$('style').add(new Option(s.name,s.id,false,s.id===selectedGroups[type])));
         $('style').disabled=false;
-        const styles = index.styles.filter(s=>selectedStyles[type]==='all' || s.id===selectedStyles[type]);
-        const panels = await Promise.all(styles.map(async style=> {
-          const base = `${type}/${identifier(style.id)}`;
-          const manifest = await read(`${base}/manifest.json`,jsonCache,true);
-          const icons = manifest.icons.filter(i=>filter==='all' || (filter==='brand' ? i.brand : filter==='generic' ? !i.brand : i.usage===filter));
+        const groups = index.groups.filter(group=>selectedGroups[type]==='all' || group.id===selectedGroups[type]);
+        const panels = await Promise.all(groups.map(async group=> {
+          const groupId = identifier(group.id);
+          const manifestUrl = new URL(group.manifest, projectRoot);
+          const baseUrl = new URL('.', manifestUrl);
+          const manifest = await read(manifestUrl.href,jsonCache,true);
+          const kind = group.kind ?? 'style';
+          if ((filter==='brand' && kind!=='brand') || (filter==='generic' && kind==='brand')) return null;
+          const icons = manifest.icons.filter(i=>filter==='all' || filter==='brand' || filter==='generic' || i.usage===filter);
           const panel=node('section');
           const heading=node('div','heading');
-          const link=node('a','','元数据'); link.href=`${base}/manifest.json`;
-          heading.append(node('h2','',`${style.name} · ${icons.length}`),link);
+          const link=node('a','','元数据'); link.href=manifestUrl.href;
+          heading.append(node('h2','',`${group.name} · ${icons.length}`),link);
           const grid=node('div','grid');
           const tiles=await Promise.all(icons.map(async icon=> {
-            const path=`${base}/icons/${identifier(icon.key)}.svg`;
-            const tile=node('a','icon'); tile.href=path; tile.title=icon.label;
+            const iconKey=identifier(icon.key);
+            const iconUrl=new URL(`icons/${iconKey}.svg`,baseUrl);
+            const tile=node('a','icon'); tile.href=iconUrl.href; tile.title=icon.label;
             const mode=icon.color ?? manifest.color ?? 'original';
             const art=node('span','art '+mode); art.setAttribute('aria-hidden','true');
             try {
-              const source=await read(path,svgCache,false);
+              const source=await read(iconUrl.href,svgCache,false);
               const doc=new DOMParser().parseFromString(source,'image/svg+xml');
               if (doc.querySelector('parsererror') || doc.documentElement.localName!=='svg') throw new Error('无效 SVG');
               const svg=document.importNode(doc.documentElement,true);
@@ -120,7 +126,7 @@
               });
               art.append(svg);
             } catch (error) { art.textContent='加载失败'; tile.title=error.message; }
-            tile.append(art,node('span','label',icon.label),node('span','key',icon.key));
+            tile.append(art,node('span','label',icon.label),node('span','key',`builtin:${type}:${groupId}:${iconKey}`));
             return tile;
           }));
           grid.append(...tiles);
@@ -129,14 +135,14 @@
           return panel;
         }));
         if (current!==revision) return;
-        $('panels').append(...panels);
+        $('panels').append(...panels.filter(Boolean));
         $('status').textContent='';
       } catch(error) {
         if (current===revision) $('status').textContent=`加载失败：${error.message}。请通过本地静态服务器打开，例如 VS Code Live Server。`;
       }
     }
     $('type').addEventListener('change',()=>{setFilters($('type').value);render();});
-    $('style').addEventListener('change',()=>{selectedStyles[$('type').value]=$('style').value;render();});
+    $('style').addEventListener('change',()=>{selectedGroups[$('type').value]=$('style').value;render();});
     $('filter').addEventListener('change',render);
     $('size').addEventListener('change',()=>document.documentElement.style.setProperty('--size',$('size').value+'px'));
     $('theme').addEventListener('click',()=>{

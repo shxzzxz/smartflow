@@ -478,6 +478,288 @@
       "usage": "expenseCategory"
     },
     {
+      "key": "live-tip",
+      "label": "直播打赏",
+      "usage": "expenseCategory",
+      "keywords": [
+        "直播",
+        "打赏",
+        "虚拟礼物",
+        "粉丝牌",
+        "主播"
+      ]
+    },
+    {
+      "key": "short-video",
+      "label": "短视频平台",
+      "usage": "expenseCategory",
+      "keywords": [
+        "短视频",
+        "抖音",
+        "快手",
+        "视频号",
+        "内容平台"
+      ]
+    },
+    {
+      "key": "streaming",
+      "label": "影视会员",
+      "usage": "expenseCategory",
+      "keywords": [
+        "影视会员",
+        "流媒体",
+        "视频会员",
+        "爱奇艺",
+        "腾讯视频",
+        "优酷",
+        "芒果TV"
+      ]
+    },
+    {
+      "key": "game-recharge",
+      "label": "游戏充值",
+      "usage": "expenseCategory",
+      "keywords": [
+        "游戏充值",
+        "点券",
+        "皮肤",
+        "抽卡",
+        "虚拟道具",
+        "氪金"
+      ]
+    },
+    {
+      "key": "digital-reading",
+      "label": "数字阅读",
+      "usage": "expenseCategory",
+      "keywords": [
+        "网文",
+        "小说",
+        "电子书",
+        "阅读",
+        "听书"
+      ]
+    },
+    {
+      "key": "cloud-storage",
+      "label": "云存储",
+      "usage": "expenseCategory",
+      "keywords": [
+        "云盘",
+        "网盘",
+        "云服务",
+        "存储",
+        "iCloud"
+      ]
+    },
+    {
+      "key": "courier",
+      "label": "快递邮寄",
+      "usage": "expenseCategory",
+      "keywords": [
+        "快递",
+        "邮寄",
+        "邮费",
+        "物流",
+        "顺丰"
+      ]
+    },
+    {
+      "key": "car-service",
+      "label": "汽车保养维修",
+      "usage": "expenseCategory",
+      "keywords": [
+        "汽车保养",
+        "保养",
+        "维修",
+        "修车",
+        "车辆养护",
+        "4S"
+      ]
+    },
+    {
+      "key": "traffic-fine",
+      "label": "违章罚款",
+      "usage": "expenseCategory",
+      "keywords": [
+        "交通罚款",
+        "罚单",
+        "违章",
+        "扣分"
+      ]
+    },
+    {
+      "key": "moving",
+      "label": "搬家",
+      "usage": "expenseCategory",
+      "keywords": [
+        "搬家",
+        "搬迁",
+        "搬家公司"
+      ]
+    },
+    {
+      "key": "visa",
+      "label": "签证",
+      "usage": "expenseCategory",
+      "keywords": [
+        "护照",
+        "出入境",
+        "签证费"
+      ]
+    },
+    {
+      "key": "luggage",
+      "label": "行李装备",
+      "usage": "expenseCategory",
+      "keywords": [
+        "行李",
+        "行李箱",
+        "旅行装备",
+        "背包"
+      ]
+    },
+    {
+      "key": "childcare",
+      "label": "托育保姆",
+      "usage": "expenseCategory",
+      "keywords": [
+        "托育",
+        "保姆",
+        "月嫂",
+        "育儿嫂",
+        "看护"
+      ]
+    },
+    {
+      "key": "elder-care",
+      "label": "养老照护",
+      "usage": "expenseCategory",
+      "keywords": [
+        "养老",
+        "护理",
+        "护工",
+        "敬老院",
+        "照护"
+      ]
+    },
+    {
+      "key": "dental",
+      "label": "牙科口腔",
+      "usage": "expenseCategory",
+      "keywords": [
+        "牙科",
+        "口腔",
+        "牙齿",
+        "正畸",
+        "种植牙"
+      ]
+    },
+    {
+      "key": "optical",
+      "label": "眼科眼镜",
+      "usage": "expenseCategory",
+      "keywords": [
+        "眼科",
+        "眼镜",
+        "视力",
+        "隐形眼镜",
+        "配镜"
+      ]
+    },
+    {
+      "key": "mental-health",
+      "label": "心理咨询",
+      "usage": "expenseCategory",
+      "keywords": [
+        "心理",
+        "咨询",
+        "治疗",
+        "情绪",
+        "精神健康"
+      ]
+    },
+    {
+      "key": "pet-care",
+      "label": "宠物医疗",
+      "usage": "expenseCategory",
+      "keywords": [
+        "宠物医院",
+        "疫苗",
+        "驱虫",
+        "宠物洗澡",
+        "宠物寄养"
+      ]
+    },
+    {
+      "key": "online-course",
+      "label": "网课知识付费",
+      "usage": "expenseCategory",
+      "keywords": [
+        "网课",
+        "课程",
+        "知识付费",
+        "在线学习",
+        "训练营"
+      ]
+    },
+    {
+      "key": "exam",
+      "label": "考试报名",
+      "usage": "expenseCategory",
+      "keywords": [
+        "考试",
+        "报名",
+        "考证",
+        "证书",
+        "资格证"
+      ]
+    },
+    {
+      "key": "ktv",
+      "label": "KTV",
+      "usage": "expenseCategory",
+      "keywords": [
+        "唱歌",
+        "K歌",
+        "歌厅"
+      ]
+    },
+    {
+      "key": "live-show",
+      "label": "演出展览",
+      "usage": "expenseCategory",
+      "keywords": [
+        "演出",
+        "演唱会",
+        "话剧",
+        "展览",
+        "博物馆",
+        "剧院"
+      ]
+    },
+    {
+      "key": "leisure",
+      "label": "休闲娱乐",
+      "usage": "expenseCategory",
+      "keywords": [
+        "娱乐",
+        "休闲",
+        "活动",
+        "玩乐"
+      ]
+    },
+    {
+      "key": "lend-out",
+      "label": "借出",
+      "usage": "expenseCategory",
+      "keywords": [
+        "借款给别人",
+        "外借",
+        "应收"
+      ]
+    },
+    {
       "key": "salary",
       "label": "工资",
       "usage": "incomeCategory",
@@ -575,6 +857,84 @@
       "key": "more-2-line",
       "label": "其他收入",
       "usage": "incomeCategory"
+    },
+    {
+      "key": "pension",
+      "label": "养老金",
+      "usage": "incomeCategory",
+      "keywords": [
+        "退休金",
+        "退休收入",
+        "养老待遇",
+        "年金"
+      ]
+    },
+    {
+      "key": "subsidy",
+      "label": "补贴津贴",
+      "usage": "incomeCategory",
+      "keywords": [
+        "补贴",
+        "津贴",
+        "补助",
+        "人才补贴",
+        "生育津贴"
+      ]
+    },
+    {
+      "key": "scholarship",
+      "label": "奖学金",
+      "usage": "incomeCategory",
+      "keywords": [
+        "助学金",
+        "奖学金",
+        "教育资助"
+      ]
+    },
+    {
+      "key": "insurance-claim",
+      "label": "保险理赔",
+      "usage": "incomeCategory",
+      "keywords": [
+        "理赔",
+        "保险赔付",
+        "赔款"
+      ]
+    },
+    {
+      "key": "creator-income",
+      "label": "创作收入",
+      "usage": "incomeCategory",
+      "keywords": [
+        "直播收入",
+        "打赏收入",
+        "广告分成",
+        "平台收益",
+        "粉丝赞助",
+        "稿费",
+        "版权"
+      ]
+    },
+    {
+      "key": "briefcase",
+      "label": "工作",
+      "usage": "incomeCategory",
+      "keywords": [
+        "上班",
+        "工作收入",
+        "职业",
+        "主业"
+      ]
+    },
+    {
+      "key": "borrow-in",
+      "label": "借入",
+      "usage": "incomeCategory",
+      "keywords": [
+        "借款",
+        "负债",
+        "周转"
+      ]
     }
   ]
 }

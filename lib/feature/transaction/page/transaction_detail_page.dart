@@ -439,7 +439,7 @@ class _AllocationSummary extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     BusinessIcon(
-                      iconKey: visibleItems[index].iconKey,
+                      iconRef: visibleItems[index].iconKey,
                       size: AppSpacing.space18,
                       usage: usage,
                     ),
@@ -884,7 +884,7 @@ void _showAllocationSheet(
             for (final item in breakdown.items)
               ListTile(
                 leading: BusinessIcon(
-                  iconKey: item.iconKey,
+                  iconRef: item.iconKey,
                   size: AppSpacing.space20,
                   usage: usage,
                 ),

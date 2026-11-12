@@ -674,7 +674,7 @@ class _BudgetGroupHeader extends StatelessWidget {
             children: [
               BusinessIconBubble(
                 size: AppSpacing.space40,
-                child: BusinessIcon(iconKey: iconKey, size: AppSpacing.space24),
+                child: BusinessIcon(iconRef: iconKey, size: AppSpacing.space24),
               ),
               const SizedBox(width: AppSpacing.space8),
               Expanded(
@@ -758,7 +758,7 @@ class _BudgetRowLeading extends StatelessWidget {
       children: [
         BusinessIconBubble(
           size: AppSpacing.space40,
-          child: BusinessIcon(iconKey: iconKey, size: AppSpacing.space24),
+          child: BusinessIcon(iconRef: iconKey, size: AppSpacing.space24),
         ),
       ],
     );

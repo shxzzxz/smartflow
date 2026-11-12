@@ -107,6 +107,8 @@ flutter:
     - assets/styles/category/soft-duotone/icons/
     - assets/styles/category/color-shape/manifest.json
     - assets/styles/category/color-shape/icons/
+    - assets/styles/account/brand/manifest.json
+    - assets/styles/account/brand/icons/
     - assets/manual/
     - assets/import/wechat/
 

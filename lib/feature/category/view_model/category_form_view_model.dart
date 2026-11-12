@@ -7,6 +7,7 @@ import '../../../application/ledger/ledger_query_api.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
+import '../../../widget/business/icon/business_icon_registry.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -31,8 +32,9 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
       categoryTreeProvider(AccountType.expense),
     );
     final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
-    final accountAsync =
-        categoryId == null ? null : ref.watch(accountsByIdProvider);
+    final accountAsync = categoryId == null
+        ? null
+        : ref.watch(accountsByIdProvider);
     if (_initializedState != null) {
       final next = _initializedState!.copyWith(
         expenseTree: expenseTreeAsync.value,
@@ -88,6 +90,7 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
   Future<SubmitOutcome> submit({
     required String nameText,
     required String noteText,
+    String? iconRef,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('分类表单尚未加载');
@@ -100,6 +103,7 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
     _update((current) => current.copyWith(submitting: true));
     try {
       return await guardSubmit(_logger, 'Category form submit', () async {
+        final resolvedIconRef = iconRef ?? _canonicalIconRef(current.iconKey);
         final service = ref.read(categoryAppServiceProvider);
         final targetCategoryId = _categoryId;
         if (targetCategoryId == null) {
@@ -108,7 +112,7 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
               name: name,
               type: current.type,
               parentId: current.parentId,
-              iconKey: current.iconKey,
+              iconKey: resolvedIconRef,
               note: note,
             ),
           );
@@ -117,13 +121,13 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
             EditCategoryCommand(
               id: targetCategoryId,
               name: name,
-              parentId:
-                  current.parentId == null
-                      ? const Patch<String>.clear()
-                      : Patch.set(current.parentId!),
-              iconKey: Patch.set(current.iconKey),
-              note:
-                  note == null ? const Patch<String>.clear() : Patch.set(note),
+              parentId: current.parentId == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(current.parentId!),
+              iconKey: Patch.set(resolvedIconRef),
+              note: note == null
+                  ? const Patch<String>.clear()
+                  : Patch.set(note),
             ),
           );
         }
@@ -139,6 +143,17 @@ class CategoryFormViewModel extends _$CategoryFormViewModel {
     final next = update(current);
     _initializedState = next;
     state = AsyncValue.data(next);
+  }
+
+  String _canonicalIconRef(String value) {
+    final parsed = BusinessIconRef.tryParse(value);
+    if (parsed != null) return parsed.id;
+    return BusinessIconRef(
+      origin: BusinessIconOrigin.builtin,
+      type: BusinessIconType.category,
+      groupId: defaultBusinessIconGroupId,
+      key: value,
+    ).id;
   }
 
   SubmitOutcome _invalidCommand(String message) {

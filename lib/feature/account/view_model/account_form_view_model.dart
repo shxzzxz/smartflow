@@ -10,6 +10,7 @@ import '../../../core/text/text_normalizer.dart';
 import '../../../domain/ledger/valobj/ledger_error_code.dart';
 import '../../../shared/account_profile/account_profile_kind.dart';
 import '../../../shared/account_group/initial_account_groups.dart';
+import '../../../widget/business/icon/business_icon_registry.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'account_view.dart';
@@ -94,6 +95,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
     required String openingBalanceText,
     required String creditLimitText,
     required String noteText,
+    String? iconRef,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('账户表单尚未加载');
@@ -115,6 +117,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         if (targetAccountId == null) {
           await _createAccount(
             formState: current,
+            iconRef: iconRef ?? _canonicalIconRef(current.iconKey),
             name: name,
             openingBalance: openingBalance,
             creditLimit: creditLimit,
@@ -123,6 +126,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
         } else {
           await _editAccount(
             formState: current,
+            iconRef: iconRef ?? _canonicalIconRef(current.iconKey),
             id: targetAccountId,
             name: name,
             openingBalance: openingBalance,
@@ -168,13 +172,14 @@ class AccountFormViewModel extends _$AccountFormViewModel {
 
   Future<void> _createAccount({
     required AccountFormState formState,
+    required String iconRef,
     required String name,
     required Money openingBalance,
     required Money? creditLimit,
     required String? note,
-  }) {
+  }) async {
     if (!isCreditManagedAccountKind(formState.kind)) {
-      return ref
+      await ref
           .read(accountAppServiceProvider)
           .createAccount(
             CreateAccountCommand(
@@ -183,20 +188,20 @@ class AccountFormViewModel extends _$AccountFormViewModel {
               subtype: formState.kind.accountSubtype,
               profileKey: formState.kind.key,
               groupId: formState.groupId,
-              iconKey: formState.iconKey,
+              iconKey: iconRef,
               openingBalance: openingBalance,
               note: note,
             ),
-          )
-          .then((_) {});
+          );
+      return;
     }
-    return ref
+    await ref
         .read(creditAccountAppServiceProvider)
         .createAccount(
           CreateCreditLiabilityAccountCommand(
             name: name,
             kind: creditLiabilityKindForProfile(formState.kind),
-            iconKey: formState.iconKey,
+            iconKey: iconRef,
             openingBalance: openingBalance,
             note: note,
             creditLimit: creditLimit,
@@ -209,20 +214,20 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             billingDayToNext: formState.billingDayToNext,
             groupId: formState.groupId,
           ),
-        )
-        .then((_) {});
+        );
   }
 
   Future<void> _editAccount({
     required AccountFormState formState,
+    required String iconRef,
     required String id,
     required String name,
     required Money openingBalance,
     required Money? creditLimit,
     required String? note,
-  }) {
+  }) async {
     if (!isCreditManagedAccountKind(formState.kind)) {
-      return ref
+      await ref
           .read(accountAppServiceProvider)
           .editAccount(
             EditAccountCommand(
@@ -231,7 +236,7 @@ class AccountFormViewModel extends _$AccountFormViewModel {
               groupId: formState.groupId == null
                   ? const Patch<String>.clear()
                   : Patch.set(formState.groupId!),
-              iconKey: Patch.set(formState.iconKey),
+              iconKey: Patch.set(iconRef),
               note: note == null
                   ? const Patch<String>.clear()
                   : Patch.set(note),
@@ -240,14 +245,15 @@ class AccountFormViewModel extends _$AccountFormViewModel {
                   : null,
             ),
           );
+      return;
     }
-    return ref
+    await ref
         .read(creditAccountAppServiceProvider)
         .editAccount(
           EditCreditLiabilityAccountCommand(
             accountId: id,
             name: name,
-            iconKey: Patch.set(formState.iconKey),
+            iconKey: Patch.set(iconRef),
             note: note == null ? const Patch<String>.clear() : Patch.set(note),
             groupId: formState.groupId == null
                 ? const Patch<String>.clear()
@@ -269,6 +275,17 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             targetBalance: openingBalance,
           ),
         );
+  }
+
+  String _canonicalIconRef(String value) {
+    final parsed = BusinessIconRef.tryParse(value);
+    if (parsed != null) return parsed.id;
+    return BusinessIconRef(
+      origin: BusinessIconOrigin.builtin,
+      type: BusinessIconType.account,
+      groupId: defaultBusinessIconGroupId,
+      key: value,
+    ).id;
   }
 
   SubmitOutcome _invalidCommand(String message) {

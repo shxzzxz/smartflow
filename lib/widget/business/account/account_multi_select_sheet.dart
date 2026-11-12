@@ -113,7 +113,7 @@ class _AccountMultiSelectSheetState extends State<_AccountMultiSelectSheet> {
                       title: Row(
                         children: [
                           BusinessIcon(
-                            iconKey: account.iconKey,
+                            iconRef: account.iconKey,
                             size: AppSpacing.space20,
                             usage: BusinessIconUsage.account,
                           ),

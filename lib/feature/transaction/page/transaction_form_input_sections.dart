@@ -147,7 +147,7 @@ class _MainAccountPickerTile extends StatelessWidget {
                         width: AppSpacing.space32,
                         child: Center(
                           child: BusinessIcon(
-                            iconKey: effective?.iconKey,
+                            iconRef: effective?.iconKey,
                             size: 28,
                             usage: BusinessIconUsage.account,
                           ),

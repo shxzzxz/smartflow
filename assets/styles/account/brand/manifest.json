@@ -1,0 +1,156 @@
+{
+  "color": "original",
+  "icons": [
+    {
+      "key": "alipay",
+      "label": "支付宝"
+    },
+    {
+      "key": "wechat_pay",
+      "label": "微信支付"
+    },
+    {
+      "key": "icbc",
+      "label": "中国工商银行"
+    },
+    {
+      "key": "ccb",
+      "label": "中国建设银行"
+    },
+    {
+      "key": "cmb_credit_card",
+      "label": "招商银行"
+    },
+    {
+      "key": "boc_debit_card",
+      "label": "中国银行"
+    },
+    {
+      "key": "abc",
+      "label": "农业银行"
+    },
+    {
+      "key": "bocom",
+      "label": "交通银行"
+    },
+    {
+      "key": "psbc",
+      "label": "邮储银行"
+    },
+    {
+      "key": "citic",
+      "label": "中信银行"
+    },
+    {
+      "key": "ceb",
+      "label": "光大银行"
+    },
+    {
+      "key": "cmbc",
+      "label": "民生银行"
+    },
+    {
+      "key": "cib",
+      "label": "兴业银行"
+    },
+    {
+      "key": "spdb",
+      "label": "浦发银行"
+    },
+    {
+      "key": "pab",
+      "label": "平安银行"
+    },
+    {
+      "key": "cgb",
+      "label": "广发银行"
+    },
+    {
+      "key": "huabei",
+      "label": "花呗"
+    },
+    {
+      "key": "jiebei",
+      "label": "借呗"
+    },
+    {
+      "key": "jd_baitiao",
+      "label": "京东白条"
+    },
+    {
+      "key": "jd",
+      "label": "京东"
+    },
+    {
+      "key": "meituan",
+      "label": "美团"
+    },
+    {
+      "key": "duxiaoman",
+      "label": "度小满",
+      "keywords": [
+        "有钱花"
+      ]
+    },
+    {
+      "key": "china_development_bank",
+      "label": "国家开发银行",
+      "keywords": [
+        "国开行",
+        "开发银行"
+      ]
+    },
+    {
+      "key": "douyin_change",
+      "label": "抖音零钱",
+      "keywords": [
+        "抖音钱包",
+        "零钱"
+      ]
+    },
+    {
+      "key": "douyin_pay_later",
+      "label": "抖音月付",
+      "keywords": [
+        "月付",
+        "抖音"
+      ]
+    },
+    {
+      "key": "fangxin_loan",
+      "label": "放心借",
+      "keywords": [
+        "抖音",
+        "借款",
+        "贷款"
+      ]
+    },
+    {
+      "key": "360_jietiao",
+      "label": "360借条",
+      "keywords": [
+        "360",
+        "借款",
+        "贷款"
+      ]
+    },
+    {
+      "key": "jd_jintiao",
+      "label": "京东金条",
+      "keywords": [
+        "京东",
+        "金条",
+        "借款",
+        "贷款"
+      ]
+    },
+    {
+      "key": "xiaohongshu",
+      "label": "小红书",
+      "keywords": [
+        "小红书钱包",
+        "RED"
+      ]
+    }
+  ]
+}

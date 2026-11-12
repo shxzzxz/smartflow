@@ -74,7 +74,7 @@ class _TreeSelectState extends State<TreeSelect> {
                                 leading: BusinessIconBubble(
                                   size: AppSpacing.space40,
                                   child: BusinessIcon(
-                                    iconKey: child.iconKey,
+                                    iconRef: child.iconKey,
                                     size: AppSpacing.space24,
                                   ),
                                 ),
@@ -140,7 +140,7 @@ class _TreeSelectNodeTile extends StatelessWidget {
                     BusinessIconBubble(
                       size: AppSpacing.space40,
                       child: BusinessIcon(
-                        iconKey: node.account.iconKey,
+                        iconRef: node.account.iconKey,
                         size: AppSpacing.space24,
                       ),
                     ),

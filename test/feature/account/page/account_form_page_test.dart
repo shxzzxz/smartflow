@@ -84,14 +84,14 @@ void main() {
         .read(accountFormViewModelProvider(null))
         .requireValue!;
     expect(formState.kind, AccountProfileKind.fund);
-    expect(formState.iconKey, 'boc_debit_card');
+    expect(formState.iconKey, 'builtin:account:brand:boc_debit_card');
     expect(formState.groupId, 'builtin-account-group-funds');
     expect(_formTextFields(tester).first.controller!.text, '中国银行');
     expect(
       tester
           .widget<IconCatalogPicker>(find.byType(IconCatalogPicker))
-          .selectedKey,
-      'boc_debit_card',
+          .selectedRef,
+      'builtin:account:brand:boc_debit_card',
     );
   });
 

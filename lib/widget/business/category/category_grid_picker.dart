@@ -239,7 +239,7 @@ class _CategoryTile extends StatelessWidget {
           label: category.name,
           labelSpacing: AppSpacing.space4,
           child: BusinessIcon(
-            iconKey: category.iconKey,
+            iconRef: category.iconKey,
             size: 28,
             usage: category.type == AccountType.income
                 ? BusinessIconUsage.incomeCategory

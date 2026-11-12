@@ -180,7 +180,7 @@ void main() {
         matching: find.byType(BusinessIcon),
       ),
     );
-    expect(categoryIcon.iconKey, 'meal');
+    expect(categoryIcon.iconRef, 'meal');
     expect(categoryIcon.size, 28);
     expect(find.text('退款'), findsOneWidget);
     expect(find.text('交易时间'), findsOneWidget);

@@ -404,7 +404,7 @@ class _CategoryPickerRow extends StatelessWidget {
           child: Row(
             children: [
               BusinessIcon(
-                iconKey: category.iconKey,
+                iconRef: category.iconKey,
                 size: AppSpacing.space20,
                 usage: sectionType == AccountType.income
                     ? BusinessIconUsage.incomeCategory
