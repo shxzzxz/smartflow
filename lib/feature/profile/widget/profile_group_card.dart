@@ -212,6 +212,7 @@ IconData profileIconFor(String iconKey) => switch (iconKey) {
   'installment_product' => RemixIcons.file_list_3_line,
   'reference_rate' => RemixIcons.percent_line,
   'import' => RemixIcons.file_excel_2_line,
+  'icon_management' => RemixIcons.image_add_line,
   'cleanup' => RemixIcons.delete_bin_6_line,
   'backup' => RemixIcons.shield_check_line,
   'manual' => RemixIcons.book_open_line,

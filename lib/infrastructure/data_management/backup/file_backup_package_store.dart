@@ -32,12 +32,16 @@ class FileBackupPackageStore implements BackupPackageStore {
       jsonDecode(await manifestFile.readAsString()),
     );
     final files = <String, List<int>>{};
-    for (final descriptor in manifest.files) {
-      final file = _resolve(directory, descriptor.path);
+    final descriptors = [
+      ...manifest.files.map((descriptor) => descriptor.path),
+      ...manifest.assetFiles.map((descriptor) => descriptor.path),
+    ];
+    for (final descriptorPath in descriptors) {
+      final file = _resolve(directory, descriptorPath);
       if (!await file.exists()) {
-        throw BackupValidationException('备份缺少文件: ${descriptor.path}');
+        throw BackupValidationException('备份缺少文件: $descriptorPath');
       }
-      files[descriptor.path] = await file.readAsBytes();
+      files[descriptorPath] = await file.readAsBytes();
     }
     return BackupPackage(
       manifest: manifest,

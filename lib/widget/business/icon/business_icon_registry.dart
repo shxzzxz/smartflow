@@ -10,7 +10,10 @@ enum BusinessIconOrigin { builtin, user }
 
 enum BusinessIconGroupKind { style, brand, user }
 
+enum BusinessIconResourceKind { asset, file }
+
 const defaultBusinessIconGroupId = 'rounded-line';
+const userBusinessIconGroupId = 'my-icons';
 
 /// Original preserves brand/multicolor artwork; the others retain SVG opacity.
 enum BusinessIconColor { original, foreground, primary }
@@ -75,6 +78,7 @@ class BusinessIconSpec {
     required this.assetPath,
     required this.usage,
     required this.color,
+    this.resourceKind = BusinessIconResourceKind.asset,
     this.keywords = const [],
   });
 
@@ -83,6 +87,7 @@ class BusinessIconSpec {
   final String assetPath;
   final BusinessIconUsage usage;
   final BusinessIconColor color;
+  final BusinessIconResourceKind resourceKind;
   final List<String> keywords;
 
   String get iconKey => ref.key;
@@ -300,7 +305,7 @@ class BusinessIconRegistry {
           .expand((group) => group.icons.values)
           .where(
             (icon) =>
-                icon.usage == usage &&
+                _acceptsUsage(icon, usage) &&
                 (needle.isEmpty ||
                     [
                       icon.iconKey,
@@ -310,6 +315,14 @@ class BusinessIconRegistry {
           ),
     );
   }
+}
+
+bool _acceptsUsage(BusinessIconSpec icon, BusinessIconUsage usage) {
+  if (icon.usage == usage) return true;
+  return icon.origin == BusinessIconOrigin.user &&
+      icon.type == BusinessIconType.category &&
+      (usage == BusinessIconUsage.expenseCategory ||
+          usage == BusinessIconUsage.incomeCategory);
 }
 
 Future<BusinessIconGroup> _loadGroup({

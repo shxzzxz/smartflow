@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:logging/logging.dart';
@@ -28,7 +30,7 @@ class BusinessIcon extends StatefulWidget {
 }
 
 class _BusinessIconState extends State<BusinessIcon> {
-  (String, Object, StackTrace)? _lastLoggedFailure;
+  (String, Object, StackTrace?)? _lastLoggedFailure;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,29 @@ class _BusinessIconState extends State<BusinessIcon> {
       BusinessIconColor.foreground => foreground,
       BusinessIconColor.primary => widget.color ?? colors.primary,
     };
+    if (spec.resourceKind == BusinessIconResourceKind.file) {
+      return Image.file(
+        File(spec.assetPath),
+        key: ValueKey(spec.assetPath),
+        width: widget.size,
+        height: widget.size,
+        fit: BoxFit.contain,
+        color: tint,
+        colorBlendMode: tint == null ? null : BlendMode.srcIn,
+        errorBuilder: (context, error, stackTrace) {
+          final failure = (spec.assetPath, error, stackTrace);
+          if (_lastLoggedFailure != failure) {
+            _lastLoggedFailure = failure;
+            _logger.warning(
+              'Failed to load business icon ${spec.assetPath}; using fallback.',
+              error,
+              stackTrace,
+            );
+          }
+          return fallback();
+        },
+      );
+    }
     return SvgPicture.asset(
       spec.assetPath,
       key: ValueKey(spec.assetPath),

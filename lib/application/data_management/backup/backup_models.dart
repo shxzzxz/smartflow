@@ -156,6 +156,12 @@ class BackupPackage {
   final Map<String, Uint8List> files;
 }
 
+abstract interface class BackupAssetStore {
+  Future<Map<String, Uint8List>> exportBackupFiles();
+
+  Future<void> restoreBackupFiles(Map<String, Uint8List> files);
+}
+
 abstract interface class BackupPackageStore {
   Future<void> write(Object destination, BackupPackage package);
 
@@ -247,6 +253,45 @@ class BackupFileDescriptor {
   }
 }
 
+class BackupAssetDescriptor {
+  const BackupAssetDescriptor({
+    required this.path,
+    required this.byteCount,
+    required this.sha256,
+  });
+
+  final String path;
+  final int byteCount;
+  final String sha256;
+
+  BackupJson toJson() => {
+    'path': path,
+    'byteCount': byteCount,
+    'sha256': sha256,
+  };
+
+  factory BackupAssetDescriptor.fromJson(Object? value) {
+    if (value is! Map) {
+      throw const FormatException('Invalid backup asset entry.');
+    }
+    final map = _stringMap(value, 'Invalid backup asset entry.');
+    final path = _requiredString(map, 'path');
+    if (_isUnsafeRelativePath(path)) {
+      throw const FormatException('Invalid backup asset path.');
+    }
+    final byteCount = _requiredInt(map, 'byteCount');
+    final sha256 = _requiredString(map, 'sha256').toLowerCase();
+    if (byteCount < 0 || !RegExp(r'^[0-9a-f]{64}$').hasMatch(sha256)) {
+      throw const FormatException('Invalid backup asset metadata.');
+    }
+    return BackupAssetDescriptor(
+      path: path,
+      byteCount: byteCount,
+      sha256: sha256,
+    );
+  }
+}
+
 class BackupManifest {
   const BackupManifest({
     required this.formatVersion,
@@ -258,17 +303,20 @@ class BackupManifest {
     required this.minorUnit,
     required this.backupId,
     required this.files,
+    this.assetFiles = const [],
     this.encryption,
   });
 
-  /// First supported logical-backup contract. Older formats are rejected.
-  static const currentFormatVersion = PersistenceBaseline.backupFormatVersion;
+  /// Current package structure. Format 3 remains readable without assets.
+  static const currentFormatVersion = 4;
+  static const minimumSupportedFormatVersion =
+      PersistenceBaseline.backupFormatVersion;
 
   /// Current logical data contract.
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 11;
+  static const currentBackupSchemaVersion = 12;
   static const minimumSupportedBackupSchemaVersion =
       PersistenceBaseline.backupSchemaVersion;
 
@@ -284,6 +332,7 @@ class BackupManifest {
   final int minorUnit;
   final String backupId;
   final List<BackupFileDescriptor> files;
+  final List<BackupAssetDescriptor> assetFiles;
   final Map<String, Object?>? encryption;
 
   BackupJson toJson() => {
@@ -296,6 +345,7 @@ class BackupManifest {
     'minorUnit': minorUnit,
     'backupId': backupId,
     'requiredFiles': files.map((file) => file.toJson()).toList(),
+    'assetFiles': assetFiles.map((file) => file.toJson()).toList(),
     if (encryption != null) 'encryption': encryption,
   };
 
@@ -311,10 +361,12 @@ class BackupManifest {
       throw const FormatException('Backup manifest is missing requiredFiles.');
     }
     final formatVersion = _requiredInt(map, 'formatVersion');
-    if (formatVersion != currentFormatVersion) {
+    if (formatVersion < minimumSupportedFormatVersion ||
+        formatVersion > currentFormatVersion) {
       throw FormatException(
         'Backup format $formatVersion is not supported; '
-        'this build requires format $currentFormatVersion.',
+        'this build supports format '
+        '$minimumSupportedFormatVersion..$currentFormatVersion.',
       );
     }
     final backupSchemaVersion = _requiredInt(map, 'backupSchemaVersion');
@@ -342,6 +394,27 @@ class BackupManifest {
     if (files.map((file) => file.path).toSet().length != files.length) {
       throw const FormatException('Backup manifest contains duplicate files.');
     }
+    final assetFilesValue = map['assetFiles'];
+    if (formatVersion >= currentFormatVersion && assetFilesValue is! List) {
+      throw const FormatException('Backup manifest is missing assetFiles.');
+    }
+    final assetFiles = assetFilesValue == null
+        ? const <BackupAssetDescriptor>[]
+        : (assetFilesValue as List)
+              .map(BackupAssetDescriptor.fromJson)
+              .toList(growable: false);
+    if (assetFiles.map((file) => file.path).toSet().length !=
+        assetFiles.length) {
+      throw const FormatException(
+        'Backup manifest contains duplicate asset files.',
+      );
+    }
+    final filePaths = files.map((file) => file.path).toSet();
+    if (assetFiles.any((file) => filePaths.contains(file.path))) {
+      throw const FormatException(
+        'Backup manifest reuses a data file path for an asset.',
+      );
+    }
     final schemaVersion = _requiredInt(map, 'schemaVersion');
     if (schemaVersion < 1) {
       throw const FormatException('Invalid source database schema version.');
@@ -356,6 +429,7 @@ class BackupManifest {
       minorUnit: minorUnit,
       backupId: _requiredString(map, 'backupId'),
       files: files,
+      assetFiles: assetFiles,
       encryption: (encryptionValue as Map?)?.cast<String, Object?>(),
     );
   }
@@ -416,6 +490,7 @@ class BackupDiff {
         return '交易组';
       }
       if (table == 'budgets') return '预算';
+      if (table == 'business_icons') return '用户图标';
       if (table == 'account_reconciliation_snapshots') return '对账快照';
       if (BackupTables.insurance.contains(table)) return '保险';
       if (table == 'advance_cases') return '垫付编排';
@@ -480,7 +555,12 @@ class BackupDiff {
             )
             .join('；');
 
-  static BackupDiff compare(BackupSnapshot current, BackupSnapshot incoming) {
+  static BackupDiff compare(
+    BackupSnapshot current,
+    BackupSnapshot incoming, {
+    Map<String, List<int>> currentAssets = const {},
+    Map<String, List<int>> incomingAssets = const {},
+  }) {
     final result = <BackupDiffItem>[];
     for (final table in BackupTables.all) {
       final currentById = _indexRows(current.rows(table), table);
@@ -532,6 +612,24 @@ class BackupDiff {
         ),
       );
     }
+    final currentAssetKeys = currentAssets.keys.toSet();
+    final incomingAssetKeys = incomingAssets.keys.toSet();
+    final addedAssets = incomingAssetKeys.difference(currentAssetKeys).length;
+    final removedAssets = currentAssetKeys.difference(incomingAssetKeys).length;
+    final changedAssets = incomingAssetKeys
+        .intersection(currentAssetKeys)
+        .where((key) => !_bytesEqual(currentAssets[key]!, incomingAssets[key]!))
+        .length;
+    if (addedAssets + removedAssets + changedAssets > 0) {
+      result.add(
+        BackupDiffItem(
+          table: 'business_icons',
+          added: addedAssets,
+          removed: removedAssets,
+          changed: changedAssets,
+        ),
+      );
+    }
     return BackupDiff(List.unmodifiable(result));
   }
 }
@@ -573,6 +671,24 @@ int _requiredInt(Map<String, Object?> map, String key) {
   if (value is int) return value;
   if (value is num && value == value.roundToDouble()) return value.toInt();
   throw FormatException('Backup field "$key" must be an integer.');
+}
+
+bool _isUnsafeRelativePath(String value) {
+  return value.isEmpty ||
+      value.startsWith('/') ||
+      value.startsWith('\\') ||
+      value.contains('\u0000') ||
+      value.contains('\\') ||
+      value.split('/').contains('..') ||
+      RegExp(r'^[A-Za-z]:').hasMatch(value);
+}
+
+bool _bytesEqual(List<int> left, List<int> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
 }
 
 Map<String, BackupJson> _indexRows(Iterable<BackupJson> rows, String table) {

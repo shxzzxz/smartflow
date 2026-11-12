@@ -28,6 +28,7 @@ import '../feature/calendar/page/calendar_page.dart';
 import '../feature/calendar/page/calendar_bills_page.dart';
 import '../feature/budget/page/budget_page.dart';
 import '../feature/home/page/home_page.dart';
+import '../feature/icon_management/page/icon_management_page.dart';
 import '../feature/credit/page/installment_contract_edit_page.dart';
 import '../feature/credit/page/bill_conversion_installment_form_page.dart';
 import '../feature/credit/page/bill_detail_page.dart';
@@ -583,6 +584,10 @@ final appRouter = GoRouter(
         target: FilteredTransactionTarget.counterparty,
         targetId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/profile/icons',
+      builder: (context, state) => const IconManagementPage(),
     ),
     GoRoute(
       path: '/tags/:id/transactions',

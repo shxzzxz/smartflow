@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
+import '../../../app/business_icon_provider.dart';
 import '../../../app/provider.dart';
 import '../../../application/data_management/backup/backup_archive.dart';
 import '../../../application/data_management/backup/backup_models.dart';
@@ -55,7 +56,10 @@ class BackupViewModel extends Notifier<BackupPageState> {
           outcome.value != null) {
         _set(
           state.copyWith(
-            message: '备份已导出，共 ${outcome.value!.files.length} 个文件。',
+            message:
+                '备份已导出，共 '
+                '${outcome.value!.files.length + outcome.value!.assetFiles.length} '
+                '个文件。',
           ),
         );
       } else if (outcome is UiActionFailure<BackupManifest?>) {
@@ -99,6 +103,15 @@ class BackupViewModel extends Notifier<BackupPageState> {
       if (outcome is UiActionSuccess<BackupDiff>) {
         _set(state.copyWith(message: '恢复完成。${outcome.value.summary}'));
         ref.read(appDataRefreshProvider).refresh();
+        try {
+          await ref.read(businessIconRegistryProvider.notifier).reload();
+        } on Exception catch (error, stackTrace) {
+          _logger.warning(
+            'Backup restored but user icons could not be reloaded.',
+            error,
+            stackTrace,
+          );
+        }
       } else if (outcome is UiActionFailure<BackupDiff>) {
         _set(state.copyWith(error: outcome.error));
       }

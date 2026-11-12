@@ -110,11 +110,6 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () => context.push('/tags'),
           ),
           ProfileMenuEntry(
-            title: '对手方管理',
-            iconKey: 'counterparty',
-            onTap: () => context.push('/counterparties'),
-          ),
-          ProfileMenuEntry(
             title: '贷款计算器',
             iconKey: 'calculator',
             onTap: () => context.push('/profile/loan-calculator'),
@@ -123,6 +118,22 @@ class _ProfilePageState extends State<ProfilePage> {
             title: '设置',
             iconKey: 'settings',
             onTap: () => context.push('/profile/settings'),
+          ),
+        ],
+      ),
+      ProfileMenuGroup(
+        title: '交易',
+        layout: ProfileGroupLayout.list,
+        entries: [
+          ProfileMenuEntry(
+            title: '图标管理',
+            iconKey: 'icon_management',
+            onTap: () => context.push('/profile/icons'),
+          ),
+          ProfileMenuEntry(
+            title: '对手方管理',
+            iconKey: 'counterparty',
+            onTap: () => context.push('/counterparties'),
           ),
         ],
       ),

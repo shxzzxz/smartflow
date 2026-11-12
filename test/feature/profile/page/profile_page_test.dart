@@ -40,6 +40,7 @@ void main() {
     const destinations = {
       '分类管理': '/category',
       '标签管理': '/tags',
+      '图标管理': '/profile/icons',
       '对手方管理': '/counterparties',
       '贷款计算器': '/profile/loan-calculator',
       '设置': '/profile/settings',
@@ -74,15 +75,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final title in ['常用功能', '信贷工具', '数据管理', '帮助与关于', '开发工具']) {
+    for (final title in ['常用功能', '交易', '信贷工具', '数据管理', '帮助与关于', '开发工具']) {
       expect(find.text(title), findsOneWidget);
     }
     expect(find.text('保险'), findsNWidgets(2));
 
     final sections = find.byType(AppSurface);
-    expect(sections, findsNWidgets(6));
+    expect(sections, findsNWidgets(7));
     const groups = [
-      ['分类管理', '标签管理', '对手方管理', '贷款计算器', '设置'],
+      ['分类管理', '标签管理', '贷款计算器', '设置'],
+      ['图标管理', '对手方管理'],
       ['保险'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],
@@ -97,6 +99,11 @@ void main() {
         );
       }
     }
+    expect(
+      find.byKey(const ValueKey('profile-entry-row-图标管理')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('profile-grid-entry-图标管理')), findsNothing);
     expect(find.text('账户管理'), findsNothing);
     expect(find.text('0.5.1-dev.2'), findsOneWidget);
     expect(

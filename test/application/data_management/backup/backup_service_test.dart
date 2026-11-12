@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:test/test.dart';
@@ -42,7 +43,7 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 11);
+      expect(inspected.manifest.backupSchemaVersion, 12);
       expect(inspected.manifest.schemaVersion, 61);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
@@ -80,7 +81,7 @@ void main() {
         final inspection = await v61Service.inspect(oldDirectory);
         final diff = await v61Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 11);
+        expect(inspection.manifest.backupSchemaVersion, 12);
         expect(inspection.manifest.schemaVersion, 60);
         expect(diff.itemFor('preferences').added, 1);
         expect(v61Gateway.replaceCount, 1);
@@ -208,7 +209,7 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 12;
+      manifest['backupSchemaVersion'] = 13;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -217,7 +218,7 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 12'),
+            contains('backupSchemaVersion 13'),
           ),
         ),
       );
@@ -265,8 +266,89 @@ void main() {
         final diff = await service.restore(incomingDirectory);
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
-        expect(manifest.formatVersion, 3);
-        expect(manifest.backupSchemaVersion, 11);
+        expect(manifest.formatVersion, 4);
+        expect(manifest.backupSchemaVersion, 12);
+      },
+    );
+
+    test('backs up and restores user icon assets', () async {
+      final assetStore = _MemoryBackupAssetStore({
+        'business_icons/manifest.json': Uint8List.fromList(
+          utf8.encode('{"schemaVersion":1,"icons":[]}'),
+        ),
+        'business_icons/icons/account/icon-1.png': Uint8List.fromList([
+          1,
+          2,
+          3,
+        ]),
+      });
+      final assetService = BackupService(
+        gateway: gateway,
+        packageStore: const FileBackupPackageStore(),
+        assets: assetStore,
+      );
+
+      final manifest = await assetService.createBackup(tempDirectory);
+      final inspection = await assetService.inspect(tempDirectory);
+
+      expect(manifest.assetFiles, hasLength(2));
+      expect(inspection.assets['business_icons/icons/account/icon-1.png'], [
+        1,
+        2,
+        3,
+      ]);
+
+      assetStore.files = {
+        'business_icons/manifest.json': Uint8List.fromList(
+          utf8.encode('{"schemaVersion":1,"icons":[]}'),
+        ),
+      };
+      final diff = await assetService.restore(tempDirectory);
+
+      expect(diff.itemFor('business_icons').added, 1);
+      expect(
+        assetStore.files,
+        contains('business_icons/icons/account/icon-1.png'),
+      );
+      expect(assetStore.restoreCount, 1);
+    });
+
+    test(
+      'detects asset tampering and keeps format 3 backups readable',
+      () async {
+        final assetStore = _MemoryBackupAssetStore({
+          'business_icons/manifest.json': Uint8List.fromList(
+            utf8.encode('{"schemaVersion":1,"icons":[]}'),
+          ),
+        });
+        final assetService = BackupService(
+          gateway: gateway,
+          packageStore: const FileBackupPackageStore(),
+          assets: assetStore,
+        );
+        await assetService.createBackup(tempDirectory);
+        final assetFile = File(
+          '${tempDirectory.path}/business_icons/manifest.json',
+        );
+        await assetFile.writeAsBytes([9, 9, 9]);
+        expect(
+          () => assetService.inspect(tempDirectory),
+          throwsA(isA<BackupValidationException>()),
+        );
+
+        await assetService.createBackup(tempDirectory);
+        final manifestFile = File('${tempDirectory.path}/manifest.json');
+        final manifest =
+            jsonDecode(await manifestFile.readAsString())
+                as Map<String, Object?>;
+        manifest
+          ..['formatVersion'] = 3
+          ..remove('assetFiles');
+        await manifestFile.writeAsString(jsonEncode(manifest));
+
+        final legacy = await assetService.inspect(tempDirectory);
+        expect(legacy.manifest.formatVersion, 3);
+        expect(legacy.assets, isEmpty);
       },
     );
   });
@@ -396,6 +478,28 @@ void main() {
 
     expect(() => BackupService.validateSnapshot(snapshot), returnsNormally);
   });
+}
+
+class _MemoryBackupAssetStore implements BackupAssetStore {
+  _MemoryBackupAssetStore(this.files);
+
+  Map<String, Uint8List> files;
+  var restoreCount = 0;
+
+  @override
+  Future<Map<String, Uint8List>> exportBackupFiles() async => {
+    for (final entry in files.entries)
+      entry.key: Uint8List.fromList(entry.value),
+  };
+
+  @override
+  Future<void> restoreBackupFiles(Map<String, Uint8List> files) async {
+    restoreCount++;
+    this.files = {
+      for (final entry in files.entries)
+        entry.key: Uint8List.fromList(entry.value),
+    };
+  }
 }
 
 BackupSnapshot _emptySnapshot({

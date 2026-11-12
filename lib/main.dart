@@ -10,8 +10,11 @@ import 'app/bootstrap.dart';
 import 'app/business_icon_provider.dart';
 import 'app/provider.dart';
 import 'app/provider_error_observer.dart';
+import 'app/user_business_icon_providers.dart';
+import 'app/user_business_icon_source.dart';
+import 'infrastructure/data_management/icons/platform_user_business_icon_store.dart';
 import 'infrastructure/import/wechat/wechat_category_lexicon_loader.dart';
-import 'widget/business/icon/business_icon_registry.dart';
+import 'infrastructure/shared/uuid_id_generator.dart';
 
 Future<void> main() async {
   final errorHandler = AppGlobalErrorHandler(
@@ -22,7 +25,13 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
     final logFileSink = await bootstrap();
     errorHandler.install();
-    final iconRegistry = await BusinessIconRegistry.load(rootBundle);
+    final userIconStore = PlatformUserBusinessIconStore(
+      ids: const UuidIdGenerator(),
+    );
+    final iconRegistry = await BusinessIconRegistryLoader(
+      bundle: rootBundle,
+      userIcons: AppUserBusinessIconSource(userIconStore),
+    ).load();
     final wechatCategoryLexicon = await const WechatCategoryLexiconLoader()
         .load(rootBundle);
 
@@ -31,7 +40,10 @@ Future<void> main() async {
         observers: [AppProviderErrorObserver()],
         overrides: [
           appLogFileSinkProvider.overrideWithValue(logFileSink),
-          businessIconRegistryProvider.overrideWithValue(iconRegistry),
+          userBusinessIconStoreProvider.overrideWithValue(userIconStore),
+          businessIconRegistryProvider.overrideWith(
+            () => BusinessIconRegistryNotifier(iconRegistry),
+          ),
           wechatCategoryLexiconProvider.overrideWithValue(
             wechatCategoryLexicon,
           ),

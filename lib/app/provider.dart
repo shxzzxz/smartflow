@@ -128,6 +128,8 @@ import '../application/shared/transaction_runner.dart';
 import '../application/shared/update_channel_store.dart';
 import '../application/shared/app_data_refresh.dart';
 import '../application/data_management/backup/backup_service.dart';
+import '../application/data_management/icons/port/user_business_icon_store.dart';
+import '../infrastructure/data_management/icons/platform_user_business_icon_store.dart';
 import '../infrastructure/data_management/backup/drift_backup_gateway.dart';
 import '../infrastructure/data_management/backup/file_backup_package_store.dart';
 import '../application/data_management/backup/backup_archive.dart';
@@ -461,8 +463,13 @@ final backupServiceProvider = Provider<BackupService>((ref) {
   return BackupService(
     gateway: DriftBackupGateway(ref.watch(appDatabaseProvider)),
     packageStore: const FileBackupPackageStore(),
+    assets: ref.watch(userBusinessIconStoreProvider),
     appVersion: '0.7.0-dev.2+58',
   );
+});
+
+final userBusinessIconStoreProvider = Provider<UserBusinessIconStore>((ref) {
+  return PlatformUserBusinessIconStore(ids: const UuidIdGenerator());
 });
 
 final backupArchivePortProvider = Provider<BackupArchivePort>((ref) {

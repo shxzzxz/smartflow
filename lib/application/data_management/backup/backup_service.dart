@@ -22,10 +22,15 @@ abstract interface class BackupRestoreCoordinator {
 }
 
 class BackupInspection {
-  const BackupInspection({required this.manifest, required this.snapshot});
+  const BackupInspection({
+    required this.manifest,
+    required this.snapshot,
+    this.assets = const {},
+  });
 
   final BackupManifest manifest;
   final BackupSnapshot snapshot;
+  final Map<String, Uint8List> assets;
 }
 
 /// Application use case for exporting, inspecting, comparing, and restoring a
@@ -39,9 +44,11 @@ class BackupService {
     this.appVersion = 'unknown',
     this.baseCurrency = 'CNY',
     this.minorUnit = 2,
+    BackupAssetStore? assets,
     Uuid? idGenerator,
   }) : _gateway = gateway,
        _packageStore = packageStore,
+       _assets = assets,
        _idGenerator = idGenerator ?? const Uuid();
 
   final BackupSnapshotGateway _gateway;
@@ -49,6 +56,7 @@ class BackupService {
   final String appVersion;
   final String baseCurrency;
   final int minorUnit;
+  final BackupAssetStore? _assets;
   final Uuid _idGenerator;
 
   Future<BackupManifest> createBackup(
@@ -102,6 +110,22 @@ class BackupService {
         sha256: sha256.convert(preferencesBytes).toString(),
       ),
     );
+    final assets = await _assets?.exportBackupFiles() ?? const {};
+    final assetDescriptors = <BackupAssetDescriptor>[];
+    for (final entry in assets.entries) {
+      if (files.containsKey(entry.key)) {
+        throw BackupValidationException('备份文件路径重复: ${entry.key}');
+      }
+      final bytes = Uint8List.fromList(entry.value);
+      files[entry.key] = bytes;
+      assetDescriptors.add(
+        BackupAssetDescriptor(
+          path: entry.key,
+          byteCount: bytes.length,
+          sha256: sha256.convert(bytes).toString(),
+        ),
+      );
+    }
 
     final manifest = BackupManifest(
       formatVersion: BackupManifest.currentFormatVersion,
@@ -113,6 +137,7 @@ class BackupService {
       minorUnit: minorUnit,
       backupId: _idGenerator.v4(),
       files: List.unmodifiable(descriptors),
+      assetFiles: List.unmodifiable(assetDescriptors),
     );
     await _packageStore.write(
       destination,
@@ -183,6 +208,20 @@ class BackupService {
     if (!hasPreferences) {
       throw const BackupValidationException('备份缺少 preferences.json。');
     }
+    final assets = <String, Uint8List>{};
+    for (final descriptor in manifest.assetFiles) {
+      final bytes = package.files[descriptor.path];
+      if (bytes == null) {
+        throw BackupValidationException('备份缺少资源文件: ${descriptor.path}');
+      }
+      if (bytes.length != descriptor.byteCount) {
+        throw BackupValidationException('资源文件大小校验失败: ${descriptor.path}');
+      }
+      if (sha256.convert(bytes).toString().toLowerCase() != descriptor.sha256) {
+        throw BackupValidationException('资源文件完整性校验失败: ${descriptor.path}');
+      }
+      assets[descriptor.path] = Uint8List.fromList(bytes);
+    }
     final requiredTables = switch (manifest.backupSchemaVersion) {
       < 10 => <String>{
         for (final table in BackupTables.all)
@@ -209,7 +248,11 @@ class BackupService {
       fromVersion: manifest.backupSchemaVersion,
     );
     validateSnapshot(snapshot);
-    return BackupInspection(manifest: manifest, snapshot: snapshot);
+    return BackupInspection(
+      manifest: manifest,
+      snapshot: snapshot,
+      assets: Map.unmodifiable(assets),
+    );
   }
 
   static BackupSnapshot _upgradeSnapshot(
@@ -225,6 +268,7 @@ class BackupService {
       upgraded = switch (version) {
         9 => _upgradeBackupV9ToV10(upgraded),
         10 => _upgradeBackupV10ToV11(upgraded),
+        11 => upgraded,
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -314,17 +358,46 @@ class BackupService {
   Future<BackupDiff> compare(Object source) async {
     final inspection = await inspect(source);
     final current = await _gateway.readSnapshot();
-    return BackupDiff.compare(current, inspection.snapshot);
+    final currentAssets = await _assets?.exportBackupFiles() ?? const {};
+    return BackupDiff.compare(
+      current,
+      inspection.snapshot,
+      currentAssets: currentAssets,
+      incomingAssets: inspection.assets,
+    );
   }
 
   Future<BackupDiff> restore(Object source) async {
     Future<BackupDiff> operation() async {
       final inspection = await inspect(source);
       final current = await _gateway.readSnapshot();
+      final currentAssets = await _assets?.exportBackupFiles() ?? const {};
       final normalized = recomputeBalances(inspection.snapshot);
-      final diff = BackupDiff.compare(current, normalized);
+      final diff = BackupDiff.compare(
+        current,
+        normalized,
+        currentAssets: currentAssets,
+        incomingAssets: inspection.assets,
+      );
       if (diff.isNoop) return diff;
+      if (inspection.assets.isNotEmpty && _assets == null) {
+        throw const BackupValidationException('当前运行环境无法恢复备份中的用户图标。');
+      }
       await _gateway.replaceSnapshot(normalized);
+      try {
+        await _assets?.restoreBackupFiles(inspection.assets);
+      } catch (error, stackTrace) {
+        try {
+          await _gateway.replaceSnapshot(current);
+          await _assets?.restoreBackupFiles(currentAssets);
+        } catch (rollbackError, rollbackStackTrace) {
+          Error.throwWithStackTrace(
+            BackupValidationException('用户图标恢复失败，且数据库回滚失败: $rollbackError'),
+            rollbackStackTrace,
+          );
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      }
       return diff;
     }
 

@@ -139,7 +139,7 @@ void main() {
     );
     final manifest = await backup.createBackup(backupDirectory);
     final inspection = await backup.inspect(backupDirectory);
-    expect(manifest.backupSchemaVersion, 11);
+    expect(manifest.backupSchemaVersion, 12);
     expect(inspection.snapshot.rows('amortization_periods'), isNotEmpty);
     expect(inspection.snapshot.rows('amortization_allocations'), isNotEmpty);
   });

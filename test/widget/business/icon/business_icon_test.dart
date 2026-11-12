@@ -175,6 +175,39 @@ void main() {
     },
   );
 
+  test('user category icons are available for income and expense', () async {
+    final fixture = await BusinessIconRegistry.loadFromSources([
+      BundledBusinessIconSource(rootBundle),
+      _MemoryCategoryUserIconSource(),
+    ]);
+    final ref = BusinessIconRef(
+      origin: BusinessIconOrigin.user,
+      type: BusinessIconType.category,
+      groupId: 'my-icons',
+      key: 'custom-category',
+    );
+
+    final spec = fixture.resolve(ref.id, type: BusinessIconType.category);
+    expect(spec, isNotNull);
+    expect(spec!.resourceKind, BusinessIconResourceKind.file);
+    expect(
+      fixture.search(
+        type: BusinessIconType.category,
+        usage: BusinessIconUsage.expenseCategory,
+        origin: BusinessIconOrigin.user,
+      ),
+      hasLength(1),
+    );
+    expect(
+      fixture.search(
+        type: BusinessIconType.category,
+        usage: BusinessIconUsage.incomeCategory,
+        origin: BusinessIconOrigin.user,
+      ),
+      hasLength(1),
+    );
+  });
+
   test('category icon batch is available in every style and searchable', () {
     const expenseKeys = {
       'live-tip',
@@ -634,6 +667,37 @@ class _MemoryUserIconSource implements BusinessIconSource {
             label: '自定义银行',
             assetPath: 'memory://custom-bank.svg',
             usage: BusinessIconUsage.account,
+            color: BusinessIconColor.original,
+          ),
+        },
+      ),
+    ];
+  }
+}
+
+class _MemoryCategoryUserIconSource implements BusinessIconSource {
+  @override
+  Future<List<BusinessIconGroup>> load() async {
+    final ref = BusinessIconRef(
+      origin: BusinessIconOrigin.user,
+      type: BusinessIconType.category,
+      groupId: 'my-icons',
+      key: 'custom-category',
+    );
+    return [
+      BusinessIconGroup(
+        origin: BusinessIconOrigin.user,
+        type: BusinessIconType.category,
+        id: 'my-icons',
+        name: '我的图标',
+        kind: BusinessIconGroupKind.user,
+        icons: {
+          ref.key: BusinessIconSpec(
+            ref: ref,
+            label: '自定义分类',
+            assetPath: 'memory://custom-category.png',
+            resourceKind: BusinessIconResourceKind.file,
+            usage: BusinessIconUsage.expenseCategory,
             color: BusinessIconColor.original,
           ),
         },

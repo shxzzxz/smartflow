@@ -13,7 +13,7 @@
 
 基线是随发布边界调整的兼容状态，不属于稳定的架构决策。调整基线时同步更新 `PersistenceBaseline`、本表、结构快照、生成迁移与测试，并删除不再承诺兼容的旧链路；不要求为每次基线调整新增或修改 ADR。ADR 只记录长期有效的兼容原则和取舍，[ADR-0021](../adr/0021-发布前持久化基线契约.md) 仅作为历史背景。
 
-当前实现数据库 schema 为 v62，逻辑备份契约为 `backupSchemaVersion` 11；上表仍定义最低兼容基线。
+当前实现数据库 schema 为 v62，备份 format 为 4，逻辑备份契约为 `backupSchemaVersion` 12；上表仍定义最低兼容基线。
 
 ## 支持范围
 
@@ -74,6 +74,7 @@ fvm dart run drift_dev schema generate drift_schemas/ test/generated_migrations/
 - 提高备份版本时，为每个相邻版本增加不可变的 `vN -> vN+1` 数据迁移，把旧备份转换为当前快照后再执行现有完整校验和恢复。
 - 最新解析器只处理当前 `backupSchemaVersion`；历史迁移步骤保留固定旧字段和 wire code 的处理规则，不导入当前领域实体或 `AppDatabase` 表定义。
 - 包结构发生变化时使用 `formatVersion`，不得通过提高 `backupSchemaVersion` 代替文件格式迁移。
+- format 4 通过 `assetFiles` 描述数据库之外的逻辑资源；当前用于用户图标清单和 PNG 文件。format 3 备份继续可读，并视为不包含逻辑资源。
 
 ## 交易导入接口
 
