@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/import/import_models.dart';
-import '../../../domain/import/import_persistence_models.dart';
+import '../../../domain/intake/import/import_models.dart';
+import '../../../domain/intake/import/import_persistence_models.dart';
 
 @DataClassName('ImportBatchRow')
 class ImportBatches extends Table {

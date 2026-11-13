@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/application/import/import_api.dart';
+import 'package:smartflow/application/intake/intake_import_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart'
     show BusinessPurpose;
 import 'package:smartflow/core/money/money.dart';

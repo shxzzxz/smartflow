@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/app/provider.dart';
-import 'package:smartflow/application/import/import_api.dart';
+import 'package:smartflow/application/intake/intake_import_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/patch/patch.dart';
-import 'package:smartflow/domain/import/import_models.dart'
+import 'package:smartflow/domain/intake/import/import_models.dart'
     show applyImportDraftEdit;
 import 'package:smartflow/feature/import/view_model/import_view_model.dart';
 

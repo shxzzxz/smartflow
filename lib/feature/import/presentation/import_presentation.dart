@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 
-import '../../../application/import/import_api.dart';
+import '../../../application/intake/intake_import_api.dart';
 import '../../../application/ledger/ledger_query_api.dart' show BusinessPurpose;
 import '../../../core/money/money_formatter.dart';
 import '../../../widget/business/finance/finance_tone.dart';

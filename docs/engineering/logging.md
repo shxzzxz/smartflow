@@ -7,7 +7,7 @@
 ## 统一入口与命名
 
 - 复用 `package:logging`，由 `core/logging` 统一配置级别、输出与文件保留，`app` 负责启动装配。
-- Logger 使用稳定的点分模块名，例如 `app.bootstrap`、`app.error`、`app.provider`、`application.import`、`infra.database`、`feature.transaction.form`。实例 ID、用户输入和文件路径不进入 Logger 名称。
+- Logger 使用稳定的点分模块名，例如 `app.bootstrap`、`app.error`、`app.provider`、`application.intake.import`、`infra.database`、`feature.transaction.form`。实例 ID、用户输入和文件路径不进入 Logger 名称。
 - 业务代码不使用 `print`、`debugPrint` 或直接写文件代替日志入口。`dart:developer` 仅用于统一输出和日志系统自身故障的兜底。
 - `domain` 与纯 presentation 函数不记录日志；通过返回值或异常向调用边界提供结果和失败语义。
 

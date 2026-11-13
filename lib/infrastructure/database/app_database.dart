@@ -3,8 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/ledger/valobj/ledger_enum.dart';
-import '../../domain/import/import_models.dart';
-import '../../domain/import/import_persistence_models.dart';
+import '../../domain/intake/import/import_models.dart';
+import '../../domain/intake/import/import_persistence_models.dart';
 import '../../domain/credit/valobj/bill_enums.dart';
 import '../../domain/credit/valobj/credit_account_enums.dart';
 import '../../domain/credit/valobj/installment_enums.dart';

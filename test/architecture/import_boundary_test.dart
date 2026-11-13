@@ -128,7 +128,7 @@ void main() {
             final target = _libPathForImport(file, importPath);
             if (target == null) continue;
             final dependsOnDomainImplementation = RegExp(
-              r'^domain/[^/]+/(service|port)/',
+              r'^domain/[^/]+/(?:[^/]+/)*(service|port)/',
             ).hasMatch(target);
             if (target.startsWith('infrastructure/') ||
                 dependsOnDomainImplementation) {
@@ -178,13 +178,14 @@ void main() {
       _assertClean(violations);
     });
 
-    test('ledger domain 不依赖 credit domain', () {
+    test('ledger domain 不依赖其他业务域', () {
       final violations = <_Violation>[];
       for (final file in _dartFiles('lib/domain/ledger')) {
         for (final importPath in _importPaths(file)) {
           final target = _libPathForImport(file, importPath) ?? importPath;
-          if (target.contains('domain/credit/')) {
-            violations.add(_Violation(file, importPath, 'ledger 不能依赖 credit'));
+          if (target.startsWith('domain/') &&
+              !target.startsWith('domain/ledger/')) {
+            violations.add(_Violation(file, importPath, 'ledger 不能依赖其他业务域'));
           }
         }
       }
@@ -226,6 +227,28 @@ void main() {
       _assertClean(violations);
     });
 
+    test('intake application 通过本域 port 访问其他业务域', () {
+      final violations = <_Violation>[];
+      for (final file in _dartFiles('lib/application/intake')) {
+        for (final importPath in _importPaths(file)) {
+          final target = _libPathForImport(file, importPath);
+          if (target != null &&
+              target.startsWith('application/') &&
+              !target.startsWith('application/intake/') &&
+              !target.startsWith('application/shared/')) {
+            violations.add(
+              _Violation(
+                file,
+                importPath,
+                'intake application 必须通过本域 port 跨域协作',
+              ),
+            );
+          }
+        }
+      }
+      _assertClean(violations);
+    });
+
     test('application facade 不转导 domain service 或 port', () {
       final violations = <_Violation>[];
       for (final file in _dartFiles('lib/application')) {
@@ -233,7 +256,9 @@ void main() {
         for (final exportPath in _exportPaths(file)) {
           final target = _libPathForImport(file, exportPath);
           if (target == null) continue;
-          if (RegExp(r'^domain/[^/]+/(service|port)/').hasMatch(target)) {
+          if (RegExp(
+            r'^domain/[^/]+/(?:[^/]+/)*(service|port)/',
+          ).hasMatch(target)) {
             violations.add(
               _Violation(
                 file,

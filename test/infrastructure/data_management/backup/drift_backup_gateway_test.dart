@@ -5,7 +5,7 @@ import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gat
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/infrastructure/data_management/backup/file_backup_package_store.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
-import 'package:smartflow/domain/import/import_models.dart';
+import 'package:smartflow/domain/intake/import/import_models.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/ledger/valobj/ledger_enum.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';

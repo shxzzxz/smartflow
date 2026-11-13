@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/import/import_models.dart';
+import '../../../domain/intake/import/import_models.dart';
 
 /// Cross-batch default mappings for one import source.
 ///

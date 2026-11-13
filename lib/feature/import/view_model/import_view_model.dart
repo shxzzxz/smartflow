@@ -2,7 +2,7 @@ import 'package:logging/logging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/provider.dart';
-import '../../../application/import/import_api.dart';
+import '../../../application/intake/intake_import_api.dart';
 import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';

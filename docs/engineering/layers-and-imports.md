@@ -81,8 +81,8 @@ infrastructure 实现 port 与 query interfaces，不承载业务决策。
 | `ledger`（账务核心） | Shared Kernel | 账户、交易、分录、过账规则、账务流图原语；查询投影位于 application query side |
 | `credit`（信贷） | 独立业务域 | 分期合同 / 计划 / 还款状态机；调用账务核心完成入账 |
 | `orchestration`（交易编排） | 独立业务域 | AA／报销／代付等复杂交易场景、场景规则、编排实例与可选状态；调用账务核心原语 |
-| `data_management`（数据管理） | 数据管理域 | 跨业务域用户数据和资源生命周期，包括导入、清理、备份、恢复与用户图标 |
-| `preset`（预设记账） | 独立业务域候选 | 周期记账、模板记账，待业务复杂度明确后落地 |
+| `data_management`（数据管理） | 数据管理域 | 跨业务域用户数据和资源生命周期，包括导出、清理、备份、恢复与用户图标 |
+| `intake`（录入） | 独立业务域 | 记账输入解释、确认或规则执行；来源导入维护来源映射、交易组、批次及撤销 |
 | `analytics`（分析） | 薄业务域 / 查询域 | 趋势、洞察、预测、报告投影 |
 
 重域使用完整分层：
@@ -205,10 +205,12 @@ lib/infrastructure/database/table/*
 
 禁止把迁移版本号和 schema 管理拆进各业务域，避免迁移撞号和装配混乱。
 
-## Import 边界
+## 录入域的来源导入边界
 
-- 每种外部导入来源拥有独立的 `domain/import/source/<source>/` 模块，外部入口统一实现 `ImportSourceParser`；账单、资金流、解析单元和来源支持函数在该模块内部组织，不进入通用导入模型或工作流。
-- 来源专用的文件读取策略位于 `infrastructure/import/<source>/`。CSV / XLSX 等通用物理格式能力可以放在 `infrastructure/import/`，但编码、前导区和表头定位等来源语义由对应来源 adapter 负责。
+- 录入域的能力按稳定工作流组织；现有来源导入位于 `application/intake/import/`、`domain/intake/import/` 和 `infrastructure/intake/import/`。能力内部使用自己的模型与 ports，不把导入来源、批次或周期规则作为所有录入方式的必填字段。
+- 每种外部导入来源拥有独立的 `domain/intake/import/source/<source>/` 模块，外部入口统一实现 `ImportSourceParser`；账单、资金流、解析单元和来源支持函数在该模块内部组织，不进入通用导入模型或工作流。
+- 来源专用的文件读取策略位于 `infrastructure/intake/import/<source>/`。CSV / XLSX 等通用物理格式能力可以放在 `infrastructure/intake/import/`，但编码、前导区和表头定位等来源语义由对应来源 adapter 负责。
+- 导入 Feature 通过 `application/intake/intake_import_api.dart` 使用应用用例和稳定值类型，不直接访问解析器、领域 ports 或基础设施。
 - feature / application 必须显式传递 `ImportSource` 来选择 parser、文件选择和来源历史；不得在通用 ViewModel 或工作流中写死具体来源。
 - `domain/*` 不依赖 `application/`、`infrastructure/`、`feature/`、`app/`、Drift、Riverpod。
 - `domain/*` 不依赖 application query DTO / read model / scope filter。

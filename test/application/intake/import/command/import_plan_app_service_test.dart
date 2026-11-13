@@ -1,0 +1,185 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/intake/import/command/import_parser_registry.dart';
+import 'package:smartflow/application/intake/import/command/import_plan_app_service.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
+import 'package:smartflow/domain/intake/import/import_models.dart';
+import 'package:smartflow/domain/intake/import/port/import_file_reader.dart';
+import 'package:smartflow/domain/intake/import/port/import_source_parser.dart';
+import 'package:smartflow/domain/intake/import/source/yimu/yimu_import_parser.dart';
+
+void main() {
+  test('dispatches parsing through the source parser registry', () {
+    final parser = _RecordingParser();
+    final service = ImportPlanAppServiceImpl(
+      parsers: ImportParserRegistry([parser]),
+    );
+    final bundle = ImportBundle(files: const []);
+
+    final result = service.parse(source: ImportSource.yimu, bundle: bundle);
+
+    expect(parser.receivedBundle, same(bundle));
+    expect(result.source, ImportSource.yimu);
+  });
+
+  test('dispatches a non-Yimu source without workflow changes', () {
+    final parser = _RecordingParser(ImportSource.alipay);
+    final service = ImportPlanAppServiceImpl(
+      parsers: ImportParserRegistry([parser]),
+    );
+    final bundle = ImportBundle(files: const []);
+
+    final result = service.parse(source: ImportSource.alipay, bundle: bundle);
+
+    expect(parser.receivedBundle, same(bundle));
+    expect(result.source, ImportSource.alipay);
+  });
+
+  test('draft edit clears only parser issues repaired by edited fields', () {
+    final service = _service();
+    final group = ImportTransactionGroupDraft(
+      topLevel: ImportTransferDraft(
+        amount: Money.zero(),
+        fromAccount: const ImportAccountReference.source(
+          sourceEntityKey: 'account:cash',
+          displayName: '现金',
+        ),
+        toAccount: const ImportAccountReference.source(
+          sourceEntityKey: 'account:bank',
+          displayName: '银行卡',
+        ),
+        occurredAt: DateTime(1970),
+      ),
+      sourceOperationFingerprint: 'fingerprint',
+      fingerprintVersion: 1,
+      issues: const [
+        ImportIssue(
+          code: 'date_invalid',
+          message: '日期无效。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+        ImportIssue(
+          code: '金额_invalid',
+          message: '金额无效。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+        ImportIssue(
+          code: 'transfer_amount_invalid',
+          message: '转账金额无效。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+        ImportIssue(
+          code: '手续费_invalid',
+          message: '手续费无效。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+        ImportIssue(
+          code: 'multi_currency_unsupported',
+          message: '不支持多币种。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+      ],
+    );
+    final plan = ImportParseResult(source: ImportSource.yimu, groups: [group]);
+
+    final edited = service.editDraft(
+      plan: plan,
+      groupIndex: 0,
+      edit: ImportDraftEdit(
+        amount: Money.parse('25.00'),
+        occurredAt: DateTime(2026, 7, 22, 9),
+        transferFee: Patch.set(Money.parse('1.00')),
+      ),
+    );
+
+    final editedGroup = edited.groups.single;
+    final draft = editedGroup.topLevel as ImportTransferDraft;
+    expect(draft.amount, Money.parse('25.00'));
+    expect(draft.feeAmount, Money.parse('1.00'));
+    expect(draft.occurredAt, DateTime(2026, 7, 22, 9));
+    expect(editedGroup.issues.map((issue) => issue.code), [
+      'multi_currency_unsupported',
+    ]);
+    expect(editedGroup.sourceOperationFingerprint, 'fingerprint');
+  });
+
+  test('editing a child date does not clear a top-level date blocker', () {
+    final service = _service();
+    final group = ImportTransactionGroupDraft(
+      topLevel: ImportExpenseDraft(
+        amount: Money.parse('70.00'),
+        paidFrom: const ImportAccountReference.source(
+          sourceEntityKey: 'account:cash',
+          displayName: '现金',
+        ),
+        category: const ImportCategoryReference(
+          sourceEntityKey: 'category:expense:餐饮',
+          path: '餐饮',
+          kind: ImportCategoryKind.expense,
+        ),
+        occurredAt: DateTime(1970),
+      ),
+      children: [
+        ImportRefundDraft(
+          amount: Money.parse('2.00'),
+          refundTo: const ImportAccountReference.source(
+            sourceEntityKey: 'account:cash',
+            displayName: '现金',
+          ),
+          occurredAt: DateTime(1970),
+        ),
+      ],
+      sourceOperationFingerprint: 'fingerprint',
+      fingerprintVersion: 1,
+      issues: const [
+        ImportIssue(
+          code: 'date_invalid',
+          message: '顶层交易日期无效。',
+          severity: ImportIssueSeverity.blocking,
+        ),
+      ],
+    );
+
+    final edited = service.editDraft(
+      plan: ImportParseResult(source: ImportSource.yimu, groups: [group]),
+      groupIndex: 0,
+      childIndex: 0,
+      edit: ImportDraftEdit(occurredAt: DateTime(2026, 7, 22, 9)),
+    );
+
+    expect(
+      edited.groups.single.issues.map((issue) => issue.code),
+      contains('date_invalid'),
+    );
+  });
+}
+
+ImportPlanAppServiceImpl _service() {
+  return ImportPlanAppServiceImpl(
+    parsers: ImportParserRegistry([
+      YimuImportParser(reader: const _UnusedReader()),
+    ]),
+  );
+}
+
+class _UnusedReader implements ImportFileReader {
+  const _UnusedReader();
+
+  @override
+  ImportTabularFile read(ImportFilePayload file) => throw UnimplementedError();
+}
+
+class _RecordingParser implements ImportSourceParser {
+  _RecordingParser([this.source = ImportSource.yimu]);
+
+  ImportBundle? receivedBundle;
+
+  @override
+  final ImportSource source;
+
+  @override
+  ImportParseResult parse(ImportBundle bundle) {
+    receivedBundle = bundle;
+    return ImportParseResult(source: source);
+  }
+}

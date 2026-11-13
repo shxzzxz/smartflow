@@ -13,7 +13,7 @@ import 'app/provider_error_observer.dart';
 import 'app/user_business_icon_providers.dart';
 import 'app/user_business_icon_source.dart';
 import 'infrastructure/data_management/icons/platform_user_business_icon_store.dart';
-import 'infrastructure/import/wechat/wechat_category_lexicon_loader.dart';
+import 'infrastructure/intake/import/wechat/wechat_category_lexicon_loader.dart';
 import 'infrastructure/shared/uuid_id_generator.dart';
 
 Future<void> main() async {

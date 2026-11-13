@@ -25,7 +25,7 @@ Single-context repo:
     ├── adr/
     └── domains/
         ├── credit/
-        ├── import/
+        ├── intake/
         └── ledger/
 ```
 
