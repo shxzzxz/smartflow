@@ -55,6 +55,19 @@ void main() {
 
   test('native write transactions wait for a short competing write', () async {
     await reader.customSelect('SELECT 1 AS value').getSingle();
+    final timeout = await reader
+        .customSelect('PRAGMA busy_timeout')
+        .getSingle();
+    final journal = await reader
+        .customSelect('PRAGMA journal_mode')
+        .getSingle();
+    final sqlite = await reader
+        .customSelect('SELECT sqlite_version() AS version')
+        .getSingle();
+    // ignore: avoid_print
+    print(
+      '[DEBUG-v098-lock] timeout=${timeout.data} journal=${journal.data} sqlite=${sqlite.data}',
+    );
     await whileDatabaseWriteLocked(
       writer,
       () => reader.transaction(() async {
