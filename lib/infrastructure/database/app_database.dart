@@ -120,9 +120,8 @@ class AppDatabase extends _$AppDatabase {
   static QueryExecutor _openConnection() {
     return driftDatabase(
       name: 'smartflow.sqlite',
-      native: DriftNativeOptions(
+      native: const DriftNativeOptions(
         databaseDirectory: getApplicationSupportDirectory,
-        setup: (database) => database.execute('PRAGMA busy_timeout = 5000'),
       ),
     );
   }
