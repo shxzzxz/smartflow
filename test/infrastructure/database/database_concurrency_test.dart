@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
@@ -9,6 +11,8 @@ import 'package:smartflow/infrastructure/database/builtin_data.dart';
 
 import '../../helper/database_write_lock.dart';
 
+class _VmServiceHttpOverrides extends HttpOverrides {}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
@@ -18,17 +22,44 @@ void main() {
   late AppDatabase writer;
   late AppDatabase reader;
 
+  setUpAll(() async {
+    final info = await developer.Service.controlWebServer(
+      enable: true,
+      silenceOutput: true,
+    ).timeout(const Duration(seconds: 5));
+    final uri = info.serverUri;
+    if (uri == null) throw StateError('VM service is unavailable.');
+    final client = HttpOverrides.runWithHttpOverrides(
+      () => HttpClient(),
+      _VmServiceHttpOverrides(),
+    );
+    try {
+      final request = await client.getUrl(
+        uri
+            .resolve('setFlag')
+            .replace(queryParameters: {'name': 'profiler', 'value': 'false'}),
+      );
+      final response = await request.close();
+      final json =
+          jsonDecode(await response.transform(utf8.decoder).join())
+              as Map<String, dynamic>;
+      final result = (json['result'] ?? json) as Map<String, dynamic>;
+      // ignore: avoid_print
+      print('[DEBUG-v098-lock] profiler disabled: $result');
+      if (result['type'] != 'Success') {
+        throw StateError('Failed to disable VM profiler: $result');
+      }
+    } finally {
+      client.close(force: true);
+    }
+  });
+
   setUp(() async {
     directory = await Directory.systemTemp.createTemp(
       'smartflow-database-concurrency-',
     );
     final file = File('${directory.path}/smartflow.sqlite.sqlite');
-    writer = AppDatabase(
-      NativeDatabase.createInBackground(
-        file,
-        setup: (database) => database.execute('PRAGMA journal_mode = WAL'),
-      ),
-    );
+    writer = AppDatabase(NativeDatabase.createInBackground(file));
     await writer.customSelect('SELECT 1 AS value').getSingle();
     messenger.setMockMethodCallHandler(
       pathChannel,

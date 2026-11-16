@@ -32,4 +32,4 @@ jobs:
         run: fvm flutter analyze
 
       - name: Test
-        run: fvm flutter test test/infrastructure/database/database_concurrency_test.dart --reporter expanded
+        run: fvm flutter test test/infrastructure/database/database_concurrency_test.dart --enable-vmservice --reporter expanded
