@@ -120,10 +120,10 @@ class ScreenshotTextDocument {
         .where(
           (row) => RegExp(
             r'^(支付失败|交易失败|付款失败|支付中|待支付|等待付款|已关闭|已取消|交易取消|支付成功|付款成功|支付完成|交易成功|收款成功|已收款|已到账|已存入零钱|退款成功|已全额退款|已退款|转账成功|转账到账|还款成功)$',
-          ).hasMatch(row.text),
+          ).hasMatch(_sceneMatchingText(row.text)),
         )
         .map((row) => row.text),
-  ].whereType<String>().join('\n');
+  ].whereType<String>().map(_sceneMatchingText).join('\n');
 
   DateTime? uniqueTime() {
     final dates = <DateTime>{};
@@ -241,6 +241,10 @@ bool _startsWithLabel(String text) {
   final compact = text.replaceAll(' ', '');
   return _detailLabels.any(compact.startsWith);
 }
+
+// Scene matching ignores word gaps while preserving row boundaries and raw fields.
+String _sceneMatchingText(String text) =>
+    text.replaceAll(RegExp(r'[^\S\r\n]+'), '');
 
 Money? parseScreenshotAmount(String? value) {
   if (value == null) return null;

@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/feature/shared/view_model/action_guard.dart';
+import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/infrastructure/intake/recognition/platform_payment_screenshot.dart';
 
 void main() {
@@ -85,6 +88,105 @@ void main() {
     );
   });
 
+  for (final operation in ['recognize', 'takeInitialShare']) {
+    test(
+      '$operation keeps safe platform diagnostics and original stack',
+      () async {
+        final sourceStack = StackTrace.fromString(
+          'package:flutter/services/platform_channel.dart 27:3 invokeMethod',
+        );
+        final channel = _FailingChannel(
+          PlatformException(
+            code: 'capture.runtime_unavailable',
+            message: 'private screenshot and payment details',
+            details: {'path': '/private/payment.png', 'amount': '123.45'},
+            stacktrace: '/private/native/payment.png',
+          ),
+          sourceStack,
+        );
+        final platform = PlatformPaymentScreenshot(channel: channel);
+        addTearDown(platform.dispose);
+        final result = operation == 'recognize'
+            ? platform.recognize('share')
+            : platform.takeInitialShare();
+        await expectLater(
+          result,
+          throwsA(
+            isA<InfrastructureException>()
+                .having(
+                  (error) => error.code,
+                  'application code',
+                  operation == 'recognize'
+                      ? 'capture.ocr_failed'
+                      : 'capture.image_unavailable',
+                )
+                .having(
+                  (error) => error.stackTrace.toString(),
+                  'original stack',
+                  sourceStack.toString(),
+                )
+                .having(
+                  (error) => error.cause,
+                  'safe cause',
+                  isA<PlatformException>()
+                      .having(
+                        (error) => error.code,
+                        'platform code',
+                        'capture.runtime_unavailable',
+                      )
+                      .having((error) => error.message, 'message', isNull)
+                      .having((error) => error.details, 'details', isNull)
+                      .having(
+                        (error) => error.stacktrace,
+                        'native stack',
+                        isNull,
+                      ),
+                ),
+          ),
+        );
+      },
+    );
+  }
+
+  test(
+    'action logging keeps platform diagnostics without image contents',
+    () async {
+      final sourceStack = StackTrace.fromString(
+        'package:flutter/services/platform_channel.dart 27:3 invokeMethod',
+      );
+      final platform = PlatformPaymentScreenshot(
+        channel: _FailingChannel(
+          PlatformException(
+            code: 'capture.ocr_failed',
+            message: 'private account and payment 123.45',
+            details: '/private/payment.png',
+            stacktrace: '/private/native/payment.png',
+          ),
+          sourceStack,
+        ),
+      );
+      addTearDown(platform.dispose);
+      final logger = Logger.detached('test.capture.failure');
+      final records = <LogRecord>[];
+      final subscription = logger.onRecord.listen(records.add);
+      addTearDown(subscription.cancel);
+      final outcome = await guardUiAction(
+        logger,
+        'Recognize screenshot',
+        () => platform.recognize('share'),
+      );
+      expect(outcome, isA<UiActionFailure>());
+      expect(records, hasLength(1));
+      expect(records.single.message, contains('capture.ocr_failed'));
+      expect(records.single.error.toString(), contains('PlatformException'));
+      expect(records.single.error.toString(), contains('capture.ocr_failed'));
+      expect(records.single.stackTrace.toString(), sourceStack.toString());
+      final logged = '${records.single.error}\n${records.single.stackTrace}';
+      expect(logged, isNot(contains('private')));
+      expect(logged, isNot(contains('123.45')));
+    },
+  );
+
   test('non-Android startup does not invoke a native share channel', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     messenger.setMockMethodCallHandler(
@@ -95,4 +197,17 @@ void main() {
     addTearDown(platform.dispose);
     expect(await platform.takeInitialShare(), isNull);
   });
+}
+
+class _FailingChannel extends MethodChannel {
+  _FailingChannel(this.error, this.sourceStack) : super('test/capture_failure');
+
+  final PlatformException error;
+  final StackTrace sourceStack;
+
+  @override
+  Future<Map<K, V>?> invokeMapMethod<K, V>(
+    String method, [
+    dynamic arguments,
+  ]) => Future.error(error, sourceStack);
 }

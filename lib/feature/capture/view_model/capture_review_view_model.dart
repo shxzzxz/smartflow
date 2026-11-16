@@ -5,7 +5,6 @@ import '../../../app/capture_intake_provider.dart';
 import '../../../app/provider.dart';
 import '../../../app/recognition_rules_provider.dart';
 import '../../../application/intake/intake_recognition_api.dart';
-import '../../../application/ledger/ledger_query_api.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../../transaction/presentation/transaction_form_prefill.dart';
@@ -85,7 +84,7 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
     final recognizer = ref.read(recognizePaymentScreenshotProvider);
     final rules = ref.read(recognitionRulesAppServiceProvider);
     final counterpartyQuery = ref.read(counterpartyApplicationServiceProvider);
-    final transactionQuery = ref.read(transactionQueryServiceProvider);
+    final duplicateQuery = ref.read(paymentDuplicateQueryServiceProvider);
     final outcome = await guardUiAction(
       Logger('feature.capture'),
       'Recognize payment screenshot',
@@ -119,9 +118,7 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
             ? counterpartyMatches.single.id
             : null;
         final occurredAt = payment.occurredAt ?? DateTime.now();
-        final duplicate = payment.occurredAt == null
-            ? false
-            : await _hasDuplicate(payment, transactionQuery);
+        final duplicate = await duplicateQuery.hasPossibleDuplicate(payment);
         final notices = <String>[
           '截图识别完成，请核对后保存。',
           if (payment.occurredAt == null) '未识别到交易时间，暂填当前时间。',
@@ -163,28 +160,6 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
       );
     }
     return outcome;
-  }
-
-  Future<bool> _hasDuplicate(
-    RecognizedPayment payment,
-    TransactionQueryService query,
-  ) async {
-    final time = payment.occurredAt!;
-    final transactions = await query.findTransactions(
-      TransactionListQuery(
-        occurredFrom: time,
-        occurredUntil: time.add(const Duration(seconds: 1)),
-        limit: null,
-        scope: TransactionScopeFilter.all,
-      ),
-    );
-    final purpose = payment.direction == RecognizedPaymentDirection.expense
-        ? BusinessPurpose.dailyExpense
-        : BusinessPurpose.dailyIncome;
-    return transactions.any(
-      (tx) =>
-          tx.businessPurpose == purpose && tx.primaryAmount == payment.amount,
-    );
   }
 }
 

@@ -13,6 +13,7 @@ import 'router.dart';
 import 'capture_intake_provider.dart';
 import 'capture_intake_navigation.dart';
 import '../application/intake/intake_recognition_api.dart';
+import '../core/error/app_exception.dart';
 
 class SmartFlowApp extends ConsumerStatefulWidget {
   const SmartFlowApp({super.key, this.scaffoldMessengerKey});
@@ -40,13 +41,18 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   Future<void> _listenForImageShares() async {
     final source = ref.read(sharedPaymentImageSourceProvider);
     _imageShares = source.shares.listen(_openSharedImage);
+    final logger = Logger('app.capture');
     try {
       final image = await source.takeInitialShare();
       if (mounted && image != null) _openSharedImage(image);
+    } on AppException catch (error, stackTrace) {
+      logger.warning(
+        'Cannot receive shared image [${error.code}].',
+        error.cause ?? error,
+        error.stackTrace ?? stackTrace,
+      );
     } on Exception catch (error, stackTrace) {
-      Logger(
-        'app.capture',
-      ).warning('Cannot receive shared image.', error, stackTrace);
+      logger.warning('Cannot receive shared image.', error, stackTrace);
     }
   }
 

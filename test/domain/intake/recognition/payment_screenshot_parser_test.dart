@@ -7,6 +7,82 @@ import 'package:smartflow/domain/intake/recognition/service/payment_screenshot_p
 void main() {
   const parser = PaymentScreenshotParser();
 
+  test('recognizes scene keywords split into blocks in a labeled row', () {
+    final scenes = {
+      ('转', '账'): PaymentScreenshotScene.transfer,
+      ('退', '款'): PaymentScreenshotScene.refund,
+      ('还', '款'): PaymentScreenshotScene.repayment,
+      ('已', '取消'): PaymentScreenshotScene.unpaid,
+    };
+    for (final entry in scenes.entries) {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('-20.00', 145, height: 60),
+        _block('当前状态 支付成功', 240),
+        _block('交易类型', 300),
+        _block(entry.key.$1, 300, left: 300),
+        _block(entry.key.$2, 300, left: 370),
+      ]);
+      expect(result.scene, entry.value, reason: entry.key.toString());
+      expect(result.canPrefill, isFalse);
+    }
+  });
+
+  test('recognizes split standalone status below detail fields', () {
+    final scenes = {
+      ('支付', '成功'): PaymentScreenshotScene.expense,
+      ('退款', '成功'): PaymentScreenshotScene.refund,
+      ('转账', '成功'): PaymentScreenshotScene.transfer,
+      ('还款', '成功'): PaymentScreenshotScene.repayment,
+    };
+    for (final entry in scenes.entries) {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('-20.00', 145, height: 60),
+        _block('付款方式 日常账户', 240),
+        _block(entry.key.$1, 300),
+        _block(entry.key.$2, 300, left: 300),
+      ]);
+      expect(result.scene, entry.value, reason: entry.key.toString());
+    }
+  });
+
+  test('scene matching preserves raw fields and excludes their keywords', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('-20.00', 145, height: 60),
+      _block('当前状态', 240),
+      _block('支付', 240, left: 300),
+      _block('成功', 240, left: 370),
+      _block('支付方式', 300),
+      _block('我的 转 账卡', 300, left: 300),
+      _block('商品说明', 360),
+      _block('退 款政策 说明书', 360, left: 300),
+      _block('交易对方 示例 商店', 420),
+      _block('支付时间 2026-04-05 13:20:11', 480),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+    expect(result.canPrefill, isTrue);
+    expect(result.paymentMethod, '我的 转 账卡');
+    expect(result.accountMatchingText, '我的 转 账卡');
+    expect(result.product, '退 款政策 说明书');
+    expect(result.counterparty, '示例 商店');
+    expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 11));
+  });
+
+  test('scene keywords cannot be joined across separate rows', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('-20.00', 145, height: 60),
+      _block('交易成功', 240),
+      _block('转', 300),
+      _block('账', 360),
+      _block('支付方式 日常账户', 420),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+    expect(result.canPrefill, isTrue);
+  });
+
   test('conflicting direction and status require manual review', () {
     for (final entry in [('+20.00', '支付成功'), ('-20.00', '收款成功')]) {
       final result = parser.parse([

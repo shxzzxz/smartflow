@@ -68,8 +68,12 @@ class PlatformPaymentScreenshot
       return id;
     } on AppException {
       rethrow;
-    } on Exception {
-      throw InfrastructureException(RecognitionErrorCode.imagePickFailed);
+    } on Exception catch (error, stackTrace) {
+      throw InfrastructureException(
+        RecognitionErrorCode.imagePickFailed,
+        cause: _diagnosticCause(error),
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -81,8 +85,12 @@ class PlatformPaymentScreenshot
         'takeInitialShare',
       );
       return data == null ? null : SharedPaymentImage(id: data['id'] as String);
-    } on PlatformException {
-      throw InfrastructureException(RecognitionErrorCode.imageUnavailable);
+    } on PlatformException catch (error, stackTrace) {
+      throw InfrastructureException(
+        RecognitionErrorCode.imageUnavailable,
+        cause: _diagnosticCause(error),
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -111,13 +119,17 @@ class PlatformPaymentScreenshot
             bottom: (raw['bottom'] as num).toDouble(),
           ),
       ];
-    } on PlatformException catch (error) {
+    } on PlatformException catch (error, stackTrace) {
       final code = switch (error.code) {
         'capture.invalid_image' => RecognitionErrorCode.invalidImage,
         'capture.image_unavailable' => RecognitionErrorCode.imageUnavailable,
         _ => RecognitionErrorCode.ocrFailed,
       };
-      throw InfrastructureException(code);
+      throw InfrastructureException(
+        code,
+        cause: _diagnosticCause(error),
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -126,3 +138,9 @@ class PlatformPaymentScreenshot
     unawaited(_shares.close());
   }
 }
+
+// Platform messages, details and native stacks may contain image paths or OCR text.
+// Keep the stable platform code or exception type alongside the original Dart stack.
+Object _diagnosticCause(Exception error) => error is PlatformException
+    ? PlatformException(code: error.code)
+    : error.runtimeType;

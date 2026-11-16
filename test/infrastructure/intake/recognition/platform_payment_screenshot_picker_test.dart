@@ -58,6 +58,91 @@ void main() {
     expect(await platform.pickImage(), isNull);
   });
   test(
+    'picker failures keep exception type and original stack safely',
+    () async {
+      final failure = const FormatException(
+        'private filename and account text',
+      );
+      final sourceStack = StackTrace.fromString(
+        'package:file_picker/file_picker.dart 12:3 pickFile',
+      );
+      FilePickerPlatform.instance = _Picker(
+        null,
+        failure: failure,
+        failureStack: sourceStack,
+      );
+      final platform = PlatformPaymentScreenshot(channel: channel);
+      addTearDown(platform.dispose);
+      await expectLater(
+        platform.pickImage(),
+        throwsA(
+          isA<InfrastructureException>()
+              .having(
+                (error) => error.code,
+                'code',
+                'capture.image_pick_failed',
+              )
+              .having(
+                (error) => error.cause,
+                'exception type',
+                failure.runtimeType,
+              )
+              .having(
+                (error) => error.stackTrace.toString(),
+                'original stack',
+                sourceStack.toString(),
+              ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'native registration failures preserve safe platform diagnostics',
+    () async {
+      FilePickerPlatform.instance = _Picker(
+        _ImageFile([
+          Uint8List.fromList([1, 2, 3]),
+        ], 3),
+      );
+      binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        _,
+      ) async {
+        throw PlatformException(
+          code: 'capture.busy',
+          message: 'private filename and account text',
+          details: '/private/payment.png',
+        );
+      });
+      final platform = PlatformPaymentScreenshot(channel: channel);
+      addTearDown(platform.dispose);
+      await expectLater(
+        platform.pickImage(),
+        throwsA(
+          isA<InfrastructureException>()
+              .having(
+                (error) => error.code,
+                'code',
+                'capture.image_pick_failed',
+              )
+              .having((error) => error.stackTrace, 'stack', isNotNull)
+              .having(
+                (error) => error.cause,
+                'safe cause',
+                isA<PlatformException>()
+                    .having(
+                      (error) => error.code,
+                      'platform code',
+                      'capture.busy',
+                    )
+                    .having((error) => error.message, 'message', isNull)
+                    .having((error) => error.details, 'details', isNull),
+              ),
+        ),
+      );
+    },
+  );
+  test(
     'known oversized images are rejected before reading or native registration',
     () async {
       final file = _ImageFile(const [], 20 * 1024 * 1024 + 1);
@@ -110,8 +195,10 @@ void main() {
 }
 
 class _Picker extends FilePickerPlatform {
-  _Picker(this.file);
+  _Picker(this.file, {this.failure, this.failureStack});
   final PlatformFile? file;
+  final Exception? failure;
+  final StackTrace? failureStack;
   FileType? type;
   @override
   Future<PlatformFile?> pickFile({
@@ -128,6 +215,7 @@ class _Picker extends FilePickerPlatform {
     WebOptions webOptions = const WebOptions(),
   }) async {
     this.type = type;
+    if (failure != null) return Future.error(failure!, failureStack);
     return file;
   }
 }
