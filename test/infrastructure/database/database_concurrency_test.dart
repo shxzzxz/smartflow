@@ -23,7 +23,12 @@ void main() {
       'smartflow-database-concurrency-',
     );
     final file = File('${directory.path}/smartflow.sqlite.sqlite');
-    writer = AppDatabase(NativeDatabase.createInBackground(file));
+    writer = AppDatabase(
+      NativeDatabase.createInBackground(
+        file,
+        setup: (database) => database.execute('PRAGMA journal_mode = WAL'),
+      ),
+    );
     await writer.customSelect('SELECT 1 AS value').getSingle();
     messenger.setMockMethodCallHandler(
       pathChannel,
