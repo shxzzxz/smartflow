@@ -19,6 +19,9 @@ import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/intake/import/import_error_code.dart';
 import 'package:smartflow/domain/intake/import/import_models.dart';
+import 'package:smartflow/domain/intake/rules/recognition_rule.dart';
+import 'package:smartflow/domain/intake/rules/recognition_rule_catalog.dart';
+import 'package:smartflow/domain/intake/rules/recognition_rule_configuration.dart';
 import 'package:smartflow/domain/intake/import/import_persistence_models.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
@@ -55,6 +58,326 @@ import '../../../../helper/fake_counterparty_repository.dart';
 import '../../../../helper/fake_transaction_tag_repository.dart';
 
 void main() {
+  test(
+    'source account mappings precede shared exact-name, keyword and alias parsing',
+    () async {
+      final accountRule = RecognitionRule(
+        id: 'card-rule',
+        kind: RecognitionRuleKind.account,
+        keywords: ['6620'],
+        priority: 1,
+        targetAccountId: 'cash',
+      );
+      var catalog = RecognitionRuleCatalog(rules: [accountRule]);
+      final fixture = await _Fixture.create(loadRules: () async => catalog);
+      addTearDown(fixture.database.close);
+      await _insertAccount(
+        fixture.database,
+        'bank',
+        '中国工商银行（6620）',
+        AccountType.asset,
+      );
+      await _insertAccount(
+        fixture.database,
+        'stored',
+        '已保存账户',
+        AccountType.asset,
+      );
+      const exact = ImportSourceEntity(
+        source: ImportSource.wechat,
+        kind: ImportEntityKind.account,
+        sourceEntityKey: 'account:exact',
+        displayName: '中国工商银行(6620)',
+      );
+      final exactPlan = _singleExpensePlan(account: exact);
+      final exactKey = ImportMappingKey.fromEntity(exact);
+      expect(
+        (await fixture.service.review(exactPlan)).effectiveMappings[exactKey],
+        'bank',
+      );
+      await fixture.seedMapping(entity: exact, targetAccountId: 'stored');
+      expect(
+        (await fixture.service.review(exactPlan)).effectiveMappings[exactKey],
+        'stored',
+      );
+      expect(
+        (await fixture.service.review(
+          exactPlan,
+          temporaryMappings: {exactKey: 'cash'},
+        )).effectiveMappings[exactKey],
+        'cash',
+      );
+
+      final card = exact.copyWith(
+        sourceEntityKey: 'account:card',
+        displayName: '工商银行储蓄卡(6620)',
+      );
+      final cardPlan = _singleExpensePlan(account: card);
+      final cardKey = ImportMappingKey.fromEntity(card);
+      expect(
+        (await fixture.service.review(cardPlan)).effectiveMappings[cardKey],
+        'cash',
+      );
+      catalog = RecognitionRuleCatalog(
+        rules: [accountRule.copyWith(enabled: false)],
+      );
+      expect(
+        (await fixture.service.review(cardPlan)).effectiveMappings[cardKey],
+        'bank',
+      );
+
+      final unknown = exact.copyWith(
+        sourceEntityKey: 'account:unknown',
+        displayName: '陌生银行储蓄卡(9001)',
+      );
+      final unknownKey = ImportMappingKey.fromEntity(unknown);
+      final review = await fixture.service.review(
+        _singleExpensePlan(account: unknown),
+      );
+      expect(review.effectiveMappings.containsKey(unknownKey), isFalse);
+      expect(review.plannedCreations[unknownKey]!.name, unknown.displayName);
+      expect(
+        review.plannedCreations[unknownKey]!.descriptor,
+        ImportTargetDescriptor.fundAccount,
+      );
+    },
+  );
+
+  test(
+    'inferred categories ignore source mappings and corrections stay in the current import',
+    () async {
+      final fixture = await _Fixture.create(
+        loadRules: () async => RecognitionRuleCatalog(
+          rules: [
+            RecognitionRule(
+              id: 'coffee',
+              kind: RecognitionRuleKind.category,
+              keywords: ['咖啡'],
+              priority: 1,
+              targetAccountId: 'food',
+              targetCategoryKind: ImportCategoryKind.expense,
+            ),
+          ],
+        ),
+      );
+      addTearDown(fixture.database.close);
+      await _insertAccount(
+        fixture.database,
+        'legacy-category',
+        '旧映射分类',
+        AccountType.expense,
+      );
+      await _insertAccount(
+        fixture.database,
+        'manual-category',
+        '本次分类',
+        AccountType.expense,
+      );
+      const category = ImportCategoryReference.inferred(
+        candidateKey: 'candidate:expense:1',
+        matchingText: '瑞幸咖啡\n拿铁',
+        kind: ImportCategoryKind.expense,
+      );
+      final plan = _singleExpensePlan(category: category);
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      // Legacy or coincident source keys must not address a per-record candidate.
+      await fixture.seedMapping(
+        entity: ImportSourceEntity(
+          source: plan.source,
+          kind: ImportEntityKind.category,
+          sourceEntityKey: category.referenceKey,
+          displayName: '旧来源分类',
+          categoryKind: ImportCategoryKind.expense,
+        ),
+        targetAccountId: 'legacy-category',
+      );
+      final review = await fixture.service.review(plan);
+      expect(plan.sourceCategories, isEmpty);
+      expect(review.effectiveMappings[key], 'food');
+      expect(review.plannedCreations.containsKey(key), isFalse);
+      final manual = await fixture.service.review(
+        plan,
+        temporaryMappings: {key: 'manual-category'},
+      );
+      expect(manual.effectiveMappings[key], 'manual-category');
+      await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: manual.effectiveMappings,
+          selectedGroupIndexes: {0},
+          saveMappingConfiguration: true,
+        ),
+      );
+      final stored = await fixture.mappings.findBySource(plan.source);
+      expect(
+        stored
+            .where((mapping) => mapping.entityKind == ImportEntityKind.category)
+            .single
+            .targetAccountId,
+        'legacy-category',
+      );
+      expect(
+        stored
+            .where((mapping) => mapping.entityKind == ImportEntityKind.account)
+            .single
+            .targetAccountId,
+        'cash',
+      );
+      expect(
+        (await fixture.service.review(plan)).effectiveMappings[key],
+        'food',
+      );
+      expect(
+        manual.plan.groups.single.sourceOperationFingerprint,
+        plan.groups.single.sourceOperationFingerprint,
+      );
+    },
+  );
+
+  test(
+    'unavailable inferred targets require selection and never generate category creation',
+    () async {
+      final fixture = await _Fixture.create(
+        loadRules: () async => RecognitionRuleCatalog(
+          rules: [
+            RecognitionRule(
+              id: 'deleted',
+              kind: RecognitionRuleKind.category,
+              keywords: ['咖啡'],
+              priority: 1,
+              targetAccountId: 'deleted-category',
+              targetCategoryKind: ImportCategoryKind.expense,
+            ),
+          ],
+        ),
+      );
+      addTearDown(fixture.database.close);
+      const category = ImportCategoryReference.inferred(
+        candidateKey: 'candidate:expense:1',
+        matchingText: '咖啡',
+        kind: ImportCategoryKind.expense,
+      );
+      final plan = _singleExpensePlan(category: category);
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      final review = await fixture.service.review(plan);
+      expect(review.effectiveMappings.containsKey(key), isFalse);
+      expect(review.plannedCreations.containsKey(key), isFalse);
+      expect(review.groups.single.isBlocked, isTrue);
+      expect(
+        review.mappingItems
+            .firstWhere((item) => item.key == key)
+            .creationOptions,
+        isEmpty,
+      );
+      final manual = await fixture.service.review(
+        plan,
+        temporaryMappings: {key: 'food'},
+      );
+      expect(manual.groups.single.isBlocked, isFalse);
+    },
+  );
+
+  test(
+    'explicit source categories use source mapping and exact matching instead of commodity rules',
+    () async {
+      final fixture = await _Fixture.create(
+        loadRules: () async => RecognitionRuleCatalog(
+          rules: [
+            RecognitionRule(
+              id: 'coffee',
+              kind: RecognitionRuleKind.category,
+              keywords: ['咖啡'],
+              priority: 1,
+              targetAccountId: 'food',
+              targetCategoryKind: ImportCategoryKind.expense,
+            ),
+          ],
+        ),
+      );
+      addTearDown(fixture.database.close);
+      const category = ImportCategoryReference(
+        sourceEntityKey: 'category:expense:新分类',
+        path: '新分类',
+        kind: ImportCategoryKind.expense,
+      );
+      final plan = _singleExpensePlan(category: category, note: '咖啡');
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      final review = await fixture.service.review(plan);
+      expect(review.effectiveMappings.containsKey(key), isFalse);
+      expect(review.plannedCreations[key]!.name, '新分类');
+      await fixture.seedMapping(
+        entity: plan.sourceCategories.single,
+        targetAccountId: 'food',
+      );
+      final mapped = await fixture.service.review(plan);
+      expect(mapped.effectiveMappings[key], 'food');
+      expect(mapped.plannedCreations.containsKey(key), isFalse);
+    },
+  );
+
+  test(
+    'missing bill categories fall back to existing other and manual changes are session-only',
+    () async {
+      final catalog =
+          RecognitionRuleCatalog(
+            rules: const [],
+            fallbackPaths: {
+              ImportCategoryKind.expense: ['其他'],
+            },
+          ).withConfiguration(
+            RecognitionRuleConfiguration(
+              targetBindings: {
+                RecognitionRuleCatalog.fallbackRuleId(
+                  ImportCategoryKind.expense,
+                ): 'expense-other',
+              },
+            ),
+          );
+      final fixture = await _Fixture.create(loadRules: () async => catalog);
+      addTearDown(fixture.database.close);
+      await _insertAccount(
+        fixture.database,
+        'expense-other',
+        '其他',
+        AccountType.expense,
+      );
+      const category = ImportCategoryReference.inferred(
+        candidateKey: 'candidate:expense:1',
+        matchingText: '未知商品',
+        kind: ImportCategoryKind.expense,
+      );
+      final plan = _singleExpensePlan(category: category);
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      final review = await fixture.service.review(plan);
+      expect(review.effectiveMappings[key], 'expense-other');
+      expect(review.groups.single.hasWarnings, isTrue);
+      expect(
+        review.groups.single.issues.map((issue) => issue.code),
+        contains('category_fallback'),
+      );
+      expect(review.plannedCreations.containsKey(key), isFalse);
+      final manual = await fixture.service.review(
+        plan,
+        temporaryMappings: {key: 'food'},
+      );
+      expect(manual.groups.single.hasWarnings, isFalse);
+      await fixture.service.commit(
+        ImportCommitCommand(
+          plan: plan,
+          mappings: manual.effectiveMappings,
+          selectedGroupIndexes: {0},
+          saveMappingConfiguration: true,
+        ),
+      );
+      expect(
+        (await fixture.mappings.findBySource(
+          plan.source,
+        )).where((mapping) => mapping.entityKind == ImportEntityKind.category),
+        isEmpty,
+      );
+    },
+  );
+
   for (final reverting in [false, true]) {
     test(
       '${reverting ? 'revert' : 'commit'} logs each SQLite write failure once at the action boundary',
@@ -1553,7 +1876,9 @@ class _Fixture {
   final DriftImportMappingRepository mappings;
   final ImportWorkflowAppServiceImpl service;
 
-  static Future<_Fixture> create() async {
+  static Future<_Fixture> create({
+    Future<RecognitionRuleCatalog> Function()? loadRules,
+  }) async {
     final database = createTestDatabase();
     await _insertAccount(database, 'cash', '现金', AccountType.asset);
     await _insertAccount(database, 'food', '餐饮 / 生鲜', AccountType.expense);
@@ -1656,6 +1981,7 @@ class _Fixture {
       accounts: accounts,
       mappings: mappings,
       service: ImportWorkflowAppServiceImpl(
+        loadRules: loadRules,
         mappings: mappings,
         batches: DriftImportBatchRepository(database),
         ledger: ledger,
@@ -1696,6 +2022,47 @@ class _Fixture {
     );
   }
 }
+
+ImportParseResult _singleExpensePlan({
+  ImportSourceEntity account = const ImportSourceEntity(
+    source: ImportSource.wechat,
+    kind: ImportEntityKind.account,
+    sourceEntityKey: 'account:cash',
+    displayName: '现金',
+  ),
+  ImportCategoryReference category = _expenseCategory,
+  String? note,
+}) => ImportParseResult(
+  source: account.source,
+  sourceEntities: [
+    account,
+    if (!category.isInferred)
+      ImportSourceEntity(
+        source: account.source,
+        kind: ImportEntityKind.category,
+        sourceEntityKey: category.sourceEntityKey!,
+        displayName: category.path,
+        categoryKind: category.kind,
+      ),
+  ],
+  groups: [
+    ImportTransactionGroupDraft(
+      topLevel: ImportExpenseDraft(
+        amount: Money.parse('25'),
+        paidFrom: ImportAccountReference.source(
+          sourceEntityKey: account.sourceEntityKey,
+          displayName: account.displayName,
+        ),
+        category: category,
+        occurredAt: DateTime(2026, 4, 5),
+        note: note,
+      ),
+      sourceOperationKey: 'single-operation',
+      sourceOperationFingerprint: 'single-fingerprint',
+      fingerprintVersion: 1,
+    ),
+  ],
+);
 
 ImportParseResult _expenseRefundAndNoAccountIncomePlan() {
   return ImportParseResult(

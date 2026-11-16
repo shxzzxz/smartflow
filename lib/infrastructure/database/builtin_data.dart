@@ -10,7 +10,7 @@ import '../credit/repository/drift_installment_product_repository.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 16;
+const currentBuiltinDataVersion = 17;
 
 const _accountIconStyleSettingKey = 'settings.account_icon_style';
 const _categoryIconStyleSettingKey = 'settings.category_icon_style';
@@ -19,7 +19,12 @@ const _defaultIconGroupId = 'rounded-line';
 const _uuid = Uuid();
 
 Future<void> ensureBuiltinData(AppDatabase database) async {
+  if (await _readBuiltinDataVersion(database) >= currentBuiltinDataVersion) {
+    return;
+  }
+
   await database.transaction(() async {
+    // 多连接可能同时通过版本检查，取得写锁后再次确认，避免重复初始化。
     final version = await _readBuiltinDataVersion(database);
     if (version >= currentBuiltinDataVersion) {
       return;
@@ -106,8 +111,49 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     if (version < 16) {
       await _upgradeIconReferencesV16(database);
     }
+    if (version < 17) {
+      await _seedHaircutAndBeautyCategories(database);
+    }
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
   });
+}
+
+Future<void> _seedHaircutAndBeautyCategories(AppDatabase database) async {
+  final parent =
+      await (database.select(database.accounts)..where(
+            (row) =>
+                row.accountType.equalsValue(AccountType.expense) &
+                row.parentId.isNull() &
+                row.archivedAt.isNull() &
+                row.name.equals('居家生活'),
+          ))
+          .getSingleOrNull();
+  if (parent == null) return;
+  final children =
+      await (database.select(database.accounts)..where(
+            (row) =>
+                row.parentId.equals(parent.id) &
+                row.accountType.equalsValue(AccountType.expense),
+          ))
+          .get();
+  var order = children.fold<int>(
+    0,
+    (current, child) => child.sortOrder > current ? child.sortOrder : current,
+  );
+  for (final entry in const {'理发': 'haircut', '美容': 'skincare'}.entries) {
+    if (children.any((child) => child.name == entry.key)) continue;
+    order += 10;
+    await _ensureCategory(
+      database,
+      _BuiltinCategory(
+        name: entry.key,
+        type: AccountType.expense,
+        parentId: parent.id,
+        iconKey: 'builtin:category:rounded-line:${entry.value}',
+        sortOrder: order,
+      ),
+    );
+  }
 }
 
 Future<void> _renameAdvanceCompensationIncome(AppDatabase database) async {

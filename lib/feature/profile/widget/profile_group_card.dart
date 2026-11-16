@@ -202,6 +202,8 @@ class _ProfileListRow extends StatelessWidget {
 }
 
 IconData profileIconFor(String iconKey) => switch (iconKey) {
+  'capture' => RemixIcons.screenshot_2_line,
+  'recognition_rules' => RemixIcons.filter_3_line,
   'category' => RemixIcons.apps_2_line,
   'tag' => RemixIcons.price_tag_3_line,
   'counterparty' => RemixIcons.user_shared_line,

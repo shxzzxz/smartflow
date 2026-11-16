@@ -75,7 +75,13 @@ import '../feature/transaction/page/receivable_payable_form_pages.dart';
 import '../feature/transaction/page/transaction_detail_page.dart';
 import '../feature/transaction/page/filtered_transactions_page.dart';
 import '../feature/transaction/page/transaction_form_page.dart';
+import '../feature/transaction/presentation/transaction_form_prefill.dart';
+import '../feature/capture/page/capture_review_page.dart';
 import '../feature/transaction/view_model/filtered_transactions/filtered_transactions_view_model.dart';
+
+import '../feature/recognition_rules/page/recognition_rules_page.dart';
+import '../feature/recognition_rules/page/recognition_rule_editor_page.dart';
+import '../application/intake/intake_rules_api.dart' show RecognitionRuleKind;
 
 final appRouter = GoRouter(
   routes: [
@@ -260,6 +266,32 @@ final appRouter = GoRouter(
       builder: (context, state) => const LogViewerPage(),
     ),
     GoRoute(
+      path: '/profile/recognition-rules',
+      builder: (context, state) => const RecognitionRulesPage(),
+    ),
+    GoRoute(
+      path: '/profile/recognition-rules/new',
+      builder: (context, state) => RecognitionRuleEditorPage(
+        initialKind: state.uri.queryParameters['kind'] == 'category'
+            ? RecognitionRuleKind.category
+            : RecognitionRuleKind.account,
+      ),
+    ),
+    GoRoute(
+      path: '/profile/recognition-rules/rule/:id',
+      builder: (context, state) =>
+          RecognitionRuleEditorPage(ruleId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/capture',
+      builder: (context, state) => const CaptureReviewPage(),
+    ),
+    GoRoute(
+      path: '/capture/:id',
+      builder: (context, state) =>
+          CaptureReviewPage(shareId: state.pathParameters['id']!),
+    ),
+    GoRoute(
       path: '/transaction/new',
       builder: (context, state) {
         final query = state.uri.queryParameters;
@@ -272,6 +304,9 @@ final appRouter = GoRouter(
         };
         final kind = _initialAmortizationKindFromQuery(query, mode: mode);
         return TransactionFormPage(
+          prefill: state.extra is TransactionFormPrefill
+              ? state.extra as TransactionFormPrefill
+              : null,
           initialMode: mode,
           initialFromAccountId: query['fromAccountId'],
           initialToAccountId: query['toAccountId'],

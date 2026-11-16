@@ -318,6 +318,109 @@ void main() {
     expect(find.text('餐饮'), findsWidgets);
   });
 
+  testWidgets(
+    'reviews inferred categories without presenting them as reusable source mappings',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(480, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final base = _plan();
+      final expense = base.groups.single.topLevel as ImportExpenseDraft;
+      const category = ImportCategoryReference.inferred(
+        candidateKey: 'candidate:expense:1',
+        matchingText: '拿铁',
+        kind: ImportCategoryKind.expense,
+      );
+      final plan = base.copyWith(
+        sourceEntities: base.sourceAccounts,
+        groups: [
+          base.groups.single.copyWith(
+            topLevel: ImportExpenseDraft(
+              amount: expense.amount,
+              paidFrom: expense.paidFrom,
+              category: category,
+              occurredAt: expense.occurredAt,
+            ),
+          ),
+        ],
+      );
+      final original = _review(plan);
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      final mappings = {
+        for (final entry in original.effectiveMappings.entries)
+          if (entry.key.entityKind == ImportEntityKind.account)
+            entry.key: entry.value,
+        key: 'food',
+      };
+      final review = ImportPlanReview(
+        plan: plan,
+        defaultMappings: const {},
+        effectiveMappings: mappings,
+        suggestions: const [],
+        targets: original.targets,
+        mappingItems: [
+          original.mappingItems.first,
+          ImportMappingReviewItem(
+            key: key,
+            sourceName: '拿铁',
+            sourceDescription: '支出分类建议',
+            action: ImportMappingAction.map,
+            targetId: 'food',
+            targetName: '餐饮',
+            targetPath: '餐饮',
+            targetDescription: '支出分类',
+            existingTargetOptions:
+                original.mappingItems.last.existingTargetOptions,
+            decision: const ExistingTargetDecision('food'),
+          ),
+        ],
+        groups: [
+          ImportGroupReview(
+            index: 0,
+            group: plan.groups.single,
+            issues: const [],
+            isExactDuplicate: false,
+            isSuspectedDuplicate: false,
+            effectiveMappings: mappings,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        _app(
+          planService: _FakePlanService(plan),
+          picker: _FakePicker(_bundle()),
+          workflow: _FakeWorkflow(review),
+        ),
+      );
+      await _selectAndParse(tester);
+      expect(find.textContaining('分类建议只对本次生效'), findsOneWidget);
+      await tester.tap(find.text('查看全部').first);
+      await tester.pumpAndSettle();
+      expect(find.text('支出分类建议'), findsOneWidget);
+      await tester.tap(
+        find.byKey(
+          const ValueKey('import-mapping-item-category-candidate:expense:1'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CategoryPickerSheet), findsOneWidget);
+      expect(find.byKey(const ValueKey('import-mapping-create')), findsNothing);
+      await tester.tap(
+        find.byKey(const ValueKey('category-picker-root-transport')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('category-picker-option-transport')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('交通'), findsWidgets);
+      await tester.tap(find.text('确认'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('查看全部').last);
+      await tester.pumpAndSettle();
+      expect(find.text('交通'), findsWidgets);
+    },
+  );
+
   testWidgets('opens account and category targets in their dedicated pickers', (
     tester,
   ) async {
@@ -1300,10 +1403,10 @@ class _FakePlanService implements ImportPlanAppService {
   final ImportParseResult plan;
 
   @override
-  ImportParseResult parse({
+  Future<ImportParseResult> parse({
     required ImportSource source,
     required ImportBundle bundle,
-  }) => plan;
+  }) async => plan;
 
   @override
   ImportParseResult editDraft({

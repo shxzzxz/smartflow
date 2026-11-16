@@ -110,7 +110,7 @@ flutter:
     - assets/styles/account/brand/manifest.json
     - assets/styles/account/brand/icons/
     - assets/manual/
-    - assets/import/wechat/
+    - assets/intake/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

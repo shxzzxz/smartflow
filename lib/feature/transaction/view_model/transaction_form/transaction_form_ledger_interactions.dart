@@ -82,7 +82,11 @@ extension LedgerTransactionFormInteractions on TransactionFormViewModel {
     required TransactionFormState Function(TransactionFormState, String)
     selectAccount,
   }) async {
-    if (_editTransactionId != null || categoryId == null) return;
+    if (_fromRecognition || _editTransactionId != null || categoryId == null) {
+      return;
+    }
+    final previous = _currentState;
+    if (previous == null) return;
     try {
       final accountId = await _findLastUsedSettlementAccountId(categoryId);
       final current = _currentState;

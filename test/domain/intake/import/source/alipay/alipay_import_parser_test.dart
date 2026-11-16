@@ -184,11 +184,11 @@ void main() {
         containsAll([
           'alipay_date_invalid',
           'alipay_amount_invalid',
-          'category_missing',
           'alipay_source_operation_key_missing',
         ]),
       );
-      expect(result.sourceCategories.single.isReviewPlaceholder, isTrue);
+      expect(result.sourceCategories, isEmpty);
+      expect(result.inferredCategories.single.isInferred, isTrue);
     },
   );
 

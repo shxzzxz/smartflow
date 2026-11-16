@@ -33,11 +33,13 @@ void main() {
   testWidgets('shows shortcuts and grouped actions with working destinations', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(360, 1500);
+    tester.view.physicalSize = const Size(360, 1700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     const destinations = {
+      '截图记账': '/capture',
+      '识别规则': '/profile/recognition-rules',
       '分类管理': '/category',
       '标签管理': '/tags',
       '图标管理': '/profile/icons',
@@ -84,7 +86,7 @@ void main() {
     expect(sections, findsNWidgets(7));
     const groups = [
       ['分类管理', '标签管理', '贷款计算器', '设置'],
-      ['图标管理', '对手方管理'],
+      ['截图记账', '识别规则', '图标管理', '对手方管理'],
       ['保险'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],

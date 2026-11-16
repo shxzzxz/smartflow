@@ -15,6 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
+    private var captureIntakeChannel: CaptureIntakeChannel? = null
     private val updateChannel = "com.shxzz.smartflow/app_update"
     private val updatePreferences by lazy {
         getSharedPreferences("app_update", Context.MODE_PRIVATE)
@@ -30,6 +31,11 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        captureIntakeChannel = CaptureIntakeChannel(
+            this,
+            flutterEngine.dartExecutor.binaryMessenger,
+        ).also { it.handleIntent(intent) }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, updateChannel)
             .setMethodCallHandler { call, result ->
@@ -81,6 +87,18 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureIntakeChannel?.handleIntent(intent)
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        captureIntakeChannel?.dispose()
+        captureIntakeChannel = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     private fun getVersionInfo(): Map<String, Any> {

@@ -10,6 +10,9 @@ import 'business_icon_provider.dart';
 import 'app_error_boundary.dart';
 import 'provider.dart';
 import 'router.dart';
+import 'capture_intake_provider.dart';
+import 'capture_intake_navigation.dart';
+import '../application/intake/intake_recognition_api.dart';
 
 class SmartFlowApp extends ConsumerStatefulWidget {
   const SmartFlowApp({super.key, this.scaffoldMessengerKey});
@@ -22,6 +25,7 @@ class SmartFlowApp extends ConsumerStatefulWidget {
 
 class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     with WidgetsBindingObserver {
+  StreamSubscription<SharedPaymentImage>? _imageShares;
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,26 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(pullTaskSchedulerProvider).trigger());
       unawaited(_applyLogRetentionSettings());
+      unawaited(_listenForImageShares());
     });
+  }
+
+  Future<void> _listenForImageShares() async {
+    final source = ref.read(sharedPaymentImageSourceProvider);
+    _imageShares = source.shares.listen(_openSharedImage);
+    try {
+      final image = await source.takeInitialShare();
+      if (mounted && image != null) _openSharedImage(image);
+    } on Exception catch (error, stackTrace) {
+      Logger(
+        'app.capture',
+      ).warning('Cannot receive shared image.', error, stackTrace);
+    }
+  }
+
+  void _openSharedImage(SharedPaymentImage image) {
+    if (!mounted) return;
+    openSharedPaymentImage(appRouter, image);
   }
 
   /// 日志在数据库可用前初始化，持久化的保留设置需在启动后补应用。
@@ -51,6 +74,7 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void dispose() {
+    unawaited(_imageShares?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

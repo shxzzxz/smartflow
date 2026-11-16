@@ -152,13 +152,13 @@ void main() {
       expect(find.text('确定删除选中的 2 笔交易？删除后交易及其账务记录将无法恢复。'), findsOneWidget);
       await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
-      expect(vm.deletedIds, isEmpty);
+      expect(vm._deletedIds, isEmpty);
 
       await tester.tap(find.text('删除'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, '删除'));
       await tester.pumpAndSettle();
-      expect(vm.deletedIds, {'tx-1', 'tx-2'});
+      expect(vm._deletedIds, {'tx-1', 'tx-2'});
       expect(find.text('已选 1 笔'), findsOneWidget);
       expect(find.text('已删除 1 笔交易，跳过 1 笔交易因存在业务关联未处理'), findsOneWidget);
     },
@@ -172,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '删除'));
     await tester.pumpAndSettle();
-    expect(vm.deletedIds, {'tx-1'});
+    expect(vm._deletedIds, {'tx-1'});
     expect(find.byType(TransactionBatchActionBar), findsNothing);
     expect(find.text('已删除 1 笔交易'), findsOneWidget);
   });
@@ -263,7 +263,7 @@ Future<_CategoryViewModel> _pumpCategory(
 class _CategoryViewModel extends FilteredTransactionsViewModel {
   _CategoryViewModel(this.skippedCount);
   final int skippedCount;
-  Set<String> deletedIds = {};
+  Set<String> _deletedIds = {};
   final tagCommands = <BatchTransactionTagsCommand>[];
 
   @override
@@ -350,7 +350,7 @@ class _CategoryViewModel extends FilteredTransactionsViewModel {
 
   @override
   Future<TransactionCleanupResult> deleteTransactions(Set<String> ids) async {
-    deletedIds = {...ids};
+    _deletedIds = {...ids};
     if (skippedCount == 0) {
       exitBatchMode();
     } else {

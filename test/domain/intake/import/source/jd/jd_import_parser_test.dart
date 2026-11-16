@@ -237,11 +237,11 @@ void main() {
       containsAll([
         'jd_date_invalid',
         'jd_amount_invalid',
-        'category_missing',
         'jd_source_operation_key_missing',
       ]),
     );
-    expect(result.sourceCategories.single.isReviewPlaceholder, isTrue);
+    expect(result.sourceCategories, isEmpty);
+    expect(result.inferredCategories.single.isInferred, isTrue);
   });
 
   test('uses the composite order identity for duplicate detection', () {

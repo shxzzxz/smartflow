@@ -1157,10 +1157,10 @@ class _FakeImportPlanAppService implements ImportPlanAppService {
   ImportSource? parsedSource;
 
   @override
-  ImportParseResult parse({
+  Future<ImportParseResult> parse({
     required ImportSource source,
     required ImportBundle bundle,
-  }) {
+  }) async {
     parseCalls += 1;
     parsedSource = source;
     if (throwOnParse) throw Exception('parse failed');

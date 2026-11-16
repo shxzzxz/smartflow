@@ -38,7 +38,7 @@ android {
         applicationId = "com.shxzz.smartflow"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -73,4 +73,6 @@ flutter {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.16.0")
+    implementation(project(":ppocr_sdk"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }

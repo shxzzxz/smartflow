@@ -87,6 +87,7 @@ void _parseBillRows(
         entities: entities,
         issues: issues,
         rowNumber: rowNumber,
+        matchingText: note ?? '',
       );
       final account = _accountReference(
         record.accountName,
@@ -146,6 +147,7 @@ void _parseBillRows(
         entities: entities,
         issues: issues,
         rowNumber: rowNumber,
+        matchingText: note ?? '',
       );
       final account = _accountReference(
         record.accountName,
@@ -220,6 +222,7 @@ ImportTransactionGroupDraft _parseAdvance(
     entities: entities,
     issues: issues,
     rowNumber: rowNumber,
+    matchingText: note ?? '',
   );
   final paidFrom = _accountReference(
     record.accountName,

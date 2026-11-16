@@ -331,7 +331,7 @@ class ImportViewModel extends Notifier<ImportPageState> {
     late final ImportParseResult plan;
     try {
       await Future<void>.delayed(Duration.zero);
-      plan = ref
+      plan = await ref
           .read(importPlanAppServiceProvider)
           .parse(source: source, bundle: bundle);
     } on AppException catch (exception, stackTrace) {

@@ -19,6 +19,7 @@ import '../../../shared/provider/tag_providers.dart';
 import '../../../shared/view_model/action_guard.dart';
 import '../../../shared/view_model/ui_action_outcome.dart';
 import '../../presentation/transaction_form_presentation.dart';
+import '../../presentation/transaction_form_prefill.dart';
 import 'transaction_account_options.dart';
 import 'transaction_form_helpers.dart';
 import 'transaction_form_state.dart';
@@ -49,6 +50,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   TransactionFormState? _initializedState;
   String? _editTransactionId;
   String? _editAmortizationPlanId;
+  bool _fromRecognition = false;
   int _defaultAccountRequestRevision = 0;
 
   TransactionFormState? get _currentState => state.asData?.value;
@@ -61,6 +63,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
 
   @override
   AsyncValue<TransactionFormState?> build({
+    TransactionFormPrefill? prefill,
     String? editTransactionId,
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
@@ -69,6 +72,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     AmortizationKind? initialAmortizationKind,
     String? initialAmortizationDeferralAccountId,
   }) {
+    _fromRecognition = prefill != null;
     _editTransactionId = editTransactionId;
     final accountOptionsAsync = ref.watch(transactionAccountOptionsProvider);
     final expenseTreeAsync = ref.watch(
@@ -104,6 +108,7 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
     if (editTransactionId == null) {
       return AsyncValue.data(
         _initializedState ??= TransactionFormState.initial(
+          prefill: prefill,
           mode: initialMode,
           fromAccountId: initialFromAccountId,
           toAccountId: initialToAccountId,
@@ -241,6 +246,22 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalidCommand('交易表单尚未加载');
+    if (_fromRecognition && current.entryMode == TransactionEntryMode.normal) {
+      final settlementId = current.mode == TransactionFormMode.expense
+          ? current.fromAccountId
+          : current.toAccountId;
+      if ((current.mode == TransactionFormMode.expense ||
+              current.mode == TransactionFormMode.income) &&
+          selectedAccountId(
+                settlementId,
+                current.mode == TransactionFormMode.expense
+                    ? current.expenseSettlementAccounts
+                    : current.settlementAccounts,
+              ) ==
+              null) {
+        return _invalidCommand('请选择付款或收款账户');
+      }
+    }
     final amount = _parsePositiveAmount(amountText);
     if (amount == null) {
       return _invalidCommand('请输入有效金额');
@@ -383,6 +404,16 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
       incomeTree: incomeTree,
       tags: tags,
       counterparties: counterparties,
+      expenseRootId:
+          current.expenseRootId ??
+          (_fromRecognition && expenseTree != null
+              ? rootCategoryId(expenseTree, current.expenseCategoryId)
+              : null),
+      incomeRootId:
+          current.incomeRootId ??
+          (_fromRecognition && incomeTree != null
+              ? rootCategoryId(incomeTree, current.incomeCategoryId)
+              : null),
     );
     if (!next.isAmortization) return next;
     return next.copyWith(

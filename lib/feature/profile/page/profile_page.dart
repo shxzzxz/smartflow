@@ -126,6 +126,16 @@ class _ProfilePageState extends State<ProfilePage> {
         layout: ProfileGroupLayout.list,
         entries: [
           ProfileMenuEntry(
+            title: '截图记账',
+            iconKey: 'capture',
+            onTap: () => context.push('/capture'),
+          ),
+          ProfileMenuEntry(
+            title: '识别规则',
+            iconKey: 'recognition_rules',
+            onTap: () => context.push('/profile/recognition-rules'),
+          ),
+          ProfileMenuEntry(
             title: '图标管理',
             iconKey: 'icon_management',
             onTap: () => context.push('/profile/icons'),

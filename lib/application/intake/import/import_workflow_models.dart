@@ -163,7 +163,18 @@ class ImportMappingKey {
     required this.source,
     required this.entityKind,
     required this.sourceEntityKey,
+    this.isInferredCategory = false,
   });
+
+  factory ImportMappingKey.fromCategory(
+    ImportSource source,
+    ImportCategoryReference category,
+  ) => ImportMappingKey(
+    source: source,
+    entityKind: ImportEntityKind.category,
+    sourceEntityKey: category.referenceKey,
+    isInferredCategory: category.isInferred,
+  );
 
   factory ImportMappingKey.fromEntity(ImportSourceEntity entity) {
     return ImportMappingKey(
@@ -177,26 +188,33 @@ class ImportMappingKey {
   final ImportEntityKind entityKind;
   final String sourceEntityKey;
 
+  /// True for a session-only category candidate, never a source mapping.
+  final bool isInferredCategory;
+
   @override
   bool operator ==(Object other) {
     return other is ImportMappingKey &&
         other.source == source &&
         other.entityKind == entityKind &&
-        other.sourceEntityKey == sourceEntityKey;
+        other.sourceEntityKey == sourceEntityKey &&
+        other.isInferredCategory == isInferredCategory;
   }
 
   @override
-  int get hashCode => Object.hash(source, entityKind, sourceEntityKey);
+  int get hashCode =>
+      Object.hash(source, entityKind, sourceEntityKey, isInferredCategory);
 }
 
 class ImportMappingSuggestion {
   const ImportMappingSuggestion({
     required this.key,
     required this.targetAccountId,
+    this.isFallback = false,
   });
 
   final ImportMappingKey key;
   final String targetAccountId;
+  final bool isFallback;
 }
 
 /// A mapping target that will be created inside the eventual import commit.

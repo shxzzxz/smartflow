@@ -20,6 +20,7 @@ import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/feature/transaction/presentation/transaction_form_presentation.dart';
+import 'package:smartflow/feature/transaction/presentation/transaction_form_prefill.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_form_view_model.dart';
 import 'package:smartflow/shared/account_profile/account_selection_policy.dart';
@@ -30,6 +31,117 @@ import '../../../helper/fake_advance_case_repository.dart';
 
 void main() {
   group('TransactionFormViewModel', () {
+    test(
+      'requires an account when screenshot prefill has no usable default and saves corrected input',
+      () async {
+        final service = _FakeAdvanceOrchestrationAppService();
+        final container = _container(
+          advanceOrchestrationService: service,
+          settlementAccounts: [_account('cash')],
+          expenseTree: [
+            CategoryNode(account: _account('books', type: AccountType.expense)),
+          ],
+        );
+        final prefill = TransactionFormPrefill(
+          amount: Money.parse('12.35'),
+          occurredAt: DateTime(2026, 3, 4),
+          note: '示例图书',
+          reviewMessage: '请核对',
+          categoryId: 'books',
+        );
+        final provider = transactionFormViewModelProvider(prefill: prefill);
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        final viewModel = container.read(provider.notifier);
+        expect(service.createSceneCommands, isEmpty);
+        final rejected = await viewModel.submit(
+          amountText: '12.35',
+          noteText: '示例图书',
+        );
+        expect(rejected, isA<SubmitFailure>());
+        expect(service.createSceneCommands, isEmpty);
+        viewModel.setFromAccountId('cash');
+        final result = await viewModel.submit(
+          amountText: '14.00',
+          noteText: '修正后的备注',
+        );
+        expect(result, isA<SubmitSuccess>());
+        expect(service.createSceneCommands.single.amount, Money.parse('14.00'));
+        expect(service.createSceneCommands.single.note, '修正后的备注');
+        expect(
+          service.createSceneCommands.single.occurredAt,
+          DateTime(2026, 3, 4),
+        );
+      },
+    );
+    test(
+      'applies recognized initial values once and preserves subsequent selections',
+      () {
+        final container = _container(
+          settlementAccounts: [_account('cash')],
+          expenseTree: [
+            CategoryNode(account: _account('books', type: AccountType.expense)),
+          ],
+        );
+        final prefill = TransactionFormPrefill(
+          amount: Money.parse('12.35'),
+          occurredAt: DateTime(2026, 3, 4, 12, 5),
+          note: '示例图书',
+          reviewMessage: '请核对',
+          settlementAccountId: 'cash',
+          categoryId: 'books',
+        );
+        final provider = transactionFormViewModelProvider(prefill: prefill);
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        final initial = container.read(provider).requireValue!;
+        expect(initial.initialValues.amount, '12.35');
+        expect(initial.initialValues.note, '示例图书');
+        expect(initial.occurredAt, DateTime(2026, 3, 4, 12, 5));
+        expect(initial.fromAccountId, 'cash');
+        expect(initial.expenseCategoryId, 'books');
+        container.read(provider.notifier).setOccurredAt(DateTime(2026, 3, 5));
+        expect(
+          container.read(provider).requireValue!.occurredAt,
+          DateTime(2026, 3, 5),
+        );
+      },
+    );
+    test(
+      'choosing a category keeps a screenshot account empty until manually selected',
+      () async {
+        final history = _FakeTransactionQueryService({
+          'books': 'bank',
+          'other': 'cash',
+        });
+        final container = _container(
+          transactionQueryService: history,
+          settlementAccounts: [_account('cash'), _account('bank')],
+          expenseTree: [
+            CategoryNode(account: _account('books', type: AccountType.expense)),
+            CategoryNode(account: _account('other', type: AccountType.expense)),
+          ],
+        );
+        final provider = transactionFormViewModelProvider(
+          prefill: TransactionFormPrefill(
+            amount: Money.parse('12.35'),
+            occurredAt: DateTime(2026, 3, 4),
+            note: '',
+            reviewMessage: '',
+          ),
+        );
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        final model = container.read(provider.notifier);
+        expect(container.read(provider).requireValue!.fromAccountId, isNull);
+        await model.setExpenseCategory(rootId: 'books', categoryId: 'books');
+        expect(container.read(provider).requireValue!.fromAccountId, isNull);
+        model.setFromAccountId('bank');
+        await model.setExpenseCategory(rootId: 'other', categoryId: 'other');
+        expect(container.read(provider).requireValue!.fromAccountId, 'bank');
+      },
+    );
+
     test(
       'initializes an amortization transaction with its requested scene',
       () {

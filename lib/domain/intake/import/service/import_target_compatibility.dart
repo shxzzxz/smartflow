@@ -20,11 +20,13 @@ class ImportTargetRequirement {
     required this.entityKind,
     required this.sourceEntityKey,
     required this.descriptors,
+    this.isInferredCategory = false,
   });
 
   final ImportEntityKind entityKind;
   final String sourceEntityKey;
   final Set<ImportTargetDescriptor> descriptors;
+  final bool isInferredCategory;
 }
 
 /// Pure compatibility policy shared by import review and commit.
@@ -104,19 +106,13 @@ class ImportTargetCompatibilityPolicy {
           draft.paidFrom.sourceEntityKey,
           ImportTargetUsage.settlement,
         );
-        yield _category(
-          draft.category.sourceEntityKey,
-          ImportTargetUsage.expenseCategory,
-        );
+        yield _category(draft.category, ImportTargetUsage.expenseCategory);
       case ImportIncomeDraft draft:
         yield* _account(
           draft.receiveAccount.sourceEntityKey,
           ImportTargetUsage.settlement,
         );
-        yield _category(
-          draft.category.sourceEntityKey,
-          ImportTargetUsage.incomeCategory,
-        );
+        yield _category(draft.category, ImportTargetUsage.incomeCategory);
       case ImportRefundDraft draft:
         yield* _account(
           draft.refundTo.sourceEntityKey,
@@ -131,10 +127,7 @@ class ImportTargetCompatibilityPolicy {
           draft.paidFrom.sourceEntityKey,
           ImportTargetUsage.settlement,
         );
-        yield _category(
-          draft.category.sourceEntityKey,
-          ImportTargetUsage.expenseCategory,
-        );
+        yield _category(draft.category, ImportTargetUsage.expenseCategory);
       case ImportAdvanceCollectionDraft draft:
         yield* _account(
           draft.receivableAccount.sourceEntityKey,
@@ -217,13 +210,14 @@ class ImportTargetCompatibilityPolicy {
   }
 
   static ImportTargetRequirement _category(
-    String sourceEntityKey,
+    ImportCategoryReference category,
     ImportTargetUsage usage,
   ) {
     return ImportTargetRequirement(
       entityKind: ImportEntityKind.category,
-      sourceEntityKey: sourceEntityKey,
+      sourceEntityKey: category.referenceKey,
       descriptors: descriptorsForUsage(usage),
+      isInferredCategory: category.isInferred,
     );
   }
 }

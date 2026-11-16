@@ -47,26 +47,13 @@ ImportCategoryReference _categoryReference(
   required Map<String, ImportSourceEntity> entities,
   required List<ImportIssue> issues,
   required int rowNumber,
+  String matchingText = '',
 }) {
   final display = path?.trim();
   if (display == null || display.isEmpty) {
-    issues.add(_blocking('category_missing', '来源类别为空。', rowNumber));
-    final key = 'review:missing:category:${kind.name}:bill:$rowNumber';
-    final label = kind == ImportCategoryKind.income ? '缺失收入分类' : '缺失支出分类';
-    _mergeSourceEntity(
-      entities,
-      ImportSourceEntity(
-        source: ImportSource.yimu,
-        kind: ImportEntityKind.category,
-        sourceEntityKey: key,
-        displayName: '$label（账单文件第 $rowNumber 行）',
-        categoryKind: kind,
-        isReviewPlaceholder: true,
-      ),
-    );
-    return ImportCategoryReference(
-      sourceEntityKey: key,
-      path: '<缺失分类>',
+    return ImportCategoryReference.inferred(
+      candidateKey: 'review:missing:category:${kind.name}:bill:$rowNumber',
+      matchingText: matchingText,
       kind: kind,
     );
   }
@@ -218,7 +205,7 @@ String _canonicalDraft(ImportTransactionDraft draft) {
     'occurred=${_canonicalDate(draft.occurredAt)}',
     'posted=${_canonicalDate(draft.postedAt)}',
     'note=${_normalized(draft.note)}',
-    'entities=${draft.sourceEntityKeys.join(',')}',
+    'entities=${[...draft.sourceEntityKeys, if (draft.categoryReference?.isInferred ?? false) draft.categoryReference!.referenceKey].join(',')}',
     'stats=${draft.isExcludedFromStats}',
     'budget=${draft.isExcludedFromBudget}',
     switch (draft) {

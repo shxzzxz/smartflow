@@ -9,27 +9,33 @@ import 'package:smartflow/domain/intake/import/port/import_source_parser.dart';
 import 'package:smartflow/domain/intake/import/source/yimu/yimu_import_parser.dart';
 
 void main() {
-  test('dispatches parsing through the source parser registry', () {
+  test('dispatches parsing through the source parser registry', () async {
     final parser = _RecordingParser();
     final service = ImportPlanAppServiceImpl(
       parsers: ImportParserRegistry([parser]),
     );
     final bundle = ImportBundle(files: const []);
 
-    final result = service.parse(source: ImportSource.yimu, bundle: bundle);
+    final result = await service.parse(
+      source: ImportSource.yimu,
+      bundle: bundle,
+    );
 
     expect(parser.receivedBundle, same(bundle));
     expect(result.source, ImportSource.yimu);
   });
 
-  test('dispatches a non-Yimu source without workflow changes', () {
+  test('dispatches a non-Yimu source without workflow changes', () async {
     final parser = _RecordingParser(ImportSource.alipay);
     final service = ImportPlanAppServiceImpl(
       parsers: ImportParserRegistry([parser]),
     );
     final bundle = ImportBundle(files: const []);
 
-    final result = service.parse(source: ImportSource.alipay, bundle: bundle);
+    final result = await service.parse(
+      source: ImportSource.alipay,
+      bundle: bundle,
+    );
 
     expect(parser.receivedBundle, same(bundle));
     expect(result.source, ImportSource.alipay);

@@ -54,7 +54,7 @@ class AlipayBillParseUnit implements ParseUnit {
         record.categoryPath,
         kind,
         entities: entities,
-        issues: recordIssues,
+        matchingText: record.note ?? '',
         rowNumber: record.rowNumber,
       );
       final account = _accountReference(
@@ -84,7 +84,7 @@ class AlipayBillParseUnit implements ParseUnit {
         'direction=${record.direction}',
         'occurred=${occurredAt.toIso8601String()}',
         'amount=${amount.minorUnits}',
-        'category=${category.sourceEntityKey}',
+        'category=${category.referenceKey}',
         'account=${account.isExplicitNone ? 'none' : account.sourceEntityKey}',
         'note=${_normalized(record.note)}',
       ].join('|');
@@ -114,36 +114,14 @@ ImportCategoryReference _categoryReference(
   String? path,
   ImportCategoryKind kind, {
   required Map<String, ImportSourceEntity> entities,
-  required List<ImportIssue> issues,
+  required String matchingText,
   required int rowNumber,
 }) {
   final display = path?.trim();
   if (display == null || display.isEmpty) {
-    issues.add(
-      ImportIssue(
-        code: 'category_missing',
-        message: '支付宝交易分类为空。',
-        severity: ImportIssueSeverity.blocking,
-        rowNumber: rowNumber,
-        fileType: AlipayFileType.bill.descriptor,
-      ),
-    );
-    final key = 'review:missing:category:${kind.name}:$rowNumber';
-    final label = kind == ImportCategoryKind.income ? '缺失收入分类' : '缺失支出分类';
-    entities.putIfAbsent(
-      key,
-      () => ImportSourceEntity(
-        source: ImportSource.alipay,
-        kind: ImportEntityKind.category,
-        sourceEntityKey: key,
-        displayName: '$label（支付宝数据第 $rowNumber 行）',
-        categoryKind: kind,
-        isReviewPlaceholder: true,
-      ),
-    );
-    return ImportCategoryReference(
-      sourceEntityKey: key,
-      path: '<缺失分类>',
+    return ImportCategoryReference.inferred(
+      candidateKey: 'review:missing:category:${kind.name}:$rowNumber',
+      matchingText: matchingText,
       kind: kind,
     );
   }

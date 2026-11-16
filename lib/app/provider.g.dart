@@ -95,53 +95,54 @@ final class AppLogReaderProvider
 
 String _$appLogReaderHash() => r'33592558634ffd5d2acc71727ed069b198dde985';
 
-@ProviderFor(wechatCategoryLexicon)
-final wechatCategoryLexiconProvider = WechatCategoryLexiconProvider._();
+@ProviderFor(builtinRecognitionRuleCatalog)
+final builtinRecognitionRuleCatalogProvider =
+    BuiltinRecognitionRuleCatalogProvider._();
 
-final class WechatCategoryLexiconProvider
+final class BuiltinRecognitionRuleCatalogProvider
     extends
         $FunctionalProvider<
-          WechatCategoryLexicon,
-          WechatCategoryLexicon,
-          WechatCategoryLexicon
+          RecognitionRuleCatalog,
+          RecognitionRuleCatalog,
+          RecognitionRuleCatalog
         >
-    with $Provider<WechatCategoryLexicon> {
-  WechatCategoryLexiconProvider._()
+    with $Provider<RecognitionRuleCatalog> {
+  BuiltinRecognitionRuleCatalogProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'wechatCategoryLexiconProvider',
+        name: r'builtinRecognitionRuleCatalogProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$wechatCategoryLexiconHash();
+  String debugGetCreateSourceHash() => _$builtinRecognitionRuleCatalogHash();
 
   @$internal
   @override
-  $ProviderElement<WechatCategoryLexicon> $createElement(
+  $ProviderElement<RecognitionRuleCatalog> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  WechatCategoryLexicon create(Ref ref) {
-    return wechatCategoryLexicon(ref);
+  RecognitionRuleCatalog create(Ref ref) {
+    return builtinRecognitionRuleCatalog(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(WechatCategoryLexicon value) {
+  Override overrideWithValue(RecognitionRuleCatalog value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<WechatCategoryLexicon>(value),
+      providerOverride: $SyncValueProvider<RecognitionRuleCatalog>(value),
     );
   }
 }
 
-String _$wechatCategoryLexiconHash() =>
-    r'c3c4cbc28e906bd1492c03d40564b479c9c45162';
+String _$builtinRecognitionRuleCatalogHash() =>
+    r'7e136649813aad200cf6fc1e3877cee72f393420';
 
 @ProviderFor(importFilePicker)
 final importFilePickerProvider = ImportFilePickerProvider._();
@@ -513,7 +514,7 @@ final class WechatImportParserProvider
 }
 
 String _$wechatImportParserHash() =>
-    r'ca485220b980c166a7d3c46e191ca6bbe59a44db';
+    r'618ca4fe39a14441063aaaceaa9f728b1a6b57e7';
 
 @ProviderFor(jdImportParser)
 final jdImportParserProvider = JdImportParserProvider._();
@@ -602,7 +603,7 @@ final class ImportPlanAppServiceProvider
 }
 
 String _$importPlanAppServiceHash() =>
-    r'847fd16ba0ad2f1802bb83718893cd8a76cf7e50';
+    r'7e0dce6f9b38db763e2ea35c42db2a628b090892';
 
 @ProviderFor(importMappingRepository)
 final importMappingRepositoryProvider = ImportMappingRepositoryProvider._();
@@ -792,7 +793,7 @@ final class ImportWorkflowAppServiceProvider
 }
 
 String _$importWorkflowAppServiceHash() =>
-    r'4f0deb86475e8a748ef312e8c230be6f36ef4ce0';
+    r'ee4fce73c7527b5312b614242dba5d9a8a176ffe';
 
 @ProviderFor(idGenerator)
 final idGeneratorProvider = IdGeneratorProvider._();

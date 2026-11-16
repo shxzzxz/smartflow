@@ -13,6 +13,125 @@ import 'package:smartflow/domain/credit/valobj/installment_stage_rule.dart';
 import '../../helper/test_app_database.dart';
 
 void main() {
+  test('seeds haircut and beauty as ordinary children of home life', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final home =
+        await (database.select(database.accounts)..where(
+              (row) =>
+                  row.name.equals('居家生活') &
+                  row.accountType.equalsValue(AccountType.expense),
+            ))
+            .getSingle();
+    final children =
+        await (database.select(database.accounts)..where(
+              (row) =>
+                  row.parentId.equals(home.id) & row.name.isIn(['理发', '美容']),
+            ))
+            .get();
+    expect(children.map((child) => child.name).toSet(), {'理发', '美容'});
+    expect(
+      children.every(
+        (child) =>
+            child.accountType == AccountType.expense &&
+            child.systemKey == null &&
+            child.source == AccountSource.builtin,
+      ),
+      isTrue,
+    );
+    expect(
+      await (database.select(
+        database.accounts,
+      )..where((row) => row.name.equals('个人护理'))).get(),
+      isEmpty,
+    );
+  });
+
+  test(
+    'v16 upgrade reuses existing children and does not recreate later deletions',
+    () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final home = await (database.select(
+        database.accounts,
+      )..where((row) => row.name.equals('居家生活'))).getSingle();
+      final haircut =
+          await (database.select(database.accounts)..where(
+                (row) => row.parentId.equals(home.id) & row.name.equals('理发'),
+              ))
+              .getSingle();
+      await (database.update(
+        database.accounts,
+      )..where((row) => row.id.equals(haircut.id))).write(
+        const AccountsCompanion(
+          source: Value(AccountSource.user),
+          sortOrder: Value(900),
+        ),
+      );
+      await (database.delete(database.accounts)..where(
+            (row) => row.parentId.equals(home.id) & row.name.equals('美容'),
+          ))
+          .go();
+      await (database.update(database.appMetadata)
+            ..where((row) => row.key.equals(builtinDataVersionKey)))
+          .write(const AppMetadataCompanion(value: Value('16')));
+      await ensureBuiltinData(database);
+      final reused = await (database.select(
+        database.accounts,
+      )..where((row) => row.id.equals(haircut.id))).getSingle();
+      expect(reused.source, AccountSource.user);
+      expect(reused.sortOrder, 900);
+      final beauty =
+          await (database.select(database.accounts)..where(
+                (row) => row.parentId.equals(home.id) & row.name.equals('美容'),
+              ))
+              .getSingle();
+      expect(beauty.sortOrder, greaterThan(reused.sortOrder));
+      expect(beauty.iconKey, 'builtin:category:rounded-line:skincare');
+      await (database.delete(
+        database.accounts,
+      )..where((row) => row.id.equals(beauty.id))).go();
+      await ensureBuiltinData(database);
+      expect(
+        await (database.select(
+          database.accounts,
+        )..where((row) => row.id.equals(beauty.id))).get(),
+        isEmpty,
+      );
+      expect(
+        await (database.select(database.accounts)..where(
+              (row) => row.parentId.equals(home.id) & row.name.equals('美容'),
+            ))
+            .get(),
+        isEmpty,
+      );
+    },
+  );
+
+  test('v16 upgrade does not restore a deleted home-life parent', () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final home = await (database.select(
+      database.accounts,
+    )..where((row) => row.name.equals('居家生活'))).getSingle();
+    await (database.delete(
+      database.accounts,
+    )..where((row) => row.parentId.equals(home.id))).go();
+    await (database.delete(
+      database.accounts,
+    )..where((row) => row.id.equals(home.id))).go();
+    await (database.update(database.appMetadata)
+          ..where((row) => row.key.equals(builtinDataVersionKey)))
+        .write(const AppMetadataCompanion(value: Value('16')));
+    await ensureBuiltinData(database);
+    expect(
+      await (database.select(
+        database.accounts,
+      )..where((row) => row.name.isIn(['居家生活', '理发', '美容']))).get(),
+      isEmpty,
+    );
+  });
+
   test('seeds default prepaid and deferred income accounts', () async {
     final database = createTestDatabase();
     addTearDown(database.close);

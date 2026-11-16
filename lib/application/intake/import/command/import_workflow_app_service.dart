@@ -10,6 +10,10 @@ import '../../../../domain/intake/import/port/import_batch_repository.dart';
 import '../../../../domain/intake/import/port/import_ledger_port.dart';
 import '../../../../domain/intake/import/port/import_mapping_repository.dart';
 import '../../../../domain/intake/import/service/import_target_compatibility.dart';
+import '../../../../domain/intake/rules/recognition_rule.dart';
+import '../../../../domain/intake/rules/recognition_rule_catalog.dart';
+import '../../../../domain/intake/rules/recognition_rule_target.dart';
+import '../../../../domain/intake/rules/recognition_target_resolution.dart';
 import '../import_workflow_models.dart';
 import 'import_account_creation_defaults.dart';
 
@@ -39,6 +43,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     required ImportLedgerPort ledger,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
+    Future<RecognitionRuleCatalog> Function()? loadRules,
     ImportAccountCreationDefaults accountCreationDefaults =
         const ImportAccountCreationDefaults(),
     DateTime Function()? now,
@@ -47,6 +52,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
        _ledger = ledger,
        _transactionRunner = transactionRunner,
        _idGenerator = idGenerator,
+       _loadRules = loadRules,
        _accountCreationDefaults = accountCreationDefaults,
        _now = now ?? DateTime.now;
 
@@ -55,6 +61,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   final ImportLedgerPort _ledger;
   final TransactionRunner _transactionRunner;
   final IdGenerator _idGenerator;
+  final Future<RecognitionRuleCatalog> Function()? _loadRules;
   final ImportAccountCreationDefaults _accountCreationDefaults;
   final DateTime Function() _now;
 
@@ -107,6 +114,8 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
     );
     final suggestions = _suggestMappings(
       plan: plan,
+      rules:
+          await _loadRules?.call() ?? RecognitionRuleCatalog(rules: const []),
       effectiveMappings: effective,
       targets: targets,
       compatibleTargetDescriptors: compatibleTargetDescriptors,
@@ -133,9 +142,29 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       for (final target in targets) target.id: target,
     };
     final reviews = <ImportGroupReview>[];
+    final fallbackKeys = {
+      for (final suggestion in suggestions)
+        if (suggestion.isFallback) suggestion.key,
+    };
     for (var index = 0; index < plan.groups.length; index++) {
       final group = plan.groups[index];
       final issues = [...group.issues];
+      for (final draft in group.transactions) {
+        final category = draft.categoryReference;
+        if (category != null &&
+            category.isInferred &&
+            fallbackKeys.contains(
+              ImportMappingKey.fromCategory(plan.source, category),
+            )) {
+          issues.add(
+            const ImportIssue(
+              code: 'category_fallback',
+              message: '分类未命中关键词，使用“其他”分类建议，请核对。',
+              severity: ImportIssueSeverity.warning,
+            ),
+          );
+        }
+      }
       final groupSourceEntityKeys = group.transactions
           .expand((draft) => draft.sourceEntityKeys)
           .toSet();
@@ -173,6 +202,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       };
       issues.removeWhere(
         (issue) => _mappingRepairsParserIssue(
+          source: plan.source,
           issue: issue,
           group: group,
           placeholders: reviewPlaceholders,
@@ -298,6 +328,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
             (issue) =>
                 issue.isBlocking &&
                 !_mappingRepairsParserIssue(
+                  source: plan.source,
                   issue: issue,
                   group: group,
                   placeholders: reviewPlaceholders,
@@ -571,6 +602,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
 
   List<ImportMappingSuggestion> _suggestMappings({
     required ImportParseResult plan,
+    required RecognitionRuleCatalog rules,
     required Map<ImportMappingKey, String> effectiveMappings,
     required List<ImportLedgerTarget> targets,
     required Map<ImportMappingKey, Set<ImportTargetDescriptor>>
@@ -584,28 +616,102 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       if (effectiveMappings.containsKey(key) || excludedKeys.contains(key)) {
         continue;
       }
-      final normalized = _normalizeName(entity.displayName);
-      final candidates = targets.where((target) {
-        if (target.isArchived || !_targetSupportsEntity(target, entity)) {
-          return false;
-        }
-        final allowedDescriptors = compatibleTargetDescriptors[key];
-        if (allowedDescriptors != null &&
-            !allowedDescriptors.contains(target.descriptor)) {
-          return false;
-        }
-        return _normalizeName(target.displayPath) == normalized ||
-            _normalizeName(target.name) == normalized;
-      }).toList();
-      if (candidates.length == 1) {
-        final targetId = candidates.single.id;
+      final allowed = compatibleTargetDescriptors[key];
+      final candidates = targets
+          .where(
+            (target) =>
+                !target.isArchived &&
+                _targetSupportsEntity(target, entity) &&
+                (allowed == null || allowed.contains(target.descriptor)),
+          )
+          .toList();
+      String? targetId;
+      if (entity.kind == ImportEntityKind.account) {
+        targetId =
+            IntakeTargetResolver(
+              rules: rules,
+              targets: candidates.map(_recognitionTarget).toList(),
+            ).resolveAccount(
+              accountName: entity.displayName,
+              matchingText: entity.displayName,
+              source: _recognitionSource(plan.source),
+            );
+      } else {
+        final normalized = normalizeRecognitionText(entity.displayName);
+        final exact = candidates
+            .where(
+              (target) =>
+                  normalizeRecognitionText(target.displayPath) == normalized ||
+                  normalizeRecognitionText(target.name) == normalized,
+            )
+            .toList();
+        if (exact.length == 1) targetId = exact.single.id;
+      }
+      if (targetId != null) {
         effectiveMappings[key] = targetId;
         result.add(
           ImportMappingSuggestion(key: key, targetAccountId: targetId),
         );
       }
     }
+    for (final category in plan.inferredCategories) {
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      if (effectiveMappings.containsKey(key)) continue;
+      final allowed = compatibleTargetDescriptors[key];
+      final candidates = targets
+          .where(
+            (target) =>
+                !target.isArchived &&
+                (allowed == null || allowed.contains(target.descriptor)),
+          )
+          .map(_recognitionTarget)
+          .toList();
+      final match = IntakeTargetResolver(rules: rules, targets: candidates)
+          .resolveCategory(
+            matchingText: category.matchingText,
+            direction: category.kind,
+            source: _recognitionSource(plan.source),
+          );
+      final targetId = match?.targetAccountId;
+      if (targetId != null) {
+        effectiveMappings[key] = targetId;
+        result.add(
+          ImportMappingSuggestion(
+            key: key,
+            targetAccountId: targetId,
+            isFallback: match!.isFallback,
+          ),
+        );
+      }
+    }
     return result;
+  }
+
+  RecognitionRuleSource? _recognitionSource(ImportSource source) =>
+      switch (source) {
+        ImportSource.wechat => RecognitionRuleSource.wechat,
+        ImportSource.alipay => RecognitionRuleSource.alipay,
+        ImportSource.yimu || ImportSource.jd => null,
+      };
+
+  RecognitionRuleTarget _recognitionTarget(ImportLedgerTarget target) {
+    final direction = switch (target.descriptor) {
+      ImportTargetDescriptor.incomeCategory => ImportCategoryKind.income,
+      ImportTargetDescriptor.expenseCategory => ImportCategoryKind.expense,
+      _ => null,
+    };
+    return RecognitionRuleTarget(
+      id: target.id,
+      kind: direction == null
+          ? RecognitionRuleKind.account
+          : RecognitionRuleKind.category,
+      direction: direction,
+      path: direction == null
+          ? [target.name]
+          : target.displayPath.split('/').map((part) => part.trim()).toList(),
+      iconKey: target.iconKey,
+      parentId: target.parentId,
+    );
   }
 
   void _removeUnavailableMappings({
@@ -619,16 +725,23 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       for (final entity in plan.sourceEntities)
         ImportMappingKey.fromEntity(entity): entity,
     };
+    final categories = {
+      for (final category in plan.inferredCategories)
+        ImportMappingKey.fromCategory(plan.source, category): category,
+    };
     final targetsById = {for (final target in targets) target.id: target};
     effectiveMappings.removeWhere((key, targetId) {
       final entity = entities[key];
       final target = targetsById[targetId];
-      if (entity == null || target == null || target.isArchived) return true;
-      if (entity.hasTargetDescriptorConflict) return true;
-      if (!_targetSupportsEntity(target, entity)) return true;
-      final allowedDescriptors = compatibleTargetDescriptors[key];
-      return allowedDescriptors != null &&
-          !allowedDescriptors.contains(target.descriptor);
+      if (target == null || target.isArchived) return true;
+      if (entity == null) {
+        if (!categories.containsKey(key)) return true;
+      } else {
+        if (entity.hasTargetDescriptorConflict) return true;
+        if (!_targetSupportsEntity(target, entity)) return true;
+      }
+      final allowed = compatibleTargetDescriptors[key];
+      return allowed != null && !allowed.contains(target.descriptor);
     });
   }
 
@@ -799,6 +912,45 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
         ),
       );
     }
+    for (final category in plan.inferredCategories) {
+      final key = ImportMappingKey.fromCategory(plan.source, category);
+      final mappedId = effectiveMappings[key];
+      final target = mappedId == null ? null : targetById[mappedId];
+      final descriptor = category.kind == ImportCategoryKind.income
+          ? ImportTargetDescriptor.incomeCategory
+          : ImportTargetDescriptor.expenseCategory;
+      final options = targets
+          .where(
+            (candidate) =>
+                !candidate.isArchived && candidate.descriptor == descriptor,
+          )
+          .map(_mapTarget)
+          .toList();
+      result.add(
+        ImportMappingReviewItem(
+          key: key,
+          sourceName: category.matchingText.trim().isEmpty
+              ? '未提供分类'
+              : category.matchingText.split(RegExp(r'[\r\n]+')).join(' · '),
+          sourceDescription: category.kind == ImportCategoryKind.income
+              ? '收入分类建议'
+              : '支出分类建议',
+          action: target == null
+              ? ImportMappingAction.unresolved
+              : ImportMappingAction.map,
+          targetId: mappedId,
+          targetName: target?.name,
+          targetPath: target?.displayPath,
+          targetDescription: target == null
+              ? null
+              : importTargetDescription(target.descriptor),
+          existingTargetOptions: options,
+          decision: target == null
+              ? const UnresolvedDecision('请选择本次导入使用的分类。')
+              : ExistingTargetDecision(target.id),
+        ),
+      );
+    }
     return result;
   }
 
@@ -933,6 +1085,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
   }
 
   bool _mappingRepairsParserIssue({
+    required ImportSource source,
     required ImportIssue issue,
     required ImportTransactionGroupDraft group,
     required Map<String, ImportSourceEntity> placeholders,
@@ -946,6 +1099,20 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
       _ => null,
     };
     if (entityKind == null) return false;
+    if (entityKind == ImportEntityKind.category) {
+      final inferred = group.transactions
+          .map((draft) => draft.categoryReference)
+          .whereType<ImportCategoryReference>()
+          .where((category) => category.isInferred)
+          .toList();
+      if (inferred.isNotEmpty) {
+        return inferred.every(
+          (category) => mappings.containsKey(
+            ImportMappingKey.fromCategory(source, category),
+          ),
+        );
+      }
+    }
     final groupKeys = group.transactions
         .expand((draft) => draft.sourceEntityKeys)
         .toSet();
@@ -1129,6 +1296,7 @@ class ImportWorkflowAppServiceImpl implements ImportWorkflowAppService {
           source: source,
           entityKind: requirement.entityKind,
           sourceEntityKey: requirement.sourceEntityKey,
+          isInferredCategory: requirement.isInferredCategory,
         );
         final previous = result[key];
         if (previous == null) {
@@ -1758,11 +1926,7 @@ class _ResolutionContext {
     required int groupIndex,
   }) {
     return _mappedTarget(
-      ImportMappingKey(
-        source: source,
-        entityKind: ImportEntityKind.category,
-        sourceEntityKey: reference.sourceEntityKey,
-      ),
+      ImportMappingKey.fromCategory(source, reference),
       switch (reference.kind) {
         ImportCategoryKind.income => _TargetUsage.incomeCategory,
         ImportCategoryKind.expense => _TargetUsage.expenseCategory,

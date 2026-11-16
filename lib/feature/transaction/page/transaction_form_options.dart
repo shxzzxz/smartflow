@@ -2,6 +2,7 @@ part of 'transaction_form_page.dart';
 
 class _TransactionOptionsPanel extends StatelessWidget {
   const _TransactionOptionsPanel({
+    this.requireAccountSelection = false,
     required this.mode,
     required this.occurredAt,
     required this.moneyAccounts,
@@ -33,6 +34,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
   });
 
   final TransactionFormMode mode;
+  final bool requireAccountSelection;
   final DateTime occurredAt;
   final List<Account> moneyAccounts;
   final List<Account> installmentAccounts;
@@ -104,6 +106,7 @@ class _TransactionOptionsPanel extends StatelessWidget {
                   ),
                   if (showPrimaryAccount)
                     _AccountSelectorChip(
+                      fallbackToFirst: !requireAccountSelection,
                       key: consumptionInstallment
                           ? const ValueKey(
                               'consumption-installment-account-option',
@@ -192,7 +195,12 @@ class _TransactionOptionsPanel extends StatelessWidget {
     if (!showPrimaryAccount) return buildPanel(primaryChanged, null);
 
     return AppControlledFormField<String>(
-      value: effectiveAccountId(primaryAccountId, primaryAccounts),
+      value: requireAccountSelection
+          ? primaryAccounts
+                .where((account) => account.id == primaryAccountId)
+                .firstOrNull
+                ?.id
+          : effectiveAccountId(primaryAccountId, primaryAccounts),
       onChanged: primaryChanged,
       validator: (value) => value == null ? '请选择$accountLabel' : null,
       builder: (context, _, errorText, changeValue) =>
@@ -210,6 +218,7 @@ class _AccountSelectorChip extends StatelessWidget {
     super.key,
     this.allowNone = false,
     this.noneLabel = '无',
+    this.fallbackToFirst = true,
   });
 
   final String label;
@@ -218,6 +227,7 @@ class _AccountSelectorChip extends StatelessWidget {
   final ValueChanged<String?> onChanged;
   final bool allowNone;
   final String noneLabel;
+  final bool fallbackToFirst;
 
   @override
   Widget build(BuildContext context) {
@@ -225,7 +235,10 @@ class _AccountSelectorChip extends StatelessWidget {
         ? null
         : accounts.where((account) => account.id == selectedId).firstOrNull;
     final effective =
-        selected ?? (allowNone ? null : effectiveAccount(null, accounts));
+        selected ??
+        (allowNone || !fallbackToFirst
+            ? null
+            : effectiveAccount(null, accounts));
     final showsNone = allowNone && selected == null;
     final text = showsNone
         ? noneLabel
@@ -264,7 +277,9 @@ class _AccountSelectorChip extends StatelessWidget {
     final selected = await showAccountPickerSheet(
       context: context,
       accounts: accounts,
-      selectedId: effectiveAccount(selectedId, accounts)?.id,
+      selectedId: fallbackToFirst
+          ? effectiveAccount(selectedId, accounts)?.id
+          : selectedId,
     );
     if (selected == null) return;
     onChanged(selected);

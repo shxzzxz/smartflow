@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:excel_community/excel_community.dart';
@@ -6,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/intake/import/import_models.dart';
 import 'package:smartflow/domain/intake/import/source/wechat/wechat_import_parser.dart';
 import 'package:smartflow/infrastructure/intake/import/wechat/wechat_file_reader.dart';
-import 'package:smartflow/infrastructure/intake/import/wechat/wechat_category_lexicon_loader.dart';
+import 'package:smartflow/infrastructure/intake/rules/recognition_rule_catalog_loader.dart';
 
 void main() {
   const reader = WechatFileReader();
@@ -29,20 +28,19 @@ void main() {
   });
 
   test('loads the runtime lexicon with practical merchant keywords', () {
-    final lexicon = WechatCategoryLexiconLoader.decode(_lexiconJson);
+    final lexicon = RecognitionRuleCatalogLoader.decode(_lexiconJson);
 
     final food = lexicon.match(
-      direction: ImportCategoryKind.expense,
-      product: '招牌牛肉面',
+      categoryKind: ImportCategoryKind.expense,
+      text: '招牌牛肉面',
     );
     final personalCare = lexicon.match(
-      direction: ImportCategoryKind.expense,
-      counterparty: '示例造型工作室',
+      categoryKind: ImportCategoryKind.expense,
+      text: '示例造型工作室',
     );
     final refund = lexicon.match(
-      direction: ImportCategoryKind.income,
-      transactionType: '示例商户-退款',
-      status: '已全额退款',
+      categoryKind: ImportCategoryKind.income,
+      text: '示例商户-退款\n已全额退款',
     );
 
     expect(food?.path, ['食品餐饮']);
@@ -50,27 +48,31 @@ void main() {
     expect(refund?.path, ['其他']);
   });
 
-  test('parses a WeChat XLSX with the runtime lexicon', () {
-    final lexicon = WechatCategoryLexiconLoader.decode(
-      File('assets/import/wechat/category_lexicon.json').readAsStringSync(),
-    );
-    final result = WechatImportParser(reader: reader, lexicon: lexicon).parse(
-      ImportBundle(
-        files: [ImportFilePayload(name: '微信支付账单.xlsx', bytes: _xlsxFixture())],
-      ),
-    );
+  test(
+    'parses a WeChat XLSX into source facts and classification evidence',
+    () {
+      final result = WechatImportParser(reader: reader).parse(
+        ImportBundle(
+          files: [
+            ImportFilePayload(name: '微信支付账单.xlsx', bytes: _xlsxFixture()),
+          ],
+        ),
+      );
 
-    expect(result.fatalIssues, isEmpty);
-    expect(result.groups, hasLength(1));
-    expect(
-      result.filteredRecords.single.reasonCode,
-      'wechat_direction_neutral',
-    );
-    final expense = result.groups.single.topLevel as ImportExpenseDraft;
-    expect(expense.note, '牛肉面');
-    expect(expense.category.path, '食品餐饮');
-    expect(expense.paidFrom.displayName, '零钱');
-  });
+      expect(result.fatalIssues, isEmpty);
+      expect(result.groups, hasLength(1));
+      expect(
+        result.filteredRecords.single.reasonCode,
+        'wechat_direction_neutral',
+      );
+      final expense = result.groups.single.topLevel as ImportExpenseDraft;
+      expect(expense.note, '牛肉面');
+      expect(expense.category.isInferred, isTrue);
+      expect(expense.category.matchingText, contains('牛肉面'));
+      expect(result.sourceCategories, isEmpty);
+      expect(expense.paidFrom.displayName, '零钱');
+    },
+  );
 }
 
 const _headers = [

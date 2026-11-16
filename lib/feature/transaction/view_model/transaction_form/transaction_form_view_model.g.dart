@@ -97,6 +97,7 @@ final class TransactionFormViewModelProvider
   TransactionFormViewModelProvider._({
     required TransactionFormViewModelFamily super.from,
     required ({
+      TransactionFormPrefill? prefill,
       String? editTransactionId,
       TransactionFormMode initialMode,
       String? initialFromAccountId,
@@ -151,7 +152,7 @@ final class TransactionFormViewModelProvider
 }
 
 String _$transactionFormViewModelHash() =>
-    r'749368801172f862d81604b08c05c24235c893eb';
+    r'7d08c1151fb7b94600ae9e70efeb6229db79d3d4';
 
 final class TransactionFormViewModelFamily extends $Family
     with
@@ -161,6 +162,7 @@ final class TransactionFormViewModelFamily extends $Family
           AsyncValue<TransactionFormState?>,
           AsyncValue<TransactionFormState?>,
           ({
+            TransactionFormPrefill? prefill,
             String? editTransactionId,
             TransactionFormMode initialMode,
             String? initialFromAccountId,
@@ -180,6 +182,7 @@ final class TransactionFormViewModelFamily extends $Family
       );
 
   TransactionFormViewModelProvider call({
+    TransactionFormPrefill? prefill,
     String? editTransactionId,
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
@@ -189,6 +192,7 @@ final class TransactionFormViewModelFamily extends $Family
     String? initialAmortizationDeferralAccountId,
   }) => TransactionFormViewModelProvider._(
     argument: (
+      prefill: prefill,
       editTransactionId: editTransactionId,
       initialMode: initialMode,
       initialFromAccountId: initialFromAccountId,
@@ -210,6 +214,7 @@ abstract class _$TransactionFormViewModel
   late final _$args =
       ref.$arg
           as ({
+            TransactionFormPrefill? prefill,
             String? editTransactionId,
             TransactionFormMode initialMode,
             String? initialFromAccountId,
@@ -218,6 +223,7 @@ abstract class _$TransactionFormViewModel
             AmortizationKind? initialAmortizationKind,
             String? initialAmortizationDeferralAccountId,
           });
+  TransactionFormPrefill? get prefill => _$args.prefill;
   String? get editTransactionId => _$args.editTransactionId;
   TransactionFormMode get initialMode => _$args.initialMode;
   String? get initialFromAccountId => _$args.initialFromAccountId;
@@ -229,6 +235,7 @@ abstract class _$TransactionFormViewModel
       _$args.initialAmortizationDeferralAccountId;
 
   AsyncValue<TransactionFormState?> build({
+    TransactionFormPrefill? prefill,
     String? editTransactionId,
     TransactionFormMode initialMode = TransactionFormMode.expense,
     String? initialFromAccountId,
@@ -260,6 +267,7 @@ abstract class _$TransactionFormViewModel
     return element.handleCreate(
       ref,
       () => build(
+        prefill: _$args.prefill,
         editTransactionId: _$args.editTransactionId,
         initialMode: _$args.initialMode,
         initialFromAccountId: _$args.initialFromAccountId,

@@ -16,6 +16,7 @@ import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
 import 'package:smartflow/feature/transaction/page/transaction_form_page.dart';
+import 'package:smartflow/feature/transaction/presentation/transaction_form_prefill.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_account_options.dart';
 import 'package:smartflow/feature/transaction/view_model/transaction_form/transaction_form_view_model.dart';
 import 'package:smartflow/widget/business/transaction/transaction_allocation_fields.dart';
@@ -27,6 +28,40 @@ import '../../../helper/sequential_id_generator.dart';
 import '../../../helper/test_app_database.dart';
 
 void main() {
+  testWidgets(
+    'screenshot prefill remains editable and does not silently choose the first account',
+    (tester) async {
+      final service = _FakeTransactionPostingAppService();
+      await _pumpTransactionForm(
+        tester,
+        service,
+        formPage: TransactionFormPage(
+          prefill: TransactionFormPrefill(
+            amount: Money.parse('12.35'),
+            occurredAt: DateTime(2026, 3, 4),
+            note: '示例图书',
+            reviewMessage: '请核对截图',
+            categoryId: 'food',
+          ),
+        ),
+      );
+      final fields = tester.widget<TransactionAmountInput>(
+        find.byType(TransactionAmountInput),
+      );
+      expect(fields.amountController.text, '12.35');
+      expect(fields.noteController.text, '示例图书');
+      expect(find.text('请核对截图'), findsOneWidget);
+      expect(find.text('支出账户为空'), findsOneWidget);
+      await tester.tap(find.text('完成'));
+      await tester.pump();
+      expect(find.text('请选择支出账户'), findsOneWidget);
+      fields.amountController.text = '14.00';
+      fields.noteController.text = '修正后的备注';
+      await tester.pump();
+      expect(fields.amountController.text, '14.00');
+      expect(fields.noteController.text, '修正后的备注');
+    },
+  );
   testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 

@@ -6,15 +6,12 @@ import '../../../../../core/money/money.dart';
 import '../../import_models.dart';
 import '../../service/source_parsing_models.dart';
 import 'wechat_bill_record.dart';
-import 'wechat_category_lexicon.dart';
 import 'wechat_file_type.dart';
 
 const wechatFingerprintVersion = 1;
 
 class WechatBillParseUnit implements ParseUnit {
-  const WechatBillParseUnit({required this.lexicon});
-
-  final WechatCategoryLexicon lexicon;
+  const WechatBillParseUnit();
 
   @override
   String get key => 'wechat.bill';
@@ -53,39 +50,16 @@ class WechatBillParseUnit implements ParseUnit {
       final direction = record.direction == '收入'
           ? ImportCategoryKind.income
           : ImportCategoryKind.expense;
-      final categoryMatch = lexicon.match(
-        direction: direction,
-        transactionType: record.transactionType,
-        counterparty: record.counterparty,
-        product: record.product,
-        status: record.status,
-      );
-      if (categoryMatch == null) {
-        recordIssues.add(
-          ImportIssue(
-            code: 'category_missing',
-            message: '微信交易无法推断分类。',
-            severity: ImportIssueSeverity.blocking,
-            rowNumber: record.rowNumber,
-            fileType: WechatFileType.bill.descriptor,
-          ),
-        );
-      } else if (categoryMatch.isFallback) {
-        recordIssues.add(
-          ImportIssue(
-            code: 'category_fallback',
-            message: '微信交易未命中分类关键词，已预填分类“其他”。',
-            severity: ImportIssueSeverity.warning,
-            rowNumber: record.rowNumber,
-            fileType: WechatFileType.bill.descriptor,
-          ),
-        );
-      }
-      final categoryPath = categoryMatch?.path ?? const ['其他'];
-      final category = _categoryReference(
-        categoryPath,
-        direction,
-        entities: entities,
+      final category = ImportCategoryReference.inferred(
+        candidateKey:
+            'wechat:bill:category:${direction.name}:${record.rowNumber}',
+        kind: direction,
+        matchingText: [
+          record.counterparty,
+          record.product,
+          record.transactionType,
+          record.status,
+        ].whereType<String>().join('\n'),
       );
       final account = _accountReference(
         record.paymentMethod,
@@ -141,30 +115,6 @@ class WechatBillParseUnit implements ParseUnit {
       issues: issues,
     );
   }
-}
-
-ImportCategoryReference _categoryReference(
-  List<String> path,
-  ImportCategoryKind direction, {
-  required Map<String, ImportSourceEntity> entities,
-}) {
-  final display = path.join(' / ');
-  final key = 'category:${direction.name}:${_normalized(display)}';
-  entities.putIfAbsent(
-    key,
-    () => ImportSourceEntity(
-      source: ImportSource.wechat,
-      kind: ImportEntityKind.category,
-      sourceEntityKey: key,
-      displayName: display,
-      categoryKind: direction,
-    ),
-  );
-  return ImportCategoryReference(
-    sourceEntityKey: key,
-    path: display,
-    kind: direction,
-  );
 }
 
 ImportAccountReference _accountReference(

@@ -3,10 +3,71 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/domain/intake/import/import_models.dart';
 import 'package:smartflow/domain/intake/import/port/import_file_reader.dart';
-import 'package:smartflow/domain/intake/import/source/wechat/wechat_category_lexicon.dart';
 import 'package:smartflow/domain/intake/import/source/wechat/wechat_import_parser.dart';
 
 void main() {
+  test(
+    'extracts category evidence without source categories or internal targets',
+    () {
+      final result = _parser([
+        _row(
+          counterparty: '瑞幸咖啡',
+          product: '拿铁',
+          direction: '支出',
+          status: '支付成功',
+        ),
+      ]).parse(_bundle());
+      final category =
+          (result.groups.single.topLevel as ImportExpenseDraft).category;
+      expect(result.sourceCategories, isEmpty);
+      expect(category.sourceEntityKey, isNull);
+      expect(category.isInferred, isTrue);
+      expect(category.kind, ImportCategoryKind.expense);
+      expect(category.matchingText, '瑞幸咖啡\n拿铁\n商户消费\n支付成功');
+      expect(result.groups.single.issues, isEmpty);
+    },
+  );
+
+  test('classification evidence excludes payment-account and note text', () {
+    final result = _parser([
+      _row(
+        counterparty: '示例商户',
+        product: '虚构商品',
+        direction: '支出',
+        status: '支付成功',
+        paymentMethod: '瑞幸账户',
+        note: '咖啡备注',
+      ),
+    ]).parse(_bundle());
+    final category = result.inferredCategories.single;
+    expect(category.matchingText, isNot(contains('瑞幸')));
+    expect(category.matchingText, isNot(contains('咖啡备注')));
+    expect(category.matchingText, contains('虚构商品'));
+  });
+
+  test(
+    'retains account text and source constraints for later account parsing',
+    () {
+      final result = _parser([
+        _row(
+          counterparty: '瑞幸咖啡',
+          product: '拿铁',
+          direction: '支出',
+          status: '支付成功',
+          paymentMethod: '示例银行储蓄卡(1234)',
+        ),
+      ]).parse(_bundle());
+      final expense = result.groups.single.topLevel as ImportExpenseDraft;
+      final account = result.sourceAccounts.single;
+      expect(expense.paidFrom.displayName, '示例银行储蓄卡(1234)');
+      expect(account.displayName, expense.paidFrom.displayName);
+      expect(account.allowedTargetDescriptors, {
+        ImportTargetDescriptor.fundAccount,
+      });
+      expect(result.sourceCategories, isEmpty);
+    },
+  );
+
   test('maps directions and writes only the product into the note', () {
     final result = _parser([
       _row(
@@ -15,7 +76,7 @@ void main() {
         product: '牛肉面',
         direction: '支出',
         status: '支付成功',
-        note: '这段来源备注不应写入交易备注',
+        note: '来源备注不写入交易备注',
       ),
       _row(
         transactionType: '转账',
@@ -23,15 +84,19 @@ void main() {
         product: '工资',
         direction: '收入',
         status: '已到账',
-        note: '这段来源备注不应写入交易备注',
+        note: '来源备注不写入交易备注',
+        transactionId: 'second',
       ),
     ]).parse(_bundle());
-
     expect(result.groups, hasLength(2));
     expect(result.groups[0].topLevel, isA<ImportExpenseDraft>());
     expect(result.groups[0].topLevel.note, '牛肉面');
     expect(result.groups[1].topLevel, isA<ImportIncomeDraft>());
     expect(result.groups[1].topLevel.note, '工资');
+    expect(result.inferredCategories.map((category) => category.kind), [
+      ImportCategoryKind.expense,
+      ImportCategoryKind.income,
+    ]);
   });
 
   test('uses WeChat change as receiving account when status confirms it', () {
@@ -45,29 +110,35 @@ void main() {
         paymentMethod: '/',
       ),
     ]).parse(_bundle());
-
     final income = result.groups.single.topLevel as ImportIncomeDraft;
     expect(income.receiveAccount.sourceEntityKey, 'account:零钱');
     expect(income.receiveAccount.displayName, '零钱');
   });
 
-  test('marks a fallback category for unmatched transactions', () {
-    final result = _parser([
-      _row(
-        direction: '支出',
-        status: '支付成功',
-        counterparty: '示例商户',
-        product: '虚构商品',
-      ),
-    ]).parse(_bundle());
+  test(
+    'each record keeps its own category candidate even with identical text',
+    () {
+      final result = _parser([
+        _row(product: '拿铁', direction: '支出', status: '支付成功'),
+        _row(
+          product: '拿铁',
+          direction: '支出',
+          status: '支付成功',
+          transactionId: 'second',
+        ),
+      ]).parse(_bundle());
+      expect(result.inferredCategories, hasLength(2));
+      expect(
+        result.inferredCategories
+            .map((category) => category.referenceKey)
+            .toSet(),
+        hasLength(2),
+      );
+      expect(result.sourceCategories, isEmpty);
+    },
+  );
 
-    expect(
-      result.groups.single.issues.map((issue) => issue.code),
-      contains('category_fallback'),
-    );
-  });
-
-  test('assigns refund income to income other before keyword matching', () {
+  test('retains refund and income evidence for shared classification', () {
     final result = _parser([
       _row(
         transactionType: '示例商户-退款',
@@ -77,32 +148,25 @@ void main() {
         status: '已全额退款',
         paymentMethod: '示例银行储蓄卡(0001)',
       ),
-    ], lexiconJson: _refundLexiconJson).parse(_bundle());
-
+    ]).parse(_bundle());
     final income = result.groups.single.topLevel as ImportIncomeDraft;
-    expect(income.category.path, '其他');
-    expect(
-      result.groups.single.issues.map((issue) => issue.code),
-      isNot(contains('category_fallback')),
-    );
+    expect(income.category.kind, ImportCategoryKind.income);
+    expect(income.category.matchingText, contains('退款'));
+    expect(income.category.matchingText, contains('工资'));
+    expect(result.sourceCategories, isEmpty);
   });
 }
 
-WechatImportParser _parser(
-  List<Map<String, Object?>> rows, {
-  Map<String, Object?> lexiconJson = _lexiconJson,
-}) {
-  return WechatImportParser(
-    reader: _FakeReader(
-      ImportTabularFile(
-        sheets: [
-          ImportTabularSheet(name: '微信支付账单', headers: _headers, rows: rows),
-        ],
+WechatImportParser _parser(List<Map<String, Object?>> rows) =>
+    WechatImportParser(
+      reader: _FakeReader(
+        ImportTabularFile(
+          sheets: [
+            ImportTabularSheet(name: '微信支付账单', headers: _headers, rows: rows),
+          ],
+        ),
       ),
-    ),
-    lexicon: WechatCategoryLexicon.fromJson(lexiconJson),
-  );
-}
+    );
 
 ImportBundle _bundle() {
   return ImportBundle(
@@ -148,68 +212,6 @@ const _headers = [
   '商户单号',
   '备注',
 ];
-
-const _lexiconJson = <String, Object?>{
-  'schemaVersion': 1,
-  'source': 'wechat',
-  'directRules': <Object?>[],
-  'keywordRules': <Object?>[],
-  'fallbackRules': [
-    {
-      'id': 'expense_fallback_other',
-      'direction': 'expense',
-      'priority': -100,
-      'categoryPath': ['其他'],
-      'warningCode': 'category_fallback',
-    },
-    {
-      'id': 'income_fallback_other',
-      'direction': 'income',
-      'priority': -100,
-      'categoryPath': ['其他'],
-      'warningCode': 'category_fallback',
-    },
-  ],
-};
-
-const _refundLexiconJson = <String, Object?>{
-  'schemaVersion': 1,
-  'source': 'wechat',
-  'directRules': [
-    {
-      'id': 'income_refund',
-      'direction': 'income',
-      'priority': 1000,
-      'conditions': {
-        'logic': 'any',
-        'items': [
-          {'field': 'transactionType', 'operator': 'contains', 'value': '退款'},
-          {'field': 'status', 'operator': 'equals', 'value': '已全额退款'},
-        ],
-      },
-      'categoryPath': ['其他'],
-    },
-  ],
-  'keywordRules': [
-    {
-      'id': 'income_salary',
-      'direction': 'income',
-      'priority': 80,
-      'fields': ['counterparty', 'product'],
-      'keywords': ['工资'],
-      'categoryPath': ['工作', '工资'],
-    },
-  ],
-  'fallbackRules': [
-    {
-      'id': 'income_fallback_other',
-      'direction': 'income',
-      'priority': -100,
-      'categoryPath': ['其他'],
-      'warningCode': 'category_fallback',
-    },
-  ],
-};
 
 class _FakeReader implements ImportFileReader {
   const _FakeReader(this.workbook);

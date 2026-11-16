@@ -16,7 +16,7 @@ const manualArticles = <ManualArticle>[
     title: '如何记录一笔支出',
     summary: '用一笔普通支出了解金额、账户和分类各自表达什么。',
     category: '开始使用',
-    keywords: ['支出', '记账', '交易'],
+    keywords: ['支出', '记账', '交易', '截图', '分享', '微信', '支付宝'],
     assetPath: 'assets/manual/record-expense.md',
   ),
   ManualArticle(

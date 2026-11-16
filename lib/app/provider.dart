@@ -101,7 +101,7 @@ import '../domain/intake/import/port/import_mapping_repository.dart';
 import '../domain/intake/import/port/import_file_reader.dart';
 import '../domain/intake/import/source/alipay/alipay_import_parser.dart';
 import '../domain/intake/import/source/jd/jd_import_parser.dart';
-import '../domain/intake/import/source/wechat/wechat_category_lexicon.dart';
+import '../domain/intake/rules/recognition_rule_catalog.dart';
 import '../domain/intake/import/source/wechat/wechat_import_parser.dart';
 import '../domain/intake/import/source/yimu/yimu_import_parser.dart';
 import '../domain/credit/port/bill_repository.dart';
@@ -148,6 +148,8 @@ import '../infrastructure/insurance/repository/drift_commercial_insurance_reposi
 import '../infrastructure/insurance/repository/drift_insured_person_repository.dart';
 import '../infrastructure/insurance/repository/drift_social_insurance_repository.dart';
 
+import 'recognition_rules_provider.dart';
+
 part 'provider.g.dart';
 
 /// 由 main() 用 bootstrap 创建的实例 override。
@@ -162,9 +164,9 @@ AppLogReader appLogReader(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-WechatCategoryLexicon wechatCategoryLexicon(Ref ref) {
+RecognitionRuleCatalog builtinRecognitionRuleCatalog(Ref ref) {
   throw UnimplementedError(
-    'wechatCategoryLexicon 必须在 ProviderScope 中 override。',
+    'builtinRecognitionRuleCatalog 必须在 ProviderScope 中 override。',
   );
 }
 
@@ -205,10 +207,7 @@ AlipayImportParser alipayImportParser(Ref ref) {
 
 @Riverpod(keepAlive: true)
 WechatImportParser wechatImportParser(Ref ref) {
-  return WechatImportParser(
-    reader: ref.watch(wechatFileReaderProvider),
-    lexicon: ref.watch(wechatCategoryLexiconProvider),
-  );
+  return WechatImportParser(reader: ref.watch(wechatFileReaderProvider));
 }
 
 @Riverpod(keepAlive: true)
@@ -218,14 +217,13 @@ JdImportParser jdImportParser(Ref ref) {
 
 @Riverpod(keepAlive: true)
 ImportPlanAppService importPlanAppService(Ref ref) {
-  return ImportPlanAppServiceImpl(
-    parsers: ImportParserRegistry([
-      ref.watch(yimuImportParserProvider),
-      ref.watch(alipayImportParserProvider),
-      ref.watch(wechatImportParserProvider),
-      ref.watch(jdImportParserProvider),
-    ]),
-  );
+  final parsers = ImportParserRegistry([
+    ref.watch(yimuImportParserProvider),
+    ref.watch(alipayImportParserProvider),
+    ref.watch(wechatImportParserProvider),
+    ref.watch(jdImportParserProvider),
+  ]);
+  return ImportPlanAppServiceImpl(parsers: parsers);
 }
 
 @Riverpod(keepAlive: true)
@@ -256,6 +254,7 @@ ImportLedgerPort importLedgerPort(Ref ref) {
 @Riverpod(keepAlive: true)
 ImportWorkflowAppService importWorkflowAppService(Ref ref) {
   return ImportWorkflowAppServiceImpl(
+    loadRules: ref.watch(recognitionRulesAppServiceProvider).loadCatalog,
     mappings: ref.watch(importMappingRepositoryProvider),
     batches: ref.watch(importBatchRepositoryProvider),
     ledger: ref.watch(importLedgerPortProvider),

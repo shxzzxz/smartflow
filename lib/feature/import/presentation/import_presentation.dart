@@ -568,10 +568,20 @@ String _categoryLabel(
   ImportGroupReview groupReview,
   ImportCategoryReference category,
 ) {
+  if (category.isInferred) {
+    final key = ImportMappingKey.fromCategory(review.plan.source, category);
+    final targetId =
+        groupReview.effectiveMappings[key] ?? review.effectiveMappings[key];
+    return review.targets
+            .where((target) => target.id == targetId)
+            .firstOrNull
+            ?.displayPath ??
+        '待选择分类';
+  }
   return _mappingLabel(
     review,
     groupReview,
-    category.sourceEntityKey,
+    category.sourceEntityKey!,
     fallback: category.path,
   );
 }

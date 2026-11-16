@@ -11,6 +11,7 @@ import '../../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../../shared/account_profile/account_profile_kind.dart';
 import '../../../amortization/presentation/amortization_configuration_draft.dart';
 import '../../presentation/transaction_form_presentation.dart';
+import '../../presentation/transaction_form_prefill.dart';
 import 'transaction_account_options.dart';
 
 enum TransactionEntryMode { normal, allocated }
@@ -67,6 +68,7 @@ class TransactionFormState {
        settlementAllocations = List.unmodifiable(settlementAllocations);
 
   factory TransactionFormState.initial({
+    TransactionFormPrefill? prefill,
     required TransactionFormMode mode,
     String? fromAccountId,
     String? toAccountId,
@@ -79,6 +81,12 @@ class TransactionFormState {
     required List<TagView> tags,
     required List<CounterpartyView> counterparties,
   }) {
+    fromAccountId ??= mode == TransactionFormMode.expense
+        ? prefill?.settlementAccountId
+        : null;
+    toAccountId ??= mode == TransactionFormMode.income
+        ? prefill?.settlementAccountId
+        : null;
     final amortizationDeferralAccounts =
         initialAmortizationKind == AmortizationKind.prepaidExpense
         ? accountOptions.prepaidExpenseAccounts
@@ -86,11 +94,29 @@ class TransactionFormState {
         ? accountOptions.deferredIncomeAccounts
         : const <Account>[];
     return TransactionFormState(
-      initialValues: const TransactionFormInitialValues(),
+      initialValues: prefill == null
+          ? const TransactionFormInitialValues()
+          : TransactionFormInitialValues(
+              amount: prefill.amount.format(),
+              note: prefill.note,
+            ),
       mode: mode,
       relationScene: transactionRelationSceneForMode(mode),
       entryMode: TransactionEntryMode.normal,
-      occurredAt: DateTime.now(),
+      occurredAt: prefill?.occurredAt ?? DateTime.now(),
+      counterpartyId: prefill?.counterpartyId,
+      expenseCategoryId: mode == TransactionFormMode.expense
+          ? prefill?.categoryId
+          : null,
+      expenseRootId: mode == TransactionFormMode.expense
+          ? _rootCategoryId(expenseTree, prefill?.categoryId)
+          : null,
+      incomeCategoryId: mode == TransactionFormMode.income
+          ? prefill?.categoryId
+          : null,
+      incomeRootId: mode == TransactionFormMode.income
+          ? _rootCategoryId(incomeTree, prefill?.categoryId)
+          : null,
       excludeStats: false,
       excludeBudget: false,
       submitting: false,

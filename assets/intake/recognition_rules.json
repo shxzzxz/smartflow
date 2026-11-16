@@ -1,0 +1,766 @@
+{
+  "schemaVersion": 2,
+  "rules": [
+    {
+      "id": "expense_food_breakfast",
+      "kind": "category",
+      "keywords": [
+        "早餐",
+        "早点",
+        "早饭",
+        "早餐店",
+        "豆浆",
+        "油条"
+      ],
+      "priority": 92,
+      "targetPath": [
+        "食品餐饮",
+        "早餐"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_noodles",
+      "kind": "category",
+      "keywords": [
+        "牛肉面",
+        "拉面",
+        "刀削面",
+        "面馆",
+        "面食",
+        "米线",
+        "米粉",
+        "螺蛳粉",
+        "酸辣粉",
+        "饺子",
+        "馄饨"
+      ],
+      "priority": 78,
+      "targetPath": [
+        "食品餐饮"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_general",
+      "kind": "category",
+      "keywords": [
+        "餐饮",
+        "餐厅",
+        "饭店",
+        "饭馆",
+        "食堂",
+        "快餐",
+        "外卖",
+        "小吃",
+        "火锅",
+        "烧烤",
+        "烤肉",
+        "麻辣烫",
+        "冒菜",
+        "炸鸡",
+        "汉堡",
+        "披萨",
+        "寿司",
+        "料理",
+        "烘焙",
+        "蛋糕",
+        "甜品",
+        "美食",
+        "麦当劳",
+        "肯德基",
+        "必胜客",
+        "包子",
+        "馒头",
+        "煎饼",
+        "粥",
+        "烤鱼",
+        "海鲜"
+      ],
+      "priority": 60,
+      "targetPath": [
+        "食品餐饮"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_tea",
+      "kind": "category",
+      "keywords": [
+        "咖啡",
+        "奶茶",
+        "茶饮",
+        "果茶",
+        "柠檬茶",
+        "咖啡店",
+        "瑞幸",
+        "星巴克",
+        "喜茶",
+        "奈雪"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "食品餐饮",
+        "茶饮"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_fresh",
+      "kind": "category",
+      "keywords": [
+        "生鲜",
+        "买菜",
+        "菜市场",
+        "水果",
+        "蔬菜",
+        "肉店",
+        "盒马",
+        "叮咚买菜",
+        "美团买菜",
+        "水果店",
+        "海鲜市场",
+        "水产市场"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "食品餐饮",
+        "食材生鲜"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_personal_care",
+      "kind": "category",
+      "keywords": [
+        "剪发",
+        "理发",
+        "美发",
+        "发型",
+        "烫发",
+        "染发"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "居家生活",
+        "理发"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_rail",
+      "kind": "category",
+      "keywords": [
+        "铁路",
+        "火车",
+        "高铁",
+        "动车",
+        "12306"
+      ],
+      "priority": 78,
+      "targetPath": [
+        "出行交通"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_ride",
+      "kind": "category",
+      "keywords": [
+        "打车",
+        "出租车",
+        "网约车",
+        "滴滴",
+        "高德打车",
+        "花小猪",
+        "曹操出行",
+        "T3出行"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "出行交通",
+        "打车"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_public",
+      "kind": "category",
+      "keywords": [
+        "公交",
+        "公交车",
+        "公共汽车"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "出行交通",
+        "公交"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_vehicle",
+      "kind": "category",
+      "keywords": [
+        "加油",
+        "石油",
+        "石化",
+        "充电桩",
+        "停车",
+        "停车费",
+        "高速",
+        "过路费"
+      ],
+      "priority": 78,
+      "targetPath": [
+        "出行交通"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_rent",
+      "kind": "category",
+      "keywords": [
+        "房租",
+        "租金",
+        "租房"
+      ],
+      "priority": 90,
+      "targetPath": [
+        "居家生活",
+        "房租"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_property",
+      "kind": "category",
+      "keywords": [
+        "物业",
+        "物业费"
+      ],
+      "priority": 90,
+      "targetPath": [
+        "居家生活",
+        "物业"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_utilities",
+      "kind": "category",
+      "keywords": [
+        "水费",
+        "电费",
+        "燃气",
+        "天然气",
+        "水电"
+      ],
+      "priority": 85,
+      "targetPath": [
+        "居家生活",
+        "水电燃"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_household_service",
+      "kind": "category",
+      "keywords": [
+        "家政",
+        "保洁",
+        "维修",
+        "搬家",
+        "家具",
+        "家电维修"
+      ],
+      "priority": 72,
+      "targetPath": [
+        "居家生活"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_shopping_general",
+      "kind": "category",
+      "keywords": [
+        "超市",
+        "便利店",
+        "商场",
+        "百货",
+        "购物",
+        "网购",
+        "电商",
+        "淘宝",
+        "天猫",
+        "京东",
+        "拼多多",
+        "唯品会",
+        "抖音商城"
+      ],
+      "priority": 40,
+      "targetPath": [
+        "购物消费"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_shopping_daily",
+      "kind": "category",
+      "keywords": [
+        "日用品",
+        "洗护",
+        "纸巾",
+        "洗衣液",
+        "牙膏",
+        "清洁用品",
+        "洗发水",
+        "洗洁精",
+        "香皂"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "购物消费",
+        "日用品"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_shopping_clothing",
+      "kind": "category",
+      "keywords": [
+        "衣服",
+        "服装",
+        "上衣",
+        "裤子",
+        "裙子",
+        "鞋类",
+        "运动鞋",
+        "帽子",
+        "箱包"
+      ],
+      "priority": 75,
+      "targetPath": [
+        "购物消费",
+        "衣物"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_shopping_digital",
+      "kind": "category",
+      "keywords": [
+        "手机",
+        "电脑",
+        "数码",
+        "耳机",
+        "键盘",
+        "鼠标",
+        "平板",
+        "相机",
+        "充电器"
+      ],
+      "priority": 75,
+      "targetPath": [
+        "购物消费",
+        "手机数码"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_entertainment",
+      "kind": "category",
+      "keywords": [
+        "KTV",
+        "歌厅",
+        "游戏",
+        "Steam",
+        "剧本杀",
+        "密室",
+        "乐园",
+        "景区",
+        "门票"
+      ],
+      "priority": 65,
+      "targetPath": [
+        "休闲娱乐"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_education",
+      "kind": "category",
+      "keywords": [
+        "学费",
+        "课程",
+        "培训",
+        "教育",
+        "书店",
+        "图书",
+        "教材",
+        "考试",
+        "网课",
+        "知识付费"
+      ],
+      "priority": 72,
+      "targetPath": [
+        "文化教育"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_health",
+      "kind": "category",
+      "keywords": [
+        "医院",
+        "诊所",
+        "药房",
+        "药店",
+        "医疗",
+        "挂号",
+        "体检",
+        "口腔",
+        "牙科",
+        "眼科",
+        "门诊"
+      ],
+      "priority": 82,
+      "targetPath": [
+        "健康医疗"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_telecom",
+      "kind": "category",
+      "keywords": [
+        "话费",
+        "流量充值",
+        "手机充值",
+        "宽带",
+        "中国移动",
+        "中国电信",
+        "中国联通"
+      ],
+      "priority": 95,
+      "targetPath": [
+        "通讯"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_social",
+      "kind": "category",
+      "keywords": [
+        "礼金",
+        "礼物",
+        "份子钱",
+        "随礼",
+        "送礼"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "人情社交",
+        "送礼人情"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_charity",
+      "kind": "category",
+      "keywords": [
+        "慈善",
+        "捐款",
+        "捐赠",
+        "慈善募捐",
+        "腾讯公益",
+        "蚂蚁公益"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "其他",
+        "慈善捐助"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "income_salary",
+      "kind": "category",
+      "keywords": [
+        "工资",
+        "薪资",
+        "薪酬",
+        "月薪",
+        "代发工资"
+      ],
+      "priority": 80,
+      "targetPath": [
+        "工作",
+        "工资"
+      ],
+      "targetCategoryKind": "income"
+    },
+    {
+      "id": "income_bonus",
+      "kind": "category",
+      "keywords": [
+        "奖金",
+        "绩效",
+        "年终奖",
+        "提成"
+      ],
+      "priority": 80,
+      "targetPath": [
+        "工作",
+        "奖金"
+      ],
+      "targetCategoryKind": "income"
+    },
+    {
+      "id": "income_part_time",
+      "kind": "category",
+      "keywords": [
+        "兼职",
+        "稿费",
+        "劳务",
+        "佣金",
+        "外包",
+        "设计费",
+        "咨询费",
+        "跑腿"
+      ],
+      "priority": 75,
+      "targetPath": [
+        "兼职"
+      ],
+      "targetCategoryKind": "income"
+    },
+    {
+      "id": "income_investment",
+      "kind": "category",
+      "keywords": [
+        "利息",
+        "分红",
+        "理财收益",
+        "投资收益",
+        "基金收益",
+        "收益发放"
+      ],
+      "priority": 75,
+      "targetPath": [
+        "投资收益"
+      ],
+      "targetCategoryKind": "income"
+    },
+    {
+      "id": "income_discount",
+      "kind": "category",
+      "keywords": [
+        "返现",
+        "消费返利",
+        "现金返还",
+        "返利到账"
+      ],
+      "priority": 75,
+      "targetPath": [
+        "其他",
+        "优惠"
+      ],
+      "targetCategoryKind": "income"
+    },
+    {
+      "id": "expense_food_lunch",
+      "kind": "category",
+      "keywords": [
+        "午餐",
+        "午饭"
+      ],
+      "priority": 92,
+      "targetPath": [
+        "食品餐饮",
+        "午餐"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_dinner",
+      "kind": "category",
+      "keywords": [
+        "晚餐",
+        "晚饭"
+      ],
+      "priority": 92,
+      "targetPath": [
+        "食品餐饮",
+        "晚餐"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_alcohol",
+      "kind": "category",
+      "keywords": [
+        "酒水",
+        "啤酒",
+        "白酒",
+        "红酒",
+        "葡萄酒"
+      ],
+      "priority": 90,
+      "targetPath": [
+        "食品餐饮",
+        "酒水"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_snacks",
+      "kind": "category",
+      "keywords": [
+        "零食",
+        "薯片",
+        "饼干",
+        "巧克力",
+        "坚果",
+        "良品铺子",
+        "三只松鼠"
+      ],
+      "priority": 90,
+      "targetPath": [
+        "食品餐饮",
+        "休闲零食"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_food_grain",
+      "kind": "category",
+      "keywords": [
+        "粮油",
+        "大米",
+        "面粉",
+        "食用油",
+        "酱油",
+        "调味品"
+      ],
+      "priority": 90,
+      "targetPath": [
+        "食品餐饮",
+        "粮油调味"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_personal_care_beauty",
+      "kind": "category",
+      "keywords": [
+        "美容",
+        "美容院",
+        "美甲",
+        "皮肤管理"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "居家生活",
+        "美容"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_metro",
+      "kind": "category",
+      "keywords": [
+        "地铁",
+        "轨道交通"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "出行交通",
+        "地铁"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_transport_bike",
+      "kind": "category",
+      "keywords": [
+        "哈啰",
+        "青桔",
+        "美团单车",
+        "共享单车"
+      ],
+      "priority": 70,
+      "targetPath": [
+        "出行交通"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_entertainment_movie",
+      "kind": "category",
+      "keywords": [
+        "电影",
+        "电影票",
+        "影院",
+        "影城"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "休闲娱乐",
+        "电影"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_entertainment_board_game",
+      "kind": "category",
+      "keywords": [
+        "棋牌",
+        "桌游",
+        "麻将"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "休闲娱乐",
+        "棋牌桌游"
+      ],
+      "targetCategoryKind": "expense"
+    },
+    {
+      "id": "expense_social_dining",
+      "kind": "category",
+      "keywords": [
+        "请客",
+        "宴请"
+      ],
+      "priority": 88,
+      "targetPath": [
+        "人情社交",
+        "请客吃饭"
+      ],
+      "targetCategoryKind": "expense"
+    }
+  ],
+  "fallbackRules": [
+    {
+      "id": "income_fallback_other",
+      "direction": "income",
+      "priority": -100,
+      "categoryPath": [
+        "其他"
+      ],
+      "reason": "unmatched_or_conflict",
+      "warningCode": "category_fallback"
+    },
+    {
+      "id": "expense_fallback_other",
+      "direction": "expense",
+      "priority": -100,
+      "categoryPath": [
+        "其他"
+      ],
+      "reason": "unmatched_or_conflict",
+      "warningCode": "category_fallback"
+    }
+  ]
+}

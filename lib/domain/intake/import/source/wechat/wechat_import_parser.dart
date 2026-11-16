@@ -4,22 +4,18 @@ import '../../port/import_source_parser.dart';
 import '../../service/source_parsing_models.dart';
 import 'wechat_bill_file_handler.dart';
 import 'wechat_bill_parse_unit.dart';
-import 'wechat_category_lexicon.dart';
 import 'wechat_file_type.dart';
 
 class WechatImportParser implements ImportSourceParser {
   const WechatImportParser({
     required ImportFileReader reader,
-    required WechatCategoryLexicon lexicon,
     WechatBillFileHandler fileHandler = const WechatBillFileHandler(),
     ImportPlanAssembler assembler = const ImportPlanAssembler(),
   }) : _reader = reader,
-       _lexicon = lexicon,
        _fileHandler = fileHandler,
        _assembler = assembler;
 
   final ImportFileReader _reader;
-  final WechatCategoryLexicon _lexicon;
   final WechatBillFileHandler _fileHandler;
   final ImportPlanAssembler _assembler;
 
@@ -69,8 +65,8 @@ class WechatImportParser implements ImportSourceParser {
       fileName: file.name,
       sheet: sheet,
     );
-    final executions = ParseUnitPlan([
-      WechatBillParseUnit(lexicon: _lexicon),
+    final executions = ParseUnitPlan(const [
+      WechatBillParseUnit(),
     ]).execute({WechatFileType.bill.descriptor: fact});
     return _assembler.assemble(
       source: source,

@@ -8,7 +8,7 @@ import 'import_parser_registry.dart';
 /// not call a concrete domain parser directly. Concrete parser registration is
 /// composed by the application provider layer.
 abstract interface class ImportPlanAppService {
-  ImportParseResult parse({
+  Future<ImportParseResult> parse({
     required ImportSource source,
     required ImportBundle bundle,
   });
@@ -28,11 +28,12 @@ class ImportPlanAppServiceImpl implements ImportPlanAppService {
   final ImportParserRegistry _parsers;
 
   @override
-  ImportParseResult parse({
+  Future<ImportParseResult> parse({
     required ImportSource source,
     required ImportBundle bundle,
-  }) {
-    return _parsers.parserFor(source).parse(bundle);
+  }) async {
+    final parser = _parsers.parserFor(source);
+    return parser.parse(bundle);
   }
 
   @override

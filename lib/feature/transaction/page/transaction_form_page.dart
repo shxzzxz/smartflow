@@ -19,6 +19,7 @@ import '../../../design_system/widget/app_grouped_choice_grid.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_status_banner.dart';
 import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/account/account_picker_sheet.dart';
 import 'package:smartflow/widget/business/category/category_grid_picker.dart';
@@ -37,6 +38,7 @@ import '../../credit/page/loan_configuration_page.dart';
 import '../../credit/view_model/installment_terms_draft.dart';
 import '../../credit/view_model/loan_configuration_view_model.dart';
 import '../presentation/transaction_form_presentation.dart';
+import '../presentation/transaction_form_prefill.dart';
 import '../view_model/transaction_form/transaction_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
 
@@ -78,6 +80,7 @@ _TransactionModeTab _modeTabFor(TransactionFormMode mode) {
 
 class TransactionFormPage extends ConsumerWidget {
   const TransactionFormPage({
+    this.prefill,
     this.editTransactionId,
     this.initialMode = TransactionFormInitialMode.expense,
     this.initialFromAccountId,
@@ -89,6 +92,7 @@ class TransactionFormPage extends ConsumerWidget {
   });
 
   final String? editTransactionId;
+  final TransactionFormPrefill? prefill;
   final TransactionFormInitialMode initialMode;
   final String? initialFromAccountId;
   final String? initialToAccountId;
@@ -100,6 +104,7 @@ class TransactionFormPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(
       transactionFormViewModelProvider(
+        prefill: prefill,
         editTransactionId: editTransactionId,
         initialMode: _toFormMode(initialMode),
         initialFromAccountId: initialFromAccountId,
@@ -113,6 +118,7 @@ class TransactionFormPage extends ConsumerWidget {
     return switch (asyncState) {
       AsyncData(value: final formState) when formState != null =>
         _TransactionFormContent(
+          prefill: prefill,
           key: ValueKey<String?>(editTransactionId),
           editTransactionId: editTransactionId,
           initialMode: initialMode,
@@ -139,6 +145,7 @@ class TransactionFormPage extends ConsumerWidget {
 
 class _TransactionFormContent extends ConsumerStatefulWidget {
   const _TransactionFormContent({
+    required this.prefill,
     required this.editTransactionId,
     required this.initialMode,
     required this.initialFromAccountId,
@@ -151,6 +158,7 @@ class _TransactionFormContent extends ConsumerStatefulWidget {
   });
 
   final String? editTransactionId;
+  final TransactionFormPrefill? prefill;
   final TransactionFormInitialMode initialMode;
   final String? initialFromAccountId;
   final String? initialToAccountId;
@@ -256,6 +264,13 @@ class _TransactionFormContentState
                     AppSpacing.space12,
                   ),
                   children: [
+                    if (widget.prefill != null) ...[
+                      AppStatusBanner(
+                        message: widget.prefill!.reviewMessage,
+                        tone: AppStatusBannerTone.info,
+                      ),
+                      const SizedBox(height: AppSpacing.space12),
+                    ],
                     if (formState.mode == TransactionFormMode.expense ||
                         formState.mode == TransactionFormMode.income)
                       _CategoryEntryArea(
@@ -445,6 +460,7 @@ class _TransactionFormContentState
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     _TransactionOptionsPanel(
+                      requireAccountSelection: widget.prefill != null,
                       mode: formState.mode,
                       occurredAt: formState.occurredAt,
                       moneyAccounts: amortization
@@ -536,6 +552,7 @@ class _TransactionFormContentState
 
   TransactionFormViewModelProvider get _formProvider =>
       transactionFormViewModelProvider(
+        prefill: widget.prefill,
         editTransactionId: widget.editTransactionId,
         initialMode: _toFormMode(widget.initialMode),
         initialFromAccountId: widget.initialFromAccountId,

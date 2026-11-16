@@ -1554,7 +1554,9 @@ class _MappingSection extends StatelessWidget {
           onViewAll: summary.total == 0 ? null : onViewAll,
           footer: AppPlainSwitchRow(
             label: '保存映射配置',
-            description: '导入成功后，下次自动沿用本次账户与分类选择',
+            description: review.plan.inferredCategories.isEmpty
+                ? '导入成功后，下次自动沿用本次账户与分类选择'
+                : '保存来源账户与明确来源分类的映射；分类建议只对本次生效',
             value: state.saveMappingConfiguration,
             enabled: !state.isBusy && state.missingMappingCount == 0,
             onChanged: (_) => onToggleSaveMappingConfiguration(),

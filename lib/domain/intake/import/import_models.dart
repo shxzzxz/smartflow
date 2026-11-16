@@ -142,6 +142,7 @@ class ImportSourceEntity {
   final String sourceEntityKey;
   final String displayName;
   final ImportCategoryKind? categoryKind;
+
   final bool isReviewPlaceholder;
   final Set<ImportTargetDescriptor> allowedTargetDescriptors;
   final ImportTargetDescriptor? preferredTargetDescriptor;
@@ -237,14 +238,30 @@ class ImportAccountReference {
 
 class ImportCategoryReference {
   const ImportCategoryReference({
-    required this.sourceEntityKey,
+    required String sourceEntityKey,
     required this.path,
     required this.kind,
-  });
+  }) : sourceEntityKey = sourceEntityKey,
+       candidateKey = null,
+       matchingText = '';
 
-  final String sourceEntityKey;
+  /// A per-record category candidate with no persistent source identity.
+  const ImportCategoryReference.inferred({
+    required String candidateKey,
+    required this.matchingText,
+    required this.kind,
+  }) : sourceEntityKey = null,
+       path = '',
+       candidateKey = candidateKey;
+
+  final String? sourceEntityKey;
   final String path;
   final ImportCategoryKind kind;
+  final String? candidateKey;
+  final String matchingText;
+
+  bool get isInferred => candidateKey != null;
+  String get referenceKey => sourceEntityKey ?? candidateKey!;
 }
 
 sealed class ImportTransactionDraft {
@@ -267,6 +284,13 @@ sealed class ImportTransactionDraft {
   ImportOperationKind get operationKind;
 
   Iterable<String> get sourceEntityKeys;
+
+  ImportCategoryReference? get categoryReference => switch (this) {
+    ImportExpenseDraft draft => draft.category,
+    ImportIncomeDraft draft => draft.category,
+    ImportAdvanceDraft draft => draft.category,
+    _ => null,
+  };
 }
 
 class ImportExpenseDraft extends ImportTransactionDraft {
@@ -290,7 +314,7 @@ class ImportExpenseDraft extends ImportTransactionDraft {
   @override
   Iterable<String> get sourceEntityKeys => [
     if (paidFrom.sourceEntityKey != null) paidFrom.sourceEntityKey!,
-    category.sourceEntityKey,
+    if (category.sourceEntityKey != null) category.sourceEntityKey!,
   ];
 }
 
@@ -315,7 +339,7 @@ class ImportIncomeDraft extends ImportTransactionDraft {
   @override
   Iterable<String> get sourceEntityKeys => [
     if (receiveAccount.sourceEntityKey != null) receiveAccount.sourceEntityKey!,
-    category.sourceEntityKey,
+    if (category.sourceEntityKey != null) category.sourceEntityKey!,
   ];
 }
 
@@ -364,7 +388,7 @@ class ImportAdvanceDraft extends ImportTransactionDraft {
     if (receivableAccount.sourceEntityKey != null)
       receivableAccount.sourceEntityKey!,
     if (paidFrom.sourceEntityKey != null) paidFrom.sourceEntityKey!,
-    category.sourceEntityKey,
+    if (category.sourceEntityKey != null) category.sourceEntityKey!,
   ];
 }
 
@@ -686,6 +710,19 @@ class ImportParseResult {
   final List<ImportFilteredRecord> filteredRecords;
   final List<ImportIssue> issues;
   final List<ImportIssue> fatalIssues;
+
+  List<ImportCategoryReference> get inferredCategories {
+    final categories = <String, ImportCategoryReference>{};
+    for (final group in groups) {
+      for (final draft in group.transactions) {
+        final category = draft.categoryReference;
+        if (category != null && category.isInferred) {
+          categories.putIfAbsent(category.referenceKey, () => category);
+        }
+      }
+    }
+    return List.unmodifiable(categories.values);
+  }
 
   List<ImportSourceEntity> get sourceAccounts => sourceEntities
       .where((entity) => entity.kind == ImportEntityKind.account)

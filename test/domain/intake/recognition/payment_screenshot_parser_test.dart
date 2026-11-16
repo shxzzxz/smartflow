@@ -1,0 +1,297 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/domain/intake/recognition/recognized_payment.dart';
+import 'package:smartflow/domain/intake/recognition/service/payment_screenshot_parser.dart';
+
+// Synthetic layout only; private screenshots stay outside tests.
+void main() {
+  const parser = PaymentScreenshotParser();
+
+  test('conflicting direction and status require manual review', () {
+    for (final entry in [('+20.00', '支付成功'), ('-20.00', '收款成功')]) {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('示例客户', 80),
+        _block(entry.$1, 145, height: 60),
+        _block(entry.$2, 260),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.unknown);
+      expect(result.canPrefill, isFalse);
+      expect(result.needsReview, isTrue);
+    }
+  });
+
+  test(
+    'extracts explicit category names separately from merchants and payment methods',
+    () {
+      final result = parser.parse([
+        _block('支付详情', 20),
+        _block('示例咖啡店', 90),
+        _block('-12.00', 145, height: 60),
+        _block('当前状态 支付成功', 240),
+        _block('支付时间 2026-04-05 13:20:11', 290),
+        _block('支付方式 零钱通', 340),
+        _block('商品说明 奶茶', 390),
+        _block('交易分类 茶饮', 440),
+      ]);
+      expect(result.categoryName, '茶饮');
+      expect(result.categoryNameReliable, isTrue);
+      expect(result.categoryMatchingText, contains('茶饮'));
+      expect(result.categoryMatchingText, isNot(contains('零钱通')));
+      expect(result.canPrefill, isTrue);
+    },
+  );
+
+  test(
+    'extracts prominent actual debit instead of order price or discount',
+    () {
+      final result = parser.parse([
+        _block('账单详情', 20),
+        _block('示例书店', 100),
+        _block('−１８.６０', 150, height: 64),
+        _block('交易成功', 230),
+        _block('订单金额', 290),
+        _block('20.00', 290, left: 300),
+        _block('优惠', 340),
+        _block('-1.40', 340, left: 300),
+        _block('支付时间', 400),
+        _block('2026-04-05 13:20:11', 400, left: 300),
+        _block('付款方式', 450),
+        _block('示例银行储蓄卡(1234)', 450, left: 300),
+        _block('商品说明', 500),
+        _block('图书', 500, left: 300),
+      ]);
+      expect(result.amount, Money.parse('18.60'));
+      expect(result.scene, PaymentScreenshotScene.expense);
+      expect(result.direction, RecognizedPaymentDirection.expense);
+      expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 11));
+      expect(result.paymentMethod, '示例银行储蓄卡(1234)');
+      expect(result.counterparty, '示例书店');
+      expect(result.product, '图书');
+      expect(result.accountMatchingText, '示例银行储蓄卡(1234)');
+      expect(result.categoryMatchingText, '示例书店\n图书');
+      expect(result.categoryRule, isNull);
+    },
+  );
+
+  test('generic parsing handles Chinese timestamps and receipt accounts', () {
+    final expense = parser.parse([
+      _block('支付详情', 20),
+      _block('示例商店', 90),
+      _block('-88.25', 145, height: 66),
+      _block('当前状态 支付成功', 260),
+      _block('支付时间 2026年2月28日 09:08:07', 310),
+      _block('支付方式 零钱', 360),
+    ]);
+    expect(expense.amount, Money.parse('88.25'));
+    expect(expense.occurredAt, DateTime(2026, 2, 28, 9, 8, 7));
+    expect(expense.paymentMethod, '零钱');
+    final income = parser.parse([
+      _block('收款详情', 20),
+      _block('示例客户', 90),
+      _block('+7.50', 130, height: 66),
+      _block('当前状态 已存入零钱', 240),
+    ]);
+    expect(income.scene, PaymentScreenshotScene.income);
+    expect(income.paymentMethod, '零钱');
+    final explicit = parser.parse([
+      _block('收款详情', 20),
+      _block('示例客户', 90),
+      _block('+7.50', 130, height: 66),
+      _block('当前状态 已存入零钱', 240),
+      _block('收款方式 日常账户', 300),
+    ]);
+    expect(explicit.paymentMethod, '日常账户');
+  });
+
+  test('unbranded screenshots use generic field labels', () {
+    final result = parser.parse([
+      _block('付款凭证', 20),
+      _block('示例书店', 90),
+      _block('-28.00', 145, height: 60),
+      _block('支付成功', 240),
+      _block('付款账户 日常银行卡', 300),
+      _block('付款时间 2026/04/05 13:20:11', 360),
+      _block('商品信息 图书', 420),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+    expect(result.amount, Money.parse('28'));
+    expect(result.paymentMethod, '日常银行卡');
+    expect(result.product, '图书');
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('reads values below labels and a unique unlabelled timestamp', () {
+    final result = parser.parse([
+      _block('付款凭证', 20),
+      _block('示例商户', 90),
+      _block('支付成功', 150),
+      _block('扣款金额 12.35', 220),
+      _block('付款账户', 290),
+      _block('日常银行卡', 325),
+      _block('商品信息 书籍', 380),
+      _block('2026-04-05 13:20:11', 450),
+    ]);
+    expect(result.amount, Money.parse('12.35'));
+    expect(result.paymentMethod, '日常银行卡');
+    expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 11));
+    expect(result.scene, PaymentScreenshotScene.expense);
+  });
+
+  test('explicit counterparty fields take precedence over headline text', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('显示名称', 90),
+      _block('-9.99', 145, height: 60),
+      _block('支付成功', 240),
+      _block('商户全称 示例商户全称', 300),
+      _block('付款账户 日常账户', 360),
+      _block('商品信息 图书', 420),
+    ]);
+    expect(result.counterparty, '示例商户全称');
+    expect(result.paymentMethod, '日常账户');
+    expect(result.product, '图书');
+    expect(result.amount, Money.parse('9.99'));
+  });
+
+  test(
+    'order prices and standalone discounts never supply missing actual amount',
+    () {
+      for (final discount in ['立减 -2.00', '-2.00']) {
+        final result = parser.parse([
+          _block('支付详情', 20),
+          _block('交易成功', 80),
+          _block('订单金额 100.00', 150),
+          _block(discount, 210, height: 40),
+        ]);
+        expect(result.amount, isNull);
+        expect(result.canPrefill, isFalse);
+      }
+    },
+  );
+
+  test(
+    'actual amount labels can establish direction without guessing expense',
+    () {
+      final received = parser.parse([
+        _block('支付凭证', 20),
+        _block('交易成功', 80),
+        _block('实收金额 20.00', 150),
+      ]);
+      expect(received.scene, PaymentScreenshotScene.income);
+      final unknown = parser.parse([
+        _block('支付详情', 20),
+        _block('交易成功', 80),
+        _block('20.00', 150, height: 60),
+      ]);
+      expect(unknown.amount, Money.parse('20'));
+      expect(unknown.scene, PaymentScreenshotScene.unknown);
+      expect(unknown.direction, isNull);
+      expect(unknown.canPrefill, isFalse);
+    },
+  );
+
+  test(
+    'failed, cancelled, refund, transfer and repayment scenes do not become ordinary',
+    () {
+      final scenes = {
+        '支付失败': PaymentScreenshotScene.unpaid,
+        '已取消': PaymentScreenshotScene.unpaid,
+        '退款成功': PaymentScreenshotScene.refund,
+        '转账成功': PaymentScreenshotScene.transfer,
+        '还款成功': PaymentScreenshotScene.repayment,
+      };
+      for (final entry in scenes.entries) {
+        final result = parser.parse([
+          _block('支付详情', 20),
+          _block(entry.key, 80),
+          _block('-50.00', 130, height: 66),
+          _block('付款账户 日常账户', 250),
+        ]);
+        expect(result.scene, entry.value, reason: entry.key);
+        expect(result.amount, Money.parse('50'));
+        expect(result.paymentMethod, '日常账户');
+        expect(result.canPrefill, isFalse, reason: entry.key);
+      }
+    },
+  );
+
+  test('negative transaction status takes precedence over a paid headline', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('支付成功', 90),
+      _block('-20.00', 145, height: 66),
+      _block('当前状态 已取消', 300),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.unpaid);
+    expect(result.canPrefill, isFalse);
+  });
+
+  test('brand text does not change generic scene and field interpretation', () {
+    for (final heading in ['付款凭证', '微信支付', '支付宝', '抖音支付']) {
+      final result = parser.parse([
+        _block(heading, 20),
+        _block('示例商户', 90),
+        _block('-10.00', 145, height: 60),
+        _block('支付成功', 240),
+        _block('支付方式 日常银行卡', 300),
+        _block('商品说明 图书', 360),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.expense, reason: heading);
+      expect(result.amount, Money.parse('10'));
+      expect(result.counterparty, '示例商户');
+      expect(result.paymentMethod, '日常银行卡');
+      expect(result.product, '图书');
+      expect(result.canPrefill, isTrue);
+    }
+  });
+
+  test('product content is not used as evidence of a refund scene', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('示例书店', 90),
+      _block('-10.00', 145, height: 60),
+      _block('交易成功', 260),
+      _block('商品说明 退款政策说明书', 310),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+  });
+
+  test('similar prominent amounts are ambiguous and require manual entry', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('-10.00', 90, height: 60),
+      _block('-20.00', 180, height: 60),
+      _block('支付成功', 300),
+    ]);
+    expect(result.amount, isNull);
+    expect(result.canPrefill, isFalse);
+    expect(result.needsReview, isTrue);
+  });
+
+  test('invalid dates and low confidence are visible review requirements', () {
+    final result = parser.parse([
+      _block('支付详情', 20),
+      _block('交易成功', 80),
+      _block('-3.20', 130, height: 66, confidence: .6),
+      _block('支付时间 2026-02-30 10:00:00', 260),
+    ]);
+    expect(result.occurredAt, isNull);
+    expect(result.needsReview, isTrue);
+  });
+}
+
+RecognizedTextBlock _block(
+  String text,
+  double top, {
+  double left = 20,
+  double height = 30,
+  double confidence = .99,
+}) => RecognizedTextBlock(
+  text: text,
+  confidence: confidence,
+  left: left,
+  top: top,
+  right: left + 200,
+  bottom: top + height,
+);
