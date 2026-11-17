@@ -325,6 +325,67 @@ void main() {
     },
   );
 
+  test(
+    'transfer sides use separate reliable account text and user rules',
+    () async {
+      targets.items.add(_account('destination', '收款储蓄卡'));
+      for (final entry in [
+        ('零钱通', 'wallet'),
+        ('7641', 'destination'),
+        ('转出金额', 'wallet'),
+      ]) {
+        await service.save(
+          service
+              .newRule(RecognitionRuleKind.account)
+              .copyWith(keywords: [entry.$1], targetAccountId: entry.$2),
+        );
+      }
+      final payment = RecognizedPayment(
+        scene: PaymentScreenshotScene.transfer,
+        amount: Money.parse('465.75'),
+        transferFromAccount: '零钱通',
+        transferToAccount: '建设银行(7641)',
+        accountMatchingText: '转出金额 零钱通 建设银行(7641)',
+      );
+      final mapping = await service.resolveTransfer(payment);
+      expect(mapping.fromAccountId, 'wallet');
+      expect(mapping.toAccountId, 'destination');
+      final ordinary = await service.resolvePayment(payment);
+      expect(ordinary.settlementAccountId, isNull);
+      expect(ordinary.categoryId, isNull);
+    },
+  );
+
+  test(
+    'transfer suggestions skip nonfund targets and unreliable clues',
+    () async {
+      targets.items.insertAll(0, [
+        _account('credit', '建设银行信用卡', isFundAccount: false),
+        _account('bank', '建行储蓄卡'),
+      ]);
+      await service.save(
+        service
+            .newRule(RecognitionRuleKind.account)
+            .copyWith(keywords: ['7641'], targetAccountId: 'credit'),
+      );
+      for (final reliable in [true, false]) {
+        final mapping = await service.resolveTransfer(
+          RecognizedPayment(
+            scene: PaymentScreenshotScene.transfer,
+            amount: Money.parse('465.75'),
+            transferFromAccount: '零钱通',
+            transferFromAccountReliable: false,
+            transferToAccount: '建设银行(7641)',
+            transferToAccountReliable: reliable,
+            accountMatchingText: '日常付款 建设银行(7641)',
+          ),
+        );
+        expect(mapping.fromAccountId, isNull);
+        expect(mapping.toAccountId, reliable ? 'bank' : null);
+      }
+    },
+  );
+
   test('exact account names precede rules and rules precede aliases', () async {
     targets.items.insertAll(0, [
       _account('postal-first', '邮储620'),
@@ -613,10 +674,15 @@ RecognizedPayment _payment({
   categoryMatchingText: categoryName == null ? text : '$categoryName $text',
 );
 
-RecognitionRuleTarget _account(String id, String name) => RecognitionRuleTarget(
+RecognitionRuleTarget _account(
+  String id,
+  String name, {
+  bool isFundAccount = true,
+}) => RecognitionRuleTarget(
   id: id,
   kind: RecognitionRuleKind.account,
   path: [name],
+  isFundAccount: isFundAccount,
 );
 RecognitionRuleTarget _category(
   String id,

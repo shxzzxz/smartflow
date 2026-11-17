@@ -23,26 +23,63 @@ import 'package:smartflow/feature/capture/view_model/capture_review_view_model.d
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 
 final _captureProvider = captureReviewViewModelProvider('test-capture');
+final _captureTime = DateTime(2026, 4, 5, 14, 30);
 
 void main() {
+  for (final occurredAt in [null, _captureTime]) {
+    test(
+      'ordinary payments have no review notices with timestamp $occurredAt',
+      () async {
+        final container = _container(
+          _Recognizer(
+            () async => RecognizedPayment(
+              direction: RecognizedPaymentDirection.income,
+              amount: Money.parse('12.35'),
+              occurredAt: occurredAt,
+              needsReview: true,
+            ),
+          ),
+        );
+        final outcome = await container
+            .read(_captureProvider.notifier)
+            .recognize('share');
+        final result = (outcome as UiActionSuccess<CaptureReviewResult>).value;
+        expect(result.prefill, isNotNull);
+        expect(result.prefill!.settlementAccountId, isNull);
+        expect(result.prefill!.categoryId, isNull);
+        expect(result.prefill!.occurredAt, _captureTime);
+        expect(result.prefill!.reviewMessage, isEmpty);
+        expect(result.reviewMessage, isEmpty);
+      },
+    );
+  }
+
   test(
-    'ordinary payments are reviewed without a screenshot source warning',
+    'transfer prefill keeps unmatched sides empty and uses the current time',
     () async {
       final container = _container(
         _Recognizer(
           () async => RecognizedPayment(
-            direction: RecognizedPaymentDirection.income,
-            amount: Money.parse('12.35'),
+            scene: PaymentScreenshotScene.transfer,
+            amount: Money.parse('465.75'),
+            transferToAccount: '虚构银行(7641)',
+            needsReview: true,
           ),
         ),
+        accounts: [_account('wallet', '日常付款')],
       );
       final outcome = await container
           .read(_captureProvider.notifier)
           .recognize('share');
       final result = (outcome as UiActionSuccess<CaptureReviewResult>).value;
-      expect(result.prefill, isNotNull);
-      expect(result.reviewMessage, contains('截图识别完成'));
-      expect(result.reviewMessage, isNot(contains('来源')));
+      expect(result.prefill!.amount, Money.parse('465.75'));
+      expect(result.prefill!.occurredAt, _captureTime);
+      expect(result.prefill!.fromAccountId, isNull);
+      expect(result.prefill!.toAccountId, isNull);
+      expect(result.prefill!.settlementAccountId, isNull);
+      expect(result.prefill!.categoryId, isNull);
+      expect(result.prefill!.reviewMessage, isEmpty);
+      expect(result.manualAction, isNull);
     },
   );
 
@@ -275,6 +312,7 @@ void main() {
       expect(result.prefill!.amount, Money.parse('12.35'));
       expect(result.prefill!.note, '图书');
       expect(result.prefill!.reviewMessage, contains('可能重复'));
+      expect(result.prefill!.reviewMessage.split('\n'), hasLength(1));
       expect(container.read(_captureProvider).recognizing, isFalse);
     },
   );
@@ -350,6 +388,9 @@ ProviderContainer _container(
   final transactionQuery = _TransactionQuery(transactions, previousAccounts);
   final container = ProviderContainer(
     overrides: [
+      _captureProvider.overrideWith(
+        () => CaptureReviewViewModel('test-capture', now: () => _captureTime),
+      ),
       recognitionRulesAppServiceProvider.overrideWithValue(
         RecognitionRulesAppService(
           builtins: RecognitionRuleCatalog(rules: const []),

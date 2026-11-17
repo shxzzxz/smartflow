@@ -1,6 +1,6 @@
 import '../../../core/money/money.dart';
 
-/// Prepared initial values, applied once when the ordinary transaction form opens.
+/// Prepared initial values, applied once when the transaction form opens.
 class TransactionFormPrefill {
   const TransactionFormPrefill({
     required this.amount,
@@ -8,6 +8,8 @@ class TransactionFormPrefill {
     required this.note,
     required this.reviewMessage,
     this.settlementAccountId,
+    this.fromAccountId,
+    this.toAccountId,
     this.categoryId,
     this.counterpartyId,
   });
@@ -17,6 +19,8 @@ class TransactionFormPrefill {
   final String note;
   final String reviewMessage;
   final String? settlementAccountId;
+  final String? fromAccountId;
+  final String? toAccountId;
   final String? categoryId;
   final String? counterpartyId;
 }

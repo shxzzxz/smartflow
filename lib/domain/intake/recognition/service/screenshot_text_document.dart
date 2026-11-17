@@ -71,19 +71,19 @@ class ScreenshotTextDocument {
     for (final row in headerRows) {
       final compact = row.text.replaceAll(' ', '');
       final match = RegExp(
-        r'^([+-]?)[¥￥]?(\d[\d,]*\.\d{2})$',
+        r'^(支付成功|付款成功|支付完成|扣款成功|交易成功|收款成功|已收款)?([+-]?)[¥￥]?(\d[\d,]*\.\d{2})$',
       ).firstMatch(compact);
       if (match == null) continue;
-      final amount = parseScreenshotAmount(match[2]);
+      final amount = parseScreenshotAmount(match[3]);
       if (amount == null || amount.minorUnits <= 0) continue;
       candidates.add((
         value: ScreenshotAmount(
           amount: amount,
           text: row.text,
           confidence: row.confidence,
-          direction: match[1] == '-'
+          direction: match[2] == '-'
               ? RecognizedPaymentDirection.expense
-              : match[1] == '+'
+              : match[2] == '+'
               ? RecognizedPaymentDirection.income
               : null,
         ),
@@ -104,8 +104,14 @@ class ScreenshotTextDocument {
     final index = rows.indexWhere((row) => row.text == amount.text);
     if (index <= 0) return null;
     final row = rows[index - 1];
+    final sender = RegExp(
+      r'^(?:转\s*账\s*-\s*)?来\s*自\s*(.+)$',
+    ).firstMatch(row.text);
+    if (sender != null) {
+      return ScreenshotTextValue(sender[1]!.trim(), row.confidence);
+    }
     if (RegExp(
-      r'账单|详情|微信|支付宝|成功|完成|订单|优惠|立减|退款|转账|还款|^支付$|^\d|^[+-]',
+      r'账单|详情|微信|支付宝|成功|完成|订单|优惠|立减|退款|转账|转入|转出|提现|还款|收款|到账|存入|余额|包装费|配送费|^支付$|^\d|^[+-]',
     ).hasMatch(row.text)) {
       return null;
     }
@@ -116,6 +122,7 @@ class ScreenshotTextDocument {
     ...headerRows.map((row) => row.text),
     field(const ['交易类型', '交易类别', '业务类型', '收支类型'], allowBelow: allowBelow)?.text,
     field(const ['当前状态', '交易状态', '支付状态', '状态'], allowBelow: allowBelow)?.text,
+    if (hasLabel('转出金额')) '转出',
     ...rows
         .where(
           (row) => RegExp(
@@ -128,6 +135,7 @@ class ScreenshotTextDocument {
   DateTime? uniqueTime() {
     final dates = <DateTime>{};
     for (final row in rows) {
+      if (_sceneMatchingText(row.text).contains('预计')) continue;
       for (final match in _datePattern.allMatches(_normalizeDate(row.text))) {
         final date = parseScreenshotDate(match.group(0));
         if (date != null) dates.add(date);
@@ -182,6 +190,7 @@ List<ScreenshotTextRow> _rows(List<RecognizedTextBlock> input) {
 const _detailLabels = [
   '原价',
   '优惠',
+  '支付优惠',
   '订单金额',
   '商品金额',
   '立减',
@@ -196,13 +205,20 @@ const _detailLabels = [
   '扣款金额',
   '付款金额',
   '收款金额',
+  '转出金额',
   '交易金额',
+  '账户余额',
+  '零钱余额',
+  '零钱通余额',
   '当前状态',
   '交易状态',
   '支付状态',
   '状态',
   '支付时间',
   '交易时间',
+  '转账时间',
+  '转出时间',
+  '转出资金',
   '收款时间',
   '付款时间',
   '入账时间',
@@ -213,12 +229,15 @@ const _detailLabels = [
   '商品',
   '交易说明',
   '交易备注',
+  '转账说明',
   '付款方式',
   '支付方式',
   '收款方式',
   '付款账户',
   '支付账户',
   '收款账户',
+  '收款账号',
+  '到账银行卡',
   '支付渠道',
   '交易类型',
   '交易类别',
@@ -233,6 +252,7 @@ const _detailLabels = [
   '商家',
   '商户',
   '交易单号',
+  '转账单号',
   '商户单号',
   '订单号',
 ];
@@ -264,6 +284,7 @@ String _normalizeDate(String value) => normalizeScreenshotText(
 
 DateTime? parseScreenshotDate(String? value) {
   if (value == null) return null;
+  if (_sceneMatchingText(value).contains('预计')) return null;
   final match = _datePattern.firstMatch(_normalizeDate(value));
   if (match == null) return null;
   final parts = [for (var i = 1; i <= 6; i++) int.parse(match[i] ?? '0')];

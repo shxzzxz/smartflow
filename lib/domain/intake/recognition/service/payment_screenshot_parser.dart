@@ -24,6 +24,11 @@ class PaymentScreenshotParser {
       product: facts.product?.text,
       paymentMethod: facts.paymentMethod?.text,
       paymentMethodReliable: facts.paymentMethod?.isReliable == true,
+      transferFromAccount: facts.transferFromAccount?.text,
+      transferFromAccountReliable:
+          facts.transferFromAccount?.isReliable == true,
+      transferToAccount: facts.transferToAccount?.text,
+      transferToAccountReliable: facts.transferToAccount?.isReliable == true,
       categoryName: facts.categoryName?.text,
       categoryNameReliable: facts.categoryName?.isReliable == true,
       accountMatchingText: facts.paymentMethod?.isReliable == true
@@ -54,6 +59,7 @@ _SceneRecognition _recognizeScene(ScreenshotTextDocument document) {
     '扣款金额',
     '付款金额',
     '收款金额',
+    '转出金额',
     '交易金额',
   ], allowBelow: true);
   final labeledDirection = labeled == null
@@ -68,6 +74,7 @@ _SceneRecognition _recognizeScene(ScreenshotTextDocument document) {
     document.sceneSignals(allowBelow: true),
     direction,
     labeledDirection,
+    hasPaymentMethod: document.hasLabel('付款方式') || document.hasLabel('支付方式'),
   );
   return _SceneRecognition(
     scene: scene,
@@ -91,14 +98,18 @@ ScreenshotSceneInformation _extractSceneInformation(
       (labeledValue != null && labeledValue.minorUnits > 0
           ? labeledValue
           : null);
-  final time = document.field(const [
-    '支付时间',
-    '交易时间',
-    '收款时间',
-    '付款时间',
-    '入账时间',
-    '时间',
-  ], allowBelow: true);
+  final time =
+      (scene.scene == PaymentScreenshotScene.transfer
+          ? document.field(const ['转出时间', '转出资金', '当前状态转出资金'], allowBelow: true)
+          : null) ??
+      document.field(const [
+        '支付时间',
+        '交易时间',
+        '收款时间',
+        '付款时间',
+        '入账时间',
+        '时间',
+      ], allowBelow: true);
   final occurredAt = parseScreenshotDate(time?.text) ?? document.uniqueTime();
   final counterparty =
       document.field(const [
@@ -127,16 +138,22 @@ ScreenshotSceneInformation _extractSceneInformation(
     '付款账户',
     '支付账户',
     '收款账户',
+    '收款账号',
+    '到账银行卡',
     '支付渠道',
   ], allowBelow: true);
   if (method == null) {
-    final status = document.field(const [
+    var status = document.field(const [
       '当前状态',
       '交易状态',
       '支付状态',
       '状态',
     ], allowBelow: true);
-    if (status != null && status.text.contains('已存入零钱')) {
+    status ??= document.headerRows
+        .where((row) => row.text.replaceAll(' ', '').contains('已存入零钱'))
+        .map((row) => ScreenshotTextValue(row.text, row.confidence))
+        .firstOrNull;
+    if (status != null && status.text.replaceAll(' ', '').contains('已存入零钱')) {
       method = ScreenshotTextValue('零钱', status.confidence);
     }
   }
@@ -146,6 +163,7 @@ ScreenshotSceneInformation _extractSceneInformation(
     '商品分类',
     '分类',
   ], allowBelow: true);
+  final transferAccounts = _extractTransferAccounts(document, scene.scene);
   return ScreenshotSceneInformation(
     scene: scene.scene,
     direction: scene.direction,
@@ -154,6 +172,8 @@ ScreenshotSceneInformation _extractSceneInformation(
     counterparty: counterparty,
     product: product,
     paymentMethod: method,
+    transferFromAccount: transferAccounts.from,
+    transferToAccount: transferAccounts.to,
     categoryName: categoryName,
     needsReview:
         (scene.headlineAmount?.confidence ??
@@ -165,6 +185,8 @@ ScreenshotSceneInformation _extractSceneInformation(
           counterparty,
           product,
           method,
+          transferAccounts.from,
+          transferAccounts.to,
           categoryName,
         ].any((value) => value != null && !value.isReliable) ||
         time == null &&
@@ -175,11 +197,39 @@ ScreenshotSceneInformation _extractSceneInformation(
   );
 }
 
+({ScreenshotTextValue? from, ScreenshotTextValue? to}) _extractTransferAccounts(
+  ScreenshotTextDocument document,
+  PaymentScreenshotScene scene,
+) {
+  if (scene != PaymentScreenshotScene.transfer) return (from: null, to: null);
+  ScreenshotTextValue? from;
+  ScreenshotTextValue? to;
+  for (final row in document.headerRows) {
+    final title = RegExp(
+      r'^(.+?)\s*转\s*出\s*[-－—]?\s*到\s*(.+)$',
+    ).firstMatch(row.text);
+    if (title == null) continue;
+    from = ScreenshotTextValue(title[1]!.trim(), row.confidence);
+    to = ScreenshotTextValue(title[2]!.trim(), row.confidence);
+    break;
+  }
+  final bank = document.field(const ['到账银行卡'], allowBelow: true);
+  if (from == null && !(document.hasLabel('转出金额') && bank != null)) {
+    return (from: null, to: null);
+  }
+  // A complete title retains the card suffix for explicit user keyword rules.
+  if (to?.isReliable != true) {
+    to = bank ?? document.field(const ['收款账号', '收款账户'], allowBelow: true) ?? to;
+  }
+  return (from: from, to: to);
+}
+
 PaymentScreenshotScene _classifyScene(
   String signals,
   RecognizedPaymentDirection? direction,
-  RecognizedPaymentDirection? labeledDirection,
-) {
+  RecognizedPaymentDirection? labeledDirection, {
+  required bool hasPaymentMethod,
+}) {
   if (RegExp(
     r'支付失败|交易失败|付款失败|支付中|待支付|等待付款|未支付|已关闭|已取消|交易取消',
   ).hasMatch(signals)) {
@@ -189,11 +239,16 @@ PaymentScreenshotScene _classifyScene(
   if (RegExp(r'还款|还贷').hasMatch(signals)) {
     return PaymentScreenshotScene.repayment;
   }
-  if (RegExp(r'转账|转入|转出|提现').hasMatch(signals)) {
-    return PaymentScreenshotScene.transfer;
-  }
   final received = RegExp(r'收款成功|已收款|实收|已到账|已存入零钱|收款到账').hasMatch(signals);
   final paid = RegExp(r'支付成功|付款成功|支付完成|扣款成功').hasMatch(signals);
+  final receivedTransfer =
+      received &&
+      direction != RecognizedPaymentDirection.expense &&
+      !paid &&
+      RegExp(r'转账-?来自').hasMatch(signals);
+  if (RegExp(r'转账|转入|转出|提现').hasMatch(signals) && !receivedTransfer) {
+    return PaymentScreenshotScene.transfer;
+  }
   if (received && direction == RecognizedPaymentDirection.expense ||
       paid && direction == RecognizedPaymentDirection.income ||
       received && paid) {
@@ -204,6 +259,8 @@ PaymentScreenshotScene _classifyScene(
       (received
           ? RecognizedPaymentDirection.income
           : paid
+          ? RecognizedPaymentDirection.expense
+          : hasPaymentMethod
           ? RecognizedPaymentDirection.expense
           : null);
   final successful =

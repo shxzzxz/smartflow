@@ -12,6 +12,7 @@ import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
+import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/counterparty_providers.dart';
 import 'package:smartflow/feature/shared/provider/tag_providers.dart';
@@ -28,40 +29,45 @@ import '../../../helper/sequential_id_generator.dart';
 import '../../../helper/test_app_database.dart';
 
 void main() {
-  testWidgets(
-    'screenshot prefill remains editable and does not silently choose the first account',
-    (tester) async {
-      final service = _FakeTransactionPostingAppService();
-      await _pumpTransactionForm(
-        tester,
-        service,
-        formPage: TransactionFormPage(
-          prefill: TransactionFormPrefill(
-            amount: Money.parse('12.35'),
-            occurredAt: DateTime(2026, 3, 4),
-            note: '示例图书',
-            reviewMessage: '请核对截图',
-            categoryId: 'food',
+  for (final reviewMessage in ['', '可能重复，请核对。']) {
+    testWidgets(
+      'screenshot prefill stays editable with review message "$reviewMessage"',
+      (tester) async {
+        final service = _FakeTransactionPostingAppService();
+        await _pumpTransactionForm(
+          tester,
+          service,
+          formPage: TransactionFormPage(
+            prefill: TransactionFormPrefill(
+              amount: Money.parse('12.35'),
+              occurredAt: DateTime(2026, 3, 4),
+              note: '示例图书',
+              reviewMessage: reviewMessage,
+              categoryId: 'food',
+            ),
           ),
-        ),
-      );
-      final fields = tester.widget<TransactionAmountInput>(
-        find.byType(TransactionAmountInput),
-      );
-      expect(fields.amountController.text, '12.35');
-      expect(fields.noteController.text, '示例图书');
-      expect(find.text('请核对截图'), findsOneWidget);
-      expect(find.text('支出账户为空'), findsOneWidget);
-      await tester.tap(find.text('完成'));
-      await tester.pump();
-      expect(find.text('请选择支出账户'), findsOneWidget);
-      fields.amountController.text = '14.00';
-      fields.noteController.text = '修正后的备注';
-      await tester.pump();
-      expect(fields.amountController.text, '14.00');
-      expect(fields.noteController.text, '修正后的备注');
-    },
-  );
+        );
+        final fields = tester.widget<TransactionAmountInput>(
+          find.byType(TransactionAmountInput),
+        );
+        expect(fields.amountController.text, '12.35');
+        expect(fields.noteController.text, '示例图书');
+        expect(
+          find.byType(AppStatusBanner),
+          reviewMessage.isEmpty ? findsNothing : findsOneWidget,
+        );
+        expect(find.text('支出账户为空'), findsOneWidget);
+        await tester.tap(find.text('完成'));
+        await tester.pump();
+        expect(find.text('请选择支出账户'), findsOneWidget);
+        fields.amountController.text = '14.00';
+        fields.noteController.text = '修正后的备注';
+        await tester.pump();
+        expect(fields.amountController.text, '14.00');
+        expect(fields.noteController.text, '修正后的备注');
+      },
+    );
+  }
   testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
     await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
 

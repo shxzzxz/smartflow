@@ -34,6 +34,10 @@ class LedgerRecognitionRuleTargetQuery implements RecognitionRuleTargetQuery {
           path: [account.name],
           iconKey: account.iconKey,
           profileKey: account.profileKey,
+          isFundAccount: accountMatchesSelectionPurpose(
+            account,
+            AccountSelectionPurpose.fund,
+          ),
         ),
     ];
     for (final direction in ImportCategoryKind.values) {

@@ -67,8 +67,13 @@ class _CaptureReviewPageState extends ConsumerState<CaptureReviewPage> {
     switch (outcome) {
       case UiActionSuccess(:final value):
         if (value.prefill != null) {
+          final mode = switch (value.payment.scene) {
+            PaymentScreenshotScene.transfer => 'transfer',
+            PaymentScreenshotScene.income => 'income',
+            _ => 'expense',
+          };
           context.pushReplacement(
-            '/transaction/new?mode=${value.payment.direction == RecognizedPaymentDirection.expense ? 'expense' : 'income'}',
+            '/transaction/new?mode=$mode',
             extra: value.prefill,
           );
         }
@@ -96,20 +101,21 @@ class _CaptureReviewPageState extends ConsumerState<CaptureReviewPage> {
                       if (state.recognizing || state.pickingImage) ...[
                         const CircularProgressIndicator(),
                         const SizedBox(height: AppSpacing.space16),
-                        Text(state.pickingImage ? '请选择一张支付详情截图…' : '正在识别截图…'),
+                        Text(state.pickingImage ? '请选择支付或收款截图…' : '正在识别截图…'),
                       ] else ...[
                         if (state.error case final error?)
                           AppStatusBanner(
                             message: error.message,
                             tone: AppStatusBannerTone.warning,
                           )
-                        else if (state.review case final review?)
+                        else if (state.review case final review?
+                            when review.reviewMessage.isNotEmpty)
                           AppStatusBanner(
                             message: review.reviewMessage,
                             tone: AppStatusBannerTone.warning,
                           )
                         else
-                          const Text('选择单笔交易详情截图，识别后核对并保存。'),
+                          const Text('选择单笔支付或收款截图。'),
                         const SizedBox(height: AppSpacing.space16),
                         FilledButton(
                           onPressed: _recognize,

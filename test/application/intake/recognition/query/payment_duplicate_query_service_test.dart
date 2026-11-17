@@ -61,7 +61,7 @@ void main() {
   });
 
   test(
-    'incomplete payments and manual scenes do not query existing transactions',
+    'incomplete payments and nonordinary scenes do not query existing transactions',
     () async {
       final payments = _RecordedPayments(const []);
       final service = PaymentDuplicateQueryService(recordedPayments: payments);
@@ -80,6 +80,8 @@ void main() {
           direction: RecognizedPaymentDirection.expense,
           amount: amount,
           occurredAt: time,
+          transferFromAccount: '零钱通',
+          transferToAccount: '示例银行',
         ),
       ]) {
         expect(await service.hasPossibleDuplicate(payment), isFalse);

@@ -32,6 +32,8 @@ class ScreenshotSceneInformation {
     this.counterparty,
     this.product,
     this.paymentMethod,
+    this.transferFromAccount,
+    this.transferToAccount,
     this.categoryName,
     this.needsReview = false,
   });
@@ -42,6 +44,8 @@ class ScreenshotSceneInformation {
   final ScreenshotTextValue? counterparty;
   final ScreenshotTextValue? product;
   final ScreenshotTextValue? paymentMethod;
+  final ScreenshotTextValue? transferFromAccount;
+  final ScreenshotTextValue? transferToAccount;
   final ScreenshotTextValue? categoryName;
   final bool needsReview;
 }

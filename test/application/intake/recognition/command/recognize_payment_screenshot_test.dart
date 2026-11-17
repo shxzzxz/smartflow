@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:smartflow/application/intake/recognition/command/recognize_payment_screenshot.dart';
 import 'package:smartflow/core/error/app_exception.dart';
+import 'package:smartflow/domain/intake/import/import_models.dart';
 import 'package:smartflow/domain/intake/recognition/port/payment_screenshot_ocr.dart';
 import 'package:smartflow/domain/intake/recognition/recognized_payment.dart';
 import 'package:smartflow/domain/intake/recognition/recognition_error_code.dart';
@@ -17,6 +21,83 @@ void main() {
     parser: const PaymentScreenshotParser(),
     loadRules: () async => RecognitionRuleCatalog(rules: rules),
   )('image');
+
+  test(
+    'withdrawals record parsed diagnostics at INFO without ordinary rule inference',
+    () async {
+      final previousLevel = Logger.root.level;
+      Logger.root.level = Level.INFO;
+      addTearDown(() => Logger.root.level = previousLevel);
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord
+          .where(
+            (record) => record.loggerName == 'application.intake.recognition',
+          )
+          .listen(records.add);
+      addTearDown(subscription.cancel);
+      final command = RecognizePaymentScreenshot(
+        ocr: _Ocr(
+          () async => [
+            _block('预计2026年4月7日 14:00前到账', 80),
+            _block('转出金额 ￥465.75', 180),
+            _block('到账银行卡 示例银行(1234)', 240),
+          ],
+        ),
+        parser: const PaymentScreenshotParser(),
+        loadRules: () async =>
+            throw StateError('Transfers must not infer ordinary rules'),
+      );
+      final result = await command('image');
+      expect(result.scene, PaymentScreenshotScene.transfer);
+      expect(result.amount, isNotNull);
+      expect(result.paymentMethod, '示例银行(1234)');
+      expect(result.accountRule, isNull);
+      expect(result.categoryRule, isNull);
+      expect(result.canPrefill, isTrue);
+      final record = records.single;
+      expect(record.level, Level.INFO);
+      final payload =
+          jsonDecode(record.message.substring('Screenshot OCR parsed: '.length))
+              as Map<String, dynamic>;
+      expect(payload['imageId'], 'image');
+      expect(payload['scene'], 'transfer');
+      expect(payload['amount'], '465.75');
+      expect(payload['occurredAt'], isNull);
+      expect(payload['paymentMethod'], '示例银行(1234)');
+      expect(payload['transferFromAccount'], isNull);
+      expect(payload['transferToAccount'], '示例银行(1234)');
+      expect(payload['transferToAccountReliable'], isTrue);
+      expect(payload['canPrefill'], isTrue);
+      expect(payload['needsReview'], isTrue);
+    },
+  );
+
+  test(
+    'received transfers use income rules and their receipt account',
+    () async {
+      final result = await recognize(
+        [
+          _block('转账-来自示例亲友', 80),
+          _block('+23.40', 145, height: 60),
+          _block('当前状态 已存入零钱', 260),
+        ],
+        [
+          _rule('wallet', RecognitionRuleKind.account, '零钱'),
+          _rule('outgoing', RecognitionRuleKind.category, '亲友').copyWith(
+            priority: 1,
+            targetCategoryKind: ImportCategoryKind.expense,
+          ),
+          _rule(
+            'incoming',
+            RecognitionRuleKind.category,
+            '亲友',
+          ).copyWith(targetCategoryKind: ImportCategoryKind.income),
+        ],
+      );
+      expect(result.accountRule!.ruleId, 'wallet');
+      expect(result.categoryRule!.ruleId, 'incoming');
+    },
+  );
 
   test(
     'reliable payment method is matched without falling back after no keyword hit',
@@ -127,7 +208,7 @@ void main() {
   );
 
   test(
-    'low-confidence regions trigger full-text matching and visible review',
+    'low-confidence regions use full-text matching and retain uncertainty',
     () async {
       final blocks = _payment(product: '零钱咖啡');
       blocks.add(_block('付款方式 未知卡', 480, confidence: .6));

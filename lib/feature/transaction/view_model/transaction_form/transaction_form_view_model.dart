@@ -261,6 +261,19 @@ class TransactionFormViewModel extends _$TransactionFormViewModel {
               null) {
         return _invalidCommand('请选择付款或收款账户');
       }
+      if (current.mode == TransactionFormMode.transfer &&
+          (selectedAccountId(
+                    current.fromAccountId,
+                    current.settlementAccounts,
+                  ) ==
+                  null ||
+              selectedAccountId(
+                    current.toAccountId,
+                    current.settlementAccounts,
+                  ) ==
+                  null)) {
+        return _invalidCommand('请选择转出和转入账户');
+      }
     }
     final amount = _parsePositiveAmount(amountText);
     if (amount == null) {

@@ -106,6 +106,7 @@ class _MainAccountPickerTile extends StatelessWidget {
     required this.selectedId,
     required this.onChanged,
     required this.validator,
+    this.fallbackToFirst = true,
     super.key,
   });
 
@@ -114,12 +115,15 @@ class _MainAccountPickerTile extends StatelessWidget {
   final String? selectedId;
   final ValueChanged<String?> onChanged;
   final FormFieldValidator<String> validator;
+  final bool fallbackToFirst;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
-    final effective = effectiveAccount(selectedId, accounts);
+    final effective = fallbackToFirst
+        ? effectiveAccount(selectedId, accounts)
+        : findAccountById(selectedId, accounts);
     final title = effective?.name ?? '$label为空';
 
     return AppControlledFormField<String>(
@@ -188,7 +192,9 @@ class _MainAccountPickerTile extends StatelessWidget {
     final selected = await showAccountPickerSheet(
       context: context,
       accounts: accounts,
-      selectedId: effectiveAccount(selectedId, accounts)?.id,
+      selectedId: fallbackToFirst
+          ? effectiveAccount(selectedId, accounts)?.id
+          : selectedId,
     );
     if (selected == null) return;
     changeValue(selected);

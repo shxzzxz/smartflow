@@ -264,7 +264,7 @@ class _TransactionFormContentState
                     AppSpacing.space12,
                   ),
                   children: [
-                    if (widget.prefill != null) ...[
+                    if (widget.prefill?.reviewMessage.isNotEmpty == true) ...[
                       AppStatusBanner(
                         message: widget.prefill!.reviewMessage,
                         tone: AppStatusBannerTone.info,
@@ -327,6 +327,7 @@ class _TransactionFormContentState
                             label: '转出账户',
                             accounts: settlementAccounts,
                             selectedId: formState.fromAccountId,
+                            fallbackToFirst: widget.prefill == null,
                             validator: (value) =>
                                 value == null ? '请选择转出账户' : null,
                             onChanged: (value) => ref
@@ -339,6 +340,7 @@ class _TransactionFormContentState
                             label: '转入账户',
                             accounts: settlementAccounts,
                             selectedId: formState.toAccountId,
+                            fallbackToFirst: widget.prefill == null,
                             validator: (value) =>
                                 value == null ? '请选择转入账户' : null,
                             onChanged: (value) => ref

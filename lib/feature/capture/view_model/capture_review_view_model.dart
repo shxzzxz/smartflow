@@ -52,9 +52,11 @@ class CaptureReviewState {
 }
 
 class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
-  CaptureReviewViewModel(this.sessionKey);
+  CaptureReviewViewModel(this.sessionKey, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final Object sessionKey;
+  final DateTime Function() _now;
 
   @override
   CaptureReviewState build() => const CaptureReviewState();
@@ -104,6 +106,21 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
             },
           );
         }
+        if (payment.scene == PaymentScreenshotScene.transfer) {
+          final mapping = await rules.resolveTransfer(payment);
+          return CaptureReviewResult(
+            payment: payment,
+            reviewMessage: '',
+            prefill: TransactionFormPrefill(
+              amount: payment.amount!,
+              occurredAt: payment.occurredAt ?? _now(),
+              note: payment.product ?? '',
+              reviewMessage: '',
+              fromAccountId: mapping.fromAccountId,
+              toAccountId: mapping.toAccountId,
+            ),
+          );
+        }
         final mapping = await rules.resolvePayment(payment);
         final counterparties = await counterpartyQuery.listCounterparties();
         final settlement = mapping.settlementAccountId;
@@ -117,18 +134,9 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
         final counterpartyId = counterpartyMatches.length == 1
             ? counterpartyMatches.single.id
             : null;
-        final occurredAt = payment.occurredAt ?? DateTime.now();
+        final occurredAt = payment.occurredAt ?? _now();
         final duplicate = await duplicateQuery.hasPossibleDuplicate(payment);
-        final notices = <String>[
-          '截图识别完成，请核对后保存。',
-          if (payment.occurredAt == null) '未识别到交易时间，暂填当前时间。',
-          if (payment.needsReview && payment.occurredAt != null)
-            '部分文字识别不确定，请重点核对金额和时间。',
-          if (settlement == null)
-            '请选择付款或收款账户${payment.paymentMethod == null ? '。' : '（截图：${payment.paymentMethod}）。'}',
-          if (categoryId == null) '请选择分类。',
-          if (duplicate) '已有相同时间、金额和方向的交易，可能重复，请核对。',
-        ];
+        final reviewMessage = duplicate ? '可能重复，请核对。' : '';
         final noteParts = <String>{
           if (payment.product != null) payment.product!,
           if (counterpartyId == null && payment.counterparty != null)
@@ -136,12 +144,12 @@ class CaptureReviewViewModel extends Notifier<CaptureReviewState> {
         };
         return CaptureReviewResult(
           payment: payment,
-          reviewMessage: notices.join('\n'),
+          reviewMessage: reviewMessage,
           prefill: TransactionFormPrefill(
             amount: payment.amount!,
             occurredAt: occurredAt,
             note: noteParts.join(' · '),
-            reviewMessage: notices.join('\n'),
+            reviewMessage: reviewMessage,
             settlementAccountId: settlement,
             categoryId: categoryId,
             counterpartyId: counterpartyId,
@@ -170,18 +178,13 @@ String _compact(String value) => value
     .toLowerCase();
 
 String _manualReviewMessage(RecognizedPayment payment) {
-  final message = switch (payment.scene) {
-    PaymentScreenshotScene.unpaid => '截图中的交易未成功，不生成记账建议。请核对交易状态。',
-    PaymentScreenshotScene.refund => '识别为退款，请从原交易发起退款。',
-    PaymentScreenshotScene.transfer => '识别为转账，请核对转出、转入账户后手动记录。',
-    PaymentScreenshotScene.repayment => '识别为还款，请从对应负债账户或账单发起还款。',
+  return switch (payment.scene) {
+    PaymentScreenshotScene.unpaid => '交易未成功，无法记账。',
+    PaymentScreenshotScene.refund => '退款请从原交易发起。',
+    PaymentScreenshotScene.transfer => '请手动记录转账。',
+    PaymentScreenshotScene.repayment => '请前往账户记录还款。',
     PaymentScreenshotScene.expense ||
-    PaymentScreenshotScene.income => '未能确定实际交易金额，请使用完整截图或手动填写。',
-    PaymentScreenshotScene.unknown => '未能确定记账场景或收支方向，请选择场景手动记账。',
+    PaymentScreenshotScene.income => '未识别到实际金额，请手动填写。',
+    PaymentScreenshotScene.unknown => '未识别到收支场景，请手动记账。',
   };
-  return [
-    message,
-    if (payment.amount != null) '识别金额：${payment.amount!.format()}',
-    if (payment.paymentMethod != null) '截图账户：${payment.paymentMethod!}',
-  ].join('\n');
 }

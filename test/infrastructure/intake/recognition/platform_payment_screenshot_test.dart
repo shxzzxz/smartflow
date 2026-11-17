@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,29 +42,88 @@ void main() {
     },
   );
 
-  test('preserves recognized geometry and confidence for the parser', () async {
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      expect(call.method, 'recognizeShare');
-      expect(call.arguments, {'id': 'share'});
-      return {
+  test(
+    'preserves OCR output and records complete diagnostics at INFO',
+    () async {
+      final previousLevel = Logger.root.level;
+      Logger.root.level = Level.INFO;
+      addTearDown(() => Logger.root.level = previousLevel);
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord
+          .where((record) => record.loggerName == 'infra.intake.recognition')
+          .listen(records.add);
+      addTearDown(subscription.cancel);
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        expect(call.method, 'recognizeShare');
+        expect(call.arguments, {'id': 'share'});
+        return {
+          'loadTimeMs': 12,
+          'totalTimeMs': 34,
+          'imagePath': '/private/image.png',
+          'imageBytes': [1, 2, 3],
+          'blocks': [
+            {
+              'text': '-18.60',
+              'confidence': 0.98,
+              'left': 40,
+              'top': 120,
+              'right': 300,
+              'bottom': 190,
+            },
+          ],
+        };
+      });
+      final platform = PlatformPaymentScreenshot(channel: channel);
+      addTearDown(platform.dispose);
+      final blocks = await platform.recognize('share');
+      expect(blocks.single.text, '-18.60');
+      expect(blocks.single.height, 70);
+      expect(blocks.single.confidence, 0.98);
+      final output = records.singleWhere(
+        (record) => record.message.startsWith('Screenshot OCR output: '),
+      );
+      expect(output.level, Level.INFO);
+      final payload =
+          jsonDecode(output.message.substring('Screenshot OCR output: '.length))
+              as Map<String, dynamic>;
+      expect(payload['imageId'], 'share');
+      final nativeResult = payload['result'] as Map<String, dynamic>;
+      expect(nativeResult['loadTimeMs'], 12);
+      expect(nativeResult['totalTimeMs'], 34);
+      expect((nativeResult['blocks'] as List).single, {
+        'text': '-18.60',
+        'confidence': 0.98,
+        'left': 40,
+        'top': 120,
+        'right': 300,
+        'bottom': 190,
+      });
+      expect(output.message, isNot(contains('/private/image.png')));
+      expect(nativeResult, isNot(contains('imageBytes')));
+    },
+  );
+
+  test('nonfinite OCR diagnostics do not interrupt recognition', () async {
+    messenger.setMockMethodCallHandler(
+      channel,
+      (_) async => {
         'blocks': [
           {
-            'text': '-18.60',
-            'confidence': 0.98,
-            'left': 40,
-            'top': 120,
-            'right': 300,
-            'bottom': 190,
+            'text': '示例文字',
+            'confidence': double.nan,
+            'left': 20,
+            'top': 30,
+            'right': 120,
+            'bottom': 60,
           },
         ],
-      };
-    });
+      },
+    );
     final platform = PlatformPaymentScreenshot(channel: channel);
     addTearDown(platform.dispose);
     final blocks = await platform.recognize('share');
-    expect(blocks.single.text, '-18.60');
-    expect(blocks.single.height, 70);
-    expect(blocks.single.confidence, 0.98);
+    expect(blocks.single.text, '示例文字');
+    expect(blocks.single.confidence.isNaN, isTrue);
   });
 
   test('maps platform failure without exposing exception details', () async {

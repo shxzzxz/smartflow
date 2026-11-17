@@ -81,12 +81,16 @@ class TransactionFormState {
     required List<TagView> tags,
     required List<CounterpartyView> counterparties,
   }) {
-    fromAccountId ??= mode == TransactionFormMode.expense
-        ? prefill?.settlementAccountId
-        : null;
-    toAccountId ??= mode == TransactionFormMode.income
-        ? prefill?.settlementAccountId
-        : null;
+    fromAccountId ??= switch (mode) {
+      TransactionFormMode.expense => prefill?.settlementAccountId,
+      TransactionFormMode.transfer => prefill?.fromAccountId,
+      _ => null,
+    };
+    toAccountId ??= switch (mode) {
+      TransactionFormMode.income => prefill?.settlementAccountId,
+      TransactionFormMode.transfer => prefill?.toAccountId,
+      _ => null,
+    };
     final amortizationDeferralAccounts =
         initialAmortizationKind == AmortizationKind.prepaidExpense
         ? accountOptions.prepaidExpenseAccounts

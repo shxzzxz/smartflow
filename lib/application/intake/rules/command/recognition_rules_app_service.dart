@@ -29,6 +29,12 @@ class RecognizedPaymentMapping {
   final String? categoryId;
 }
 
+class RecognizedTransferMapping {
+  const RecognizedTransferMapping({this.fromAccountId, this.toAccountId});
+  final String? fromAccountId;
+  final String? toAccountId;
+}
+
 class RecognitionRulesAppService {
   const RecognitionRulesAppService({
     required RecognitionRuleCatalog builtins,
@@ -246,6 +252,36 @@ class RecognitionRulesAppService {
             direction: direction,
           )
           ?.targetAccountId,
+    );
+  }
+
+  Future<RecognizedTransferMapping> resolveTransfer(
+    RecognizedPayment payment,
+  ) async {
+    if (payment.scene != PaymentScreenshotScene.transfer) {
+      return const RecognizedTransferMapping();
+    }
+    final targets = await _targets.findAvailableTargets();
+    final catalog = await _loadCatalog(targets);
+    final resolver = IntakeTargetResolver(
+      rules: catalog,
+      targets: targets.where((target) => target.isFundAccount).toList(),
+    );
+    final from = payment.transferFromAccountReliable
+        ? payment.transferFromAccount
+        : null;
+    final to = payment.transferToAccountReliable
+        ? payment.transferToAccount
+        : null;
+    return RecognizedTransferMapping(
+      fromAccountId: resolver.resolveAccount(
+        accountName: from,
+        matchingText: from ?? '',
+      ),
+      toAccountId: resolver.resolveAccount(
+        accountName: to,
+        matchingText: to ?? '',
+      ),
     );
   }
 }

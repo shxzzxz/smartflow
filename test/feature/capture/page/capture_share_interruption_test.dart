@@ -77,7 +77,7 @@ void main() {
           picker.result.complete(lateSelection);
           await tester.pumpAndSettle();
           expect(recognizer.ids, ['shared-image']);
-          expect(find.text('截图中的交易未成功，不生成记账建议。请核对交易状态。'), findsOneWidget);
+          expect(find.text('交易未成功，无法记账。'), findsOneWidget);
           expect(tester.takeException(), isNull);
           expect(router.canPop(), isTrue);
           router.pop();

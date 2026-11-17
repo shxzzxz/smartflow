@@ -10,6 +10,7 @@ class RecognitionRuleTarget {
     this.parentId,
     this.iconKey,
     this.profileKey,
+    this.isFundAccount = false,
   }) : path = List.unmodifiable(path);
 
   final String id;
@@ -18,6 +19,7 @@ class RecognitionRuleTarget {
   final String? parentId;
   final String? iconKey;
   final String? profileKey;
+  final bool isFundAccount;
   final List<String> path;
 
   String get name => path.last;

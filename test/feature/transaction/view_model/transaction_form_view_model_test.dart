@@ -74,6 +74,49 @@ void main() {
         );
       },
     );
+    for (final missingFrom in [true, false]) {
+      test(
+        'screenshot transfer requires both existing accounts missingFrom=$missingFrom',
+        () async {
+          final posting = _FakeTransactionPostingAppService();
+          final container = _container(
+            postingService: posting,
+            settlementAccounts: [_account('cash'), _account('bank')],
+          );
+          final prefill = TransactionFormPrefill(
+            amount: Money.parse('465.75'),
+            occurredAt: DateTime(2026, 4, 5),
+            note: '',
+            reviewMessage: '',
+            fromAccountId: missingFrom ? null : 'cash',
+            toAccountId: missingFrom ? 'bank' : null,
+          );
+          final provider = transactionFormViewModelProvider(
+            prefill: prefill,
+            initialMode: TransactionFormMode.transfer,
+          );
+          final subscription = container.listen(provider, (_, _) {});
+          addTearDown(subscription.close);
+          final viewModel = container.read(provider.notifier);
+          expect(
+            await viewModel.submit(amountText: '465.75', noteText: ''),
+            isA<SubmitFailure>(),
+          );
+          expect(posting.transferCommands, isEmpty);
+          viewModel
+            ..setFromAccountId('cash')
+            ..setToAccountId('bank');
+          expect(
+            await viewModel.submit(amountText: '465.75', noteText: ''),
+            isA<SubmitSuccess>(),
+          );
+          final command = posting.transferCommands.single;
+          expect(command.outgoingAllocations.single.accountId, 'cash');
+          expect(command.incomingAllocations.single.accountId, 'bank');
+        },
+      );
+    }
+
     test(
       'applies recognized initial values once and preserves subsequent selections',
       () {

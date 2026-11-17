@@ -44,6 +44,10 @@ class RecognizedPayment {
     this.product,
     this.paymentMethod,
     this.paymentMethodReliable = true,
+    this.transferFromAccount,
+    this.transferFromAccountReliable = true,
+    this.transferToAccount,
+    this.transferToAccountReliable = true,
     this.categoryName,
     this.categoryNameReliable = true,
     this.accountMatchingText = '',
@@ -68,6 +72,12 @@ class RecognizedPayment {
   final String? product;
   final String? paymentMethod;
   final bool paymentMethodReliable;
+
+  /// Account clues extracted only for movements of the user's own funds.
+  final String? transferFromAccount;
+  final bool transferFromAccountReliable;
+  final String? transferToAccount;
+  final bool transferToAccountReliable;
   final String? categoryName;
   final bool categoryNameReliable;
   final String accountMatchingText;
@@ -80,13 +90,19 @@ class RecognizedPayment {
   bool get isOrdinary =>
       scene == PaymentScreenshotScene.expense ||
       scene == PaymentScreenshotScene.income;
-  bool get canPrefill =>
-      (scene == PaymentScreenshotScene.expense &&
-              direction == RecognizedPaymentDirection.expense ||
-          scene == PaymentScreenshotScene.income &&
-              direction == RecognizedPaymentDirection.income) &&
-      amount != null &&
-      amount!.minorUnits > 0;
+  bool get canPrefill {
+    if (amount == null || amount!.minorUnits <= 0) return false;
+    return switch (scene) {
+      PaymentScreenshotScene.expense =>
+        direction == RecognizedPaymentDirection.expense,
+      PaymentScreenshotScene.income =>
+        direction == RecognizedPaymentDirection.income,
+      PaymentScreenshotScene.transfer =>
+        transferFromAccount?.trim().isNotEmpty == true ||
+            transferToAccount?.trim().isNotEmpty == true,
+      _ => false,
+    };
+  }
 
   RecognizedPayment withRuleMatches({
     RecognitionRuleMatch? account,
@@ -100,6 +116,10 @@ class RecognizedPayment {
     product: product,
     paymentMethod: paymentMethod,
     paymentMethodReliable: paymentMethodReliable,
+    transferFromAccount: transferFromAccount,
+    transferFromAccountReliable: transferFromAccountReliable,
+    transferToAccount: transferToAccount,
+    transferToAccountReliable: transferToAccountReliable,
     categoryName: categoryName,
     categoryNameReliable: categoryNameReliable,
     accountMatchingText: accountMatchingText,

@@ -7,6 +7,187 @@ import 'package:smartflow/domain/intake/recognition/service/payment_screenshot_p
 void main() {
   const parser = PaymentScreenshotParser();
 
+  test('receipt confirmation takes precedence over transfer metadata', () {
+    final result = parser.parse([
+      _block('你已收款，资金已存入零钱', 80),
+      _block('￥23.40', 145, height: 60),
+      _block('零钱余额', 240),
+      _block('转账时间', 320),
+      _block('2026年4月5日 13:20:11', 320, left: 300),
+      _block('收款时间', 380),
+      _block('2026年4月5日 13:20:50', 380, left: 300),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.income);
+    expect(result.direction, RecognizedPaymentDirection.income);
+    expect(result.amount, Money.parse('23.40'));
+    expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 50));
+    expect(result.paymentMethod, '零钱');
+    expect(result.counterparty, isNull);
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('received transfer detail is income and retains its sender', () {
+    final result = parser.parse([
+      _block('全部账单', 20),
+      _block('转账-来自示例亲友', 90),
+      _block('+23.40', 145, height: 60),
+      _block('当前状态 已存入零钱', 260),
+      _block('转账说明 示例转账', 320),
+      _block('转账时间 2026年4月5日 13:20:11', 380),
+      _block('收款时间 2026年4月5日 13:20:50', 440),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.income);
+    expect(result.direction, RecognizedPaymentDirection.income);
+    expect(result.amount, Money.parse('23.40'));
+    expect(result.occurredAt, DateTime(2026, 4, 5, 13, 20, 50));
+    expect(result.paymentMethod, '零钱');
+    expect(result.counterparty, '示例亲友');
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('unconfirmed transfers and contradictory receipts stay manual', () {
+    for (final entry in [
+      ('+23.40', '待收款'),
+      ('+23.40', '转账成功'),
+      ('-23.40', '已存入零钱'),
+    ]) {
+      final result = parser.parse([
+        _block('转账-来自示例亲友', 90),
+        _block(entry.$1, 145, height: 60),
+        _block('当前状态 ${entry.$2}', 260),
+      ]);
+      expect(result.scene, isNot(PaymentScreenshotScene.income));
+      expect(result.canPrefill, isFalse);
+    }
+    final refund = parser.parse([
+      _block('退款成功', 80),
+      _block('+23.40', 145, height: 60),
+      _block('当前状态 已存入零钱', 260),
+    ]);
+    expect(refund.scene, PaymentScreenshotScene.refund);
+    expect(refund.canPrefill, isFalse);
+  });
+
+  test('unsigned payment success amounts allow missing detail fields', () {
+    final result = parser.parse([
+      _block('支付成功', 80),
+      _block('￥49.25', 145, height: 60),
+      _block('完成', 260),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.expense);
+    expect(result.amount, Money.parse('49.25'));
+    expect(result.paymentMethod, isNull);
+    expect(result.occurredAt, isNull);
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('account transfers and withdrawals are not ordinary income', () {
+    for (final heading in ['账户转账', '转入余额', '提现到账']) {
+      final result = parser.parse([
+        _block(heading, 80),
+        _block('+23.40', 145, height: 60),
+        _block('当前状态 已到账', 260),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.transfer, reason: heading);
+      expect(result.canPrefill, isFalse);
+    }
+  });
+
+  for (final caption in ['预计2026年4月7日 14:00前到账', '时间 预计2026年4月7日 14:00前到账']) {
+    test('pending withdrawal ignores estimated time in "$caption"', () {
+      final result = parser.parse([
+        _block(caption, 80),
+        _block('转出金额', 180),
+        _block('￥465.75', 180, left: 300),
+        _block('到账银行卡', 240),
+        _block('示例银行(1234)', 240, left: 300),
+        _block('完成', 380),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.transfer);
+      expect(result.occurredAt, isNull);
+      expect(result.amount, Money.parse('465.75'));
+      expect(result.paymentMethod, '示例银行(1234)');
+      expect(result.counterparty, isNull);
+      expect(result.transferFromAccount, isNull);
+      expect(result.transferToAccount, '示例银行(1234)');
+      expect(result.canPrefill, isTrue);
+    });
+  }
+
+  test('completed withdrawal uses its transfer event and not its balance', () {
+    final result = parser.parse([
+      _block('详情', 20),
+      _block('零钱通转出-到示例银行(1234)', 80),
+      _block('-385.50', 145, height: 60),
+      _block('当前状态', 240),
+      _block('转出资金', 240, left: 300),
+      _block('2026-04-05 09:12:00', 280, left: 300),
+      _block('基金公司处理中', 340, left: 300),
+      _block('资金到账', 400, left: 300),
+      _block('2026-04-07 14:00:00', 440, left: 300),
+      _block('零钱通余额', 500),
+      _block('￥1357.90', 500, left: 300),
+      _block('收款账号', 560),
+      _block('示例银行', 560, left: 300),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.transfer);
+    expect(result.amount, Money.parse('385.50'));
+    expect(result.occurredAt, DateTime(2026, 4, 5, 9, 12));
+    expect(result.paymentMethod, '示例银行');
+    expect(result.counterparty, isNull);
+    expect(result.transferFromAccount, '零钱通');
+    expect(result.transferToAccount, '示例银行(1234)');
+    expect(result.canPrefill, isTrue);
+  });
+
+  test('a bank label on an unconfirmed personal transfer stays manual', () {
+    final result = parser.parse([
+      _block('转账-来自示例亲友', 80),
+      _block('+23.40', 145, height: 60),
+      _block('当前状态 待收款', 240),
+      _block('到账银行卡 示例银行(1234)', 300),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.transfer);
+    expect(result.transferFromAccount, isNull);
+    expect(result.transferToAccount, isNull);
+    expect(result.canPrefill, isFalse);
+  });
+
+  test('withdrawal balance cannot replace a missing transfer amount', () {
+    final result = parser.parse([
+      _block('零钱通转出', 20),
+      _block('零钱通余额', 80),
+      _block('￥1357.90', 145, height: 60),
+      _block('当前状态 资金到账', 240),
+      _block('收款账号 示例银行', 300),
+    ]);
+    expect(result.scene, PaymentScreenshotScene.transfer);
+    expect(result.amount, isNull);
+    expect(result.counterparty, isNull);
+    expect(result.canPrefill, isFalse);
+  });
+
+  test('success and amount in one row exclude fees and reward amounts', () {
+    for (final status in ['支付成功', '交易成功']) {
+      final result = parser.parse([
+        _block('提交订单', 20),
+        _block('包装费 ￥0.70', 80),
+        _block(status, 145, height: 60),
+        _block('￥49.25', 145, left: 300, height: 60),
+        _block('支付优惠 -￥0.75', 260),
+        _block('支付方式 示例月付', 320),
+        _block('领取现金券', 380),
+        _block('￥9.00', 440, height: 60),
+        _block('完成', 500),
+      ]);
+      expect(result.scene, PaymentScreenshotScene.expense, reason: status);
+      expect(result.amount, Money.parse('49.25'), reason: status);
+      expect(result.paymentMethod, '示例月付');
+      expect(result.counterparty, isNull);
+      expect(result.canPrefill, isTrue);
+    }
+  });
+
   test('recognizes scene keywords split into blocks in a labeled row', () {
     final scenes = {
       ('转', '账'): PaymentScreenshotScene.transfer,
@@ -345,7 +526,7 @@ void main() {
     expect(result.needsReview, isTrue);
   });
 
-  test('invalid dates and low confidence are visible review requirements', () {
+  test('invalid dates are omitted and low confidence is retained', () {
     final result = parser.parse([
       _block('支付详情', 20),
       _block('交易成功', 80),

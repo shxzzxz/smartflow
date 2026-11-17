@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 
 import '../../../application/intake/recognition/command/port/payment_screenshot_image_picker.dart';
 import '../../../application/intake/recognition/command/port/shared_payment_image_source.dart';
@@ -11,6 +13,8 @@ import '../../../core/error/app_exception.dart';
 import '../../../domain/intake/recognition/port/payment_screenshot_ocr.dart';
 import '../../../domain/intake/recognition/recognition_error_code.dart';
 import '../../../domain/intake/recognition/recognized_payment.dart';
+
+final _logger = Logger('infra.intake.recognition');
 
 class PlatformPaymentScreenshot
     implements
@@ -102,10 +106,18 @@ class PlatformPaymentScreenshot
 
   @override
   Future<List<RecognizedTextBlock>> recognize(String shareId) async {
+    _logger.info('Screenshot OCR started. imageId=$shareId');
     try {
       final result = await _channel.invokeMapMethod<String, dynamic>(
         'recognizeShare',
         {'id': shareId},
+      );
+      _logger.info(
+        () =>
+            'Screenshot OCR output: ${_encodeOcrDiagnostic({
+              'imageId': shareId,
+              'result': result == null ? null : {'blocks': result['blocks'], 'loadTimeMs': result['loadTimeMs'], 'totalTimeMs': result['totalTimeMs']},
+            })}',
       );
       final blocks = result?['blocks'] as List<dynamic>? ?? const [];
       return [
@@ -136,6 +148,15 @@ class PlatformPaymentScreenshot
   void dispose() {
     if (_supported) _channel.setMethodCallHandler(null);
     unawaited(_shares.close());
+  }
+}
+
+String _encodeOcrDiagnostic(Object? value) {
+  try {
+    return jsonEncode(value);
+  } on JsonUnsupportedObjectError {
+    // Unexpected native values must not turn diagnostic logging into an OCR failure.
+    return value.toString();
   }
 }
 
