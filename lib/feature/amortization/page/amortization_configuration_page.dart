@@ -5,7 +5,7 @@ import '../../../design_system/widget/app_datetime_picker.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';

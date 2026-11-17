@@ -9,7 +9,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/log_viewer_presentation.dart';
@@ -75,7 +75,7 @@ class LogViewerPage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.space12),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: AppSegmentedControl<LogLevelFilter>(
+                    child: AppSlidingSegmentedControl<LogLevelFilter>(
                       segments: const [
                         AppSegment(value: LogLevelFilter.all, label: '全部'),
                         AppSegment(value: LogLevelFilter.fine, label: '调试'),
@@ -84,7 +84,6 @@ class LogViewerPage extends ConsumerWidget {
                         AppSegment(value: LogLevelFilter.severe, label: '错误'),
                       ],
                       selected: state.levelFilter,
-                      size: AppSegmentedControlSize.small,
                       onChanged: ref
                           .read(logViewerViewModelProvider.notifier)
                           .setLevelFilter,

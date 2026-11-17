@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../design_system/token/chart.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../widget/business/analytics/analysis_chart_card.dart';
 import '../presentation/statistics_period_presentation.dart';

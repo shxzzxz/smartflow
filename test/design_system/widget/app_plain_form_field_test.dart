@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
-import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_select.dart';
+import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 
 void main() {
   testWidgets('text row participates in Form validation', (tester) async {
@@ -20,8 +20,8 @@ void main() {
               requiredIndicator: true,
               controller: controller,
               hintText: '填写名称',
-              validator:
-                  (value) => value == null || value.isEmpty ? '请输入账户名称' : null,
+              validator: (value) =>
+                  value == null || value.isEmpty ? '请输入账户名称' : null,
             ),
           ),
         ),
@@ -51,8 +51,8 @@ void main() {
             child: AppPlainTextFormRow(
               label: '账户名称',
               controller: controller,
-              validator:
-                  (value) => value == null || value.isEmpty ? '请输入账户名称' : null,
+              validator: (value) =>
+                  value == null || value.isEmpty ? '请输入账户名称' : null,
             ),
           ),
         ),
@@ -76,8 +76,8 @@ void main() {
             child: AppPlainTextFormRow(
               label: '账户名称',
               controller: controller,
-              validator:
-                  (value) => value == null || value.isEmpty ? '请输入账户名称' : null,
+              validator: (value) =>
+                  value == null || value.isEmpty ? '请输入账户名称' : null,
             ),
           ),
         ),
@@ -111,9 +111,8 @@ void main() {
                 child: AppPlainTextFormRow(
                   label: '账户名称',
                   controller: controller,
-                  validator:
-                      (value) =>
-                          value == null || value.isEmpty ? '请输入账户名称' : null,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? '请输入账户名称' : null,
                 ),
               );
             },
@@ -399,9 +398,8 @@ void main() {
                           label: '第二项',
                         ),
                       ],
-                      validator:
-                          (value) =>
-                              value == _TestChoice.second ? null : '请选择第二项',
+                      validator: (value) =>
+                          value == _TestChoice.second ? null : '请选择第二项',
                       autovalidateMode: AutovalidateMode.always,
                       onChanged: (value) => setState(() => selected = value),
                     ),
@@ -431,76 +429,96 @@ void main() {
     expect(formKey.currentState!.validate(), false);
   });
 
-  testWidgets('segmented row updates and resets through Form state', (
-    tester,
-  ) async {
-    final formKey = GlobalKey<FormState>();
-    var selected = _TestChoice.first;
+  testWidgets(
+    'segmented row validates, updates and resets through Form state',
+    (tester) async {
+      final formKey = GlobalKey<FormState>();
+      var selected = _TestChoice.first;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: StatefulBuilder(
-            builder: (context, setState) {
-              return Form(
-                key: formKey,
-                child: AppPlainSegmentedFormRow<_TestChoice>(
-                  label: '计息方式',
-                  value: selected,
-                  segments: const [
-                    AppSegment(value: _TestChoice.first, label: '按日'),
-                    AppSegment(value: _TestChoice.second, label: '按月'),
-                  ],
-                  onChanged: (value) => setState(() => selected = value),
-                ),
-              );
-            },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) {
+                return Form(
+                  key: formKey,
+                  child: AppPlainSegmentedFormRow<_TestChoice>(
+                    label: '计息方式',
+                    value: selected,
+                    segments: const [
+                      AppSegment(value: _TestChoice.first, label: '按日'),
+                      AppSegment(value: _TestChoice.second, label: '按月'),
+                    ],
+                    onChanged: (value) => setState(() => selected = value),
+                    validator: (value) =>
+                        value == _TestChoice.second ? null : '请选择按月',
+                  ),
+                );
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('按月'));
-    await tester.pump();
-    expect(selected, _TestChoice.second);
-    final segmentedButton = tester.widget<SegmentedButton<_TestChoice>>(
-      find.byType(SegmentedButton<_TestChoice>),
-    );
-    expect(
-      segmentedButton.style?.textStyle?.resolve({
-        WidgetState.selected,
-      })?.fontSize,
-      15,
-    );
+      expect(formKey.currentState!.validate(), false);
+      await tester.pump();
+      expect(find.text('请选择按月'), findsOneWidget);
 
-    formKey.currentState!.reset();
-    await tester.pump();
-    expect(selected, _TestChoice.first);
-  });
+      await tester.tap(find.text('按月'));
+      await tester.pump();
+      expect(selected, _TestChoice.second);
+      expect(formKey.currentState!.validate(), true);
+      await tester.pump();
+      expect(find.text('请选择按月'), findsNothing);
+      expect(
+        DefaultTextStyle.of(tester.element(find.text('按月'))).style.fontSize,
+        15,
+      );
 
-  testWidgets('segmented row supports a disabled display state', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AppPlainSegmentedFormRow<_TestChoice>(
-            label: '计息方式',
-            value: _TestChoice.first,
-            segments: [
-              AppSegment(value: _TestChoice.first, label: '按日'),
-              AppSegment(value: _TestChoice.second, label: '按月'),
-            ],
-            onChanged: null,
+      formKey.currentState!.reset();
+      await tester.pump();
+      expect(selected, _TestChoice.first);
+      expect(
+        tester
+            .widget<AppSlidingSegmentedControl<_TestChoice>>(
+              find.byType(AppSlidingSegmentedControl<_TestChoice>),
+            )
+            .selected,
+        _TestChoice.first,
+      );
+      expect(formKey.currentState!.validate(), false);
+    },
+  );
+
+  for (final explicitlyDisabled in [false, true]) {
+    testWidgets('segmented row disables interaction with '
+        '${explicitlyDisabled ? 'enabled false' : 'no callback'}', (
+      tester,
+    ) async {
+      var changed = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AppPlainSegmentedFormRow<_TestChoice>(
+              label: '计息方式',
+              value: _TestChoice.first,
+              segments: const [
+                AppSegment(value: _TestChoice.first, label: '按日'),
+                AppSegment(value: _TestChoice.second, label: '按月'),
+              ],
+              enabled: !explicitlyDisabled,
+              onChanged: explicitlyDisabled ? (_) => changed = true : null,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byType(Opacity), findsOneWidget);
-    await tester.tap(find.text('按月'), warnIfMissed: false);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byType(Opacity), findsOneWidget);
+      await tester.tap(find.text('按月'), warnIfMissed: false);
+      expect(changed, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
 
 enum _TestChoice { first, second }

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../application/shared/log_retention_store.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../view_model/log_viewer_view_model.dart';
 
 Future<void> showLogRetentionSettingsSheet({required BuildContext context}) {
@@ -104,10 +104,9 @@ class _RetentionOptionRow extends StatelessWidget {
           child: Text(label, style: context.appTextStyles.settingsTitle),
         ),
         const SizedBox(width: AppSpacing.space12),
-        AppSegmentedControl<int>(
+        AppSlidingSegmentedControl<int>(
           segments: options,
           selected: selected,
-          size: AppSegmentedControlSize.small,
           onChanged: onChanged,
         ),
       ],

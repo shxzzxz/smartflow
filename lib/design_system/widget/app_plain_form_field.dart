@@ -7,8 +7,8 @@ import '../token/form.dart';
 import '../token/spacing.dart';
 import 'app_form_field.dart';
 import 'app_plain_form_row.dart';
-import 'app_segmented_control.dart';
 import 'app_select.dart';
+import 'app_sliding_segmented_control.dart';
 
 class AppPlainTextFormRow extends FormField<String> {
   AppPlainTextFormRow({
@@ -417,14 +417,12 @@ class AppPlainSegmentedFormRow<T> extends StatelessWidget {
           minHeight: minHeight,
           child: Align(
             alignment: Alignment.centerLeft,
-            child: AppSegmentedControl<T>(
+            child: AppSlidingSegmentedControl<T>(
               segments: segments,
               selected: fieldValue ?? value,
               onChanged: interactive
                   ? (nextValue) => fieldChanged(nextValue)
-                  : (_) {},
-              size: AppSegmentedControlSize.small,
-              tone: AppSegmentedControlTone.neutral,
+                  : null,
               textStyle: context.appTextStyles.formValue,
             ),
           ),

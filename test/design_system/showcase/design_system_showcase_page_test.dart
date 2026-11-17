@@ -13,7 +13,6 @@ import 'package:smartflow/design_system/widget/app_list_section.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_section_header.dart';
-import 'package:smartflow/design_system/widget/app_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_status_badge.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
@@ -543,8 +542,7 @@ void main() {
     expect(find.text('按钮'), findsOneWidget);
     expect(find.text('分段控件'), findsOneWidget);
     expect(find.text('按钮与分段控件'), findsNothing);
-    expect(find.byType(AppSegmentedControl<int>), findsOneWidget);
-    expect(find.byType(AppSlidingSegmentedControl<int>), findsOneWidget);
+    expect(find.byType(AppSlidingSegmentedControl<int>), findsNWidgets(2));
     expect(find.widgetWithText(FilledButton, '主要按钮'), findsOneWidget);
   });
 

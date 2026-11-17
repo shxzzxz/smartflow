@@ -56,7 +56,6 @@ import '../widget/app_list_divider.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
-import '../widget/app_segmented_control.dart';
 import '../widget/app_select.dart';
 import '../widget/app_section_header.dart';
 import '../widget/app_settings_row.dart';
@@ -213,7 +212,7 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.segmentedControl,
     category: '基础控件',
     title: '分段控件',
-    componentNames: 'AppSegmentedControl / AppSlidingSegmentedControl',
+    componentNames: 'AppSlidingSegmentedControl',
     keywords: ['分段', '切换', '选中', '滑动'],
   ),
   _ShowcaseExample(
@@ -1227,7 +1226,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacing.space12,
       children: [
-        AppSegmentedControl<int>(
+        AppSlidingSegmentedControl<int>(
           segments: const [
             AppSegment(value: 0, label: '本月'),
             AppSegment(value: 1, label: '年度'),

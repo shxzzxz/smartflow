@@ -222,22 +222,6 @@ abstract final class AppTheme {
           ),
         ),
       ),
-      segmentedButtonTheme: SegmentedButtonThemeData(
-        style: ButtonStyle(
-          visualDensity: VisualDensity.standard,
-          tapTargetSize: MaterialTapTargetSize.padded,
-          minimumSize: const WidgetStatePropertyAll(
-            Size(AppSpacing.space48, AppComponentTokens.controlMinHeight),
-          ),
-          padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: AppSpacing.space10),
-          ),
-          shape: WidgetStatePropertyAll(controlShape),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: colors.outlineVariant),
-          ),
-        ),
-      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {

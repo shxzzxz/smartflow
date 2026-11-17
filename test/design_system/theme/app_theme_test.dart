@@ -3,11 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 
 void main() {
-  for (final entry
-      in <String, ThemeData>{
-        'light': AppTheme.light(),
-        'dark': AppTheme.dark(),
-      }.entries) {
+  for (final entry in <String, ThemeData>{
+    'light': AppTheme.light(),
+    'dark': AppTheme.dark(),
+  }.entries) {
     test(
       '${entry.key} theme keeps Material behavior with SmartFlow visuals',
       () {
@@ -37,10 +36,6 @@ void main() {
           isA<OutlineInputBorder>(),
         );
         expect(theme.tabBarTheme.dividerColor, Colors.transparent);
-        expect(
-          theme.segmentedButtonTheme.style?.minimumSize?.resolve({}),
-          const Size(48, 48),
-        );
         expect(
           theme.switchTheme.trackColor?.resolve({WidgetState.selected}),
           colors.primary,

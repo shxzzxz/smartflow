@@ -6,21 +6,29 @@ import '../theme/app_text_styles.dart';
 import '../token/component.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
-import 'app_segmented_control.dart';
+
+class AppSegment<T> {
+  const AppSegment({required this.value, required this.label});
+
+  final T value;
+  final String label;
+}
 
 /// 滑动胶囊分段控件：浅色轨道内等宽格子，选中胶囊滑动切换。
-/// 比 [AppSegmentedControl] 更紧凑，用于图表卡片等空间敏感场景。
+/// 用于筛选、表单和图表卡片；[onChanged] 为空时禁用交互。
 class AppSlidingSegmentedControl<T> extends StatelessWidget {
   const AppSlidingSegmentedControl({
     required this.segments,
     required this.selected,
     required this.onChanged,
     super.key,
+    this.textStyle,
   }) : assert(segments.length >= 2, '分段控件至少需要两个选项');
 
   final List<AppSegment<T>> segments;
   final T selected;
-  final ValueChanged<T> onChanged;
+  final ValueChanged<T>? onChanged;
+  final TextStyle? textStyle;
 
   static const _slideDuration = Duration(milliseconds: 200);
   static const _slideCurve = Curves.easeOutCubic;
@@ -28,12 +36,12 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final selectedStyle = context.appTextStyles
-        .quickActionLabel(selected: true)
-        .copyWith(color: colors.onSurface);
-    final unselectedStyle = context.appTextStyles
-        .quickActionLabel(selected: false)
-        .copyWith(color: colors.onSurfaceVariant);
+    final selectedStyle =
+        (textStyle ?? context.appTextStyles.quickActionLabel(selected: true))
+            .copyWith(color: colors.onSurface);
+    final unselectedStyle =
+        (textStyle ?? context.appTextStyles.quickActionLabel(selected: false))
+            .copyWith(color: colors.onSurfaceVariant);
     final cellSize = _measureCell(context, selectedStyle);
     final selectedIndex = segments.indexWhere(
       (segment) => segment.value == selected,
@@ -80,11 +88,12 @@ class AppSlidingSegmentedControl<T> extends StatelessWidget {
                       label: segment.label,
                       width: cellSize.width,
                       selected: segment.value == selected,
-                      style:
-                          segment.value == selected
-                              ? selectedStyle
-                              : unselectedStyle,
-                      onTap: () => onChanged(segment.value),
+                      style: segment.value == selected
+                          ? selectedStyle
+                          : unselectedStyle,
+                      onTap: onChanged == null
+                          ? null
+                          : () => onChanged?.call(segment.value),
                     ),
                 ],
               ),
@@ -132,25 +141,29 @@ class _SegmentCell extends StatelessWidget {
   final double width;
   final bool selected;
   final TextStyle style;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       selected: selected,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: SizedBox(
-          width: width,
-          height: double.infinity,
-          child: Center(
-            child: AnimatedDefaultTextStyle(
-              duration: AppSlidingSegmentedControl._slideDuration,
-              curve: AppSlidingSegmentedControl._slideCurve,
-              style: style,
-              child: Text(label, maxLines: 1),
+      enabled: onTap != null,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.radiusFull),
+          child: SizedBox(
+            width: width,
+            height: double.infinity,
+            child: Center(
+              child: AnimatedDefaultTextStyle(
+                duration: AppSlidingSegmentedControl._slideDuration,
+                curve: AppSlidingSegmentedControl._slideCurve,
+                style: style,
+                child: Text(label, maxLines: 1),
+              ),
             ),
           ),
         ),

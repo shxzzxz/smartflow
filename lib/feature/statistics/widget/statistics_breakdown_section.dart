@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/money/money.dart';
 import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../widget/business/analytics/analysis_chart_card.dart';
 import '../../../widget/business/analytics/analytics_amount_column.dart';

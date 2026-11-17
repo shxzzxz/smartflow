@@ -5,7 +5,6 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_date_picker_panel.dart';
 import '../../../design_system/widget/app_dropdown.dart';
 import '../../../design_system/widget/app_select.dart';
-import '../../../design_system/widget/app_segmented_control.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../view_model/statistics_view_model.dart';
 
@@ -38,14 +37,13 @@ Future<StatisticsPeriodSelection?> showStatisticsPeriodSheet({
     useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
-    builder:
-        (context) => _StatisticsPeriodSheet(
-          granularity: granularity,
-          mode: mode,
-          from: from,
-          untilExclusive: untilExclusive,
-          lastSelectableDate: lastSelectableDate,
-        ),
+    builder: (context) => _StatisticsPeriodSheet(
+      granularity: granularity,
+      mode: mode,
+      from: from,
+      untilExclusive: untilExclusive,
+      lastSelectableDate: lastSelectableDate,
+    ),
   );
 }
 
@@ -141,20 +139,18 @@ class _StatisticsPeriodSheetState extends State<_StatisticsPeriodSheet> {
             AppDatePickerPanel(
               key: ValueKey((_granularity, _mode)),
               granularity: panelGranularity,
-              mode:
-                  _mode == StatisticsPeriodMode.single
-                      ? AppDatePickerMode.single
-                      : AppDatePickerMode.range,
+              mode: _mode == StatisticsPeriodMode.single
+                  ? AppDatePickerMode.single
+                  : AppDatePickerMode.range,
               initialValue: _rangeStart,
               initialRange: DateTimeRange(start: _rangeStart, end: _rangeEnd),
               firstDate: DateTime(2000),
               lastDate: widget.lastSelectableDate,
               onSelected: _confirmSingle,
-              onRangeChanged:
-                  (range, _) => setState(() {
-                    _rangeStart = range.start;
-                    _rangeEnd = range.end;
-                  }),
+              onRangeChanged: (range, _) => setState(() {
+                _rangeStart = range.start;
+                _rangeEnd = range.end;
+              }),
             ),
             if (_mode == StatisticsPeriodMode.range) ...[
               const SizedBox(height: AppSpacing.space12),
