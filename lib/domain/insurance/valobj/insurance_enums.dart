@@ -23,9 +23,8 @@ enum PremiumFrequency {
 
 enum ResponsibilityKind {
   medical('医疗'),
-  criticalIllness('重疾'),
-  accident('意外'),
-  life('寿险'),
+  diseaseBenefit('疾病给付'),
+  death('身故'),
   disability('伤残'),
   other('其他');
 

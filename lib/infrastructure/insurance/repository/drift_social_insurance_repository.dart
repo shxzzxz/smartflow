@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/money/money.dart';
-import '../../../core/time/month_key.dart';
 import '../../../domain/insurance/entity/social_insurance.dart';
 import '../../../domain/insurance/port/social_insurance_repository.dart';
 import '../../../domain/insurance/valobj/social_contribution_record.dart';
@@ -30,7 +29,7 @@ class DriftSocialInsuranceRepository implements SocialInsuranceRepository {
               ..where((row) => row.socialInsuranceId.isIn(ids))
               ..orderBy([
                 (row) => OrderingTerm(expression: row.socialInsuranceId),
-                (row) => OrderingTerm(expression: row.yearMonth),
+                (row) => OrderingTerm(expression: row.period),
               ]))
             .get();
     final contributionsByInsurance = <String, List<SocialContributionRecord>>{};
@@ -38,9 +37,15 @@ class DriftSocialInsuranceRepository implements SocialInsuranceRepository {
       contributionsByInsurance
           .putIfAbsent(row.socialInsuranceId, () => [])
           .add(
-            SocialContributionRecord(
-              month: MonthKey.parse(row.yearMonth),
-              contributionBase: Money(minorUnits: row.contributionBaseMinor),
+            SocialContributionRecord.fromPeriod(
+              period: row.period,
+              contributionBase: row.contributionBaseMinor == null
+                  ? null
+                  : Money(minorUnits: row.contributionBaseMinor!),
+              contributionAmount: row.contributionAmountMinor == null
+                  ? null
+                  : Money(minorUnits: row.contributionAmountMinor!),
+              note: row.note,
             ),
           );
     }
@@ -92,8 +97,12 @@ class DriftSocialInsuranceRepository implements SocialInsuranceRepository {
           for (final record in insurance.contributionRecords)
             SocialContributionRecordsCompanion.insert(
               socialInsuranceId: insurance.id,
-              yearMonth: record.month.toString(),
-              contributionBaseMinor: record.contributionBase.minorUnits,
+              period: record.period,
+              contributionBaseMinor: Value(record.contributionBase?.minorUnits),
+              contributionAmountMinor: Value(
+                record.contributionAmount?.minorUnits,
+              ),
+              note: Value(record.note),
             ),
         ]);
       });

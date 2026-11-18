@@ -3,8 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
 import '../../../application/insurance/insurance_command_api.dart';
+import '../../../application/insurance/insurance_query_api.dart';
 import '../../../core/money/money.dart';
-import '../../../core/time/month_key.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'insurance_members_view_model.dart';
@@ -19,13 +19,13 @@ final _logger = Logger('feature.insurance.social_detail');
 class SocialInsuranceDetailViewModel extends _$SocialInsuranceDetailViewModel {
   @override
   Future<SocialInsuranceDetailState?> build(String insuranceId) async {
-    final query = ref.watch(insuranceCoverageQueryServiceProvider);
-    final detail = await query.socialInsuranceDetail(insuranceId);
+    final detail = await ref
+        .watch(insuranceCoverageQueryServiceProvider)
+        .socialInsuranceDetail(insuranceId);
     if (detail == null) return null;
     return SocialInsuranceDetailState(
       insuranceId: detail.insurance.id,
-      insuredPersonId: detail.insuredPerson.id,
-      insuredPersonName: detail.insuredPerson.name,
+      insuredPerson: detail.insuredPerson,
       region: detail.insurance.region,
       insuranceType: detail.insurance.insuranceType,
       participantType: detail.insurance.participantType,
@@ -38,65 +38,60 @@ class SocialInsuranceDetailViewModel extends _$SocialInsuranceDetailViewModel {
   Future<UiActionOutcome<void>> deleteInsurance() {
     return guardUiAction(_logger, 'Delete social insurance', () async {
       await ref.read(socialInsuranceAppServiceProvider).delete(insuranceId);
-      ref.invalidate(insuranceMembersViewModelProvider);
-      ref.invalidate(insuranceOverviewViewModelProvider);
-      ref.invalidate(memberCoverageViewModelProvider);
+      _invalidateCoverage();
     });
   }
 
-  Future<UiActionOutcome<void>> addContributionRecord(
-    MonthKey month,
-    Money contributionBase,
-  ) async {
-    final current = state.asData?.value;
-    if (current == null) return _invalid('社保详情尚未加载');
-    if (contributionBase.minorUnits < 0) return _invalid('缴费基数不能为负');
-    if (current.contributionRecords.any((item) => item.month == month)) {
-      return _invalid('该月份已有缴费记录，请编辑已有记录');
-    }
-    return _saveContributionRecords(current, [
-      ...current.contributionRecords,
-      SocialContributionRecord(
-        month: month,
-        contributionBase: contributionBase,
-      ),
-    ]);
-  }
-
-  Future<UiActionOutcome<void>> updateContributionRecord({
-    required MonthKey originalMonth,
-    required MonthKey month,
-    required Money contributionBase,
+  Future<UiActionOutcome<void>> saveContributionRecord({
+    String? originalPeriod,
+    required int year,
+    int? month,
+    Money? contributionBase,
+    required Money contributionAmount,
+    String? note,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalid('社保详情尚未加载');
-    if (contributionBase.minorUnits < 0) return _invalid('缴费基数不能为负');
-    if (current.contributionRecords.any(
-      (item) => item.month == month && item.month != originalMonth,
-    )) {
-      return _invalid('该月份已有缴费记录');
-    }
-    final index = current.contributionRecords.indexWhere(
-      (item) => item.month == originalMonth,
-    );
-    if (index == -1) return _invalid('缴费记录不存在');
-    final next = [...current.contributionRecords];
-    next[index] = SocialContributionRecord(
+    if (current.submitting) return _invalid('正在保存，请勿重复提交');
+    final text = note?.trim();
+    final record = SocialContributionRecord(
+      year: year,
       month: month,
       contributionBase: contributionBase,
+      contributionAmount: contributionAmount,
+      note: text == null || text.isEmpty ? null : text,
     );
+    try {
+      record.validate();
+    } on ArgumentError {
+      return _invalid('请检查缴费年份、月份、基数和金额');
+    }
+    if (current.contributionRecords.any(
+      (item) => item.period == record.period && item.period != originalPeriod,
+    )) {
+      return _invalid('该年份、月份已有缴费记录，请编辑已有记录');
+    }
+    final next = [...current.contributionRecords];
+    if (originalPeriod == null) {
+      next.add(record);
+    } else {
+      final index = next.indexWhere((item) => item.period == originalPeriod);
+      if (index == -1) return _invalid('缴费记录不存在');
+      next[index] = record;
+    }
     return _saveContributionRecords(current, next);
   }
 
-  Future<UiActionOutcome<void>> removeContributionRecord(MonthKey month) async {
+  Future<UiActionOutcome<void>> removeContributionRecord(String period) async {
     final current = state.asData?.value;
     if (current == null) return _invalid('社保详情尚未加载');
-    if (!current.contributionRecords.any((item) => item.month == month)) {
+    if (current.submitting) return _invalid('正在保存，请勿重复提交');
+    if (!current.contributionRecords.any((item) => item.period == period)) {
       return _invalid('缴费记录不存在');
     }
     return _saveContributionRecords(current, [
       for (final item in current.contributionRecords)
-        if (item.month != month) item,
+        if (item.period != period) item,
     ]);
   }
 
@@ -104,75 +99,90 @@ class SocialInsuranceDetailViewModel extends _$SocialInsuranceDetailViewModel {
     SocialInsuranceDetailState current,
     List<SocialContributionRecord> records,
   ) async {
-    final sortedRecords = List<SocialContributionRecord>.unmodifiable(
-      [...records]..sort((left, right) => left.month.compareTo(right.month)),
-    );
-    final outcome = await guardUiAction<void>(
-      _logger,
-      'Save social contribution records',
-      () async {
-        await ref
-            .read(socialInsuranceAppServiceProvider)
-            .save(
-              SaveSocialInsuranceCommand(
-                id: current.insuranceId,
-                insuredPersonId: current.insuredPersonId,
-                region: current.region,
-                insuranceType: current.insuranceType,
-                participantType: current.participantType,
-                contributionRecords: sortedRecords,
-              ),
-            );
-      },
-    );
-    if (outcome is UiActionSuccess<void> && ref.mounted) {
-      state = AsyncData(
-        SocialInsuranceDetailState(
-          insuranceId: current.insuranceId,
-          insuredPersonId: current.insuredPersonId,
-          insuredPersonName: current.insuredPersonName,
-          region: current.region,
-          insuranceType: current.insuranceType,
-          participantType: current.participantType,
-          contributionRecords: sortedRecords,
-          createdAt: current.createdAt,
-          updatedAt: current.updatedAt,
-        ),
+    final sorted = [...records]
+      ..sort((left, right) => left.period.compareTo(right.period));
+    var saved = false;
+    state = AsyncData(current.copyWith(submitting: true));
+    try {
+      final outcome = await guardUiAction<void>(
+        _logger,
+        'Save social contribution records',
+        () async {
+          await ref
+              .read(socialInsuranceAppServiceProvider)
+              .save(
+                SaveSocialInsuranceCommand(
+                  id: current.insuranceId,
+                  insuredPersonId: current.insuredPersonId,
+                  region: current.region,
+                  insuranceType: current.insuranceType,
+                  participantType: current.participantType,
+                  contributionRecords: sorted,
+                ),
+              );
+        },
       );
-      ref.invalidate(insuranceMembersViewModelProvider);
-      ref.invalidate(insuranceOverviewViewModelProvider);
-      ref.invalidate(memberCoverageViewModelProvider);
+      saved = outcome is UiActionSuccess<void>;
+      return outcome;
+    } finally {
+      if (ref.mounted) {
+        if (saved) {
+          _invalidateCoverage();
+          // Writing state after invalidation would replace the refreshed list.
+          ref.invalidateSelf();
+        } else {
+          state = AsyncData(current.copyWith(submitting: false));
+        }
+      }
     }
-    return outcome;
   }
 
-  UiActionOutcome<void> _invalid(String message) {
-    return UiActionOutcome.failure(
-      UiError(code: InsuranceErrorCode.invalidCommand.code, message: message),
-    );
+  void _invalidateCoverage() {
+    ref.invalidate(insuranceMembersViewModelProvider);
+    ref.invalidate(insuranceOverviewViewModelProvider);
+    ref.invalidate(memberCoverageViewModelProvider);
   }
+
+  UiActionOutcome<void> _invalid(String message) => UiActionOutcome.failure(
+    UiError(code: InsuranceErrorCode.invalidCommand.code, message: message),
+  );
 }
 
 class SocialInsuranceDetailState {
-  const SocialInsuranceDetailState({
+  SocialInsuranceDetailState({
     required this.insuranceId,
-    required this.insuredPersonId,
-    required this.insuredPersonName,
+    required this.insuredPerson,
     required this.region,
     required this.insuranceType,
     required this.participantType,
-    required this.contributionRecords,
+    required List<SocialContributionRecord> contributionRecords,
     required this.createdAt,
     required this.updatedAt,
-  });
+    this.submitting = false,
+  }) : contributionRecords = List.unmodifiable(contributionRecords);
 
   final String insuranceId;
-  final String insuredPersonId;
-  final String insuredPersonName;
+  final InsuredPerson insuredPerson;
+  String get insuredPersonId => insuredPerson.id;
+  String get insuredPersonName => insuredPerson.name;
   final String region;
   final SocialInsuranceType insuranceType;
   final SocialParticipantType participantType;
   final List<SocialContributionRecord> contributionRecords;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool submitting;
+
+  SocialInsuranceDetailState copyWith({bool? submitting}) =>
+      SocialInsuranceDetailState(
+        insuranceId: insuranceId,
+        insuredPerson: insuredPerson,
+        region: region,
+        insuranceType: insuranceType,
+        participantType: participantType,
+        contributionRecords: contributionRecords,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        submitting: submitting ?? this.submitting,
+      );
 }

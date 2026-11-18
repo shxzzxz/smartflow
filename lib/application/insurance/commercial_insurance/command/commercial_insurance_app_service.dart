@@ -8,6 +8,7 @@ import '../../../../domain/insurance/port/insured_person_repository.dart';
 import '../../../../domain/insurance/valobj/coverage_responsibility.dart';
 import '../../../../domain/insurance/valobj/insurance_attachment.dart';
 import '../../../../domain/insurance/valobj/insurance_error_code.dart';
+import '../../../../domain/insurance/valobj/premium_plan.dart';
 import '../../../shared/transaction_runner.dart';
 import '../../attachment/port/insurance_attachment_storage.dart';
 import 'commercial_insurance_command.dart';
@@ -16,6 +17,10 @@ final _logger = Logger('application.insurance.commercial');
 
 abstract interface class CommercialInsuranceAppService {
   Future<String> save(SaveCommercialInsuranceCommand command);
+  Future<void> updatePremiumPlan({
+    required String insuranceId,
+    required PremiumPlan? premiumPlan,
+  });
   Future<void> delete(String id);
   Future<int> addAttachments(String insuranceId);
   Future<void> deleteAttachment({
@@ -87,7 +92,22 @@ class CommercialInsuranceAppServiceImpl
             command.coverageAmount == null || command.coverageAmount!.isEmpty
             ? null
             : command.coverageAmount,
-        premiumPlan: command.premiumPlan,
+        premiumPlan: command.premiumPlan ?? previous?.premiumPlan,
+        coverageAmountDescription:
+            command.coverageAmountDescription ??
+            previous?.coverageAmountDescription,
+        coverageSummary: command.coverageSummary ?? previous?.coverageSummary,
+        coverageHighlights:
+            command.coverageHighlights ?? previous?.coverageHighlights,
+        policyholderName:
+            command.policyholderName ?? previous?.policyholderName,
+        beneficiaryDescription:
+            command.beneficiaryDescription ?? previous?.beneficiaryDescription,
+        waitingPeriodDescription:
+            command.waitingPeriodDescription ??
+            previous?.waitingPeriodDescription,
+        exclusionsDescription:
+            command.exclusionsDescription ?? previous?.exclusionsDescription,
         insuredPersonIds: personIds,
         responsibilities: responsibilities,
         attachments: previous?.attachments ?? const [],
@@ -105,6 +125,33 @@ class CommercialInsuranceAppServiceImpl
       }
       await _insurances.save(insurance);
       return insurance.id;
+    });
+  }
+
+  @override
+  Future<void> updatePremiumPlan({
+    required String insuranceId,
+    required PremiumPlan? premiumPlan,
+  }) {
+    return _runner.run(() async {
+      final insurance = await _require(insuranceId);
+      try {
+        premiumPlan?.validate();
+      } on ArgumentError catch (error) {
+        throw BusinessException(
+          InsuranceErrorCode.invalidCommand,
+          message: '请检查缴费频率、期数和期缴金额。',
+          cause: error,
+        );
+      }
+      await _insurances.save(
+        _copyWith(
+          insurance,
+          premiumPlan: premiumPlan,
+          attachments: insurance.attachments,
+          updatedAt: _now(),
+        ),
+      );
     });
   }
 
@@ -140,8 +187,9 @@ class CommercialInsuranceAppServiceImpl
     try {
       await _runner.run(() async {
         final latest = await _require(insuranceId);
-        final updated = _copyWithAttachments(
+        final updated = _copyWith(
           latest,
+          premiumPlan: latest.premiumPlan,
           attachments: [...latest.attachments, ...added],
           updatedAt: _now(),
         );
@@ -188,8 +236,9 @@ class CommercialInsuranceAppServiceImpl
       }
       removed = match;
       await _insurances.save(
-        _copyWithAttachments(
+        _copyWith(
           insurance,
+          premiumPlan: insurance.premiumPlan,
           attachments: [
             for (final item in insurance.attachments)
               if (item.id != attachmentId) item,
@@ -277,13 +326,15 @@ class CommercialInsuranceAppServiceImpl
       id: responsibilityId,
       kind: input.kind,
       name: input.name,
+      description: input.description,
       points: points,
       order: order,
     );
   }
 
-  CommercialInsurance _copyWithAttachments(
+  CommercialInsurance _copyWith(
     CommercialInsurance insurance, {
+    required PremiumPlan? premiumPlan,
     required List<InsuranceAttachment> attachments,
     required DateTime updatedAt,
   }) {
@@ -295,7 +346,14 @@ class CommercialInsuranceAppServiceImpl
       productForm: insurance.productForm,
       coverageTerm: insurance.coverageTerm,
       coverageAmount: insurance.coverageAmount,
-      premiumPlan: insurance.premiumPlan,
+      coverageAmountDescription: insurance.coverageAmountDescription,
+      coverageSummary: insurance.coverageSummary,
+      coverageHighlights: insurance.coverageHighlights,
+      policyholderName: insurance.policyholderName,
+      beneficiaryDescription: insurance.beneficiaryDescription,
+      waitingPeriodDescription: insurance.waitingPeriodDescription,
+      exclusionsDescription: insurance.exclusionsDescription,
+      premiumPlan: premiumPlan,
       insuredPersonIds: insurance.insuredPersonIds,
       responsibilities: insurance.responsibilities,
       attachments: attachments,

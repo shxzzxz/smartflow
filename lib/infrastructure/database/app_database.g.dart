@@ -21529,6 +21529,83 @@ class $CommercialInsurancesTable extends CommercialInsurances
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _coverageAmountDescriptionMeta =
+      const VerificationMeta('coverageAmountDescription');
+  @override
+  late final GeneratedColumn<String> coverageAmountDescription =
+      GeneratedColumn<String>(
+        'coverage_amount_description',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _coverageSummaryMeta = const VerificationMeta(
+    'coverageSummary',
+  );
+  @override
+  late final GeneratedColumn<String> coverageSummary = GeneratedColumn<String>(
+    'coverage_summary',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverageHighlightsMeta =
+      const VerificationMeta('coverageHighlights');
+  @override
+  late final GeneratedColumn<String> coverageHighlights =
+      GeneratedColumn<String>(
+        'coverage_highlights',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _policyholderNameMeta = const VerificationMeta(
+    'policyholderName',
+  );
+  @override
+  late final GeneratedColumn<String> policyholderName = GeneratedColumn<String>(
+    'policyholder_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _beneficiaryDescriptionMeta =
+      const VerificationMeta('beneficiaryDescription');
+  @override
+  late final GeneratedColumn<String> beneficiaryDescription =
+      GeneratedColumn<String>(
+        'beneficiary_description',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _waitingPeriodDescriptionMeta =
+      const VerificationMeta('waitingPeriodDescription');
+  @override
+  late final GeneratedColumn<String> waitingPeriodDescription =
+      GeneratedColumn<String>(
+        'waiting_period_description',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _exclusionsDescriptionMeta =
+      const VerificationMeta('exclusionsDescription');
+  @override
+  late final GeneratedColumn<String> exclusionsDescription =
+      GeneratedColumn<String>(
+        'exclusions_description',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _premiumAmountMinorMeta =
       const VerificationMeta('premiumAmountMinor');
   @override
@@ -21597,6 +21674,13 @@ class $CommercialInsurancesTable extends CommercialInsurances
     coverageEndDate,
     lifetime,
     coverageAmountMinor,
+    coverageAmountDescription,
+    coverageSummary,
+    coverageHighlights,
+    policyholderName,
+    beneficiaryDescription,
+    waitingPeriodDescription,
+    exclusionsDescription,
     premiumAmountMinor,
     premiumFrequency,
     premiumTermCount,
@@ -21683,6 +21767,69 @@ class $CommercialInsurancesTable extends CommercialInsurances
         ),
       );
     }
+    if (data.containsKey('coverage_amount_description')) {
+      context.handle(
+        _coverageAmountDescriptionMeta,
+        coverageAmountDescription.isAcceptableOrUnknown(
+          data['coverage_amount_description']!,
+          _coverageAmountDescriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('coverage_summary')) {
+      context.handle(
+        _coverageSummaryMeta,
+        coverageSummary.isAcceptableOrUnknown(
+          data['coverage_summary']!,
+          _coverageSummaryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('coverage_highlights')) {
+      context.handle(
+        _coverageHighlightsMeta,
+        coverageHighlights.isAcceptableOrUnknown(
+          data['coverage_highlights']!,
+          _coverageHighlightsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('policyholder_name')) {
+      context.handle(
+        _policyholderNameMeta,
+        policyholderName.isAcceptableOrUnknown(
+          data['policyholder_name']!,
+          _policyholderNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('beneficiary_description')) {
+      context.handle(
+        _beneficiaryDescriptionMeta,
+        beneficiaryDescription.isAcceptableOrUnknown(
+          data['beneficiary_description']!,
+          _beneficiaryDescriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('waiting_period_description')) {
+      context.handle(
+        _waitingPeriodDescriptionMeta,
+        waitingPeriodDescription.isAcceptableOrUnknown(
+          data['waiting_period_description']!,
+          _waitingPeriodDescriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exclusions_description')) {
+      context.handle(
+        _exclusionsDescriptionMeta,
+        exclusionsDescription.isAcceptableOrUnknown(
+          data['exclusions_description']!,
+          _exclusionsDescriptionMeta,
+        ),
+      );
+    }
     if (data.containsKey('premium_amount_minor')) {
       context.handle(
         _premiumAmountMinorMeta,
@@ -21760,6 +21907,34 @@ class $CommercialInsurancesTable extends CommercialInsurances
         DriftSqlType.int,
         data['${effectivePrefix}coverage_amount_minor'],
       ),
+      coverageAmountDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coverage_amount_description'],
+      ),
+      coverageSummary: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coverage_summary'],
+      ),
+      coverageHighlights: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}coverage_highlights'],
+      ),
+      policyholderName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}policyholder_name'],
+      ),
+      beneficiaryDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}beneficiary_description'],
+      ),
+      waitingPeriodDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}waiting_period_description'],
+      ),
+      exclusionsDescription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exclusions_description'],
+      ),
       premiumAmountMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}premium_amount_minor'],
@@ -21816,6 +21991,13 @@ class CommercialInsuranceRow extends DataClass
   final DateTime? coverageEndDate;
   final bool lifetime;
   final int? coverageAmountMinor;
+  final String? coverageAmountDescription;
+  final String? coverageSummary;
+  final String? coverageHighlights;
+  final String? policyholderName;
+  final String? beneficiaryDescription;
+  final String? waitingPeriodDescription;
+  final String? exclusionsDescription;
   final int? premiumAmountMinor;
   final PremiumFrequency? premiumFrequency;
   final int? premiumTermCount;
@@ -21831,6 +22013,13 @@ class CommercialInsuranceRow extends DataClass
     this.coverageEndDate,
     required this.lifetime,
     this.coverageAmountMinor,
+    this.coverageAmountDescription,
+    this.coverageSummary,
+    this.coverageHighlights,
+    this.policyholderName,
+    this.beneficiaryDescription,
+    this.waitingPeriodDescription,
+    this.exclusionsDescription,
     this.premiumAmountMinor,
     this.premiumFrequency,
     this.premiumTermCount,
@@ -21858,6 +22047,31 @@ class CommercialInsuranceRow extends DataClass
     map['lifetime'] = Variable<bool>(lifetime);
     if (!nullToAbsent || coverageAmountMinor != null) {
       map['coverage_amount_minor'] = Variable<int>(coverageAmountMinor);
+    }
+    if (!nullToAbsent || coverageAmountDescription != null) {
+      map['coverage_amount_description'] = Variable<String>(
+        coverageAmountDescription,
+      );
+    }
+    if (!nullToAbsent || coverageSummary != null) {
+      map['coverage_summary'] = Variable<String>(coverageSummary);
+    }
+    if (!nullToAbsent || coverageHighlights != null) {
+      map['coverage_highlights'] = Variable<String>(coverageHighlights);
+    }
+    if (!nullToAbsent || policyholderName != null) {
+      map['policyholder_name'] = Variable<String>(policyholderName);
+    }
+    if (!nullToAbsent || beneficiaryDescription != null) {
+      map['beneficiary_description'] = Variable<String>(beneficiaryDescription);
+    }
+    if (!nullToAbsent || waitingPeriodDescription != null) {
+      map['waiting_period_description'] = Variable<String>(
+        waitingPeriodDescription,
+      );
+    }
+    if (!nullToAbsent || exclusionsDescription != null) {
+      map['exclusions_description'] = Variable<String>(exclusionsDescription);
     }
     if (!nullToAbsent || premiumAmountMinor != null) {
       map['premium_amount_minor'] = Variable<int>(premiumAmountMinor);
@@ -21894,6 +22108,28 @@ class CommercialInsuranceRow extends DataClass
       coverageAmountMinor: coverageAmountMinor == null && nullToAbsent
           ? const Value.absent()
           : Value(coverageAmountMinor),
+      coverageAmountDescription:
+          coverageAmountDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverageAmountDescription),
+      coverageSummary: coverageSummary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverageSummary),
+      coverageHighlights: coverageHighlights == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverageHighlights),
+      policyholderName: policyholderName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(policyholderName),
+      beneficiaryDescription: beneficiaryDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(beneficiaryDescription),
+      waitingPeriodDescription: waitingPeriodDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(waitingPeriodDescription),
+      exclusionsDescription: exclusionsDescription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exclusionsDescription),
       premiumAmountMinor: premiumAmountMinor == null && nullToAbsent
           ? const Value.absent()
           : Value(premiumAmountMinor),
@@ -21929,6 +22165,23 @@ class CommercialInsuranceRow extends DataClass
       coverageAmountMinor: serializer.fromJson<int?>(
         json['coverageAmountMinor'],
       ),
+      coverageAmountDescription: serializer.fromJson<String?>(
+        json['coverageAmountDescription'],
+      ),
+      coverageSummary: serializer.fromJson<String?>(json['coverageSummary']),
+      coverageHighlights: serializer.fromJson<String?>(
+        json['coverageHighlights'],
+      ),
+      policyholderName: serializer.fromJson<String?>(json['policyholderName']),
+      beneficiaryDescription: serializer.fromJson<String?>(
+        json['beneficiaryDescription'],
+      ),
+      waitingPeriodDescription: serializer.fromJson<String?>(
+        json['waitingPeriodDescription'],
+      ),
+      exclusionsDescription: serializer.fromJson<String?>(
+        json['exclusionsDescription'],
+      ),
       premiumAmountMinor: serializer.fromJson<int?>(json['premiumAmountMinor']),
       premiumFrequency: $CommercialInsurancesTable.$converterpremiumFrequencyn
           .fromJson(serializer.fromJson<String?>(json['premiumFrequency'])),
@@ -21952,6 +22205,21 @@ class CommercialInsuranceRow extends DataClass
       'coverageEndDate': serializer.toJson<DateTime?>(coverageEndDate),
       'lifetime': serializer.toJson<bool>(lifetime),
       'coverageAmountMinor': serializer.toJson<int?>(coverageAmountMinor),
+      'coverageAmountDescription': serializer.toJson<String?>(
+        coverageAmountDescription,
+      ),
+      'coverageSummary': serializer.toJson<String?>(coverageSummary),
+      'coverageHighlights': serializer.toJson<String?>(coverageHighlights),
+      'policyholderName': serializer.toJson<String?>(policyholderName),
+      'beneficiaryDescription': serializer.toJson<String?>(
+        beneficiaryDescription,
+      ),
+      'waitingPeriodDescription': serializer.toJson<String?>(
+        waitingPeriodDescription,
+      ),
+      'exclusionsDescription': serializer.toJson<String?>(
+        exclusionsDescription,
+      ),
       'premiumAmountMinor': serializer.toJson<int?>(premiumAmountMinor),
       'premiumFrequency': serializer.toJson<String?>(
         $CommercialInsurancesTable.$converterpremiumFrequencyn.toJson(
@@ -21974,6 +22242,13 @@ class CommercialInsuranceRow extends DataClass
     Value<DateTime?> coverageEndDate = const Value.absent(),
     bool? lifetime,
     Value<int?> coverageAmountMinor = const Value.absent(),
+    Value<String?> coverageAmountDescription = const Value.absent(),
+    Value<String?> coverageSummary = const Value.absent(),
+    Value<String?> coverageHighlights = const Value.absent(),
+    Value<String?> policyholderName = const Value.absent(),
+    Value<String?> beneficiaryDescription = const Value.absent(),
+    Value<String?> waitingPeriodDescription = const Value.absent(),
+    Value<String?> exclusionsDescription = const Value.absent(),
     Value<int?> premiumAmountMinor = const Value.absent(),
     Value<PremiumFrequency?> premiumFrequency = const Value.absent(),
     Value<int?> premiumTermCount = const Value.absent(),
@@ -21993,6 +22268,27 @@ class CommercialInsuranceRow extends DataClass
     coverageAmountMinor: coverageAmountMinor.present
         ? coverageAmountMinor.value
         : this.coverageAmountMinor,
+    coverageAmountDescription: coverageAmountDescription.present
+        ? coverageAmountDescription.value
+        : this.coverageAmountDescription,
+    coverageSummary: coverageSummary.present
+        ? coverageSummary.value
+        : this.coverageSummary,
+    coverageHighlights: coverageHighlights.present
+        ? coverageHighlights.value
+        : this.coverageHighlights,
+    policyholderName: policyholderName.present
+        ? policyholderName.value
+        : this.policyholderName,
+    beneficiaryDescription: beneficiaryDescription.present
+        ? beneficiaryDescription.value
+        : this.beneficiaryDescription,
+    waitingPeriodDescription: waitingPeriodDescription.present
+        ? waitingPeriodDescription.value
+        : this.waitingPeriodDescription,
+    exclusionsDescription: exclusionsDescription.present
+        ? exclusionsDescription.value
+        : this.exclusionsDescription,
     premiumAmountMinor: premiumAmountMinor.present
         ? premiumAmountMinor.value
         : this.premiumAmountMinor,
@@ -22026,6 +22322,27 @@ class CommercialInsuranceRow extends DataClass
       coverageAmountMinor: data.coverageAmountMinor.present
           ? data.coverageAmountMinor.value
           : this.coverageAmountMinor,
+      coverageAmountDescription: data.coverageAmountDescription.present
+          ? data.coverageAmountDescription.value
+          : this.coverageAmountDescription,
+      coverageSummary: data.coverageSummary.present
+          ? data.coverageSummary.value
+          : this.coverageSummary,
+      coverageHighlights: data.coverageHighlights.present
+          ? data.coverageHighlights.value
+          : this.coverageHighlights,
+      policyholderName: data.policyholderName.present
+          ? data.policyholderName.value
+          : this.policyholderName,
+      beneficiaryDescription: data.beneficiaryDescription.present
+          ? data.beneficiaryDescription.value
+          : this.beneficiaryDescription,
+      waitingPeriodDescription: data.waitingPeriodDescription.present
+          ? data.waitingPeriodDescription.value
+          : this.waitingPeriodDescription,
+      exclusionsDescription: data.exclusionsDescription.present
+          ? data.exclusionsDescription.value
+          : this.exclusionsDescription,
       premiumAmountMinor: data.premiumAmountMinor.present
           ? data.premiumAmountMinor.value
           : this.premiumAmountMinor,
@@ -22052,6 +22369,13 @@ class CommercialInsuranceRow extends DataClass
           ..write('coverageEndDate: $coverageEndDate, ')
           ..write('lifetime: $lifetime, ')
           ..write('coverageAmountMinor: $coverageAmountMinor, ')
+          ..write('coverageAmountDescription: $coverageAmountDescription, ')
+          ..write('coverageSummary: $coverageSummary, ')
+          ..write('coverageHighlights: $coverageHighlights, ')
+          ..write('policyholderName: $policyholderName, ')
+          ..write('beneficiaryDescription: $beneficiaryDescription, ')
+          ..write('waitingPeriodDescription: $waitingPeriodDescription, ')
+          ..write('exclusionsDescription: $exclusionsDescription, ')
           ..write('premiumAmountMinor: $premiumAmountMinor, ')
           ..write('premiumFrequency: $premiumFrequency, ')
           ..write('premiumTermCount: $premiumTermCount, ')
@@ -22062,7 +22386,7 @@ class CommercialInsuranceRow extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     insurerName,
@@ -22072,12 +22396,19 @@ class CommercialInsuranceRow extends DataClass
     coverageEndDate,
     lifetime,
     coverageAmountMinor,
+    coverageAmountDescription,
+    coverageSummary,
+    coverageHighlights,
+    policyholderName,
+    beneficiaryDescription,
+    waitingPeriodDescription,
+    exclusionsDescription,
     premiumAmountMinor,
     premiumFrequency,
     premiumTermCount,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -22091,6 +22422,13 @@ class CommercialInsuranceRow extends DataClass
           other.coverageEndDate == this.coverageEndDate &&
           other.lifetime == this.lifetime &&
           other.coverageAmountMinor == this.coverageAmountMinor &&
+          other.coverageAmountDescription == this.coverageAmountDescription &&
+          other.coverageSummary == this.coverageSummary &&
+          other.coverageHighlights == this.coverageHighlights &&
+          other.policyholderName == this.policyholderName &&
+          other.beneficiaryDescription == this.beneficiaryDescription &&
+          other.waitingPeriodDescription == this.waitingPeriodDescription &&
+          other.exclusionsDescription == this.exclusionsDescription &&
           other.premiumAmountMinor == this.premiumAmountMinor &&
           other.premiumFrequency == this.premiumFrequency &&
           other.premiumTermCount == this.premiumTermCount &&
@@ -22109,6 +22447,13 @@ class CommercialInsurancesCompanion
   final Value<DateTime?> coverageEndDate;
   final Value<bool> lifetime;
   final Value<int?> coverageAmountMinor;
+  final Value<String?> coverageAmountDescription;
+  final Value<String?> coverageSummary;
+  final Value<String?> coverageHighlights;
+  final Value<String?> policyholderName;
+  final Value<String?> beneficiaryDescription;
+  final Value<String?> waitingPeriodDescription;
+  final Value<String?> exclusionsDescription;
   final Value<int?> premiumAmountMinor;
   final Value<PremiumFrequency?> premiumFrequency;
   final Value<int?> premiumTermCount;
@@ -22125,6 +22470,13 @@ class CommercialInsurancesCompanion
     this.coverageEndDate = const Value.absent(),
     this.lifetime = const Value.absent(),
     this.coverageAmountMinor = const Value.absent(),
+    this.coverageAmountDescription = const Value.absent(),
+    this.coverageSummary = const Value.absent(),
+    this.coverageHighlights = const Value.absent(),
+    this.policyholderName = const Value.absent(),
+    this.beneficiaryDescription = const Value.absent(),
+    this.waitingPeriodDescription = const Value.absent(),
+    this.exclusionsDescription = const Value.absent(),
     this.premiumAmountMinor = const Value.absent(),
     this.premiumFrequency = const Value.absent(),
     this.premiumTermCount = const Value.absent(),
@@ -22142,6 +22494,13 @@ class CommercialInsurancesCompanion
     this.coverageEndDate = const Value.absent(),
     this.lifetime = const Value.absent(),
     this.coverageAmountMinor = const Value.absent(),
+    this.coverageAmountDescription = const Value.absent(),
+    this.coverageSummary = const Value.absent(),
+    this.coverageHighlights = const Value.absent(),
+    this.policyholderName = const Value.absent(),
+    this.beneficiaryDescription = const Value.absent(),
+    this.waitingPeriodDescription = const Value.absent(),
+    this.exclusionsDescription = const Value.absent(),
     this.premiumAmountMinor = const Value.absent(),
     this.premiumFrequency = const Value.absent(),
     this.premiumTermCount = const Value.absent(),
@@ -22163,6 +22522,13 @@ class CommercialInsurancesCompanion
     Expression<DateTime>? coverageEndDate,
     Expression<bool>? lifetime,
     Expression<int>? coverageAmountMinor,
+    Expression<String>? coverageAmountDescription,
+    Expression<String>? coverageSummary,
+    Expression<String>? coverageHighlights,
+    Expression<String>? policyholderName,
+    Expression<String>? beneficiaryDescription,
+    Expression<String>? waitingPeriodDescription,
+    Expression<String>? exclusionsDescription,
     Expression<int>? premiumAmountMinor,
     Expression<String>? premiumFrequency,
     Expression<int>? premiumTermCount,
@@ -22181,6 +22547,17 @@ class CommercialInsurancesCompanion
       if (lifetime != null) 'lifetime': lifetime,
       if (coverageAmountMinor != null)
         'coverage_amount_minor': coverageAmountMinor,
+      if (coverageAmountDescription != null)
+        'coverage_amount_description': coverageAmountDescription,
+      if (coverageSummary != null) 'coverage_summary': coverageSummary,
+      if (coverageHighlights != null) 'coverage_highlights': coverageHighlights,
+      if (policyholderName != null) 'policyholder_name': policyholderName,
+      if (beneficiaryDescription != null)
+        'beneficiary_description': beneficiaryDescription,
+      if (waitingPeriodDescription != null)
+        'waiting_period_description': waitingPeriodDescription,
+      if (exclusionsDescription != null)
+        'exclusions_description': exclusionsDescription,
       if (premiumAmountMinor != null)
         'premium_amount_minor': premiumAmountMinor,
       if (premiumFrequency != null) 'premium_frequency': premiumFrequency,
@@ -22201,6 +22578,13 @@ class CommercialInsurancesCompanion
     Value<DateTime?>? coverageEndDate,
     Value<bool>? lifetime,
     Value<int?>? coverageAmountMinor,
+    Value<String?>? coverageAmountDescription,
+    Value<String?>? coverageSummary,
+    Value<String?>? coverageHighlights,
+    Value<String?>? policyholderName,
+    Value<String?>? beneficiaryDescription,
+    Value<String?>? waitingPeriodDescription,
+    Value<String?>? exclusionsDescription,
     Value<int?>? premiumAmountMinor,
     Value<PremiumFrequency?>? premiumFrequency,
     Value<int?>? premiumTermCount,
@@ -22218,6 +22602,17 @@ class CommercialInsurancesCompanion
       coverageEndDate: coverageEndDate ?? this.coverageEndDate,
       lifetime: lifetime ?? this.lifetime,
       coverageAmountMinor: coverageAmountMinor ?? this.coverageAmountMinor,
+      coverageAmountDescription:
+          coverageAmountDescription ?? this.coverageAmountDescription,
+      coverageSummary: coverageSummary ?? this.coverageSummary,
+      coverageHighlights: coverageHighlights ?? this.coverageHighlights,
+      policyholderName: policyholderName ?? this.policyholderName,
+      beneficiaryDescription:
+          beneficiaryDescription ?? this.beneficiaryDescription,
+      waitingPeriodDescription:
+          waitingPeriodDescription ?? this.waitingPeriodDescription,
+      exclusionsDescription:
+          exclusionsDescription ?? this.exclusionsDescription,
       premiumAmountMinor: premiumAmountMinor ?? this.premiumAmountMinor,
       premiumFrequency: premiumFrequency ?? this.premiumFrequency,
       premiumTermCount: premiumTermCount ?? this.premiumTermCount,
@@ -22259,6 +22654,35 @@ class CommercialInsurancesCompanion
     if (coverageAmountMinor.present) {
       map['coverage_amount_minor'] = Variable<int>(coverageAmountMinor.value);
     }
+    if (coverageAmountDescription.present) {
+      map['coverage_amount_description'] = Variable<String>(
+        coverageAmountDescription.value,
+      );
+    }
+    if (coverageSummary.present) {
+      map['coverage_summary'] = Variable<String>(coverageSummary.value);
+    }
+    if (coverageHighlights.present) {
+      map['coverage_highlights'] = Variable<String>(coverageHighlights.value);
+    }
+    if (policyholderName.present) {
+      map['policyholder_name'] = Variable<String>(policyholderName.value);
+    }
+    if (beneficiaryDescription.present) {
+      map['beneficiary_description'] = Variable<String>(
+        beneficiaryDescription.value,
+      );
+    }
+    if (waitingPeriodDescription.present) {
+      map['waiting_period_description'] = Variable<String>(
+        waitingPeriodDescription.value,
+      );
+    }
+    if (exclusionsDescription.present) {
+      map['exclusions_description'] = Variable<String>(
+        exclusionsDescription.value,
+      );
+    }
     if (premiumAmountMinor.present) {
       map['premium_amount_minor'] = Variable<int>(premiumAmountMinor.value);
     }
@@ -22296,6 +22720,13 @@ class CommercialInsurancesCompanion
           ..write('coverageEndDate: $coverageEndDate, ')
           ..write('lifetime: $lifetime, ')
           ..write('coverageAmountMinor: $coverageAmountMinor, ')
+          ..write('coverageAmountDescription: $coverageAmountDescription, ')
+          ..write('coverageSummary: $coverageSummary, ')
+          ..write('coverageHighlights: $coverageHighlights, ')
+          ..write('policyholderName: $policyholderName, ')
+          ..write('beneficiaryDescription: $beneficiaryDescription, ')
+          ..write('waitingPeriodDescription: $waitingPeriodDescription, ')
+          ..write('exclusionsDescription: $exclusionsDescription, ')
           ..write('premiumAmountMinor: $premiumAmountMinor, ')
           ..write('premiumFrequency: $premiumFrequency, ')
           ..write('premiumTermCount: $premiumTermCount, ')
@@ -22610,6 +23041,17 @@ class $CoverageResponsibilitiesTable extends CoverageResponsibilities
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
   );
@@ -22627,6 +23069,7 @@ class $CoverageResponsibilitiesTable extends CoverageResponsibilities
     commercialInsuranceId,
     kind,
     name,
+    description,
     sortOrder,
   ];
   @override
@@ -22664,6 +23107,15 @@ class $CoverageResponsibilitiesTable extends CoverageResponsibilities
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
     }
     if (data.containsKey('sort_order')) {
       context.handle(
@@ -22703,6 +23155,10 @@ class $CoverageResponsibilitiesTable extends CoverageResponsibilities
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
@@ -22725,12 +23181,14 @@ class CoverageResponsibilityRow extends DataClass
   final String commercialInsuranceId;
   final ResponsibilityKind kind;
   final String name;
+  final String? description;
   final int sortOrder;
   const CoverageResponsibilityRow({
     required this.id,
     required this.commercialInsuranceId,
     required this.kind,
     required this.name,
+    this.description,
     required this.sortOrder,
   });
   @override
@@ -22744,6 +23202,9 @@ class CoverageResponsibilityRow extends DataClass
       );
     }
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
     map['sort_order'] = Variable<int>(sortOrder);
     return map;
   }
@@ -22754,6 +23215,9 @@ class CoverageResponsibilityRow extends DataClass
       commercialInsuranceId: Value(commercialInsuranceId),
       kind: Value(kind),
       name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
       sortOrder: Value(sortOrder),
     );
   }
@@ -22772,6 +23236,7 @@ class CoverageResponsibilityRow extends DataClass
         serializer.fromJson<String>(json['kind']),
       ),
       name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
   }
@@ -22785,6 +23250,7 @@ class CoverageResponsibilityRow extends DataClass
         $CoverageResponsibilitiesTable.$converterkind.toJson(kind),
       ),
       'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
       'sortOrder': serializer.toJson<int>(sortOrder),
     };
   }
@@ -22794,12 +23260,14 @@ class CoverageResponsibilityRow extends DataClass
     String? commercialInsuranceId,
     ResponsibilityKind? kind,
     String? name,
+    Value<String?> description = const Value.absent(),
     int? sortOrder,
   }) => CoverageResponsibilityRow(
     id: id ?? this.id,
     commercialInsuranceId: commercialInsuranceId ?? this.commercialInsuranceId,
     kind: kind ?? this.kind,
     name: name ?? this.name,
+    description: description.present ? description.value : this.description,
     sortOrder: sortOrder ?? this.sortOrder,
   );
   CoverageResponsibilityRow copyWithCompanion(
@@ -22812,6 +23280,9 @@ class CoverageResponsibilityRow extends DataClass
           : this.commercialInsuranceId,
       kind: data.kind.present ? data.kind.value : this.kind,
       name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
@@ -22823,14 +23294,21 @@ class CoverageResponsibilityRow extends DataClass
           ..write('commercialInsuranceId: $commercialInsuranceId, ')
           ..write('kind: $kind, ')
           ..write('name: $name, ')
+          ..write('description: $description, ')
           ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, commercialInsuranceId, kind, name, sortOrder);
+  int get hashCode => Object.hash(
+    id,
+    commercialInsuranceId,
+    kind,
+    name,
+    description,
+    sortOrder,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -22839,6 +23317,7 @@ class CoverageResponsibilityRow extends DataClass
           other.commercialInsuranceId == this.commercialInsuranceId &&
           other.kind == this.kind &&
           other.name == this.name &&
+          other.description == this.description &&
           other.sortOrder == this.sortOrder);
 }
 
@@ -22848,6 +23327,7 @@ class CoverageResponsibilitiesCompanion
   final Value<String> commercialInsuranceId;
   final Value<ResponsibilityKind> kind;
   final Value<String> name;
+  final Value<String?> description;
   final Value<int> sortOrder;
   final Value<int> rowid;
   const CoverageResponsibilitiesCompanion({
@@ -22855,6 +23335,7 @@ class CoverageResponsibilitiesCompanion
     this.commercialInsuranceId = const Value.absent(),
     this.kind = const Value.absent(),
     this.name = const Value.absent(),
+    this.description = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -22863,6 +23344,7 @@ class CoverageResponsibilitiesCompanion
     required String commercialInsuranceId,
     required ResponsibilityKind kind,
     required String name,
+    this.description = const Value.absent(),
     required int sortOrder,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -22875,6 +23357,7 @@ class CoverageResponsibilitiesCompanion
     Expression<String>? commercialInsuranceId,
     Expression<String>? kind,
     Expression<String>? name,
+    Expression<String>? description,
     Expression<int>? sortOrder,
     Expression<int>? rowid,
   }) {
@@ -22884,6 +23367,7 @@ class CoverageResponsibilitiesCompanion
         'commercial_insurance_id': commercialInsuranceId,
       if (kind != null) 'kind': kind,
       if (name != null) 'name': name,
+      if (description != null) 'description': description,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (rowid != null) 'rowid': rowid,
     });
@@ -22894,6 +23378,7 @@ class CoverageResponsibilitiesCompanion
     Value<String>? commercialInsuranceId,
     Value<ResponsibilityKind>? kind,
     Value<String>? name,
+    Value<String?>? description,
     Value<int>? sortOrder,
     Value<int>? rowid,
   }) {
@@ -22903,6 +23388,7 @@ class CoverageResponsibilitiesCompanion
           commercialInsuranceId ?? this.commercialInsuranceId,
       kind: kind ?? this.kind,
       name: name ?? this.name,
+      description: description ?? this.description,
       sortOrder: sortOrder ?? this.sortOrder,
       rowid: rowid ?? this.rowid,
     );
@@ -22927,6 +23413,9 @@ class CoverageResponsibilitiesCompanion
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
@@ -22943,6 +23432,7 @@ class CoverageResponsibilitiesCompanion
           ..write('commercialInsuranceId: $commercialInsuranceId, ')
           ..write('kind: $kind, ')
           ..write('name: $name, ')
+          ..write('description: $description, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -24259,12 +24749,10 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       );
-  static const VerificationMeta _yearMonthMeta = const VerificationMeta(
-    'yearMonth',
-  );
+  static const VerificationMeta _periodMeta = const VerificationMeta('period');
   @override
-  late final GeneratedColumn<String> yearMonth = GeneratedColumn<String>(
-    'year_month',
+  late final GeneratedColumn<String> period = GeneratedColumn<String>(
+    'period',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -24276,15 +24764,37 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
   late final GeneratedColumn<int> contributionBaseMinor = GeneratedColumn<int>(
     'contribution_base_minor',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contributionAmountMinorMeta =
+      const VerificationMeta('contributionAmountMinor');
+  @override
+  late final GeneratedColumn<int> contributionAmountMinor =
+      GeneratedColumn<int>(
+        'contribution_amount_minor',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   @override
   List<GeneratedColumn> get $columns => [
     socialInsuranceId,
-    yearMonth,
+    period,
     contributionBaseMinor,
+    contributionAmountMinor,
+    note,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -24309,13 +24819,13 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
     } else if (isInserting) {
       context.missing(_socialInsuranceIdMeta);
     }
-    if (data.containsKey('year_month')) {
+    if (data.containsKey('period')) {
       context.handle(
-        _yearMonthMeta,
-        yearMonth.isAcceptableOrUnknown(data['year_month']!, _yearMonthMeta),
+        _periodMeta,
+        period.isAcceptableOrUnknown(data['period']!, _periodMeta),
       );
     } else if (isInserting) {
-      context.missing(_yearMonthMeta);
+      context.missing(_periodMeta);
     }
     if (data.containsKey('contribution_base_minor')) {
       context.handle(
@@ -24325,14 +24835,27 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
           _contributionBaseMinorMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_contributionBaseMinorMeta);
+    }
+    if (data.containsKey('contribution_amount_minor')) {
+      context.handle(
+        _contributionAmountMinorMeta,
+        contributionAmountMinor.isAcceptableOrUnknown(
+          data['contribution_amount_minor']!,
+          _contributionAmountMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
     }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {socialInsuranceId, yearMonth};
+  Set<GeneratedColumn> get $primaryKey => {socialInsuranceId, period};
   @override
   SocialContributionRecordRow map(
     Map<String, dynamic> data, {
@@ -24344,14 +24867,22 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
         DriftSqlType.string,
         data['${effectivePrefix}social_insurance_id'],
       )!,
-      yearMonth: attachedDatabase.typeMapping.read(
+      period: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}year_month'],
+        data['${effectivePrefix}period'],
       )!,
       contributionBaseMinor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}contribution_base_minor'],
-      )!,
+      ),
+      contributionAmountMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}contribution_amount_minor'],
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
     );
   }
 
@@ -24364,27 +24895,45 @@ class $SocialContributionRecordsTable extends SocialContributionRecords
 class SocialContributionRecordRow extends DataClass
     implements Insertable<SocialContributionRecordRow> {
   final String socialInsuranceId;
-  final String yearMonth;
-  final int contributionBaseMinor;
+  final String period;
+  final int? contributionBaseMinor;
+  final int? contributionAmountMinor;
+  final String? note;
   const SocialContributionRecordRow({
     required this.socialInsuranceId,
-    required this.yearMonth,
-    required this.contributionBaseMinor,
+    required this.period,
+    this.contributionBaseMinor,
+    this.contributionAmountMinor,
+    this.note,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['social_insurance_id'] = Variable<String>(socialInsuranceId);
-    map['year_month'] = Variable<String>(yearMonth);
-    map['contribution_base_minor'] = Variable<int>(contributionBaseMinor);
+    map['period'] = Variable<String>(period);
+    if (!nullToAbsent || contributionBaseMinor != null) {
+      map['contribution_base_minor'] = Variable<int>(contributionBaseMinor);
+    }
+    if (!nullToAbsent || contributionAmountMinor != null) {
+      map['contribution_amount_minor'] = Variable<int>(contributionAmountMinor);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     return map;
   }
 
   SocialContributionRecordsCompanion toCompanion(bool nullToAbsent) {
     return SocialContributionRecordsCompanion(
       socialInsuranceId: Value(socialInsuranceId),
-      yearMonth: Value(yearMonth),
-      contributionBaseMinor: Value(contributionBaseMinor),
+      period: Value(period),
+      contributionBaseMinor: contributionBaseMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contributionBaseMinor),
+      contributionAmountMinor: contributionAmountMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contributionAmountMinor),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
 
@@ -24395,10 +24944,14 @@ class SocialContributionRecordRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SocialContributionRecordRow(
       socialInsuranceId: serializer.fromJson<String>(json['socialInsuranceId']),
-      yearMonth: serializer.fromJson<String>(json['yearMonth']),
-      contributionBaseMinor: serializer.fromJson<int>(
+      period: serializer.fromJson<String>(json['period']),
+      contributionBaseMinor: serializer.fromJson<int?>(
         json['contributionBaseMinor'],
       ),
+      contributionAmountMinor: serializer.fromJson<int?>(
+        json['contributionAmountMinor'],
+      ),
+      note: serializer.fromJson<String?>(json['note']),
     );
   }
   @override
@@ -24406,19 +24959,31 @@ class SocialContributionRecordRow extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'socialInsuranceId': serializer.toJson<String>(socialInsuranceId),
-      'yearMonth': serializer.toJson<String>(yearMonth),
-      'contributionBaseMinor': serializer.toJson<int>(contributionBaseMinor),
+      'period': serializer.toJson<String>(period),
+      'contributionBaseMinor': serializer.toJson<int?>(contributionBaseMinor),
+      'contributionAmountMinor': serializer.toJson<int?>(
+        contributionAmountMinor,
+      ),
+      'note': serializer.toJson<String?>(note),
     };
   }
 
   SocialContributionRecordRow copyWith({
     String? socialInsuranceId,
-    String? yearMonth,
-    int? contributionBaseMinor,
+    String? period,
+    Value<int?> contributionBaseMinor = const Value.absent(),
+    Value<int?> contributionAmountMinor = const Value.absent(),
+    Value<String?> note = const Value.absent(),
   }) => SocialContributionRecordRow(
     socialInsuranceId: socialInsuranceId ?? this.socialInsuranceId,
-    yearMonth: yearMonth ?? this.yearMonth,
-    contributionBaseMinor: contributionBaseMinor ?? this.contributionBaseMinor,
+    period: period ?? this.period,
+    contributionBaseMinor: contributionBaseMinor.present
+        ? contributionBaseMinor.value
+        : this.contributionBaseMinor,
+    contributionAmountMinor: contributionAmountMinor.present
+        ? contributionAmountMinor.value
+        : this.contributionAmountMinor,
+    note: note.present ? note.value : this.note,
   );
   SocialContributionRecordRow copyWithCompanion(
     SocialContributionRecordsCompanion data,
@@ -24427,10 +24992,14 @@ class SocialContributionRecordRow extends DataClass
       socialInsuranceId: data.socialInsuranceId.present
           ? data.socialInsuranceId.value
           : this.socialInsuranceId,
-      yearMonth: data.yearMonth.present ? data.yearMonth.value : this.yearMonth,
+      period: data.period.present ? data.period.value : this.period,
       contributionBaseMinor: data.contributionBaseMinor.present
           ? data.contributionBaseMinor.value
           : this.contributionBaseMinor,
+      contributionAmountMinor: data.contributionAmountMinor.present
+          ? data.contributionAmountMinor.value
+          : this.contributionAmountMinor,
+      note: data.note.present ? data.note.value : this.note,
     );
   }
 
@@ -24438,70 +25007,94 @@ class SocialContributionRecordRow extends DataClass
   String toString() {
     return (StringBuffer('SocialContributionRecordRow(')
           ..write('socialInsuranceId: $socialInsuranceId, ')
-          ..write('yearMonth: $yearMonth, ')
-          ..write('contributionBaseMinor: $contributionBaseMinor')
+          ..write('period: $period, ')
+          ..write('contributionBaseMinor: $contributionBaseMinor, ')
+          ..write('contributionAmountMinor: $contributionAmountMinor, ')
+          ..write('note: $note')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(socialInsuranceId, yearMonth, contributionBaseMinor);
+  int get hashCode => Object.hash(
+    socialInsuranceId,
+    period,
+    contributionBaseMinor,
+    contributionAmountMinor,
+    note,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SocialContributionRecordRow &&
           other.socialInsuranceId == this.socialInsuranceId &&
-          other.yearMonth == this.yearMonth &&
-          other.contributionBaseMinor == this.contributionBaseMinor);
+          other.period == this.period &&
+          other.contributionBaseMinor == this.contributionBaseMinor &&
+          other.contributionAmountMinor == this.contributionAmountMinor &&
+          other.note == this.note);
 }
 
 class SocialContributionRecordsCompanion
     extends UpdateCompanion<SocialContributionRecordRow> {
   final Value<String> socialInsuranceId;
-  final Value<String> yearMonth;
-  final Value<int> contributionBaseMinor;
+  final Value<String> period;
+  final Value<int?> contributionBaseMinor;
+  final Value<int?> contributionAmountMinor;
+  final Value<String?> note;
   final Value<int> rowid;
   const SocialContributionRecordsCompanion({
     this.socialInsuranceId = const Value.absent(),
-    this.yearMonth = const Value.absent(),
+    this.period = const Value.absent(),
     this.contributionBaseMinor = const Value.absent(),
+    this.contributionAmountMinor = const Value.absent(),
+    this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SocialContributionRecordsCompanion.insert({
     required String socialInsuranceId,
-    required String yearMonth,
-    required int contributionBaseMinor,
+    required String period,
+    this.contributionBaseMinor = const Value.absent(),
+    this.contributionAmountMinor = const Value.absent(),
+    this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : socialInsuranceId = Value(socialInsuranceId),
-       yearMonth = Value(yearMonth),
-       contributionBaseMinor = Value(contributionBaseMinor);
+       period = Value(period);
   static Insertable<SocialContributionRecordRow> custom({
     Expression<String>? socialInsuranceId,
-    Expression<String>? yearMonth,
+    Expression<String>? period,
     Expression<int>? contributionBaseMinor,
+    Expression<int>? contributionAmountMinor,
+    Expression<String>? note,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (socialInsuranceId != null) 'social_insurance_id': socialInsuranceId,
-      if (yearMonth != null) 'year_month': yearMonth,
+      if (period != null) 'period': period,
       if (contributionBaseMinor != null)
         'contribution_base_minor': contributionBaseMinor,
+      if (contributionAmountMinor != null)
+        'contribution_amount_minor': contributionAmountMinor,
+      if (note != null) 'note': note,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   SocialContributionRecordsCompanion copyWith({
     Value<String>? socialInsuranceId,
-    Value<String>? yearMonth,
-    Value<int>? contributionBaseMinor,
+    Value<String>? period,
+    Value<int?>? contributionBaseMinor,
+    Value<int?>? contributionAmountMinor,
+    Value<String?>? note,
     Value<int>? rowid,
   }) {
     return SocialContributionRecordsCompanion(
       socialInsuranceId: socialInsuranceId ?? this.socialInsuranceId,
-      yearMonth: yearMonth ?? this.yearMonth,
+      period: period ?? this.period,
       contributionBaseMinor:
           contributionBaseMinor ?? this.contributionBaseMinor,
+      contributionAmountMinor:
+          contributionAmountMinor ?? this.contributionAmountMinor,
+      note: note ?? this.note,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -24512,13 +25105,21 @@ class SocialContributionRecordsCompanion
     if (socialInsuranceId.present) {
       map['social_insurance_id'] = Variable<String>(socialInsuranceId.value);
     }
-    if (yearMonth.present) {
-      map['year_month'] = Variable<String>(yearMonth.value);
+    if (period.present) {
+      map['period'] = Variable<String>(period.value);
     }
     if (contributionBaseMinor.present) {
       map['contribution_base_minor'] = Variable<int>(
         contributionBaseMinor.value,
       );
+    }
+    if (contributionAmountMinor.present) {
+      map['contribution_amount_minor'] = Variable<int>(
+        contributionAmountMinor.value,
+      );
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -24530,8 +25131,10 @@ class SocialContributionRecordsCompanion
   String toString() {
     return (StringBuffer('SocialContributionRecordsCompanion(')
           ..write('socialInsuranceId: $socialInsuranceId, ')
-          ..write('yearMonth: $yearMonth, ')
+          ..write('period: $period, ')
           ..write('contributionBaseMinor: $contributionBaseMinor, ')
+          ..write('contributionAmountMinor: $contributionAmountMinor, ')
+          ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -35456,6 +36059,13 @@ typedef $$CommercialInsurancesTableCreateCompanionBuilder =
       Value<DateTime?> coverageEndDate,
       Value<bool> lifetime,
       Value<int?> coverageAmountMinor,
+      Value<String?> coverageAmountDescription,
+      Value<String?> coverageSummary,
+      Value<String?> coverageHighlights,
+      Value<String?> policyholderName,
+      Value<String?> beneficiaryDescription,
+      Value<String?> waitingPeriodDescription,
+      Value<String?> exclusionsDescription,
       Value<int?> premiumAmountMinor,
       Value<PremiumFrequency?> premiumFrequency,
       Value<int?> premiumTermCount,
@@ -35474,6 +36084,13 @@ typedef $$CommercialInsurancesTableUpdateCompanionBuilder =
       Value<DateTime?> coverageEndDate,
       Value<bool> lifetime,
       Value<int?> coverageAmountMinor,
+      Value<String?> coverageAmountDescription,
+      Value<String?> coverageSummary,
+      Value<String?> coverageHighlights,
+      Value<String?> policyholderName,
+      Value<String?> beneficiaryDescription,
+      Value<String?> waitingPeriodDescription,
+      Value<String?> exclusionsDescription,
       Value<int?> premiumAmountMinor,
       Value<PremiumFrequency?> premiumFrequency,
       Value<int?> premiumTermCount,
@@ -35538,6 +36155,41 @@ class $$CommercialInsurancesTableFilterComposer
 
   ColumnFilters<int> get coverageAmountMinor => $composableBuilder(
     column: $table.coverageAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverageAmountDescription => $composableBuilder(
+    column: $table.coverageAmountDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverageSummary => $composableBuilder(
+    column: $table.coverageSummary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverageHighlights => $composableBuilder(
+    column: $table.coverageHighlights,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get policyholderName => $composableBuilder(
+    column: $table.policyholderName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get beneficiaryDescription => $composableBuilder(
+    column: $table.beneficiaryDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get waitingPeriodDescription => $composableBuilder(
+    column: $table.waitingPeriodDescription,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exclusionsDescription => $composableBuilder(
+    column: $table.exclusionsDescription,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -35622,6 +36274,41 @@ class $$CommercialInsurancesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get coverageAmountDescription => $composableBuilder(
+    column: $table.coverageAmountDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverageSummary => $composableBuilder(
+    column: $table.coverageSummary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverageHighlights => $composableBuilder(
+    column: $table.coverageHighlights,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get policyholderName => $composableBuilder(
+    column: $table.policyholderName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get beneficiaryDescription => $composableBuilder(
+    column: $table.beneficiaryDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get waitingPeriodDescription => $composableBuilder(
+    column: $table.waitingPeriodDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exclusionsDescription => $composableBuilder(
+    column: $table.exclusionsDescription,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get premiumAmountMinor => $composableBuilder(
     column: $table.premiumAmountMinor,
     builder: (column) => ColumnOrderings(column),
@@ -35692,6 +36379,41 @@ class $$CommercialInsurancesTableAnnotationComposer
 
   GeneratedColumn<int> get coverageAmountMinor => $composableBuilder(
     column: $table.coverageAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverageAmountDescription => $composableBuilder(
+    column: $table.coverageAmountDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverageSummary => $composableBuilder(
+    column: $table.coverageSummary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverageHighlights => $composableBuilder(
+    column: $table.coverageHighlights,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get policyholderName => $composableBuilder(
+    column: $table.policyholderName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get beneficiaryDescription => $composableBuilder(
+    column: $table.beneficiaryDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get waitingPeriodDescription => $composableBuilder(
+    column: $table.waitingPeriodDescription,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exclusionsDescription => $composableBuilder(
+    column: $table.exclusionsDescription,
     builder: (column) => column,
   );
 
@@ -35771,6 +36493,13 @@ class $$CommercialInsurancesTableTableManager
                 Value<DateTime?> coverageEndDate = const Value.absent(),
                 Value<bool> lifetime = const Value.absent(),
                 Value<int?> coverageAmountMinor = const Value.absent(),
+                Value<String?> coverageAmountDescription = const Value.absent(),
+                Value<String?> coverageSummary = const Value.absent(),
+                Value<String?> coverageHighlights = const Value.absent(),
+                Value<String?> policyholderName = const Value.absent(),
+                Value<String?> beneficiaryDescription = const Value.absent(),
+                Value<String?> waitingPeriodDescription = const Value.absent(),
+                Value<String?> exclusionsDescription = const Value.absent(),
                 Value<int?> premiumAmountMinor = const Value.absent(),
                 Value<PremiumFrequency?> premiumFrequency =
                     const Value.absent(),
@@ -35788,6 +36517,13 @@ class $$CommercialInsurancesTableTableManager
                 coverageEndDate: coverageEndDate,
                 lifetime: lifetime,
                 coverageAmountMinor: coverageAmountMinor,
+                coverageAmountDescription: coverageAmountDescription,
+                coverageSummary: coverageSummary,
+                coverageHighlights: coverageHighlights,
+                policyholderName: policyholderName,
+                beneficiaryDescription: beneficiaryDescription,
+                waitingPeriodDescription: waitingPeriodDescription,
+                exclusionsDescription: exclusionsDescription,
                 premiumAmountMinor: premiumAmountMinor,
                 premiumFrequency: premiumFrequency,
                 premiumTermCount: premiumTermCount,
@@ -35806,6 +36542,13 @@ class $$CommercialInsurancesTableTableManager
                 Value<DateTime?> coverageEndDate = const Value.absent(),
                 Value<bool> lifetime = const Value.absent(),
                 Value<int?> coverageAmountMinor = const Value.absent(),
+                Value<String?> coverageAmountDescription = const Value.absent(),
+                Value<String?> coverageSummary = const Value.absent(),
+                Value<String?> coverageHighlights = const Value.absent(),
+                Value<String?> policyholderName = const Value.absent(),
+                Value<String?> beneficiaryDescription = const Value.absent(),
+                Value<String?> waitingPeriodDescription = const Value.absent(),
+                Value<String?> exclusionsDescription = const Value.absent(),
                 Value<int?> premiumAmountMinor = const Value.absent(),
                 Value<PremiumFrequency?> premiumFrequency =
                     const Value.absent(),
@@ -35823,6 +36566,13 @@ class $$CommercialInsurancesTableTableManager
                 coverageEndDate: coverageEndDate,
                 lifetime: lifetime,
                 coverageAmountMinor: coverageAmountMinor,
+                coverageAmountDescription: coverageAmountDescription,
+                coverageSummary: coverageSummary,
+                coverageHighlights: coverageHighlights,
+                policyholderName: policyholderName,
+                beneficiaryDescription: beneficiaryDescription,
+                waitingPeriodDescription: waitingPeriodDescription,
+                exclusionsDescription: exclusionsDescription,
                 premiumAmountMinor: premiumAmountMinor,
                 premiumFrequency: premiumFrequency,
                 premiumTermCount: premiumTermCount,
@@ -36031,6 +36781,7 @@ typedef $$CoverageResponsibilitiesTableCreateCompanionBuilder =
       required String commercialInsuranceId,
       required ResponsibilityKind kind,
       required String name,
+      Value<String?> description,
       required int sortOrder,
       Value<int> rowid,
     });
@@ -36040,6 +36791,7 @@ typedef $$CoverageResponsibilitiesTableUpdateCompanionBuilder =
       Value<String> commercialInsuranceId,
       Value<ResponsibilityKind> kind,
       Value<String> name,
+      Value<String?> description,
       Value<int> sortOrder,
       Value<int> rowid,
     });
@@ -36071,6 +36823,11 @@ class $$CoverageResponsibilitiesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -36109,6 +36866,11 @@ class $$CoverageResponsibilitiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
@@ -36137,6 +36899,11 @@ class $$CoverageResponsibilitiesTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -36192,6 +36959,7 @@ class $$CoverageResponsibilitiesTableTableManager
                 Value<String> commercialInsuranceId = const Value.absent(),
                 Value<ResponsibilityKind> kind = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CoverageResponsibilitiesCompanion(
@@ -36199,6 +36967,7 @@ class $$CoverageResponsibilitiesTableTableManager
                 commercialInsuranceId: commercialInsuranceId,
                 kind: kind,
                 name: name,
+                description: description,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),
@@ -36208,6 +36977,7 @@ class $$CoverageResponsibilitiesTableTableManager
                 required String commercialInsuranceId,
                 required ResponsibilityKind kind,
                 required String name,
+                Value<String?> description = const Value.absent(),
                 required int sortOrder,
                 Value<int> rowid = const Value.absent(),
               }) => CoverageResponsibilitiesCompanion.insert(
@@ -36215,6 +36985,7 @@ class $$CoverageResponsibilitiesTableTableManager
                 commercialInsuranceId: commercialInsuranceId,
                 kind: kind,
                 name: name,
+                description: description,
                 sortOrder: sortOrder,
                 rowid: rowid,
               ),
@@ -36974,15 +37745,19 @@ typedef $$SocialInsurancesTableProcessedTableManager =
 typedef $$SocialContributionRecordsTableCreateCompanionBuilder =
     SocialContributionRecordsCompanion Function({
       required String socialInsuranceId,
-      required String yearMonth,
-      required int contributionBaseMinor,
+      required String period,
+      Value<int?> contributionBaseMinor,
+      Value<int?> contributionAmountMinor,
+      Value<String?> note,
       Value<int> rowid,
     });
 typedef $$SocialContributionRecordsTableUpdateCompanionBuilder =
     SocialContributionRecordsCompanion Function({
       Value<String> socialInsuranceId,
-      Value<String> yearMonth,
-      Value<int> contributionBaseMinor,
+      Value<String> period,
+      Value<int?> contributionBaseMinor,
+      Value<int?> contributionAmountMinor,
+      Value<String?> note,
       Value<int> rowid,
     });
 
@@ -37000,13 +37775,23 @@ class $$SocialContributionRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get yearMonth => $composableBuilder(
-    column: $table.yearMonth,
+  ColumnFilters<String> get period => $composableBuilder(
+    column: $table.period,
     builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get contributionBaseMinor => $composableBuilder(
     column: $table.contributionBaseMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get contributionAmountMinor => $composableBuilder(
+    column: $table.contributionAmountMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -37025,13 +37810,23 @@ class $$SocialContributionRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get yearMonth => $composableBuilder(
-    column: $table.yearMonth,
+  ColumnOrderings<String> get period => $composableBuilder(
+    column: $table.period,
     builder: (column) => ColumnOrderings(column),
   );
 
   ColumnOrderings<int> get contributionBaseMinor => $composableBuilder(
     column: $table.contributionBaseMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get contributionAmountMinor => $composableBuilder(
+    column: $table.contributionAmountMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -37050,13 +37845,21 @@ class $$SocialContributionRecordsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get yearMonth =>
-      $composableBuilder(column: $table.yearMonth, builder: (column) => column);
+  GeneratedColumn<String> get period =>
+      $composableBuilder(column: $table.period, builder: (column) => column);
 
   GeneratedColumn<int> get contributionBaseMinor => $composableBuilder(
     column: $table.contributionBaseMinor,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get contributionAmountMinor => $composableBuilder(
+    column: $table.contributionAmountMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 }
 
 class $$SocialContributionRecordsTableTableManager
@@ -37106,25 +37909,33 @@ class $$SocialContributionRecordsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> socialInsuranceId = const Value.absent(),
-                Value<String> yearMonth = const Value.absent(),
-                Value<int> contributionBaseMinor = const Value.absent(),
+                Value<String> period = const Value.absent(),
+                Value<int?> contributionBaseMinor = const Value.absent(),
+                Value<int?> contributionAmountMinor = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SocialContributionRecordsCompanion(
                 socialInsuranceId: socialInsuranceId,
-                yearMonth: yearMonth,
+                period: period,
                 contributionBaseMinor: contributionBaseMinor,
+                contributionAmountMinor: contributionAmountMinor,
+                note: note,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String socialInsuranceId,
-                required String yearMonth,
-                required int contributionBaseMinor,
+                required String period,
+                Value<int?> contributionBaseMinor = const Value.absent(),
+                Value<int?> contributionAmountMinor = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SocialContributionRecordsCompanion.insert(
                 socialInsuranceId: socialInsuranceId,
-                yearMonth: yearMonth,
+                period: period,
                 contributionBaseMinor: contributionBaseMinor,
+                contributionAmountMinor: contributionAmountMinor,
+                note: note,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

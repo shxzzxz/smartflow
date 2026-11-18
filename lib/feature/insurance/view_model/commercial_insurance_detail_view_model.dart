@@ -2,6 +2,8 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../application/insurance/insurance_command_api.dart'
+    show PremiumPlan;
 import '../../../application/insurance/insurance_query_api.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
@@ -35,6 +37,25 @@ class CommercialInsuranceDetailViewModel
       }
       return count;
     });
+  }
+
+  Future<UiActionOutcome<void>> savePremiumPlan(PremiumPlan? premiumPlan) {
+    return guardUiAction(
+      _logger,
+      'Save insurance payment configuration',
+      () async {
+        await ref
+            .read(commercialInsuranceAppServiceProvider)
+            .updatePremiumPlan(
+              insuranceId: insuranceId,
+              premiumPlan: premiumPlan,
+            );
+        ref.invalidateSelf();
+        ref.invalidate(insuranceOverviewViewModelProvider);
+        ref.invalidate(commercialInsuranceListViewModelProvider);
+        ref.invalidate(memberCoverageViewModelProvider);
+      },
+    );
   }
 
   Future<UiActionOutcome<void>> openAttachment(String attachmentId) {

@@ -9,6 +9,7 @@ class CoverageResponsibilities extends Table {
       text().named('commercial_insurance_id')();
   TextColumn get kind => textEnum<ResponsibilityKind>()();
   TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
   IntColumn get sortOrder => integer().named('sort_order')();
 
   @override

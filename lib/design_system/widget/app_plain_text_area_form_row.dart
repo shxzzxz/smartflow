@@ -7,13 +7,15 @@ import '../token/spacing.dart';
 import 'app_form_field.dart';
 import 'app_plain_form_row.dart';
 
-/// A multiline form row with an always-visible character counter.
+export 'app_plain_form_row.dart' show AppPlainFormRowLayout;
+
+/// A multiline form row with optional length limiting and character counting.
 class AppPlainTextAreaFormRow extends FormField<String> {
   AppPlainTextAreaFormRow({
     required this.label,
     required this.controller,
-    required this.maxLength,
     super.key,
+    this.maxLength,
     this.hintText,
     this.supportingText,
     this.requiredIndicator = false,
@@ -22,16 +24,18 @@ class AppPlainTextAreaFormRow extends FormField<String> {
     this.textInputAction,
     this.onChanged,
     this.focusNode,
+    this.autofocus = false,
     super.validator,
     super.enabled = true,
     super.autovalidateMode = AutovalidateMode.disabled,
     this.labelWidth = AppFormTokens.labelWidth,
     this.minHeight = AppFormTokens.rowMinHeight,
+    this.layout = AppPlainFormRowLayout.horizontal,
   }) : super(initialValue: controller.text, builder: _buildField);
 
   final String label;
   final TextEditingController controller;
-  final int maxLength;
+  final int? maxLength;
   final String? hintText;
   final String? supportingText;
   final bool requiredIndicator;
@@ -40,8 +44,10 @@ class AppPlainTextAreaFormRow extends FormField<String> {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
+  final bool autofocus;
   final double labelWidth;
   final double minHeight;
+  final AppPlainFormRowLayout layout;
 
   static Widget _buildField(FormFieldState<String> field) {
     final state = field as _AppPlainTextAreaFormRowState;
@@ -56,6 +62,7 @@ class AppPlainTextAreaFormRow extends FormField<String> {
       enabled: widget.enabled,
       labelWidth: widget.labelWidth,
       minHeight: widget.minHeight,
+      layout: widget.layout,
       crossAxisAlignment: CrossAxisAlignment.start,
       child: Padding(
         padding: const EdgeInsets.only(top: AppSpacing.space2),
@@ -65,29 +72,38 @@ class AppPlainTextAreaFormRow extends FormField<String> {
             TextField(
               controller: widget.controller,
               focusNode: widget.focusNode,
-              decoration: appPlainInputDecoration(
-                field.context,
-                hintText: widget.hintText,
-              ),
+              decoration: widget.layout == AppPlainFormRowLayout.vertical
+                  ? appFormInputDecoration(
+                      field.context,
+                      hintText: widget.hintText,
+                    )
+                  : appPlainInputDecoration(
+                      field.context,
+                      hintText: widget.hintText,
+                    ),
               minLines: widget.minLines,
               maxLines: widget.maxLines,
               textAlignVertical: TextAlignVertical.top,
+              keyboardType: TextInputType.multiline,
               textInputAction: widget.textInputAction,
-              inputFormatters: [
-                LengthLimitingTextInputFormatter(widget.maxLength),
-              ],
+              inputFormatters: widget.maxLength == null
+                  ? null
+                  : [LengthLimitingTextInputFormatter(widget.maxLength)],
               onChanged: state.handleUserChanged,
               enabled: widget.enabled,
+              autofocus: widget.autofocus,
               style: field.context.appTextStyles.formValue,
             ),
-            const SizedBox(height: AppSpacing.space4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${value.length}/${widget.maxLength}',
-                style: field.context.appTextStyles.formSupporting,
+            if (widget.maxLength != null) ...[
+              const SizedBox(height: AppSpacing.space4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${value.length}/${widget.maxLength}',
+                  style: field.context.appTextStyles.formSupporting,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

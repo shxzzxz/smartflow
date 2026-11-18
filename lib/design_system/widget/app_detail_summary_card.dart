@@ -13,7 +13,9 @@ class AppDetailSummaryCardItem {
     required this.value,
     this.valueColor,
     this.span = 1,
-  }) : assert(span == 1 || span == 2);
+    this.maxLines = 1,
+  }) : assert(span == 1 || span == 2),
+       assert(maxLines > 0);
 
   final String label;
   final String value;
@@ -21,6 +23,9 @@ class AppDetailSummaryCardItem {
 
   /// Supporting items can span both columns when their value is long.
   final int span;
+
+  /// Allows text values to wrap without reducing the metric font size.
+  final int maxLines;
 }
 
 class AppDetailSummaryCard extends StatelessWidget {
@@ -272,7 +277,7 @@ class _AccentItem extends StatelessWidget {
     if (!main) {
       return Text(
         item.label.isEmpty ? item.value : '${item.label} ${item.value}',
-        maxLines: 1,
+        maxLines: item.maxLines,
         overflow: TextOverflow.ellipsis,
         style: styles.onPrimaryTiny.copyWith(
           color: item.valueColor ?? styles.onPrimaryTiny.color,
@@ -289,17 +294,27 @@ class _AccentItem extends StatelessWidget {
           style: styles.onPrimaryTiny,
         ),
         const SizedBox(height: AppSpacing.space4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
+        if (item.maxLines > 1)
+          Text(
             item.value,
-            maxLines: 1,
+            maxLines: item.maxLines,
+            overflow: TextOverflow.ellipsis,
             style: styles.metricValue.copyWith(
               color: item.valueColor ?? colors.onPrimary,
             ),
+          )
+        else
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              item.value,
+              maxLines: 1,
+              style: styles.metricValue.copyWith(
+                color: item.valueColor ?? colors.onPrimary,
+              ),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -328,24 +343,34 @@ class _SurfaceItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
+          if (item.maxLines > 1)
+            Text(
               item.value,
-              maxLines: 1,
+              maxLines: item.maxLines,
+              overflow: TextOverflow.ellipsis,
               style: styles.metricValue.copyWith(
                 color: item.valueColor ?? colors.onSurface,
               ),
+            )
+          else
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                item.value,
+                maxLines: 1,
+                style: styles.metricValue.copyWith(
+                  color: item.valueColor ?? colors.onSurface,
+                ),
+              ),
             ),
-          ),
         ],
       );
     }
     if (item.label.isEmpty) {
       return Text(
         item.value,
-        maxLines: 1,
+        maxLines: item.maxLines,
         overflow: TextOverflow.ellipsis,
         style: styles.onPrimaryTiny.copyWith(
           color: item.valueColor ?? colors.onSurfaceVariant,
@@ -369,7 +394,7 @@ class _SurfaceItem extends StatelessWidget {
           ),
         ],
       ),
-      maxLines: 1,
+      maxLines: item.maxLines,
       overflow: TextOverflow.ellipsis,
     );
   }

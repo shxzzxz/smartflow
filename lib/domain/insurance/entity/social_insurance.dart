@@ -27,11 +27,11 @@ class SocialInsurance {
     if (id.trim().isEmpty || insuredPersonId.trim().isEmpty || region.isEmpty) {
       throw ArgumentError('Social insurance basic fields are required.');
     }
-    final months = <String>{};
+    final periods = <String>{};
     for (final record in contributionRecords) {
       record.validate();
-      if (!months.add(record.month.toString())) {
-        throw ArgumentError('Contribution months must be unique.');
+      if (!periods.add(record.period)) {
+        throw ArgumentError('Contribution periods must be unique.');
       }
     }
   }

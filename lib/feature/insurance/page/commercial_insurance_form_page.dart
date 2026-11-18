@@ -13,13 +13,13 @@ import '../../../design_system/widget/app_list_divider.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
 import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../design_system/widget/app_submit_button.dart';
+import '../../../design_system/widget/app_plain_text_area_form_row.dart';
 import '../../../widget/business/finance/money_input.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_form_view_model.dart';
 
-class CommercialInsuranceFormPage extends ConsumerWidget {
+class CommercialInsuranceFormPage extends ConsumerStatefulWidget {
   const CommercialInsuranceFormPage({
     this.insuranceId,
     this.initialInsuredPersonId,
@@ -30,19 +30,57 @@ class CommercialInsuranceFormPage extends ConsumerWidget {
   final String? initialInsuredPersonId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CommercialInsuranceFormPage> createState() =>
+      _CommercialInsuranceFormPageState();
+}
+
+class _CommercialInsuranceFormPageState
+    extends ConsumerState<CommercialInsuranceFormPage> {
+  var _contentKey = GlobalKey<_CommercialInsuranceFormContentState>();
+
+  @override
+  void didUpdateWidget(covariant CommercialInsuranceFormPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.insuranceId != widget.insuranceId ||
+        oldWidget.initialInsuredPersonId != widget.initialInsuredPersonId) {
+      _contentKey = GlobalKey<_CommercialInsuranceFormContentState>();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final insuranceId = widget.insuranceId;
+    final initialInsuredPersonId = widget.initialInsuredPersonId;
     final provider = commercialInsuranceFormViewModelProvider(
       insuranceId,
       initialInsuredPersonId,
     );
     final state = ref.watch(provider);
+    final loaded = state.asData?.value;
     final title = insuranceId == null ? '新增商业保险' : '编辑商业保险';
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
-            AppPageHeader(title: title),
+            AppPageHeader(
+              title: title,
+              actions: [
+                AppHeaderTextButton(
+                  key: const ValueKey('commercial-form-save'),
+                  label: '保存',
+                  onPressed:
+                      loaded == null ||
+                          loaded.insuredPeople.isEmpty ||
+                          loaded.submitting
+                      ? null
+                      : () => _contentKey.currentState?._submit(
+                          context,
+                          ref.read(provider.notifier),
+                        ),
+                ),
+              ],
+            ),
             Expanded(
               child: state.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -62,9 +100,7 @@ class CommercialInsuranceFormPage extends ConsumerWidget {
                     );
                   }
                   return _CommercialInsuranceFormContent(
-                    key: ValueKey(
-                      'commercial-insurance-${insuranceId ?? 'new'}',
-                    ),
+                    key: _contentKey,
                     insuranceId: insuranceId,
                     initialInsuredPersonId: initialInsuredPersonId,
                     initialState: value,
@@ -112,8 +148,8 @@ class _CommercialInsuranceFormContentState
   late final TextEditingController _insurerController;
   late final TextEditingController _productFormController;
   late final TextEditingController _coverageAmountController;
-  late final TextEditingController _premiumAmountController;
-  late final TextEditingController _premiumTermCountController;
+  late final TextEditingController _policyholderController;
+  late final TextEditingController _beneficiaryController;
 
   @override
   void initState() {
@@ -122,14 +158,14 @@ class _CommercialInsuranceFormContentState
     _nameController = TextEditingController(text: initial.name);
     _insurerController = TextEditingController(text: initial.insurerName);
     _productFormController = TextEditingController(text: initial.productForm);
+    _policyholderController = TextEditingController(
+      text: initial.policyholderName,
+    );
+    _beneficiaryController = TextEditingController(
+      text: initial.beneficiaryDescription,
+    );
     _coverageAmountController = TextEditingController(
       text: initial.coverageAmount,
-    );
-    _premiumAmountController = TextEditingController(
-      text: initial.premiumAmount,
-    );
-    _premiumTermCountController = TextEditingController(
-      text: initial.premiumTermCount,
     );
   }
 
@@ -139,8 +175,8 @@ class _CommercialInsuranceFormContentState
     _insurerController.dispose();
     _productFormController.dispose();
     _coverageAmountController.dispose();
-    _premiumAmountController.dispose();
-    _premiumTermCountController.dispose();
+    _policyholderController.dispose();
+    _beneficiaryController.dispose();
     super.dispose();
   }
 
@@ -210,7 +246,8 @@ class _CommercialInsuranceFormContentState
           ),
           const SizedBox(height: AppSpacing.space16),
           AppFormSection(
-            title: '保障期间与保额',
+            key: const ValueKey('commercial-contract-information'),
+            title: '合同信息',
             children: [
               AppPlainValueRow(
                 label: '开始日期',
@@ -240,45 +277,18 @@ class _CommercialInsuranceFormContentState
                 hintText: '可选',
                 validator: validateOptionalNonNegativeMoneyText,
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          AppFormSection(
-            title: '缴费计划',
-            children: [
-              AppPlainChoiceChipFormRow<PremiumFrequency>(
-                key: const ValueKey('commercial-premium-frequency-choice'),
-                label: '缴费频率',
-                value: state.premiumFrequency,
-                layout: AppChoiceChipLayout.wrap,
-                options: [
-                  for (final frequency in PremiumFrequency.values)
-                    AppChoiceChipOption(
-                      value: frequency,
-                      label: frequency.label,
-                    ),
-                ],
-                onChanged: notifier.setPremiumFrequency,
+              AppPlainTextFormRow(
+                key: const ValueKey('commercial-policyholder'),
+                label: '投保人',
+                controller: _policyholderController,
+                hintText: '可选，填写个人或单位名称',
               ),
-              AppPlainIntegerFormRow(
-                label: '缴费期数',
-                controller: _premiumTermCountController,
-                hintText: '可选，例如：20',
-                validator: (value) {
-                  final text = value?.trim() ?? '';
-                  if (text.isEmpty) return null;
-                  final count = int.tryParse(text);
-                  if (count == null || count <= 0) {
-                    return '请输入正整数';
-                  }
-                  return null;
-                },
-              ),
-              MoneyPlainFormRow(
-                label: '期缴金额',
-                controller: _premiumAmountController,
-                hintText: '可选',
-                validator: validateOptionalNonNegativeMoneyText,
+              AppPlainTextAreaFormRow(
+                key: const ValueKey('commercial-beneficiary'),
+                label: '受益人',
+                controller: _beneficiaryController,
+                hintText: '可选，填写姓名或合同约定',
+                layout: AppPlainFormRowLayout.vertical,
               ),
             ],
           ),
@@ -311,12 +321,6 @@ class _CommercialInsuranceFormContentState
                   const AppListDivider(),
               ],
             ],
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          AppSubmitButton(
-            label: widget.insuranceId == null ? '保存商业保险' : '保存修改',
-            loading: state.submitting,
-            onPressed: () => _submit(context, notifier),
           ),
         ],
       ),
@@ -362,8 +366,8 @@ class _CommercialInsuranceFormContentState
       insurerNameText: _insurerController.text,
       productFormText: _productFormController.text,
       coverageAmountText: _coverageAmountController.text,
-      premiumAmountText: _premiumAmountController.text,
-      premiumTermCountText: _premiumTermCountController.text,
+      policyholderNameText: _policyholderController.text,
+      beneficiaryDescriptionText: _beneficiaryController.text,
     );
     if (!context.mounted) return;
     switch (outcome) {

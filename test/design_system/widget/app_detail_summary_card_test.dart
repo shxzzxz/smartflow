@@ -97,6 +97,51 @@ void main() {
     expect(find.byType(AppSurface), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  for (final style in AppDetailSummaryCardStyle.values) {
+    testWidgets('text metrics wrap at phone width with large text ($style)', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(1.8)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: AppDetailSummaryCard(
+                  title: '家庭保障信息',
+                  mainItems: const [
+                    AppDetailSummaryCardItem(
+                      label: '被保人',
+                      value: '张一、张二、张三',
+                      maxLines: 2,
+                    ),
+                    AppDetailSummaryCardItem(
+                      label: '保障期限至',
+                      value: '2026/12/31',
+                    ),
+                    AppDetailSummaryCardItem(label: '保额', value: '100 万'),
+                  ],
+                  supportingItems: const [],
+                  style: style,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        tester.getSize(find.text('张一、张二、张三')).height,
+        greaterThan(tester.getSize(find.text('100 万')).height),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
 
 Widget _app(Widget child) {

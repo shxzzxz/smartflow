@@ -43,7 +43,10 @@ void main() {
       );
       final inspected = await service.inspect(tempDirectory);
       expect(inspected.manifest.backupId, manifest.backupId);
-      expect(inspected.manifest.backupSchemaVersion, 12);
+      expect(
+        inspected.manifest.backupSchemaVersion,
+        BackupManifest.currentBackupSchemaVersion,
+      );
       expect(inspected.manifest.schemaVersion, 61);
       expect(inspected.snapshot.preferences['settings.example'], 'true');
     });
@@ -81,7 +84,10 @@ void main() {
         final inspection = await v61Service.inspect(oldDirectory);
         final diff = await v61Service.restore(oldDirectory);
 
-        expect(inspection.manifest.backupSchemaVersion, 12);
+        expect(
+          inspection.manifest.backupSchemaVersion,
+          BackupManifest.currentBackupSchemaVersion,
+        );
         expect(inspection.manifest.schemaVersion, 60);
         expect(diff.itemFor('preferences').added, 1);
         expect(v61Gateway.replaceCount, 1);
@@ -158,6 +164,400 @@ void main() {
       );
     });
 
+    test('migrates v12 contributions without inventing paid amounts', () async {
+      gateway.snapshot = _emptySnapshot(
+        tables: {
+          'insured_people': [
+            {
+              'id': 'person-1',
+              'name': '示例成员',
+              'birthDate': '1990-01-01T00:00:00.000',
+              'relationship': 'self',
+              'gender': 'unknown',
+              'note': null,
+              'avatarPreset': 'blue',
+              'createdAt': '2026-01-01T00:00:00.000Z',
+              'updatedAt': '2026-01-01T00:00:00.000Z',
+            },
+          ],
+          'social_insurances': [
+            {
+              'id': 'social-1',
+              'insuredPersonId': 'person-1',
+              'region': '浙江省 / 杭州市',
+              'insuranceType': 'medical',
+              'participantType': 'employee',
+              'createdAt': '2026-01-01T00:00:00.000Z',
+              'updatedAt': '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+      );
+      await service.createBackup(tempDirectory);
+      await _removeBackupTable(tempDirectory, 'social_contribution_records');
+      await _addBackupTable(tempDirectory, 'social_contribution_records', [
+        {
+          'socialInsuranceId': 'social-1',
+          'yearMonth': '2026-01',
+          'contributionBaseMinor': 800000,
+        },
+        {
+          'socialInsuranceId': 'social-1',
+          'yearMonth': '2026-02',
+          'contributionBaseMinor': 820000,
+        },
+      ]);
+      await _rewriteBackupSchemaVersion(tempDirectory, 12);
+      final inspection = await service.inspect(tempDirectory);
+      final records = inspection.snapshot
+          .rows('social_contribution_records')
+          .toList();
+      expect(records.map((row) => row['period']), ['2026-01', '2026-02']);
+      expect(records.map((row) => row['contributionBaseMinor']), [
+        800000,
+        820000,
+      ]);
+      expect(
+        records.every((row) => row['contributionAmountMinor'] == null),
+        isTrue,
+      );
+      expect(records.every((row) => !row.containsKey('yearMonth')), isTrue);
+      await service.restore(tempDirectory);
+      expect(
+        gateway.snapshot.rows('social_contribution_records'),
+        hasLength(2),
+      );
+    });
+
+    test(
+      'migrates v13 responsibility codes and preserves names and points',
+      () async {
+        gateway.snapshot = _emptySnapshot(
+          tables: {
+            'insured_people': [
+              {
+                'id': 'person-1',
+                'name': '示例成员',
+                'birthDate': '1990-01-01T00:00:00.000',
+                'relationship': 'self',
+                'gender': 'unknown',
+                'avatarPreset': 'blue',
+              },
+            ],
+            'commercial_insurances': [
+              {
+                'id': 'policy-1',
+                'name': '示例寿险',
+                'insurerName': '示例保险',
+                'category': 'life',
+                'coverageStartDate': '2026-01-01T00:00:00.000',
+                'coverageEndDate': null,
+                'lifetime': true,
+                'premiumFrequency': null,
+              },
+            ],
+            'commercial_insurance_insured_people': [
+              {
+                'commercialInsuranceId': 'policy-1',
+                'insuredPersonId': 'person-1',
+              },
+            ],
+          },
+        );
+        await service.createBackup(tempDirectory);
+        const legacyResponsibilities = [
+          ('medical', '一般医疗'),
+          ('criticalIllness', '重疾医疗'),
+          ('accident', '意外身故'),
+          ('life', '身故'),
+          ('disability', '全残'),
+          ('other', '住院津贴'),
+        ];
+        await _removeBackupTable(tempDirectory, 'coverage_responsibilities');
+        await _addBackupTable(tempDirectory, 'coverage_responsibilities', [
+          for (var index = 0; index < legacyResponsibilities.length; index++)
+            {
+              'id': 'responsibility-$index',
+              'commercialInsuranceId': 'policy-1',
+              'kind': legacyResponsibilities[index].$1,
+              'name': legacyResponsibilities[index].$2,
+              'sortOrder': index,
+            },
+        ]);
+        const points = [
+          {
+            'id': 'point-1',
+            'responsibilityId': 'responsibility-1',
+            'label': '医院范围',
+            'value': '二级及以上公立医院普通部',
+            'sortOrder': 1,
+          },
+          {
+            'id': 'point-2',
+            'responsibilityId': 'responsibility-1',
+            'label': '免赔额',
+            'value': '0 元',
+            'sortOrder': 0,
+          },
+        ];
+        await _removeBackupTable(tempDirectory, 'responsibility_points');
+        await _addBackupTable(tempDirectory, 'responsibility_points', points);
+        await _rewriteBackupSchemaVersion(tempDirectory, 13);
+
+        final inspection = await service.inspect(tempDirectory);
+        final responsibilities = inspection.snapshot
+            .rows('coverage_responsibilities')
+            .toList();
+        expect(responsibilities.map((row) => row['kind']), [
+          'medical',
+          'other',
+          'other',
+          'other',
+          'disability',
+          'other',
+        ]);
+        expect(
+          responsibilities.map((row) => row['name']),
+          legacyResponsibilities.map((item) => item.$2),
+        );
+        expect(responsibilities.map((row) => row['sortOrder']), [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+        ]);
+        expect(
+          responsibilities.every(
+            (row) =>
+                row.containsKey('description') && row['description'] == null,
+          ),
+          isTrue,
+        );
+        expect(inspection.snapshot.rows('responsibility_points'), points);
+        expect(
+          inspection.snapshot.rows('commercial_insurances').single['category'],
+          'life',
+        );
+
+        gateway.snapshot = BackupSnapshot();
+        await service.restore(tempDirectory);
+        expect(
+          gateway.snapshot.rows('coverage_responsibilities'),
+          responsibilities,
+        );
+        expect(gateway.snapshot.rows('responsibility_points'), points);
+      },
+    );
+
+    test(
+      'v14 contract information stays unrecorded and other facts survive restore',
+      () async {
+        gateway.snapshot = _emptySnapshot(
+          tables: {
+            'insured_people': [
+              {
+                'id': 'person-1',
+                'name': '示例成员',
+                'birthDate': '1990-01-01T00:00:00.000',
+                'relationship': 'self',
+                'gender': 'unknown',
+                'avatarPreset': 'blue',
+              },
+            ],
+            'commercial_insurances': [
+              {
+                'id': 'policy-1',
+                'name': '保留保单',
+                'insurerName': '示例保险',
+                'category': 'medical',
+                'coverageStartDate': '2026-01-01T00:00:00.000',
+                'coverageEndDate': null,
+                'lifetime': true,
+                'premiumFrequency': null,
+                'coverageAmountMinor': 12340000,
+                'coverageSummary': '保留保障总结',
+              },
+            ],
+            'commercial_insurance_insured_people': [
+              {
+                'commercialInsuranceId': 'policy-1',
+                'insuredPersonId': 'person-1',
+              },
+            ],
+            'coverage_responsibilities': [
+              {
+                'id': 'responsibility-1',
+                'commercialInsuranceId': 'policy-1',
+                'kind': 'medical',
+                'name': '一般医疗',
+                'description': '保留责任说明',
+                'sortOrder': 0,
+              },
+            ],
+            'responsibility_points': [
+              {
+                'id': 'point-1',
+                'responsibilityId': 'responsibility-1',
+                'label': '等待期',
+                'value': '特别约定15天',
+                'sortOrder': 0,
+              },
+            ],
+          },
+        );
+        await service.createBackup(tempDirectory);
+        await _rewriteBackupSchemaVersion(tempDirectory, 14);
+        final inspection = await service.inspect(tempDirectory);
+        final policy = inspection.snapshot.rows('commercial_insurances').single;
+        for (final key in const [
+          'policyholderName',
+          'beneficiaryDescription',
+          'waitingPeriodDescription',
+          'exclusionsDescription',
+        ]) {
+          expect(policy, contains(key));
+          expect(policy[key], isNull);
+        }
+        expect(policy, isNot(contains('preExistingConditionDescription')));
+        expect(policy['coverageAmountMinor'], 12340000);
+        expect(policy['coverageSummary'], '保留保障总结');
+        expect(
+          inspection.snapshot
+              .rows('coverage_responsibilities')
+              .single['description'],
+          '保留责任说明',
+        );
+        expect(
+          inspection.snapshot.rows('responsibility_points').single['value'],
+          '特别约定15天',
+        );
+        gateway.snapshot = BackupSnapshot();
+        await service.restore(tempDirectory);
+        expect(gateway.snapshot.rows('commercial_insurances').single, policy);
+        expect(
+          gateway.snapshot.rows('responsibility_points').single['value'],
+          '特别约定15天',
+        );
+      },
+    );
+
+    const exclusionCases = <(String?, String?, String?)>[
+      (null, null, null),
+      ('既往症相关约定', null, '既往症相关约定'),
+      (null, '指定疾病除外', '指定疾病除外'),
+      ('既往症相关约定', '指定疾病除外', '既往症相关约定\n指定疾病除外'),
+      ('  同一除外约定  ', '同一除外约定', '同一除外约定'),
+      (' \t\r\n ', null, null),
+      ('既往症一\n既往症二', '除外一\n除外二', '既往症一\n既往症二\n除外一\n除外二'),
+    ];
+    for (final (index, values) in exclusionCases.indexed) {
+      test(
+        'v15 backup merges exclusions into one field (case $index)',
+        () async {
+          final (legacy, exclusions, expected) = values;
+          gateway.snapshot = _emptySnapshot(
+            tables: {
+              'insured_people': [
+                {
+                  'id': 'person-1',
+                  'name': '示例成员',
+                  'birthDate': '1990-01-01T00:00:00.000',
+                  'relationship': 'self',
+                  'gender': 'unknown',
+                  'avatarPreset': 'blue',
+                },
+              ],
+              'commercial_insurances': [
+                {
+                  'id': 'policy-1',
+                  'name': '保留保单',
+                  'insurerName': '示例保险',
+                  'category': 'medical',
+                  'coverageStartDate': '2026-01-01T00:00:00.000',
+                  'coverageEndDate': null,
+                  'lifetime': true,
+                  'premiumFrequency': null,
+                  'waitingPeriodDescription': '30天',
+                  'coverageSummary': '保留保障概要',
+                  'preExistingConditionDescription': legacy,
+                  'exclusionsDescription': exclusions,
+                },
+              ],
+              'commercial_insurance_insured_people': [
+                {
+                  'commercialInsuranceId': 'policy-1',
+                  'insuredPersonId': 'person-1',
+                },
+              ],
+            },
+          );
+          await service.createBackup(tempDirectory);
+          await _rewriteBackupSchemaVersion(tempDirectory, 15);
+          final inspection = await service.inspect(tempDirectory);
+          final policy = inspection.snapshot
+              .rows('commercial_insurances')
+              .single;
+          expect(policy, isNot(contains('preExistingConditionDescription')));
+          expect(policy['exclusionsDescription'], expected);
+          expect(policy['waitingPeriodDescription'], '30天');
+          expect(policy['coverageSummary'], '保留保障概要');
+          gateway.snapshot = _emptySnapshot();
+          await service.restore(tempDirectory);
+          expect(gateway.snapshot.rows('commercial_insurances').single, policy);
+        },
+      );
+    }
+
+    test(
+      'v15 invalid legacy text fails before replacing existing data',
+      () async {
+        gateway.snapshot = _emptySnapshot(
+          tables: {
+            'insured_people': [
+              {
+                'id': 'person-1',
+                'name': '示例成员',
+                'birthDate': '1990-01-01T00:00:00.000',
+                'relationship': 'self',
+                'gender': 'unknown',
+                'avatarPreset': 'blue',
+              },
+            ],
+            'commercial_insurances': [
+              {
+                'id': 'policy-1',
+                'name': '保留保单',
+                'insurerName': '示例保险',
+                'category': 'medical',
+                'coverageStartDate': '2026-01-01T00:00:00.000',
+                'coverageEndDate': null,
+                'lifetime': true,
+                'premiumFrequency': null,
+                'preExistingConditionDescription': 42,
+                'exclusionsDescription': null,
+              },
+            ],
+            'commercial_insurance_insured_people': [
+              {
+                'commercialInsuranceId': 'policy-1',
+                'insuredPersonId': 'person-1',
+              },
+            ],
+          },
+        );
+        await service.createBackup(tempDirectory);
+        await _rewriteBackupSchemaVersion(tempDirectory, 15);
+        gateway.snapshot = _emptySnapshot();
+        await expectLater(
+          () => service.restore(tempDirectory),
+          throwsA(isA<BackupValidationException>()),
+        );
+        expect(gateway.snapshot.rows('commercial_insurances'), isEmpty);
+      },
+    );
+
     test('migrates a v10 backup with an empty reconciliation table', () async {
       await service.createBackup(tempDirectory);
       await _removeBackupTable(
@@ -209,7 +609,8 @@ void main() {
       final manifestFile = File('${tempDirectory.path}/manifest.json');
       final manifest =
           jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
-      manifest['backupSchemaVersion'] = 13;
+      manifest['backupSchemaVersion'] =
+          BackupManifest.currentBackupSchemaVersion + 1;
       await manifestFile.writeAsString(jsonEncode(manifest));
 
       expect(
@@ -218,7 +619,9 @@ void main() {
           isA<BackupValidationException>().having(
             (error) => error.message,
             'message',
-            contains('backupSchemaVersion 13'),
+            contains(
+              'backupSchemaVersion ${BackupManifest.currentBackupSchemaVersion + 1}',
+            ),
           ),
         ),
       );
@@ -267,7 +670,10 @@ void main() {
         expect(diff.itemFor('accounts').added, 1);
         expect(gateway.replaceCount, 1);
         expect(manifest.formatVersion, 4);
-        expect(manifest.backupSchemaVersion, 12);
+        expect(
+          manifest.backupSchemaVersion,
+          BackupManifest.currentBackupSchemaVersion,
+        );
       },
     );
 

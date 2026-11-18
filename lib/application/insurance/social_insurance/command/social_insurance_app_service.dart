@@ -44,7 +44,6 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
       }
       _ensureHistoryStable(
         previous: previous,
-        region: command.region,
         insuranceType: command.insuranceType,
         participantType: command.participantType,
       );
@@ -60,6 +59,24 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
         updatedAt: now,
       );
       _validate(insurance.validate);
+      for (final record in insurance.contributionRecords) {
+        if (record.contributionAmount != null) continue;
+        final legacy = previous?.contributionRecords
+            .where(
+              (item) =>
+                  item.period == record.period &&
+                  item.contributionAmount == null &&
+                  item.contributionBase == record.contributionBase &&
+                  item.note == record.note,
+            )
+            .firstOrNull;
+        if (legacy == null) {
+          throw BusinessException(
+            InsuranceErrorCode.invalidCommand,
+            message: '新增或修改缴费记录时，请填写缴费金额。',
+          );
+        }
+      }
       await _insurances.save(insurance);
       return insurance.id;
     });
@@ -83,20 +100,17 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
 
   void _ensureHistoryStable({
     required SocialInsurance? previous,
-    required String region,
     required SocialInsuranceType insuranceType,
     required SocialParticipantType participantType,
   }) {
     if (previous == null) return;
-    final normalizedRegion = region.trim();
     final changed =
-        previous.region != normalizedRegion ||
         previous.insuranceType != insuranceType ||
         previous.participantType != participantType;
     if (!changed) return;
     throw BusinessException(
       InsuranceErrorCode.invalidCommand,
-      message: '社保类型、参保地区或参保类型发生变化时，请新建社保记录以保留历史。',
+      message: '社保类型或参保类型发生变化时，请新建社保记录以保留历史。',
     );
   }
 
@@ -106,7 +120,7 @@ class SocialInsuranceAppServiceImpl implements SocialInsuranceAppService {
     } on ArgumentError catch (error) {
       throw BusinessException(
         InsuranceErrorCode.invalidCommand,
-        message: '请检查参保信息，并确保同一记录的缴费年月不重复。',
+        message: '请检查参保信息，并确保缴费年份、月份不重复。',
         cause: error,
       );
     }

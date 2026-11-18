@@ -14,6 +14,13 @@ class CommercialInsurance {
     String? productForm,
     required this.coverageTerm,
     this.coverageAmount,
+    String? coverageAmountDescription,
+    String? coverageSummary,
+    String? coverageHighlights,
+    String? policyholderName,
+    String? beneficiaryDescription,
+    String? waitingPeriodDescription,
+    String? exclusionsDescription,
     this.premiumPlan,
     required List<String> insuredPersonIds,
     required List<CoverageResponsibility> responsibilities,
@@ -23,6 +30,13 @@ class CommercialInsurance {
   }) : name = name.trim(),
        insurerName = insurerName.trim(),
        productForm = productForm?.trim(),
+       coverageAmountDescription = _optionalText(coverageAmountDescription),
+       coverageSummary = _optionalText(coverageSummary),
+       coverageHighlights = _optionalText(coverageHighlights),
+       policyholderName = _optionalText(policyholderName),
+       beneficiaryDescription = _optionalText(beneficiaryDescription),
+       waitingPeriodDescription = _optionalText(waitingPeriodDescription),
+       exclusionsDescription = _optionalText(exclusionsDescription),
        insuredPersonIds = List.unmodifiable(insuredPersonIds),
        responsibilities = List.unmodifiable(responsibilities),
        attachments = List.unmodifiable(attachments);
@@ -34,6 +48,13 @@ class CommercialInsurance {
   final String? productForm;
   final CoverageTerm coverageTerm;
   final CoverageAmount? coverageAmount;
+  final String? coverageAmountDescription;
+  final String? coverageSummary;
+  final String? coverageHighlights;
+  final String? policyholderName;
+  final String? beneficiaryDescription;
+  final String? waitingPeriodDescription;
+  final String? exclusionsDescription;
   final PremiumPlan? premiumPlan;
   final List<String> insuredPersonIds;
   final List<CoverageResponsibility> responsibilities;
@@ -74,4 +95,9 @@ class CommercialInsurance {
       }
     }
   }
+}
+
+String? _optionalText(String? value) {
+  final text = value?.trim();
+  return text == null || text.isEmpty ? null : text;
 }

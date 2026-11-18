@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../application/insurance/insurance_command_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_dropdown.dart';
+import '../../../design_system/widget/app_choice_chip_group.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../design_system/widget/app_select.dart';
+import '../../../design_system/widget/app_plain_text_area_form_row.dart';
+import '../presentation/insurance_responsibility_suggestions.dart';
 import '../view_model/commercial_insurance_responsibilities_view_model.dart';
 
 Future<InsuranceResponsibilityDraft?> showInsuranceResponsibilityEditor({
@@ -25,16 +25,20 @@ Future<InsuranceResponsibilityDraft?> showInsuranceResponsibilityEditor({
 
 Future<InsurancePointDraft?> showInsurancePointEditor({
   required BuildContext context,
+  required ResponsibilityKind responsibilityKind,
   required InsurancePointDraft? existing,
   required Set<String> existingLabels,
   required String Function() newPointId,
+  VoidCallback? onDelete,
 }) {
   return showDialog<InsurancePointDraft>(
     context: context,
     builder: (context) => _InsurancePointEditorDialog(
+      responsibilityKind: responsibilityKind,
       existing: existing,
-      existingLabels: existingLabels,
+      existingLabels: {for (final label in existingLabels) label.trim()},
       newPointId: newPointId,
+      onDelete: onDelete,
     ),
   );
 }
@@ -57,6 +61,7 @@ class _ResponsibilityEditorDialogState
     extends State<_ResponsibilityEditorDialog> {
   late ResponsibilityKind _kind;
   late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
   String? _error;
 
   @override
@@ -65,11 +70,13 @@ class _ResponsibilityEditorDialogState
     final existing = widget.existing;
     _kind = existing?.kind ?? ResponsibilityKind.medical;
     _nameController = TextEditingController(text: existing?.name ?? '');
+    _descriptionController = TextEditingController(text: existing?.description);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -77,33 +84,52 @@ class _ResponsibilityEditorDialogState
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.existing == null ? '新增卡片' : '编辑卡片'),
+      scrollable: true,
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppPlainFormRow(
+            AppPlainChoiceChipFormRow<ResponsibilityKind>(
+              key: const ValueKey('responsibility-kind-choice'),
               label: '责任类型',
-              child: AppDropdown<ResponsibilityKind>(
-                value: _kind,
-                tooltip: '选择责任类型',
-                options: [
-                  for (final kind in ResponsibilityKind.values)
-                    AppSelectOption(value: kind, label: kind.label),
-                ],
-                onChanged: (value) => setState(() {
-                  _kind = value;
-                  _error = null;
-                }),
-              ),
+              value: _kind,
+              options: [
+                for (final kind in ResponsibilityKind.values)
+                  AppChoiceChipOption(value: kind, label: kind.label),
+              ],
+              onChanged: (value) => setState(() {
+                _kind = value;
+                _error = null;
+              }),
             ),
             AppPlainTextFormRow(
+              key: const ValueKey('responsibility-name'),
               label: '责任名称',
               controller: _nameController,
-              hintText: '例如：一般医疗、重大医疗、质子重离子医疗',
+              hintText: '输入责任名称',
               requiredIndicator: true,
               onChanged: (_) => setState(() => _error = null),
+            ),
+            _CommonNameSuggestions(
+              key: const ValueKey('responsibility-common-names'),
+              names: responsibilityNameSuggestions(_kind),
+              selected: _nameController.text.trim(),
+              onSelected: (name) => setState(() {
+                _nameController.value = TextEditingValue(
+                  text: name,
+                  selection: TextSelection.collapsed(offset: name.length),
+                );
+                _error = null;
+              }),
+            ),
+            AppPlainTextAreaFormRow(
+              key: const ValueKey('responsibility-description'),
+              label: '责任说明',
+              controller: _descriptionController,
+              hintText: '简要说明这项责任的保障范围',
+              layout: AppPlainFormRowLayout.vertical,
             ),
             if (_error case final error?)
               Align(
@@ -133,6 +159,7 @@ class _ResponsibilityEditorDialogState
 
   void _save() {
     final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
     if (name.isEmpty) {
       setState(() => _error = '请输入责任名称');
       return;
@@ -142,6 +169,7 @@ class _ResponsibilityEditorDialogState
         id: widget.existing?.id ?? widget.newResponsibilityId(),
         kind: _kind,
         name: name,
+        description: description.isEmpty ? null : description,
         points: widget.existing?.points ?? const [],
       ),
     );
@@ -150,14 +178,18 @@ class _ResponsibilityEditorDialogState
 
 class _InsurancePointEditorDialog extends StatefulWidget {
   const _InsurancePointEditorDialog({
+    required this.responsibilityKind,
     required this.existing,
     required this.existingLabels,
     required this.newPointId,
+    this.onDelete,
   });
 
+  final ResponsibilityKind responsibilityKind;
   final InsurancePointDraft? existing;
   final Set<String> existingLabels;
   final String Function() newPointId;
+  final VoidCallback? onDelete;
 
   @override
   State<_InsurancePointEditorDialog> createState() =>
@@ -186,21 +218,44 @@ class _InsurancePointEditorDialogState
 
   @override
   Widget build(BuildContext context) {
+    final commonNames = responsibilityPointNameSuggestions(
+      widget.responsibilityKind,
+    ).where((name) => !widget.existingLabels.contains(name)).toList();
     return AlertDialog(
       title: Text(widget.existing == null ? '新增要点' : '编辑要点'),
+      scrollable: true,
+      actionsAlignment: widget.onDelete == null
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.spaceBetween,
       content: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppPlainTextFormRow(
-              label: '要点标签',
+              key: const ValueKey('responsibility-point-name'),
+              label: '要点名称',
               controller: _labelController,
               hintText: '例如：住院医疗',
               requiredIndicator: true,
               onChanged: (_) => setState(() => _error = null),
             ),
+            if (commonNames.isNotEmpty)
+              _CommonNameSuggestions(
+                key: const ValueKey('responsibility-point-common-names'),
+                names: commonNames,
+                selected: _labelController.text.trim(),
+                onSelected: (name) => setState(() {
+                  _labelController.value = TextEditingValue(
+                    text: name,
+                    selection: TextSelection.collapsed(offset: name.length),
+                  );
+                  _error = null;
+                }),
+              ),
             AppPlainTextFormRow(
+              key: const ValueKey('responsibility-point-value'),
               label: '要点内容',
               controller: _valueController,
               hintText: '例如：年度限额 20 万',
@@ -224,13 +279,30 @@ class _InsurancePointEditorDialogState
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: _save,
-          child: Text(widget.existing == null ? '添加' : '保存'),
+        if (widget.onDelete case final onDelete?)
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onDelete();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('删除'),
+          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            const SizedBox(width: AppSpacing.space8),
+            FilledButton(
+              onPressed: _save,
+              child: Text(widget.existing == null ? '添加' : '保存'),
+            ),
+          ],
         ),
       ],
     );
@@ -240,11 +312,11 @@ class _InsurancePointEditorDialogState
     final label = _labelController.text.trim();
     final value = _valueController.text.trim();
     if (label.isEmpty || value.isEmpty) {
-      setState(() => _error = '要点标签和内容都不能为空');
+      setState(() => _error = '要点名称和内容都不能为空');
       return;
     }
     if (widget.existingLabels.contains(label)) {
-      setState(() => _error = '同一责任项内的要点标签不能重复');
+      setState(() => _error = '同一责任项内的要点名称不能重复');
       return;
     }
     Navigator.of(context).pop(
@@ -252,6 +324,35 @@ class _InsurancePointEditorDialogState
         id: widget.existing?.id ?? widget.newPointId(),
         label: label,
         value: value,
+      ),
+    );
+  }
+}
+
+class _CommonNameSuggestions extends StatelessWidget {
+  const _CommonNameSuggestions({
+    required this.names,
+    required this.selected,
+    required this.onSelected,
+    super.key,
+  });
+
+  final List<String> names;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+      child: AppChoiceChipGroup<String>(
+        options: [
+          for (final name in names)
+            AppChoiceChipOption(value: name, label: name),
+        ],
+        selected: selected,
+        size: AppChoiceChipSize.compact,
+        onChanged: onSelected,
       ),
     );
   }

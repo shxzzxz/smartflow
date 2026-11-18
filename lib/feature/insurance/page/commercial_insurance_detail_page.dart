@@ -3,23 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../application/insurance/insurance_command_api.dart'
+    show PremiumPlan;
 import '../../../application/insurance/insurance_query_api.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
-import '../../../design_system/widget/app_empty_state.dart';
+import '../../../design_system/widget/app_detail_summary_card.dart';
+import '../../../design_system/widget/app_inline_action_button.dart';
 import '../../../design_system/widget/app_list_divider.dart';
-import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_popup_menu_button.dart';
-import '../../../design_system/widget/app_section_header.dart';
+import '../../../design_system/widget/app_status_badge.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_detail_view_model.dart';
-import '../widget/insurance/insurance_key_value_row.dart';
-import '../widget/insurance/insurance_policy_facts_panel.dart';
-import '../widget/insurance/insurance_policy_identity_header.dart';
-import '../widget/insurance/insurance_responsibility_tile.dart';
+import '../widget/insurance/insurance_coverage_overview_card.dart';
+import '../widget/insurance_premium_plan_editor.dart';
 
 class CommercialInsuranceDetailPage extends ConsumerWidget {
   const CommercialInsuranceDetailPage({required this.insuranceId, super.key});
@@ -89,74 +89,37 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
                       AppSpacing.space32,
                     ),
                     children: [
-                      InsurancePolicyIdentityHeader(
-                        insurance: insurance,
-                        status: detail.status,
+                      _OverviewCard(detail: detail),
+                      const SizedBox(height: AppSpacing.space8),
+                      _ActionBar(
+                        onConfigurePremium: () => _editPremiumPlan(
+                          context,
+                          ref.read(provider.notifier),
+                          insurance.premiumPlan,
+                        ),
+                        onUploadAttachment: () => _addAttachments(
+                          context,
+                          ref.read(provider.notifier),
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.space12),
-                      InsurancePolicyFactsPanel(
-                        coverageAmountLabel:
-                            insuranceCoverageAmountDisplayLabel(
-                              insurance.coverageAmount?.amount,
-                            ),
-                        coverageTermLabel: insuranceCoverageTermCompactLabel(
-                          insurance.coverageTerm,
-                        ),
-                        coverageTermEnded:
-                            !insurance.coverageTerm.lifetime &&
-                            insurance.coverageTerm.endDate != null,
-                        premiumLabel:
-                            insurance.premiumPlan?.frequency.label ??
-                            PremiumFrequency.other.label,
-                      ),
-                      const SizedBox(height: AppSpacing.space20),
-                      const AppSectionHeader(title: '基本信息'),
-                      const SizedBox(height: AppSpacing.space8),
-                      AppListSection(
-                        border: true,
-                        children: [
-                          InsuranceKeyValueRow(
-                            label: '被保险人',
-                            value: detail.insuredPeople
-                                .map(
-                                  (person) =>
-                                      '${person.name} · '
-                                      '${person.relationship.label} · '
-                                      '${person.ageAt(detail.asOf)} 岁',
-                                )
-                                .join('、'),
-                          ),
-                          InsuranceKeyValueRow(
-                            label: '险种',
-                            value: insuranceCategoryDisplayLabel(
-                              insurance.category,
-                            ),
-                          ),
-                          if (insurance.productForm case final form?)
-                            InsuranceKeyValueRow(label: '产品形态', value: form),
-                          InsuranceKeyValueRow(
-                            label: '缴费计划',
-                            value: insurancePremiumPlanLabel(
-                              insurance.premiumPlan,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.space20),
-                      _ResponsibilitySection(
-                        responsibilities: insurance.responsibilities,
-                        onManage: () => context.push(
+                      InsuranceCoverageOverviewCard(
+                        key: const ValueKey('commercial-coverage-overview'),
+                        title: '保障责任',
+                        summary: insurance.coverageSummary,
+                        highlights: insurance.coverageHighlights,
+                        waitingPeriodDescription:
+                            insurance.waitingPeriodDescription,
+                        exclusionsDescription: insurance.exclusionsDescription,
+                        showResponsibilitiesLink: true,
+                        onTap: () => context.push(
                           '/insurance/commercial/$insuranceId/'
                           'responsibilities',
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.space20),
+                      const SizedBox(height: AppSpacing.space12),
                       _AttachmentSection(
                         attachments: insurance.attachments,
-                        onAdd: () => _addAttachments(
-                          context,
-                          ref.read(provider.notifier),
-                        ),
                         onOpen: (attachmentId) => _openAttachment(
                           context,
                           ref.read(provider.notifier),
@@ -193,6 +156,29 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
       case UiActionSuccess<int>():
         break;
       case UiActionFailure<int>(:final error):
+        _showError(context, error.message);
+    }
+  }
+
+  Future<void> _editPremiumPlan(
+    BuildContext context,
+    CommercialInsuranceDetailViewModel notifier,
+    PremiumPlan? existing,
+  ) async {
+    final draft = await showDialog<InsurancePremiumPlanDraft>(
+      context: context,
+      builder: (context) =>
+          InsurancePremiumPlanEditorDialog(existing: existing),
+    );
+    if (draft == null || !context.mounted) return;
+    final outcome = await notifier.savePremiumPlan(draft.plan);
+    if (!context.mounted) return;
+    switch (outcome) {
+      case UiActionSuccess<void>():
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(draft.plan == null ? '缴费配置已清除' : '缴费配置已保存')),
+        );
+      case UiActionFailure<void>(:final error):
         _showError(context, error.message);
     }
   }
@@ -279,43 +265,103 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
   }
 }
 
-class _ResponsibilitySection extends StatelessWidget {
-  const _ResponsibilitySection({
-    required this.responsibilities,
-    required this.onManage,
-  });
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({required this.detail});
 
-  final List<CoverageResponsibility> responsibilities;
-  final VoidCallback onManage;
+  final CommercialInsuranceDetail detail;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppSectionHeader(
-          title: '保障责任',
-          trailing: TextButton(onPressed: onManage, child: const Text('详情')),
+    final insurance = detail.insurance;
+    return AppDetailSummaryCard(
+      key: const ValueKey('commercial-overview-card'),
+      title: [
+        insurance.name,
+        if (insurance.productForm?.isNotEmpty ?? false) insurance.productForm!,
+      ].join(' · '),
+      headerTrailing: AppStatusBadge(
+        presentation: insuranceStatusBadgePresentation(detail.status),
+      ),
+      mainItems: [
+        AppDetailSummaryCardItem(
+          label: '被保人',
+          value: detail.insuredPeople.map((person) => person.name).join('、'),
+          maxLines: 2,
         ),
-        const SizedBox(height: AppSpacing.space8),
-        if (responsibilities.isEmpty)
-          AppSurface(
-            border: true,
-            child: const AppEmptyState(
-              title: '还没有保障责任项',
-              message: '点击详情添加责任项和责任要点。',
-              layout: AppEmptyStateLayout.inline,
-            ),
-          )
-        else
-          AppListSection(
-            border: true,
-            children: [
-              for (final responsibility in responsibilities)
-                InsuranceResponsibilityTile(responsibility: responsibility),
-            ],
+        AppDetailSummaryCardItem(
+          label: '保障期限至',
+          value: insuranceCoverageEndDateLabel(insurance.coverageTerm),
+        ),
+        AppDetailSummaryCardItem(
+          label: '保额',
+          value: insuranceCoverageAmountDisplayLabel(
+            insurance.coverageAmount?.amount,
           ),
+        ),
       ],
+      supportingItems: [
+        AppDetailSummaryCardItem(
+          label: '险种',
+          value: insuranceCategoryDisplayLabel(insurance.category),
+        ),
+        AppDetailSummaryCardItem(
+          label: '保险公司',
+          value: insurance.insurerName,
+          maxLines: 2,
+        ),
+        AppDetailSummaryCardItem(
+          label: '投保人',
+          value: insurance.policyholderName ?? '',
+          maxLines: 2,
+        ),
+        AppDetailSummaryCardItem(
+          label: '受益人',
+          value: insurance.beneficiaryDescription ?? '',
+          maxLines: 3,
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({
+    required this.onConfigurePremium,
+    required this.onUploadAttachment,
+  });
+
+  final VoidCallback onConfigurePremium;
+  final VoidCallback onUploadAttachment;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurface(
+      key: const ValueKey('commercial-action-bar'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space8,
+          vertical: AppSpacing.space6,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: AppInlineActionButton(
+                icon: RemixIcons.settings_3_line,
+                label: '缴费配置',
+                onPressed: onConfigurePremium,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space6),
+            Expanded(
+              child: AppInlineActionButton(
+                icon: RemixIcons.upload_2_line,
+                label: '附件上传',
+                onPressed: onUploadAttachment,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -323,60 +369,57 @@ class _ResponsibilitySection extends StatelessWidget {
 class _AttachmentSection extends StatelessWidget {
   const _AttachmentSection({
     required this.attachments,
-    required this.onAdd,
     required this.onOpen,
     required this.onDelete,
   });
 
   final List<InsuranceAttachment> attachments;
-  final VoidCallback onAdd;
   final ValueChanged<String> onOpen;
   final ValueChanged<String> onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppSectionHeader(
-          title: '合同附件',
-          trailing: TextButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(
-              RemixIcons.attachment_line,
-              size: AppSpacing.space16,
+    return AppSurface(
+      key: const ValueKey('commercial-attachments'),
+      border: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              AppSpacing.space16,
+              AppSpacing.space16,
+              AppSpacing.space8,
             ),
-            label: const Text('添加'),
+            child: Text(
+              '合同附件',
+              style: context.appTextStyles.subsectionTitleStrong,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          border: true,
-          child: attachments.isEmpty
-              ? const AppEmptyState(
-                  title: '还没有合同附件',
-                  message: '可添加多份合同、批单或缴费凭证文件。',
-                  layout: AppEmptyStateLayout.inline,
-                )
-              : Column(
-                  children: [
-                    for (
-                      var index = 0;
-                      index < attachments.length;
-                      index++
-                    ) ...[
-                      _AttachmentRow(
-                        attachment: attachments[index],
-                        onOpen: () => onOpen(attachments[index].id),
-                        onDelete: () => onDelete(attachments[index].id),
-                      ),
-                      if (index < attachments.length - 1)
-                        const AppListDivider(),
-                    ],
-                  ],
-                ),
-        ),
-      ],
+          if (attachments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                AppSpacing.space8,
+                AppSpacing.space16,
+                AppSpacing.space16,
+              ),
+              child: Text(
+                '暂无合同附件',
+                style: context.appTextStyles.listSupporting,
+              ),
+            ),
+          for (var index = 0; index < attachments.length; index++) ...[
+            _AttachmentRow(
+              attachment: attachments[index],
+              onOpen: () => onOpen(attachments[index].id),
+              onDelete: () => onDelete(attachments[index].id),
+            ),
+            if (index < attachments.length - 1) const AppListDivider(),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -397,11 +440,12 @@ class _AttachmentRow extends StatelessWidget {
     return InkWell(
       key: ValueKey('insurance-attachment-${attachment.id}'),
       onTap: onOpen,
+      onLongPress: onDelete,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.space16,
           AppSpacing.space12,
-          AppSpacing.space8,
+          AppSpacing.space16,
           AppSpacing.space12,
         ),
         child: Row(
@@ -428,11 +472,6 @@ class _AttachmentRow extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            IconButton(
-              onPressed: onDelete,
-              tooltip: '删除附件',
-              icon: const Icon(RemixIcons.delete_bin_line),
             ),
           ],
         ),

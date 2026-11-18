@@ -170,6 +170,7 @@ class _InsuredPersonFormContentState
                 maxLength: 100,
                 minLines: 3,
                 maxLines: 4,
+                layout: AppPlainFormRowLayout.vertical,
               ),
             ],
           ),

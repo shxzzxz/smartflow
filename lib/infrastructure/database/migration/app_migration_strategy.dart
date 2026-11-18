@@ -131,6 +131,92 @@ Future<void> _upgrade(
       from61To62: (migration, schema) async {
         await migration.createTable(schema.accountReconciliationSnapshots);
       },
+      from62To63: (migration, schema) async {
+        await migration.addColumn(
+          schema.commercialInsurances,
+          schema.commercialInsurances.coverageAmountDescription,
+        );
+        await migration.addColumn(
+          schema.commercialInsurances,
+          schema.commercialInsurances.coverageSummary,
+        );
+        await migration.addColumn(
+          schema.commercialInsurances,
+          schema.commercialInsurances.coverageHighlights,
+        );
+        await migration.alterTable(
+          TableMigration(
+            schema.socialContributionRecords,
+            newColumns: [
+              schema.socialContributionRecords.period,
+              schema.socialContributionRecords.contributionAmountMinor,
+              schema.socialContributionRecords.note,
+            ],
+            columnTransformer: {
+              schema.socialContributionRecords.period: const CustomExpression(
+                'year_month',
+              ),
+              schema.socialContributionRecords.contributionAmountMinor:
+                  const Constant(null),
+              schema.socialContributionRecords.note: const Constant(null),
+            },
+          ),
+        );
+      },
+      from63To64: (migration, schema) async {
+        await migration.addColumn(
+          schema.coverageResponsibilities,
+          schema.coverageResponsibilities.description,
+        );
+        await migration.database.customStatement(
+          "UPDATE coverage_responsibilities "
+          "SET kind = 'other' "
+          "WHERE kind IN ('criticalIllness', 'accident', 'life')",
+        );
+      },
+      from64To65: (migration, schema) async {
+        for (final column in [
+          schema.commercialInsurances.policyholderName,
+          schema.commercialInsurances.beneficiaryDescription,
+          schema.commercialInsurances.waitingPeriodDescription,
+          schema.commercialInsurances.preExistingConditionDescription,
+          schema.commercialInsurances.exclusionsDescription,
+        ]) {
+          await migration.addColumn(schema.commercialInsurances, column);
+        }
+      },
+      from65To66: (migration, schema) async {
+        await migration.alterTable(
+          TableMigration(
+            schema.commercialInsurances,
+            columnTransformer: {
+              schema.commercialInsurances.exclusionsDescription:
+                  const CustomExpression('''
+CASE
+  WHEN NULLIF(TRIM(pre_existing_condition_description,
+    char(9) || char(10) || char(11) || char(12) || char(13) || ' '), '') IS NULL
+    THEN NULLIF(TRIM(exclusions_description,
+      char(9) || char(10) || char(11) || char(12) || char(13) || ' '), '')
+  WHEN NULLIF(TRIM(exclusions_description,
+    char(9) || char(10) || char(11) || char(12) || char(13) || ' '), '') IS NULL
+    THEN TRIM(pre_existing_condition_description,
+      char(9) || char(10) || char(11) || char(12) || char(13) || ' ')
+  WHEN TRIM(pre_existing_condition_description,
+    char(9) || char(10) || char(11) || char(12) || char(13) || ' ') =
+    TRIM(exclusions_description,
+      char(9) || char(10) || char(11) || char(12) || char(13) || ' ')
+    THEN TRIM(exclusions_description,
+      char(9) || char(10) || char(11) || char(12) || char(13) || ' ')
+  ELSE TRIM(pre_existing_condition_description,
+    char(9) || char(10) || char(11) || char(12) || char(13) || ' ') ||
+    char(10) || TRIM(exclusions_description,
+      char(9) || char(10) || char(11) || char(12) || char(13) || ' ')
+END
+'''),
+            },
+          ),
+        );
+      },
     )(migrator, from, to);
   });
 }

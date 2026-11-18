@@ -289,11 +289,6 @@ class _SocialRow extends StatelessWidget {
                     '${insurance.region} · ${insurance.participantType.label}',
                     style: context.appTextStyles.listSupporting,
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    '${insurance.contributionRecords.length} 条缴费记录',
-                    style: context.appTextStyles.listSupporting,
-                  ),
                 ],
               ),
             ),

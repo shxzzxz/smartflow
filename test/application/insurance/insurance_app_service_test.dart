@@ -10,11 +10,11 @@ import 'package:smartflow/application/insurance/social_insurance/command/social_
 import 'package:smartflow/application/insurance/social_insurance/command/social_insurance_command.dart';
 import 'package:smartflow/core/error/app_exception.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_amount.dart';
 import 'package:smartflow/domain/insurance/valobj/coverage_term.dart';
 import 'package:smartflow/domain/insurance/valobj/insurance_enums.dart';
 import 'package:smartflow/domain/insurance/valobj/insurance_error_code.dart';
+import 'package:smartflow/domain/insurance/valobj/premium_plan.dart';
 import 'package:smartflow/domain/insurance/valobj/social_contribution_record.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_transaction_runner.dart';
@@ -137,6 +137,326 @@ void main() {
       );
     },
   );
+
+  test(
+    'saves benefit types and can clear a responsibility description',
+    () async {
+      final person = await _savePerson(insuredPersonService, '示例成员');
+      final insuranceId = await commercialService.save(
+        _commercialCommand(
+          [person],
+          responsibilities: const [
+            InsuranceResponsibilityInput(
+              kind: ResponsibilityKind.diseaseBenefit,
+              name: '重大疾病',
+              description: '  达到合同约定条件后给付保险金  ',
+              points: [
+                InsuranceResponsibilityPointInput(label: '赔付比例', value: '100%'),
+              ],
+            ),
+            InsuranceResponsibilityInput(
+              kind: ResponsibilityKind.death,
+              name: '意外身故',
+              description: '意外事故导致身故',
+              points: [],
+            ),
+          ],
+        ),
+      );
+      final original = (await commercialInsurances.find(insuranceId))!;
+      expect(original.responsibilities.map((item) => item.kind), [
+        ResponsibilityKind.diseaseBenefit,
+        ResponsibilityKind.death,
+      ]);
+      expect(original.responsibilities.first.description, '达到合同约定条件后给付保险金');
+
+      await commercialService.save(
+        _commercialCommand(
+          [person],
+          id: insuranceId,
+          responsibilities: [
+            InsuranceResponsibilityInput(
+              id: original.responsibilities.first.id,
+              kind: ResponsibilityKind.diseaseBenefit,
+              name: '重大疾病',
+              description: '  ',
+              points: [
+                InsuranceResponsibilityPointInput(
+                  id: original.responsibilities.first.points.single.id,
+                  label: '赔付比例',
+                  value: '100%',
+                ),
+              ],
+            ),
+            InsuranceResponsibilityInput(
+              id: original.responsibilities.last.id,
+              kind: ResponsibilityKind.death,
+              name: '意外身故',
+              description: '意外事故导致身故',
+              points: const [],
+            ),
+          ],
+        ),
+      );
+      final saved = (await queryService.commercialInsuranceDetail(
+        insuranceId,
+      ))!.insurance;
+      expect(saved.responsibilities.first.description, isNull);
+      expect(saved.responsibilities.last.description, '意外事故导致身故');
+      expect(
+        saved.responsibilities.map((item) => item.id),
+        original.responsibilities.map((item) => item.id),
+      );
+      expect(
+        saved.responsibilities.first.points.single.id,
+        original.responsibilities.first.points.single.id,
+      );
+    },
+  );
+
+  test(
+    'contract text survives other saves and attachments and can be cleared',
+    () async {
+      final person = await _savePerson(insuredPersonService, '示例成员');
+      final insuranceId = await commercialService.save(
+        SaveCommercialInsuranceCommand(
+          name: '合同信息记录',
+          insurerName: '示例保险',
+          category: CommercialInsuranceCategory.medical,
+          coverageTerm: CoverageTerm(startDate: DateTime(2025, 1, 1)),
+          insuredPersonIds: [person],
+          policyholderName: '  示例公司  ',
+          beneficiaryDescription: '  法定或其他合同约定  ',
+          waitingPeriodDescription: '  疾病30天；意外无等待期  ',
+          exclusionsDescription: '  以本保单承保约定为准\n指定疾病相关责任除外  ',
+          responsibilities: const [
+            InsuranceResponsibilityInput(
+              kind: ResponsibilityKind.medical,
+              name: '一般医疗',
+              points: [
+                InsuranceResponsibilityPointInput(
+                  label: '等待期',
+                  value: '特别约定15天',
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      final original = (await commercialInsurances.find(insuranceId))!;
+      expect(
+        [
+          original.policyholderName,
+          original.beneficiaryDescription,
+          original.waitingPeriodDescription,
+          original.exclusionsDescription,
+        ],
+        ['示例公司', '法定或其他合同约定', '疾病30天；意外无等待期', '以本保单承保约定为准\n指定疾病相关责任除外'],
+      );
+      SaveCommercialInsuranceCommand update({
+        String? policyholderName,
+        String? beneficiaryDescription,
+        String? waitingPeriodDescription,
+        String? exclusionsDescription,
+      }) => SaveCommercialInsuranceCommand(
+        id: insuranceId,
+        name: original.name,
+        insurerName: original.insurerName,
+        category: original.category,
+        coverageTerm: original.coverageTerm,
+        insuredPersonIds: original.insuredPersonIds,
+        policyholderName: policyholderName,
+        beneficiaryDescription: beneficiaryDescription,
+        waitingPeriodDescription: waitingPeriodDescription,
+        exclusionsDescription: exclusionsDescription,
+      );
+      await commercialService.save(update());
+      await commercialService.addAttachments(insuranceId);
+      var saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.policyholderName, '示例公司');
+      expect(saved.beneficiaryDescription, '法定或其他合同约定');
+      expect(saved.waitingPeriodDescription, '疾病30天；意外无等待期');
+      expect(saved.exclusionsDescription, '以本保单承保约定为准\n指定疾病相关责任除外');
+      await commercialService.save(update(beneficiaryDescription: '  '));
+      saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.beneficiaryDescription, isNull);
+      expect(saved.policyholderName, '示例公司');
+      expect(saved.exclusionsDescription, '以本保单承保约定为准\n指定疾病相关责任除外');
+      await commercialService.save(
+        update(
+          policyholderName: '',
+          waitingPeriodDescription: '',
+          exclusionsDescription: '',
+        ),
+      );
+      saved = (await commercialInsurances.find(insuranceId))!;
+      expect([
+        saved.policyholderName,
+        saved.beneficiaryDescription,
+        saved.waitingPeriodDescription,
+        saved.exclusionsDescription,
+      ], everyElement(isNull));
+      expect(
+        saved.responsibilities.single.id,
+        original.responsibilities.single.id,
+      );
+      expect(saved.responsibilities.single.points.single.value, '特别约定15天');
+      expect(saved.attachments, hasLength(1));
+    },
+  );
+
+  test(
+    'exclusions survive basic edits and can be replaced or cleared',
+    () async {
+      final person = await _savePerson(insuredPersonService, '示例成员');
+      final id = await commercialService.save(_commercialCommand([person]));
+      final original = (await commercialInsurances.find(id))!;
+      SaveCommercialInsuranceCommand update({String? exclusions}) =>
+          SaveCommercialInsuranceCommand(
+            id: id,
+            name: original.name,
+            insurerName: original.insurerName,
+            category: original.category,
+            coverageTerm: original.coverageTerm,
+            insuredPersonIds: original.insuredPersonIds,
+            exclusionsDescription: exclusions,
+          );
+      await commercialService.save(update(exclusions: '既往症相关承保约定\n指定疾病除外'));
+      await commercialService.save(update());
+      var row = await (database.select(
+        database.commercialInsurances,
+      )..where((row) => row.id.equals(id))).getSingle();
+      expect(row.exclusionsDescription, '既往症相关承保约定\n指定疾病除外');
+      await commercialService.save(update(exclusions: '新的除外约定'));
+      expect(
+        (await commercialInsurances.find(id))!.exclusionsDescription,
+        '新的除外约定',
+      );
+      await commercialService.save(update(exclusions: ''));
+      row = await (database.select(
+        database.commercialInsurances,
+      )..where((row) => row.id.equals(id))).getSingle();
+      expect(row.exclusionsDescription, isNull);
+      expect(
+        (await commercialInsurances.find(id))!.exclusionsDescription,
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'payment configuration survives other edits and clears independently',
+    () async {
+      final person = await _savePerson(insuredPersonService, '示例成员');
+      final insuranceId = await commercialService.save(
+        _commercialCommand([person]),
+      );
+      await commercialService.addAttachments(insuranceId);
+      final original = (await commercialInsurances.find(insuranceId))!;
+      const plan = PremiumPlan(
+        frequency: PremiumFrequency.annual,
+        termCount: 20,
+        amount: Money(minorUnits: 120000),
+      );
+      await commercialService.updatePremiumPlan(
+        insuranceId: insuranceId,
+        premiumPlan: plan,
+      );
+      await commercialService.save(
+        SaveCommercialInsuranceCommand(
+          id: insuranceId,
+          name: original.name,
+          insurerName: original.insurerName,
+          category: original.category,
+          coverageTerm: original.coverageTerm,
+          coverageAmount: original.coverageAmount,
+          insuredPersonIds: original.insuredPersonIds,
+        ),
+      );
+      var saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.premiumPlan?.frequency, PremiumFrequency.annual);
+      expect(saved.premiumPlan?.termCount, 20);
+      expect(saved.premiumPlan?.amount, plan.amount);
+      expect(saved.attachments.single.id, original.attachments.single.id);
+      expect(
+        saved.responsibilities.single.id,
+        original.responsibilities.single.id,
+      );
+      expect(saved.insuredPersonIds, original.insuredPersonIds);
+
+      await commercialService.deleteAttachment(
+        insuranceId: insuranceId,
+        attachmentId: saved.attachments.single.id,
+      );
+      saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.premiumPlan?.amount, plan.amount);
+      await commercialService.updatePremiumPlan(
+        insuranceId: insuranceId,
+        premiumPlan: null,
+      );
+      saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.premiumPlan, isNull);
+      expect(saved.name, original.name);
+      expect(saved.coverageTerm.endDate, original.coverageTerm.endDate);
+      expect(
+        saved.responsibilities.single.id,
+        original.responsibilities.single.id,
+      );
+    },
+  );
+
+  test('invalid payment configuration leaves the saved plan intact', () async {
+    final person = await _savePerson(insuredPersonService, '示例成员');
+    final insuranceId = await commercialService.save(
+      _commercialCommand([person]),
+    );
+    const plan = PremiumPlan(
+      frequency: PremiumFrequency.annual,
+      amount: Money(minorUnits: 120000),
+    );
+    await commercialService.updatePremiumPlan(
+      insuranceId: insuranceId,
+      premiumPlan: plan,
+    );
+    for (final invalid in const [
+      PremiumPlan(frequency: PremiumFrequency.annual, termCount: 0),
+      PremiumPlan(
+        frequency: PremiumFrequency.monthly,
+        amount: Money(minorUnits: -1),
+      ),
+    ]) {
+      await expectLater(
+        commercialService.updatePremiumPlan(
+          insuranceId: insuranceId,
+          premiumPlan: invalid,
+        ),
+        throwsA(
+          isA<BusinessException>().having(
+            (error) => error.code,
+            'code',
+            InsuranceErrorCode.invalidCommand.code,
+          ),
+        ),
+      );
+      final saved = (await commercialInsurances.find(insuranceId))!;
+      expect(saved.premiumPlan?.frequency, plan.frequency);
+      expect(saved.premiumPlan?.amount, plan.amount);
+      expect(saved.premiumPlan?.termCount, isNull);
+    }
+    await expectLater(
+      commercialService.updatePremiumPlan(
+        insuranceId: 'missing',
+        premiumPlan: plan,
+      ),
+      throwsA(
+        isA<BusinessException>().having(
+          (error) => error.code,
+          'code',
+          InsuranceErrorCode.commercialInsuranceNotFound.code,
+        ),
+      ),
+    );
+  });
 
   test('overview counts in-force coverage per insured member', () async {
     final first = await _savePerson(insuredPersonService, '张一');
@@ -267,13 +587,59 @@ void main() {
     },
   );
 
+  test('social member and region edits retain contribution history', () async {
+    final first = await _savePerson(insuredPersonService, '张一');
+    final second = await _savePerson(insuredPersonService, '张二');
+    final contribution = SocialContributionRecord(
+      year: 2026,
+      month: 1,
+      contributionBase: Money(minorUnits: 800000),
+      contributionAmount: Money(minorUnits: 160000),
+      note: '正常缴费',
+    );
+    final id = await socialService.save(
+      SaveSocialInsuranceCommand(
+        insuredPersonId: first,
+        region: '上海',
+        insuranceType: SocialInsuranceType.medical,
+        participantType: SocialParticipantType.employee,
+        contributionRecords: [contribution],
+      ),
+    );
+    final original = (await socialInsurances.find(id))!;
+
+    await socialService.save(
+      SaveSocialInsuranceCommand(
+        id: id,
+        insuredPersonId: second,
+        region: '北京市 / 北京市',
+        insuranceType: original.insuranceType,
+        participantType: original.participantType,
+        contributionRecords: original.contributionRecords,
+      ),
+    );
+
+    final updated = (await socialInsurances.find(id))!;
+    expect(updated.insuredPersonId, second);
+    expect(updated.region, '北京市 / 北京市');
+    expect(updated.createdAt, original.createdAt);
+    expect(updated.contributionRecords, hasLength(1));
+    final saved = updated.contributionRecords.single;
+    expect(saved.period, '2026-01');
+    expect(saved.contributionBase, contribution.contributionBase);
+    expect(saved.contributionAmount, contribution.contributionAmount);
+    expect(saved.note, '正常缴费');
+  });
+
   test(
-    'duplicate social months and historical identity changes are rejected',
+    'duplicate social months and historical type changes are rejected',
     () async {
       final person = await _savePerson(insuredPersonService, '张一');
       final contribution = SocialContributionRecord(
-        month: MonthKey(year: 2026, month: 1),
+        year: 2026,
+        month: 1,
         contributionBase: Money(minorUnits: 800000),
+        contributionAmount: Money(minorUnits: 160000),
       );
       final medicalId = await socialService.save(
         SaveSocialInsuranceCommand(
@@ -313,8 +679,8 @@ void main() {
           SaveSocialInsuranceCommand(
             id: medicalId,
             insuredPersonId: person,
-            region: '北京',
-            insuranceType: SocialInsuranceType.medical,
+            region: '上海',
+            insuranceType: SocialInsuranceType.pension,
             participantType: SocialParticipantType.employee,
             contributionRecords: [contribution],
           ),
@@ -390,6 +756,7 @@ SaveCommercialInsuranceCommand _commercialCommand(
   String? id,
   CoverageTerm? coverageTerm,
   CoverageAmount? coverageAmount,
+  List<InsuranceResponsibilityInput>? responsibilities,
 }) {
   return SaveCommercialInsuranceCommand(
     id: id,
@@ -404,15 +771,20 @@ SaveCommercialInsuranceCommand _commercialCommand(
         ),
     coverageAmount: coverageAmount,
     insuredPersonIds: personIds,
-    responsibilities: const [
-      InsuranceResponsibilityInput(
-        kind: ResponsibilityKind.medical,
-        name: '一般医疗',
-        points: [
-          InsuranceResponsibilityPointInput(label: '住院报销', value: '最高 100 万元'),
+    responsibilities:
+        responsibilities ??
+        const [
+          InsuranceResponsibilityInput(
+            kind: ResponsibilityKind.medical,
+            name: '一般医疗',
+            points: [
+              InsuranceResponsibilityPointInput(
+                label: '住院报销',
+                value: '最高 100 万元',
+              ),
+            ],
+          ),
         ],
-      ),
-    ],
   );
 }
 

@@ -63,6 +63,33 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('activity rows preserve annual and monthly periods when opened', (
+    tester,
+  ) async {
+    final opened = <String>[];
+    await tester.pumpWidget(
+      _app(
+        Column(
+          children: [
+            for (final period in ['2026年', '2026年11月'])
+              FinanceActivityRow.period(
+                label: '缴费',
+                periodLabel: period,
+                amountLabel: '1200',
+                icon: RemixIcons.bank_card_line,
+                onTap: () => opened.add(period),
+              ),
+          ],
+        ),
+      ),
+    );
+    expect(find.text('缴费 · 2026年'), findsOneWidget);
+    expect(find.text('缴费 · 2026年11月'), findsOneWidget);
+    await tester.tap(find.text('缴费 · 2026年'));
+    await tester.tap(find.text('缴费 · 2026年11月'));
+    expect(opened, ['2026年', '2026年11月']);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _app(Widget child) {

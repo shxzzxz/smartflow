@@ -66,10 +66,6 @@ class CommercialInsuranceFormViewModel
     );
   }
 
-  void setPremiumFrequency(PremiumFrequency value) {
-    _update((current) => current.copyWith(premiumFrequency: value));
-  }
-
   void toggleInsuredPerson(String insuredPersonId) {
     _update((current) {
       final next = Set<String>.of(current.insuredPersonIds);
@@ -83,8 +79,8 @@ class CommercialInsuranceFormViewModel
     required String insurerNameText,
     required String productFormText,
     required String coverageAmountText,
-    required String premiumAmountText,
-    required String premiumTermCountText,
+    String? policyholderNameText,
+    String? beneficiaryDescriptionText,
   }) async {
     final current = state.asData?.value;
     if (current == null) return _invalid('商业保险表单尚未加载');
@@ -101,14 +97,6 @@ class CommercialInsuranceFormViewModel
     final coverageAmount = _coverageAmount(amountText: coverageAmountText);
     if (coverageAmount.error != null) {
       return _invalid(coverageAmount.error!);
-    }
-    final premiumAmount = _moneyOrNull(premiumAmountText);
-    if (premiumAmount.invalid || (premiumAmount.money?.minorUnits ?? 0) < 0) {
-      return _invalid('请输入有效的期缴金额');
-    }
-    final premiumTermCount = _positiveIntegerOrNull(premiumTermCountText);
-    if (premiumTermCount.invalid) {
-      return _invalid('缴费期数必须为正整数');
     }
     final coverageTerm = CoverageTerm(
       startDate: current.coverageStartDate,
@@ -137,11 +125,8 @@ class CommercialInsuranceFormViewModel
                 productForm: _nullIfBlank(productFormText),
                 coverageTerm: coverageTerm,
                 coverageAmount: coverageAmount.value,
-                premiumPlan: PremiumPlan(
-                  amount: premiumAmount.money,
-                  frequency: current.premiumFrequency,
-                  termCount: premiumTermCount.value,
-                ),
+                policyholderName: policyholderNameText?.trim(),
+                beneficiaryDescription: beneficiaryDescriptionText?.trim(),
                 insuredPersonIds: current.insuredPersonIds,
               ),
             ),
@@ -183,15 +168,6 @@ class CommercialInsuranceFormViewModel
     );
   }
 
-  _IntegerResult _positiveIntegerOrNull(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return const _IntegerResult();
-    final value = int.tryParse(trimmed);
-    return value == null || value <= 0
-        ? const _IntegerResult.invalid()
-        : _IntegerResult(value: value);
-  }
-
   void _update(
     CommercialInsuranceFormState Function(CommercialInsuranceFormState) update,
   ) {
@@ -216,7 +192,6 @@ class CommercialInsuranceFormState {
     required this.category,
     required this.coverageStartDate,
     required this.lifetime,
-    required this.premiumFrequency,
     required List<String> insuredPersonIds,
     this.id,
     this.coverageEndDate,
@@ -234,7 +209,6 @@ class CommercialInsuranceFormState {
       category: CommercialInsuranceCategory.medical,
       coverageStartDate: DateTime(today.year, today.month, today.day),
       lifetime: false,
-      premiumFrequency: PremiumFrequency.other,
       insuredPersonIds: [?initialInsuredPersonId],
     );
   }
@@ -253,8 +227,6 @@ class CommercialInsuranceFormState {
       coverageStartDate: insurance.coverageTerm.startDate,
       coverageEndDate: insurance.coverageTerm.endDate,
       lifetime: insurance.coverageTerm.lifetime,
-      premiumFrequency:
-          insurance.premiumPlan?.frequency ?? PremiumFrequency.other,
       insuredPersonIds: insurance.insuredPersonIds,
     );
   }
@@ -267,7 +239,6 @@ class CommercialInsuranceFormState {
   final DateTime? coverageEndDate;
   final bool lifetime;
   final List<String> insuredPersonIds;
-  final PremiumFrequency premiumFrequency;
   final bool submitting;
 
   CommercialInsuranceFormState copyWith({
@@ -276,7 +247,6 @@ class CommercialInsuranceFormState {
     Object? coverageEndDate = _sentinel,
     bool? lifetime,
     List<String>? insuredPersonIds,
-    PremiumFrequency? premiumFrequency,
     bool? submitting,
   }) {
     return CommercialInsuranceFormState(
@@ -290,7 +260,6 @@ class CommercialInsuranceFormState {
           : coverageEndDate as DateTime?,
       lifetime: lifetime ?? this.lifetime,
       insuredPersonIds: insuredPersonIds ?? this.insuredPersonIds,
-      premiumFrequency: premiumFrequency ?? this.premiumFrequency,
       submitting: submitting ?? this.submitting,
     );
   }
@@ -302,8 +271,8 @@ class CommercialInsuranceFormInitialValues {
     this.insurerName = '',
     this.productForm = '',
     this.coverageAmount = '',
-    this.premiumAmount = '',
-    this.premiumTermCount = '',
+    this.policyholderName = '',
+    this.beneficiaryDescription = '',
   });
 
   factory CommercialInsuranceFormInitialValues.fromInsurance(
@@ -314,8 +283,8 @@ class CommercialInsuranceFormInitialValues {
       insurerName: insurance.insurerName,
       productForm: insurance.productForm ?? '',
       coverageAmount: insuranceMoneyInputText(insurance.coverageAmount?.amount),
-      premiumAmount: insuranceMoneyInputText(insurance.premiumPlan?.amount),
-      premiumTermCount: insurance.premiumPlan?.termCount?.toString() ?? '',
+      policyholderName: insurance.policyholderName ?? '',
+      beneficiaryDescription: insurance.beneficiaryDescription ?? '',
     );
   }
 
@@ -323,8 +292,8 @@ class CommercialInsuranceFormInitialValues {
   final String insurerName;
   final String productForm;
   final String coverageAmount;
-  final String premiumAmount;
-  final String premiumTermCount;
+  final String policyholderName;
+  final String beneficiaryDescription;
 }
 
 class _MoneyResult {
@@ -340,14 +309,6 @@ class _CoverageAmountResult {
 
   final CoverageAmount? value;
   final String? error;
-}
-
-class _IntegerResult {
-  const _IntegerResult({this.value}) : invalid = false;
-  const _IntegerResult.invalid() : value = null, invalid = true;
-
-  final int? value;
-  final bool invalid;
 }
 
 const Object _sentinel = Object();

@@ -28,14 +28,20 @@ class CoverageResponsibility {
     required this.id,
     required this.kind,
     required String name,
+    String? description,
     required List<ResponsibilityPoint> points,
     required this.order,
   }) : name = name.trim(),
+       description = switch (description?.trim()) {
+         null || '' => null,
+         final value => value,
+       },
        points = List.unmodifiable(points);
 
   final String id;
   final ResponsibilityKind kind;
   final String name;
+  final String? description;
   final List<ResponsibilityPoint> points;
   final int order;
 

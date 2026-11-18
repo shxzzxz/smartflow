@@ -4,6 +4,26 @@ import 'package:smartflow/core/money/money_formatter.dart';
 
 void main() {
   group('formatMoney', () {
+    test('uses fixed ten-thousand units and preserves the exact value', () {
+      const cases = <int, String>{
+        0: '0',
+        999999: '9999.99',
+        1000000: '1 万',
+        1500000: '1.5 万',
+        1000001: '1.000001 万',
+        10000000000: '10000 万',
+        -1250000: '-1.25 万',
+      };
+      for (final entry in cases.entries) {
+        expect(
+          formatMoney(
+            Money(minorUnits: entry.key),
+            style: MoneyFormatStyle.tenThousand,
+          ),
+          entry.value,
+        );
+      }
+    });
     test('preserves exact cent precision when requested', () {
       expect(
         formatMoney(

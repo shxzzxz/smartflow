@@ -59,7 +59,7 @@ final class CommercialInsuranceResponsibilitiesViewModelProvider
 }
 
 String _$commercialInsuranceResponsibilitiesViewModelHash() =>
-    r'26a5035cc3ab2cdfae579dc96aa94d72bc58c8be';
+    r'1542f447514e0bfe6f4bf2e71e1f0a477e4f9b4d';
 
 final class CommercialInsuranceResponsibilitiesViewModelFamily extends $Family
     with

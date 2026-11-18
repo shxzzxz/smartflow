@@ -316,7 +316,7 @@ class BackupManifest {
   ///
   /// This is independent from the database schema version and only changes
   /// when exported tables, fields or wire codes change.
-  static const currentBackupSchemaVersion = 12;
+  static const currentBackupSchemaVersion = 16;
   static const minimumSupportedBackupSchemaVersion =
       PersistenceBaseline.backupSchemaVersion;
 
@@ -721,7 +721,7 @@ String _rowIdentity(BackupJson row, String table) {
     return '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}';
   }
   if (table == 'social_contribution_records') {
-    return '${row['socialInsuranceId']}\u0000${row['yearMonth']}';
+    return '${row['socialInsuranceId']}\u0000${row['period']}';
   }
   return '${row['id']}';
 }

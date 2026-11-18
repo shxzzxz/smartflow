@@ -153,6 +153,9 @@ void main() {
     await pumpShowcase(tester);
 
     const examples = <String, String>{
+      'AppDetailSummaryCard': '详情概览卡片',
+      'FinanceActivityRow': '动态记录',
+      'InsuranceCoverageOverviewCard': '保障责任卡片',
       'AppTextFormField': '表单字段',
       'AppPlainFormRow': '基础表单行',
       'AppSelectMenu': '选择菜单',

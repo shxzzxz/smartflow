@@ -58,7 +58,7 @@ final class CommercialInsuranceFormViewModelProvider
 }
 
 String _$commercialInsuranceFormViewModelHash() =>
-    r'a588eef1166150b201edbac1cff940d5e913be1f';
+    r'5d01c82b1cdcf794cbd4e90beadb5fcd81d05609';
 
 final class CommercialInsuranceFormViewModelFamily extends $Family
     with

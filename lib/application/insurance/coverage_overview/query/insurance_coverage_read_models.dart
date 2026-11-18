@@ -1,4 +1,5 @@
 import '../../../../core/money/money.dart';
+import '../../../../core/money/money_formatter.dart';
 import '../../../../domain/insurance/entity/commercial_insurance.dart';
 import '../../../../domain/insurance/entity/insured_person.dart';
 import '../../../../domain/insurance/entity/social_insurance.dart';
@@ -118,7 +119,7 @@ class MemberCoverageOverview {
         insuranceId: insurance.id,
         title: '社保${insurance.insuranceType.label}',
         subtitle: '${insurance.region} · ${insurance.participantType.label}',
-        summary: '${insurance.contributionRecords.length} 条缴费记录',
+        summary: '',
       ),
   ];
 
@@ -157,8 +158,7 @@ class SocialInsuranceDetail {
 }
 
 String _moneyLabel(Money money) {
-  final value = money.format();
-  return value.endsWith('.00') ? value.substring(0, value.length - 3) : value;
+  return formatMoney(money, style: MoneyFormatStyle.tenThousand);
 }
 
 bool _isInForce(InsuranceCoverageStatus status) {

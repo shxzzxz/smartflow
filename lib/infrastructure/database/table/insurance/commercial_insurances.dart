@@ -16,6 +16,20 @@ class CommercialInsurances extends Table {
   BoolColumn get lifetime => boolean().withDefault(const Constant(false))();
   IntColumn get coverageAmountMinor =>
       integer().named('coverage_amount_minor').nullable()();
+  TextColumn get coverageAmountDescription =>
+      text().named('coverage_amount_description').nullable()();
+  TextColumn get coverageSummary =>
+      text().named('coverage_summary').nullable()();
+  TextColumn get coverageHighlights =>
+      text().named('coverage_highlights').nullable()();
+  TextColumn get policyholderName =>
+      text().named('policyholder_name').nullable()();
+  TextColumn get beneficiaryDescription =>
+      text().named('beneficiary_description').nullable()();
+  TextColumn get waitingPeriodDescription =>
+      text().named('waiting_period_description').nullable()();
+  TextColumn get exclusionsDescription =>
+      text().named('exclusions_description').nullable()();
   IntColumn get premiumAmountMinor =>
       integer().named('premium_amount_minor').nullable()();
   TextColumn get premiumFrequency =>

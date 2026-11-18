@@ -9,6 +9,8 @@ import 'app_switch.dart';
 
 enum AppPlainRowValueAlignment { start, end }
 
+enum AppPlainFormRowLayout { horizontal, vertical }
+
 class AppPlainFormSection extends StatelessWidget {
   const AppPlainFormSection({
     required this.children,
@@ -44,6 +46,7 @@ class AppPlainFormRow extends StatelessWidget {
     this.labelWidth = AppFormTokens.labelWidth,
     this.minHeight = AppFormTokens.rowMinHeight,
     this.crossAxisAlignment = CrossAxisAlignment.center,
+    this.layout = AppPlainFormRowLayout.horizontal,
     this.errorText,
   });
 
@@ -56,51 +59,57 @@ class AppPlainFormRow extends StatelessWidget {
   final double labelWidth;
   final double minHeight;
   final CrossAxisAlignment crossAxisAlignment;
+  final AppPlainFormRowLayout layout;
   final String? errorText;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final message = errorText ?? supportingText;
+    final labelWidget = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Flexible(child: Text(label, style: context.appTextStyles.formLabel)),
+        if (requiredIndicator) ...[
+          const SizedBox(width: AppSpacing.space2),
+          Text(
+            '*',
+            style: context.appTextStyles.formLabel.copyWith(
+              color: colors.error,
+            ),
+          ),
+        ],
+      ],
+    );
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ConstrainedBox(
           constraints: BoxConstraints(minHeight: minHeight),
-          child: Row(
-            crossAxisAlignment: crossAxisAlignment,
-            children: [
-              SizedBox(
-                width: labelWidth,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: context.appTextStyles.formLabel,
-                      ),
-                    ),
-                    if (requiredIndicator) ...[
-                      const SizedBox(width: AppSpacing.space2),
-                      Text(
-                        '*',
-                        style: context.appTextStyles.formLabel.copyWith(
-                          color: colors.error,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Expanded(child: child),
-            ],
-          ),
+          child: switch (layout) {
+            AppPlainFormRowLayout.horizontal => Row(
+              crossAxisAlignment: crossAxisAlignment,
+              children: [
+                SizedBox(width: labelWidth, child: labelWidget),
+                Expanded(child: child),
+              ],
+            ),
+            AppPlainFormRowLayout.vertical => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                labelWidget,
+                const SizedBox(height: AppSpacing.space8),
+                child,
+              ],
+            ),
+          },
         ),
         if (message != null) ...[
           const SizedBox(height: AppSpacing.space2),
           Padding(
-            padding: EdgeInsets.only(left: labelWidth),
+            padding: EdgeInsets.only(
+              left: layout == AppPlainFormRowLayout.horizontal ? labelWidth : 0,
+            ),
             child: Text(
               message,
               style: context.appTextStyles.formSupporting.copyWith(

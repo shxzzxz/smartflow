@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/data_management/backup/backup_models.dart';
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_edit_app_service.dart';
 import 'package:smartflow/application/ledger/transaction/command/transaction_ledger_writer.dart';
@@ -139,7 +140,10 @@ void main() {
     );
     final manifest = await backup.createBackup(backupDirectory);
     final inspection = await backup.inspect(backupDirectory);
-    expect(manifest.backupSchemaVersion, 12);
+    expect(
+      manifest.backupSchemaVersion,
+      BackupManifest.currentBackupSchemaVersion,
+    );
     expect(inspection.snapshot.rows('amortization_periods'), isNotEmpty);
     expect(inspection.snapshot.rows('amortization_allocations'), isNotEmpty);
   });

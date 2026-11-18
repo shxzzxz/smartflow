@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/feature/insurance/widget/insurance/insurance_coverage_overview_card.dart';
 import 'package:smartflow/feature/shared/presentation/transaction_list_presentation.dart';
 import 'package:smartflow/widget/business/account/account_endpoint.dart';
 import 'package:smartflow/widget/business/account/account_endpoint_view.dart';
@@ -16,6 +17,7 @@ import 'package:smartflow/widget/business/category/category_grid_picker.dart';
 import 'package:smartflow/widget/business/category/category_picker_sheet.dart';
 import 'package:smartflow/widget/business/finance/adaptive_money_text.dart';
 import 'package:smartflow/widget/business/finance/bill_item_row.dart';
+import 'package:smartflow/widget/business/finance/finance_activity_row.dart';
 import 'package:smartflow/widget/business/finance/finance_summary_row.dart';
 import 'package:smartflow/widget/business/finance/cashflow_summary_card.dart';
 import 'package:smartflow/widget/business/finance/finance_tone.dart';
@@ -43,6 +45,7 @@ import '../token/spacing.dart';
 import '../widget/app_cascade_multi_select.dart';
 import '../widget/app_date_picker_panel.dart';
 import '../widget/app_datetime_picker.dart';
+import '../widget/app_detail_summary_card.dart';
 import '../widget/app_dropdown.dart';
 import '../widget/app_empty_state.dart';
 import '../widget/app_form_field.dart';
@@ -55,7 +58,9 @@ import '../widget/app_page_header.dart';
 import '../widget/app_list_divider.dart';
 import '../widget/app_plain_form_field.dart';
 import '../widget/app_plain_form_row.dart';
+import '../widget/app_plain_text_area_form_row.dart';
 import '../widget/app_popup_menu_button.dart';
+import '../widget/app_region_picker.dart';
 import '../widget/app_select.dart';
 import '../widget/app_section_header.dart';
 import '../widget/app_settings_row.dart';
@@ -119,6 +124,7 @@ enum _ShowcaseExampleKind {
   categoryGridPicker,
   categoryPicker,
   cascadeMultiSelect,
+  regionPicker,
   submitButton,
   chips,
   progressIndicators,
@@ -137,6 +143,9 @@ enum _ShowcaseExampleKind {
   adaptiveMoneyText,
   supportingItems,
   billRows,
+  detailSummary,
+  activityRows,
+  insuranceCoverage,
   businessIcons,
   accountEndpoint,
   cashflowSummary,
@@ -269,8 +278,8 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.textFormRow,
     category: '表单与输入',
     title: '文本输入行',
-    componentNames: 'AppPlainTextFormRow',
-    keywords: ['输入', '文本框', '必填', '只读', '错误', '禁用'],
+    componentNames: 'AppPlainTextFormRow / AppPlainTextAreaFormRow',
+    keywords: ['输入', '文本框', '多行', '段落', '必填', '只读', '错误', '禁用'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.selectFormRow,
@@ -358,6 +367,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '级联多选',
     componentNames: 'AppCascadeMultiSelect',
     keywords: ['级联', '多选', '层级', '全部', '清除'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.regionPicker,
+    category: '选择器与弹层',
+    title: '地址级联选择',
+    componentNames: 'AppRegionPickerSheet',
+    keywords: ['地址', '地区', '省市区', '级联', '单选'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.submitButton,
@@ -485,6 +501,27 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '账单行与状态',
     componentNames: 'FinanceSummaryRow / BillItemRow',
     keywords: ['账单', '明细', '金额', '状态', '徽章'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.detailSummary,
+    category: '数据展示',
+    title: '详情概览卡片',
+    componentNames: 'AppDetailSummaryCard',
+    keywords: ['概览', '指标', '详情', '换行'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.activityRows,
+    category: '财务表达',
+    title: '动态记录',
+    componentNames: 'FinanceActivityRow',
+    keywords: ['动态', '记录', '缴费', '年度', '月度'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.insuranceCoverage,
+    category: '数据展示',
+    title: '保障责任卡片',
+    componentNames: 'InsuranceCoverageOverviewCard',
+    keywords: ['保险', '保障', '责任', '亮点'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.businessIcons,
@@ -767,6 +804,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
   final _readOnlyInputController = TextEditingController(text: '只读内容');
   final _errorInputController = TextEditingController();
   final _disabledInputController = TextEditingController(text: '禁用内容');
+  final _paragraphController = TextEditingController();
+  final _limitedParagraphController = TextEditingController();
   final _moneyController = TextEditingController(text: '128.00');
   final _moneyHintController = TextEditingController();
   final _termValueController = TextEditingController(text: '12');
@@ -852,6 +891,8 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     _readOnlyInputController.dispose();
     _errorInputController.dispose();
     _disabledInputController.dispose();
+    _paragraphController.dispose();
+    _limitedParagraphController.dispose();
     _moneyController.dispose();
     _moneyHintController.dispose();
     _termValueController.dispose();
@@ -1012,6 +1053,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.categoryGridPicker => _categoryGridPickerPreview(),
       _ShowcaseExampleKind.categoryPicker => _categoryPickerPreview(),
       _ShowcaseExampleKind.cascadeMultiSelect => _cascadeMultiSelectPreview(),
+      _ShowcaseExampleKind.regionPicker => _regionPickerPreview(),
       _ShowcaseExampleKind.submitButton => _submitButtonPreview(),
       _ShowcaseExampleKind.chips => _chipsPreview(),
       _ShowcaseExampleKind.progressIndicators => _progressIndicatorsPreview(),
@@ -1030,6 +1072,9 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.adaptiveMoneyText => _adaptiveMoneyTextPreview(),
       _ShowcaseExampleKind.supportingItems => _supportingItemsPreview(),
       _ShowcaseExampleKind.billRows => _billRowsPreview(),
+      _ShowcaseExampleKind.detailSummary => _detailSummaryPreview(),
+      _ShowcaseExampleKind.activityRows => _activityRowsPreview(),
+      _ShowcaseExampleKind.insuranceCoverage => _insuranceCoveragePreview(),
       _ShowcaseExampleKind.businessIcons => _businessIconsPreview(),
       _ShowcaseExampleKind.accountEndpoint => _accountEndpointPreview(),
       _ShowcaseExampleKind.cashflowSummary => _cashflowSummaryPreview(),
@@ -1452,6 +1497,21 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           controller: _disabledInputController,
           enabled: false,
         ),
+        const SizedBox(height: AppSpacing.space8),
+        AppPlainTextAreaFormRow(
+          label: '多行说明',
+          controller: _paragraphController,
+          hintText: '填写一段说明，支持换行',
+          layout: AppPlainFormRowLayout.vertical,
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        AppPlainTextAreaFormRow(
+          label: '字数限制',
+          controller: _limitedParagraphController,
+          hintText: '最多填写100字',
+          maxLength: 100,
+          layout: AppPlainFormRowLayout.vertical,
+        ),
       ],
     );
   }
@@ -1785,6 +1845,53 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
         onCategoryTap: (categoryId) =>
             setState(() => _selectedPickerCategoryId = categoryId),
       ),
+    );
+  }
+
+  Widget _regionPickerPreview() {
+    const regions = [
+      AppRegionNode(
+        code: '330000',
+        name: '浙江省',
+        children: [
+          AppRegionNode(
+            code: '330100',
+            name: '杭州市',
+            children: [AppRegionNode(code: '330102', name: '上城区')],
+          ),
+        ],
+      ),
+      AppRegionNode(
+        code: '320000',
+        name: '江苏省',
+        children: [
+          AppRegionNode(
+            code: '320100',
+            name: '南京市',
+            children: [AppRegionNode(code: '320102', name: '玄武区')],
+          ),
+        ],
+      ),
+    ];
+    return Wrap(
+      spacing: AppSpacing.space8,
+      runSpacing: AppSpacing.space8,
+      children: [
+        for (final level in [AppRegionLevel.city, AppRegionLevel.district])
+          OutlinedButton(
+            onPressed: () async {
+              final result = await showAppRegionPickerSheet(
+                context: context,
+                regions: regions,
+                level: level,
+              );
+              if (mounted && result != null) {
+                _showMessage('已选择：${result.label}');
+              }
+            },
+            child: Text(level == AppRegionLevel.city ? '选择省市' : '选择省市区'),
+          ),
+      ],
     );
   }
 
@@ -2414,6 +2521,101 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _detailSummaryPreview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.space12,
+      children: [
+        for (final style in AppDetailSummaryCardStyle.values)
+          _ShowcaseState(
+            label: style == AppDetailSummaryCardStyle.surface ? '普通表面' : '强调表面',
+            child: _PreviewBackdrop(
+              child: AppDetailSummaryCard(
+                title: '示例详情',
+                mainItems: const [
+                  AppDetailSummaryCardItem(
+                    label: '主要信息',
+                    value: '支持两行文本展示',
+                    maxLines: 2,
+                  ),
+                  AppDetailSummaryCardItem(label: '金额', value: '1200'),
+                ],
+                supportingItems: const [
+                  AppDetailSummaryCardItem(
+                    label: '说明',
+                    value: '较长内容可在当前列换行',
+                    maxLines: 2,
+                  ),
+                ],
+                style: style,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _activityRowsPreview() {
+    return _PreviewBackdrop(
+      child: AppSurface(
+        border: true,
+        child: Column(
+          children: [
+            FinanceActivityRow(
+              label: '退款',
+              occurredAt: DateTime(2026, 11, 18),
+              amountLabel: '300',
+              icon: RemixIcons.refund_2_line,
+              onTap: () => _showMessage('打开退款详情'),
+            ),
+            const AppListDivider(),
+            for (final period in ['2026年', '2026年11月'])
+              FinanceActivityRow.period(
+                label: '缴费',
+                periodLabel: period,
+                amountLabel: '1200',
+                supportingText: '缴费基数 8000',
+                icon: RemixIcons.bank_card_line,
+                onTap: () => _showMessage('编辑 $period 缴费记录'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _insuranceCoveragePreview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.space12,
+      children: [
+        _PreviewBackdrop(
+          child: InsuranceCoverageOverviewCard(
+            title: '保障责任',
+            summary: '覆盖住院、门诊等医疗费用。',
+            highlights: '涵盖多种医疗费用\n可记录续保条件\n保障规则集中查看',
+            waitingPeriodDescription: '30天',
+            exclusionsDescription: '既往症约定、免责及除外事项以记录的合同约定为准。',
+            showResponsibilitiesLink: true,
+            onTap: () => _showMessage('查看全部保障责任'),
+          ),
+        ),
+        _ShowcaseState(
+          label: '未录入保障说明',
+          child: _PreviewBackdrop(
+            child: InsuranceCoverageOverviewCard(
+              title: '保障责任',
+              summary: null,
+              highlights: null,
+              showResponsibilitiesLink: true,
+              onTap: () => _showMessage('录入保障责任'),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

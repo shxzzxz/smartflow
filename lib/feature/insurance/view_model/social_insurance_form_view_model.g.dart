@@ -57,7 +57,7 @@ final class SocialInsuranceFormViewModelProvider
 }
 
 String _$socialInsuranceFormViewModelHash() =>
-    r'e44e9387addd04813b730a03ea8edc7a76d1f7ae';
+    r'912ce94beab2cb4282945d1bb38898a6518a6b4e';
 
 final class SocialInsuranceFormViewModelFamily extends $Family
     with

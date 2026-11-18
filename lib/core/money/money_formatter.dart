@@ -1,6 +1,6 @@
 import 'money.dart';
 
-enum MoneyFormatStyle { exact, plain, compact }
+enum MoneyFormatStyle { exact, plain, compact, tenThousand }
 
 const _minorUnitsPerTenThousand = 10000 * 100;
 const _minorUnitsPerHundredMillion = 100000000 * 100;
@@ -14,7 +14,21 @@ String formatMoney(
     MoneyFormatStyle.exact => money.format(),
     MoneyFormatStyle.plain => _trimTrailingZeros(money.format()),
     MoneyFormatStyle.compact => _formatCompactMoney(money),
+    MoneyFormatStyle.tenThousand => _formatTenThousandMoney(money),
   };
+}
+
+String _formatTenThousandMoney(Money money) {
+  final absolute = money.minorUnits.abs();
+  if (absolute < _minorUnitsPerTenThousand) {
+    return _trimTrailingZeros(money.format());
+  }
+  final whole = absolute ~/ _minorUnitsPerTenThousand;
+  final remainder = absolute % _minorUnitsPerTenThousand;
+  final fraction = remainder == 0
+      ? ''
+      : '.${remainder.toString().padLeft(6, '0').replaceFirst(RegExp(r'0+$'), '')}';
+  return '${money.minorUnits < 0 ? '-' : ''}$whole$fraction 万';
 }
 
 String _formatCompactMoney(Money money) {

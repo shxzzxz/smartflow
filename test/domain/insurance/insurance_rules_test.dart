@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/domain/insurance/entity/commercial_insurance.dart';
 import 'package:smartflow/domain/insurance/entity/insured_person.dart';
 import 'package:smartflow/domain/insurance/entity/social_insurance.dart';
@@ -142,9 +141,53 @@ void main() {
   });
 
   group('social contribution records', () {
+    test('allows annual and monthly facts within the same year', () {
+      final insurance = SocialInsurance(
+        id: 'social',
+        insuredPersonId: 'person',
+        region: '浙江省 / 杭州市',
+        insuranceType: SocialInsuranceType.medical,
+        participantType: SocialParticipantType.employee,
+        contributionRecords: const [
+          SocialContributionRecord(
+            year: 2026,
+            contributionAmount: Money(minorUnits: 10000),
+          ),
+          SocialContributionRecord(
+            year: 2026,
+            month: 1,
+            contributionAmount: Money(minorUnits: 20000),
+          ),
+        ],
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+      expect(insurance.validate, returnsNormally);
+      expect(insurance.contributionRecords.map((record) => record.period), [
+        '2026',
+        '2026-01',
+      ]);
+    });
+
+    test('rejects invalid years, optional months, and negative amounts', () {
+      const invalid = [
+        SocialContributionRecord(year: 1899),
+        SocialContributionRecord(year: 2101),
+        SocialContributionRecord(year: 2026, month: 0),
+        SocialContributionRecord(year: 2026, month: 13),
+        SocialContributionRecord(
+          year: 2026,
+          contributionAmount: Money(minorUnits: -1),
+        ),
+      ];
+      for (final record in invalid) {
+        expect(record.validate, throwsArgumentError);
+      }
+    });
     test('rejects duplicate months within one social insurance record', () {
       final record = SocialContributionRecord(
-        month: MonthKey(year: 2026, month: 1),
+        year: 2026,
+        month: 1,
         contributionBase: Money(minorUnits: 800000),
       );
       final insurance = SocialInsurance(
@@ -163,7 +206,8 @@ void main() {
 
     test('rejects negative contribution bases', () {
       final invalid = SocialContributionRecord(
-        month: MonthKey(year: 2026, month: 1),
+        year: 2026,
+        month: 1,
         contributionBase: Money(minorUnits: -1),
       );
 

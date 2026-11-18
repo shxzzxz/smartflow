@@ -13,7 +13,7 @@
 
 基线是随发布边界调整的兼容状态，不属于稳定的架构决策。调整基线时同步更新 `PersistenceBaseline`、本表、结构快照、生成迁移与测试，并删除不再承诺兼容的旧链路；不要求为每次基线调整新增或修改 ADR。ADR 只记录长期有效的兼容原则和取舍，[ADR-0021](../adr/0021-发布前持久化基线契约.md) 仅作为历史背景。
 
-当前实现数据库 schema 为 v62，备份 format 为 4，逻辑备份契约为 `backupSchemaVersion` 12；上表仍定义最低兼容基线。
+当前实现数据库 schema 为 v66，备份 format 为 4，逻辑备份契约为 `backupSchemaVersion` 16；上表仍定义最低兼容基线。
 
 ## 支持范围
 
@@ -66,6 +66,8 @@ fvm dart run drift_dev schema generate drift_schemas/ test/generated_migrations/
 - 不使用 `intEnum` 序号承诺持久化身份，避免枚举插入或重排造成静默错读。
 
 ## 备份格式变更
+
+商业保单只保留统一除外责任。数据库 v65→v66 在固定迁移中将既往症与除外责任的非空文本按换行合并，完全相同的内容只保留一份，并移除 `pre_existing_condition_description` 列。逻辑备份 v15→v16 在恢复升级时执行同样的转换，并移除 `preExistingConditionDescription` 字段。转换只发生在版本升级步骤，模型、存储和日常读写均只使用 `exclusionsDescription`。
 
 - `formatVersion` 表示包结构、manifest 和文件组织方式；`backupSchemaVersion` 表示业务表、字段和 wire code 组成的逻辑数据契约。
 - 备份恢复接受 `BackupManifest.minimumSupportedBackupSchemaVersion..BackupManifest.currentBackupSchemaVersion`，恢复前逐级应用固定的相邻版本迁移。

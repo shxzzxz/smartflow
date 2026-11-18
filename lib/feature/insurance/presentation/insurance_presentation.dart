@@ -1,7 +1,8 @@
+import 'dart:convert';
+
 import '../../../core/money/money.dart';
-import '../../../core/time/month_key.dart';
+import '../../../core/money/money_formatter.dart';
 import '../../../design_system/widget/app_status_badge.dart';
-import '../../../domain/insurance/valobj/coverage_amount.dart';
 import '../../../domain/insurance/valobj/coverage_term.dart';
 import '../../../domain/insurance/valobj/insurance_enums.dart';
 import '../../../domain/insurance/valobj/premium_plan.dart';
@@ -28,7 +29,7 @@ String insuranceCoverageAmountDisplayLabel(
   String empty = '未记录',
 }) {
   if (money == null) return empty;
-  return _groupedMoneyLabel(money);
+  return formatMoney(money, style: MoneyFormatStyle.tenThousand);
 }
 
 String _groupedMoneyLabel(Money money) {
@@ -66,23 +67,6 @@ String insuranceCoverageTermLabel(CoverageTerm term) {
   return end == null ? '$start 起' : '$start 至 ${insuranceDateLabel(end)}';
 }
 
-String insuranceCoverageTermCompactLabel(CoverageTerm term) {
-  if (term.lifetime) return '终身';
-  final end = term.endDate;
-  return end == null ? '未设置' : insuranceCompactDateLabel(end);
-}
-
-String insuranceCompactDateLabel(DateTime value) {
-  return '${value.year}.${value.month.toString().padLeft(2, '0')}.'
-      '${value.day.toString().padLeft(2, '0')}';
-}
-
-String insuranceCoverageAmountLabel(CoverageAmount? amount) {
-  if (amount == null) return '未记录';
-  final money = amount.amount;
-  return money == null ? '未记录' : insuranceMoneyLabel(money);
-}
-
 String insurancePremiumPlanLabel(PremiumPlan? plan) {
   if (plan == null) return PremiumFrequency.other.label;
   final parts = <String>[plan.frequency.label];
@@ -95,13 +79,40 @@ String insurancePremiumPlanLabel(PremiumPlan? plan) {
   return parts.join(' · ');
 }
 
-String insuranceMonthLabel(MonthKey month) {
-  return '${month.year}年${month.month.toString().padLeft(2, '0')}月';
+String insuranceContributionPeriodLabel(SocialContributionRecord record) {
+  final month = record.month;
+  return month == null
+      ? '${record.year}年'
+      : '${record.year}年${month.toString().padLeft(2, '0')}月';
 }
 
-String insuranceContributionBaseLabel(SocialContributionRecord record) {
-  return insuranceMoneyLabel(record.contributionBase);
+String insuranceCoverageDateRangeLabel(CoverageTerm term) {
+  final start = insuranceCalendarDateLabel(term.startDate).replaceAll('-', '/');
+  if (term.lifetime) return '$start-终身';
+  final end = term.endDate;
+  final endLabel = end == null
+      ? '未设置'
+      : insuranceCalendarDateLabel(end).replaceAll('-', '/');
+  return '$start-$endLabel';
 }
+
+String insuranceCoverageEndDateLabel(CoverageTerm term) {
+  if (term.lifetime) return '终身';
+  final end = term.endDate;
+  return end == null
+      ? '未设置'
+      : insuranceCalendarDateLabel(end).replaceAll('-', '/');
+}
+
+List<SocialContributionRecord> insuranceContributionsNewestFirst(
+  List<SocialContributionRecord> records,
+) => [...records]..sort((left, right) => right.period.compareTo(left.period));
+
+List<String> insuranceTextLines(String? value) => const LineSplitter()
+    .convert(value ?? '')
+    .map((line) => line.trim())
+    .where((line) => line.isNotEmpty)
+    .toList();
 
 String insuranceResponsibilityKindLabel(ResponsibilityKind kind) {
   return kind.label;

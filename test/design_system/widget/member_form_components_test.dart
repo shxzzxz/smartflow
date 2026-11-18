@@ -93,6 +93,69 @@ void main() {
     expect(controller.text, 'abcde');
     expect(find.text('5/5'), findsOneWidget);
   });
+
+  testWidgets('vertical text area keeps paragraphs and validation full width', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    addTearDown(controller.dispose);
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(1.5)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: AppPlainTextAreaFormRow(
+                label: '说明',
+                controller: controller,
+                layout: AppPlainFormRowLayout.vertical,
+                requiredIndicator: true,
+                supportingText: '支持输入多行说明',
+                validator: (value) =>
+                    value == null || value.isEmpty ? '请填写说明' : null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final input = find.byType(TextField);
+    expect(
+      tester.getBottomLeft(find.text('说明')).dy,
+      lessThan(tester.getTopLeft(input).dy),
+    );
+    expect(tester.getSize(input).width, 360);
+    final paragraph = '住院医疗保障\n${List.filled(100, '合同约定').join()}';
+    await tester.enterText(input, paragraph);
+    await tester.pump();
+
+    expect(controller.text, paragraph);
+    expect(formKey.currentState!.validate(), isTrue);
+    controller.clear();
+    expect(formKey.currentState!.validate(), isFalse);
+    await tester.pump();
+    expect(find.text('请填写说明'), findsOneWidget);
+    expect(find.text('支持输入多行说明'), findsNothing);
+    expect(
+      tester.getTopLeft(find.text('请填写说明')).dx,
+      tester.getTopLeft(input).dx,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _choiceForm({required List<AppChoiceChipOption<_Choice>> options}) {

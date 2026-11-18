@@ -7,16 +7,27 @@ import '../../../design_system/token/spacing.dart';
 class FinanceActivityRow extends StatelessWidget {
   const FinanceActivityRow({
     required this.label,
-    required this.occurredAt,
+    required DateTime this.occurredAt,
     required this.amountLabel,
     required this.icon,
     this.supportingText,
     this.onTap,
     super.key,
-  });
+  }) : periodLabel = null;
+
+  const FinanceActivityRow.period({
+    required this.label,
+    required String this.periodLabel,
+    required this.amountLabel,
+    required this.icon,
+    this.supportingText,
+    this.onTap,
+    super.key,
+  }) : occurredAt = null;
 
   final String label;
-  final DateTime occurredAt;
+  final DateTime? occurredAt;
+  final String? periodLabel;
   final String amountLabel;
   final IconData icon;
   final String? supportingText;
@@ -44,7 +55,7 @@ class FinanceActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$label · ${formatDateLabel(occurredAt)}',
+                  '$label · ${periodLabel ?? formatDateLabel(occurredAt!)}',
                   style: styles.formLabel,
                 ),
                 if (supportingText case final supporting?)

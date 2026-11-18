@@ -4,8 +4,10 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/insurance/insurance_command_api.dart';
 import '../../../application/insurance/insurance_query_api.dart';
+import '../../../core/error/app_exception.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../presentation/insurance_coverage_field.dart';
 import 'commercial_insurance_detail_view_model.dart';
 
 part 'commercial_insurance_responsibilities_view_model.g.dart';
@@ -40,6 +42,7 @@ class CommercialInsuranceResponsibilitiesViewModel
   ) async {
     final previous = state.asData?.value;
     if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
     _upsertResponsibility(draft);
     return _persistOrRestore(previous);
   }
@@ -47,6 +50,7 @@ class CommercialInsuranceResponsibilitiesViewModel
   Future<UiActionOutcome<String>> removeResponsibility(String id) async {
     final previous = state.asData?.value;
     if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
     _removeResponsibility(id);
     return _persistOrRestore(previous);
   }
@@ -57,6 +61,7 @@ class CommercialInsuranceResponsibilitiesViewModel
   ) async {
     final previous = state.asData?.value;
     if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
     _upsertPoint(responsibilityId, point);
     return _persistOrRestore(previous);
   }
@@ -67,7 +72,79 @@ class CommercialInsuranceResponsibilitiesViewModel
   ) async {
     final previous = state.asData?.value;
     if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
     _removePoint(responsibilityId, pointId);
+    return _persistOrRestore(previous);
+  }
+
+  void setKind(ResponsibilityKind? kind) {
+    _update((current) => current.copyWith(selectedKind: kind));
+  }
+
+  Future<UiActionOutcome<String>> reorderResponsibilities(
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final previous = state.asData?.value;
+    if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
+    final visible = [...previous.visibleResponsibilities];
+    if (oldIndex < 0 ||
+        oldIndex >= visible.length ||
+        newIndex < 0 ||
+        newIndex >= visible.length) {
+      return _invalid('保障责任顺序无效');
+    }
+    if (oldIndex == newIndex) {
+      return UiActionOutcome.success(previous.insurance.id);
+    }
+    visible.insert(newIndex, visible.removeAt(oldIndex));
+    var index = 0;
+    final next = [
+      for (final responsibility in previous.responsibilities)
+        if (previous.selectedKind == null ||
+            responsibility.kind == previous.selectedKind)
+          visible[index++]
+        else
+          responsibility,
+    ];
+    _update((current) => current.copyWith(responsibilities: next));
+    return _persistOrRestore(previous);
+  }
+
+  Future<UiActionOutcome<String>> reorderPoints(
+    String responsibilityId,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    final previous = state.asData?.value;
+    if (previous == null) return _invalid('保障责任尚未加载');
+    if (previous.submitting) return _invalid('正在保存，请勿重复提交');
+    final index = previous.responsibilities.indexWhere(
+      (item) => item.id == responsibilityId,
+    );
+    if (index == -1) return _invalid('保障责任不存在');
+    final responsibility = previous.responsibilities[index];
+    final points = [...responsibility.points];
+    if (oldIndex < 0 ||
+        oldIndex >= points.length ||
+        newIndex < 0 ||
+        newIndex >= points.length) {
+      return _invalid('要点顺序无效');
+    }
+    if (oldIndex == newIndex) {
+      return UiActionOutcome.success(previous.insurance.id);
+    }
+    points.insert(newIndex, points.removeAt(oldIndex));
+    final next = [...previous.responsibilities];
+    next[index] = InsuranceResponsibilityDraft(
+      id: responsibility.id,
+      kind: responsibility.kind,
+      name: responsibility.name,
+      description: responsibility.description,
+      points: points,
+    );
+    _update((current) => current.copyWith(responsibilities: next));
     return _persistOrRestore(previous);
   }
 
@@ -114,6 +191,7 @@ class CommercialInsuranceResponsibilitiesViewModel
         id: responsibility.id,
         kind: responsibility.kind,
         name: responsibility.name,
+        description: responsibility.description,
         points: points,
       );
       return current.copyWith(responsibilities: next);
@@ -132,6 +210,7 @@ class CommercialInsuranceResponsibilitiesViewModel
         id: responsibility.id,
         kind: responsibility.kind,
         name: responsibility.name,
+        description: responsibility.description,
         points: [
           for (final point in responsibility.points)
             if (point.id != pointId) point,
@@ -157,7 +236,30 @@ class CommercialInsuranceResponsibilitiesViewModel
 
   String newPointDraftId() => '__draft_point__${_draftSequence++}';
 
-  Future<UiActionOutcome<String>> save() async {
+  Future<UiActionOutcome<String>> saveCoverageField(
+    InsuranceCoverageField field,
+    String value,
+  ) {
+    return save(
+      coverageSummary: field == InsuranceCoverageField.summary ? value : null,
+      coverageHighlights: field == InsuranceCoverageField.highlights
+          ? value
+          : null,
+      waitingPeriodDescription: field == InsuranceCoverageField.waitingPeriod
+          ? value
+          : null,
+      exclusionsDescription: field == InsuranceCoverageField.exclusions
+          ? value
+          : null,
+    );
+  }
+
+  Future<UiActionOutcome<String>> save({
+    String? coverageSummary,
+    String? coverageHighlights,
+    String? waitingPeriodDescription,
+    String? exclusionsDescription,
+  }) async {
     final current = state.asData?.value;
     if (current == null) return _invalid('保障责任尚未加载');
     if (current.submitting) return _invalid('正在保存，请勿重复提交');
@@ -168,26 +270,41 @@ class CommercialInsuranceResponsibilitiesViewModel
       final outcome = await guardUiAction(
         _logger,
         'Save commercial insurance responsibilities',
-        () {
+        () async {
+          final latest = await ref
+              .read(insuranceCoverageQueryServiceProvider)
+              .commercialInsuranceDetail(insurance.id);
+          if (latest == null) {
+            throw BusinessException(
+              InsuranceErrorCode.commercialInsuranceNotFound,
+            );
+          }
+          final latestInsurance = latest.insurance;
           return ref
               .read(commercialInsuranceAppServiceProvider)
               .save(
                 SaveCommercialInsuranceCommand(
                   id: insurance.id,
-                  name: insurance.name,
-                  insurerName: insurance.insurerName,
-                  category: insurance.category,
-                  productForm: insurance.productForm,
-                  coverageTerm: insurance.coverageTerm,
-                  coverageAmount: insurance.coverageAmount,
-                  premiumPlan: insurance.premiumPlan,
-                  insuredPersonIds: insurance.insuredPersonIds,
+                  name: latestInsurance.name,
+                  insurerName: latestInsurance.insurerName,
+                  category: latestInsurance.category,
+                  productForm: latestInsurance.productForm,
+                  coverageTerm: latestInsurance.coverageTerm,
+                  coverageAmount: latestInsurance.coverageAmount,
+                  coverageAmountDescription:
+                      latestInsurance.coverageAmountDescription,
+                  coverageSummary: coverageSummary,
+                  coverageHighlights: coverageHighlights,
+                  waitingPeriodDescription: waitingPeriodDescription,
+                  exclusionsDescription: exclusionsDescription,
+                  insuredPersonIds: latestInsurance.insuredPersonIds,
                   responsibilities: [
                     for (final responsibility in current.responsibilities)
                       InsuranceResponsibilityInput(
                         id: responsibility.isNew ? null : responsibility.id,
                         kind: responsibility.kind,
                         name: responsibility.name,
+                        description: responsibility.description,
                         points: [
                           for (final point in responsibility.points)
                             InsuranceResponsibilityPointInput(
@@ -209,6 +326,12 @@ class CommercialInsuranceResponsibilitiesViewModel
         if (ref.mounted && refreshed != null) {
           final next = CommercialInsuranceResponsibilitiesState(
             insurance: refreshed.insurance,
+            selectedKind:
+                refreshed.insurance.responsibilities.any(
+                  (item) => item.kind == state.asData?.value?.selectedKind,
+                )
+                ? state.asData?.value?.selectedKind
+                : null,
             responsibilities: [
               for (final responsibility in refreshed.insurance.responsibilities)
                 InsuranceResponsibilityDraft.fromDomain(responsibility),
@@ -252,23 +375,41 @@ class CommercialInsuranceResponsibilitiesState {
     required this.insurance,
     required List<InsuranceResponsibilityDraft> responsibilities,
     this.submitting = false,
+    this.selectedKind,
   }) : responsibilities = List.unmodifiable(responsibilities);
 
   final CommercialInsurance insurance;
   final List<InsuranceResponsibilityDraft> responsibilities;
   final bool submitting;
+  final ResponsibilityKind? selectedKind;
+
+  List<ResponsibilityKind> get availableKinds => [
+    for (final kind in ResponsibilityKind.values)
+      if (responsibilities.any((item) => item.kind == kind)) kind,
+  ];
+
+  List<InsuranceResponsibilityDraft> get visibleResponsibilities => [
+    for (final item in responsibilities)
+      if (selectedKind == null || item.kind == selectedKind) item,
+  ];
 
   CommercialInsuranceResponsibilitiesState copyWith({
     List<InsuranceResponsibilityDraft>? responsibilities,
     bool? submitting,
+    Object? selectedKind = _sentinel,
   }) {
     return CommercialInsuranceResponsibilitiesState(
       insurance: insurance,
       responsibilities: responsibilities ?? this.responsibilities,
       submitting: submitting ?? this.submitting,
+      selectedKind: selectedKind == _sentinel
+          ? this.selectedKind
+          : selectedKind as ResponsibilityKind?,
     );
   }
 }
+
+const Object _sentinel = Object();
 
 class InsurancePointDraft {
   const InsurancePointDraft({
@@ -297,6 +438,7 @@ class InsuranceResponsibilityDraft {
     required this.id,
     required this.kind,
     required this.name,
+    this.description,
     required this.points,
   });
 
@@ -307,6 +449,7 @@ class InsuranceResponsibilityDraft {
       id: responsibility.id,
       kind: responsibility.kind,
       name: responsibility.name,
+      description: responsibility.description,
       points: [
         for (final point in responsibility.points)
           InsurancePointDraft.fromDomain(point),
@@ -317,6 +460,7 @@ class InsuranceResponsibilityDraft {
   final String id;
   final ResponsibilityKind kind;
   final String name;
+  final String? description;
   final List<InsurancePointDraft> points;
 
   bool get isNew => id.startsWith('__draft');

@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../application/insurance/insurance_query_api.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_choice_chip_group.dart';
-import '../../../design_system/widget/app_dropdown.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_form_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_plain_form_field.dart';
-import '../../../design_system/widget/app_plain_form_row.dart';
-import '../../../design_system/widget/app_select.dart';
+import '../../../design_system/widget/app_region_picker.dart';
 import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../shared/view_model/action_guard.dart';
+import '../../shared/presentation/china_region_data.dart';
 import '../view_model/social_insurance_form_view_model.dart';
+import '../widget/insured_person_picker_sheet.dart';
 
 class SocialInsuranceFormPage extends ConsumerWidget {
   const SocialInsuranceFormPage({
@@ -104,19 +106,7 @@ class _SocialInsuranceFormContent extends ConsumerStatefulWidget {
 class _SocialInsuranceFormContentState
     extends ConsumerState<_SocialInsuranceFormContent> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _regionController;
-
-  @override
-  void initState() {
-    super.initState();
-    _regionController = TextEditingController(text: widget.initialState.region);
-  }
-
-  @override
-  void dispose() {
-    _regionController.dispose();
-    super.dispose();
-  }
+  AppRegionSelection? _selectedRegion;
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +116,7 @@ class _SocialInsuranceFormContentState
       widget.initialInsuredPersonId,
     );
     final notifier = ref.read(provider.notifier);
-    final locked = state.identityLocked;
+    final locked = state.typesLocked;
     return Form(
       key: _formKey,
       child: ListView(
@@ -139,45 +129,40 @@ class _SocialInsuranceFormContentState
         children: [
           AppFormSection(
             title: '参保信息',
-            description: locked ? '参保信息发生变化时，请新建社保记录以保留历史。' : null,
+            description: locked ? '社保类型或参保类型发生变化时，请新建社保记录以保留历史。' : null,
             children: [
-              if (locked)
-                AppPlainValueRow(
-                  label: '参保人',
-                  value: state.insuredPerson?.name ?? '',
-                )
-              else
-                AppPlainFormRow(
-                  label: '参保人',
-                  requiredIndicator: true,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppDropdown<String?>(
-                      value: state.insuredPersonId,
-                      tooltip: '选择参保人',
-                      options: [
-                        const AppSelectOption(value: null, label: '请选择'),
-                        for (final person in state.insuredPeople)
-                          AppSelectOption(value: person.id, label: person.name),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) notifier.setInsuredPersonId(value);
-                      },
-                    ),
-                  ),
-                ),
-              AppPlainTextFormRow(
-                label: '参保地区',
-                controller: _regionController,
-                hintText: '例如：上海市',
+              AppPlainSelectFormRow<String>(
+                key: const ValueKey('social-insured-person-select'),
+                label: '参保人',
                 requiredIndicator: true,
-                readOnly: locked,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return '请输入参保地区';
-                  }
-                  return null;
+                value: state.insuredPersonId,
+                valueText: state.insuredPerson?.name,
+                placeholder: '请选择',
+                validator: (value) => value == null ? '请选择参保人' : null,
+                onChanged: (value) {
+                  if (value != null) notifier.setInsuredPersonId(value);
                 },
+                onTap: (onSelected) async {
+                  final selected = await showInsuredPersonPickerSheet(
+                    context: context,
+                    people: state.insuredPeople,
+                    selectedId: state.insuredPersonId,
+                  );
+                  if (mounted && selected != null) onSelected(selected);
+                },
+              ),
+              AppPlainSelectFormRow<String>(
+                key: const ValueKey('social-region-select'),
+                label: '参保地区',
+                value: state.region.isEmpty ? null : state.region,
+                placeholder: '请选择省、市',
+                requiredIndicator: true,
+                validator: (value) =>
+                    value == null || value.isEmpty ? '请选择参保地区' : null,
+                onChanged: (value) {
+                  if (value != null) notifier.setRegion(value);
+                },
+                onTap: (onSelected) => _pickRegion(onSelected),
               ),
               AppPlainChoiceChipFormRow<SocialInsuranceType>(
                 key: const ValueKey('social-type-choice'),
@@ -223,7 +208,7 @@ class _SocialInsuranceFormContentState
   ) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusScope.of(context).unfocus();
-    final outcome = await notifier.save(regionText: _regionController.text);
+    final outcome = await notifier.save();
     if (!context.mounted) return;
     switch (outcome) {
       case UiActionSuccess<String>():
@@ -237,6 +222,36 @@ class _SocialInsuranceFormContentState
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _pickRegion(ValueChanged<String?> onSelected) async {
+    final outcome = await guardUiAction<List<AppRegionNode>>(
+      Logger('feature.insurance.social_form'),
+      'Load region data',
+      loadChinaRegions,
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case UiActionSuccess<List<AppRegionNode>>(:final value):
+        final selected = await showAppRegionPickerSheet(
+          context: context,
+          regions: value,
+          level: AppRegionLevel.city,
+          selectedCodes:
+              _selectedRegion?.codes ??
+              findChinaRegionCitySelection(
+                regions: value,
+                label: widget.initialState.region,
+              )?.codes ??
+              const [],
+          title: '选择参保地区',
+        );
+        if (!mounted || selected == null) return;
+        _selectedRegion = selected;
+        onSelected(selected.label);
+      case UiActionFailure<List<AppRegionNode>>(:final error):
+        _showError(context, error.message);
+    }
   }
 }
 

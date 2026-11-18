@@ -269,6 +269,10 @@ class BackupService {
         9 => _upgradeBackupV9ToV10(upgraded),
         10 => _upgradeBackupV10ToV11(upgraded),
         11 => upgraded,
+        12 => _upgradeBackupV12ToV13(upgraded),
+        13 => _upgradeBackupV13ToV14(upgraded),
+        14 => _upgradeBackupV14ToV15(upgraded),
+        15 => _upgradeBackupV15ToV16(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -337,6 +341,101 @@ class BackupService {
         'account_reconciliation_snapshots': const <BackupJson>[],
       },
     );
+  }
+
+  static BackupSnapshot _upgradeBackupV12ToV13(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'commercial_insurances': [
+          for (final row in snapshot.rows('commercial_insurances'))
+            Map<String, Object?>.from(row)
+              ..putIfAbsent('coverageAmountDescription', () => null)
+              ..putIfAbsent('coverageSummary', () => null)
+              ..putIfAbsent('coverageHighlights', () => null),
+        ],
+        'social_contribution_records': [
+          for (final row in snapshot.rows('social_contribution_records'))
+            Map<String, Object?>.from(row)
+              ..['period'] = row['yearMonth']
+              ..remove('yearMonth')
+              ..putIfAbsent('contributionAmountMinor', () => null)
+              ..putIfAbsent('note', () => null),
+        ],
+      },
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV13ToV14(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'coverage_responsibilities': [
+          for (final row in snapshot.rows('coverage_responsibilities'))
+            Map<String, Object?>.from(row)
+              ..putIfAbsent('description', () => null)
+              ..update(
+                'kind',
+                (value) => switch (value) {
+                  'criticalIllness' || 'accident' || 'life' => 'other',
+                  _ => value,
+                },
+              ),
+        ],
+      },
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV14ToV15(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'commercial_insurances': [
+          for (final row in snapshot.rows('commercial_insurances'))
+            Map<String, Object?>.from(row)
+              ..putIfAbsent('policyholderName', () => null)
+              ..putIfAbsent('beneficiaryDescription', () => null)
+              ..putIfAbsent('waitingPeriodDescription', () => null)
+              ..putIfAbsent('preExistingConditionDescription', () => null)
+              ..putIfAbsent('exclusionsDescription', () => null),
+        ],
+      },
+    );
+  }
+
+  static BackupSnapshot _upgradeBackupV15ToV16(BackupSnapshot snapshot) {
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'commercial_insurances': [
+          for (final row in snapshot.rows('commercial_insurances'))
+            _upgradeExclusionsV15ToV16(row),
+        ],
+      },
+    );
+  }
+
+  static BackupJson _upgradeExclusionsV15ToV16(BackupJson row) {
+    String? text(String key) {
+      final value = row[key];
+      if (value == null) return null;
+      if (value is! String) {
+        throw BackupValidationException('commercial_insurances.$key 不是有效的文本。');
+      }
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? null : trimmed;
+    }
+
+    final legacy = text('preExistingConditionDescription');
+    final exclusions = text('exclusionsDescription');
+    final merged = legacy == null || legacy == exclusions
+        ? exclusions
+        : exclusions == null
+        ? legacy
+        : '$legacy\n$exclusions';
+    return Map<String, Object?>.from(row)
+      ..remove('preExistingConditionDescription')
+      ..['exclusionsDescription'] = merged;
   }
 
   static BackupJson _socialInsuranceRowFromLegacy(
@@ -1680,8 +1779,8 @@ class BackupService {
         final insuranceId = row['socialInsuranceId'];
         if (insuranceId is! String ||
             insuranceId.isEmpty ||
-            row['yearMonth'] is! String ||
-            (row['yearMonth'] as String).isEmpty) {
+            row['period'] is! String ||
+            (row['period'] as String).isEmpty) {
           throw BackupValidationException('表 $table 存在无效复合主键。');
         }
       } else if (table == 'account_reconciliation_snapshots') {
@@ -1702,7 +1801,7 @@ class BackupService {
           : table == 'commercial_insurance_insured_people'
           ? '${row['commercialInsuranceId']}\u0000${row['insuredPersonId']}'
           : table == 'social_contribution_records'
-          ? '${row['socialInsuranceId']}\u0000${row['yearMonth']}'
+          ? '${row['socialInsuranceId']}\u0000${row['period']}'
           : table == 'account_reconciliation_snapshots'
           ? '${row['accountId']}\u0000${row['ledgerDateKey']}'
           : '${row['id']}';
@@ -1858,6 +1957,14 @@ class BackupService {
     for (final row in snapshot.rows('commercial_insurances')) {
       _requiredText(row, 'name', '商业保险名称');
       _requiredText(row, 'insurerName', '保险公司');
+      for (final key in const [
+        'policyholderName',
+        'beneficiaryDescription',
+        'waitingPeriodDescription',
+        'exclusionsDescription',
+      ]) {
+        _optionalText(row, key, 'commercial_insurances.$key');
+      }
       final start = _backupDate(row['coverageStartDate'], '保障开始日');
       final endValue = row['coverageEndDate'];
       final end = endValue == null ? null : _backupDate(endValue, '保障结束日');
@@ -1906,6 +2013,11 @@ class BackupService {
         '保障责任.commercialInsuranceId',
       );
       _requiredText(row, 'name', '保障责任名称');
+      _optionalText(
+        row,
+        'description',
+        'coverage_responsibilities.description',
+      );
       if (_int(row['sortOrder'], 'coverage_responsibilities.sortOrder') < 0) {
         throw const BackupValidationException('保障责任排序不能为负数。');
       }
@@ -1951,20 +2063,22 @@ class BackupService {
           'social_contribution_records 引用了不存在的社保记录。',
         );
       }
-      final month = row['yearMonth'];
-      final match = month is String
-          ? RegExp(r'^(\d{4})-(0[1-9]|1[0-2])$').firstMatch(month)
+      final period = row['period'];
+      final match = period is String
+          ? RegExp(r'^(\d{4})(?:-(0[1-9]|1[0-2]))?$').firstMatch(period)
           : null;
       final year = match == null ? null : int.tryParse(match.group(1)!);
       if (year == null || year < 1900 || year > 2100) {
-        throw const BackupValidationException('社保缴费年月无效。');
+        throw const BackupValidationException('社保缴费年份或月份无效。');
       }
-      if (_int(
-            row['contributionBaseMinor'],
-            'social_contribution_records.contributionBaseMinor',
-          ) <
-          0) {
-        throw const BackupValidationException('社保缴费基数不能为负数。');
+      for (final key in const [
+        'contributionBaseMinor',
+        'contributionAmountMinor',
+      ]) {
+        if (row[key] != null &&
+            _int(row[key], 'social_contribution_records.$key') < 0) {
+          throw const BackupValidationException('社保缴费基数和金额不能为负数。');
+        }
       }
     }
   }

@@ -1,10 +1,11 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smartflow/application/data_management/backup/backup_service.dart';
 import 'package:smartflow/domain/insurance/valobj/insurance_enums.dart';
 import 'package:smartflow/infrastructure/data_management/backup/drift_backup_gateway.dart';
 import 'package:smartflow/infrastructure/database/app_database.dart';
+import 'package:smartflow/infrastructure/insurance/repository/drift_commercial_insurance_repository.dart';
 
 import '../../../helper/test_app_database.dart';
 
@@ -43,6 +44,13 @@ void main() {
           coverageEndDate: Value(DateTime(2026, 12, 31)),
           lifetime: const Value(false),
           coverageAmountMinor: const Value(100000000),
+          coverageAmountDescription: const Value('主险和附加险共享保额'),
+          coverageSummary: const Value('覆盖住院医疗'),
+          coverageHighlights: const Value('包含质子重离子医疗'),
+          policyholderName: const Value('投保人甲'),
+          beneficiaryDescription: const Value('姓名、法定或其他合同约定'),
+          waitingPeriodDescription: const Value('疾病30天；意外无等待期'),
+          exclusionsDescription: const Value('按承保约定处理\n特别除外约定'),
           premiumFrequency: const Value(PremiumFrequency.annual),
           premiumAmountMinor: const Value(500000),
           premiumTermCount: const Value(20),
@@ -66,6 +74,7 @@ void main() {
           commercialInsuranceId: 'commercial-1',
           kind: ResponsibilityKind.medical,
           name: '医疗',
+          description: const Value('覆盖住院和门诊医疗'),
           sortOrder: 0,
         ),
       ]);
@@ -111,18 +120,24 @@ void main() {
       batch.insertAll(source.socialContributionRecords, [
         SocialContributionRecordsCompanion.insert(
           socialInsuranceId: 'medical-1',
-          yearMonth: '2026-01',
-          contributionBaseMinor: 800000,
+          period: '2026',
+          contributionAmountMinor: const Value(240000),
+          note: const Value('年度补缴'),
         ),
         SocialContributionRecordsCompanion.insert(
           socialInsuranceId: 'medical-1',
-          yearMonth: '2026-02',
-          contributionBaseMinor: 820000,
+          period: '2026-01',
+          contributionBaseMinor: const Value(800000),
+        ),
+        SocialContributionRecordsCompanion.insert(
+          socialInsuranceId: 'medical-1',
+          period: '2026-02',
+          contributionBaseMinor: const Value(820000),
         ),
         SocialContributionRecordsCompanion.insert(
           socialInsuranceId: 'pension-1',
-          yearMonth: '2026-01',
-          contributionBaseMinor: 500000,
+          period: '2026-01',
+          contributionBaseMinor: const Value(500000),
         ),
       ]);
     });
@@ -130,10 +145,14 @@ void main() {
     final snapshot = await DriftBackupGateway(source).readSnapshot();
     expect(snapshot.rows('insured_people'), hasLength(2));
     expect(snapshot.rows('commercial_insurance_insured_people'), hasLength(2));
-    expect(snapshot.rows('social_contribution_records'), hasLength(3));
+    expect(snapshot.rows('social_contribution_records'), hasLength(4));
     BackupService.validateSnapshot(snapshot);
 
     await DriftBackupGateway(target).replaceSnapshot(snapshot);
+    expect(
+      snapshot.rows('commercial_insurances').single,
+      isNot(contains('preExistingConditionDescription')),
+    );
 
     expect(await target.select(target.insuredPeople).get(), hasLength(2));
     expect(
@@ -159,7 +178,34 @@ void main() {
     expect(await target.select(target.socialInsurances).get(), hasLength(2));
     expect(
       await target.select(target.socialContributionRecords).get(),
-      hasLength(3),
+      hasLength(4),
     );
+    final policy = await target.select(target.commercialInsurances).getSingle();
+    expect(policy.coverageAmountDescription, '主险和附加险共享保额');
+    expect(policy.coverageSummary, '覆盖住院医疗');
+    expect(policy.coverageHighlights, '包含质子重离子医疗');
+    expect(policy.policyholderName, '投保人甲');
+    expect(policy.beneficiaryDescription, '姓名、法定或其他合同约定');
+    expect(policy.waitingPeriodDescription, '疾病30天；意外无等待期');
+    expect(policy.exclusionsDescription, '按承保约定处理\n特别除外约定');
+    final repository = DriftCommercialInsuranceRepository(target);
+    final restored = (await repository.find(policy.id))!;
+    expect(restored.exclusionsDescription, '按承保约定处理\n特别除外约定');
+    await repository.save(restored);
+    final merged = await target.select(target.commercialInsurances).getSingle();
+    expect(merged.exclusionsDescription, '按承保约定处理\n特别除外约定');
+    expect(
+      (await repository.find(policy.id))!.exclusionsDescription,
+      '按承保约定处理\n特别除外约定',
+    );
+    final responsibility = await target
+        .select(target.coverageResponsibilities)
+        .getSingle();
+    expect(responsibility.description, '覆盖住院和门诊医疗');
+    final annual = (await target.select(target.socialContributionRecords).get())
+        .singleWhere((row) => row.period == '2026');
+    expect(annual.contributionBaseMinor, isNull);
+    expect(annual.contributionAmountMinor, 240000);
+    expect(annual.note, '年度补缴');
   });
 }

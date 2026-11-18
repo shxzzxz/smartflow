@@ -114,15 +114,11 @@ class InsuranceCategoryIcon extends StatelessWidget {
         RemixIcons.heart_pulse_fill,
         extension.chart5,
       ),
-      ResponsibilityKind.criticalIllness => _InsuranceVisual(
+      ResponsibilityKind.diseaseBenefit => _InsuranceVisual(
         RemixIcons.shield_cross_fill,
         colors.primary,
       ),
-      ResponsibilityKind.accident => _InsuranceVisual(
-        RemixIcons.umbrella_fill,
-        extension.info,
-      ),
-      ResponsibilityKind.life => _InsuranceVisual(
+      ResponsibilityKind.death => _InsuranceVisual(
         RemixIcons.shield_check_fill,
         extension.success,
       ),

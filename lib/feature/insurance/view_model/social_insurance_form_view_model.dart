@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../app/provider.dart';
 import '../../../application/insurance/insurance_command_api.dart';
 import '../../../application/insurance/insurance_query_api.dart';
+import '../../shared/presentation/china_region_data.dart';
 import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import 'insurance_members_view_model.dart';
@@ -38,40 +39,49 @@ class SocialInsuranceFormViewModel extends _$SocialInsuranceFormViewModel {
 
     final detail = await query.socialInsuranceDetail(insuranceId);
     if (detail == null) return null;
+    if (_initializedState case final initialized?) return initialized;
+    final regions = await loadChinaRegions();
     return _initializedState ??= SocialInsuranceFormState.fromDetail(
       detail,
       insuredPeople: people,
+      region:
+          findChinaRegionCitySelection(
+            regions: regions,
+            label: detail.insurance.region,
+          )?.label ??
+          '',
     );
   }
 
   void setInsuredPersonId(String value) {
-    _update((current) {
-      if (current.identityLocked) return current;
-      return current.copyWith(insuredPersonId: value);
-    });
+    _update((current) => current.copyWith(insuredPersonId: value));
   }
 
   void setInsuranceType(SocialInsuranceType value) {
     _update((current) {
-      if (current.identityLocked) return current;
+      if (current.typesLocked) return current;
       return current.copyWith(insuranceType: value);
     });
   }
 
   void setParticipantType(SocialParticipantType value) {
     _update((current) {
-      if (current.identityLocked) return current;
+      if (current.typesLocked) return current;
       return current.copyWith(participantType: value);
     });
   }
 
-  Future<UiActionOutcome<String>> save({required String regionText}) async {
+  void setRegion(String value) {
+    _update((current) => current.copyWith(region: value));
+  }
+
+  Future<UiActionOutcome<String>> save() async {
     final current = state.asData?.value;
     if (current == null) return _invalid('社保表单尚未加载');
     if (current.submitting) return _invalid('正在保存，请勿重复提交');
     if (current.insuredPersonId == null) return _invalid('请选择参保人');
-    final region = regionText.trim();
-    if (region.isEmpty) return _invalid('请输入参保地区');
+    final region = current.region.trim();
+    if (region.isEmpty) return _invalid('请选择参保地区');
 
     _update((value) => value.copyWith(submitting: true));
     try {
@@ -128,7 +138,7 @@ class SocialInsuranceFormState {
     this.id,
     this.insuredPersonId,
     this.region = '',
-    this.identityLocked = false,
+    this.typesLocked = false,
     this.submitting = false,
   }) : contributionRecords = List.unmodifiable(contributionRecords);
 
@@ -148,16 +158,17 @@ class SocialInsuranceFormState {
   factory SocialInsuranceFormState.fromDetail(
     SocialInsuranceDetail detail, {
     required List<InsuredPerson> insuredPeople,
+    required String region,
   }) {
     return SocialInsuranceFormState(
       id: detail.insurance.id,
       insuredPeople: List.unmodifiable(insuredPeople),
       insuredPersonId: detail.insuredPerson.id,
-      region: detail.insurance.region,
+      region: region,
       insuranceType: detail.insurance.insuranceType,
       participantType: detail.insurance.participantType,
       contributionRecords: _sorted(detail.insurance.contributionRecords),
-      identityLocked: true,
+      typesLocked: true,
     );
   }
 
@@ -168,7 +179,7 @@ class SocialInsuranceFormState {
   final SocialInsuranceType insuranceType;
   final SocialParticipantType participantType;
   final List<SocialContributionRecord> contributionRecords;
-  final bool identityLocked;
+  final bool typesLocked;
   final bool submitting;
 
   InsuredPerson? get insuredPerson =>
@@ -181,7 +192,7 @@ class SocialInsuranceFormState {
     SocialInsuranceType? insuranceType,
     SocialParticipantType? participantType,
     List<SocialContributionRecord>? contributionRecords,
-    bool? identityLocked,
+    bool? typesLocked,
     bool? submitting,
   }) {
     return SocialInsuranceFormState(
@@ -192,7 +203,7 @@ class SocialInsuranceFormState {
       insuranceType: insuranceType ?? this.insuranceType,
       participantType: participantType ?? this.participantType,
       contributionRecords: contributionRecords ?? this.contributionRecords,
-      identityLocked: identityLocked ?? this.identityLocked,
+      typesLocked: typesLocked ?? this.typesLocked,
       submitting: submitting ?? this.submitting,
     );
   }
@@ -200,6 +211,6 @@ class SocialInsuranceFormState {
 
 List<SocialContributionRecord> _sorted(List<SocialContributionRecord> records) {
   final next = [...records]
-    ..sort((left, right) => left.month.compareTo(right.month));
+    ..sort((left, right) => left.period.compareTo(right.period));
   return List.unmodifiable(next);
 }
