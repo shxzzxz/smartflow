@@ -16,6 +16,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/tag/tag_multi_select_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/repayment_form_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {
   const RepaymentFormPage({required this.liabilityAccountId, super.key})
@@ -56,7 +57,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   Widget build(BuildContext context) {
     final provider = repaymentFormViewModelProvider(_args);
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
@@ -116,14 +117,13 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 account: liabilityAccount,
                 selectedId: state.liabilityAccountId,
                 placeholder: '请选择债务账户',
-                onTap:
-                    (isEdit || state.liabilityAccounts.isEmpty)
-                        ? null
-                        : (onSelected) => _pickAccount(
-                          accounts: state.liabilityAccounts,
-                          selectedId: state.liabilityAccountId,
-                          onSelected: onSelected,
-                        ),
+                onTap: (isEdit || state.liabilityAccounts.isEmpty)
+                    ? null
+                    : (onSelected) => _pickAccount(
+                        accounts: state.liabilityAccounts,
+                        selectedId: state.liabilityAccountId,
+                        onSelected: onSelected,
+                      ),
                 onChanged: ref.read(provider.notifier).setLiabilityAccountId,
                 validator: (value) => value == null ? '请选择债务账户' : null,
               ),
@@ -167,24 +167,22 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
                 account: paidFromAccount,
                 selectedId: state.paidFromAccountId,
                 placeholder: '请选择还款账户',
-                onTap:
-                    state.repaymentAccounts.isEmpty
-                        ? null
-                        : (onSelected) => _pickAccount(
-                          accounts: state.repaymentAccounts,
-                          selectedId: state.paidFromAccountId,
-                          onSelected: onSelected,
-                        ),
+                onTap: state.repaymentAccounts.isEmpty
+                    ? null
+                    : (onSelected) => _pickAccount(
+                        accounts: state.repaymentAccounts,
+                        selectedId: state.paidFromAccountId,
+                        onSelected: onSelected,
+                      ),
                 onChanged: ref.read(provider.notifier).setPaidFromAccountId,
                 validator: (value) => value == null ? '请选择还款账户' : null,
               ),
               NotePlainFormRow(controller: _noteController),
               AppPlainValueRow(
                 label: '标签',
-                value:
-                    state.selectedTagIds.isEmpty
-                        ? '不限'
-                        : _selectedTagNames(state),
+                value: state.selectedTagIds.isEmpty
+                    ? '不限'
+                    : _selectedTagNames(state),
                 onTap: () => _selectTags(provider, state),
               ),
             ],
@@ -279,21 +277,20 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   ) async =>
       await showDialog<bool>(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Text(confirmation.title),
-              content: Text(confirmation.message),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('继续提交'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text(confirmation.title),
+          content: Text(confirmation.message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
             ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('继续提交'),
+            ),
+          ],
+        ),
       ) ??
       false;
 

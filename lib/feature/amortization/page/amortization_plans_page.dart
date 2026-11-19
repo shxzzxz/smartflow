@@ -14,6 +14,7 @@ import '../../../domain/ledger/entity/account.dart';
 import '../../../widget/business/finance/money_text.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../provider/amortization_providers.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AmortizationPlansPage extends ConsumerWidget {
   const AmortizationPlansPage({
@@ -31,7 +32,7 @@ class AmortizationPlansPage extends ConsumerWidget {
       amortizationPlansProvider(deferralAccountId: deferralAccountId),
     );
     final accounts = ref.watch(accountsByIdProvider).value ?? const {};
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

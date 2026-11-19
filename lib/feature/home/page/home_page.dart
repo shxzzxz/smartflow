@@ -26,6 +26,7 @@ import '../../../widget/business/transaction/transaction_batch_tag_action_sheet.
 import '../widget/home_transaction_filter_sheet.dart';
 import '../../../widget/business/finance/cashflow_summary_card.dart';
 import '../../../widget/business/tag/tag_multi_select_sheet.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.home');
 
@@ -64,7 +65,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         if (didPop) return;
         _exitBatchMode();
       },
-      child: Scaffold(
+      child: AppScaffold(
         body: SafeArea(
           child: Column(
             children: [

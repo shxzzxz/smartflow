@@ -13,6 +13,7 @@ import '../model/manual_article.dart';
 import '../widget/manual_markdown.dart';
 import '../widget/manual_sheets.dart';
 import '../widget/manual_widgets.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.profile.manual');
 
@@ -133,10 +134,10 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
   Widget build(BuildContext context) {
     final article = _article;
     if (article == null) {
-      return const Scaffold(body: Center(child: Text('手册文章不存在')));
+      return const AppScaffold(body: Center(child: Text('手册文章不存在')));
     }
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

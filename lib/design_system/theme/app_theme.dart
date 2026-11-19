@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../application/shared/app_appearance_settings.dart';
 import '../token/component.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
@@ -7,19 +8,43 @@ import '../token/typography.dart';
 import 'app_color_scheme.dart';
 import 'app_text_theme.dart';
 import 'app_theme_extension.dart';
+import 'app_appearance_theme.dart';
+import 'app_appearance_values.dart';
 
 abstract final class AppTheme {
-  static ThemeData light() {
-    final colors = AppColorSchemes.light();
-    return _theme(colors, AppThemeExtension.light());
+  static ThemeData light({
+    AppAppearanceSettings appearance = const AppAppearanceSettings(),
+  }) {
+    appearance = AppAppearanceValues.resolve(appearance);
+    final colors = AppColorSchemes.light(
+      primaryColor: Color(appearance.primaryColor),
+    );
+    return _theme(
+      colors,
+      AppThemeExtension.light(appearance: appearance),
+      appearance,
+    );
   }
 
-  static ThemeData dark() {
-    final colors = AppColorSchemes.dark();
-    return _theme(colors, AppThemeExtension.dark());
+  static ThemeData dark({
+    AppAppearanceSettings appearance = const AppAppearanceSettings(),
+  }) {
+    appearance = AppAppearanceValues.resolve(appearance);
+    final colors = AppColorSchemes.dark(
+      seedColor: Color(appearance.primaryColor),
+    );
+    return _theme(
+      colors,
+      AppThemeExtension.dark(appearance: appearance),
+      appearance,
+    );
   }
 
-  static ThemeData _theme(ColorScheme colors, AppThemeExtension extension) {
+  static ThemeData _theme(
+    ColorScheme colors,
+    AppThemeExtension extension,
+    AppAppearanceSettings appearance,
+  ) {
     final textTheme = AppTextThemes.textTheme(colors);
     final controlShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppRadius.radiusMd),
@@ -35,7 +60,21 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: colors.surface,
       canvasColor: colors.surface,
       textTheme: textTheme,
-      extensions: [extension],
+      extensions: [
+        extension,
+        AppAppearanceTheme(
+          gradientColor: Color(appearance.backgroundSeedColor),
+          gradientDepth: appearance.gradientDepth,
+          gradientRange: appearance.gradientRange,
+          backgroundStyle: appearance.backgroundStyle,
+        ),
+      ],
+      appBarTheme: AppBarThemeData(
+        backgroundColor: Colors.transparent,
+        foregroundColor: colors.onSurface,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           minimumSize: const WidgetStatePropertyAll(

@@ -17,6 +17,7 @@ import '../view_model/log_viewer_view_model.dart';
 import '../widget/log_entry_detail_sheet.dart';
 import '../widget/log_level_badge.dart';
 import '../widget/log_retention_settings_sheet.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LogViewerPage extends ConsumerWidget {
   const LogViewerPage({super.key});
@@ -27,7 +28,7 @@ class LogViewerPage extends ConsumerWidget {
     final state = ref.watch(logViewerViewModelProvider);
     final entries = ref.watch(logEntriesProvider);
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

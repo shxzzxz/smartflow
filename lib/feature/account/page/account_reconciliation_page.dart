@@ -14,6 +14,7 @@ import '../../../widget/business/transaction/transaction_feed.dart';
 import '../../shared/provider/current_date_time_provider.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/account_reconciliation_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountReconciliationPage extends ConsumerStatefulWidget {
   const AccountReconciliationPage({required this.accountId, super.key});
@@ -55,7 +56,7 @@ class _AccountReconciliationPageState
     final state = ref.watch(accountReconciliationViewModelProvider(accountId));
     final loaded = state is AccountReconciliationLoaded ? state : null;
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

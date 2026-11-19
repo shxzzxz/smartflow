@@ -14,6 +14,7 @@ import '../view_model/insurance_overview_view_model.dart';
 import '../widget/insurance/insurance_metric_strip.dart';
 import '../widget/insurance/insurance_overview_hero.dart';
 import '../widget/member/insurance_member_strip.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InsuranceOverviewPage extends ConsumerWidget {
   const InsuranceOverviewPage({super.key});
@@ -23,7 +24,7 @@ class InsuranceOverviewPage extends ConsumerWidget {
     final overview = ref.watch(insuranceOverviewViewModelProvider);
     final value = overview.asData?.value;
     final hasMembers = value?.overview.members.isNotEmpty ?? false;
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

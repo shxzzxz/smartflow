@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 
 import '../design_system/theme/app_theme.dart';
+import '../application/shared/app_settings_store.dart';
+import '../feature/shared/view_model/app_settings_view_model.dart';
 import '../widget/business/icon/business_icon_scope.dart';
 import 'business_icon_provider.dart';
 import 'app_error_boundary.dart';
@@ -95,12 +97,18 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   @override
   Widget build(BuildContext context) {
     final iconRegistry = ref.watch(businessIconRegistryProvider);
+    final appearance = ref.watch(
+      appSettingsViewModelProvider.select(
+        (settings) =>
+            settings.value?.appearance ?? const AppAppearanceSettings(),
+      ),
+    );
     return MaterialApp.router(
       title: 'SmartFlow',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: widget.scaffoldMessengerKey,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(appearance: appearance),
+      darkTheme: AppTheme.dark(appearance: appearance),
       themeMode: ThemeMode.system,
       builder: (context, child) {
         ErrorWidget.builder = AppGlobalErrorHandler(

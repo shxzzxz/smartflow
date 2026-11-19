@@ -13,6 +13,7 @@ import '../widget/loan_calculator_action_button.dart';
 import '../widget/loan_comparison_table.dart';
 import 'loan_comparison_page.dart';
 import 'loan_change_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LoanPlanPage extends StatelessWidget {
   const LoanPlanPage({required LoanConfiguration this.configuration, super.key})
@@ -35,7 +36,7 @@ class LoanPlanPage extends StatelessWidget {
             calculation!.periods,
             stages: calculation.stages,
           );
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

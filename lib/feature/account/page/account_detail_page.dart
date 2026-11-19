@@ -24,6 +24,7 @@ import '../view_model/account_transactions_view_model.dart';
 import '../view_model/account_view.dart';
 import '../widget/account_bill_list.dart';
 import '../widget/account_credit_summary_list.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountDetailPage extends ConsumerStatefulWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -51,7 +52,7 @@ class _AccountDetailPageState extends ConsumerState<AccountDetailPage> {
     final state = ref.watch(accountDetailViewModelProvider(accountId));
     final loadedAccount = state is AccountDetailLoaded ? state.account : null;
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

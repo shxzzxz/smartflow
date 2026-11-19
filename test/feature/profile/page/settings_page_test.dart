@@ -30,7 +30,9 @@ void main() {
     expect(find.text('经典样式'), findsOneWidget);
     expect(find.text('流水列表信息'), findsOneWidget);
     expect(find.text('标准'), findsWidgets);
-    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(3));
+    expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(4));
+    expect(find.text('个性化设置'), findsOneWidget);
+    expect(find.text('记账悬浮按钮'), findsNothing);
     expect(
       tester.getCenter(find.text('下拉灵敏度')).dx,
       lessThan(tester.getCenter(find.text('标准').first).dx),
@@ -67,15 +69,13 @@ void main() {
     );
 
     final beforeToggle = await store.read();
-    await tester.tap(find.text('记账悬浮按钮'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('导航栏文字'));
     await tester.pumpAndSettle();
 
     final afterToggle = await store.read();
     expect(
       afterToggle.showAddTransactionFab,
-      !beforeToggle.showAddTransactionFab,
+      beforeToggle.showAddTransactionFab,
     );
     expect(afterToggle.showBottomNavLabels, !beforeToggle.showBottomNavLabels);
     expect(

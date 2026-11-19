@@ -15,6 +15,7 @@ import '../widget/loan_change_operation_dialog.dart';
 import '../widget/loan_configuration_entry.dart';
 import 'loan_configuration_page.dart';
 import 'loan_plan_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LoanChangePage extends ConsumerWidget {
   const LoanChangePage({this.initial, super.key});
@@ -25,7 +26,7 @@ class LoanChangePage extends ConsumerWidget {
     final provider = loanChangeViewModelProvider(initial: initial);
     final state = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

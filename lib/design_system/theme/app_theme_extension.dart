@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../application/shared/app_appearance_settings.dart';
+import '../token/appearance.dart';
 import '../token/colors.dart';
+import 'app_appearance_values.dart';
+import 'app_color_scheme.dart';
 
 @immutable
 class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
@@ -26,17 +30,24 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.chartOther,
   });
 
-  factory AppThemeExtension.light() {
-    return const AppThemeExtension(
+  factory AppThemeExtension.light({
+    AppAppearanceSettings appearance = const AppAppearanceSettings(),
+  }) {
+    appearance = AppAppearanceValues.resolve(appearance);
+    return AppThemeExtension(
       success: AppColors.success,
       warning: AppColors.warning,
       danger: AppColors.danger,
       info: AppColors.info,
-      income: AppColors.income,
-      expense: AppColors.expense,
+      income: appearance.incomeColor == AppAppearanceTokens.incomeColor
+          ? AppColors.income
+          : AppColorSchemes.readableOnSurface(Color(appearance.incomeColor)),
+      expense: appearance.expenseColor == AppAppearanceTokens.expenseColor
+          ? AppColors.expense
+          : AppColorSchemes.readableOnSurface(Color(appearance.expenseColor)),
       transfer: AppColors.transfer,
-      asset: AppColors.income,
-      liability: AppColors.expense,
+      asset: AppColors.asset,
+      liability: AppColors.liability,
       equity: AppColors.equity,
       chart1: AppColors.chart1,
       chart2: AppColors.chart2,
@@ -50,17 +61,37 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     );
   }
 
-  factory AppThemeExtension.dark() {
-    return const AppThemeExtension(
+  factory AppThemeExtension.dark({
+    AppAppearanceSettings appearance = const AppAppearanceSettings(),
+  }) {
+    appearance = AppAppearanceValues.resolve(appearance);
+    Color financialColor(int value, int defaultValue, Color defaultColor) {
+      return value == defaultValue
+          ? defaultColor
+          : ColorScheme.fromSeed(
+              seedColor: Color(value),
+              brightness: Brightness.dark,
+            ).primary;
+    }
+
+    return AppThemeExtension(
       success: Color(0xFF8BD88F),
       warning: Color(0xFFFFC266),
       danger: Color(0xFFFFB4AB),
       info: Color(0xFFA9C7FF),
-      income: Color(0xFF8BD88F),
-      expense: Color(0xFFFFB68A),
+      income: financialColor(
+        appearance.incomeColor,
+        AppAppearanceTokens.incomeColor,
+        AppColors.incomeDark,
+      ),
+      expense: financialColor(
+        appearance.expenseColor,
+        AppAppearanceTokens.expenseColor,
+        AppColors.expenseDark,
+      ),
       transfer: Color(0xFFA9C7FF),
-      asset: Color(0xFF8BD88F),
-      liability: Color(0xFFFFB68A),
+      asset: AppColors.assetDark,
+      liability: AppColors.liabilityDark,
       equity: Color(0xFFD2BFFF),
       chart1: AppColors.chart1Dark,
       chart2: AppColors.chart2Dark,

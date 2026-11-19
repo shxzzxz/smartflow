@@ -4,6 +4,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentGuidePage extends StatelessWidget {
   const InstallmentGuidePage({super.key});
@@ -11,7 +12,7 @@ class InstallmentGuidePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

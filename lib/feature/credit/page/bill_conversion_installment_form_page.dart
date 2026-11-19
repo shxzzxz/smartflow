@@ -18,6 +18,7 @@ import '../view_model/bill_conversion_installment_form_view_model.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_basic_info_fields.dart';
 import 'loan_configuration_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BillConversionInstallmentFormPage extends ConsumerStatefulWidget {
   const BillConversionInstallmentFormPage({required this.billId, super.key});
@@ -51,7 +52,7 @@ class _BillConversionInstallmentFormPageState
       widget.billId,
     );
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

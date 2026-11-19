@@ -12,6 +12,7 @@ import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/icon_management_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class IconManagementPage extends ConsumerStatefulWidget {
   const IconManagementPage({super.key});
@@ -57,7 +58,7 @@ class _IconManagementPageState extends ConsumerState<IconManagementPage>
         .where((entry) => entry.icon.type == type)
         .toList(growable: false);
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

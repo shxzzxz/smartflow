@@ -19,6 +19,7 @@ import '../widget/installment_plan_summary_card.dart';
 import '../widget/installment_schedule_editor.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import 'loan_configuration_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentContractEditPage extends ConsumerStatefulWidget {
   const InstallmentContractEditPage({required this.contractId, super.key});
@@ -47,7 +48,7 @@ class _InstallmentContractEditPageState
       installmentContractEditViewModelProvider(widget.contractId),
     );
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

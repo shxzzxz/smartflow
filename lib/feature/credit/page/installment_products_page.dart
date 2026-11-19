@@ -10,13 +10,14 @@ import '../../../application/credit/credit_query_api.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_product_view_model.dart';
 import '../presentation/loan_calculator_presentation.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentProductsPage extends ConsumerWidget {
   const InstallmentProductsPage({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final products = ref.watch(installmentProductsViewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

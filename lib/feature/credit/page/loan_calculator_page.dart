@@ -7,12 +7,13 @@ import '../../../design_system/widget/app_surface.dart';
 import 'loan_comparison_page.dart';
 import 'loan_configuration_page.dart';
 import 'loan_change_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LoanCalculatorPage extends StatelessWidget {
   const LoanCalculatorPage({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => AppScaffold(
     body: SafeArea(
       child: Column(
         children: [

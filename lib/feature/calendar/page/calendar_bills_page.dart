@@ -8,6 +8,7 @@ import '../../../widget/business/finance/bill_item_row.dart';
 import '../../../widget/business/finance/finance_summary_row.dart';
 import '../presentation/calendar_bills_presentation.dart';
 import '../view_model/calendar_bills_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CalendarDayBillsPage extends ConsumerWidget {
   const CalendarDayBillsPage({required this.date, super.key});
@@ -43,16 +44,16 @@ class _CalendarBillsPageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (state) {
-      CalendarBillsPageLoading(:final title) => Scaffold(
+      CalendarBillsPageLoading(:final title) => AppScaffold(
         appBar: AppBar(title: Text(title)),
         body: const Center(child: CircularProgressIndicator()),
       ),
-      CalendarBillsPageError(:final title, :final message) => Scaffold(
+      CalendarBillsPageError(:final title, :final message) => AppScaffold(
         appBar: AppBar(title: Text(title)),
         body: Center(child: Text(message)),
       ),
       CalendarBillsPageLoaded(:final title, :final emptyMessage, :final rows) =>
-        Scaffold(
+        AppScaffold(
           appBar: AppBar(title: Text(title)),
           body: _CalendarBillList(rows: rows, emptyMessage: emptyMessage),
         ),

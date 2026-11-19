@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 
 import 'package:smartflow/application/shared/app_settings_store.dart';
@@ -18,6 +20,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
   static const _cashflowPeriodMetricKey = 'settings.cashflow_period_metric';
   static const _transactionListDisplayModeKey =
       'settings.transaction_list_display_mode';
+  static const _appearanceKey = 'settings.appearance';
   final AppDatabase _database;
 
   @override
@@ -34,6 +37,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
                 _calendarHeatMetricKey,
                 _cashflowPeriodMetricKey,
                 _transactionListDisplayModeKey,
+                _appearanceKey,
               ]),
             ))
             .get();
@@ -75,6 +79,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
             values[_transactionListDisplayModeKey],
           ) ??
           defaults.transactionListDisplayMode,
+      appearance: _parseAppearance(values[_appearanceKey]),
     );
   }
 
@@ -109,6 +114,7 @@ class DriftAppSettingsStore implements AppSettingsStore {
           _transactionListDisplayModeKey,
           settings.transactionListDisplayMode.storageValue,
         ),
+        _entry(_appearanceKey, jsonEncode(settings.appearance.toJson())),
       ]);
     });
   }
@@ -123,5 +129,19 @@ class DriftAppSettingsStore implements AppSettingsStore {
 
   bool? _parseBool(String? value) {
     return value == null ? null : value == 'true';
+  }
+
+  AppAppearanceSettings _parseAppearance(String? value) {
+    if (value != null) {
+      try {
+        final json = jsonDecode(value);
+        if (json is Map<String, dynamic>) {
+          return AppAppearanceSettings.fromJson(json);
+        }
+      } on FormatException {
+        // 旧配置或损坏的外观配置使用默认值，不阻断其他设置加载。
+      }
+    }
+    return const AppAppearanceSettings();
   }
 }

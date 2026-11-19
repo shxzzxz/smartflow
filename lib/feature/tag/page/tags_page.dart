@@ -16,6 +16,7 @@ import '../../../widget/business/shared/name_dialog.dart';
 import '../../../widget/business/shared/transaction_reference_target_sheet.dart';
 import '../../../widget/business/tag/tag_search_field.dart';
 import '../../shared/provider/tag_providers.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.tag');
 
@@ -46,7 +47,7 @@ class _TagsPageState extends ConsumerState<TagsPage> {
     final colors = Theme.of(context).colorScheme;
     final tagsAsync = ref.watch(tagListProvider);
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

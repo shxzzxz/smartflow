@@ -17,6 +17,7 @@ import '../view_model/statistics_view_model.dart';
 import '../widget/statistics_category_row.dart';
 import '../widget/statistics_charts.dart';
 import '../widget/statistics_composition_list.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class StatisticsCategoryPage extends ConsumerWidget {
   const StatisticsCategoryPage({
@@ -80,7 +81,7 @@ class StatisticsCategoryPage extends ConsumerWidget {
       0,
       (sum, child) => sum + statisticsCategoryMagnitude(child),
     );
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
@@ -172,7 +173,7 @@ class _CategoryMessagePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

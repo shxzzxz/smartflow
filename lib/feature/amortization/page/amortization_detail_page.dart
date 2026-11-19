@@ -22,6 +22,7 @@ import '../../../widget/business/finance/finance_activity_row.dart';
 import '../../../widget/business/finance/finance_schedule_list.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/amortization_detail_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AmortizationDetailPage extends ConsumerWidget {
   const AmortizationDetailPage({required this.planId, super.key});
@@ -32,7 +33,7 @@ class AmortizationDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(amortizationDetailViewModelProvider(planId));
     return switch (asyncState) {
-      AsyncData(value: final state) when state != null => Scaffold(
+      AsyncData(value: final state) when state != null => AppScaffold(
         body: SafeArea(
           child: Column(
             children: [
@@ -59,7 +60,7 @@ class AmortizationDetailPage extends ConsumerWidget {
       ),
       AsyncData(value: null) => const _StatusPage(message: '摊销计划不存在'),
       AsyncError() => const _StatusPage(message: '摊销计划加载失败'),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 
@@ -436,7 +437,7 @@ class _StatusPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

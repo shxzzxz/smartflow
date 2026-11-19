@@ -18,6 +18,7 @@ import '../widget/insurance/insurance_category_icon.dart';
 import '../widget/insurance/insurance_metric_strip.dart';
 import '../widget/insurance/insurance_policy_tile.dart';
 import '../widget/member/insurance_member_header.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class MemberCoveragePage extends ConsumerWidget {
   const MemberCoveragePage({required this.insuredPersonId, super.key});
@@ -28,7 +29,7 @@ class MemberCoveragePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = memberCoverageViewModelProvider(insuredPersonId);
     final coverage = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: coverage.when(

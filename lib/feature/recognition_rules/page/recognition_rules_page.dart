@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../view_model/recognition_rules_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class RecognitionRulesPage extends ConsumerStatefulWidget {
   const RecognitionRulesPage({super.key});
@@ -39,7 +40,7 @@ class _RecognitionRulesPageState extends ConsumerState<RecognitionRulesPage> {
     final targetLabel = state?.kind == RecognitionRuleKind.category
         ? '分类'
         : '账户';
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

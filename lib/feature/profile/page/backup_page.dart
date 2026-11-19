@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_submit_button.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/backup_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BackupPage extends ConsumerWidget {
   const BackupPage({super.key});
@@ -19,7 +20,7 @@ class BackupPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(backupViewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

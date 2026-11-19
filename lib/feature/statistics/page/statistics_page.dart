@@ -5,6 +5,7 @@ import '../view_model/statistics_view_model.dart';
 import '../view/statistics_period_view.dart';
 import '../view/statistics_state_view.dart';
 import '../view/statistics_view_switcher.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class StatisticsPage extends ConsumerWidget {
   const StatisticsPage({super.key});
@@ -15,7 +16,7 @@ class StatisticsPage extends ConsumerWidget {
       statisticsPageProvider.select((page) => page.control.viewType),
     );
     final notifier = ref.read(statisticsViewModelProvider.notifier);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

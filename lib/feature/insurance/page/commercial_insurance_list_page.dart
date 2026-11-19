@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_list_view_model.dart';
 import '../widget/insurance/insurance_policy_tile.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CommercialInsuranceListPage extends ConsumerStatefulWidget {
   const CommercialInsuranceListPage({super.key});
@@ -28,7 +29,7 @@ class _CommercialInsuranceListPageState
   @override
   Widget build(BuildContext context) {
     final policies = ref.watch(commercialInsuranceListViewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

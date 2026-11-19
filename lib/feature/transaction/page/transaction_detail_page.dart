@@ -28,6 +28,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/transaction_detail_presentation.dart';
 import '../view_model/transaction_detail/transaction_detail_state.dart';
 import '../view_model/transaction_detail/transaction_detail_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class TransactionDetailPage extends ConsumerWidget {
   const TransactionDetailPage({required this.transactionId, super.key});
@@ -41,7 +42,7 @@ class TransactionDetailPage extends ConsumerWidget {
     );
     final loaded = stateAsync.asData?.value;
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

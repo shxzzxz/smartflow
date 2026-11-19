@@ -25,6 +25,7 @@ import '../presentation/installment_stage_presentation.dart';
 import '../view_model/installment_detail_view_model.dart';
 import '../widget/create_disbursement_transaction_dialog.dart';
 import '../widget/installment_schedule_view.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -42,7 +43,7 @@ class InstallmentDetailPage extends ConsumerWidget {
       _ => null,
     };
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

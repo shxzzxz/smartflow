@@ -13,6 +13,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentRepaymentFormPage extends ConsumerStatefulWidget {
   const InstallmentRepaymentFormPage({required this.contractId, super.key});
@@ -48,7 +49,7 @@ class _InstallmentRepaymentFormPageState
   Widget build(BuildContext context) {
     final provider = installmentRepaymentFormViewModelProvider(_args);
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

@@ -12,6 +12,8 @@ final _logger = Logger('feature.shared.app_settings');
 
 @Riverpod(keepAlive: true)
 class AppSettingsViewModel extends _$AppSettingsViewModel {
+  Future<void> _pendingSave = Future<void>.value();
+
   @override
   Future<AppSettings> build() {
     return ref.watch(appSettingsStoreProvider).read();
@@ -68,15 +70,40 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     );
   }
 
-  Future<void> _save(AppSettings Function(AppSettings settings) change) async {
-    final previous = state.value ?? const AppSettings();
-    final next = change(previous);
-    state = AsyncData(next);
-    try {
-      await ref.read(appSettingsStoreProvider).save(next);
-    } catch (_) {
-      state = AsyncData(previous);
-      rethrow;
-    }
+  /// 外观与记账按钮一次提交，持久化成功前不发布到全局主题。
+  Future<void> savePersonalization({
+    required AppAppearanceSettings appearance,
+    required bool showAddTransactionFab,
+  }) {
+    return _save(
+      (settings) => settings.copyWith(
+        appearance: appearance,
+        showAddTransactionFab: showAddTransactionFab,
+      ),
+      optimistic: false,
+    );
+  }
+
+  Future<void> _save(
+    AppSettings Function(AppSettings settings) change, {
+    bool optimistic = true,
+  }) {
+    final operation = _pendingSave.then((_) async {
+      final previous = state.value ?? const AppSettings();
+      final next = change(previous);
+      if (optimistic) state = AsyncData(next);
+      try {
+        await ref.read(appSettingsStoreProvider).save(next);
+        if (!optimistic && ref.mounted) state = AsyncData(next);
+      } catch (_) {
+        if (optimistic && ref.mounted) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+    _pendingSave = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    return operation;
   }
 }

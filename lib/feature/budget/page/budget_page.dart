@@ -30,6 +30,7 @@ import '../../shared/view_model/app_settings_view_model.dart';
 import '../presentation/budget_transaction_presentation.dart';
 import '../view_model/budget_view_model.dart';
 import '../widget/budget_trend_chart.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BudgetPage extends ConsumerStatefulWidget {
   const BudgetPage({this.initialMonth, super.key});
@@ -64,7 +65,7 @@ class _BudgetPageState extends ConsumerState<BudgetPage> {
         (loaded.report.totalBudget != null ||
             loaded.report.categoryGroups.isNotEmpty);
     final totalBudget = loaded?.report.totalBudget;
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -282,7 +283,7 @@ class BudgetDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(budgetDetailPageProvider(budgetId, month));
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: switch (state) {
           BudgetDetailPageLoaded(
@@ -494,8 +495,7 @@ class _BudgetDetailContent extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space12),
             ],
             groups: transactionGroups,
-            emptyMessage:
-                isTotalBudget ? '本月暂无计入预算的交易' : '本月暂无计入预算的分类交易',
+            emptyMessage: isTotalBudget ? '本月暂无计入预算的交易' : '本月暂无计入预算的分类交易',
             emptyState: null,
             showDailyTotals: false,
           ),

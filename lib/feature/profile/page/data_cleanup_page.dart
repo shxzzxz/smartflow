@@ -17,6 +17,7 @@ import '../presentation/data_cleanup_presentation.dart';
 import '../view_model/data_cleanup_view_model.dart';
 import '../widget/cleanup_account_filter_sheet.dart';
 import '../widget/cleanup_category_filter_sheet.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class DataCleanupPage extends ConsumerWidget {
   const DataCleanupPage({super.key});
@@ -28,15 +29,12 @@ class DataCleanupPage extends ConsumerWidget {
     final preview = ref.watch(dataCleanupPreviewProvider);
     final deletableCount = preview.value?.deletableGroupCount ?? 0;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(
-              title: '数据清理',
-              subtitle: '按条件批量删除交易数据',
-            ),
+            const AppPageHeader(title: '数据清理', subtitle: '按条件批量删除交易数据'),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
@@ -70,10 +68,9 @@ class DataCleanupPage extends ConsumerWidget {
                     label: '清理数据',
                     tone: AppSubmitButtonTone.danger,
                     loading: state.submitting,
-                    onPressed:
-                        deletableCount > 0
-                            ? () => _confirmCleanup(context, ref, preview.value!)
-                            : null,
+                    onPressed: deletableCount > 0
+                        ? () => _confirmCleanup(context, ref, preview.value!)
+                        : null,
                   ),
                 ],
               ),
@@ -114,8 +111,9 @@ class DataCleanupPage extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
-    final outcome =
-        await ref.read(dataCleanupViewModelProvider.notifier).cleanup();
+    final outcome = await ref
+        .read(dataCleanupViewModelProvider.notifier)
+        .cleanup();
     if (!context.mounted) return;
     final message = switch (outcome) {
       UiActionSuccess(:final value) => cleanupResultMessage(value),
@@ -151,11 +149,9 @@ class _TimeRangeRow extends ConsumerWidget {
           ),
           if (state.hasTimeRange)
             IconButton(
-              onPressed:
-                  () =>
-                      ref
-                          .read(dataCleanupViewModelProvider.notifier)
-                          .clearTimeRange(),
+              onPressed: () => ref
+                  .read(dataCleanupViewModelProvider.notifier)
+                  .clearTimeRange(),
               icon: const Icon(RemixIcons.close_circle_line),
               iconSize: AppSpacing.space18,
               color: colors.onSurfaceVariant,
@@ -171,18 +167,17 @@ class _TimeRangeRow extends ConsumerWidget {
   Future<void> _pickRange(BuildContext context, WidgetRef ref) async {
     final now = ref.read(currentDateTimeProvider);
     final today = DateTime(now.year, now.month, now.day);
-    final initialRange =
-        state.hasTimeRange
-            ? DateTimeRange(
-              start: state.occurredFrom!,
-              end: state.occurredUntilExclusive!.subtract(
-                const Duration(days: 1),
-              ),
-            )
-            : DateTimeRange(
-              start: DateTime(today.year, today.month, 1),
-              end: today,
-            );
+    final initialRange = state.hasTimeRange
+        ? DateTimeRange(
+            start: state.occurredFrom!,
+            end: state.occurredUntilExclusive!.subtract(
+              const Duration(days: 1),
+            ),
+          )
+        : DateTimeRange(
+            start: DateTime(today.year, today.month, 1),
+            end: today,
+          );
     final range = await showAppDateRangePicker(
       context: context,
       initialRange: initialRange,
@@ -241,10 +236,9 @@ class _AccountRow extends ConsumerWidget {
       label: '账户',
       value: cleanupSelectionLabel(state.accountIds.length, '全部账户'),
       onTap: () async {
-        final accounts =
-            await ref
-                .read(dataCleanupViewModelProvider.notifier)
-                .accountOptions();
+        final accounts = await ref
+            .read(dataCleanupViewModelProvider.notifier)
+            .accountOptions();
         if (!context.mounted) return;
         final selected = await showCleanupAccountFilterSheet(
           context: context,

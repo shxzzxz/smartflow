@@ -7,6 +7,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../presentation/account_credit_summary_presentation.dart';
 import '../view_model/account_installments_view_model.dart';
 import '../widget/account_credit_summary_list.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountInstallmentsPage extends ConsumerWidget {
   const AccountInstallmentsPage({required this.accountId, super.key});
@@ -16,7 +17,7 @@ class AccountInstallmentsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(accountInstallmentsViewModelProvider(accountId));
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../../../application/shared/app_settings_store.dart';
 import '../../../design_system/token/spacing.dart';
@@ -11,6 +13,7 @@ import '../../shared/presentation/bottom_navigation_style_options.dart';
 import '../../shared/presentation/pull_to_create_sensitivity_options.dart';
 import '../../shared/presentation/transaction_list_display_mode_options.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -22,7 +25,7 @@ class SettingsPage extends ConsumerWidget {
         ref.watch(appSettingsViewModelProvider).value ?? const AppSettings();
     final notifier = ref.read(appSettingsViewModelProvider.notifier);
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
@@ -40,10 +43,10 @@ class SettingsPage extends ConsumerWidget {
                   _SettingsSection(
                     title: '界面设置',
                     rows: [
-                      AppSettingsSwitchRow(
-                        label: '记账悬浮按钮',
-                        value: settings.showAddTransactionFab,
-                        onChanged: notifier.setShowAddTransactionFab,
+                      AppSettingsRow(
+                        label: '个性化设置',
+                        onTap: () => context.push('/profile/personalization'),
+                        child: const Icon(RemixIcons.arrow_right_s_line),
                       ),
                       AppSettingsSelectRow<PullToCreateSensitivity>(
                         label: '下拉灵敏度',

@@ -21,6 +21,7 @@ import '../presentation/bill_repayment_allocation.dart';
 import '../presentation/bill_repayment_presentation.dart';
 import '../view_model/bill_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BillRepaymentFormPage extends ConsumerStatefulWidget {
   const BillRepaymentFormPage({required this.billId, super.key})
@@ -77,7 +78,7 @@ class _BillRepaymentFormPageState extends ConsumerState<BillRepaymentFormPage> {
   Widget build(BuildContext context) {
     final provider = billRepaymentFormViewModelProvider(_args);
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_product_view_model.dart';
 import '../widget/installment_terms_editor.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentProductEditPage extends ConsumerStatefulWidget {
   const InstallmentProductEditPage({
@@ -42,7 +43,7 @@ class _InstallmentProductEditPageState
       widget.copy,
     );
     final async = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

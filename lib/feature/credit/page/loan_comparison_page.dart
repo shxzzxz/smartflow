@@ -10,6 +10,7 @@ import '../view_model/loan_configuration_view_model.dart';
 import '../widget/loan_configuration_entry.dart';
 import '../widget/loan_comparison_table.dart';
 import 'loan_configuration_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LoanComparisonPage extends ConsumerWidget {
   const LoanComparisonPage({this.initial, super.key});
@@ -20,7 +21,7 @@ class LoanComparisonPage extends ConsumerWidget {
     final provider = loanComparisonViewModelProvider(initial: initial);
     final state = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

@@ -8,6 +8,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/capture_review_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CaptureReviewPage extends ConsumerStatefulWidget {
   const CaptureReviewPage({this.shareId, super.key});
@@ -86,7 +87,7 @@ class _CaptureReviewPageState extends ConsumerState<CaptureReviewPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(_viewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

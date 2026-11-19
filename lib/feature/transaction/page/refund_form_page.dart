@@ -18,6 +18,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/transaction_form/refund/refund_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class RefundFormPage extends ConsumerWidget {
   const RefundFormPage({required String parentTransactionId, Key? key})
@@ -69,7 +70,7 @@ class RefundFormPage extends ConsumerWidget {
       amortizationTermination: amortizationTermination,
     );
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: switch (asyncState) {

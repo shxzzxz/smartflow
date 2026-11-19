@@ -18,6 +18,7 @@ import '../view_model/installment_form_view_model.dart';
 import '../view_model/loan_configuration_view_model.dart';
 import 'loan_configuration_page.dart';
 import '../widget/loan_basic_info_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 const _installmentSectionPadding = EdgeInsets.symmetric(
   horizontal: AppSpacing.space16,
@@ -64,7 +65,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   Widget build(BuildContext context) {
     final asyncState = ref.watch(installmentFormViewModelProvider(_args));
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

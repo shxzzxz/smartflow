@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_popup_menu_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/insurance_members_view_model.dart';
 import '../widget/member/insurance_member_tile.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InsuranceMembersPage extends ConsumerWidget {
   const InsuranceMembersPage({super.key});
@@ -17,7 +18,7 @@ class InsuranceMembersPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final members = ref.watch(insuranceMembersViewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

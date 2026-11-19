@@ -15,6 +15,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/unattributed_repayment_form_view_model.dart';
 import '../widget/repayment_form_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class UnattributedRepaymentFormPage extends ConsumerStatefulWidget {
   const UnattributedRepaymentFormPage({required this.accountId, super.key});
@@ -52,7 +53,7 @@ class _UnattributedRepaymentFormPageState
       widget.accountId,
     );
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
@@ -113,19 +114,18 @@ class _UnattributedRepaymentFormPageState
                 interestController: _interestController,
                 feeController: _feeController,
                 discountController: _discountController,
-                principalValidator:
-                    (value) => _validatePrincipal(
-                      value,
-                      state.overview!.buckets.unattributedDebt,
-                    ),
+                principalValidator: (value) => _validatePrincipal(
+                  value,
+                  state.overview!.buckets.unattributedDebt,
+                ),
               ),
               CreditRepaymentTransactionFields(
                 createTransaction: true,
                 onCreateTransactionChanged: null,
                 occurredAt: state.occurredAt,
                 occurredAtText: _formatDateTime(state.occurredAt),
-                onPickDate:
-                    (onSelected) => _pickDate(state.occurredAt, onSelected),
+                onPickDate: (onSelected) =>
+                    _pickDate(state.occurredAt, onSelected),
                 onOccurredAtChanged: (value) {
                   if (value != null) {
                     ref.read(provider.notifier).setOccurredAt(value);
@@ -134,14 +134,14 @@ class _UnattributedRepaymentFormPageState
                 repaymentAccount: paidFromAccount,
                 selectedRepaymentAccountId: state.paidFromAccountId,
                 repaymentAccounts: state.repaymentAccounts,
-                onRepaymentAccountChanged:
-                    ref.read(provider.notifier).setPaidFromAccountId,
-                onPickAccount:
-                    (onSelected) => _pickAccount(
-                      accounts: state.repaymentAccounts,
-                      selectedId: state.paidFromAccountId,
-                      onSelected: onSelected,
-                    ),
+                onRepaymentAccountChanged: ref
+                    .read(provider.notifier)
+                    .setPaidFromAccountId,
+                onPickAccount: (onSelected) => _pickAccount(
+                  accounts: state.repaymentAccounts,
+                  selectedId: state.paidFromAccountId,
+                  onSelected: onSelected,
+                ),
               ),
               NotePlainFormRow(controller: _noteController),
             ],

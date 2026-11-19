@@ -17,6 +17,7 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/transaction_form/advance/advance_edit_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AdvanceEditFormPage extends ConsumerWidget {
   const AdvanceEditFormPage({required this.transactionId, super.key});
@@ -27,7 +28,7 @@ class AdvanceEditFormPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = advanceEditFormViewModelProvider(transactionId);
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: switch (asyncState) {

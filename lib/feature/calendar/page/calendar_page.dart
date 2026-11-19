@@ -20,6 +20,7 @@ import '../../shared/view_model/app_settings_view_model.dart';
 import '../presentation/calendar_heat_metric_options.dart';
 import '../presentation/calendar_month_presentation.dart';
 import '../view_model/calendar_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CalendarPage extends ConsumerStatefulWidget {
   const CalendarPage({super.key});
@@ -45,7 +46,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     );
     final navigationLayout = AppBottomNavigationLayoutScope.of(context);
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

@@ -20,6 +20,7 @@ import '../../../widget/business/shared/transaction_reference_target_sheet.dart'
 import '../../../widget/business/tag/tag_search_field.dart';
 import '../../shared/provider/counterparty_providers.dart';
 import '../view_model/counterparty_management_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.counterparty.page');
 
@@ -48,7 +49,7 @@ class _CounterpartiesPageState extends ConsumerState<CounterpartiesPage> {
     final colors = Theme.of(context).colorScheme;
     final counterparties = ref.watch(counterpartyListProvider);
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

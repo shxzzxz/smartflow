@@ -8,6 +8,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/account_bills_view_model.dart';
 import '../widget/account_bill_list.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountBillsPage extends ConsumerWidget {
   const AccountBillsPage({required this.accountId, super.key});
@@ -20,7 +21,7 @@ class AccountBillsPage extends ConsumerWidget {
     final canGenerateHistoricalBill =
         state is AccountBillsPageLoaded && state.canGenerateHistoricalBill;
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

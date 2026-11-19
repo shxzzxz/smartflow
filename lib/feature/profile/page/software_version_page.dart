@@ -14,6 +14,7 @@ import '../../../design_system/token/radius.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_surface.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.profile.software_version');
 
@@ -68,19 +69,19 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
         return;
       }
       setState(
-        () =>
-            _versionInfo = const AppVersionInfo(
-              versionName: '未知版本',
-              buildNumber: 0,
-            ),
+        () => _versionInfo = const AppVersionInfo(
+          versionName: '未知版本',
+          buildNumber: 0,
+        ),
       );
     }
   }
 
   Future<void> _loadUpdateChannel() async {
     try {
-      final code =
-          await ref.read(updateChannelStoreProvider).readUpdateChannel();
+      final code = await ref
+          .read(updateChannelStoreProvider)
+          .readUpdateChannel();
       if (!mounted || code == null) {
         return;
       }
@@ -151,13 +152,12 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
       await showDialog<void>(
         context: context,
         barrierDismissible: !updateInfo.required,
-        builder:
-            (context) => _AppUpdateDialog(
-              updateInfo: updateInfo,
-              supportedAbis: supportedAbis,
-              updateService: updateService,
-              updatePlatform: _updatePlatform,
-            ),
+        builder: (context) => _AppUpdateDialog(
+          updateInfo: updateInfo,
+          supportedAbis: supportedAbis,
+          updateService: updateService,
+          updatePlatform: _updatePlatform,
+        ),
       );
     } catch (_) {
       if (!mounted) {
@@ -221,7 +221,7 @@ class _SoftwareVersionPageState extends ConsumerState<SoftwareVersionPage> {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
@@ -378,8 +378,9 @@ class _UpdateOrbitDot extends StatelessWidget {
       decoration: BoxDecoration(
         color: outlined ? Colors.transparent : color.withValues(alpha: 0.62),
         shape: BoxShape.circle,
-        border:
-            outlined ? Border.all(color: color.withValues(alpha: 0.62)) : null,
+        border: outlined
+            ? Border.all(color: color.withValues(alpha: 0.62))
+            : null,
       ),
     );
   }
@@ -450,19 +451,18 @@ class _ChannelSelectionIndicator extends StatelessWidget {
           width: selected ? 2 : 1.5,
         ),
       ),
-      child:
-          selected
-              ? Center(
-                child: Container(
-                  width: AppSpacing.space12,
-                  height: AppSpacing.space12,
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    shape: BoxShape.circle,
-                  ),
+      child: selected
+          ? Center(
+              child: Container(
+                width: AppSpacing.space12,
+                height: AppSpacing.space12,
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  shape: BoxShape.circle,
                 ),
-              )
-              : null,
+              ),
+            )
+          : null,
     );
   }
 }
@@ -536,10 +536,9 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
       if (!mounted) {
         return;
       }
-      final message =
-          error.code == 'downloadFailed' || !downloadCompleted
-              ? '下载失败，请稍后重试'
-              : '安装失败，请稍后重试';
+      final message = error.code == 'downloadFailed' || !downloadCompleted
+          ? '下载失败，请稍后重试'
+          : '安装失败，请稍后重试';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(message)));
@@ -619,13 +618,15 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
       actions: [
         if (!widget.updateInfo.required)
           TextButton(
-            onPressed:
-                _isDownloading ? null : () => Navigator.of(context).pop(),
+            onPressed: _isDownloading
+                ? null
+                : () => Navigator.of(context).pop(),
             child: const Text('稍后'),
           ),
         FilledButton(
-          onPressed:
-              _isDownloading || package == null ? null : _downloadAndInstall,
+          onPressed: _isDownloading || package == null
+              ? null
+              : _downloadAndInstall,
           child: Text(_isDownloading ? '下载中' : '立即更新'),
         ),
       ],

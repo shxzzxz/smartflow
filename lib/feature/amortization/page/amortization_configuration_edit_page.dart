@@ -15,6 +15,7 @@ import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/amortization_providers.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AmortizationConfigurationEditPage extends ConsumerWidget {
   const AmortizationConfigurationEditPage({required this.planId, super.key});
@@ -31,7 +32,7 @@ class AmortizationConfigurationEditPage extends ConsumerWidget {
       ),
       AsyncData(value: null) => const _StatusPage(message: '摊销计划不存在'),
       AsyncError() => const _StatusPage(message: '摊销计划加载失败'),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 }
@@ -74,7 +75,7 @@ class _ConfigurationFormState extends ConsumerState<_ConfigurationForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -216,7 +217,7 @@ class _StatusPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

@@ -18,6 +18,7 @@ import '../../shared/view_model/action_guard.dart';
 import '../../shared/presentation/china_region_data.dart';
 import '../view_model/social_insurance_form_view_model.dart';
 import '../widget/insured_person_picker_sheet.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class SocialInsuranceFormPage extends ConsumerWidget {
   const SocialInsuranceFormPage({
@@ -37,7 +38,7 @@ class SocialInsuranceFormPage extends ConsumerWidget {
     );
     final state = ref.watch(provider);
     final title = insuranceId == null ? '新增社保' : '编辑社保';
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

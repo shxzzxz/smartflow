@@ -23,6 +23,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../presentation/account_creation_presets.dart';
 import '../view_model/account_form_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountFormPage extends ConsumerStatefulWidget {
   const AccountFormPage({this.accountId, this.creationPreset, super.key});
@@ -71,7 +72,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         title: accountId == null ? '新建账户' : '编辑账户',
         message: '账户加载失败，请稍后重试',
       ),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 }
@@ -84,7 +85,7 @@ class _AccountFormStatusPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -173,7 +174,7 @@ class _AccountFormContentState extends ConsumerState<_AccountFormContent> {
         initialAccountGroupNameForId(formState.groupId) ??
         (groupsAsync.isLoading ? '分组加载中' : '未分组');
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Form(

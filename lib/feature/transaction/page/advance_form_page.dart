@@ -18,6 +18,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/advance_edit_form_presentation.dart';
 import '../view_model/transaction_form/advance/advance_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AdvanceFormPage extends ConsumerWidget {
   const AdvanceFormPage({required this.advanceTransactionId, super.key});
@@ -28,7 +29,7 @@ class AdvanceFormPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = advanceFormViewModelProvider(advanceTransactionId);
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: switch (asyncState) {

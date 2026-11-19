@@ -18,6 +18,7 @@ import '../presentation/insurance_presentation.dart';
 import '../view_model/insured_person_form_view_model.dart';
 import '../widget/member_avatar_picker_sheet.dart';
 import '../widget/member_avatar_view.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InsuredPersonFormPage extends ConsumerWidget {
   const InsuredPersonFormPage({this.personId, super.key});
@@ -29,7 +30,7 @@ class InsuredPersonFormPage extends ConsumerWidget {
     final provider = insuredPersonFormViewModelProvider(personId);
     final asyncState = ref.watch(provider);
     final title = personId == null ? '新增成员' : '编辑成员';
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

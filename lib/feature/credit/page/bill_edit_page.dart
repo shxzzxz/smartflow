@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_submit_button.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/bill_edit_form_state.dart';
 import '../view_model/bill_edit_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BillEditPage extends ConsumerStatefulWidget {
   const BillEditPage({required this.billId, super.key});
@@ -70,7 +71,7 @@ class _BillEditPageState extends ConsumerState<BillEditPage> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(billEditViewModelProvider(widget.billId));
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

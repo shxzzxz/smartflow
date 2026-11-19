@@ -6,6 +6,7 @@ import '../../../design_system/widget/app_page_header.dart';
 import '../../../application/ledger/ledger_query_api.dart';
 import '../../../widget/business/transaction/transaction_feed.dart';
 import '../view_model/statistics_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class StatisticsTransactionsPage extends ConsumerWidget {
   const StatisticsTransactionsPage({
@@ -46,7 +47,7 @@ class StatisticsTransactionsPage extends ConsumerWidget {
         accountType: accountType,
       ),
     );
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

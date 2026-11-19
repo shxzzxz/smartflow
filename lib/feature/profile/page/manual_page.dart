@@ -12,6 +12,7 @@ import '../../../design_system/widget/app_surface.dart';
 import '../data/manual_catalog.dart';
 import '../model/manual_article.dart';
 import '../widget/manual_widgets.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class ManualPage extends StatefulWidget {
   const ManualPage({super.key});
@@ -45,7 +46,7 @@ class _ManualPageState extends State<ManualPage> {
     final styles = context.appTextStyles;
     final groups = _groups;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

@@ -25,6 +25,7 @@ import '../view_model/asset_section_collapse_view_model.dart';
 import '../widget/account_creation_sheet.dart';
 import '../widget/account_list_row.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
@@ -44,7 +45,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: switch ((

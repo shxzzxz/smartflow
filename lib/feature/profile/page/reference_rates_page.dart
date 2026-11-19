@@ -14,6 +14,7 @@ import '../../../design_system/widget/app_surface.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
 import '../presentation/reference_rates_presentation.dart';
 import '../view_model/reference_rates_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class ReferenceRatesPage extends ConsumerStatefulWidget {
   const ReferenceRatesPage({super.key});
@@ -54,7 +55,7 @@ class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage>
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final current = state.current;
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Center(

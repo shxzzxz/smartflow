@@ -20,6 +20,7 @@ import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_detail_view_model.dart';
 import '../widget/insurance/insurance_coverage_overview_card.dart';
 import '../widget/insurance_premium_plan_editor.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CommercialInsuranceDetailPage extends ConsumerWidget {
   const CommercialInsuranceDetailPage({required this.insuranceId, super.key});
@@ -30,7 +31,7 @@ class CommercialInsuranceDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = commercialInsuranceDetailViewModelProvider(insuranceId);
     final asyncDetail = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: asyncDetail.when(

@@ -19,6 +19,7 @@ import '../presentation/bill_item_presentation.dart';
 import '../presentation/bill_repayment_presentation.dart';
 import '../presentation/bill_status_presentation.dart';
 import '../view_model/bill_detail_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class BillDetailPage extends ConsumerWidget {
   const BillDetailPage({required this.billId, super.key});
@@ -28,7 +29,7 @@ class BillDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(billDetailViewModelProvider(billId));
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

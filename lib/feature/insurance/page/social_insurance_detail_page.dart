@@ -18,6 +18,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/social_insurance_detail_view_model.dart';
 import '../widget/social_contribution_editor.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class SocialInsuranceDetailPage extends ConsumerWidget {
   const SocialInsuranceDetailPage({required this.insuranceId, super.key});
@@ -27,7 +28,7 @@ class SocialInsuranceDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final provider = socialInsuranceDetailViewModelProvider(insuranceId);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: ref

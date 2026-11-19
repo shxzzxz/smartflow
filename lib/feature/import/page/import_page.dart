@@ -27,6 +27,7 @@ import '../view_model/import_view_model.dart';
 import '../widget/import_analysis_card.dart';
 import '../widget/import_mapping_item.dart';
 import '../widget/import_source_icon.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
   const ImportPage({super.key});
@@ -72,7 +73,7 @@ class ImportMappingPage extends ConsumerWidget {
     final categoryItems = mappingItems
         .where((item) => item.key.entityKind == ImportEntityKind.category)
         .toList(growable: false);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -180,7 +181,7 @@ class ImportPreviewPage extends ConsumerWidget {
         .where((group) => group.canSelect)
         .length;
     final notifier = ref.read(importViewModelProvider.notifier);
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -401,7 +402,7 @@ class ImportIssuesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -553,7 +554,7 @@ class _ImportProcessPageState extends ConsumerState<ImportProcessPage> {
     final notifier = ref.read(importViewModelProvider.notifier);
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
@@ -747,7 +748,7 @@ class _ImportLandingPageState extends ConsumerState<ImportPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(importViewModelProvider);
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
@@ -862,7 +863,7 @@ class _ImportHistoryPageState extends ConsumerState<ImportHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(importViewModelProvider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

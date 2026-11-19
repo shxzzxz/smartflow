@@ -15,6 +15,7 @@ import '../../shared/provider/ledger_query_providers.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/categories_view_model.dart';
 import '../widget/category_manage_sheets.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
@@ -25,7 +26,7 @@ class CategoriesPage extends ConsumerWidget {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
+      child: AppScaffold(
         backgroundColor: colors.surface,
         body: SafeArea(
           child: Column(

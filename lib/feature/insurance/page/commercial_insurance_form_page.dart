@@ -18,6 +18,7 @@ import '../../../widget/business/finance/money_input.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/insurance_presentation.dart';
 import '../view_model/commercial_insurance_form_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CommercialInsuranceFormPage extends ConsumerStatefulWidget {
   const CommercialInsuranceFormPage({
@@ -58,7 +59,7 @@ class _CommercialInsuranceFormPageState
     final state = ref.watch(provider);
     final loaded = state.asData?.value;
     final title = insuranceId == null ? '新增商业保险' : '编辑商业保险';
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(

@@ -13,6 +13,7 @@ import '../design_system/token/spacing.dart';
 import '../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../feature/home/view_model/home_view_model.dart';
 import '../feature/shared/view_model/app_settings_view_model.dart';
+import '../design_system/widget/app_scaffold.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({required this.child, super.key});
@@ -46,7 +47,7 @@ class AppShell extends ConsumerWidget {
       child: child,
     );
 
-    return Scaffold(
+    return AppScaffold(
       extendBody: showsBottomNavigation,
       // Scaffold normally adds the bottom bar's height to the body inset. The
       // navigation always overlays the page, so keep only the system safe-area
@@ -56,7 +57,7 @@ class AppShell extends ConsumerWidget {
           : scopedBody,
       bottomNavigationBar: !showsBottomNavigation
           ? null
-          : _AppBottomNavigationBar(
+          : AppBottomNavigationBar(
               style: settings.bottomNavigationStyle,
               selectedIndex: selectedIndex,
               showLabels: settings.showBottomNavLabels,
@@ -82,8 +83,10 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-class _AppBottomNavigationBar extends StatelessWidget {
-  const _AppBottomNavigationBar({
+/// 一级导航与个性化设置中的只读预览共用同一套导航呈现。
+class AppBottomNavigationBar extends StatelessWidget {
+  const AppBottomNavigationBar({
+    super.key,
     required this.style,
     required this.selectedIndex,
     required this.showLabels,

@@ -10,6 +10,7 @@ import '../../../design_system/widget/app_submit_button.dart';
 import '../../../domain/orchestration/valobj/amortization_enums.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../presentation/amortization_configuration_draft.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class AmortizationConfigurationPage extends StatefulWidget {
   const AmortizationConfigurationPage({
@@ -55,7 +56,7 @@ class _AmortizationConfigurationPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

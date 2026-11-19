@@ -1,3 +1,7 @@
+import 'app_appearance_settings.dart';
+
+export 'app_appearance_settings.dart';
+
 enum PullToCreateSensitivity {
   sensitive(storageValue: 'sensitive', triggerExtent: 56),
   standard(storageValue: 'standard', triggerExtent: 72),
@@ -108,6 +112,7 @@ class AppSettings {
     this.calendarHeatMetric = CalendarHeatMetric.expense,
     this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
     this.transactionListDisplayMode = TransactionListDisplayMode.standard,
+    this.appearance = const AppAppearanceSettings(),
   });
 
   final bool showAddTransactionFab;
@@ -119,6 +124,7 @@ class AppSettings {
   final CalendarHeatMetric calendarHeatMetric;
   final CashflowPeriodMetric cashflowPeriodMetric;
   final TransactionListDisplayMode transactionListDisplayMode;
+  final AppAppearanceSettings appearance;
 
   AppSettings copyWith({
     bool? showAddTransactionFab,
@@ -130,6 +136,7 @@ class AppSettings {
     CalendarHeatMetric? calendarHeatMetric,
     CashflowPeriodMetric? cashflowPeriodMetric,
     TransactionListDisplayMode? transactionListDisplayMode,
+    AppAppearanceSettings? appearance,
   }) {
     return AppSettings(
       showAddTransactionFab:
@@ -147,6 +154,7 @@ class AppSettings {
       cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
       transactionListDisplayMode:
           transactionListDisplayMode ?? this.transactionListDisplayMode,
+      appearance: appearance ?? this.appearance,
     );
   }
 }

@@ -18,6 +18,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/installment_operations_view_model.dart';
 import '../presentation/repricing_presentation.dart';
 import '../widget/installment_field_options.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class InstallmentRepricingPage extends _InstallmentOperationsPage {
   const InstallmentRepricingPage({required super.contractId, super.key})
@@ -43,7 +44,7 @@ class _InstallmentOperationsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final value = ref.watch(installmentOperationsViewModelProvider(contractId));
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

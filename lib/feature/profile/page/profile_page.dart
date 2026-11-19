@@ -9,6 +9,7 @@ import '../../../design_system/widget/app_bottom_navigation_layout_scope.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../presentation/profile_menu.dart';
 import '../widget/profile_group_card.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.profile');
 
@@ -59,7 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
     ).contentInset;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(

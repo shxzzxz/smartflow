@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:smartflow/application/shared/app_settings_store.dart';
+import 'package:smartflow/infrastructure/database/app_database.dart';
 import 'package:smartflow/infrastructure/database/drift_app_settings_store.dart';
 
 import '../../helper/test_app_database.dart';
@@ -25,6 +27,7 @@ void main() {
           settings.transactionListDisplayMode,
           TransactionListDisplayMode.standard,
         );
+        expect(settings.appearance, const AppAppearanceSettings());
       },
     );
 
@@ -117,5 +120,106 @@ void main() {
         TransactionListDisplayMode.compact,
       );
     });
+
+    test(
+      'persists the complete appearance and button selection together',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final store = DriftAppSettingsStore(database);
+        const appearance = AppAppearanceSettings(
+          primaryColor: 0xFFE7AE47,
+          backgroundSeedColor: 0xFF1677FF,
+          backgroundStyle: AppBackgroundStyle.singleGlow,
+          incomeColor: 0xFF9254DE,
+          expenseColor: 0xFF1976D2,
+          gradientDepth: 0.8,
+          gradientRange: 0.9,
+        );
+
+        await store.save(
+          const AppSettings(
+            appearance: appearance,
+            showAddTransactionFab: false,
+            showBottomNavLabels: false,
+          ),
+        );
+        final reloaded = await DriftAppSettingsStore(database).read();
+        expect(reloaded.appearance, appearance);
+        expect(reloaded.showAddTransactionFab, isFalse);
+        expect(reloaded.showBottomNavLabels, isFalse);
+        for (final style in AppBackgroundStyle.values) {
+          final selected = appearance.copyWith(backgroundStyle: style);
+          await store.save(AppSettings(appearance: selected));
+          expect((await store.read()).appearance, selected);
+        }
+      },
+    );
+
+    test('malformed and out-of-range appearance data loads safely', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+      final store = DriftAppSettingsStore(database);
+      Future<void> writeAppearance(String value) async {
+        await database
+            .into(database.appMetadata)
+            .insertOnConflictUpdate(
+              AppMetadataCompanion.insert(
+                key: 'settings.appearance',
+                value: value,
+                updatedAt: Value(DateTime.utc(2026, 11, 19)),
+              ),
+            );
+      }
+
+      await writeAppearance('broken-json');
+      expect((await store.read()).appearance, const AppAppearanceSettings());
+      await writeAppearance('[]');
+      expect((await store.read()).appearance, const AppAppearanceSettings());
+      await writeAppearance(
+        '{"primaryColor":12,"backgroundSeedColor":"bad","backgroundStyle":123,"incomeColor":4287780062,"gradientDepth":2,"gradientRange":-2}',
+      );
+      final sanitized = (await store.read()).appearance;
+      expect(sanitized.primaryColor, AppAppearanceSettings.useDefaultColor);
+      expect(
+        sanitized.backgroundSeedColor,
+        AppAppearanceSettings.useDefaultColor,
+      );
+      expect(sanitized.backgroundStyle, AppBackgroundStyle.multiGlow);
+      expect(sanitized.incomeColor, 0xFF9254DE);
+      expect(sanitized.gradientDepth, 1);
+      expect(sanitized.gradientRange, 0);
+    });
+
+    test(
+      'legacy appearance adopts its theme color as an independent background',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final store = DriftAppSettingsStore(database);
+        await database
+            .into(database.appMetadata)
+            .insert(
+              AppMetadataCompanion.insert(
+                key: 'settings.appearance',
+                value: '{"primaryColor":4294945088,"gradientDepth":0.7}',
+                updatedAt: Value(DateTime.utc(2026, 11, 19)),
+              ),
+            );
+        final loaded = await store.read();
+        expect(loaded.appearance.primaryColor, 0xFFFFA940);
+        expect(loaded.appearance.backgroundSeedColor, 0xFFFFA940);
+        expect(loaded.appearance.backgroundStyle, AppBackgroundStyle.multiGlow);
+        await store.save(
+          loaded.copyWith(
+            appearance: loaded.appearance.copyWith(primaryColor: 0xFF1677FF),
+          ),
+        );
+        final reloaded = await store.read();
+        expect(reloaded.appearance.primaryColor, 0xFF1677FF);
+        expect(reloaded.appearance.backgroundSeedColor, 0xFFFFA940);
+        expect(reloaded.appearance.gradientDepth, 0.7);
+      },
+    );
   });
 }

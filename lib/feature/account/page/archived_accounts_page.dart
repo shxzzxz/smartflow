@@ -13,6 +13,7 @@ import '../../../widget/business/finance/money_text.dart';
 import '../presentation/account_section_presentation.dart';
 import '../view_model/archived_accounts_view_model.dart';
 import '../widget/account_list_row.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class ArchivedAccountsPage extends ConsumerStatefulWidget {
   const ArchivedAccountsPage({super.key, this.initiallyHideBalances = false});
@@ -38,7 +39,7 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
   Widget build(BuildContext context) {
     final pageState = ref.watch(archivedAccountsViewModelProvider);
 
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -46,12 +47,11 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
               title: '已归档账户',
               actions: [
                 AppHeaderIconButton(
-                  onPressed:
-                      () => setState(() => _hideBalances = !_hideBalances),
-                  icon:
-                      _hideBalances
-                          ? RemixIcons.eye_off_line
-                          : RemixIcons.eye_line,
+                  onPressed: () =>
+                      setState(() => _hideBalances = !_hideBalances),
+                  icon: _hideBalances
+                      ? RemixIcons.eye_off_line
+                      : RemixIcons.eye_line,
                   tooltip: _hideBalances ? '显示余额' : '隐藏余额',
                 ),
               ],
@@ -63,12 +63,11 @@ class _ArchivedAccountsPageState extends ConsumerState<ArchivedAccountsPage> {
                     sections: sections,
                     hideBalances: _hideBalances,
                     collapsedGroupIds: _collapsedGroupIds,
-                    onToggleGroup:
-                        (groupId) => setState(() {
-                          _collapsedGroupIds.contains(groupId)
-                              ? _collapsedGroupIds.remove(groupId)
-                              : _collapsedGroupIds.add(groupId);
-                        }),
+                    onToggleGroup: (groupId) => setState(() {
+                      _collapsedGroupIds.contains(groupId)
+                          ? _collapsedGroupIds.remove(groupId)
+                          : _collapsedGroupIds.add(groupId);
+                    }),
                   ),
                 ArchivedAccountsPageError(:final error) =>
                   _ArchivedAccountsError(message: error.message),
@@ -180,8 +179,9 @@ class _ArchivedAccountGroup extends StatelessWidget {
                           child: Icon(
                             RemixIcons.arrow_down_s_line,
                             size: AppSpacing.space18,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),

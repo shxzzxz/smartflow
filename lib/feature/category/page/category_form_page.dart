@@ -14,6 +14,7 @@ import 'package:smartflow/widget/business/icon/business_icon.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/category_form_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CategoryFormPage extends ConsumerWidget {
   const CategoryFormPage({
@@ -53,7 +54,7 @@ class CategoryFormPage extends ConsumerWidget {
         title: categoryId == null ? '新增分类' : '编辑分类',
         message: '分类加载失败，请稍后重试',
       ),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 }
@@ -66,7 +67,7 @@ class _CategoryFormStatusPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -140,7 +141,7 @@ class _CategoryFormContentState extends ConsumerState<_CategoryFormContent> {
         .where((parent) => parent.id == formState.parentId)
         .firstOrNull;
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Form(

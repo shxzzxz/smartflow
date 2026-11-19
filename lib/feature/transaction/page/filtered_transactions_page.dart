@@ -13,6 +13,7 @@ import '../../../widget/business/transaction/transaction_batch_action_bar.dart';
 import '../../../widget/business/transaction/transaction_batch_tag_action_sheet.dart';
 import '../../../widget/business/transaction/transaction_feed.dart';
 import '../view_model/filtered_transactions/filtered_transactions_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.transaction');
 
@@ -57,7 +58,7 @@ class _FilteredTransactionsPageState
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _viewModel.exitBatchMode();
       },
-      child: Scaffold(
+      child: AppScaffold(
         body: SafeArea(
           child: Column(
             children: [

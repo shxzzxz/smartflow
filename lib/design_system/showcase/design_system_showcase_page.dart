@@ -39,6 +39,7 @@ import '../../widget/business/category/tree_select.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme_extension.dart';
 import '../token/chart.dart';
+import '../token/component.dart';
 import '../token/list.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
@@ -72,6 +73,7 @@ import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
 import '../widget/app_swipe_action.dart';
 import 'installment_component_previews.dart';
+import '../widget/app_scaffold.dart';
 
 const _showcaseCategories = <String>[
   '设计基础',
@@ -109,6 +111,7 @@ enum _ShowcaseExampleKind {
   dropdown,
   settingsRows,
   surface,
+  pageBackground,
   emptyState,
   listDivider,
   textFormRow,
@@ -259,6 +262,13 @@ const _showcaseExamples = <_ShowcaseExample>[
     title: '卡片',
     componentNames: 'AppSurface',
     keywords: ['卡片', '容器', '表面'],
+  ),
+  _ShowcaseExample(
+    kind: _ShowcaseExampleKind.pageBackground,
+    category: '布局与容器',
+    title: '页面背景',
+    componentNames: 'AppScaffold / AppPageBackground',
+    keywords: ['背景', '背景基色', '风格', '纯色', '光晕', '渐变', '深浅', '范围'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.listDivider,
@@ -916,7 +926,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
               if (example.matches(normalizedQuery)) example,
           ];
 
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
         child: Column(
@@ -1037,6 +1047,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       _ShowcaseExampleKind.dropdown => _dropdownPreview(),
       _ShowcaseExampleKind.settingsRows => _settingsRowsPreview(),
       _ShowcaseExampleKind.surface => _surfacePreview(),
+      _ShowcaseExampleKind.pageBackground => _pageBackgroundPreview(),
       _ShowcaseExampleKind.emptyState => _emptyStatePreview(),
       _ShowcaseExampleKind.listDivider => _listDividerPreview(),
       _ShowcaseExampleKind.textFormRow => _textFormRowPreview(),
@@ -2295,6 +2306,22 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
       },
       icon: const Icon(Icons.account_tree_outlined),
       label: const Text('打开树形选择'),
+    );
+  }
+
+  Widget _pageBackgroundPreview() {
+    return SizedBox(
+      height: AppComponentTokens.pageBackgroundPreviewHeight,
+      child: const AppScaffold(
+        body: Center(
+          child: AppSurface(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.space16),
+              child: Text('内容表面'),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

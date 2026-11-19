@@ -16,6 +16,7 @@ import '../widget/loan_calculator_action_button.dart';
 import 'loan_comparison_page.dart';
 import 'loan_change_page.dart';
 import 'loan_plan_page.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class LoanConfigurationPage extends ConsumerStatefulWidget {
   const LoanConfigurationPage({
@@ -69,7 +70,7 @@ class _LoanConfigurationPageState extends ConsumerState<LoanConfigurationPage>
       final index = advanced ? 1 : 0;
       if (_tabs.index != index) _tabs.animateTo(index);
     });
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [

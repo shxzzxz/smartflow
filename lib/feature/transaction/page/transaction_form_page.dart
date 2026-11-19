@@ -41,6 +41,7 @@ import '../presentation/transaction_form_presentation.dart';
 import '../presentation/transaction_form_prefill.dart';
 import '../view_model/transaction_form/transaction_form_view_model.dart';
 import '../../../widget/business/transaction/transaction_allocation_fields.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 part 'transaction_form_chrome.dart';
 part 'transaction_form_entry_sections.dart';
@@ -138,7 +139,7 @@ class TransactionFormPage extends ConsumerWidget {
         title: editTransactionId == null ? '新增交易' : '编辑交易',
         message: '交易加载失败，请稍后重试',
       ),
-      _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
     };
   }
 }
@@ -238,8 +239,8 @@ class _TransactionFormContentState
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardVisible = keyboardInset > 0;
 
-    return Scaffold(
-      backgroundColor: AppColors.neutral99,
+    return AppScaffold(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Form(

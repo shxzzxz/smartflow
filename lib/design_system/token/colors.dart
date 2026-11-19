@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'appearance.dart';
+
 abstract final class AppColors {
-  static const brand = Color(0xFF1677FF);
+  static const brand = Color(AppAppearanceTokens.primaryColor);
   static const brandDark = Color(0xFF9CCAFF);
 
   static const neutral10 = Color(0xFF101827);
   static const neutral20 = Color(0xFF68718A);
   static const neutral90 = Color(0xFFE6EAF0);
-  static const neutral95 = Color(0xFFF6F8FC);
+  static const neutral95 = Color(0xFFF6F6F6);
   static const neutral99 = Color(0xFFFFFFFF);
 
   static const success = Color(0xFF19B35C);
@@ -15,12 +17,16 @@ abstract final class AppColors {
   static const danger = Color(0xFFFF3045);
   static const info = Color(0xFF1677FF);
 
-  static const income = Color(0xFF00B85C);
-  static const expense = Color(0xFFFF2B2B);
+  static const income = Color(AppAppearanceTokens.incomeColor);
+  static const expense = Color(AppAppearanceTokens.expenseColor);
   static const transfer = Color(0xFF1677FF);
-  static const asset = Color(0xFF1677FF);
-  static const liability = Color(0xFF8E3B46);
+  static const asset = Color(0xFF00B85C);
+  static const liability = Color(0xFFFF2B2B);
   static const equity = Color(0xFF7862B8);
+  static const incomeDark = Color(0xFF8BD88F);
+  static const expenseDark = Color(0xFFFFB68A);
+  static const assetDark = Color(0xFF8BD88F);
+  static const liabilityDark = Color(0xFFFFB68A);
 
   // 类别强调色（用于 CategoryAvatar 等业务组件）。
   // 同色值不同语义即不同 token。

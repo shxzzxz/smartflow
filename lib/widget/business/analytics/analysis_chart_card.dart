@@ -5,6 +5,7 @@ import '../../../design_system/token/chart.dart';
 import '../../../design_system/token/spacing.dart';
 import 'analysis_section_card.dart';
 import 'chart/app_chart_expand_button.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 typedef ExpandedChartBuilder = Widget Function(double height);
 
@@ -121,7 +122,7 @@ class _ExpandedChartPageState extends State<_ExpandedChartPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.space8),

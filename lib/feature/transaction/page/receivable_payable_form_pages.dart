@@ -12,6 +12,7 @@ import '../../../widget/business/finance/money_input.dart';
 import '../../../widget/business/form/plain_transaction_fields.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/transaction_form/receivable_payable/receivable_payable_form_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class ReceivableCollectionFormPage extends StatelessWidget {
   const ReceivableCollectionFormPage({
@@ -81,7 +82,7 @@ class _ReceivablePayableFormPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(receivablePayableFormViewModelProvider(args));
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: switch (asyncState) {
@@ -171,11 +172,10 @@ class _ReceivablePayableFormContentState
                       label: state.amountLabel,
                       controller: _amountController,
                       hintText: '请输入${state.amountLabel}',
-                      validator:
-                          (value) => validatePositiveMoneyText(
-                            value,
-                            nonPositiveMessage: '${state.amountLabel}必须大于 0',
-                          ),
+                      validator: (value) => validatePositiveMoneyText(
+                        value,
+                        nonPositiveMessage: '${state.amountLabel}必须大于 0',
+                      ),
                     ),
                     if (state.kind == ReceivablePayableFormKind.collection) ...[
                       MoneyPlainFormRow(
@@ -189,11 +189,11 @@ class _ReceivablePayableFormContentState
                         account: receiveAccount,
                         selectedId: state.receiveAccountId,
                         placeholder: '请选择到账账户',
-                        onTap:
-                            (onSelected) =>
-                                _pickReceiveAccount(state, onSelected),
-                        onChanged:
-                            ref.read(provider.notifier).setReceiveAccountId,
+                        onTap: (onSelected) =>
+                            _pickReceiveAccount(state, onSelected),
+                        onChanged: ref
+                            .read(provider.notifier)
+                            .setReceiveAccountId,
                         validator: (value) => value == null ? '请选择到账账户' : null,
                       ),
                     ],
@@ -201,9 +201,8 @@ class _ReceivablePayableFormContentState
                       label: '交易日期',
                       dateTime: state.occurredAt,
                       value: _formatDateTime(state.occurredAt),
-                      onTap:
-                          (onSelected) =>
-                              _pickDate(state.occurredAt, onSelected),
+                      onTap: (onSelected) =>
+                          _pickDate(state.occurredAt, onSelected),
                       onChanged: (value) {
                         if (value != null) {
                           ref.read(provider.notifier).setOccurredAt(value);
@@ -294,21 +293,20 @@ class _ReceivablePayableFormContentState
   Future<bool> _confirm(BalanceCrossingConfirmation confirmation) async =>
       await showDialog<bool>(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: Text(confirmation.title),
-              content: Text(confirmation.message),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('继续提交'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text(confirmation.title),
+          content: Text(confirmation.message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
             ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('继续提交'),
+            ),
+          ],
+        ),
       ) ??
       false;
 }

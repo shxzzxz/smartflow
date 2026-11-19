@@ -18,6 +18,7 @@ import '../widget/insurance/insurance_category_icon.dart';
 import '../widget/insurance/insurance_coverage_overview_card.dart';
 import '../widget/insurance_coverage_overview_editor.dart';
 import '../widget/insurance_responsibility_editor.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class CommercialInsuranceResponsibilitiesPage extends ConsumerWidget {
   const CommercialInsuranceResponsibilitiesPage({
@@ -33,7 +34,7 @@ class CommercialInsuranceResponsibilitiesPage extends ConsumerWidget {
       insuranceId,
     );
     final asyncState = ref.watch(provider);
-    return Scaffold(
+    return AppScaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: asyncState.when(

@@ -19,6 +19,7 @@ import '../../../widget/business/account/account_picker_sheet.dart';
 import '../../../widget/business/category/category_picker_sheet.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../view_model/recognition_rule_editor_view_model.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 
 class RecognitionRuleEditorPage extends ConsumerStatefulWidget {
   const RecognitionRuleEditorPage({
@@ -73,7 +74,7 @@ class _RecognitionRuleEditorPageState
     final target = state.targets
         .where((target) => target.id == rule?.targetAccountId)
         .firstOrNull;
-    return Scaffold(
+    return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
