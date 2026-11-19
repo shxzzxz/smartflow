@@ -70,15 +70,35 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     );
   }
 
-  /// 外观与记账按钮一次提交，持久化成功前不发布到全局主题。
-  Future<void> savePersonalization({
+  Future<void> setIncomeColor(int value) {
+    return _save(
+      (settings) => settings.copyWith(
+        appearance: settings.appearance.copyWith(incomeColor: value),
+      ),
+    );
+  }
+
+  Future<void> setExpenseColor(int value) {
+    return _save(
+      (settings) => settings.copyWith(
+        appearance: settings.appearance.copyWith(expenseColor: value),
+      ),
+    );
+  }
+
+  /// 只提交主题配色与背景参数，持久化成功后发布到全局主题。
+  Future<void> saveThemeAppearance({
     required AppAppearanceSettings appearance,
-    required bool showAddTransactionFab,
   }) {
     return _save(
       (settings) => settings.copyWith(
-        appearance: appearance,
-        showAddTransactionFab: showAddTransactionFab,
+        appearance: settings.appearance.copyWith(
+          primaryColor: appearance.primaryColor,
+          backgroundSeedColor: appearance.backgroundSeedColor,
+          backgroundStyle: appearance.backgroundStyle,
+          gradientDepth: appearance.gradientDepth,
+          gradientRange: appearance.gradientRange,
+        ),
       ),
       optimistic: false,
     );

@@ -1,5 +1,5 @@
 abstract final class AppHeaderTokens {
-  /// 页头最小高度，容纳 48dp 触控目标并保留上下留白。
+  /// 页头最小高度，为控件保留上下留白。
   static const double minHeight = 56;
 
   /// 文字与图标字形距屏幕边缘的光学间距，与页面内容水平边距保持一致。

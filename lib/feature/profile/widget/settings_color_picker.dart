@@ -8,7 +8,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/component.dart';
 import '../../../design_system/token/spacing.dart';
 
-Future<void> showPersonalizationColorPicker({
+Future<void> showSettingsColorPicker({
   required BuildContext context,
   required String title,
   required int color,
@@ -23,16 +23,13 @@ Future<void> showPersonalizationColorPicker({
           MediaQuery.sizeOf(context).height *
           AppComponentTokens.selectionSheetMaxHeightFactor,
     ),
-    builder: (context) => _PersonalizationColorPicker(
-      title: title,
-      color: color,
-      onChanged: onChanged,
-    ),
+    builder: (context) =>
+        _SettingsColorPicker(title: title, color: color, onChanged: onChanged),
   );
 }
 
-class _PersonalizationColorPicker extends StatefulWidget {
-  const _PersonalizationColorPicker({
+class _SettingsColorPicker extends StatefulWidget {
+  const _SettingsColorPicker({
     required this.title,
     required this.color,
     required this.onChanged,
@@ -43,12 +40,10 @@ class _PersonalizationColorPicker extends StatefulWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  State<_PersonalizationColorPicker> createState() =>
-      _PersonalizationColorPickerState();
+  State<_SettingsColorPicker> createState() => _SettingsColorPickerState();
 }
 
-class _PersonalizationColorPickerState
-    extends State<_PersonalizationColorPicker> {
+class _SettingsColorPickerState extends State<_SettingsColorPicker> {
   final _formKey = GlobalKey<FormState>();
   late int _color;
   late final TextEditingController _hexController;

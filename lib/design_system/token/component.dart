@@ -26,13 +26,8 @@ abstract final class AppComponentTokens {
   static const double focusedOutlineWidth = 1.5;
   static const double adaptiveLayoutTextScaleThreshold = 1.3;
   static const double selectionSheetMaxHeightFactor = 0.60;
-  static const double personalizationPanelHeightFactor = 0.45;
-  static const double personalizationPanelMinHeight = 240;
-  static const double personalizationPreviewMinHeight = 120;
-  static const double personalizationPreviewDetailsMinHeight = 376;
   static const double pageBackgroundPreviewHeight = 160;
-  static const double personalizationColorSwatchSize = 48;
-  static const double personalizationColorTileMinWidth = 72;
+  static const double settingsColorSwatchSize = 24;
 
   static const double disabledContentOpacity = 0.38;
   static const double disabledContainerOpacity = 0.08;

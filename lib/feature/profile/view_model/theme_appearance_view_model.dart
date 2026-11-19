@@ -8,53 +8,48 @@ import '../../shared/view_model/action_guard.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 
-part 'personalization_view_model.g.dart';
+part 'theme_appearance_view_model.g.dart';
 
-final _logger = Logger('feature.profile.personalization');
+final _logger = Logger('feature.profile.theme_appearance');
 
-class PersonalizationState {
-  const PersonalizationState({
-    required this.savedSettings,
+class ThemeAppearanceState {
+  const ThemeAppearanceState({
+    required this.savedAppearance,
     required this.appearance,
-    required this.showAddTransactionFab,
     this.submitting = false,
   });
 
-  factory PersonalizationState.fromSettings(AppSettings settings) =>
-      PersonalizationState(
-        savedSettings: settings,
-        appearance: AppAppearanceValues.resolve(settings.appearance),
-        showAddTransactionFab: settings.showAddTransactionFab,
-      );
+  factory ThemeAppearanceState.fromSettings(AppSettings settings) {
+    final appearance = AppAppearanceValues.resolve(settings.appearance);
+    return ThemeAppearanceState(
+      savedAppearance: appearance,
+      appearance: appearance,
+    );
+  }
 
-  final AppSettings savedSettings;
+  final AppAppearanceSettings savedAppearance;
   final AppAppearanceSettings appearance;
-  final bool showAddTransactionFab;
   final bool submitting;
 
-  bool get hasChanges =>
-      appearance != AppAppearanceValues.resolve(savedSettings.appearance) ||
-      showAddTransactionFab != savedSettings.showAddTransactionFab;
+  bool get hasChanges => appearance != savedAppearance;
 
-  PersonalizationState copyWith({
+  ThemeAppearanceState copyWith({
     AppAppearanceSettings? appearance,
-    bool? showAddTransactionFab,
     bool? submitting,
-  }) => PersonalizationState(
-    savedSettings: savedSettings,
+  }) => ThemeAppearanceState(
+    savedAppearance: savedAppearance,
     appearance: appearance ?? this.appearance,
-    showAddTransactionFab: showAddTransactionFab ?? this.showAddTransactionFab,
     submitting: submitting ?? this.submitting,
   );
 }
 
 @riverpod
-class PersonalizationViewModel extends _$PersonalizationViewModel {
+class ThemeAppearanceViewModel extends _$ThemeAppearanceViewModel {
   @override
-  Future<PersonalizationState> build() async {
+  Future<ThemeAppearanceState> build() async {
     // 全局设置是 keepAlive；只取一次，后续全局更新不覆盖编辑中的草稿。
     final settings = await ref.read(appSettingsViewModelProvider.future);
-    return PersonalizationState.fromSettings(settings);
+    return ThemeAppearanceState.fromSettings(settings);
   }
 
   void retry() {
@@ -77,18 +72,6 @@ class PersonalizationViewModel extends _$PersonalizationViewModel {
   void setBackgroundStyle(AppBackgroundStyle style) => _update(
     (value) => value.copyWith(
       appearance: value.appearance.copyWith(backgroundStyle: style),
-    ),
-  );
-
-  void setIncomeColor(int color) => _update(
-    (value) => value.copyWith(
-      appearance: value.appearance.copyWith(incomeColor: color),
-    ),
-  );
-
-  void setExpenseColor(int color) => _update(
-    (value) => value.copyWith(
-      appearance: value.appearance.copyWith(expenseColor: color),
     ),
   );
 
@@ -116,23 +99,28 @@ class PersonalizationViewModel extends _$PersonalizationViewModel {
     );
   }
 
-  void setShowAddTransactionFab(bool show) =>
-      _update((value) => value.copyWith(showAddTransactionFab: show));
-
-  void restoreDefaults() => _update(
-    (value) => value.copyWith(
-      appearance: AppAppearanceValues.resolve(const AppAppearanceSettings()),
-      showAddTransactionFab: const AppSettings().showAddTransactionFab,
-    ),
-  );
+  void restoreDefaults() {
+    final defaults = AppAppearanceValues.resolve(const AppAppearanceSettings());
+    _update(
+      (value) => value.copyWith(
+        appearance: value.appearance.copyWith(
+          primaryColor: defaults.primaryColor,
+          backgroundSeedColor: defaults.backgroundSeedColor,
+          backgroundStyle: defaults.backgroundStyle,
+          gradientDepth: defaults.gradientDepth,
+          gradientRange: defaults.gradientRange,
+        ),
+      ),
+    );
+  }
 
   void discardChanges() {
     final current = state.value;
     if (current == null || current.submitting) return;
-    state = AsyncData(PersonalizationState.fromSettings(current.savedSettings));
+    state = AsyncData(current.copyWith(appearance: current.savedAppearance));
   }
 
-  void _update(PersonalizationState Function(PersonalizationState) change) {
+  void _update(ThemeAppearanceState Function(ThemeAppearanceState) change) {
     final current = state.value;
     if (current == null || current.submitting) return;
     state = AsyncData(change(current));
@@ -150,18 +138,15 @@ class PersonalizationViewModel extends _$PersonalizationViewModel {
     }
     state = AsyncData(submitted.copyWith(submitting: true));
     try {
-      final outcome = await guardUiAction(_logger, 'save personalization', () {
+      final outcome = await guardUiAction(_logger, 'save theme appearance', () {
         return ref
             .read(appSettingsViewModelProvider.notifier)
-            .savePersonalization(
-              appearance: submitted.appearance,
-              showAddTransactionFab: submitted.showAddTransactionFab,
-            );
+            .saveThemeAppearance(appearance: submitted.appearance);
       });
       if (!ref.mounted) return outcome;
       if (outcome is UiActionSuccess<void>) {
         state = AsyncData(
-          PersonalizationState.fromSettings(
+          ThemeAppearanceState.fromSettings(
             ref.read(appSettingsViewModelProvider).requireValue,
           ),
         );

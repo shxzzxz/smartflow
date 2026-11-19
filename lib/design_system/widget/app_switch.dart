@@ -4,8 +4,8 @@ import '../token/component.dart';
 
 /// SmartFlow 的紧凑开关。
 ///
-/// 保留 Material 3 [Switch] 的状态、焦点、语义和 48dp 触控目标，仅缩小
-/// 视觉呈现，以适配表单行和紧凑菜单的文字密度。
+/// 保留 Material 3 [Switch] 的状态、焦点和语义，使用紧凑的视觉呈现
+/// 以适配表单行和紧凑菜单的文字密度。
 class AppSwitch extends StatelessWidget {
   const AppSwitch({required this.value, required this.onChanged, super.key});
 

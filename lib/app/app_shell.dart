@@ -83,7 +83,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// 一级导航与个性化设置中的只读预览共用同一套导航呈现。
+/// 应用一级页面的底部导航呈现。
 class AppBottomNavigationBar extends StatelessWidget {
   const AppBottomNavigationBar({
     super.key,

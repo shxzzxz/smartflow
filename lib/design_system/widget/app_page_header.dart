@@ -163,7 +163,7 @@ class AppHeaderTextButton extends StatelessWidget {
   }
 }
 
-/// 页头图标按钮的统一几何：24 字形、48 触控盒。
+/// 页头图标按钮的共享样式，几何参数由页头 token 提供。
 final ButtonStyle appHeaderIconButtonStyle = IconButton.styleFrom(
   iconSize: AppHeaderTokens.iconSize,
   fixedSize: const Size.square(AppHeaderTokens.iconButtonSize),
