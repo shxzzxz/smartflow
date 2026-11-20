@@ -65,22 +65,25 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         ),
       AsyncData(value: null) => const _AccountFormStatusPage(
         title: '编辑账户',
-        message: '账户不存在',
+        child: Text('账户不存在'),
       ),
       AsyncError() => _AccountFormStatusPage(
         title: accountId == null ? '新建账户' : '编辑账户',
-        message: '账户加载失败，请稍后重试',
+        child: const Text('账户加载失败，请稍后重试'),
       ),
-      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
+      _ => _AccountFormStatusPage(
+        title: accountId == null ? '新建账户' : '编辑账户',
+        child: const CircularProgressIndicator(),
+      ),
     };
   }
 }
 
 class _AccountFormStatusPage extends StatelessWidget {
-  const _AccountFormStatusPage({required this.title, required this.message});
+  const _AccountFormStatusPage({required this.title, required this.child});
 
   final String title;
-  final String message;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +92,7 @@ class _AccountFormStatusPage extends StatelessWidget {
         child: Column(
           children: [
             AppPageHeader(title: title),
-            Expanded(child: Center(child: Text(message))),
+            Expanded(child: Center(child: child)),
           ],
         ),
       ),

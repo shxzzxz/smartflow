@@ -9,6 +9,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/credit/reference_rate/reference_rate_app_service.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
+import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/feature/profile/page/reference_rates_page.dart';
 import 'package:smartflow/feature/profile/presentation/reference_rates_presentation.dart';
 import 'package:smartflow/feature/shared/presentation/reference_rate_presentation.dart';
@@ -22,6 +24,13 @@ void main() {
       final service = _service();
       await tester.pumpWidget(_app(service));
       await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AppPageHeader),
+          matching: find.byType(AppSlidingSegmentedControl<ReferenceRateGroup>),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('今日参考利率'), findsOneWidget);
       expect(find.byTooltip('刷新参考利率'), findsNothing);
       expect(find.text('数据源'), findsNothing);
@@ -189,7 +198,7 @@ void main() {
     );
     await tester.pumpWidget(_app(service));
     await tester.pumpAndSettle();
-    final tabsY = tester.getTopLeft(find.byType(TabBar)).dy;
+    final tabsY = tester.getTopLeft(find.byType(AppPageHeader)).dy;
     await tester.drag(find.byType(ListView), const Offset(0, -250));
     await tester.pumpAndSettle();
     final offset = tester
@@ -197,7 +206,7 @@ void main() {
         .controller!
         .offset;
     expect(offset, greaterThan(0));
-    expect(tester.getTopLeft(find.byType(TabBar)).dy, tabsY);
+    expect(tester.getTopLeft(find.byType(AppPageHeader)).dy, tabsY);
     await _switchGroup(tester, '贷款基准利率');
     expect(
       tester.widget<ListView>(find.byType(ListView)).controller!.offset,
@@ -224,6 +233,9 @@ void main() {
         const scale = 1.5;
         await tester.pumpWidget(_app(_service(), dark: dark, scale: scale));
         await tester.pumpAndSettle();
+        final header = tester.getRect(find.byType(AppPageHeader));
+        expect(header.left, 0);
+        expect(header.width, size.width);
         expect(tester.takeException(), isNull);
         await _switchGroup(tester, '贷款基准利率');
         expect(tester.takeException(), isNull);

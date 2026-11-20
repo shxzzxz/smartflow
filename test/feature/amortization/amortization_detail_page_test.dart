@@ -11,6 +11,7 @@ import 'package:smartflow/application/orchestration/amortization/command/amortiz
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/widget/app_inline_action_button.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_refund.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_termination.dart';
@@ -19,6 +20,26 @@ import 'package:smartflow/feature/amortization/page/amortization_detail_page.dar
 import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 
 void main() {
+  testWidgets('keeps the detail header while the plan is loading', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          amortizationPlanProvider(
+            'plan',
+          ).overrideWith((ref) => const Stream<AmortizationPlan?>.empty()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const AmortizationDetailPage(planId: 'plan'),
+        ),
+      ),
+    );
+    expect(find.widgetWithText(AppPageHeader, '摊销详情'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
   testWidgets('unavailable plan actions remain visible and disabled', (
     tester,
   ) async {

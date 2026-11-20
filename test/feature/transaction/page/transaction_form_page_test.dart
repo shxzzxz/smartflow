@@ -1370,6 +1370,7 @@ void main() {
         ),
       );
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.widgetWithText(AppPageHeader, '编辑交易'), findsOneWidget);
 
       details.add(_transactionDetail('tx-1', note: '原始备注'));
       await tester.pumpAndSettle();

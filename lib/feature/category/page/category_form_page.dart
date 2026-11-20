@@ -48,22 +48,25 @@ class CategoryFormPage extends ConsumerWidget {
         ),
       AsyncData(value: null) => const _CategoryFormStatusPage(
         title: '编辑分类',
-        message: '分类不存在',
+        child: Text('分类不存在'),
       ),
       AsyncError() => _CategoryFormStatusPage(
         title: categoryId == null ? '新增分类' : '编辑分类',
-        message: '分类加载失败，请稍后重试',
+        child: const Text('分类加载失败，请稍后重试'),
       ),
-      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
+      _ => _CategoryFormStatusPage(
+        title: categoryId == null ? '新增分类' : '编辑分类',
+        child: const CircularProgressIndicator(),
+      ),
     };
   }
 }
 
 class _CategoryFormStatusPage extends StatelessWidget {
-  const _CategoryFormStatusPage({required this.title, required this.message});
+  const _CategoryFormStatusPage({required this.title, required this.child});
 
   final String title;
-  final String message;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +75,7 @@ class _CategoryFormStatusPage extends StatelessWidget {
         child: Column(
           children: [
             AppPageHeader(title: title),
-            Expanded(child: Center(child: Text(message))),
+            Expanded(child: Center(child: child)),
           ],
         ),
       ),

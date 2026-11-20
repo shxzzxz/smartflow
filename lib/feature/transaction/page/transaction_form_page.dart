@@ -133,13 +133,16 @@ class TransactionFormPage extends ConsumerWidget {
         ),
       AsyncData(value: null) => const _TransactionFormStatusPage(
         title: '编辑交易',
-        message: '交易不存在或当前类型不支持在此编辑',
+        child: Text('交易不存在或当前类型不支持在此编辑'),
       ),
       AsyncError() => _TransactionFormStatusPage(
         title: editTransactionId == null ? '新增交易' : '编辑交易',
-        message: '交易加载失败，请稍后重试',
+        child: const Text('交易加载失败，请稍后重试'),
       ),
-      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
+      _ => _TransactionFormStatusPage(
+        title: editTransactionId == null ? '新增交易' : '编辑交易',
+        child: const CircularProgressIndicator(),
+      ),
     };
   }
 }

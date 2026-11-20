@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../design_system/token/spacing.dart';
+import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_scaffold.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/finance/bill_item_row.dart';
 import '../../../widget/business/finance/finance_summary_row.dart';
 import '../presentation/calendar_bills_presentation.dart';
 import '../view_model/calendar_bills_view_model.dart';
-import '../../../design_system/widget/app_scaffold.dart';
 
 class CalendarDayBillsPage extends ConsumerWidget {
   const CalendarDayBillsPage({required this.date, super.key});
@@ -43,21 +44,29 @@ class _CalendarBillsPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (state) {
-      CalendarBillsPageLoading(:final title) => AppScaffold(
-        appBar: AppBar(title: Text(title)),
-        body: const Center(child: CircularProgressIndicator()),
+    final (title, body) = switch (state) {
+      CalendarBillsPageLoading(:final title) => (
+        title,
+        const Center(child: CircularProgressIndicator()),
       ),
-      CalendarBillsPageError(:final title, :final message) => AppScaffold(
-        appBar: AppBar(title: Text(title)),
-        body: Center(child: Text(message)),
+      CalendarBillsPageError(:final title, :final message) => (
+        title,
+        Center(child: Text(message)),
       ),
       CalendarBillsPageLoaded(:final title, :final emptyMessage, :final rows) =>
-        AppScaffold(
-          appBar: AppBar(title: Text(title)),
-          body: _CalendarBillList(rows: rows, emptyMessage: emptyMessage),
-        ),
+        (title, _CalendarBillList(rows: rows, emptyMessage: emptyMessage)),
     };
+    return AppScaffold(
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppPageHeader(title: title),
+            Expanded(child: body),
+          ],
+        ),
+      ),
+    );
   }
 }
 

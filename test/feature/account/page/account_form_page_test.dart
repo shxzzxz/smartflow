@@ -6,6 +6,7 @@ import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/account/page/account_form_page.dart';
 import 'package:smartflow/feature/account/presentation/account_creation_presets.dart';
 import 'package:smartflow/feature/account/view_model/account_form_view_model.dart';
@@ -17,6 +18,23 @@ import 'package:smartflow/widget/business/form/plain_transaction_fields.dart';
 import 'package:smartflow/widget/business/icon/icon_catalog_picker.dart';
 
 void main() {
+  testWidgets('keeps the edit header while the account is loading', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          accountViewProvider(
+            'account-1',
+          ).overrideWithValue(const AsyncLoading<AccountView?>()),
+        ],
+        child: const MaterialApp(home: AccountFormPage(accountId: 'account-1')),
+      ),
+    );
+    expect(find.widgetWithText(AppPageHeader, '编辑账户'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
   testWidgets('shows every account profile when creating an account', (
     tester,
   ) async {

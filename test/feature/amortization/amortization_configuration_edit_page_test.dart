@@ -8,6 +8,7 @@ import 'package:smartflow/application/orchestration/amortization/command/amortiz
 import 'package:smartflow/application/orchestration/amortization/command/amortization_plan_app_service.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/domain/ledger/valobj/account_amount_allocation.dart';
 import 'package:smartflow/domain/orchestration/entity/amortization_plan.dart';
 import 'package:smartflow/domain/orchestration/valobj/amortization_enums.dart';
@@ -15,6 +16,26 @@ import 'package:smartflow/feature/amortization/page/amortization_configuration_e
 import 'package:smartflow/feature/amortization/provider/amortization_providers.dart';
 
 void main() {
+  testWidgets('keeps the configuration header while the plan is loading', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          amortizationPlanProvider(
+            'plan',
+          ).overrideWith((ref) => const Stream<AmortizationPlan?>.empty()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const AmortizationConfigurationEditPage(planId: 'plan'),
+        ),
+      ),
+    );
+    expect(find.widgetWithText(AppPageHeader, '配置编辑'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
   testWidgets('configuration editor only submits schedule configuration', (
     tester,
   ) async {

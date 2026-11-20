@@ -8,6 +8,7 @@ import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/widget/app_form_section.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/category/page/category_form_page.dart';
 import 'package:smartflow/feature/category/view_model/category_form_view_model.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -92,6 +93,7 @@ void main() {
       ),
     );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.widgetWithText(AppPageHeader, '编辑分类'), findsOneWidget);
 
     categories.add({category.id: category});
     await tester.pumpAndSettle();

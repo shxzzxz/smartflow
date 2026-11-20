@@ -133,30 +133,33 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
   @override
   Widget build(BuildContext context) {
     final article = _article;
-    if (article == null) {
-      return const AppScaffold(body: Center(child: Text('手册文章不存在')));
-    }
 
     return AppScaffold(
       body: SafeArea(
         child: Column(
           children: [
             AppPageHeader(
-              title: article.title,
-              actions: [
-                AppHeaderIconButton(
-                  tooltip: '文章目录',
-                  icon: RemixIcons.menu_2_line,
-                  onPressed: _openArticleDirectory,
-                ),
-                AppHeaderIconButton(
-                  tooltip: '本页目录',
-                  icon: RemixIcons.list_ordered_2,
-                  onPressed: _headings.isEmpty ? null : _openArticleToc,
-                ),
-              ],
+              title: article?.title ?? '使用手册',
+              actions: article == null
+                  ? const []
+                  : [
+                      AppHeaderIconButton(
+                        tooltip: '文章目录',
+                        icon: RemixIcons.menu_2_line,
+                        onPressed: _openArticleDirectory,
+                      ),
+                      AppHeaderIconButton(
+                        tooltip: '本页目录',
+                        icon: RemixIcons.list_ordered_2,
+                        onPressed: _headings.isEmpty ? null : _openArticleToc,
+                      ),
+                    ],
             ),
-            Expanded(child: _buildBody(article)),
+            Expanded(
+              child: article == null
+                  ? const Center(child: Text('手册文章不存在'))
+                  : _buildBody(article),
+            ),
           ],
         ),
       ),
@@ -180,9 +183,9 @@ class _ManualArticlePageState extends State<ManualArticlePage> {
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space16,
         AppSpacing.space20,
-        AppSpacing.space20,
-        AppSpacing.space20,
+        AppSpacing.space16,
         AppSpacing.space32,
       ),
       child: Column(

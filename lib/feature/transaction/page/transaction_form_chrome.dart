@@ -1,13 +1,10 @@
 part of 'transaction_form_page.dart';
 
 class _TransactionFormStatusPage extends StatelessWidget {
-  const _TransactionFormStatusPage({
-    required this.title,
-    required this.message,
-  });
+  const _TransactionFormStatusPage({required this.title, required this.child});
 
   final String title;
-  final String message;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +13,7 @@ class _TransactionFormStatusPage extends StatelessWidget {
         child: Column(
           children: [
             AppPageHeader(title: title),
-            Expanded(child: Center(child: Text(message))),
+            Expanded(child: Center(child: child)),
           ],
         ),
       ),

@@ -11,6 +11,7 @@ import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_status_banner.dart';
+import '../../../design_system/widget/app_surface.dart';
 import '../../shared/view_model/ui_action_outcome.dart';
 import '../presentation/log_viewer_presentation.dart';
 import '../view_model/log_viewer_view_model.dart';
@@ -34,68 +35,73 @@ class LogViewerPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space20,
-                AppSpacing.space16,
-                AppSpacing.space20,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppPageHeader(
-                    title: '日志',
-                    actions: [
-                      AppHeaderIconButton(
-                        icon: RemixIcons.refresh_line,
-                        tooltip: '刷新',
-                        onPressed: () => ref
-                            .read(logViewerViewModelProvider.notifier)
-                            .refresh(),
-                      ),
-                      AppHeaderIconButton(
-                        icon: RemixIcons.settings_3_line,
-                        tooltip: '清理设置',
-                        onPressed: () =>
-                            showLogRetentionSettingsSheet(context: context),
-                      ),
-                      AppHeaderIconButton(
-                        icon: RemixIcons.delete_bin_6_line,
-                        tooltip: '清空日志',
-                        onPressed: () => _confirmClear(context, ref),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  _SearchField(
-                    onChanged: ref
-                        .read(logViewerViewModelProvider.notifier)
-                        .setQuery,
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: AppSlidingSegmentedControl<LogLevelFilter>(
-                      segments: const [
-                        AppSegment(value: LogLevelFilter.all, label: '全部'),
-                        AppSegment(value: LogLevelFilter.fine, label: '调试'),
-                        AppSegment(value: LogLevelFilter.info, label: '信息'),
-                        AppSegment(value: LogLevelFilter.warning, label: '警告'),
-                        AppSegment(value: LogLevelFilter.severe, label: '错误'),
-                      ],
-                      selected: state.levelFilter,
-                      onChanged: ref
-                          .read(logViewerViewModelProvider.notifier)
-                          .setLevelFilter,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                ],
-              ),
+            AppPageHeader(
+              title: '日志',
+              actions: [
+                AppHeaderIconButton(
+                  icon: RemixIcons.refresh_line,
+                  tooltip: '刷新',
+                  onPressed: () =>
+                      ref.read(logViewerViewModelProvider.notifier).refresh(),
+                ),
+                AppHeaderIconButton(
+                  icon: RemixIcons.settings_3_line,
+                  tooltip: '清理设置',
+                  onPressed: () =>
+                      showLogRetentionSettingsSheet(context: context),
+                ),
+                AppHeaderIconButton(
+                  icon: RemixIcons.delete_bin_6_line,
+                  tooltip: '清空日志',
+                  onPressed: () => _confirmClear(context, ref),
+                ),
+              ],
             ),
             Expanded(
-              child: _LogEntryList(entries: entries, state: state),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space16,
+                  AppSpacing.space16,
+                  AppSpacing.space24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _SearchField(
+                      onChanged: ref
+                          .read(logViewerViewModelProvider.notifier)
+                          .setQuery,
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: AppSlidingSegmentedControl<LogLevelFilter>(
+                        segments: const [
+                          AppSegment(value: LogLevelFilter.all, label: '全部'),
+                          AppSegment(value: LogLevelFilter.fine, label: '调试'),
+                          AppSegment(value: LogLevelFilter.info, label: '信息'),
+                          AppSegment(
+                            value: LogLevelFilter.warning,
+                            label: '警告',
+                          ),
+                          AppSegment(value: LogLevelFilter.severe, label: '错误'),
+                        ],
+                        selected: state.levelFilter,
+                        onChanged: ref
+                            .read(logViewerViewModelProvider.notifier)
+                            .setLevelFilter,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                    Expanded(
+                      child: AppSurface(
+                        child: _LogEntryList(entries: entries, state: state),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -209,11 +215,9 @@ class _LogEntryList extends StatelessWidget {
           return _EmptyPlaceholder(message: value.isEmpty ? '暂无日志' : '没有匹配的日志');
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            0,
-            AppSpacing.space20,
-            AppSpacing.space24,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space16,
+            vertical: AppSpacing.space4,
           ),
           itemCount: filtered.length,
           separatorBuilder: (context, index) => Divider(
@@ -227,7 +231,7 @@ class _LogEntryList extends StatelessWidget {
         );
       case AsyncError():
         return const Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.space20),
+          padding: EdgeInsets.all(AppSpacing.space16),
           child: Align(
             alignment: Alignment.topCenter,
             child: AppStatusBanner(

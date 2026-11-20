@@ -9,6 +9,7 @@ import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_dropdown.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_select.dart';
+import '../../../design_system/widget/app_sliding_segmented_control.dart';
 import '../../../design_system/widget/app_status_banner.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../shared/presentation/reference_rate_presentation.dart';
@@ -23,19 +24,13 @@ class ReferenceRatesPage extends ConsumerStatefulWidget {
   ConsumerState<ReferenceRatesPage> createState() => _ReferenceRatesPageState();
 }
 
-class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage>
-    with SingleTickerProviderStateMixin {
-  late final _tabs = TabController(
-    length: ReferenceRateGroup.values.length,
-    vsync: this,
-  );
+class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage> {
   final _scrollControllers = {
     for (final group in ReferenceRateGroup.values) group: ScrollController(),
   };
 
   @override
   void dispose() {
-    _tabs.dispose();
     for (final controller in _scrollControllers.values) {
       controller.dispose();
     }
@@ -46,46 +41,33 @@ class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage>
   Widget build(BuildContext context) {
     final state = ref.watch(referenceRatesViewModelProvider);
     final vm = ref.read(referenceRatesViewModelProvider.notifier);
-    ref.listen(referenceRatesViewModelProvider.select((value) => value.group), (
-      _,
-      group,
-    ) {
-      if (_tabs.index != group.index) _tabs.animateTo(group.index);
-    });
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final current = state.current;
     return AppScaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AppPageHeader(title: '参考利率'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space16,
-                  ),
-                  child: TabBar(
-                    controller: _tabs,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    dividerColor: colors.outlineVariant,
-                    labelStyle: styles.formValueEmphasis,
-                    unselectedLabelStyle: styles.formValue,
-                    onTap: (index) =>
-                        vm.selectGroup(ReferenceRateGroup.values[index]),
-                    tabs: [
-                      for (final group in ReferenceRateGroup.values)
-                        Tab(text: group.label),
-                    ],
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppPageHeader.custom(
+              titleContent: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: AppSlidingSegmentedControl<ReferenceRateGroup>(
+                  variant: AppSegmentedControlVariant.header,
+                  segments: [
+                    for (final group in ReferenceRateGroup.values)
+                      AppSegment(value: group, label: group.label),
+                  ],
+                  selected: state.group,
+                  onChanged: vm.selectGroup,
                 ),
-                Expanded(
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
                   child: RefreshIndicator(
                     onRefresh: vm.refresh,
                     child: ListView(
@@ -192,9 +174,9 @@ class _ReferenceRatesPageState extends ConsumerState<ReferenceRatesPage>
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

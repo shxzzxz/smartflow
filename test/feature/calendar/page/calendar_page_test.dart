@@ -11,6 +11,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/design_system/token/chart.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/calendar/page/calendar_page.dart';
 import 'package:smartflow/feature/calendar/page/calendar_bills_page.dart';
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
@@ -82,6 +83,10 @@ void main() {
     expect(find.text('信用卡'), findsOneWidget);
     expect(find.text('消费明细'), findsOneWidget);
     expect(find.text('120.00'), findsOneWidget);
+    expect(tester.getRect(find.byType(AppPageHeader)).width, 600);
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarPage), findsOneWidget);
   });
 
   testWidgets('opens all bills for the visible month from the more menu', (
@@ -105,6 +110,10 @@ void main() {
     expect(find.text('信用卡'), findsNWidgets(2));
     expect(find.text('已出账'), findsOneWidget);
     expect(find.text('已了结'), findsOneWidget);
+    expect(tester.getRect(find.byType(AppPageHeader)).width, 600);
+    await tester.tap(find.byTooltip('返回'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarPage), findsOneWidget);
   });
 
   testWidgets('tints day cells once the heatmap is enabled', (tester) async {

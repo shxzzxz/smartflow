@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
 import 'package:smartflow/feature/profile/page/manual_article_page.dart';
 
 import 'manual_test_assets.dart';
@@ -86,6 +87,7 @@ void main() {
     await pumpArticle(tester, 'not-a-real-slug');
 
     expect(find.text('手册文章不存在'), findsOneWidget);
+    expect(tester.getRect(find.byType(AppPageHeader)).width, 360);
     expect(tester.takeException(), isNull);
   });
 }
@@ -96,9 +98,8 @@ GoRouter _manualRouter(String slug) {
     routes: [
       GoRoute(
         path: '/profile/manual/:slug',
-        builder:
-            (_, state) =>
-                ManualArticlePage(slug: state.pathParameters['slug']!),
+        builder: (_, state) =>
+            ManualArticlePage(slug: state.pathParameters['slug']!),
       ),
     ],
   );

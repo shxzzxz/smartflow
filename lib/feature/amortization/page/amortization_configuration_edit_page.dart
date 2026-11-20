@@ -30,9 +30,9 @@ class AmortizationConfigurationEditPage extends ConsumerWidget {
         key: ValueKey(planId),
         plan: plan,
       ),
-      AsyncData(value: null) => const _StatusPage(message: '摊销计划不存在'),
-      AsyncError() => const _StatusPage(message: '摊销计划加载失败'),
-      _ => const AppScaffold(body: Center(child: CircularProgressIndicator())),
+      AsyncData(value: null) => const _StatusPage(child: Text('摊销计划不存在')),
+      AsyncError() => const _StatusPage(child: Text('摊销计划加载失败')),
+      _ => const _StatusPage(child: CircularProgressIndicator()),
     };
   }
 }
@@ -211,9 +211,9 @@ class _ConfigurationFormState extends ConsumerState<_ConfigurationForm> {
 }
 
 class _StatusPage extends StatelessWidget {
-  const _StatusPage({required this.message});
+  const _StatusPage({required this.child});
 
-  final String message;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +222,7 @@ class _StatusPage extends StatelessWidget {
         child: Column(
           children: [
             const AppPageHeader(title: '配置编辑'),
-            Expanded(child: Center(child: Text(message))),
+            Expanded(child: Center(child: child)),
           ],
         ),
       ),
