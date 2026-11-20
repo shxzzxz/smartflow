@@ -53,14 +53,13 @@ class AppPopupMenuChoice extends StatelessWidget implements AppPopupMenuEntry {
     return MenuItemButton(
       closeOnActivate: false,
       leadingIcon: icon == null ? null : Icon(icon),
-      trailingIcon:
-          selected
-              ? Icon(
-                RemixIcons.check_line,
-                size: AppSpacing.space20,
-                color: colors.primary,
-              )
-              : null,
+      trailingIcon: selected
+          ? Icon(
+              RemixIcons.check_line,
+              size: AppSpacing.space20,
+              color: colors.primary,
+            )
+          : null,
       onPressed: onPressed,
       child: Text(label),
     );
@@ -126,33 +125,30 @@ class AppPopupMenuSelect<T> extends StatelessWidget
       onChanged: onChanged,
       tooltip: '选择$label',
       behavior: AppSelectMenuBehavior.nested,
-      triggerBuilder:
-          (context, selected) => SizedBox(
-            height: AppComponentTokens.controlMinHeight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space12,
+      triggerBuilder: (context, selected) => SizedBox(
+        height: AppComponentTokens.controlMinHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
+          child: Row(
+            children: [
+              Expanded(child: Text(label)),
+              const SizedBox(width: AppSpacing.space12),
+              Text(
+                selected.label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(child: Text(label)),
-                  const SizedBox(width: AppSpacing.space12),
-                  Text(
-                    selected.label,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space4),
-                  Icon(
-                    RemixIcons.arrow_right_s_line,
-                    size: AppSpacing.space20,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ],
+              const SizedBox(width: AppSpacing.space4),
+              Icon(
+                RemixIcons.arrow_right_s_line,
+                size: AppSpacing.space20,
+                color: colors.onSurfaceVariant,
               ),
-            ),
+            ],
           ),
+        ),
+      ),
     );
   }
 }
@@ -231,10 +227,7 @@ class AppPopupMenuButton extends StatelessWidget {
         return IconButton(
           tooltip: tooltip,
           onPressed: controller.isOpen ? controller.close : controller.open,
-          icon: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          icon: Icon(icon),
           style: appHeaderIconButtonStyle,
         );
       },

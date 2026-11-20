@@ -8,6 +8,8 @@ import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/feature/profile/page/settings_page.dart';
+import 'package:smartflow/feature/profile/page/header_appearance_page.dart';
+import 'package:smartflow/feature/profile/page/navigation_appearance_page.dart';
 import 'package:smartflow/feature/profile/page/theme_appearance_page.dart';
 import 'package:smartflow/feature/shared/view_model/app_settings_view_model.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
@@ -33,6 +35,14 @@ void main() {
         GoRoute(
           path: '/profile/theme-appearance',
           builder: (context, state) => const ThemeAppearancePage(),
+        ),
+        GoRoute(
+          path: '/profile/navigation-appearance',
+          builder: (context, state) => const NavigationAppearancePage(),
+        ),
+        GoRoute(
+          path: '/profile/header-appearance',
+          builder: (context, state) => const HeaderAppearancePage(),
         ),
       ],
     );
@@ -80,7 +90,7 @@ void main() {
   }
 
   testWidgets(
-    'grouped settings save operation and display changes immediately',
+    'grouped settings save operation and transaction display changes immediately',
     (tester) async {
       final store = _InMemoryAppSettingsStore();
       await open(tester, store);
@@ -102,7 +112,7 @@ void main() {
       expect(find.text('收入颜色'), findsOneWidget);
       expect(find.text('支出颜色'), findsOneWidget);
       expect(find.text('主题外观'), findsOneWidget);
-      expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(4));
+      expect(find.byIcon(RemixIcons.arrow_right_s_line), findsNWidgets(5));
       expect(find.text('保存'), findsNothing);
 
       await tester.tap(find.text('记账悬浮按钮'));
@@ -118,16 +128,6 @@ void main() {
         PullToCreateSensitivity.sensitive,
       );
 
-      await tester.ensureVisible(find.text('导航栏样式'));
-      await tester.tap(find.text('导航栏样式'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('毛玻璃样式'));
-      await tester.pumpAndSettle();
-      expect(
-        (await store.read()).bottomNavigationStyle,
-        BottomNavigationStyle.frostedGlass,
-      );
-
       await tester.ensureVisible(find.text('交易列表信息'));
       await tester.tap(find.text('交易列表信息'));
       await tester.pumpAndSettle();
@@ -138,31 +138,35 @@ void main() {
         TransactionListDisplayMode.compact,
       );
 
-      final beforeToggle = await store.read();
-      await tester.ensureVisible(find.text('导航栏文字'));
-      await tester.tap(find.text('导航栏文字'));
-      await tester.pumpAndSettle();
-      final afterToggle = await store.read();
-      expect(afterToggle.showAddTransactionFab, isFalse);
+      final saved = await store.read();
+      expect(saved.showAddTransactionFab, isFalse);
+      expect(saved.bottomNavigationStyle, BottomNavigationStyle.classic);
+      expect(saved.showBottomNavLabels, isTrue);
+      expect(saved.pullToCreateSensitivity, PullToCreateSensitivity.sensitive);
       expect(
-        afterToggle.showBottomNavLabels,
-        !beforeToggle.showBottomNavLabels,
-      );
-      expect(
-        afterToggle.bottomNavigationStyle,
-        BottomNavigationStyle.frostedGlass,
-      );
-      expect(
-        afterToggle.pullToCreateSensitivity,
-        PullToCreateSensitivity.sensitive,
-      );
-      expect(
-        afterToggle.transactionListDisplayMode,
+        saved.transactionListDisplayMode,
         TransactionListDisplayMode.compact,
       );
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final entry in [
+    ('导航栏外观', NavigationAppearancePage),
+    ('顶部外观', HeaderAppearancePage),
+  ]) {
+    testWidgets('${entry.$1} entry opens its focused editor', (tester) async {
+      await open(tester, _InMemoryAppSettingsStore());
+      await tester.ensureVisible(find.text(entry.$1));
+      await tester.tap(find.text(entry.$1));
+      await tester.pumpAndSettle();
+      expect(find.byType(entry.$2), findsOneWidget);
+      expect(find.text('经典'), findsOneWidget);
+      expect(find.text('玻璃'), findsOneWidget);
+      expect(find.text('收入颜色'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('theme appearance entry opens the focused theme editor', (
     tester,
@@ -253,8 +257,8 @@ void main() {
             '交易列表信息',
             '收入颜色',
             '支出颜色',
-            '导航栏样式',
-            '导航栏文字',
+            '导航栏外观',
+            '顶部外观',
             '主题外观',
           ]) {
             await tester.ensureVisible(find.text(label));

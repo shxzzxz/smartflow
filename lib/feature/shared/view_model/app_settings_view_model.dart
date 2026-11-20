@@ -104,6 +104,34 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     );
   }
 
+  /// 导航栏草稿一次提交，保留其他页面更新的设置。
+  Future<void> saveNavigationAppearance({
+    required BottomNavigationStyle style,
+    required bool showLabels,
+    required AppGlassSettings glass,
+  }) => _save(
+    (settings) => settings.copyWith(
+      bottomNavigationStyle: style,
+      showBottomNavLabels: showLabels,
+      appearance: settings.appearance.copyWith(navigationGlass: glass),
+    ),
+    optimistic: false,
+  );
+
+  /// 只提交顶部样式与两层玻璃参数。
+  Future<void> saveHeaderAppearance({
+    required AppAppearanceSettings appearance,
+  }) => _save(
+    (settings) => settings.copyWith(
+      appearance: settings.appearance.copyWith(
+        headerStyle: appearance.headerStyle,
+        headerBackgroundGlass: appearance.headerBackgroundGlass,
+        headerControlGlass: appearance.headerControlGlass,
+      ),
+    ),
+    optimistic: false,
+  );
+
   Future<void> _save(
     AppSettings Function(AppSettings settings) change, {
     bool optimistic = true,

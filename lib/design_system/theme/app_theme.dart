@@ -10,6 +10,7 @@ import 'app_text_theme.dart';
 import 'app_theme_extension.dart';
 import 'app_appearance_theme.dart';
 import 'app_appearance_values.dart';
+import 'app_chrome_theme.dart';
 
 abstract final class AppTheme {
   static ThemeData light({
@@ -62,6 +63,7 @@ abstract final class AppTheme {
       textTheme: textTheme,
       extensions: [
         extension,
+        AppChromeTheme.fromAppearance(appearance),
         AppAppearanceTheme(
           gradientColor: Color(appearance.backgroundSeedColor),
           gradientDepth: appearance.gradientDepth,

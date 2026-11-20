@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_page_background.dart';
+import 'app_page_header_background_scope.dart';
 
 /// 项目页面外壳；Scaffold 保留原生行为，背景由当前主题统一绘制。
 class AppScaffold extends StatelessWidget {
@@ -29,7 +30,14 @@ class AppScaffold extends StatelessWidget {
     child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: appBar,
-      body: body,
+      body: body == null
+          ? null
+          : Builder(
+              builder: (context) => AppPageHeaderBackgroundScope(
+                topInset: MediaQuery.paddingOf(context).top,
+                child: body!,
+              ),
+            ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       extendBody: extendBody,

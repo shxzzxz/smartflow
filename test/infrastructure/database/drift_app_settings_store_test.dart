@@ -135,6 +135,25 @@ void main() {
           expenseColor: 0xFF1976D2,
           gradientDepth: 0.8,
           gradientRange: 0.9,
+          headerStyle: AppHeaderStyle.classic,
+          navigationGlass: AppGlassSettings(
+            blurSigma: 12,
+            backgroundOpacity: 0.4,
+            saturation: 1.6,
+            shadowOpacity: 0.2,
+          ),
+          headerBackgroundGlass: AppGlassSettings(
+            blurSigma: 24,
+            backgroundOpacity: 0.5,
+            saturation: 1,
+            shadowOpacity: 0,
+          ),
+          headerControlGlass: AppGlassSettings(
+            blurSigma: 6,
+            backgroundOpacity: 0.2,
+            saturation: 1.3,
+            shadowOpacity: 0.05,
+          ),
         );
 
         await store.save(
@@ -189,6 +208,16 @@ void main() {
       expect(sanitized.incomeColor, 0xFF9254DE);
       expect(sanitized.gradientDepth, 1);
       expect(sanitized.gradientRange, 0);
+      await writeAppearance(
+        '{"headerStyle":42,"navigationGlass":[],"headerBackgroundGlass":{"blurSigma":-10,"backgroundOpacity":2},"headerControlGlass":{"blurSigma":"bad","saturation":99,"shadowOpacity":-1}}',
+      );
+      final chrome = (await store.read()).appearance;
+      expect(chrome.headerStyle, AppHeaderStyle.frostedGlass);
+      expect(chrome.navigationGlass, const AppGlassSettings());
+      expect(chrome.headerBackgroundGlass.blurSigma, 0);
+      expect(chrome.headerBackgroundGlass.backgroundOpacity, 1);
+      expect(chrome.headerControlGlass.blurSigma, AppGlassSettings.useDefault);
+      expect(chrome.headerControlGlass.saturation, 99);
     });
 
     test(

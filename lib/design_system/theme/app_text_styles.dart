@@ -19,8 +19,8 @@ class AppTextStyles {
 
   TextStyle get pageTitle => _headlineSmall.copyWith(
     color: _colors.onSurface,
-    fontSize: AppTypography.fontSizeXl,
-    fontWeight: AppTypography.strongWeight,
+    fontSize: AppTypography.fontSizeLgCompact,
+    fontWeight: AppTypography.bodyWeight,
   );
 
   TextStyle get pageSubtitle => _bodySmall.copyWith(
@@ -40,7 +40,7 @@ class AppTextStyles {
   TextStyle get groupTitle => _titleMedium.copyWith(
     color: _colors.onSurface,
     fontSize: AppTypography.fontSizeMd,
-    fontWeight: AppTypography.titleWeight,
+    fontWeight: AppTypography.bodyWeight,
   );
 
   TextStyle get subsectionTitle => _titleMedium.copyWith(

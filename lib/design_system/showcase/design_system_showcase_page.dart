@@ -73,6 +73,7 @@ import '../widget/app_submit_button.dart';
 import '../widget/app_surface.dart';
 import '../widget/app_swipe_action.dart';
 import 'installment_component_previews.dart';
+import 'page_header_previews.dart';
 import '../widget/app_scaffold.dart';
 
 const _showcaseCategories = <String>[
@@ -593,8 +594,9 @@ const _showcaseExamples = <_ShowcaseExample>[
     kind: _ShowcaseExampleKind.pageHeader,
     category: '布局与容器',
     title: '页面头部',
-    componentNames: 'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton',
-    keywords: ['布局', '标题', '页头', '返回', '操作'],
+    componentNames:
+        'AppPageHeader / AppHeaderIconButton / AppHeaderTextButton / AppHeaderTabs',
+    keywords: ['布局', '标题', '页头', '返回', '操作', '月份', '毛玻璃', '悬浮', 'Tab'],
   ),
   _ShowcaseExample(
     kind: _ShowcaseExampleKind.formSection,
@@ -2911,61 +2913,7 @@ class _DesignSystemShowcasePageState extends State<DesignSystemShowcasePage>
     return const EmptyTransactionCard(message: '暂无交易');
   }
 
-  Widget _pageHeaderPreview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpacing.space12,
-      children: [
-        _PreviewBackdrop(
-          child: AppPageHeader(
-            title: '一级页标题',
-            showBackButton: false,
-            actions: [
-              AppHeaderIconButton(
-                icon: RemixIcons.add_line,
-                tooltip: '新建',
-                onPressed: () => _showMessage('新建'),
-              ),
-              AppPopupMenuButton(
-                tooltip: '更多操作',
-                icon: RemixIcons.more_2_fill,
-                items: [
-                  AppPopupMenuAction(
-                    label: '页面设置',
-                    icon: RemixIcons.settings_3_line,
-                    onPressed: () => _showMessage('页面设置'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        _PreviewBackdrop(
-          child: AppPageHeader(
-            title: '二级页标题文案很长时会省略',
-            subtitle: '页面说明文案',
-            onBack: () => _showMessage('返回'),
-            actions: [
-              AppHeaderIconButton(
-                icon: RemixIcons.edit_line,
-                tooltip: '编辑',
-                onPressed: () => _showMessage('编辑'),
-              ),
-              AppHeaderTextButton(
-                label: '确认',
-                onPressed: () => _showMessage('确认'),
-              ),
-              const AppHeaderIconButton(
-                icon: RemixIcons.delete_bin_line,
-                tooltip: '暂不可删除',
-                onPressed: null,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _pageHeaderPreview() => const PageHeaderPreviews();
 
   Widget _formSectionPreview() {
     return AppFormSection(

@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+import 'package:remixicon/remixicon.dart';
+
+import '../../feature/statistics/view/statistics_view_switcher.dart';
+import '../../feature/statistics/view_model/statistics_view_model.dart';
+
+import '../theme/app_text_styles.dart';
+import '../token/radius.dart';
+import '../token/spacing.dart';
+import '../widget/app_month_picker.dart';
+import '../widget/app_page_background.dart';
+import '../widget/app_page_header.dart';
+import '../widget/app_page_header_background_scope.dart';
+import '../widget/app_popup_menu_button.dart';
+import '../widget/app_sliding_segmented_control.dart';
+
+/// 使用真实页头组件展示返回、切换、月份、悬浮 Tab 与文字操作。
+class PageHeaderPreviews extends StatefulWidget {
+  const PageHeaderPreviews({super.key});
+
+  @override
+  State<PageHeaderPreviews> createState() => _PageHeaderPreviewsState();
+}
+
+class _PageHeaderPreviewsState extends State<PageHeaderPreviews> {
+  var _month = DateTime(2026, 11);
+  var _showLunar = true;
+  var _tab = 0;
+  var _statisticsView = StatisticsViewType.period;
+
+  void _message(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _shiftMonth(int delta) {
+    setState(() => _month = DateTime(_month.year, _month.month + delta));
+  }
+
+  Future<void> _pickMonth() async {
+    final month = await showAppMonthPicker(
+      context: context,
+      initialMonth: _month,
+    );
+    if (month != null && mounted) setState(() => _month = month);
+  }
+
+  AppPopupMenuButton _more() => AppPopupMenuButton(
+    tooltip: '更多操作',
+    icon: RemixIcons.more_2_line,
+    items: [
+      AppPopupMenuAction(
+        label: '页面设置',
+        icon: RemixIcons.settings_3_line,
+        onPressed: () => _message('页面设置'),
+      ),
+    ],
+  );
+
+  Widget _example(String label, Widget header) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(
+          left: AppSpacing.space16,
+          bottom: AppSpacing.space8,
+        ),
+        child: Text(label, style: context.appTextStyles.listSupporting),
+      ),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
+        child: AppPageBackground(
+          child: AppPageHeaderBackgroundScope(
+            topInset: AppSpacing.space24,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: AppSpacing.space24,
+                bottom: AppSpacing.space12,
+              ),
+              child: header,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    spacing: AppSpacing.space24,
+    children: [
+      _example(
+        '统计页居中玻璃 Tab',
+        AppPageHeader.custom(
+          showBackButton: false,
+          titleContent: StatisticsViewSwitcher(
+            selected: _statisticsView,
+            onChanged: (view) => setState(() => _statisticsView = view),
+          ),
+        ),
+      ),
+      _example(
+        '返回与页面名称',
+        AppPageHeader(
+          title: '账户详情',
+          onBack: () => _message('返回'),
+          actions: [
+            AppHeaderIconButton(
+              icon: RemixIcons.edit_line,
+              tooltip: '编辑账户',
+              onPressed: () => _message('编辑账户'),
+            ),
+            _more(),
+          ],
+        ),
+      ),
+      _example(
+        '左侧切换与月份选择',
+        AppPageHeader.custom(
+          leading: AppHeaderIconButton(
+            icon: _showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+            tooltip: _showLunar ? '隐藏农历' : '显示农历',
+            selected: _showLunar,
+            onPressed: () => setState(() => _showLunar = !_showLunar),
+          ),
+          titleContent: AppMonthSelector(
+            visibleMonth: _month,
+            onPreviousMonth: () => _shiftMonth(-1),
+            onNextMonth: () => _shiftMonth(1),
+            onMonthPressed: _pickMonth,
+          ),
+          actions: [
+            AppHeaderIconButton(
+              icon: RemixIcons.calendar_check_line,
+              tooltip: '回到今天',
+              onPressed: () {
+                final now = DateTime.now();
+                setState(() => _month = DateTime(now.year, now.month));
+              },
+            ),
+            AppHeaderIconButton(
+              icon: RemixIcons.pie_chart_2_line,
+              tooltip: '本月统计',
+              onPressed: () => _message('本月统计'),
+            ),
+          ],
+        ),
+      ),
+      _example(
+        '中间悬浮 Tab',
+        AppPageHeader.custom(
+          onBack: () => _message('返回'),
+          titleContent: AppSlidingSegmentedControl<int>(
+            variant: AppSegmentedControlVariant.header,
+            segments: const [
+              AppSegment(value: 0, label: '支出'),
+              AppSegment(value: 1, label: '收入'),
+            ],
+            selected: _tab,
+            onChanged: (tab) => setState(() => _tab = tab),
+          ),
+          actions: [
+            AppHeaderIconButton(
+              icon: RemixIcons.add_line,
+              tooltip: '新建',
+              onPressed: () => _message('新建'),
+            ),
+            _more(),
+          ],
+        ),
+      ),
+      _example(
+        '页面名称与保存',
+        AppPageHeader(
+          title: '编辑账户',
+          onBack: () => _message('返回'),
+          actions: [
+            AppHeaderTextButton(label: '保存', onPressed: () => _message('保存')),
+          ],
+        ),
+      ),
+      _example(
+        '长标题与禁用状态',
+        AppPageHeader(
+          title: '二级页标题文案很长时会省略',
+          subtitle: '页面说明文案',
+          onBack: () => _message('返回'),
+          actions: const [
+            AppHeaderIconButton(
+              icon: RemixIcons.delete_bin_line,
+              tooltip: '暂不可删除',
+              onPressed: null,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}

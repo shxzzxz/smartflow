@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../theme/app_text_styles.dart';
+import '../token/header.dart';
 import '../token/radius.dart';
 import '../token/spacing.dart';
 import 'app_date_picker_panel.dart';
+import 'app_page_header.dart';
 
 const double _panelDialogMaxWidth = 336;
 
-class AppMonthSelector extends StatelessWidget {
+/// 居中的 `< YYYY年MM月 >`；点击箭头或左右滑动切换，点击月份选择。
+class AppMonthSelector extends StatefulWidget {
   const AppMonthSelector({
     required this.visibleMonth,
     required this.onPreviousMonth,
@@ -22,65 +27,69 @@ class AppMonthSelector extends StatelessWidget {
   final VoidCallback onNextMonth;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _MonthArrowButton(
-          icon: Icons.chevron_left,
-          tooltip: '上个月',
-          onPressed: onPreviousMonth,
-        ),
-        InkWell(
-          onTap: onMonthPressed,
-          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space6,
-              vertical: AppSpacing.space6,
-            ),
-            child: Text(
-              '${visibleMonth.year}年${visibleMonth.month}月',
-              style: context.appTextStyles.dateNavigationTitle,
-            ),
-          ),
-        ),
-        _MonthArrowButton(
-          icon: Icons.chevron_right,
-          tooltip: '下个月',
-          onPressed: onNextMonth,
-        ),
-      ],
-    );
-  }
+  State<AppMonthSelector> createState() => _AppMonthSelectorState();
 }
 
-class _MonthArrowButton extends StatelessWidget {
-  const _MonthArrowButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
+class _AppMonthSelectorState extends State<AppMonthSelector> {
+  double _dragDistance = 0;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      icon: Icon(icon, color: colors.onSurfaceVariant),
-      iconSize: AppSpacing.space20,
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      constraints: const BoxConstraints.tightFor(
-        width: AppSpacing.space28,
-        height: AppSpacing.space32,
+    final month = widget.visibleMonth;
+    return Semantics(
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: '上个月'): widget.onPreviousMonth,
+        const CustomSemanticsAction(label: '下个月'): widget.onNextMonth,
+      },
+      child: GestureDetector(
+        onHorizontalDragStart: (_) => _dragDistance = 0,
+        onHorizontalDragUpdate: (details) =>
+            _dragDistance += details.primaryDelta ?? 0,
+        onHorizontalDragEnd: (_) {
+          if (_dragDistance.abs() < AppHeaderTokens.monthSwipeDistance) return;
+          if (_dragDistance < 0) {
+            widget.onNextMonth();
+          } else {
+            widget.onPreviousMonth();
+          }
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppHeaderIconButton(
+              icon: RemixIcons.arrow_left_s_line,
+              tooltip: '上个月',
+              onPressed: widget.onPreviousMonth,
+            ),
+            Flexible(
+              child: Tooltip(
+                message: '选择月份',
+                child: InkWell(
+                  onTap: widget.onMonthPressed,
+                  borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space4,
+                      vertical: AppSpacing.space8,
+                    ),
+                    child: Text(
+                      '${month.year}年${month.month.toString().padLeft(2, '0')}月',
+                      style: context.appTextStyles.dateNavigationTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            AppHeaderIconButton(
+              icon: RemixIcons.arrow_right_s_line,
+              tooltip: '下个月',
+              onPressed: widget.onNextMonth,
+            ),
+          ],
+        ),
       ),
-      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -94,13 +103,12 @@ Future<DateTime?> showAppMonthPicker({
 }) {
   return showDialog<DateTime>(
     context: context,
-    builder:
-        (context) => AppMonthPickerDialog(
-          initialMonth: initialMonth,
-          firstYear: firstYear,
-          lastYear: lastYear,
-          title: title,
-        ),
+    builder: (context) => AppMonthPickerDialog(
+      initialMonth: initialMonth,
+      firstYear: firstYear,
+      lastYear: lastYear,
+      title: title,
+    ),
   );
 }
 
@@ -113,13 +121,12 @@ Future<int?> showAppYearPicker({
 }) {
   return showDialog<int>(
     context: context,
-    builder:
-        (context) => AppYearPickerDialog(
-          initialYear: initialYear,
-          firstYear: firstYear,
-          lastYear: lastYear,
-          title: title,
-        ),
+    builder: (context) => AppYearPickerDialog(
+      initialYear: initialYear,
+      firstYear: firstYear,
+      lastYear: lastYear,
+      title: title,
+    ),
   );
 }
 

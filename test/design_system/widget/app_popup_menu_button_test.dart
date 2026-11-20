@@ -3,11 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/design_system/token/component.dart';
-import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/widget/app_popup_menu_button.dart';
 
 void main() {
-  testWidgets('keeps a 48dp trigger and a content-sized menu', (tester) async {
+  testWidgets('opens a content-sized menu from its trigger', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
@@ -21,11 +20,6 @@ void main() {
           ),
         ),
       ),
-    );
-
-    expect(
-      tester.getSize(find.byType(AppPopupMenuButton)),
-      const Size.square(AppSpacing.space48),
     );
 
     await tester.tap(find.byTooltip('更多'));

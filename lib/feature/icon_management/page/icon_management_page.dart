@@ -7,6 +7,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/spacing.dart';
 import '../../../design_system/widget/app_empty_state.dart';
 import '../../../design_system/widget/app_page_header.dart';
+import '../../../design_system/widget/app_header_tabs.dart';
 import '../../../design_system/widget/app_surface.dart';
 import '../../../widget/business/icon/business_icon.dart';
 import '../../../widget/business/icon/business_icon_bubble.dart';
@@ -64,18 +65,9 @@ class _IconManagementPageState extends ConsumerState<IconManagementPage>
         child: Column(
           children: [
             AppPageHeader.custom(
-              titleContent: TabBar(
+              titleContent: AppHeaderTabs(
                 controller: _tabController,
-                indicatorSize: TabBarIndicatorSize.label,
-                dividerColor: Colors.transparent,
-                labelStyle: context.appTextStyles.largeTabLabel(selected: true),
-                unselectedLabelStyle: context.appTextStyles.largeTabLabel(
-                  selected: false,
-                ),
-                tabs: const [
-                  Tab(text: '账户图标'),
-                  Tab(text: '分类图标'),
-                ],
+                labels: const ['账户图标', '分类图标'],
               ),
               actions: [
                 AppHeaderIconButton(

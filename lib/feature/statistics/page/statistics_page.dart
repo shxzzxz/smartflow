@@ -6,6 +6,7 @@ import '../view/statistics_period_view.dart';
 import '../view/statistics_state_view.dart';
 import '../view/statistics_view_switcher.dart';
 import '../../../design_system/widget/app_scaffold.dart';
+import '../../../design_system/widget/app_page_header.dart';
 
 class StatisticsPage extends ConsumerWidget {
   const StatisticsPage({super.key});
@@ -21,9 +22,12 @@ class StatisticsPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            StatisticsViewSwitcher(
-              selected: viewType,
-              onChanged: notifier.selectView,
+            AppPageHeader.custom(
+              showBackButton: false,
+              titleContent: StatisticsViewSwitcher(
+                selected: viewType,
+                onChanged: notifier.selectView,
+              ),
             ),
             Expanded(
               child: switch (viewType) {

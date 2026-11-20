@@ -8,6 +8,9 @@ abstract final class AppAppearanceTokens {
   static const double gradientRange = 0.65;
   static const double minGradientRange = 0.25;
   static const double minContentContrast = 4.5;
+  static const double maxGlassBlur = 40;
+  static const double maxGlassSaturation = 2;
+  static const double maxGlassShadowOpacity = 0.4;
 
   static const double lightGradientOpacity = 0.60;
   static const double darkGradientOpacity = 0.13;

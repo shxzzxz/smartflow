@@ -12,7 +12,6 @@ import '../../../design_system/widget/app_list_section.dart';
 import '../../../design_system/widget/app_page_header.dart';
 import '../../../design_system/widget/app_section_header.dart';
 import '../../../design_system/widget/app_settings_row.dart';
-import '../../shared/presentation/bottom_navigation_style_options.dart';
 import '../../shared/presentation/pull_to_create_sensitivity_options.dart';
 import '../../shared/presentation/transaction_list_display_mode_options.dart';
 import '../../shared/view_model/app_settings_view_model.dart';
@@ -100,16 +99,16 @@ class SettingsPage extends ConsumerWidget {
                   _SettingsSection(
                     title: '外观设置',
                     rows: [
-                      AppSettingsSelectRow<BottomNavigationStyle>(
-                        label: '导航栏样式',
-                        value: settings.bottomNavigationStyle,
-                        options: bottomNavigationStyleOptions,
-                        onChanged: notifier.setBottomNavigationStyle,
+                      AppSettingsRow(
+                        label: '导航栏外观',
+                        onTap: () =>
+                            context.push('/profile/navigation-appearance'),
+                        child: const Icon(RemixIcons.arrow_right_s_line),
                       ),
-                      AppSettingsSwitchRow(
-                        label: '导航栏文字',
-                        value: settings.showBottomNavLabels,
-                        onChanged: notifier.setShowBottomNavLabels,
+                      AppSettingsRow(
+                        label: '顶部外观',
+                        onTap: () => context.push('/profile/header-appearance'),
+                        child: const Icon(RemixIcons.arrow_right_s_line),
                       ),
                       AppSettingsRow(
                         label: '主题外观',

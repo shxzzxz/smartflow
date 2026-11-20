@@ -9,6 +9,24 @@ abstract final class AppComponentTokens {
   static const double frostedNavigationBarSaturation = 1.42;
   static const double frostedNavigationBarBackgroundOpacity = 0.28;
   static const double frostedNavigationBarShadowOpacity = 0.10;
+  static const double frostedSurfaceBlurSigma = 8;
+  static const double frostedSurfaceSaturation = 1.12;
+  static const double frostedSurfaceTopOpacity = 0.30;
+  static const double frostedSurfaceMiddleOpacity = 0.08;
+  static const double frostedSurfaceBottomOpacity = 0.16;
+  static const double frostedSurfaceBorderOpacity = 0.92;
+  static const double frostedSurfaceDarkTopOpacity = 0.36;
+  static const double frostedSurfaceDarkMiddleOpacity = 0.12;
+  static const double frostedSurfaceDarkBottomOpacity = 0.20;
+  static const double frostedSurfaceDarkBorderOpacity = 0.24;
+  static const double frostedBackgroundBlurSigma = 18;
+  static const double frostedBackgroundSaturation = 1;
+  static const double frostedBackgroundShadowOpacity = 0;
+  static const double frostedBackgroundTopOpacity = 0.58;
+  static const double frostedBackgroundBottomOpacity = 0.26;
+  static const double frostedBackgroundDarkTopOpacity = 0.52;
+  static const double frostedBackgroundDarkBottomOpacity = 0.32;
+  static const double frostedBackgroundEdgeOpacity = 0.18;
 
   /// 底部栏图标字形，导航栏与占用同一槽位的批量操作栏共用。
   static const double bottomBarIconSize = 22;
@@ -27,6 +45,7 @@ abstract final class AppComponentTokens {
   static const double adaptiveLayoutTextScaleThreshold = 1.3;
   static const double selectionSheetMaxHeightFactor = 0.60;
   static const double pageBackgroundPreviewHeight = 160;
+  static const double chromeAppearancePreviewHeight = 240;
   static const double settingsColorSwatchSize = 24;
 
   static const double disabledContentOpacity = 0.38;

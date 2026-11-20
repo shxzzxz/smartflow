@@ -41,42 +41,24 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space8,
-        AppSpacing.space6,
-        AppSpacing.space8,
-        AppSpacing.space2,
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(RemixIcons.arrow_left_s_line),
-            tooltip: '返回',
-            style: appHeaderIconButtonStyle,
-          ),
-          Expanded(
-            child: editing
-                ? Center(
-                    child: Text(
-                      '编辑${_modeTabFor(mode).label}',
-                      style: context.appTextStyles.subsectionTitleStrong,
-                    ),
-                  )
-                : _ModeTabs(mode: mode, onChanged: onModeChanged),
-          ),
-          if (editing)
-            IconButton(
-              onPressed: onDelete,
-              icon: const Icon(RemixIcons.delete_bin_line),
-              tooltip: '删除',
-              style: appHeaderIconButtonStyle,
-            )
-          else
-            const SizedBox(width: AppHeaderTokens.iconButtonSize),
-        ],
-      ),
+    final actions = [
+      if (editing)
+        AppHeaderIconButton(
+          onPressed: onDelete,
+          icon: RemixIcons.delete_bin_line,
+          tooltip: '删除',
+        ),
+    ];
+    if (editing) {
+      return AppPageHeader(
+        title: '编辑${_modeTabFor(mode).label}',
+        onBack: onBack,
+        actions: actions,
+      );
+    }
+    return AppPageHeader.custom(
+      onBack: onBack,
+      titleContent: _ModeTabs(mode: mode, onChanged: onModeChanged),
     );
   }
 }
@@ -89,84 +71,16 @@ class _ModeTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: constraints.maxWidth),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (final value in _TransactionModeTab.values)
-                _ModeTabItem(
-                  label: value.label,
-                  selected: value == _modeTabFor(mode),
-                  onTap: () => onChanged(value),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeTabItem extends StatelessWidget {
-  const _ModeTabItem({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: AppComponentTokens.controlMinHeight,
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space6,
-              vertical: AppSpacing.space6,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: textStyles
-                      .segmentedControlLabel(selected: selected)
-                      .copyWith(
-                        color: selected
-                            ? colors.primary
-                            : colors.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.space6),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: selected ? 40 : AppSpacing.space0,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: selected ? colors.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppRadius.radiusSm),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: AppSlidingSegmentedControl<_TransactionModeTab>(
+        variant: AppSegmentedControlVariant.header,
+        segments: [
+          for (final tab in _TransactionModeTab.values)
+            AppSegment(value: tab, label: tab.label),
+        ],
+        selected: _modeTabFor(mode),
+        onChanged: onChanged,
       ),
     );
   }

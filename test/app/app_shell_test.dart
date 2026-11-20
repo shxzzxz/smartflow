@@ -94,7 +94,10 @@ Future<void> _pumpShell(
           _FakeAppSettingsStore(settings),
         ),
       ],
-      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.light(appearance: settings.appearance),
+        routerConfig: router,
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -202,6 +205,35 @@ Future<void> _expectSheetBlocksNavigation({
 }
 
 void main() {
+  for (final style in BottomNavigationStyle.values) {
+    testWidgets(
+      '${style.name} navigation remains labeled and routes when text is hidden',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        try {
+          final router = _buildSheetRouter('/home');
+          addTearDown(router.dispose);
+          await _pumpShell(
+            tester,
+            router: router,
+            settings: AppSettings(
+              bottomNavigationStyle: style,
+              showBottomNavLabels: false,
+            ),
+          );
+          expect(find.text('资产'), findsNothing);
+          await tester.tap(find.bySemanticsLabel('资产'));
+          await tester.pumpAndSettle();
+          expect(find.text('资产页'), findsOneWidget);
+          expect(find.byIcon(RemixIcons.wallet_3_fill), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
+      },
+    );
+  }
+
   testWidgets('hides bottom navigation on import routes', (tester) async {
     final router = _buildRouter('/import');
     addTearDown(router.dispose);
@@ -353,6 +385,54 @@ void main() {
       frostedLayout.floatingActionInset,
       AppComponentTokens.frostedNavigationBarClearance,
     );
+  });
+
+  testWidgets('saved glass parameters reach the shell navigation renderer', (
+    tester,
+  ) async {
+    final router = _buildRouter('/home');
+    addTearDown(router.dispose);
+    await _pumpShell(
+      tester,
+      router: router,
+      settings: const AppSettings(
+        bottomNavigationStyle: BottomNavigationStyle.frostedGlass,
+        appearance: AppAppearanceSettings(
+          navigationGlass: AppGlassSettings(
+            blurSigma: 12,
+            backgroundOpacity: 0.45,
+            saturation: 1.7,
+            shadowOpacity: 0.2,
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<BackdropFilter>(find.byType(BackdropFilter)).filter,
+      ImageFilter.compose(
+        outer: ColorFilter.saturation(1.7),
+        inner: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      ),
+    );
+    final container = tester.widget<Container>(
+      find.byKey(const ValueKey('frosted-glass-bottom-navigation')),
+    );
+    expect(
+      (container.decoration! as BoxDecoration).boxShadow!.single.color.a,
+      closeTo(0.2, 0.001),
+    );
+    final tints = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(ClipRRect),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((widget) => widget.decoration)
+        .whereType<BoxDecoration>()
+        .where((decoration) => decoration.color != null);
+    expect(tints.single.color!.a, closeTo(0.45, 0.001));
+    expect(tester.takeException(), isNull);
   });
 
   final sheetEntries = [

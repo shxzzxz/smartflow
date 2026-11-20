@@ -10,7 +10,6 @@ import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
-import 'package:smartflow/design_system/token/spacing.dart';
 import 'package:smartflow/design_system/token/typography.dart';
 import 'package:smartflow/design_system/widget/app_date_picker_panel.dart';
 import 'package:smartflow/design_system/widget/app_page_header.dart';
@@ -44,18 +43,20 @@ void main() {
     expect(find.text('统计'), findsNothing);
     expect(find.text('查看收支结构与资产变化'), findsNothing);
     expect(find.text('本期概览'), findsNothing);
-    expect(find.byType(AppPageHeader), findsNothing);
+    expect(find.byType(AppPageHeader), findsOneWidget);
     expect(find.byType(StatisticsPeriodView), findsOneWidget);
-    expect(find.byType(TabBar), findsOneWidget);
-    final viewSwitcher = tester.widget<TabBar>(
-      find.byKey(const ValueKey('statistics-view-switcher')),
-    );
-    expect(viewSwitcher.labelStyle?.fontSize, AppTypography.fontSizeMd);
+    final viewSwitcher = tester
+        .widget<AppSlidingSegmentedControl<StatisticsViewType>>(
+          find.byKey(const ValueKey('statistics-view-switcher')),
+        );
+    expect(viewSwitcher.variant, AppSegmentedControlVariant.header);
+    final viewLabels = tester
+        .getRect(find.text('期间分析'))
+        .expandToInclude(tester.getRect(find.text('当前状态')));
+    expect(viewLabels.center.dx, moreOrLessEquals(180));
     expect(
-      tester
-          .getSize(find.byKey(const ValueKey('statistics-view-switcher')))
-          .height,
-      greaterThanOrEqualTo(AppSpacing.space48),
+      DefaultTextStyle.of(tester.element(find.text('期间分析'))).style.fontSize,
+      AppTypography.fontSizeMd,
     );
     expect(find.text('本期'), findsWidgets);
     expect(find.text('环比'), findsWidgets);
@@ -424,7 +425,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(StatisticsStateView), findsOneWidget);
-    expect(find.byType(AppPageHeader), findsNothing);
+    expect(find.byType(AppPageHeader), findsOneWidget);
     expect(find.textContaining('截至'), findsNothing);
     expect(find.text('净资产'), findsNothing);
     expect(find.text('本月预算'), findsNothing);

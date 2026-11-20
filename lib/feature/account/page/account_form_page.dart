@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/token/radius.dart';
@@ -398,40 +397,16 @@ class _AccountFormHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space4,
-        AppSpacing.space12,
-        AppSpacing.space12,
-        AppSpacing.space4,
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              onPressed: () => context.pop(),
-              icon: const Icon(RemixIcons.arrow_left_s_line),
-              tooltip: '返回',
-              style: appHeaderIconButtonStyle,
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: submitting ? null : onSave,
-              child: submitting
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('保存'),
-            ),
-          ),
-          Text(title, style: context.appTextStyles.dateNavigationTitle),
-        ],
-      ),
+    return AppPageHeader(
+      title: title,
+      onBack: () => context.pop(),
+      actions: [
+        AppHeaderTextButton(
+          label: '保存',
+          onPressed: onSave,
+          loading: submitting,
+        ),
+      ],
     );
   }
 }

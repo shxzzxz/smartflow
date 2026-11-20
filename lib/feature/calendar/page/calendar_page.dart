@@ -180,6 +180,12 @@ class _CalendarHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.read(appSettingsViewModelProvider.notifier);
     return AppPageHeader.custom(
+      leading: AppHeaderIconButton(
+        onPressed: onToggleLunar,
+        tooltip: showLunar ? '隐藏农历' : '显示农历',
+        icon: showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
+        selected: showLunar,
+      ),
       titleContent: AppMonthSelector(
         visibleMonth: visibleMonth,
         onPreviousMonth: onPreviousMonth,
@@ -191,11 +197,6 @@ class _CalendarHeader extends ConsumerWidget {
           onPressed: onTodayPressed,
           tooltip: '回到今天',
           icon: RemixIcons.calendar_check_line,
-        ),
-        AppHeaderIconButton(
-          onPressed: onToggleLunar,
-          tooltip: showLunar ? '隐藏农历' : '显示农历',
-          icon: showLunar ? RemixIcons.eye_line : RemixIcons.eye_off_line,
         ),
         AppPopupMenuButton(
           tooltip: '更多',
@@ -259,35 +260,37 @@ class _CalendarContent extends StatelessWidget {
       bottomPadding: AppSpacing.space24 + contentInset,
       leading: [
         AppSurface(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space16,
-              vertical: AppSpacing.space8,
-            ),
-            child: _MonthlySummaryStrip(summary: month.summary),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        AppSurface(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space8,
-              AppSpacing.space12,
-              AppSpacing.space8,
-              AppSpacing.space12,
-            ),
-            child: Column(
-              children: [
-                const _WeekdayHeader(),
-                const SizedBox(height: AppSpacing.space8),
-                _CalendarGrid(
-                  days: month.days,
-                  showLunar: showLunar,
-                  onDateSelected: onDateSelected,
-                  onMonthSwipe: onMonthSwipe,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space8,
+                  AppSpacing.space12,
+                  AppSpacing.space8,
+                  AppSpacing.space12,
                 ),
-              ],
-            ),
+                child: Column(
+                  children: [
+                    const _WeekdayHeader(),
+                    const SizedBox(height: AppSpacing.space8),
+                    _CalendarGrid(
+                      days: month.days,
+                      showLunar: showLunar,
+                      onDateSelected: onDateSelected,
+                      onMonthSwipe: onMonthSwipe,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space16,
+                  vertical: AppSpacing.space8,
+                ),
+                child: _MonthlySummaryStrip(summary: month.summary),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.space10),

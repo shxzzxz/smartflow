@@ -11,6 +11,8 @@ import 'package:smartflow/application/orchestration/orchestration_command_api.da
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
+import 'package:smartflow/design_system/widget/app_page_header.dart';
+import 'package:smartflow/design_system/widget/app_sliding_segmented_control.dart';
 import 'package:smartflow/design_system/widget/app_plain_form_field.dart';
 import 'package:smartflow/design_system/widget/app_status_banner.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
@@ -68,16 +70,43 @@ void main() {
       },
     );
   }
-  testWidgets('keeps transaction mode tabs at least 48dp tall', (tester) async {
-    await _pumpTransactionForm(tester, _FakeTransactionPostingAppService());
+  testWidgets('keeps transaction modes visible and selectable in the header', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpTransactionForm(
+      tester,
+      _FakeTransactionPostingAppService(),
+      textScaler: const TextScaler.linear(1.5),
+    );
 
-    for (final label in const ['支出', '收入', '转账', '往来']) {
-      final tab = find.ancestor(
-        of: find.text(label),
-        matching: find.byType(InkWell),
+    final header = find.byType(AppPageHeader);
+    for (final label in const ['收入', '转账', '往来', '支出']) {
+      final tab = find.descendant(of: header, matching: find.text(label));
+      expect(tab, findsOneWidget);
+      final bounds = tester.getRect(tab);
+      final headerBounds = tester.getRect(header);
+      expect(headerBounds.contains(bounds.topLeft), isTrue);
+      expect(headerBounds.contains(bounds.bottomRight), isTrue);
+      await tester.tap(tab);
+      await tester.pumpAndSettle();
+      final control = tester.widget<AppSlidingSegmentedControl<dynamic>>(
+        find.descendant(
+          of: header,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is AppSlidingSegmentedControl,
+          ),
+        ),
       );
-      expect(tester.getSize(tab).height, greaterThanOrEqualTo(48));
+      expect(
+        control.segments
+            .singleWhere((segment) => segment.value == control.selected)
+            .label,
+        label,
+      );
     }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('uses standardized account roles for relations', (tester) async {

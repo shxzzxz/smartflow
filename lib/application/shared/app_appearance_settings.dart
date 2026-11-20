@@ -1,3 +1,23 @@
+import 'app_glass_settings.dart';
+
+export 'app_glass_settings.dart';
+
+/// 页面顶部的外观，默认保留已有玻璃样式。
+enum AppHeaderStyle {
+  classic(storageValue: 'classic'),
+  frostedGlass(storageValue: 'frosted_glass');
+
+  const AppHeaderStyle({required this.storageValue});
+
+  final String storageValue;
+
+  static AppHeaderStyle? fromStorageValue(Object? value) => switch (value) {
+    'classic' => classic,
+    'frosted_glass' => frostedGlass,
+    _ => null,
+  };
+}
+
 /// 页面背景效果，使用稳定的文本值持久化。
 enum AppBackgroundStyle {
   solid(storageValue: 'solid'),
@@ -30,6 +50,10 @@ class AppAppearanceSettings {
     this.backgroundStyle = AppBackgroundStyle.multiGlow,
     this.gradientDepth = useDefaultGradient,
     this.gradientRange = useDefaultGradient,
+    this.headerStyle = AppHeaderStyle.frostedGlass,
+    this.navigationGlass = const AppGlassSettings(),
+    this.headerBackgroundGlass = const AppGlassSettings(),
+    this.headerControlGlass = const AppGlassSettings(),
   }) : assert(
          primaryColor == useDefaultColor ||
              (primaryColor >= 0xFF000000 && primaryColor <= 0xFFFFFFFF),
@@ -95,6 +119,14 @@ class AppAppearanceSettings {
           defaults.backgroundStyle,
       gradientDepth: fraction('gradientDepth', defaults.gradientDepth),
       gradientRange: fraction('gradientRange', defaults.gradientRange),
+      headerStyle:
+          AppHeaderStyle.fromStorageValue(json['headerStyle']) ??
+          defaults.headerStyle,
+      navigationGlass: AppGlassSettings.fromJson(json['navigationGlass']),
+      headerBackgroundGlass: AppGlassSettings.fromJson(
+        json['headerBackgroundGlass'],
+      ),
+      headerControlGlass: AppGlassSettings.fromJson(json['headerControlGlass']),
     );
   }
 
@@ -105,6 +137,10 @@ class AppAppearanceSettings {
   final AppBackgroundStyle backgroundStyle;
   final double gradientDepth;
   final double gradientRange;
+  final AppHeaderStyle headerStyle;
+  final AppGlassSettings navigationGlass;
+  final AppGlassSettings headerBackgroundGlass;
+  final AppGlassSettings headerControlGlass;
 
   AppAppearanceSettings copyWith({
     int? primaryColor,
@@ -114,6 +150,10 @@ class AppAppearanceSettings {
     AppBackgroundStyle? backgroundStyle,
     double? gradientDepth,
     double? gradientRange,
+    AppHeaderStyle? headerStyle,
+    AppGlassSettings? navigationGlass,
+    AppGlassSettings? headerBackgroundGlass,
+    AppGlassSettings? headerControlGlass,
   }) {
     return AppAppearanceSettings(
       primaryColor: primaryColor ?? this.primaryColor,
@@ -123,6 +163,11 @@ class AppAppearanceSettings {
       backgroundStyle: backgroundStyle ?? this.backgroundStyle,
       gradientDepth: gradientDepth ?? this.gradientDepth,
       gradientRange: gradientRange ?? this.gradientRange,
+      headerStyle: headerStyle ?? this.headerStyle,
+      navigationGlass: navigationGlass ?? this.navigationGlass,
+      headerBackgroundGlass:
+          headerBackgroundGlass ?? this.headerBackgroundGlass,
+      headerControlGlass: headerControlGlass ?? this.headerControlGlass,
     );
   }
 
@@ -134,6 +179,10 @@ class AppAppearanceSettings {
     'backgroundStyle': backgroundStyle.storageValue,
     'gradientDepth': gradientDepth,
     'gradientRange': gradientRange,
+    'headerStyle': headerStyle.storageValue,
+    'navigationGlass': navigationGlass.toJson(),
+    'headerBackgroundGlass': headerBackgroundGlass.toJson(),
+    'headerControlGlass': headerControlGlass.toJson(),
   };
 
   @override
@@ -145,7 +194,11 @@ class AppAppearanceSettings {
       expenseColor == other.expenseColor &&
       backgroundStyle == other.backgroundStyle &&
       gradientDepth == other.gradientDepth &&
-      gradientRange == other.gradientRange;
+      gradientRange == other.gradientRange &&
+      headerStyle == other.headerStyle &&
+      navigationGlass == other.navigationGlass &&
+      headerBackgroundGlass == other.headerBackgroundGlass &&
+      headerControlGlass == other.headerControlGlass;
 
   @override
   int get hashCode => Object.hash(
@@ -156,5 +209,9 @@ class AppAppearanceSettings {
     backgroundStyle,
     gradientDepth,
     gradientRange,
+    headerStyle,
+    navigationGlass,
+    headerBackgroundGlass,
+    headerControlGlass,
   );
 }

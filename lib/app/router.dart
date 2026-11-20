@@ -65,6 +65,8 @@ import '../feature/profile/page/log_viewer_page.dart';
 import '../feature/profile/page/profile_page.dart';
 import '../feature/profile/page/reference_rates_page.dart';
 import '../feature/profile/page/settings_page.dart';
+import '../feature/profile/page/navigation_appearance_page.dart';
+import '../feature/profile/page/header_appearance_page.dart';
 import '../feature/profile/page/theme_appearance_page.dart';
 import '../feature/profile/page/software_version_page.dart';
 import '../feature/transaction/page/refund_form_page.dart';
@@ -639,6 +641,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/profile/theme-appearance',
       builder: (context, state) => const ThemeAppearancePage(),
+    ),
+    GoRoute(
+      path: '/profile/navigation-appearance',
+      builder: (context, state) => const NavigationAppearancePage(),
+    ),
+    GoRoute(
+      path: '/profile/header-appearance',
+      builder: (context, state) => const HeaderAppearancePage(),
     ),
     GoRoute(
       path: '/profile/reference-rates',
