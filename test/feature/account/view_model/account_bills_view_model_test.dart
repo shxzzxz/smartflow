@@ -15,6 +15,7 @@ import 'package:smartflow/feature/account/view_model/account_views_provider.dart
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/shared/view_model/ui_action_outcome.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import '../../../helper/fake_credit_bill_generation_app_service.dart';
 
 void main() {
   test('allows historical generation for an active credit account', () async {
@@ -31,7 +32,7 @@ void main() {
 
     final state = container.read(accountBillsViewModelProvider('card'));
     expect(state, isA<AccountBillsPageLoaded>());
-    expect((state as AccountBillsPageLoaded).canGenerateHistoricalBill, isTrue);
+    expect((state as AccountBillsPageLoaded).canGenerateBill, isTrue);
   });
 
   test(
@@ -50,10 +51,7 @@ void main() {
 
       final state = container.read(accountBillsViewModelProvider('card'));
       expect(state, isA<AccountBillsPageLoaded>());
-      expect(
-        (state as AccountBillsPageLoaded).canGenerateHistoricalBill,
-        isFalse,
-      );
+      expect((state as AccountBillsPageLoaded).canGenerateBill, isFalse);
     },
   );
 
@@ -75,7 +73,7 @@ void main() {
 
       final outcomeFuture = container
           .read(accountBillsViewModelProvider('card').notifier)
-          .generateHistoricalBill(DateTime(2025, 11, 20));
+          .generateBill(DateTime(2025, 11, 20));
       await generation.started.future;
       sub.close();
       await container.pump();
@@ -106,7 +104,7 @@ void main() {
 
     final outcome = await container
         .read(accountBillsViewModelProvider('card').notifier)
-        .generateHistoricalBill(DateTime(2025, 11));
+        .generateBill(DateTime(2025, 11));
     await container.read(billSummariesByAccountProvider('card').future);
     await container.pump();
     await _flush();
@@ -131,7 +129,7 @@ void main() {
 
     final outcome = await container
         .read(accountBillsViewModelProvider('card').notifier)
-        .generateHistoricalBill(DateTime(2025, 11));
+        .generateBill(DateTime(2025, 11));
 
     expect(outcome, isA<UiActionFailure<void>>());
     final error = (outcome as UiActionFailure<void>).error;
@@ -147,7 +145,7 @@ void main() {
 
     final outcome = await container
         .read(accountBillsViewModelProvider('card').notifier)
-        .generateHistoricalBill(DateTime(2025, 11));
+        .generateBill(DateTime(2025, 11));
 
     expect(outcome, isA<UiActionFailure<void>>());
     final error = (outcome as UiActionFailure<void>).error;
@@ -174,8 +172,9 @@ ProviderContainer _container(
       billSummariesByAccountProvider(
         'card',
       ).overrideWith((ref) => loadBills?.call() ?? Future.value(const [])),
-      if (generation != null)
-        creditBillGenerationAppServiceProvider.overrideWithValue(generation),
+      creditBillGenerationAppServiceProvider.overrideWithValue(
+        generation ?? FakeCreditBillGenerationAppService(),
+      ),
     ],
   );
   addTearDown(container.dispose);
@@ -193,7 +192,7 @@ AccountView _account({required bool isArchived}) {
   );
 }
 
-class _DelayedBillGenerationService implements CreditBillGenerationAppService {
+class _DelayedBillGenerationService extends FakeCreditBillGenerationAppService {
   final started = Completer<void>();
   final _completion = Completer<void>();
   String? accountId;
@@ -218,7 +217,7 @@ class _DelayedBillGenerationService implements CreditBillGenerationAppService {
 }
 
 class _SuccessfulBillGenerationService
-    implements CreditBillGenerationAppService {
+    extends FakeCreditBillGenerationAppService {
   @override
   Future<void> generateBillForPeriod({
     required String accountId,
@@ -230,7 +229,7 @@ class _SuccessfulBillGenerationService
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FailingBillGenerationService implements CreditBillGenerationAppService {
+class _FailingBillGenerationService extends FakeCreditBillGenerationAppService {
   _FailingBillGenerationService(this.error);
 
   final Object error;

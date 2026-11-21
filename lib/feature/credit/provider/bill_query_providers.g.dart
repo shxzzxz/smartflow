@@ -68,7 +68,7 @@ final class BillSummariesByAccountProvider
 }
 
 String _$billSummariesByAccountHash() =>
-    r'9b36caa7a8f417fb27afa726a4b8ee9c40fe517b';
+    r'2ba223975e74d93d7e41932fc061be21cc872556';
 
 final class BillSummariesByAccountFamily extends $Family
     with
@@ -90,6 +90,88 @@ final class BillSummariesByAccountFamily extends $Family
 
   @override
   String toString() => r'billSummariesByAccountProvider';
+}
+
+@ProviderFor(accountBillPreview)
+final accountBillPreviewProvider = AccountBillPreviewFamily._();
+
+final class AccountBillPreviewProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<BillSummaryReadModel>>,
+          List<BillSummaryReadModel>,
+          FutureOr<List<BillSummaryReadModel>>
+        >
+    with
+        $FutureModifier<List<BillSummaryReadModel>>,
+        $FutureProvider<List<BillSummaryReadModel>> {
+  AccountBillPreviewProvider._({
+    required AccountBillPreviewFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountBillPreviewProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountBillPreviewHash();
+
+  @override
+  String toString() {
+    return r'accountBillPreviewProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<BillSummaryReadModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<BillSummaryReadModel>> create(Ref ref) {
+    final argument = this.argument as String;
+    return accountBillPreview(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountBillPreviewProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountBillPreviewHash() =>
+    r'1335e364bc24bec421fea9fb7ac959512a6e8a39';
+
+final class AccountBillPreviewFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<BillSummaryReadModel>>,
+          String
+        > {
+  AccountBillPreviewFamily._()
+    : super(
+        retry: null,
+        name: r'accountBillPreviewProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountBillPreviewProvider call(String accountId) =>
+      AccountBillPreviewProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountBillPreviewProvider';
 }
 
 @ProviderFor(billDetail)

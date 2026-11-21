@@ -18,8 +18,8 @@ class AccountBillsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(accountBillsViewModelProvider(accountId));
-    final canGenerateHistoricalBill =
-        state is AccountBillsPageLoaded && state.canGenerateHistoricalBill;
+    final canGenerateBill =
+        state is AccountBillsPageLoaded && state.canGenerateBill;
 
     return AppScaffold(
       body: SafeArea(
@@ -28,11 +28,11 @@ class AccountBillsPage extends ConsumerWidget {
             AppPageHeader(
               title: '全部账单',
               actions: [
-                if (canGenerateHistoricalBill)
+                if (canGenerateBill)
                   AppHeaderIconButton(
-                    onPressed: () => _generateHistoricalBill(context, ref),
+                    onPressed: () => _generateBill(context, ref),
                     icon: RemixIcons.file_add_line,
-                    tooltip: '生成历史账单',
+                    tooltip: '创建账单',
                   ),
               ],
             ),
@@ -59,20 +59,19 @@ class AccountBillsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _generateHistoricalBill(
+  Future<void> _generateBill(
     BuildContext context,
     WidgetRef ref,
   ) async {
     final selected = await showAppMonthPicker(
       context: context,
       initialMonth: DateTime.now(),
-      lastYear: DateTime.now().year,
       title: '选择账单月份',
     );
     if (selected == null) return;
     final outcome = await ref
         .read(accountBillsViewModelProvider(accountId).notifier)
-        .generateHistoricalBill(selected);
+        .generateBill(selected);
     if (!context.mounted) return;
     final message = switch (outcome) {
       UiActionSuccess<void>() => '账单已生成',

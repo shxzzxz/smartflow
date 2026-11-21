@@ -311,7 +311,7 @@ void main() {
     );
 
     expect(find.text('合同未来欠款'), findsNothing);
-    expect(find.text('生成历史账单'), findsNothing);
+    expect(find.text('创建账单'), findsNothing);
     expect(find.text('查看全部'), findsNWidgets(2));
     expect(find.text('2026年07月'), findsOneWidget);
     expect(find.text('2026年06月'), findsOneWidget);
@@ -324,7 +324,7 @@ void main() {
       _app(account: _account(kind: AccountProfileKind.fund)),
     );
 
-    expect(find.text('生成历史账单'), findsNothing);
+    expect(find.text('创建账单'), findsNothing);
     expect(find.text('查看全部'), findsNothing);
   });
 
@@ -426,7 +426,7 @@ void main() {
         isLoadingMore: false,
       ),
       contracts: const AccountContractsState.loaded(contracts: []),
-      bills: AccountBillsState.loaded(bills: [_bill(2026, 7), _bill(2026, 6)]),
+      bills: AccountBillsState.loaded(bills: [_bill(2026, 6), _bill(2026, 7)]),
       creditOverview: const AccountCreditOverviewState.notApplicable(),
     );
     final router = GoRouter(

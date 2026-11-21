@@ -1,3 +1,4 @@
+import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
@@ -1971,6 +1972,7 @@ class _Fixture {
         installments: DriftInstallmentRepository(database),
         repayments: DriftRepaymentRepository(database),
         suppressions: DriftBillGenerationSuppressionRepository(database),
+        billSources: DriftCreditBillSourceRepository(database),
         transactionRunner: runner,
         idGenerator: ids,
       ),

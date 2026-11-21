@@ -7,6 +7,7 @@ import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
+import 'package:smartflow/domain/credit/service/bill/bill_generation_strategy.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
@@ -80,20 +81,24 @@ class CreditAccountQueryServiceImpl implements CreditAccountQueryService {
     final account = await _ledger.findAccount(accountId);
     if (account == null) return null;
 
+    final accountBills = await _bills.listBillsByAccount(accountId);
+    final currentPeriod = billGenerationStrategies[creditAccount.kind]!
+        .currentPeriod(creditAccount, _currentTime(), accountBills);
     final domainBuckets = await _debtBuckets.bucketsForAccount(
       accountId: accountId,
       liabilityBalance: account.balance,
       bills: _bills,
       installments: _installments,
       repayments: _repayments,
+      accountBills: accountBills,
+      currentPeriod: currentPeriod,
     );
     return CreditAccountOverviewReadModel(
       creditAccount: _accountReadModel(creditAccount),
       liabilityBalance: account.balance,
-      availableCredit:
-          creditAccount.creditLimit == null
-              ? null
-              : creditAccount.creditLimit! - account.balance,
+      availableCredit: creditAccount.creditLimit == null
+          ? null
+          : creditAccount.creditLimit! - account.balance,
       buckets: CreditDebtBucketsReadModel(
         billDebt: domainBuckets.billDebt,
         futureContractDebt: domainBuckets.futureContractDebt,

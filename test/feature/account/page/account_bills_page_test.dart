@@ -12,6 +12,8 @@ import 'package:smartflow/feature/account/view_model/account_view.dart';
 import 'package:smartflow/feature/account/view_model/account_views_provider.dart';
 import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import 'package:smartflow/app/provider.dart';
+import '../../../helper/fake_credit_bill_generation_app_service.dart';
 
 void main() {
   testWidgets('shows all account bills and historical generation action', (
@@ -20,6 +22,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          creditBillGenerationAppServiceProvider.overrideWithValue(
+            FakeCreditBillGenerationAppService(),
+          ),
           accountViewProvider(
             'card',
           ).overrideWith((ref) => AsyncValue.data(_account())),
@@ -38,9 +43,9 @@ void main() {
     expect(find.text('2026年07月'), findsOneWidget);
     expect(find.text('2026年06月'), findsOneWidget);
     expect(find.text('2026年05月'), findsOneWidget);
-    expect(find.byTooltip('生成历史账单'), findsOneWidget);
+    expect(find.byTooltip('创建账单'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('生成历史账单'));
+    await tester.tap(find.byTooltip('创建账单'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AppMonthPickerDialog), findsOneWidget);

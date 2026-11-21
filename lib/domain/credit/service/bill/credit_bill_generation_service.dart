@@ -15,11 +15,12 @@ import 'package:smartflow/domain/credit/service/settlement/settlement_judgement_
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/bill_period.dart';
 import 'package:smartflow/domain/credit/valobj/bill_window.dart';
-import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_amount_breakdown.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
+
+import 'bill_generation_strategy.dart';
 
 class CreditBillGenerationResult {
   const CreditBillGenerationResult({required this.scheduleStatuses});
@@ -47,6 +48,7 @@ class CreditBillGenerationService {
     required CreditBillSourceRepository billSources,
     required IdGenerator idGenerator,
     SettlementJudgementService judgement = const SettlementJudgementService(),
+    DateTime Function()? now,
   }) : _creditAccounts = creditAccounts,
        _installments = installments,
        _repayments = repayments,
@@ -54,7 +56,8 @@ class CreditBillGenerationService {
        _suppressions = suppressions,
        _billSources = billSources,
        _idGenerator = idGenerator,
-       _judgement = judgement;
+       _judgement = judgement,
+       _now = now;
 
   final CreditAccountRepository _creditAccounts;
   final InstallmentRepository _installments;
@@ -64,21 +67,101 @@ class CreditBillGenerationService {
   final CreditBillSourceRepository _billSources;
   final IdGenerator _idGenerator;
   final SettlementJudgementService _judgement;
+  final DateTime Function()? _now;
 
   Future<CreditBillGenerationResult> generateDueBillsForAccount({
     required CreditLiabilityAccount account,
     required DateTime now,
   }) async {
-    return switch (account.kind) {
-      CreditLiabilityAccountKind.credit => await _generateCreditBills(
-        account,
-        _dateOnly(now),
+    final bills = await _bills.listBillsByAccount(account.accountId);
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      account.accountId,
+    );
+    final current = _strategy(account).currentPeriod(account, now, bills);
+    // Ending accumulation only advances a marker. Historical amounts are
+    // recomputed solely by explicit refresh or by browsing that bill.
+    for (final bill in bills) {
+      if (bill.period.compareTo(current) >= 0 ||
+          bill.status != BillStatus.open) {
+        continue;
+      }
+      final windowEnded = bill.items.any(
+        (item) =>
+            item.itemType == BillItemType.consumption &&
+            item.endInclusive != null &&
+            _dateOnly(now).isAfter(item.endInclusive!),
+      );
+      if (!windowEnded) {
+        continue;
+      }
+      bill.endConsumptionAccumulation();
+      await _persistBill(bill);
+    }
+    return _maintainBills(account, now, current, bills, contracts);
+  }
+
+  Future<CreditBillGenerationResult> _maintainBills(
+    CreditLiabilityAccount account,
+    DateTime now,
+    BillPeriod current,
+    List<Bill> bills,
+    List<InstallmentContract> contracts, {
+    bool refreshCurrent = true,
+  }) async {
+    final periods = <BillPeriod>{
+      current,
+      for (final contract in contracts)
+        if (contract.status == InstallmentContractStatus.active)
+          for (final schedule in contract.schedules)
+            if (hasBillObligation(schedule) &&
+                BillPeriod.fromDate(
+                      schedule.expectedRepaymentDate,
+                    ).compareTo(current) >=
+                    0)
+              BillPeriod.fromDate(schedule.expectedRepaymentDate),
+    }.toList()..sort();
+
+    for (final period in periods) {
+      await _ensureBill(account, period, bills);
+    }
+    var result = CreditBillGenerationResult.empty;
+    final refreshable =
+        bills
+            .where(
+              (bill) =>
+                  bill.period.compareTo(current) >= (refreshCurrent ? 0 : 1),
+            )
+            .toList()
+          ..sort((a, b) => a.period.compareTo(b.period));
+    for (final bill in refreshable) {
+      result = result.merge(
+        await _projectBill(account, bill, now, current, bills, contracts),
+      );
+    }
+    return result;
+  }
+
+  Future<Bill?> _ensureBill(
+    CreditLiabilityAccount account,
+    BillPeriod period,
+    List<Bill> bills,
+  ) async {
+    final existing = bills.where((bill) => bill.period == period).firstOrNull;
+    if (existing != null) return existing;
+    if (await _suppressions.isSuppressed(account.accountId, period)) {
+      return null;
+    }
+    final bill = await _bills.saveBill(
+      Bill(
+        id: _idGenerator.newId(),
+        accountId: account.accountId,
+        period: period,
+        status: BillStatus.billed,
+        items: const [],
       ),
-      CreditLiabilityAccountKind.loan => await _generateCurrentLoanBill(
-        account,
-        _dateOnly(now),
-      ),
-    };
+    );
+    bills.add(bill);
+    return bill;
   }
 
   Future<CreditBillGenerationResult> generateBillForPeriod({
@@ -86,49 +169,14 @@ class CreditBillGenerationService {
     required BillPeriod period,
     required DateTime now,
   }) async {
-    final currentPeriod = switch (account.kind) {
-      CreditLiabilityAccountKind.credit => account.creditPeriodForDate(now),
-      CreditLiabilityAccountKind.loan => BillPeriod.fromDate(now),
-    };
-    if (period.compareTo(currentPeriod) > 0) {
-      throw BusinessException(
-        CreditErrorCode.billInvalidCommand,
-        message: 'Future bill periods cannot be generated manually.',
-      );
-    }
-    final existing = await _bills.findByAccountAndPeriod(
-      account.accountId,
-      period,
-    );
-    if (existing != null) {
-      await _suppressions.clear(account.accountId, period);
-      return _refreshBill(existing);
-    }
-
     await _suppressions.clear(account.accountId, period);
-
-    switch (account.kind) {
-      case CreditLiabilityAccountKind.credit:
-        final status = period == currentPeriod
-            ? BillStatus.open
-            : BillStatus.billed;
-        final bill = await _saveEmptyBill(
-          accountId: account.accountId,
-          period: period,
-          status: status,
-          // Kept only for legacy in-memory callers. Persistence no longer
-          // maps this compatibility value; item windows are authoritative.
-          window: await _legacyWindowForPeriod(account, period),
-        );
-        return _refreshBill(bill);
-      case CreditLiabilityAccountKind.loan:
-        final bill = await _saveEmptyBill(
-          accountId: account.accountId,
-          period: period,
-          status: BillStatus.billed,
-        );
-        return _refreshBill(bill);
-    }
+    final bills = await _bills.listBillsByAccount(account.accountId);
+    final current = _strategy(account).currentPeriod(account, now, bills);
+    final bill = (await _ensureBill(account, period, bills))!;
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      account.accountId,
+    );
+    return _projectBill(account, bill, now, current, bills, contracts);
   }
 
   Future<CreditBillGenerationResult> refreshBill(String billId) async {
@@ -142,34 +190,88 @@ class CreditBillGenerationService {
     return _refreshBill(bill);
   }
 
-  Future<CreditBillGenerationResult> refreshDisplayedBillsForAccount({
+  Future<CreditBillGenerationResult> refreshCurrentAndFutureBillsForAccount({
     required CreditLiabilityAccount account,
     required DateTime now,
   }) async {
-    final periods = switch (account.kind) {
-      CreditLiabilityAccountKind.credit => [
-        account.creditPeriodForDate(now).previous(),
-        account.creditPeriodForDate(now),
-      ],
-      CreditLiabilityAccountKind.loan => [BillPeriod.fromDate(now)],
-    };
+    final bills = await _bills.listBillsByAccount(account.accountId);
+    final current = _strategy(account).currentPeriod(account, now, bills);
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      account.accountId,
+    );
     var result = CreditBillGenerationResult.empty;
-    for (final period in periods) {
-      final bill = await _bills.findByAccountAndPeriod(
-        account.accountId,
-        period,
+    final refreshable =
+        bills.where((bill) => bill.period.compareTo(current) >= 0).toList()
+          ..sort((a, b) => a.period.compareTo(b.period));
+    for (final bill in refreshable) {
+      result = result.merge(
+        await _projectBill(account, bill, now, current, bills, contracts),
       );
-      if (bill == null || !_shouldRefreshWhenDisplayed(bill)) {
-        continue;
-      }
-      result = result.merge(await _refreshBill(bill));
     }
     return result;
   }
 
-  /// 删除账单：仅允许没有任何还款记录的账单。
-  ///
-  /// 账单明细是来源投影，删除账单不会影响合同、还款计划或账务交易。
+  /// A cycle change retains the current consumption window and regenerates
+  /// future projections. Creation origin grants no protection; repayments do.
+  Future<CreditBillGenerationResult> rebuildFutureBills({
+    required CreditLiabilityAccount previousAccount,
+    required CreditLiabilityAccount account,
+    required DateTime now,
+  }) async {
+    final bills = await _bills.listBillsByAccount(account.accountId);
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      account.accountId,
+    );
+    final current = _strategy(
+      previousAccount,
+    ).currentPeriod(previousAccount, now, bills);
+    final existingCurrent = bills
+        .where((bill) => bill.period == current)
+        .firstOrNull;
+    final retained = await _ensureBill(previousAccount, current, bills);
+    if (existingCurrent == null && retained != null) {
+      await _projectBill(
+        previousAccount,
+        retained,
+        now,
+        current,
+        bills,
+        contracts,
+      );
+    }
+    final future = bills
+        .where((bill) => bill.period.compareTo(current) > 0)
+        .toList();
+    for (final bill in future) {
+      final repayments = await _repayments.listByTarget(
+        RepaymentTargetType.bill,
+        bill.id,
+      );
+      if (repayments.isEmpty) {
+        // Rebuilding a projection must not record a user deletion intent.
+        await _bills.deleteBill(bill.id);
+        bills.remove(bill);
+      } else {
+        for (final item in bill.items) {
+          if (item.itemType == BillItemType.consumption) {
+            item.startInclusive = null;
+            item.endInclusive = null;
+            item.billingState = BillItemBillingState.open;
+          }
+        }
+        bill.window = null;
+      }
+    }
+    return _maintainBills(
+      account,
+      now,
+      current,
+      bills,
+      contracts,
+      refreshCurrent: false,
+    );
+  }
+
   Future<void> deleteBill(String billId) async {
     final bill = await _bills.findBill(billId);
     if (bill == null) {
@@ -273,114 +375,94 @@ class CreditBillGenerationService {
     item.startInclusive = _dateOnly(startInclusive);
     item.endInclusive = _dateOnly(endInclusive);
     await _bills.replaceBillItems(bill.id, bill.items);
-    await _refreshBill(bill, preserveConsumptionWindow: true);
+    await _refreshBill(bill);
   }
 
-  /// 信用账户周期驱动生成：**不补建**历史账单。
-  ///
-  /// 迟到执行时会冻结现存且已过有效消费窗口的 OPEN 账单。缺失周期不补建；当上一期
-  /// 缺失时，当前 OPEN 账单按账户参数重新起算，遗漏消费留在未归属欠款。
-  Future<CreditBillGenerationResult> _generateCreditBills(
-    CreditLiabilityAccount account,
-    DateTime now,
-  ) async {
-    var result = CreditBillGenerationResult.empty;
-    final currentPeriod = account.creditPeriodForDate(now);
-    final bills = await _bills.listBillsByAccount(account.accountId);
-    for (final bill in bills) {
-      if (bill.status != BillStatus.open) continue;
-      final interval = await _consumptionInterval(
-        account,
-        bill,
-        bill.items
-            .where((item) => item.itemType == BillItemType.consumption)
-            .firstOrNull,
-      );
-      if (now.isBefore(interval.endInclusive.add(const Duration(days: 1)))) {
-        continue;
-      }
-      result = result.merge(
-        await _refreshBill(
-          bill,
-          freezeOpenBill: true,
-          preserveConsumptionWindow: true,
-        ),
-      );
-    }
-
-    final current = await _bills.findByAccountAndPeriod(
-      account.accountId,
-      currentPeriod,
-    );
-    if (current != null) return result;
-    if (await _suppressions.isSuppressed(account.accountId, currentPeriod)) {
-      return result;
-    }
-    final opened = await _saveEmptyBill(
-      accountId: account.accountId,
-      period: currentPeriod,
-      status: BillStatus.open,
-      window: await _legacyWindowForPeriod(account, currentPeriod),
-    );
-    return result.merge(await _refreshBill(opened));
-  }
-
-  Future<CreditBillGenerationResult> _generateCurrentLoanBill(
-    CreditLiabilityAccount account,
-    DateTime now,
-  ) async {
-    final period = BillPeriod.fromDate(now);
-    if (await _bills.findByAccountAndPeriod(account.accountId, period) !=
-        null) {
-      return CreditBillGenerationResult.empty;
-    }
-    if (await _suppressions.isSuppressed(account.accountId, period)) {
-      return CreditBillGenerationResult.empty;
-    }
-    final bill = await _saveEmptyBill(
-      accountId: account.accountId,
-      period: period,
-      status: BillStatus.billed,
-    );
-    return _refreshBill(bill);
-  }
-
-  Future<Bill> _saveEmptyBill({
-    required String accountId,
-    required BillPeriod period,
-    required BillStatus status,
-    BillWindow? window,
-  }) {
-    return _bills.saveBill(
-      Bill(
-        id: _idGenerator.newId(),
-        accountId: accountId,
-        period: period,
-        window: window,
-        status: status,
-        items: const [],
-      ),
-    );
-  }
-
-  Future<CreditBillGenerationResult> _refreshBill(
-    Bill bill, {
-    bool freezeOpenBill = false,
-    bool preserveConsumptionWindow = false,
-  }) async {
+  Future<CreditBillGenerationResult> _refreshBill(Bill bill) async {
     final account = await _creditAccounts.findByAccountId(bill.accountId);
     if (account == null) {
       throw BusinessException(CreditErrorCode.accountNotFound);
     }
-    final sourceItems = switch (account.kind) {
-      CreditLiabilityAccountKind.credit => await _buildCreditItems(
-        account,
-        bill,
-        preserveConsumptionWindow: preserveConsumptionWindow,
-      ),
-      CreditLiabilityAccountKind.loan => await _buildLoanItems(account, bill),
+    final bills = await _bills.listBillsByAccount(bill.accountId);
+    bills.removeWhere((candidate) => candidate.id == bill.id);
+    bills.add(bill);
+    final now = _dateOnly(_now?.call() ?? DateTime.now());
+    final current = _strategy(account).currentPeriod(account, now, bills);
+    final contracts = await _installments.listContractsByLiabilityAccount(
+      bill.accountId,
+    );
+    return _projectBill(account, bill, now, current, bills, contracts);
+  }
+
+  Future<CreditBillGenerationResult> _projectBill(
+    CreditLiabilityAccount account,
+    Bill bill,
+    DateTime now,
+    BillPeriod current,
+    List<Bill> bills,
+    List<InstallmentContract> contracts,
+  ) async {
+    final sources = _strategy(account).sources(
+      account: account,
+      bill: bill,
+      now: now,
+      currentPeriod: current,
+      bills: bills,
+      contracts: contracts,
+    );
+    final allocated = await _repayments.aggregateItemsByBillItemIds(
+      bill.items.map((item) => item.id),
+    );
+    final existingByScheduleId = {
+      for (final item in bill.items)
+        if (item.scheduleId != null) item.scheduleId!: item,
     };
-    final retainedIds = sourceItems.map((item) => item.id).toSet();
+    final items = <BillItem>[];
+    if (sources.consumption case final source?) {
+      final existing = bill.items
+          .where((item) => item.itemType == BillItemType.consumption)
+          .firstOrNull;
+      final principal = await _billSources.netConsumptionMinor(
+        accountId: account.accountId,
+        startInclusive: source.window.startInclusive,
+        endExclusive: source.window.endInclusive.add(const Duration(days: 1)),
+      );
+      final itemId = existing?.id ?? _idGenerator.newId();
+      items.add(
+        BillItem(
+          id: itemId,
+          billId: bill.id,
+          itemType: BillItemType.consumption,
+          billingState: source.billingState,
+          startInclusive: source.window.startInclusive,
+          endInclusive: source.window.endInclusive,
+          repaymentDate: source.repaymentDate,
+          expectedPrincipal: Money(minorUnits: principal),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          status: _statusFor(
+            itemId: itemId,
+            expectedPrincipalMinor: principal,
+            expectedInterestMinor: 0,
+            expectedFeeMinor: 0,
+            allocated: allocated,
+          ),
+          createdAt: existing?.createdAt,
+        ),
+      );
+      bill.window ??= source.legacyWindow;
+    }
+    items.addAll([
+      for (final (:contract, :schedule) in sources.installments)
+        _itemForSchedule(
+          billId: bill.id,
+          contract: contract,
+          schedule: schedule,
+          existing: existingByScheduleId[schedule.id],
+          allocated: allocated,
+        ),
+    ]);
+    final retainedIds = items.map((item) => item.id).toSet();
     final removedIds = bill.items
         .where((item) => !retainedIds.contains(item.id))
         .map((item) => item.id)
@@ -395,139 +477,23 @@ class CreditBillGenerationService {
         }
       }
     }
-    if (bill.status == BillStatus.open && !freezeOpenBill) {
-      bill.refreshOpenProjection(sourceItems: sourceItems);
-    } else if (bill.status == BillStatus.open) {
-      bill.freezeAsBilled(sourceItems: sourceItems);
-    } else {
-      bill.synchronizeBilledItems(sourceItems);
-    }
-    // freezeAsBilled mutates consumption billingState. Persist the projected
-    // items only after the aggregate lifecycle transition so the stored item
-    // state cannot remain open on a billed bill.
-    await _bills.replaceBillItems(bill.id, bill.items);
-    await _bills.updateBill(bill);
+    bill.synchronizeProjection(items);
+    await _persistBill(bill);
     return CreditBillGenerationResult(
       scheduleStatuses: {
-        for (final item in sourceItems)
+        for (final item in items)
           if (item.scheduleId != null) item.scheduleId!: item.status,
       },
     );
   }
 
-  Future<List<BillItem>> _buildCreditItems(
-    CreditLiabilityAccount account,
-    Bill bill, {
-    bool preserveConsumptionWindow = false,
-  }) async {
-    final schedules = await _schedulesForPeriod(
-      accountId: account.accountId,
-      period: bill.period,
-    );
-    final existingConsumption = bill.items
-        .where((item) => item.itemType == BillItemType.consumption)
-        .firstOrNull;
-    final existingByScheduleId = {
-      for (final item in bill.items)
-        if (item.scheduleId != null) item.scheduleId!: item,
-    };
-    final existingIds = <String>{
-      if (existingConsumption != null) existingConsumption.id,
-      for (final entry in schedules)
-        if (existingByScheduleId[entry.schedule.id] != null)
-          existingByScheduleId[entry.schedule.id]!.id,
-    };
-    final allocated = await _repayments.aggregateItemsByBillItemIds(
-      existingIds,
-    );
-    final interval = await _consumptionInterval(
-      account,
-      bill,
-      existingConsumption,
-      preserveExisting: preserveConsumptionWindow,
-    );
-    final repaymentDate =
-        bill.status == BillStatus.open || existingConsumption == null
-        ? account.repaymentDateForCreditPeriod(bill.period)
-        : existingConsumption.repaymentDate;
-    final consumptionMinor = await _billSources.netConsumptionMinor(
-      accountId: account.accountId,
-      startInclusive: interval.startInclusive,
-      endExclusive: interval.endInclusive.add(const Duration(days: 1)),
-    );
-    final consumptionId = existingConsumption?.id ?? _idGenerator.newId();
-    final items = <BillItem>[];
-    if (bill.status == BillStatus.open ||
-        consumptionMinor > 0 ||
-        existingConsumption != null ||
-        schedules.isEmpty) {
-      items.add(
-        BillItem(
-          id: consumptionId,
-          billId: bill.id,
-          itemType: BillItemType.consumption,
-          billingState: bill.status == BillStatus.open
-              ? BillItemBillingState.open
-              : BillItemBillingState.billed,
-          startInclusive: interval.startInclusive,
-          endInclusive: interval.endInclusive,
-          repaymentDate: repaymentDate,
-          expectedPrincipal: Money(minorUnits: consumptionMinor),
-          expectedInterest: Money.zero(),
-          expectedFee: Money.zero(),
-          status: _statusFor(
-            itemId: consumptionId,
-            expectedPrincipalMinor: consumptionMinor,
-            expectedInterestMinor: 0,
-            expectedFeeMinor: 0,
-            allocated: allocated,
-          ),
-          createdAt: existingConsumption?.createdAt,
-        ),
-      );
-    }
-    items.addAll([
-      for (final (:contract, :schedule) in schedules)
-        _itemForSchedule(
-          billId: bill.id,
-          contract: contract,
-          schedule: schedule,
-          existing: existingByScheduleId[schedule.id],
-          allocated: allocated,
-        ),
-    ]);
-    return items;
+  Future<void> _persistBill(Bill bill) async {
+    await _bills.replaceBillItems(bill.id, bill.items);
+    await _bills.updateBill(bill);
   }
 
-  Future<List<BillItem>> _buildLoanItems(
-    CreditLiabilityAccount account,
-    Bill bill,
-  ) async {
-    final schedules = await _schedulesForPeriod(
-      accountId: account.accountId,
-      period: bill.period,
-    );
-    final existingByScheduleId = {
-      for (final item in bill.items)
-        if (item.scheduleId != null) item.scheduleId!: item,
-    };
-    final allocated = await _repayments.aggregateItemsByBillItemIds([
-      for (final entry in schedules)
-        if (existingByScheduleId[entry.schedule.id] != null)
-          existingByScheduleId[entry.schedule.id]!.id,
-    ]);
-    final items = [
-      for (final (:contract, :schedule) in schedules)
-        _itemForSchedule(
-          billId: bill.id,
-          contract: contract,
-          schedule: schedule,
-          existing: existingByScheduleId[schedule.id],
-          allocated: allocated,
-        ),
-    ];
-    return items;
-  }
+  BillGenerationStrategy _strategy(CreditLiabilityAccount account) =>
+      billGenerationStrategies[account.kind]!;
 
   BillItem _itemForSchedule({
     required String billId,
@@ -582,105 +548,6 @@ class CreditBillGenerationService {
         : status;
   }
 
-  Future<ConsumptionWindow> _consumptionInterval(
-    CreditLiabilityAccount account,
-    Bill bill,
-    BillItem? existingConsumption, {
-    bool preserveExisting = false,
-  }) async {
-    final existingStart = existingConsumption?.startInclusive;
-    final existingEnd = existingConsumption?.endInclusive;
-    if ((bill.status != BillStatus.open || preserveExisting) &&
-        existingStart != null &&
-        existingEnd != null) {
-      return ConsumptionWindow(
-        startInclusive: existingStart,
-        endInclusive: existingEnd,
-      );
-    }
-    final fallback = account.consumptionWindowForPeriod(bill.period);
-    final previous = await _bills.findByAccountAndPeriod(
-      bill.accountId,
-      bill.period.previous(),
-    );
-    final next = await _bills.findByAccountAndPeriod(
-      bill.accountId,
-      bill.period.next(),
-    );
-    final previousConsumption = previous?.items
-        .where((item) => item.itemType == BillItemType.consumption)
-        .firstOrNull;
-    final nextConsumption = next?.items
-        .where((item) => item.itemType == BillItemType.consumption)
-        .firstOrNull;
-    var start = fallback.startInclusive;
-    var end = fallback.endInclusive;
-    if (previousConsumption?.endInclusive case final previousEnd?) {
-      start = previousEnd.add(const Duration(days: 1));
-    }
-    if (nextConsumption?.startInclusive case final nextStart?) {
-      end = nextStart.subtract(const Duration(days: 1));
-    }
-    if (start.isAfter(end)) {
-      return fallback;
-    }
-    return ConsumptionWindow(startInclusive: start, endInclusive: end);
-  }
-
-  Future<List<({InstallmentContract contract, InstallmentSchedule schedule})>>
-  _schedulesForPeriod({
-    required String accountId,
-    required BillPeriod period,
-  }) async {
-    final result =
-        <({InstallmentContract contract, InstallmentSchedule schedule})>[];
-    for (final contract in await _installments.listContractsByLiabilityAccount(
-      accountId,
-    )) {
-      for (final schedule in contract.schedules) {
-        final expectedTotal =
-            schedule.expectedPrincipal.minorUnits +
-            schedule.expectedInterest.minorUnits +
-            schedule.expectedFee.minorUnits;
-        if (schedule.status == InstallmentScheduleStatus.skipped ||
-            expectedTotal == 0 ||
-            BillPeriod.fromDate(schedule.expectedRepaymentDate) != period) {
-          continue;
-        }
-        result.add((contract: contract, schedule: schedule));
-      }
-    }
-    return result;
-  }
-
-  bool _shouldRefreshWhenDisplayed(Bill bill) {
-    return bill.status == BillStatus.open;
-  }
-
-  Future<BillWindow> _legacyWindowForPeriod(
-    CreditLiabilityAccount account,
-    BillPeriod period,
-  ) async {
-    final base = account.nextCreditBillWindow(period);
-    final previous = await _bills.findByAccountAndPeriod(
-      account.accountId,
-      period.previous(),
-    );
-    final previousConsumption = previous?.items
-        .where((item) => item.itemType == BillItemType.consumption)
-        .firstOrNull;
-    final start =
-        previousConsumption?.endInclusive?.add(const Duration(days: 1)) ??
-        base.startDate;
-    return BillWindow(
-      period: period,
-      startDate: start,
-      billingDate: base.billingDate,
-      repaymentDate: base.repaymentDate,
-    );
-  }
-
-  DateTime _dateOnly(DateTime value) {
-    return DateTime(value.year, value.month, value.day);
-  }
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
 }

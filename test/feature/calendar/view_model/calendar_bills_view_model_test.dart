@@ -10,6 +10,8 @@ import 'package:smartflow/feature/calendar/view_model/calendar_bills_view_model.
 import 'package:smartflow/feature/calendar/view_model/calendar_view_model.dart';
 import 'package:smartflow/feature/shared/presentation/account_lookup.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
+import 'package:smartflow/app/provider.dart';
+import '../../../helper/fake_credit_bill_generation_app_service.dart';
 
 void main() {
   test('moves from loading to loaded day state', () async {
@@ -17,6 +19,9 @@ void main() {
     final month = DateTime(2026, 1);
     final container = ProviderContainer(
       overrides: [
+        creditBillGenerationAppServiceProvider.overrideWithValue(
+          FakeCreditBillGenerationAppService(),
+        ),
         calendarCreditDueItemsProvider(
           month,
         ).overrideWith((ref) async => [_dueItem(date)]),

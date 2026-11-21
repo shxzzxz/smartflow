@@ -1,3 +1,4 @@
+import 'package:smartflow/infrastructure/credit/repository/drift_credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
@@ -552,6 +553,7 @@ class _Fixture {
       installments: installmentRepository,
       repayments: repaymentRepository,
       suppressions: suppressionRepository,
+      billSources: DriftCreditBillSourceRepository(database),
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -589,6 +591,7 @@ class _Fixture {
       installments: installmentRepository,
       repayments: repaymentRepository,
       suppressions: suppressionRepository,
+      billSources: DriftCreditBillSourceRepository(database),
       transactionRunner: runner,
       idGenerator: ids,
     );

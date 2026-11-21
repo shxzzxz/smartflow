@@ -11,6 +11,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../../credit/provider/bill_query_providers.dart';
 import '../../credit/provider/credit_account_query_providers.dart';
 import '../../credit/provider/installment_query_providers.dart';
+import '../../credit/view_model/bill_browsing_refresh.dart';
 import 'account_transactions_view_model.dart';
 import 'account_view.dart';
 import 'account_views_provider.dart';
@@ -21,6 +22,8 @@ final _logger = Logger('feature.account.detail');
 
 @riverpod
 class AccountDetailViewModel extends _$AccountDetailViewModel {
+  final _browsingRefresh = BillBrowsingRefresh();
+
   @override
   AccountDetailPageState build(String accountId) {
     final account = ref.watch(accountViewProvider(accountId));
@@ -40,12 +43,31 @@ class AccountDetailViewModel extends _$AccountDetailViewModel {
       return const AccountDetailPageState.loading();
     }
 
+    final bills = _billsStateFor(ref, accountValue);
+    if (bills is AccountBillsLoaded && bills.bills.isNotEmpty) {
+      _browsingRefresh.schedule(
+        ref,
+        refresh: () => ref
+            .read(creditBillGenerationAppServiceProvider)
+            .refreshCurrentAndFutureBillsForAccount(
+              accountId: accountId,
+              now: DateTime.now(),
+            ),
+        onRefreshed: () {
+          ref
+            ..invalidate(billSummariesByAccountProvider(accountId))
+            ..invalidate(accountBillPreviewProvider(accountId))
+            ..invalidate(creditAccountOverviewProvider(accountId))
+            ..invalidate(creditAccountQueryServiceProvider);
+        },
+      );
+    }
     return AccountDetailPageState.loaded(
       account: accountValue,
       actions: accountDetailActions(accountValue),
       transactions: transactions,
       contracts: _contractsStateFor(ref, accountValue),
-      bills: _billsStateFor(ref, accountValue),
+      bills: bills,
       creditOverview: _creditOverviewStateFor(ref, accountValue),
     );
   }
@@ -276,10 +298,13 @@ AccountBillsState _billsStateFor(Ref ref, AccountView account) {
     return const AccountBillsState.notApplicable();
   }
 
-  return switch (ref.watch(billSummariesByAccountProvider(account.id))) {
-    AsyncData(value: final bills) => AccountBillsState.loaded(
-      bills: bills.take(2).toList(),
-    ),
+  final value = ref.watch(accountBillPreviewProvider(account.id));
+  final cached = value.hasValue ? value.value : null;
+  if (cached != null) {
+    return AccountBillsState.loaded(bills: cached);
+  }
+  return switch (value) {
+    AsyncData(value: final bills) => AccountBillsState.loaded(bills: bills),
     AsyncError() => const AccountBillsState.error(message: '账单加载失败，请稍后重试'),
     _ => const AccountBillsState.loading(),
   };
@@ -293,7 +318,12 @@ AccountCreditOverviewState _creditOverviewStateFor(
     return const AccountCreditOverviewState.notApplicable();
   }
 
-  return switch (ref.watch(creditAccountOverviewProvider(account.id))) {
+  final value = ref.watch(creditAccountOverviewProvider(account.id));
+  final cached = value.hasValue ? value.value : null;
+  if (cached != null) {
+    return AccountCreditOverviewState.loaded(overview: cached);
+  }
+  return switch (value) {
     AsyncData(value: final overview) =>
       overview == null
           ? const AccountCreditOverviewState.notApplicable()

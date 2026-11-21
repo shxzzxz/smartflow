@@ -9,17 +9,12 @@ part of 'calendar_bills_view_model.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(calendarDayBillsViewModel)
+@ProviderFor(CalendarDayBillsViewModel)
 final calendarDayBillsViewModelProvider = CalendarDayBillsViewModelFamily._();
 
 final class CalendarDayBillsViewModelProvider
     extends
-        $FunctionalProvider<
-          CalendarBillsPageState,
-          CalendarBillsPageState,
-          CalendarBillsPageState
-        >
-    with $Provider<CalendarBillsPageState> {
+        $NotifierProvider<CalendarDayBillsViewModel, CalendarBillsPageState> {
   CalendarDayBillsViewModelProvider._({
     required CalendarDayBillsViewModelFamily super.from,
     required DateTime super.argument,
@@ -43,15 +38,7 @@ final class CalendarDayBillsViewModelProvider
 
   @$internal
   @override
-  $ProviderElement<CalendarBillsPageState> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  CalendarBillsPageState create(Ref ref) {
-    final argument = this.argument as DateTime;
-    return calendarDayBillsViewModel(ref, argument);
-  }
+  CalendarDayBillsViewModel create() => CalendarDayBillsViewModel();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(CalendarBillsPageState value) {
@@ -74,10 +61,17 @@ final class CalendarDayBillsViewModelProvider
 }
 
 String _$calendarDayBillsViewModelHash() =>
-    r'2bd185969bee9ac6b4dacc47a7e780bcc0c3ebed';
+    r'53dbf6f16490789de1e1ee01e717831dc4a5b7f0';
 
 final class CalendarDayBillsViewModelFamily extends $Family
-    with $FunctionalFamilyOverride<CalendarBillsPageState, DateTime> {
+    with
+        $ClassFamilyOverride<
+          CalendarDayBillsViewModel,
+          CalendarBillsPageState,
+          CalendarBillsPageState,
+          CalendarBillsPageState,
+          DateTime
+        > {
   CalendarDayBillsViewModelFamily._()
     : super(
         retry: null,
@@ -94,18 +88,36 @@ final class CalendarDayBillsViewModelFamily extends $Family
   String toString() => r'calendarDayBillsViewModelProvider';
 }
 
-@ProviderFor(calendarMonthBillsViewModel)
+abstract class _$CalendarDayBillsViewModel
+    extends $Notifier<CalendarBillsPageState> {
+  late final _$args = ref.$arg as DateTime;
+  DateTime get date => _$args;
+
+  CalendarBillsPageState build(DateTime date);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref =
+        this.ref as $Ref<CalendarBillsPageState, CalendarBillsPageState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CalendarBillsPageState, CalendarBillsPageState>,
+              CalendarBillsPageState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
+}
+
+@ProviderFor(CalendarMonthBillsViewModel)
 final calendarMonthBillsViewModelProvider =
     CalendarMonthBillsViewModelFamily._();
 
 final class CalendarMonthBillsViewModelProvider
     extends
-        $FunctionalProvider<
-          CalendarBillsPageState,
-          CalendarBillsPageState,
-          CalendarBillsPageState
-        >
-    with $Provider<CalendarBillsPageState> {
+        $NotifierProvider<CalendarMonthBillsViewModel, CalendarBillsPageState> {
   CalendarMonthBillsViewModelProvider._({
     required CalendarMonthBillsViewModelFamily super.from,
     required DateTime super.argument,
@@ -129,15 +141,7 @@ final class CalendarMonthBillsViewModelProvider
 
   @$internal
   @override
-  $ProviderElement<CalendarBillsPageState> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  CalendarBillsPageState create(Ref ref) {
-    final argument = this.argument as DateTime;
-    return calendarMonthBillsViewModel(ref, argument);
-  }
+  CalendarMonthBillsViewModel create() => CalendarMonthBillsViewModel();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(CalendarBillsPageState value) {
@@ -160,10 +164,17 @@ final class CalendarMonthBillsViewModelProvider
 }
 
 String _$calendarMonthBillsViewModelHash() =>
-    r'905ec4db9b660a003ad818399230b09511b454d0';
+    r'001e96fb5ea8438e0a1a8064452a91c2e3664f75';
 
 final class CalendarMonthBillsViewModelFamily extends $Family
-    with $FunctionalFamilyOverride<CalendarBillsPageState, DateTime> {
+    with
+        $ClassFamilyOverride<
+          CalendarMonthBillsViewModel,
+          CalendarBillsPageState,
+          CalendarBillsPageState,
+          CalendarBillsPageState,
+          DateTime
+        > {
   CalendarMonthBillsViewModelFamily._()
     : super(
         retry: null,
@@ -178,4 +189,27 @@ final class CalendarMonthBillsViewModelFamily extends $Family
 
   @override
   String toString() => r'calendarMonthBillsViewModelProvider';
+}
+
+abstract class _$CalendarMonthBillsViewModel
+    extends $Notifier<CalendarBillsPageState> {
+  late final _$args = ref.$arg as DateTime;
+  DateTime get month => _$args;
+
+  CalendarBillsPageState build(DateTime month);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref =
+        this.ref as $Ref<CalendarBillsPageState, CalendarBillsPageState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<CalendarBillsPageState, CalendarBillsPageState>,
+              CalendarBillsPageState,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
 }

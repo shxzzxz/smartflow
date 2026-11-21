@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/application/credit/credit_command_api.dart';
+import 'package:smartflow/application/credit/credit_query_api.dart';
 import 'package:smartflow/application/ledger/ledger_command_api.dart';
 import 'package:smartflow/application/ledger/ledger_query_api.dart';
 import 'package:smartflow/application/shared/transaction_runner.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/domain/ledger/service/account/account_role_policy.dart';
@@ -35,6 +37,373 @@ import '../../helper/test_app_database.dart';
 
 void main() {
   group('CreditBillGenerationAppService', () {
+    test('account and installment writes do not generate bills', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.createCreditAccount();
+      await fixture.createInterestOnlyInstallment(
+        repaymentDate: DateTime(2026, 7, 25),
+        liabilityAccount: account,
+      );
+      await fixture.creditAccountAppService.editAccount(
+        EditCreditLiabilityAccountCommand(
+          accountId: account.id,
+          name: 'Huabei',
+          repaymentDay: const Patch.set(26),
+        ),
+      );
+      expect(
+        await fixture.billRepository.listBillsByAccount(account.id),
+        isEmpty,
+      );
+    });
+
+    test(
+      'daily maintenance projects all future obligations without inflating bill debt',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final (:account, :contract, :schedule) = await fixture
+            .createInterestOnlyInstallment(repaymentDate: DateTime(2026, 7, 1));
+        final query = CreditAccountQueryServiceImpl(
+          creditAccounts: fixture.creditAccountRepository,
+          bills: fixture.billRepository,
+          installments: fixture.installmentRepository,
+          repayments: fixture.repaymentRepository,
+          ledger: fixture.creditLedgerPort,
+          now: () => fixture.today,
+        );
+        final before = (await query.findOverview(account.id))!;
+        await Future.wait([
+          fixture.generation.generateDueBills(now: fixture.today),
+          fixture.generation.generateDueBills(now: fixture.today),
+        ]);
+        final bills = await fixture.billRepository.listBillsByAccount(
+          account.id,
+        );
+        expect(bills.map((bill) => bill.period.toInt()), [
+          202608,
+          202607,
+          202606,
+        ]);
+        expect(
+          bills
+              .singleWhere((bill) => bill.period.toInt() == 202607)
+              .items
+              .single
+              .scheduleId,
+          schedule.id,
+        );
+        expect(
+          bills
+              .singleWhere((bill) => bill.period.toInt() == 202608)
+              .expectedPrincipal
+              .minorUnits,
+          60000,
+        );
+        final billIds = bills.map((bill) => bill.id).toList();
+        final itemIds = bills
+            .expand((bill) => bill.items)
+            .map((item) => item.id)
+            .toList();
+        await fixture.generation.generateDueBills(now: fixture.today);
+        final repeated = await fixture.billRepository.listBillsByAccount(
+          account.id,
+        );
+        expect(repeated.map((bill) => bill.id).toList(), billIds);
+        expect(
+          repeated.expand((bill) => bill.items).map((item) => item.id).toList(),
+          itemIds,
+        );
+        final after = (await query.findOverview(account.id))!;
+        expect(after.buckets.billDebt, before.buckets.billDebt);
+        expect(after.buckets.futureContractDebt.minorUnits, 60000);
+        expect(
+          after.buckets.futureContractDebt,
+          before.buckets.futureContractDebt,
+        );
+        expect(after.buckets.unattributedDebt, before.buckets.unattributedDebt);
+        expect(
+          (await fixture.installmentRepository.findContract(
+            contract.id,
+          ))!.status,
+          InstallmentContractStatus.active,
+        );
+      },
+    );
+
+    test(
+      'billing day rebuild retains current range and replaces future manual ranges',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createCreditAccount();
+        await fixture.createInterestOnlyInstallment(
+          repaymentDate: DateTime(2026, 7, 25),
+          liabilityAccount: account,
+        );
+        await fixture.createExpenseCategory();
+        await fixture.postExpense(
+          accountId: account.id,
+          amount: const Money(minorUnits: 10000),
+          occurredAt: DateTime(2026, 6, 1),
+        );
+        await fixture.generation.generateDueBills(now: fixture.today);
+        final current = (await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          BillPeriod.fromInt(202606),
+        ))!;
+        final july = (await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          BillPeriod.fromInt(202607),
+        ))!;
+        final julyConsumption = july.items.singleWhere(
+          (item) => item.itemType == BillItemType.consumption,
+        );
+        await fixture.generation.updateConsumptionWindow(
+          billId: july.id,
+          billItemId: julyConsumption.id,
+          startInclusive: DateTime(2026, 6, 10),
+          endInclusive: DateTime(2026, 7, 20),
+        );
+        final augustBefore = (await fixture.billRepository
+            .findByAccountAndPeriod(account.id, BillPeriod.fromInt(202608)))!;
+        expect(
+          augustBefore.items
+              .singleWhere((item) => item.itemType == BillItemType.consumption)
+              .startInclusive,
+          DateTime(2026, 7, 5),
+        );
+        await fixture.generation.generateBillForPeriod(
+          accountId: account.id,
+          period: BillPeriod.fromInt(202609),
+          now: fixture.today,
+        );
+        await fixture.postExpense(
+          accountId: account.id,
+          amount: const Money(minorUnits: 2000),
+          occurredAt: DateTime(2026, 6, 2),
+        );
+        await fixture.creditAccountAppService.editAccount(
+          EditCreditLiabilityAccountCommand(
+            accountId: account.id,
+            name: 'Huabei',
+            billingDay: const Patch.set(15),
+          ),
+        );
+        final retained = (await fixture.billRepository.findBill(current.id))!;
+        expect(retained.items.single.id, current.items.single.id);
+        expect(retained.items.single.startInclusive, DateTime(2026, 5, 5));
+        expect(retained.items.single.endInclusive, DateTime(2026, 6, 4));
+        expect(retained.expectedPrincipal.minorUnits, 10000);
+        final rebuilt = (await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          BillPeriod.fromInt(202607),
+        ))!;
+        expect(rebuilt.id, isNot(july.id));
+        final rebuiltConsumption = rebuilt.items.singleWhere(
+          (item) => item.itemType == BillItemType.consumption,
+        );
+        expect(rebuiltConsumption.startInclusive, DateTime(2026, 6, 5));
+        expect(rebuiltConsumption.endInclusive, DateTime(2026, 7, 14));
+        expect(
+          rebuilt.items
+              .singleWhere((item) => item.itemType == BillItemType.installment)
+              .repaymentDate,
+          DateTime(2026, 7, 25),
+        );
+        expect(
+          await fixture.billRepository.findByAccountAndPeriod(
+            account.id,
+            BillPeriod.fromInt(202609),
+          ),
+          isNull,
+        );
+        fixture.today = DateTime(2026, 6, 10);
+        await fixture.generation.generateDueBills(now: fixture.today);
+        expect(
+          (await fixture.billRepository.findBill(
+            current.id,
+          ))!.expectedPrincipal.minorUnits,
+          10000,
+        );
+        expect(
+          (await fixture.billRepository.findBill(rebuilt.id))!.items
+              .singleWhere((item) => item.itemType == BillItemType.consumption)
+              .startInclusive,
+          DateTime(2026, 6, 5),
+        );
+        await fixture.generation.refreshBill(current.id);
+        expect(
+          (await fixture.billRepository.findBill(
+            current.id,
+          ))!.expectedPrincipal.minorUnits,
+          12000,
+        );
+      },
+    );
+
+    test('billing day rebuild preserves future repayment references', () async {
+      final fixture = _Fixture();
+      addTearDown(fixture.close);
+      final account = await fixture.createCreditAccount();
+      await fixture.createInterestOnlyInstallment(
+        repaymentDate: DateTime(2026, 7, 25),
+        liabilityAccount: account,
+      );
+      await fixture.generation.generateDueBills(now: fixture.today);
+      final july = (await fixture.billRepository.findByAccountAndPeriod(
+        account.id,
+        BillPeriod.fromInt(202607),
+      ))!;
+      final installment = july.items.singleWhere(
+        (item) => item.itemType == BillItemType.installment,
+      );
+      await fixture.repaymentAppService.createBillRepayment(
+        CreateBillRepaymentCommand(
+          billId: july.id,
+          repaymentDate: fixture.today,
+          allocations: [
+            BillRepaymentAllocation(
+              billItemId: installment.id,
+              allocated: RepaymentAmountDto(
+                principal: Money.zero(),
+                interest: const Money(minorUnits: 1000),
+                fee: Money.zero(),
+                discount: Money.zero(),
+              ),
+            ),
+          ],
+        ),
+      );
+      await fixture.creditAccountAppService.editAccount(
+        EditCreditLiabilityAccountCommand(
+          accountId: account.id,
+          name: 'Huabei',
+          billingDay: const Patch.set(15),
+        ),
+      );
+      final rebuilt = (await fixture.billRepository.findBill(july.id))!;
+      final updatedInstallment = rebuilt.items.singleWhere(
+        (item) => item.itemType == BillItemType.installment,
+      );
+      expect(updatedInstallment.id, installment.id);
+      expect(updatedInstallment.status, BillItemStatus.paid);
+      expect(
+        rebuilt.items
+            .singleWhere((item) => item.itemType == BillItemType.consumption)
+            .endInclusive,
+        DateTime(2026, 7, 14),
+      );
+      final repayment = (await fixture.repaymentRepository.listByTarget(
+        RepaymentTargetType.bill,
+        july.id,
+      )).single;
+      expect(repayment.items.single.billItemId, installment.id);
+      expect(repayment.items.single.allocated.interest.minorUnits, 1000);
+      final preview = await BillQueryServiceImpl(
+        bills: fixture.billRepository,
+        creditAccounts: fixture.creditAccountRepository,
+        installments: fixture.installmentRepository,
+        repayments: fixture.repaymentRepository,
+        ledger: fixture.creditLedgerPort,
+        now: () => fixture.today,
+      ).listAccountBillPreview(account.id);
+      expect(preview.map((bill) => bill.period.toInt()), [202606, 202607]);
+    });
+
+    test(
+      'billing day rebuild rolls back account changes and deleted projections on failure',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createCreditAccount();
+        await fixture.createInterestOnlyInstallment(
+          repaymentDate: DateTime(2026, 7, 25),
+          liabilityAccount: account,
+        );
+        await fixture.generation.generateDueBills(now: fixture.today);
+        final currentId = (await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          BillPeriod.fromInt(202606),
+        ))!.id;
+        final beforeBills = await fixture.database
+            .select(fixture.database.bills)
+            .get();
+        final beforeItems = await fixture.database
+            .select(fixture.database.billItems)
+            .get();
+        final beforeName = (await fixture.accountRepository.findById(
+          account.id,
+        ))!.name;
+        await fixture.database.customStatement('''
+CREATE TRIGGER reject_cycle_rebuild BEFORE INSERT ON bill_items
+WHEN NEW.bill_id <> '$currentId'
+BEGIN SELECT RAISE(ABORT, 'cycle rebuild failed'); END
+''');
+        await expectLater(
+          fixture.creditAccountAppService.editAccount(
+            EditCreditLiabilityAccountCommand(
+              accountId: account.id,
+              name: 'Updated',
+              billingDay: const Patch.set(15),
+            ),
+          ),
+          throwsA(isA<Exception>()),
+        );
+        expect(
+          (await fixture.creditAccountRepository.findByAccountId(
+            account.id,
+          ))!.billingDay,
+          5,
+        );
+        expect(
+          (await fixture.accountRepository.findById(account.id))!.name,
+          beforeName,
+        );
+        expect(
+          await fixture.database.select(fixture.database.bills).get(),
+          beforeBills,
+        );
+        expect(
+          await fixture.database.select(fixture.database.billItems).get(),
+          beforeItems,
+        );
+        await fixture.database.customStatement(
+          'DROP TRIGGER reject_cycle_rebuild',
+        );
+      },
+    );
+
+    test(
+      'manual creation permits arbitrary future periods and clears suppression',
+      () async {
+        final fixture = _Fixture();
+        addTearDown(fixture.close);
+        final account = await fixture.createLoanAccount();
+        final period = BillPeriod.fromInt(209912);
+        final suppressions = DriftBillGenerationSuppressionRepository(
+          fixture.database,
+        );
+        await suppressions.suppress(account.id, period);
+        await fixture.generation.generateBillForPeriod(
+          accountId: account.id,
+          period: period,
+          now: fixture.today,
+        );
+        final bill = (await fixture.billRepository.findByAccountAndPeriod(
+          account.id,
+          period,
+        ))!;
+        expect(bill.items, isEmpty);
+        expect(await suppressions.isSuppressed(account.id, period), isFalse);
+        expect(
+          await fixture.billRepository.listBillsByAccount(account.id),
+          hasLength(1),
+        );
+      },
+    );
+
     test(
       'keeps credit bill open and refreshes consumption before billing',
       () async {
@@ -79,10 +448,10 @@ void main() {
         );
         expect(
           june.items.single.expectedPrincipal,
-          const Money(minorUnits: 7000),
+          const Money(minorUnits: 9000),
         );
 
-        await fixture.generation.refreshDisplayedBillsForAccount(
+        await fixture.generation.refreshCurrentAndFutureBillsForAccount(
           accountId: account.id,
           now: DateTime(2026, 6, 4),
         );
@@ -282,7 +651,7 @@ void main() {
               ),
             );
 
-        await fixture.generation.refreshDisplayedBillsForAccount(
+        await fixture.generation.refreshCurrentAndFutureBillsForAccount(
           accountId: account.id,
           now: DateTime(2026, 7, 4),
         );
@@ -338,7 +707,7 @@ void main() {
     });
 
     test(
-      'generates only the current loan bill, including when empty',
+      'generates the empty current loan bill and future obligations without backfilling history',
       () async {
         final fixture = _Fixture();
         addTearDown(fixture.close);
@@ -414,10 +783,20 @@ void main() {
         final bills = await fixture.billRepository.listBillsByAccount(
           account.id,
         );
-        expect(bills, hasLength(1));
-        expect(bills.single.period, BillPeriod.fromInt(202608));
-        expect(bills.single.items, isEmpty);
-        expect(bills.single.status, BillStatus.settled);
+        expect(bills, hasLength(2));
+        final current = bills.singleWhere(
+          (bill) => bill.period == BillPeriod.fromInt(202608),
+        );
+        expect(current.items, isEmpty);
+        expect(current.status, BillStatus.settled);
+        final future = bills.singleWhere(
+          (bill) => bill.period == BillPeriod.fromInt(202609),
+        );
+        expect(future.expectedPrincipal.minorUnits, 60000);
+        expect(
+          bills.any((bill) => bill.period == BillPeriod.fromInt(202607)),
+          isFalse,
+        );
       },
     );
 
@@ -478,7 +857,7 @@ void main() {
         aggregate.contract.refreshStatusFromSchedules();
         await fixture.installmentRepository.saveAggregate(aggregate.contract);
 
-        await fixture.generation.refreshDisplayedBillsForAccount(
+        await fixture.generation.refreshCurrentAndFutureBillsForAccount(
           accountId: aggregate.account.id,
           now: DateTime(2026, 7, 15),
         );
@@ -849,6 +1228,8 @@ class _Fixture {
       installments: installmentRepository,
       repayments: repaymentRepository,
       suppressions: DriftBillGenerationSuppressionRepository(database),
+      billSources: DriftCreditBillSourceRepository(database),
+      now: () => today,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -867,6 +1248,7 @@ class _Fixture {
       bills: billRepository,
       suppressions: DriftBillGenerationSuppressionRepository(database),
       billSources: DriftCreditBillSourceRepository(database),
+      now: () => today,
       transactionRunner: runner,
       idGenerator: ids,
     );
@@ -880,6 +1262,7 @@ class _Fixture {
     );
   }
 
+  var today = DateTime(2026, 6, 4);
   final database = createTestDatabase();
   final ids = SequentialIdGenerator(prefix: 'bill-test');
   late final TransactionRunner runner;
@@ -969,8 +1352,11 @@ class _Fixture {
       InstallmentSchedule schedule,
     })
   >
-  createInterestOnlyInstallment({required DateTime repaymentDate}) async {
-    final account = await createLoanAccount();
+  createInterestOnlyInstallment({
+    required DateTime repaymentDate,
+    CreditLedgerAccountSnapshot? liabilityAccount,
+  }) async {
+    final account = liabilityAccount ?? await createLoanAccount();
     final contractId = ids.newId();
     final schedule = InstallmentSchedule(
       id: ids.newId(),

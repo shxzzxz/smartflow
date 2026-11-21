@@ -8,6 +8,7 @@ import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/service/debt/credit_debt_bucket_service.dart';
+import 'package:smartflow/domain/credit/service/bill/bill_generation_strategy.dart';
 import 'package:smartflow/domain/credit/valobj/bill_enums.dart';
 import 'package:smartflow/domain/credit/valobj/credit_account_enums.dart';
 import 'package:smartflow/domain/credit/valobj/installment_enums.dart';
@@ -19,6 +20,8 @@ import '../../repayment/command/repayment_amount_dto.dart';
 
 abstract interface class BillQueryService {
   Future<List<BillSummaryReadModel>> listBillsByAccount(String accountId);
+
+  Future<List<BillSummaryReadModel>> listAccountBillPreview(String accountId);
 
   Future<BillDetailReadModel?> findBillDetail(String billId);
 
@@ -56,6 +59,40 @@ class BillQueryServiceImpl implements BillQueryService {
   ) async {
     final now = _currentTime();
     final bills = await _bills.listBillsByAccount(accountId);
+    return _summariesForBills(bills, now);
+  }
+
+  @override
+  Future<List<BillSummaryReadModel>> listAccountBillPreview(
+    String accountId,
+  ) async {
+    final account = await _creditAccounts.findByAccountId(accountId);
+    if (account == null) return const [];
+
+    final now = _currentTime();
+    final bills = await _bills.listBillsByAccount(accountId);
+    final current = billGenerationStrategies[account.kind]!.currentPeriod(
+      account,
+      now,
+      bills,
+    );
+    Bill? currentBill;
+    Bill? nextBill;
+    for (final bill in bills) {
+      final position = bill.period.compareTo(current);
+      if (position == 0) currentBill = bill;
+      if (position > 0 &&
+          (nextBill == null || bill.period.compareTo(nextBill.period) < 0)) {
+        nextBill = bill;
+      }
+    }
+    return _summariesForBills([?currentBill, ?nextBill], now);
+  }
+
+  Future<List<BillSummaryReadModel>> _summariesForBills(
+    List<Bill> bills,
+    DateTime now,
+  ) async {
     final allocatedByItemId = await _repayments.aggregateItemsByBillItemIds(
       bills.expand((bill) => bill.items).map((item) => item.id),
     );

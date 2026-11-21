@@ -9,6 +9,7 @@ import 'package:smartflow/domain/credit/entity/installment_contract.dart';
 import 'package:smartflow/domain/credit/entity/installment_schedule.dart';
 import 'package:smartflow/domain/credit/entity/repayment.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
+import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
 import 'package:smartflow/domain/credit/valobj/installment_contract_terms.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_bill_repository.dart';
 import 'package:smartflow/infrastructure/credit/repository/drift_credit_account_repository.dart';
@@ -18,6 +19,104 @@ import 'package:smartflow/infrastructure/credit/repository/drift_repayment_repos
 import '../../helper/test_app_database.dart';
 
 void main() {
+  for (final kind in credit.CreditLiabilityAccountKind.values) {
+    test(
+      '$kind account preview shows current and nearest future despite settlement or past debt',
+      () async {
+        final fixture = _Fixture(now: DateTime(2020, 6, 1));
+        addTearDown(fixture.close);
+        await fixture.seedPreviewBills(
+          kind: kind,
+          periods: [202004, 202005, 202006, 202007, 202008, 202009],
+          settledPeriods: {202006, 202007},
+        );
+
+        final preview = await fixture.query.listAccountBillPreview('credit-1');
+
+        expect(preview.map((bill) => bill.period.toInt()), [202006, 202007]);
+        expect(
+          preview.every((bill) => bill.pendingAmount.minorUnits == 0),
+          isTrue,
+        );
+        final all = await fixture.query.listBillsByAccount('credit-1');
+        expect(all.map((bill) => bill.period.toInt()), [
+          202009,
+          202008,
+          202007,
+          202006,
+          202005,
+          202004,
+        ]);
+      },
+    );
+
+    test(
+      '$kind account preview shows only current without future bills',
+      () async {
+        final fixture = _Fixture(now: DateTime(2020, 6, 1));
+        addTearDown(fixture.close);
+        await fixture.seedPreviewBills(
+          kind: kind,
+          periods: [202004, 202005, 202006],
+          settledPeriods: {202006},
+        );
+
+        final preview = await fixture.query.listAccountBillPreview('credit-1');
+
+        expect(preview.map((bill) => bill.period.toInt()), [202006]);
+      },
+    );
+  }
+
+  test(
+    'account preview picks the nearest existing future period across gaps',
+    () async {
+      final fixture = _Fixture(now: DateTime(2020, 6, 1));
+      addTearDown(fixture.close);
+      await fixture.seedPreviewBills(periods: [202005, 202006, 202008, 202010]);
+
+      final preview = await fixture.query.listAccountBillPreview('credit-1');
+
+      expect(preview.map((bill) => bill.period.toInt()), [202006, 202008]);
+    },
+  );
+
+  test(
+    'account preview orders the next period across the year boundary',
+    () async {
+      final fixture = _Fixture(now: DateTime(2020, 12, 1));
+      addTearDown(fixture.close);
+      await fixture.seedPreviewBills(periods: [202011, 202012, 202101, 202103]);
+
+      final preview = await fixture.query.listAccountBillPreview('credit-1');
+
+      expect(preview.map((bill) => bill.period.toInt()), [202012, 202101]);
+    },
+  );
+
+  test(
+    'account preview respects the retained current consumption window',
+    () async {
+      final fixture = _Fixture(now: DateTime(2020, 6, 10));
+      addTearDown(fixture.close);
+      await fixture.seedPreviewBills(periods: [202005, 202006, 202007, 202008]);
+      for (final period in [202006, 202007]) {
+        final bill = (await fixture.bills.findBill('bill-$period'))!;
+        final item = bill.items.single;
+        if (period == 202006) {
+          item.endInclusive = DateTime(2020, 6, 14);
+        } else {
+          item.startInclusive = DateTime(2020, 6, 15);
+        }
+        await fixture.bills.replaceBillItems(bill.id, [item]);
+      }
+
+      final preview = await fixture.query.listAccountBillPreview('credit-1');
+
+      expect(preview.map((bill) => bill.period.toInt()), [202006, 202007]);
+    },
+  );
+
   test(
     'bill detail derives no-transaction repayment display from record',
     () async {
@@ -86,6 +185,7 @@ void main() {
 class _Fixture {
   _Fixture({
     Map<String, ledger.TransactionReadModel> transactionDetails = const {},
+    DateTime? now,
   }) {
     query = credit_query.BillQueryServiceImpl(
       bills: bills,
@@ -93,7 +193,7 @@ class _Fixture {
       installments: installments,
       repayments: repayments,
       ledger: _FakeCreditLedgerPort(transactionDetails),
-      now: () => DateTime(2026, 7, 1),
+      now: () => now ?? DateTime(2026, 7, 1),
     );
   }
 
@@ -107,6 +207,66 @@ class _Fixture {
     database,
   );
   late final credit_query.BillQueryService query;
+
+  Future<void> seedPreviewBills({
+    required List<int> periods,
+    credit.CreditLiabilityAccountKind kind =
+        credit.CreditLiabilityAccountKind.credit,
+    Set<int> settledPeriods = const {},
+  }) async {
+    final isCredit = kind == credit.CreditLiabilityAccountKind.credit;
+    await creditAccounts.insert(
+      CreditLiabilityAccountDraft(
+        id: 'credit-extension',
+        accountId: 'credit-1',
+        kind: kind,
+        billingDay: isCredit ? 5 : null,
+        repaymentDay: isCredit ? 25 : null,
+        billingDayToNext: true,
+      ),
+    );
+    for (final value in periods) {
+      final period = credit.BillPeriod.fromInt(value);
+      final settled = settledPeriods.contains(value);
+      final id = 'bill-$value';
+      await bills.saveBill(
+        Bill(
+          id: id,
+          accountId: 'credit-1',
+          period: period,
+          status: settled
+              ? credit.BillStatus.settled
+              : credit.BillStatus.billed,
+          items: const [],
+        ),
+      );
+      await bills.replaceBillItems(id, [
+        BillItem(
+          id: 'item-$value',
+          billId: id,
+          itemType: isCredit
+              ? credit.BillItemType.consumption
+              : credit.BillItemType.installment,
+          billingState: credit.BillItemBillingState.billed,
+          startInclusive: isCredit
+              ? DateTime(period.year, period.month - 1, 5)
+              : null,
+          endInclusive: isCredit
+              ? DateTime(period.year, period.month, 4)
+              : null,
+          repaymentDate: DateTime(period.year, period.month, 25),
+          expectedPrincipal: const Money(minorUnits: 1000),
+          expectedInterest: Money.zero(),
+          expectedFee: Money.zero(),
+          status: settled
+              ? credit.BillItemStatus.paid
+              : credit.BillItemStatus.pending,
+          contractId: isCredit ? null : 'contract-1',
+          scheduleId: isCredit ? null : 'schedule-$value',
+        ),
+      ]);
+    }
+  }
 
   Future<void> seedBill() async {
     await bills.saveBill(

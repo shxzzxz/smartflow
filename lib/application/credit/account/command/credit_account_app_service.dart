@@ -5,11 +5,13 @@ import 'package:smartflow/domain/credit/entity/credit_liability_account.dart';
 import 'package:smartflow/domain/credit/port/bill_generation_suppression_repository.dart';
 import 'package:smartflow/domain/credit/port/bill_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_account_repository.dart';
+import 'package:smartflow/domain/credit/port/credit_bill_source_repository.dart';
 import 'package:smartflow/domain/credit/port/credit_ledger_port.dart';
 import 'package:smartflow/domain/credit/port/installment_repository.dart';
 import 'package:smartflow/domain/credit/port/repayment_repository.dart';
 import 'package:smartflow/domain/credit/valobj/credit_error_code.dart';
 import 'package:smartflow/domain/credit/valobj/repayment_enums.dart';
+import 'package:smartflow/domain/credit/service/bill/credit_bill_generation_service.dart';
 
 import 'credit_account_command.dart';
 
@@ -24,15 +26,17 @@ abstract interface class CreditAccountAppService {
 }
 
 class CreditAccountAppServiceImpl implements CreditAccountAppService {
-  const CreditAccountAppServiceImpl({
+  CreditAccountAppServiceImpl({
     required CreditAccountLedgerPort ledger,
     required CreditAccountRepository creditAccounts,
     required BillRepository bills,
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
     required BillGenerationSuppressionRepository suppressions,
+    required CreditBillSourceRepository billSources,
     required TransactionRunner transactionRunner,
     required IdGenerator idGenerator,
+    DateTime Function()? now,
   }) : _ledger = ledger,
        _creditAccounts = creditAccounts,
        _bills = bills,
@@ -40,7 +44,18 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
        _repayments = repayments,
        _suppressions = suppressions,
        _runner = transactionRunner,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _now = now,
+       _billGeneration = CreditBillGenerationService(
+         creditAccounts: creditAccounts,
+         installments: installments,
+         repayments: repayments,
+         bills: bills,
+         suppressions: suppressions,
+         billSources: billSources,
+         idGenerator: idGenerator,
+         now: now,
+       );
 
   final CreditAccountLedgerPort _ledger;
   final CreditAccountRepository _creditAccounts;
@@ -50,6 +65,8 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
   final BillGenerationSuppressionRepository _suppressions;
   final TransactionRunner _runner;
   final IdGenerator _idGenerator;
+  final DateTime Function()? _now;
+  final CreditBillGenerationService _billGeneration;
 
   @override
   Future<CreditLedgerAccountSnapshot> createAccount(
@@ -98,6 +115,15 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
     if (current == null) {
       throw BusinessException(CreditErrorCode.accountNotFound);
     }
+    final previous = CreditLiabilityAccount(
+      id: current.id,
+      accountId: current.accountId,
+      kind: current.kind,
+      creditLimit: current.creditLimit,
+      billingDay: current.billingDay,
+      repaymentDay: current.repaymentDay,
+      billingDayToNext: current.billingDayToNext,
+    );
     final patch = CreditLiabilityAccountPatch(
       creditLimit: command.creditLimit,
       billingDay: command.billingDay,
@@ -126,6 +152,14 @@ class CreditAccountAppServiceImpl implements CreditAccountAppService {
           billingDayToNext: command.billingDayToNext,
         ),
       );
+      if (previous.billingDay != current.billingDay ||
+          previous.billingDayToNext != current.billingDayToNext) {
+        await _billGeneration.rebuildFutureBills(
+          previousAccount: previous,
+          account: current,
+          now: _now?.call() ?? DateTime.now(),
+        );
+      }
     });
   }
 

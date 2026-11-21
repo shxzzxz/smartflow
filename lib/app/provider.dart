@@ -871,6 +871,7 @@ CreditAccountAppService creditAccountAppService(Ref ref) {
     installments: ref.watch(installmentRepositoryProvider),
     repayments: ref.watch(repaymentRepositoryProvider),
     suppressions: ref.watch(billGenerationSuppressionRepositoryProvider),
+    billSources: ref.watch(creditBillSourceRepositoryProvider),
     transactionRunner: ref.watch(transactionRunnerProvider),
     idGenerator: ref.watch(idGeneratorProvider),
   );
@@ -1100,6 +1101,10 @@ CreditBillGenerationAppService creditBillGenerationAppService(Ref ref) {
 CreditBillGenerationTask creditBillGenerationTask(Ref ref) {
   return CreditBillGenerationTask(
     ref.watch(creditBillGenerationAppServiceProvider),
+    onChanged: () {
+      ref.invalidate(billQueryServiceProvider);
+      ref.invalidate(creditAccountQueryServiceProvider);
+    },
   );
 }
 

@@ -10,13 +10,15 @@ Future<List<BillSummaryReadModel>> billSummariesByAccount(
   Ref ref,
   String accountId,
 ) async {
-  await ref
-      .watch(creditBillGenerationAppServiceProvider)
-      .refreshDisplayedBillsForAccount(
-        accountId: accountId,
-        now: DateTime.now(),
-      );
   return ref.watch(billQueryServiceProvider).listBillsByAccount(accountId);
+}
+
+@riverpod
+Future<List<BillSummaryReadModel>> accountBillPreview(
+  Ref ref,
+  String accountId,
+) {
+  return ref.watch(billQueryServiceProvider).listAccountBillPreview(accountId);
 }
 
 @riverpod

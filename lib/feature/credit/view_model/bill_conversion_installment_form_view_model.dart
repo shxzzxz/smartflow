@@ -161,6 +161,7 @@ class BillConversionInstallmentFormViewModel
   void _invalidateAfterSubmit({required String accountId}) {
     ref.invalidate(billDetailProvider(billId));
     ref.invalidate(billSummariesByAccountProvider(accountId));
+    ref.invalidate(accountBillPreviewProvider(accountId));
     ref.invalidate(creditAccountOverviewProvider(accountId));
     ref.invalidate(installmentsByAccountProvider(accountId));
   }

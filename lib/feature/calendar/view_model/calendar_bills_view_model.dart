@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../app/provider.dart';
+import '../../credit/view_model/bill_browsing_refresh.dart';
 import '../../shared/provider/ledger_query_providers.dart';
 import '../presentation/calendar_bills_presentation.dart';
 import 'calendar_view_model.dart';
@@ -7,54 +9,121 @@ import 'calendar_view_model.dart';
 part 'calendar_bills_view_model.g.dart';
 
 @riverpod
-CalendarBillsPageState calendarDayBillsViewModel(Ref ref, DateTime date) {
-  final title = '${date.month}月${date.day}日待还账单';
-  final month = DateTime(date.year, date.month);
-  final dueItems = ref.watch(calendarCreditDueItemsProvider(month));
-  final accountLookup = ref.watch(accountLookupProvider);
-  if (dueItems case AsyncError()) {
-    return CalendarBillsPageState.error(title: title, message: '账单加载失败，请稍后重试');
+class CalendarDayBillsViewModel extends _$CalendarDayBillsViewModel {
+  final _browsingRefresh = BillBrowsingRefresh();
+
+  @override
+  CalendarBillsPageState build(DateTime date) {
+    final title = '${date.month}月${date.day}日待还账单';
+    final month = DateTime(date.year, date.month);
+    final dueItems = ref.watch(calendarCreditDueItemsProvider(month));
+    final accountLookup = ref.watch(accountLookupProvider);
+    if (dueItems case AsyncError()) {
+      return CalendarBillsPageState.error(
+        title: title,
+        message: '账单加载失败，请稍后重试',
+      );
+    }
+    if (accountLookup case AsyncError()) {
+      return CalendarBillsPageState.error(
+        title: title,
+        message: '账户加载失败，请稍后重试',
+      );
+    }
+    final items = dueItems.value;
+    final lookup = accountLookup.value;
+    if (items == null || lookup == null) {
+      return CalendarBillsPageState.loading(title: title);
+    }
+    final billIds = items
+        .where(
+          (item) =>
+              item.dueDate.year == date.year &&
+              item.dueDate.month == date.month &&
+              item.dueDate.day == date.day,
+        )
+        .map((item) => item.billId)
+        .whereType<String>()
+        .toSet();
+    if (billIds.isNotEmpty) {
+      _browsingRefresh.schedule(
+        ref,
+        refresh: () async {
+          final generation = ref.read(creditBillGenerationAppServiceProvider);
+          for (final id in billIds) {
+            await generation.refreshBill(id);
+          }
+        },
+        onRefreshed: () {
+          ref
+            ..invalidate(billQueryServiceProvider)
+            ..invalidate(creditAccountQueryServiceProvider);
+        },
+      );
+    }
+    return CalendarBillsPageState.loaded(
+      title: title,
+      emptyMessage: '当日暂无待还账单明细',
+      rows: buildCalendarDayBillRows(
+        date: date,
+        items: items,
+        accountLookup: lookup,
+      ),
+    );
   }
-  if (accountLookup case AsyncError()) {
-    return CalendarBillsPageState.error(title: title, message: '账户加载失败，请稍后重试');
-  }
-  final items = dueItems.value;
-  final lookup = accountLookup.value;
-  if (items == null || lookup == null) {
-    return CalendarBillsPageState.loading(title: title);
-  }
-  return CalendarBillsPageState.loaded(
-    title: title,
-    emptyMessage: '当日暂无待还账单明细',
-    rows: buildCalendarDayBillRows(
-      date: date,
-      items: items,
-      accountLookup: lookup,
-    ),
-  );
 }
 
 @riverpod
-CalendarBillsPageState calendarMonthBillsViewModel(Ref ref, DateTime month) {
-  final title = '${month.year}年${month.month}月账单';
-  final bills = ref.watch(calendarMonthlyBillSummariesProvider(month));
-  final accountLookup = ref.watch(accountLookupProvider);
-  if (bills case AsyncError()) {
-    return CalendarBillsPageState.error(title: title, message: '账单加载失败，请稍后重试');
+class CalendarMonthBillsViewModel extends _$CalendarMonthBillsViewModel {
+  final _browsingRefresh = BillBrowsingRefresh();
+
+  @override
+  CalendarBillsPageState build(DateTime month) {
+    final title = '${month.year}年${month.month}月账单';
+    final bills = ref.watch(calendarMonthlyBillSummariesProvider(month));
+    final accountLookup = ref.watch(accountLookupProvider);
+    if (bills case AsyncError()) {
+      return CalendarBillsPageState.error(
+        title: title,
+        message: '账单加载失败，请稍后重试',
+      );
+    }
+    if (accountLookup case AsyncError()) {
+      return CalendarBillsPageState.error(
+        title: title,
+        message: '账户加载失败，请稍后重试',
+      );
+    }
+    final billValues = bills.value;
+    final lookup = accountLookup.value;
+    if (billValues == null || lookup == null) {
+      return CalendarBillsPageState.loading(title: title);
+    }
+    if (billValues.isNotEmpty) {
+      _browsingRefresh.schedule(
+        ref,
+        refresh: () async {
+          final generation = ref.read(creditBillGenerationAppServiceProvider);
+          for (final id in billValues.map((bill) => bill.billId).toSet()) {
+            await generation.refreshBill(id);
+          }
+        },
+        onRefreshed: () {
+          ref
+            ..invalidate(billQueryServiceProvider)
+            ..invalidate(creditAccountQueryServiceProvider);
+        },
+      );
+    }
+    return CalendarBillsPageState.loaded(
+      title: title,
+      emptyMessage: '本月暂无账单',
+      rows: buildCalendarMonthBillRows(
+        bills: billValues,
+        accountLookup: lookup,
+      ),
+    );
   }
-  if (accountLookup case AsyncError()) {
-    return CalendarBillsPageState.error(title: title, message: '账户加载失败，请稍后重试');
-  }
-  final billValues = bills.value;
-  final lookup = accountLookup.value;
-  if (billValues == null || lookup == null) {
-    return CalendarBillsPageState.loading(title: title);
-  }
-  return CalendarBillsPageState.loaded(
-    title: title,
-    emptyMessage: '本月暂无账单',
-    rows: buildCalendarMonthBillRows(bills: billValues, accountLookup: lookup),
-  );
 }
 
 sealed class CalendarBillsPageState {

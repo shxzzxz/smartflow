@@ -27,7 +27,7 @@ abstract interface class CreditBillGenerationAppService {
 
   Future<void> refreshBill(String billId);
 
-  Future<void> refreshDisplayedBillsForAccount({
+  Future<void> refreshCurrentAndFutureBillsForAccount({
     required String accountId,
     required DateTime now,
   });
@@ -64,6 +64,7 @@ class CreditBillGenerationAppServiceImpl
     required IdGenerator idGenerator,
     SettlementJudgementService judgement = const SettlementJudgementService(),
     CreditBillGenerationService? generationService,
+    DateTime Function()? now,
   }) : _creditAccounts = creditAccounts,
        _ledger = ledger,
        _runner = transactionRunner,
@@ -78,12 +79,14 @@ class CreditBillGenerationAppServiceImpl
              billSources: billSources,
              idGenerator: idGenerator,
              judgement: judgement,
+             now: now,
            );
 
   final CreditAccountRepository _creditAccounts;
   final CreditLedgerPort _ledger;
   final TransactionRunner _runner;
   final CreditBillGenerationService _generation;
+  final _refreshes = <String, Future<void>>{};
 
   @override
   Future<void> generateDueBills({required DateTime now}) async {
@@ -129,20 +132,29 @@ class CreditBillGenerationAppServiceImpl
 
   @override
   Future<void> refreshBill(String billId) {
-    return _runner.run<void>(() async {
-      await _generation.refreshBill(billId);
-    });
+    final existing = _refreshes[billId];
+    if (existing != null) return existing;
+    late final Future<void> refresh;
+    refresh = _runner
+        .run<void>(() async {
+          await _generation.refreshBill(billId);
+        })
+        .whenComplete(() {
+          if (identical(_refreshes[billId], refresh)) _refreshes.remove(billId);
+        });
+    _refreshes[billId] = refresh;
+    return refresh;
   }
 
   @override
-  Future<void> refreshDisplayedBillsForAccount({
+  Future<void> refreshCurrentAndFutureBillsForAccount({
     required String accountId,
     required DateTime now,
   }) async {
     final account = await _creditAccounts.findByAccountId(accountId);
     if (account == null) return;
     return _runner.run<void>(() async {
-      await _generation.refreshDisplayedBillsForAccount(
+      await _generation.refreshCurrentAndFutureBillsForAccount(
         account: account,
         now: now,
       );

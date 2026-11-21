@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import '../design_system/theme/app_theme.dart';
 import '../application/shared/app_settings_store.dart';
 import '../feature/shared/view_model/app_settings_view_model.dart';
+import '../feature/shared/provider/current_date_time_provider.dart';
 import '../widget/business/icon/business_icon_scope.dart';
 import 'business_icon_provider.dart';
 import 'app_error_boundary.dart';
@@ -29,12 +30,14 @@ class SmartFlowApp extends ConsumerStatefulWidget {
 class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     with WidgetsBindingObserver {
   StreamSubscription<SharedPaymentImage>? _imageShares;
+  Timer? _dailyTaskTimer;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(ref.read(pullTaskSchedulerProvider).trigger());
+      _scheduleNextDay();
       unawaited(_applyLogRetentionSettings());
       unawaited(_listenForImageShares());
     });
@@ -82,6 +85,7 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void dispose() {
+    _dailyTaskTimer?.cancel();
     unawaited(_imageShares?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -90,8 +94,24 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.invalidate(currentDateTimeProvider);
       unawaited(ref.read(pullTaskSchedulerProvider).trigger());
+      _scheduleNextDay();
+    } else {
+      _dailyTaskTimer?.cancel();
     }
+  }
+
+  void _scheduleNextDay() {
+    _dailyTaskTimer?.cancel();
+    final now = DateTime.now();
+    final nextDay = DateTime(now.year, now.month, now.day + 1);
+    _dailyTaskTimer = Timer(nextDay.difference(now), () {
+      if (!mounted) return;
+      ref.invalidate(currentDateTimeProvider);
+      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
+      _scheduleNextDay();
+    });
   }
 
   @override

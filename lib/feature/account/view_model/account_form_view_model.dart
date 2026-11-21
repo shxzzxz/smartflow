@@ -275,6 +275,11 @@ class AccountFormViewModel extends _$AccountFormViewModel {
             targetBalance: openingBalance,
           ),
         );
+    if (ref.mounted) {
+      ref
+        ..invalidate(billQueryServiceProvider)
+        ..invalidate(creditAccountQueryServiceProvider);
+    }
   }
 
   String _canonicalIconRef(String value) {

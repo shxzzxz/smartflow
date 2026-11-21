@@ -19,6 +19,7 @@ import 'package:smartflow/feature/credit/provider/bill_query_providers.dart';
 import 'package:smartflow/feature/credit/provider/installment_query_providers.dart';
 import 'package:smartflow/feature/shared/provider/ledger_query_providers.dart';
 import 'package:smartflow/shared/account_profile/account_profile_kind.dart';
+import '../../../helper/fake_credit_bill_generation_app_service.dart';
 
 void main() {
   group('accountDetailActions', () {
@@ -163,61 +164,92 @@ void main() {
       );
     });
 
-    test('loads installment contracts for liability account', () async {
-      final transactionService = _FakeTransactionQueryService();
-      final accountService = _FakeAccountQueryService(
-        accountsById: {
-          ..._accounts,
-          'card': _account('card', '信用卡', type: AccountType.liability),
-        },
-      );
-      final container = _container(
-        transactionService,
-        accountService,
-        overrides: [
-          accountListProvider.overrideWith(
-            (ref) => Stream.value([
-              _account('card', '信用卡', type: AccountType.liability),
-            ]),
-          ),
-          creditLiabilityAccountsByAccountIdProvider.overrideWith(
-            (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
-          ),
-          installmentsByAccountProvider(
-            'card',
-          ).overrideWith((ref) async => [_contract()]),
-          billSummariesByAccountProvider('card').overrideWith(
-            (ref) async => [
-              _bill(year: 2026, month: 7),
+    test(
+      'loads credit detail preview before refreshing it asynchronously',
+      () async {
+        var preview = [
+          _bill(year: 2026, month: 6),
+          _bill(year: 2026, month: 7, amount: 1000),
+        ];
+        final refresh = Completer<void>();
+        addTearDown(() {
+          if (!refresh.isCompleted) refresh.complete();
+        });
+        final generation = FakeCreditBillGenerationAppService(
+          onRefreshAccount: (_) async {
+            await refresh.future;
+            preview = [
               _bill(year: 2026, month: 6),
-              _bill(year: 2026, month: 5),
-            ],
-          ),
-        ],
-      );
+              _bill(year: 2026, month: 7, amount: 2000),
+            ];
+          },
+        );
+        final transactionService = _FakeTransactionQueryService();
+        final accountService = _FakeAccountQueryService(
+          accountsById: {
+            ..._accounts,
+            'card': _account('card', '信用卡', type: AccountType.liability),
+          },
+        );
+        final container = _container(
+          transactionService,
+          accountService,
+          generation: generation,
+          overrides: [
+            accountListProvider.overrideWith(
+              (ref) => Stream.value([
+                _account('card', '信用卡', type: AccountType.liability),
+              ]),
+            ),
+            creditLiabilityAccountsByAccountIdProvider.overrideWith(
+              (ref) => Stream.value({'card': _creditLiabilityAccount('card')}),
+            ),
+            installmentsByAccountProvider(
+              'card',
+            ).overrideWith((ref) async => [_contract()]),
+            accountBillPreviewProvider(
+              'card',
+            ).overrideWith((ref) async => preview),
+          ],
+        );
 
-      final sub = container.listen(
-        accountDetailViewModelProvider('card'),
-        (_, _) {},
-      );
-      addTearDown(sub.close);
-      await container.read(accountListProvider.future);
-      await container.read(creditLiabilityAccountsByAccountIdProvider.future);
-      await container.read(installmentsByAccountProvider('card').future);
-      await container.pump();
-      await _flush();
+        final sub = container.listen(
+          accountDetailViewModelProvider('card'),
+          (_, _) {},
+        );
+        addTearDown(sub.close);
+        await container.read(accountListProvider.future);
+        await container.read(creditLiabilityAccountsByAccountIdProvider.future);
+        await container.read(installmentsByAccountProvider('card').future);
+        await container.pump();
+        await _flush();
 
-      final state = container.read(accountDetailViewModelProvider('card'));
-      expect(state, isA<AccountDetailLoaded>());
-      final loaded = state as AccountDetailLoaded;
-      expect(loaded.contracts, isA<AccountContractsLoaded>());
-      expect(
-        (loaded.contracts as AccountContractsLoaded).contracts.single.id,
-        'contract-1',
-      );
-      final bills = (loaded.bills as AccountBillsLoaded).bills;
-      expect(bills.map((bill) => bill.period.month), [7, 6]);
-    });
+        final state = container.read(accountDetailViewModelProvider('card'));
+        expect(state, isA<AccountDetailLoaded>());
+        final loaded = state as AccountDetailLoaded;
+        expect(loaded.contracts, isA<AccountContractsLoaded>());
+        expect(
+          (loaded.contracts as AccountContractsLoaded).contracts.single.id,
+          'contract-1',
+        );
+        final bills = (loaded.bills as AccountBillsLoaded).bills;
+        expect(bills.map((bill) => bill.period.month), [6, 7]);
+        expect(bills.last.pendingAmount.minorUnits, 1000);
+        expect(generation.refreshedAccounts, ['card']);
+
+        refresh.complete();
+        await _flush();
+        await container.pump();
+        await _flush();
+        final refreshed =
+            container.read(accountDetailViewModelProvider('card'))
+                as AccountDetailLoaded;
+        final refreshedBills = (refreshed.bills as AccountBillsLoaded).bills;
+        expect(refreshedBills.map((bill) => bill.period.month), [6, 7]);
+        expect(refreshedBills.last.pendingAmount.minorUnits, 2000);
+        expect(generation.refreshedAccounts, ['card']);
+      },
+    );
 
     test('archives the account through the archive command', () async {
       final commandService = _FakeAccountAppService();
@@ -339,10 +371,14 @@ ProviderContainer _deleteContainer(
 ProviderContainer _container(
   _FakeTransactionQueryService transactionService,
   _FakeAccountQueryService accountService, {
+  FakeCreditBillGenerationAppService? generation,
   List<dynamic> overrides = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
+      creditBillGenerationAppServiceProvider.overrideWithValue(
+        generation ?? FakeCreditBillGenerationAppService(),
+      ),
       transactionQueryServiceProvider.overrideWithValue(transactionService),
       transactionFeedQueryServiceProvider.overrideWithValue(
         const _EmptyTransactionFeedQueryService(),
@@ -424,16 +460,20 @@ CreditLiabilityAccountReadModel _creditLiabilityAccount(String accountId) {
   );
 }
 
-BillSummaryReadModel _bill({required int year, required int month}) {
+BillSummaryReadModel _bill({
+  required int year,
+  required int month,
+  int amount = 0,
+}) {
   return BillSummaryReadModel(
     id: 'bill-$year-$month',
     accountId: 'card',
     period: BillPeriod(year: year, month: month),
     status: BillStatus.billed,
-    expectedPrincipal: Money.zero(),
+    expectedPrincipal: Money(minorUnits: amount),
     expectedInterest: Money.zero(),
     expectedFee: Money.zero(),
-    pendingPrincipal: Money.zero(),
+    pendingPrincipal: Money(minorUnits: amount),
     itemCount: 0,
     overdueItemCount: 0,
   );

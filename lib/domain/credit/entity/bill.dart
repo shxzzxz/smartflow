@@ -172,6 +172,22 @@ class Bill {
     _status = _projectStatus(_status, _items);
   }
 
+  /// Rebuilds amounts from their sources without freezing them at billing time.
+  void synchronizeProjection(List<BillItem> sourceItems) {
+    _items = List.of(sourceItems);
+    _status = _projectStatus(_status, _items);
+  }
+
+  /// Advancing the billing marker does not recalculate historical amounts.
+  void endConsumptionAccumulation() {
+    for (final item in _items) {
+      if (item.itemType == BillItemType.consumption) {
+        item.billingState = BillItemBillingState.billed;
+      }
+    }
+    recalculateStatusFromItems();
+  }
+
   void _ensureOpen() {
     if (_status != BillStatus.open) {
       throw BusinessException(CreditErrorCode.billInvalidCommand);

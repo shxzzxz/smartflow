@@ -4,6 +4,7 @@ import '../../port/bill_repository.dart';
 import '../../port/installment_repository.dart';
 import '../../port/repayment_repository.dart';
 import '../../valobj/bill_enums.dart';
+import '../../valobj/bill_period.dart';
 import '../../valobj/installment_enums.dart';
 import '../../valobj/repayment_amount_breakdown.dart';
 
@@ -50,10 +51,13 @@ class CreditDebtBucketService {
     required BillRepository bills,
     required InstallmentRepository installments,
     required RepaymentRepository repayments,
+    List<Bill>? accountBills,
+    BillPeriod? currentPeriod,
   }) async {
-    final accountBills = await bills.listBillsByAccount(accountId);
+    final storedBills =
+        accountBills ?? await bills.listBillsByAccount(accountId);
     final outstandingBillItems = [
-      for (final bill in accountBills)
+      for (final bill in storedBills)
         for (final item in bill.items)
           if (_isOutstandingItem(item)) item,
     ];
@@ -61,8 +65,17 @@ class CreditDebtBucketService {
       outstandingBillItems.map((item) => item.id),
     );
     final projectedScheduleIds = {
-      for (final item in outstandingBillItems)
-        if (item.scheduleId != null) item.scheduleId!,
+      for (final bill in storedBills)
+        if (currentPeriod == null || bill.period.compareTo(currentPeriod) <= 0)
+          for (final item in bill.items)
+            if (_isOutstandingItem(item) && item.scheduleId != null)
+              item.scheduleId!,
+    };
+    final futureItemIds = {
+      for (final bill in storedBills)
+        if (currentPeriod != null && bill.period.compareTo(currentPeriod) > 0)
+          for (final item in bill.items)
+            if (item.itemType == BillItemType.installment) item.id,
     };
     final outstandingSchedules =
         (await installments.listSchedulesByLiabilityAccount(accountId))
@@ -81,7 +94,7 @@ class CreditDebtBucketService {
         allocatedPrincipalMinor:
             allocatedByItemId[item.id]?.principal.minorUnits ?? 0,
       );
-      billDebt += remaining;
+      if (!futureItemIds.contains(item.id)) billDebt += remaining;
       if (item.itemType == BillItemType.consumption) {
         pendingBillConsumptionPrincipal += remaining;
       }
@@ -102,7 +115,10 @@ class CreditDebtBucketService {
         .where((schedule) => !projectedScheduleIds.contains(schedule.id))
         .fold<int>(
           0,
-          (sum, schedule) => sum + schedule.expectedPrincipal.minorUnits,
+          (sum, schedule) =>
+              sum +
+              (projectedRemainingPrincipalByScheduleId[schedule.id] ??
+                  schedule.expectedPrincipal.minorUnits),
         );
     return CreditDebtBuckets(
       billDebt: Money(minorUnits: billDebt),

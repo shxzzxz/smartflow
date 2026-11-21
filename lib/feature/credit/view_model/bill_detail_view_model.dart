@@ -10,6 +10,7 @@ import '../../shared/view_model/ui_action_outcome.dart';
 import '../provider/bill_query_providers.dart';
 import '../provider/credit_account_query_providers.dart';
 import '../provider/installment_query_providers.dart';
+import 'bill_browsing_refresh.dart';
 
 part 'bill_detail_view_model.g.dart';
 
@@ -17,12 +18,33 @@ final _logger = Logger('feature.credit.bill_detail');
 
 @riverpod
 class BillDetailViewModel extends _$BillDetailViewModel {
+  final _browsingRefresh = BillBrowsingRefresh();
+
   @override
-  Future<BillDetailReadModel?> build(String billId) {
-    return ref.watch(billDetailProvider(billId).future);
+  Future<BillDetailReadModel?> build(String billId) async {
+    final query = ref.watch(billQueryServiceProvider);
+    final detail = await query.findBillDetail(billId);
+    if (ref.mounted && detail != null) {
+      _browsingRefresh.schedule(
+        ref,
+        refresh: () => ref
+            .read(creditBillGenerationAppServiceProvider)
+            .refreshBill(billId),
+        onRefreshed: () async {
+          final updated = await query.findBillDetail(billId);
+          if (!ref.mounted) return;
+          state = AsyncData(updated);
+          _invalidateBillQueries(detail.summary.accountId);
+        },
+      );
+    }
+    return detail;
   }
 
-  void reload() => ref.invalidateSelf();
+  void reload() {
+    _browsingRefresh.reset();
+    ref.invalidateSelf();
+  }
 
   Future<UiActionOutcome<void>> synchronizeProjection() async {
     final detail = state.asData?.value;
@@ -65,12 +87,18 @@ class BillDetailViewModel extends _$BillDetailViewModel {
   }
 
   void _invalidateBillDependencies(String accountId) {
+    _invalidateBillQueries(accountId);
+    ref.invalidateSelf();
+  }
+
+  void _invalidateBillQueries(String accountId) {
     ref
-      ..invalidateSelf()
       ..invalidate(billDetailProvider(billId))
       ..invalidate(billSummariesByAccountProvider(accountId))
+      ..invalidate(accountBillPreviewProvider(accountId))
       ..invalidate(creditAccountOverviewProvider(accountId))
-      ..invalidate(installmentsByAccountProvider(accountId));
+      ..invalidate(installmentsByAccountProvider(accountId))
+      ..invalidate(creditAccountQueryServiceProvider);
   }
 
   UiActionOutcome<void> _notLoaded() {

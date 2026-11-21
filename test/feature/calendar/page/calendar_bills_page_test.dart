@@ -32,10 +32,10 @@ void main() {
               overrides: [
                 calendarDayBillsViewModelProvider(
                   date,
-                ).overrideWith((ref) => state),
+                ).overrideWith(() => _DayBillsViewModel(state)),
                 calendarMonthBillsViewModelProvider(
                   month,
-                ).overrideWith((ref) => state),
+                ).overrideWith(() => _MonthBillsViewModel(state)),
               ],
               child: MaterialApp(
                 theme: AppTheme.light(),
@@ -82,4 +82,18 @@ void main() {
       );
     }
   }
+}
+
+class _DayBillsViewModel extends CalendarDayBillsViewModel {
+  _DayBillsViewModel(this.initial);
+  final CalendarBillsPageState initial;
+  @override
+  CalendarBillsPageState build(DateTime date) => initial;
+}
+
+class _MonthBillsViewModel extends CalendarMonthBillsViewModel {
+  _MonthBillsViewModel(this.initial);
+  final CalendarBillsPageState initial;
+  @override
+  CalendarBillsPageState build(DateTime month) => initial;
 }

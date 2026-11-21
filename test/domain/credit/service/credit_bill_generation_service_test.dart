@@ -27,6 +27,130 @@ import '../../../helper/sequential_id_generator.dart';
 void main() {
   group('CreditBillGenerationService', () {
     test(
+      'manually extended previous windows close only after their effective end',
+      () async {
+        final fixture = _Fixture();
+        final account = fixture.creditAccount();
+        fixture.creditAccounts.put(account);
+        fixture.billSources.netConsumptionMinorValue = 7000;
+        for (final period in [202607, 202608]) {
+          await fixture.service.generateBillForPeriod(
+            account: account,
+            period: BillPeriod.fromInt(period),
+            now: fixture.today,
+          );
+        }
+        final july = (await fixture.bills.findByAccountAndPeriod(
+          account.accountId,
+          BillPeriod.fromInt(202607),
+        ))!;
+        await fixture.service.updateConsumptionWindow(
+          billId: july.id,
+          billItemId: july.items.single.id,
+          startInclusive: DateTime(2026, 6, 5),
+          endInclusive: DateTime(2026, 7, 20),
+        );
+        fixture.billSources.netConsumptionMinorValue = 9000;
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 7, 15),
+        );
+        final extended = (await fixture.bills.findBill(july.id))!;
+        expect(extended.status, BillStatus.open);
+        expect(extended.expectedPrincipal.minorUnits, 7000);
+        await fixture.service.generateDueBillsForAccount(
+          account: account,
+          now: DateTime(2026, 7, 21),
+        );
+        final ended = (await fixture.bills.findBill(july.id))!;
+        expect(ended.status, BillStatus.billed);
+        expect(ended.expectedPrincipal.minorUnits, 7000);
+      },
+    );
+
+    for (final kind in CreditLiabilityAccountKind.values) {
+      test(
+        'only ongoing effective future plans are generated for $kind',
+        () async {
+          final fixture = _Fixture();
+          final account = {
+            CreditLiabilityAccountKind.credit: fixture.creditAccount(),
+            CreditLiabilityAccountKind.loan: fixture.loanAccount(),
+          }[kind]!;
+          fixture.creditAccounts.put(account);
+          final active = fixture.contract(accountId: account.accountId);
+          final activeSchedule = fixture.schedule(contractId: active.id);
+          fixture.installments.putContract(active);
+          await fixture.installments.replaceSchedules(active.id, [
+            activeSchedule,
+          ]);
+          final closed = fixture.contract(
+            accountId: account.accountId,
+            status: InstallmentContractStatus.settled,
+          );
+          final closedSchedule = fixture.schedule(
+            contractId: closed.id,
+            status: InstallmentScheduleStatus.paid,
+          )..expectedRepaymentDate = DateTime(2026, 8, 1);
+          fixture.installments.putContract(closed);
+          await fixture.installments.replaceSchedules(closed.id, [
+            closedSchedule,
+          ]);
+          final skipped = fixture.contract(accountId: account.accountId);
+          final skippedSchedule = fixture.schedule(
+            contractId: skipped.id,
+            status: InstallmentScheduleStatus.skipped,
+          )..expectedRepaymentDate = DateTime(2026, 9, 1);
+          fixture.installments.putContract(skipped);
+          await fixture.installments.replaceSchedules(skipped.id, [
+            skippedSchedule,
+          ]);
+          final zero = fixture.contract(accountId: account.accountId);
+          final zeroSchedule = fixture.schedule(contractId: zero.id)
+            ..expectedRepaymentDate = DateTime(2026, 10, 1)
+            ..expectedPrincipal = Money.zero();
+          fixture.installments.putContract(zero);
+          await fixture.installments.replaceSchedules(zero.id, [zeroSchedule]);
+          await fixture.service.generateDueBillsForAccount(
+            account: account,
+            now: fixture.today,
+          );
+          final bills = fixture.bills.byAccount(account.accountId);
+          expect(bills.map((bill) => bill.period.toInt()), [202606, 202607]);
+          expect(
+            bills.last.items
+                .singleWhere((item) => item.scheduleId == activeSchedule.id)
+                .expectedPrincipal
+                .minorUnits,
+            60000,
+          );
+          await fixture.service.deleteBill(bills.last.id);
+          await fixture.service.generateDueBillsForAccount(
+            account: account,
+            now: fixture.today,
+          );
+          expect(
+            fixture.bills
+                .byAccount(account.accountId)
+                .map((bill) => bill.period.toInt()),
+            [202606],
+          );
+          await fixture.service.generateBillForPeriod(
+            account: account,
+            period: BillPeriod.fromInt(202607),
+            now: fixture.today,
+          );
+          expect(
+            fixture.bills
+                .byAccount(account.accountId)
+                .map((bill) => bill.period.toInt()),
+            [202606, 202607],
+          );
+        },
+      );
+    }
+
+    test(
       'refreshes open credit bill from current consumption source',
       () async {
         final fixture = _Fixture();
@@ -698,10 +822,12 @@ class _Fixture {
       bills: bills,
       suppressions: suppressions,
       billSources: billSources,
+      now: () => today,
       idGenerator: ids,
     );
   }
 
+  var today = DateTime(2026, 6, 4);
   final ids = SequentialIdGenerator(prefix: 'domain-bill');
   final creditAccounts = _FakeCreditAccountRepository();
   final installments = _FakeInstallmentRepository();
