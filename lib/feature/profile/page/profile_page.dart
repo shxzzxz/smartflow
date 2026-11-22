@@ -80,6 +80,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   showBadge: unreadCount > 0,
                   onPressed: () => context.push('/profile/notifications'),
                 ),
+                AppHeaderIconButton(
+                  key: const ValueKey('profile-settings'),
+                  icon: RemixIcons.settings_3_line,
+                  tooltip: '设置',
+                  onPressed: () => context.push('/profile/settings'),
+                ),
               ],
             ),
             Expanded(
@@ -132,9 +138,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onTap: () => context.push('/profile/loan-calculator'),
           ),
           ProfileMenuEntry(
-            title: '设置',
-            iconKey: 'settings',
-            onTap: () => context.push('/profile/settings'),
+            title: '保险',
+            iconKey: 'insurance',
+            onTap: () => context.push('/insurance'),
           ),
         ],
       ),
@@ -161,17 +167,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             title: '对手方管理',
             iconKey: 'counterparty',
             onTap: () => context.push('/counterparties'),
-          ),
-        ],
-      ),
-      ProfileMenuGroup(
-        title: '保险',
-        layout: ProfileGroupLayout.list,
-        entries: [
-          ProfileMenuEntry(
-            title: '保险',
-            iconKey: 'insurance',
-            onTap: () => context.push('/insurance'),
           ),
         ],
       ),

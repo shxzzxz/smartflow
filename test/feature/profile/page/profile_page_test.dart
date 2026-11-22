@@ -92,14 +92,14 @@ void main() {
     for (final title in ['常用功能', '交易', '信贷工具', '数据管理', '帮助与关于', '开发工具']) {
       expect(find.text(title), findsOneWidget);
     }
-    expect(find.text('保险'), findsNWidgets(2));
+    expect(find.text('保险'), findsOneWidget);
+    expect(find.byTooltip('设置'), findsOneWidget);
 
     final sections = find.byType(AppSurface);
-    expect(sections, findsNWidgets(7));
+    expect(sections, findsNWidgets(6));
     const groups = [
-      ['分类管理', '标签管理', '贷款计算器', '设置'],
+      ['分类管理', '标签管理', '贷款计算器', '保险'],
       ['截图记账', '识别规则', '图标管理', '对手方管理'],
-      ['保险'],
       ['分期产品', '参考利率'],
       ['数据导入', '数据清理', '数据备份'],
       ['使用手册', '软件版本'],
@@ -147,7 +147,12 @@ void main() {
       final gridEntry = find.byKey(
         ValueKey('profile-grid-entry-${destination.key}'),
       );
-      await tester.tap(listEntry.evaluate().isNotEmpty ? listEntry : gridEntry);
+      final entry = destination.key == '设置'
+          ? find.byKey(const ValueKey('profile-settings'))
+          : listEntry.evaluate().isNotEmpty
+          ? listEntry
+          : gridEntry;
+      await tester.tap(entry);
       await tester.pumpAndSettle();
       expect(find.text('目标页面：${destination.value}'), findsOneWidget);
       router.pop();
