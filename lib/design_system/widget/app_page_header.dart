@@ -183,11 +183,13 @@ class AppHeaderIconButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.selected,
+    this.showBadge = false,
   });
 
   final IconData icon;
   final String tooltip;
   final bool? selected;
+  final bool showBadge;
 
   /// 传 null 表示操作当前不可用。
   final VoidCallback? onPressed;
@@ -196,7 +198,7 @@ class AppHeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onPressed,
-      icon: Icon(icon),
+      icon: Badge(isLabelVisible: showBadge, child: Icon(icon)),
       tooltip: tooltip,
       isSelected: selected,
       style: appHeaderIconButtonStyle.copyWith(

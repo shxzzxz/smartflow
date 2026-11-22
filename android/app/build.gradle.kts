@@ -23,6 +23,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -56,6 +57,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            val flutterTarget = providers.gradleProperty("target").orNull.orEmpty()
+                .replace('\\', '/')
+            if (flutterTarget.endsWith("test_driver/notification_smoke.dart")) {
+                applicationIdSuffix = ".notification_smoke"
+            }
+        }
         release {
             signingConfig =
                 if (hasReleaseSigning) {
@@ -72,6 +80,7 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.core:core-ktx:1.16.0")
     implementation(project(":ppocr_sdk"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

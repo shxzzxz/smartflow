@@ -9,6 +9,48 @@ import '../../helper/test_app_database.dart';
 void main() {
   group('DriftAppSettingsStore', () {
     test(
+      'repayment reminders default to 22:00 and persist time and enablement',
+      () async {
+        final database = createTestDatabase();
+        addTearDown(database.close);
+        final store = DriftAppSettingsStore(database);
+        final defaults = await store.read();
+        expect(
+          defaults.repaymentReminderTime,
+          const NotificationTime(hour: 22, minute: 0),
+        );
+        expect(defaults.repaymentRemindersEnabled, isTrue);
+        await store.save(
+          defaults.copyWith(
+            repaymentReminderTime: const NotificationTime(hour: 21, minute: 30),
+            repaymentRemindersEnabled: false,
+          ),
+        );
+        final reloaded = await DriftAppSettingsStore(database).read();
+        expect(
+          reloaded.repaymentReminderTime,
+          const NotificationTime(hour: 21, minute: 30),
+        );
+        expect(reloaded.repaymentRemindersEnabled, isFalse);
+        expect(
+          reloaded.pullToCreateSensitivity,
+          defaults.pullToCreateSensitivity,
+        );
+        await database
+            .into(database.appMetadata)
+            .insertOnConflictUpdate(
+              AppMetadataCompanion.insert(
+                key: 'settings.repayment_reminder_time',
+                value: '1440',
+              ),
+            );
+        expect(
+          (await store.read()).repaymentReminderTime,
+          defaults.repaymentReminderTime,
+        );
+      },
+    );
+    test(
       'read returns the standard pull-to-create sensitivity by default',
       () async {
         final database = createTestDatabase();

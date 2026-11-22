@@ -12,9 +12,19 @@ class CreditBillGenerationTask implements AppTask {
   String get key => 'credit.bill_generation';
 
   @override
-  Future<AppTaskOutcome> run(DateTime now) async {
+  TaskRunPolicy get runPolicy =>
+      TaskRunPolicy.oncePerWindow(const Duration(days: 1));
+
+  @override
+  Future<AppTaskResult> run(DateTime now) async {
     await _service.generateDueBills(now: now);
     onChanged?.call();
-    return AppTaskOutcome.completed;
+    return AppTaskResult.completed(
+      nextCheckAt: runPolicy.nextAllowedAt(
+        now: now,
+        lastSuccessfulRunAt: now,
+        lastCompletedAt: now,
+      ),
+    );
   }
 }

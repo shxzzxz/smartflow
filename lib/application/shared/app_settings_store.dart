@@ -1,6 +1,8 @@
 import 'app_appearance_settings.dart';
+import 'notification/notification_time.dart';
 
 export 'app_appearance_settings.dart';
+export 'notification/notification_time.dart';
 
 enum PullToCreateSensitivity {
   sensitive(storageValue: 'sensitive', triggerExtent: 56),
@@ -112,6 +114,8 @@ class AppSettings {
     this.calendarHeatMetric = CalendarHeatMetric.expense,
     this.cashflowPeriodMetric = CashflowPeriodMetric.periodDelta,
     this.transactionListDisplayMode = TransactionListDisplayMode.standard,
+    this.repaymentRemindersEnabled = true,
+    this.repaymentReminderTime = const NotificationTime(hour: 22, minute: 0),
     this.appearance = const AppAppearanceSettings(),
   });
 
@@ -124,6 +128,8 @@ class AppSettings {
   final CalendarHeatMetric calendarHeatMetric;
   final CashflowPeriodMetric cashflowPeriodMetric;
   final TransactionListDisplayMode transactionListDisplayMode;
+  final bool repaymentRemindersEnabled;
+  final NotificationTime repaymentReminderTime;
   final AppAppearanceSettings appearance;
 
   AppSettings copyWith({
@@ -136,6 +142,8 @@ class AppSettings {
     CalendarHeatMetric? calendarHeatMetric,
     CashflowPeriodMetric? cashflowPeriodMetric,
     TransactionListDisplayMode? transactionListDisplayMode,
+    bool? repaymentRemindersEnabled,
+    NotificationTime? repaymentReminderTime,
     AppAppearanceSettings? appearance,
   }) {
     return AppSettings(
@@ -154,6 +162,10 @@ class AppSettings {
       cashflowPeriodMetric: cashflowPeriodMetric ?? this.cashflowPeriodMetric,
       transactionListDisplayMode:
           transactionListDisplayMode ?? this.transactionListDisplayMode,
+      repaymentRemindersEnabled:
+          repaymentRemindersEnabled ?? this.repaymentRemindersEnabled,
+      repaymentReminderTime:
+          repaymentReminderTime ?? this.repaymentReminderTime,
       appearance: appearance ?? this.appearance,
     );
   }

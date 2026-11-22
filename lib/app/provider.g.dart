@@ -5620,7 +5620,152 @@ final class PullTaskSchedulerProvider
   }
 }
 
-String _$pullTaskSchedulerHash() => r'38e8d074fdafb203d224dc8fecf0455d4eca9642';
+String _$pullTaskSchedulerHash() => r'efc30d4ae1a1c3c3c88fc328e68325d47e59022b';
+
+@ProviderFor(foregroundTaskRunner)
+final foregroundTaskRunnerProvider = ForegroundTaskRunnerProvider._();
+
+final class ForegroundTaskRunnerProvider
+    extends
+        $FunctionalProvider<
+          ForegroundTaskRunner,
+          ForegroundTaskRunner,
+          ForegroundTaskRunner
+        >
+    with $Provider<ForegroundTaskRunner> {
+  ForegroundTaskRunnerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'foregroundTaskRunnerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$foregroundTaskRunnerHash();
+
+  @$internal
+  @override
+  $ProviderElement<ForegroundTaskRunner> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ForegroundTaskRunner create(Ref ref) {
+    return foregroundTaskRunner(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ForegroundTaskRunner value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ForegroundTaskRunner>(value),
+    );
+  }
+}
+
+String _$foregroundTaskRunnerHash() =>
+    r'38b4e94fd28328250fe49f4dd21e08544c8ec831';
+
+@ProviderFor(repaymentReminderAppService)
+final repaymentReminderAppServiceProvider =
+    RepaymentReminderAppServiceProvider._();
+
+final class RepaymentReminderAppServiceProvider
+    extends
+        $FunctionalProvider<
+          RepaymentReminderAppService,
+          RepaymentReminderAppService,
+          RepaymentReminderAppService
+        >
+    with $Provider<RepaymentReminderAppService> {
+  RepaymentReminderAppServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'repaymentReminderAppServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$repaymentReminderAppServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<RepaymentReminderAppService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  RepaymentReminderAppService create(Ref ref) {
+    return repaymentReminderAppService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RepaymentReminderAppService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RepaymentReminderAppService>(value),
+    );
+  }
+}
+
+String _$repaymentReminderAppServiceHash() =>
+    r'180364750c783ee26c7fa956f16f285491cd133e';
+
+@ProviderFor(repaymentReminderTask)
+final repaymentReminderTaskProvider = RepaymentReminderTaskProvider._();
+
+final class RepaymentReminderTaskProvider
+    extends
+        $FunctionalProvider<
+          RepaymentReminderTask,
+          RepaymentReminderTask,
+          RepaymentReminderTask
+        >
+    with $Provider<RepaymentReminderTask> {
+  RepaymentReminderTaskProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'repaymentReminderTaskProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$repaymentReminderTaskHash();
+
+  @$internal
+  @override
+  $ProviderElement<RepaymentReminderTask> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  RepaymentReminderTask create(Ref ref) {
+    return repaymentReminderTask(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RepaymentReminderTask value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RepaymentReminderTask>(value),
+    );
+  }
+}
+
+String _$repaymentReminderTaskHash() =>
+    r'0fccf4097dd831f89ccca32820cfb98c158c356a';
 
 @ProviderFor(referenceRateAppService)
 final referenceRateAppServiceProvider = ReferenceRateAppServiceProvider._();

@@ -11,11 +11,21 @@ class InstallmentRepricingTask implements AppTask {
   String get key => 'credit.repricing';
 
   @override
-  Future<AppTaskOutcome> run(DateTime now) async {
+  TaskRunPolicy get runPolicy =>
+      TaskRunPolicy.oncePerWindow(const Duration(days: 1));
+
+  @override
+  Future<AppTaskResult> run(DateTime now) async {
     final result = await _service.runDue(now);
     if (result.changed) onChanged?.call();
     return result.needsRetry
-        ? AppTaskOutcome.retryLater
-        : AppTaskOutcome.completed;
+        ? const AppTaskResult.retryLater()
+        : AppTaskResult.completed(
+            nextCheckAt: runPolicy.nextAllowedAt(
+              now: now,
+              lastSuccessfulRunAt: now,
+              lastCompletedAt: now,
+            ),
+          );
   }
 }

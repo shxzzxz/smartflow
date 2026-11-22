@@ -1,4 +1,13 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:logging/logging.dart';
+import 'date_boundary_task.dart';
+import '../application/shared/task/foreground_task_runner.dart';
+import '../application/shared/notification/notification_inbox_service.dart';
+import '../application/shared/notification/notification_visibility_task.dart';
+import '../feature/shared/provider/current_date_time_provider.dart';
+import 'notification_providers.dart';
+import '../application/credit/repayment_reminder/command/repayment_reminder_app_service.dart';
+import '../application/credit/task/repayment_reminder_task.dart';
 import '../infrastructure/credit/adapter/chinamoney_reference_rate_source.dart';
 import '../infrastructure/credit/adapter/eastmoney_reference_rate_source.dart';
 import '../infrastructure/credit/repository/drift_reference_rate_repository.dart';
@@ -1117,8 +1126,11 @@ AmortizationGenerationTask amortizationGenerationTask(Ref ref) {
 
 @Riverpod(keepAlive: true)
 PullTaskScheduler pullTaskScheduler(Ref ref) {
-  return PullTaskScheduler(
+  final scheduler = PullTaskScheduler(
     tasks: [
+      DateBoundaryTask(
+        onChanged: () => ref.invalidate(currentDateTimeProvider),
+      ),
       ref.watch(amortizationGenerationTaskProvider),
       ref.watch(creditBillGenerationTaskProvider),
       InstallmentRepricingTask(
@@ -1129,8 +1141,51 @@ PullTaskScheduler pullTaskScheduler(Ref ref) {
           ref.invalidate(creditAccountQueryServiceProvider);
         },
       ),
+      ref.watch(repaymentReminderTaskProvider),
+      ref.watch(notificationVisibilityTaskProvider),
     ],
   );
+  ref.onDispose(scheduler.dispose);
+  return scheduler;
+}
+
+@Riverpod(keepAlive: true)
+ForegroundTaskRunner foregroundTaskRunner(Ref ref) {
+  final scheduler = ref.watch(pullTaskSchedulerProvider);
+  final inbox = ref.watch(notificationInboxServiceProvider);
+  final runner = ForegroundTaskRunner(scheduler: scheduler);
+  final inboxChanges = inbox.watch().listen(
+    (messages) => scheduler.updateTaskSchedule(
+      NotificationVisibilityTask.taskKey,
+      NotificationInboxService.nextVisibleAtIn(messages, DateTime.now()),
+    ),
+    onError: (Object error, StackTrace stackTrace) {
+      Logger('app.tasks').warning(
+        'Cannot update notification visibility schedule.',
+        error,
+        stackTrace,
+      );
+    },
+  );
+  ref.onDispose(inboxChanges.cancel);
+  ref.onDispose(runner.dispose);
+  return runner;
+}
+
+@Riverpod(keepAlive: true)
+RepaymentReminderAppService repaymentReminderAppService(Ref ref) {
+  return RepaymentReminderAppService(
+    settings: ref.watch(appSettingsStoreProvider),
+    // This query is stateless. UI query invalidation must not recreate the
+    // scheduler and discard the in-memory task execution watermarks.
+    accounts: ref.read(creditAccountQueryServiceProvider),
+    notifications: ref.watch(notificationSyncServiceProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+RepaymentReminderTask repaymentReminderTask(Ref ref) {
+  return RepaymentReminderTask(ref.watch(repaymentReminderAppServiceProvider));
 }
 
 @Riverpod(keepAlive: true)

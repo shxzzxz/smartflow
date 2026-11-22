@@ -15,6 +15,8 @@ import 'provider.dart';
 import 'router.dart';
 import 'capture_intake_provider.dart';
 import 'capture_intake_navigation.dart';
+import 'notification_providers.dart';
+import '../application/shared/notification/notification_delivery.dart';
 import '../application/intake/intake_recognition_api.dart';
 import '../core/error/app_exception.dart';
 
@@ -30,17 +32,67 @@ class SmartFlowApp extends ConsumerStatefulWidget {
 class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     with WidgetsBindingObserver {
   StreamSubscription<SharedPaymentImage>? _imageShares;
-  Timer? _dailyTaskTimer;
+  StreamSubscription<NotificationOpen>? _notificationOpens;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
-      _scheduleNextDay();
+      ref.read(foregroundTaskRunnerProvider).start();
       unawaited(_applyLogRetentionSettings());
       unawaited(_listenForImageShares());
+      unawaited(_listenForNotifications());
     });
+  }
+
+  Future<void> _listenForNotifications() async {
+    final delivery = ref.read(notificationDeliveryProvider);
+    _notificationOpens = delivery.openedNotifications.listen(
+      (notification) => unawaited(_openNotification(notification)),
+    );
+    try {
+      await delivery.initialize();
+      final notification = await delivery.initialNotification();
+      if (mounted && notification != null) {
+        await _openNotification(notification);
+      }
+    } on Exception catch (error, stackTrace) {
+      Logger('app.notification').warning(
+        'Cannot initialize notification navigation.',
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _openNotification(NotificationOpen notification) async {
+    if (!mounted) return;
+    final route = notification.route;
+    final uri = Uri.tryParse(route);
+    if (uri == null ||
+        uri.hasScheme ||
+        uri.hasAuthority ||
+        !route.startsWith('/')) {
+      return;
+    }
+    if (notification.registration case final registration?) {
+      try {
+        await ref
+            .read(notificationInboxServiceProvider)
+            .recordOpened(registration);
+      } on Exception catch (error, stackTrace) {
+        Logger('app.notification').warning(
+          'Cannot mark opened notification as read.',
+          error,
+          stackTrace,
+        );
+      }
+    }
+    if (!mounted) return;
+    if (appRouter.routeInformationProvider.value.uri.toString() != route) {
+      unawaited(appRouter.push<void>(route));
+    }
   }
 
   Future<void> _listenForImageShares() async {
@@ -85,7 +137,8 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void dispose() {
-    _dailyTaskTimer?.cancel();
+    ref.read(foregroundTaskRunnerProvider).stop();
+    unawaited(_notificationOpens?.cancel());
     unawaited(_imageShares?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -95,23 +148,12 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(currentDateTimeProvider);
-      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
-      _scheduleNextDay();
+      ref.invalidate(notificationMessagesProvider);
+      ref.read(foregroundTaskRunnerProvider).start();
+      ref.invalidate(notificationPermissionProvider);
     } else {
-      _dailyTaskTimer?.cancel();
+      ref.read(foregroundTaskRunnerProvider).stop();
     }
-  }
-
-  void _scheduleNextDay() {
-    _dailyTaskTimer?.cancel();
-    final now = DateTime.now();
-    final nextDay = DateTime(now.year, now.month, now.day + 1);
-    _dailyTaskTimer = Timer(nextDay.difference(now), () {
-      if (!mounted) return;
-      ref.invalidate(currentDateTimeProvider);
-      unawaited(ref.read(pullTaskSchedulerProvider).trigger());
-      _scheduleNextDay();
-    });
   }
 
   @override

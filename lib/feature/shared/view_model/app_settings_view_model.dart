@@ -2,7 +2,9 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../app/provider.dart';
+import '../../../app/notification_providers.dart';
 import '../../../application/shared/app_settings_store.dart';
+import '../../../application/shared/notification/notification_visibility_task.dart';
 import 'action_guard.dart';
 import 'ui_action_outcome.dart';
 
@@ -68,6 +70,71 @@ class AppSettingsViewModel extends _$AppSettingsViewModel {
     return _save(
       (settings) => settings.copyWith(transactionListDisplayMode: value),
     );
+  }
+
+  Future<UiActionOutcome<void>> setRepaymentRemindersEnabled(bool value) {
+    return guardUiAction(_logger, 'set repayment reminders', () async {
+      await _save(
+        (settings) => settings.copyWith(repaymentRemindersEnabled: value),
+      );
+      await ref
+          .read(repaymentReminderAppServiceProvider)
+          .synchronize(DateTime.now());
+      if (!ref.mounted) return;
+      await ref
+          .read(pullTaskSchedulerProvider)
+          .executeNow(NotificationVisibilityTask.taskKey);
+    });
+  }
+
+  Future<UiActionOutcome<void>> setRepaymentReminderTime(
+    NotificationTime value,
+  ) {
+    return guardUiAction(_logger, 'set repayment reminder time', () async {
+      await _save(
+        (settings) => settings.copyWith(repaymentReminderTime: value),
+      );
+      await ref
+          .read(repaymentReminderAppServiceProvider)
+          .synchronize(DateTime.now());
+      if (!ref.mounted) return;
+      await ref
+          .read(pullTaskSchedulerProvider)
+          .executeNow(NotificationVisibilityTask.taskKey);
+    });
+  }
+
+  Future<UiActionOutcome<void>> requestNotificationPermission() async {
+    var granted = false;
+    final outcome = await guardUiAction<void>(
+      _logger,
+      'request notification permission',
+      () async {
+        granted = await ref
+            .read(notificationSyncServiceProvider)
+            .requestPermission();
+        ref.invalidate(notificationPermissionProvider);
+        if (granted) {
+          await ref
+              .read(repaymentReminderAppServiceProvider)
+              .synchronize(DateTime.now());
+          if (!ref.mounted) return;
+          await ref
+              .read(pullTaskSchedulerProvider)
+              .executeNow(NotificationVisibilityTask.taskKey);
+        }
+      },
+    );
+    if (outcome is UiActionFailure<void>) return outcome;
+    if (!granted) {
+      return const UiActionOutcome.failure(
+        UiError(
+          code: 'notification.permission.denied',
+          message: '请在系统设置中允许 SmartFlow 发送通知。',
+        ),
+      );
+    }
+    return const UiActionOutcome.success(null);
   }
 
   Future<void> setIncomeColor(int value) {

@@ -63,6 +63,7 @@ import '../feature/profile/page/data_cleanup_page.dart';
 import '../feature/profile/page/backup_page.dart';
 import '../feature/profile/page/log_viewer_page.dart';
 import '../feature/profile/page/profile_page.dart';
+import '../feature/profile/page/notification_center_page.dart';
 import '../feature/profile/page/reference_rates_page.dart';
 import '../feature/profile/page/settings_page.dart';
 import '../feature/profile/page/navigation_appearance_page.dart';
@@ -633,6 +634,10 @@ final appRouter = GoRouter(
         target: FilteredTransactionTarget.tag,
         targetId: state.pathParameters['id']!,
       ),
+    ),
+    GoRoute(
+      path: '/profile/notifications',
+      builder: (context, state) => const NotificationCenterPage(),
     ),
     GoRoute(
       path: '/profile/settings',

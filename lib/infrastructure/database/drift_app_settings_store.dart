@@ -21,6 +21,9 @@ class DriftAppSettingsStore implements AppSettingsStore {
   static const _transactionListDisplayModeKey =
       'settings.transaction_list_display_mode';
   static const _appearanceKey = 'settings.appearance';
+  static const _repaymentRemindersEnabledKey =
+      'settings.repayment_reminders_enabled';
+  static const _repaymentReminderTimeKey = 'settings.repayment_reminder_time';
   final AppDatabase _database;
 
   @override
@@ -38,6 +41,8 @@ class DriftAppSettingsStore implements AppSettingsStore {
                 _cashflowPeriodMetricKey,
                 _transactionListDisplayModeKey,
                 _appearanceKey,
+                _repaymentRemindersEnabledKey,
+                _repaymentReminderTimeKey,
               ]),
             ))
             .get();
@@ -80,6 +85,14 @@ class DriftAppSettingsStore implements AppSettingsStore {
           ) ??
           defaults.transactionListDisplayMode,
       appearance: _parseAppearance(values[_appearanceKey]),
+      repaymentRemindersEnabled:
+          _parseBool(values[_repaymentRemindersEnabledKey]) ??
+          defaults.repaymentRemindersEnabled,
+      repaymentReminderTime:
+          NotificationTime.fromMinutes(
+            int.tryParse(values[_repaymentReminderTimeKey] ?? ''),
+          ) ??
+          defaults.repaymentReminderTime,
     );
   }
 
@@ -115,6 +128,14 @@ class DriftAppSettingsStore implements AppSettingsStore {
           settings.transactionListDisplayMode.storageValue,
         ),
         _entry(_appearanceKey, jsonEncode(settings.appearance.toJson())),
+        _entry(
+          _repaymentRemindersEnabledKey,
+          settings.repaymentRemindersEnabled,
+        ),
+        _entry(
+          _repaymentReminderTimeKey,
+          settings.repaymentReminderTime.minutesSinceMidnight,
+        ),
       ]);
     });
   }

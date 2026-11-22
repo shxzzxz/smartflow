@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:smartflow/app/notification_providers.dart';
+import 'package:smartflow/application/shared/task/pull_task_scheduler.dart';
+import 'package:smartflow/application/credit/repayment_reminder/command/repayment_reminder_app_service.dart';
+import 'package:smartflow/design_system/widget/app_datetime_picker.dart';
 import 'package:smartflow/app/provider.dart';
 import 'package:smartflow/application/shared/app_settings_store.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
@@ -13,6 +18,9 @@ import 'package:smartflow/feature/profile/page/navigation_appearance_page.dart';
 import 'package:smartflow/feature/profile/page/theme_appearance_page.dart';
 import 'package:smartflow/feature/shared/view_model/app_settings_view_model.dart';
 import 'package:smartflow/widget/business/finance/money_text.dart';
+import '../../../helper/fake_notification_delivery.dart';
+
+class _Reminders extends Mock implements RepaymentReminderAppService {}
 
 void main() {
   Future<void> open(
@@ -49,7 +57,23 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appSettingsStoreProvider.overrideWithValue(store)],
+        overrides: [
+          appSettingsStoreProvider.overrideWithValue(store),
+          notificationDeliveryProvider.overrideWithValue(
+            FakeNotificationDelivery(),
+          ),
+          repaymentReminderAppServiceProvider.overrideWithValue(_reminders()),
+          notificationInboxServiceProvider.overrideWith(
+            (ref) => createMemoryNotificationInbox(),
+          ),
+          pullTaskSchedulerProvider.overrideWith((ref) {
+            final scheduler = PullTaskScheduler(
+              tasks: [ref.watch(notificationVisibilityTaskProvider)],
+            );
+            ref.onDispose(scheduler.dispose);
+            return scheduler;
+          }),
+        ],
         child: Consumer(
           builder: (context, ref, child) {
             final appearance =
@@ -73,6 +97,39 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'notification settings use the project picker and save selected reminder time',
+    (tester) async {
+      final store = _InMemoryAppSettingsStore();
+      await open(tester, store);
+      await tester.ensureVisible(find.text('还款提醒时间'));
+      expect(find.text('22:00'), findsOneWidget);
+      await tester.tap(find.text('还款提醒时间'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppTimePickerDialog), findsOneWidget);
+      final wheels = tester
+          .widgetList<ListWheelScrollView>(find.byType(ListWheelScrollView))
+          .toList();
+      final hour = wheels.first.controller! as FixedExtentScrollController;
+      final minute = wheels.last.controller! as FixedExtentScrollController;
+      hour.jumpToItem(hour.selectedItem - 1);
+      minute.jumpToItem(minute.selectedItem + 30);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('确定'));
+      await tester.pumpAndSettle();
+      expect(
+        (await store.read()).repaymentReminderTime,
+        const NotificationTime(hour: 21, minute: 30),
+      );
+      expect((await store.read()).showAddTransactionFab, isTrue);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('还款提醒'));
+      await tester.tap(find.text('还款提醒'));
+      await tester.pumpAndSettle();
+      expect((await store.read()).repaymentRemindersEnabled, isFalse);
+    },
+  );
 
   Future<void> chooseColor(
     WidgetTester tester,
@@ -260,6 +317,9 @@ void main() {
             '导航栏外观',
             '顶部外观',
             '主题外观',
+            '还款提醒',
+            '还款提醒时间',
+            '系统通知权限',
           ]) {
             await tester.ensureVisible(find.text(label));
             await tester.pumpAndSettle();
@@ -284,4 +344,10 @@ class _InMemoryAppSettingsStore implements AppSettingsStore {
     _settings = settings;
     writes++;
   }
+}
+
+_Reminders _reminders() {
+  final service = _Reminders();
+  when(() => service.synchronize(any())).thenAnswer((_) async {});
+  return service;
 }

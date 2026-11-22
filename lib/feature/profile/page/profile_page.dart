@@ -1,5 +1,9 @@
 import 'package:logging/logging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:remixicon/remixicon.dart';
+
+import '../../../app/notification_providers.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/update/app_update_info.dart';
@@ -13,14 +17,14 @@ import '../../../design_system/widget/app_scaffold.dart';
 
 final _logger = Logger('feature.profile');
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _updatePlatform = const AppUpdatePlatform();
 
   AppVersionInfo? _versionInfo;
@@ -56,6 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final versionInfo = _versionInfo;
+    final unreadCount = ref.watch(notificationUnreadCountProvider);
     final contentInset = AppBottomNavigationLayoutScope.of(
       context,
     ).contentInset;
@@ -65,7 +70,18 @@ class _ProfilePageState extends State<ProfilePage> {
       body: SafeArea(
         child: Column(
           children: [
-            const AppPageHeader(title: '我的'),
+            AppPageHeader(
+              title: '我的',
+              actions: [
+                AppHeaderIconButton(
+                  key: const ValueKey('profile-notifications'),
+                  icon: RemixIcons.notification_3_line,
+                  tooltip: unreadCount > 0 ? '通知中心，$unreadCount 条未读' : '通知中心',
+                  showBadge: unreadCount > 0,
+                  onPressed: () => context.push('/profile/notifications'),
+                ),
+              ],
+            ),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
