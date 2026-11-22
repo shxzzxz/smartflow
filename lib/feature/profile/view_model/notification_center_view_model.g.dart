@@ -15,9 +15,9 @@ final notificationCenterViewModelProvider =
 
 final class NotificationCenterViewModelProvider
     extends
-        $AsyncNotifierProvider<
+        $NotifierProvider<
           NotificationCenterViewModel,
-          NotificationCenterViewState
+          AsyncValue<NotificationCenterViewState>
         > {
   NotificationCenterViewModelProvider._()
     : super(
@@ -36,14 +36,23 @@ final class NotificationCenterViewModelProvider
   @$internal
   @override
   NotificationCenterViewModel create() => NotificationCenterViewModel();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<NotificationCenterViewState> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride:
+          $SyncValueProvider<AsyncValue<NotificationCenterViewState>>(value),
+    );
+  }
 }
 
 String _$notificationCenterViewModelHash() =>
-    r'e04d867082ce75bf4392d15b166f280774185463';
+    r'762095f22e7d41f5ea3c067a223c57fcc428ddba';
 
 abstract class _$NotificationCenterViewModel
-    extends $AsyncNotifier<NotificationCenterViewState> {
-  FutureOr<NotificationCenterViewState> build();
+    extends $Notifier<AsyncValue<NotificationCenterViewState>> {
+  AsyncValue<NotificationCenterViewState> build();
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -51,14 +60,14 @@ abstract class _$NotificationCenterViewModel
         this.ref
             as $Ref<
               AsyncValue<NotificationCenterViewState>,
-              NotificationCenterViewState
+              AsyncValue<NotificationCenterViewState>
             >;
     final element =
         ref.element
             as $ClassProviderElement<
               AnyNotifier<
                 AsyncValue<NotificationCenterViewState>,
-                NotificationCenterViewState
+                AsyncValue<NotificationCenterViewState>
               >,
               AsyncValue<NotificationCenterViewState>,
               Object?,

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,9 +29,7 @@ class _NotificationCenterPageState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(
-        ref.read(notificationCenterViewModelProvider.notifier).refresh(),
-      );
+      ref.read(notificationCenterViewModelProvider.notifier).refresh();
     });
   }
 
@@ -68,8 +64,7 @@ class _NotificationCenterPageState
                     title: '通知加载失败',
                     message: '请稍后重试。',
                     action: TextButton(
-                      onPressed: () =>
-                          _showOutcome(context, notifier.refresh()),
+                      onPressed: notifier.refresh,
                       child: const Text('重试'),
                     ),
                   ),

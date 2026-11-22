@@ -113,7 +113,10 @@ class NotificationSyncService {
     // Permission dialogs can outlive the reminder window. Refresh the delivery
     // decision time without rerunning business discovery or adding a timer.
     final deliveryAt = _clock?.call() ?? now;
-    final pendingIds = {for (final pending in nativePending) pending.id};
+    final pendingById = {
+      for (final pending in nativePending) pending.id: pending,
+    };
+    final pendingIds = pendingById.keys.toSet();
     for (final identity in desired.keys.toList()..sort()) {
       final plan = desired[identity]!;
       final previous = entries[identity];
@@ -123,8 +126,8 @@ class NotificationSyncService {
         continue;
       }
       if (previous != null && !previous.plan.scheduledAt.isAfter(deliveryAt)) {
-        // The OS may already have displayed this reminder, or still be delayed.
-        // Scheduling history is not a delivery receipt; do not duplicate it.
+        // A reservation consumes the reminder after its scheduled time, even
+        // if the platform call failed or the process stopped before delivery.
         continue;
       }
       final id =
@@ -134,23 +137,31 @@ class NotificationSyncService {
         id: id,
         plan: plan,
       );
-      if (plan.scheduledAt.isAfter(deliveryAt)) {
-        if (previous?.plan != plan || !pendingIds.contains(id)) {
-          await _delivery.schedule(notification);
-        }
-      } else {
-        if (previous != null) await _delivery.cancel(id);
-        await _delivery.show(notification);
+      final isFuture = plan.scheduledAt.isAfter(deliveryAt);
+      final pending = pendingById[id]?.registration;
+      if (isFuture &&
+          previous?.plan == plan &&
+          pending?.identity == identity &&
+          pending?.plan == plan) {
+        continue;
       }
       entries[identity] = notification;
-      // Save after each accepted operation so an unrelated failure does not
-      // repeat already completed catch-up notices during the next retry.
+      // Persist the reservation before invoking the platform. A failed save
+      // cannot deliver; a saved reminder is never caught up a second time.
       await _registry.save(
         NotificationRegistryState(
           entries: entries.values.toList(),
           permissionRequested: state.permissionRequested,
         ),
       );
+      if (isFuture) {
+        // Repairs before the reminder time replace the same native request.
+        // Compare its payload too: an earlier time update may have failed.
+        await _delivery.schedule(notification);
+      } else {
+        if (previous != null) await _delivery.cancel(id);
+        await _delivery.show(notification);
+      }
     }
     await _registry.save(
       NotificationRegistryState(

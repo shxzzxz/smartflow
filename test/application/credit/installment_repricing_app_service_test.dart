@@ -861,7 +861,7 @@ void main() {
     () async {
       f.currentDate = DateTime(2026, 6, 20);
       final task = InstallmentRepricingTask(f.service);
-      expect(await task.run(f.currentDate), AppTaskOutcome.completed);
+      expect((await task.run(f.currentDate)).outcome, AppTaskOutcome.completed);
       final query = InstallmentQueryServiceImpl(
         repository: f.installments,
         progress: DriftInstallmentProgressSource(f.db),
@@ -871,9 +871,9 @@ void main() {
         'loan',
       ))!.unconfirmedRecordIds.toSet();
       expect(loaded, hasLength(3));
-      expect(await task.run(f.currentDate), AppTaskOutcome.completed);
+      expect((await task.run(f.currentDate)).outcome, AppTaskOutcome.completed);
       f.currentDate = DateTime(2026, 9, 20);
-      expect(await task.run(f.currentDate), AppTaskOutcome.completed);
+      expect((await task.run(f.currentDate)).outcome, AppTaskOutcome.completed);
       final before = await DriftBackupGateway(f.db).readSnapshot();
       await f.service.confirm('loan', loaded);
       expect((await f.records.list('loan')).map((r) => r.status), [
@@ -1585,9 +1585,15 @@ void main() {
       final saved = f.source.rates.toList();
       f.source.rates.clear();
       final task = InstallmentRepricingTask(f.service);
-      expect(await task.run(DateTime(2026, 1, 5)), AppTaskOutcome.retryLater);
+      expect(
+        (await task.run(DateTime(2026, 1, 5))).outcome,
+        AppTaskOutcome.retryLater,
+      );
       f.source.rates.addAll(saved);
-      expect(await task.run(DateTime(2026, 1, 5)), AppTaskOutcome.completed);
+      expect(
+        (await task.run(DateTime(2026, 1, 5))).outcome,
+        AppTaskOutcome.completed,
+      );
       expect((await f.records.list('loan')).single.applied, isTrue);
     },
   );

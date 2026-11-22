@@ -19,10 +19,10 @@ class NotificationCenterViewState {
 @riverpod
 class NotificationCenterViewModel extends _$NotificationCenterViewModel {
   @override
-  Future<NotificationCenterViewState> build() async {
-    return NotificationCenterViewState(
-      await ref.watch(notificationMessagesProvider.future),
-    );
+  AsyncValue<NotificationCenterViewState> build() {
+    return ref
+        .watch(notificationMessagesProvider)
+        .whenData(NotificationCenterViewState.new);
   }
 
   Future<UiActionOutcome<void>> markRead(NotificationMessage message) =>
@@ -40,12 +40,5 @@ class NotificationCenterViewModel extends _$NotificationCenterViewModel {
     () => ref.read(notificationInboxServiceProvider).markAllRead(),
   );
 
-  Future<UiActionOutcome<void>> refresh() => guardUiAction(
-    Logger('feature.profile.notifications'),
-    'refresh notifications',
-    () async {
-      ref.invalidate(notificationMessagesProvider);
-      await ref.read(notificationMessagesProvider.future);
-    },
-  );
+  void refresh() => ref.invalidate(notificationMessagesProvider);
 }

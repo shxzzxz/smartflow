@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/application/shared/notification/notification_inbox_service.dart';
 import 'package:smartflow/application/shared/notification/notification_plan.dart';
 import 'package:smartflow/application/shared/notification/notification_registry.dart';
 import 'package:smartflow/application/shared/notification/notification_sync_service.dart';
@@ -9,6 +10,8 @@ void main() {
   late FakeNotificationDelivery delivery;
   late MemoryNotificationRegistry registry;
   late NotificationSyncService service;
+  late MemoryNotificationInboxStore inboxStore;
+  late NotificationInboxService inbox;
   final before = DateTime(2026, 11, 13, 21);
   final plan = NotificationPlan(
     key: '2026-11-14',
@@ -30,12 +33,15 @@ void main() {
   setUp(() {
     delivery = FakeNotificationDelivery();
     registry = MemoryNotificationRegistry();
+    inboxStore = MemoryNotificationInboxStore();
+    inbox = NotificationInboxService(store: inboxStore);
     service = NotificationSyncService(
       delivery: delivery,
       registry: registry,
-      inbox: createMemoryNotificationInbox(),
+      inbox: inbox,
     );
   });
+  tearDown(() => inboxStore.dispose());
 
   test(
     'repeated discovery maintains one plan and changed settings update its id',
@@ -153,7 +159,10 @@ void main() {
       );
       delivery.failingKey = other.key;
       await expectLater(sync([plan, other]), throwsException);
-      expect(registry.state.entries.single.plan.key, plan.key);
+      expect(
+        registry.state.entries.map((entry) => entry.plan.key),
+        unorderedEquals([plan.key, other.key]),
+      );
       delivery.failingKey = null;
       await sync([plan, other]);
       expect(delivery.scheduled, hasLength(2));
@@ -192,20 +201,144 @@ void main() {
   });
 
   test(
-    'system registration recovery permits cancellation after a local save failure',
+    'native registrations permit cancellation when local history is missing',
     () async {
-      final failingRegistry = _FailingRegistry()..failNextSave = true;
-      service = NotificationSyncService(
-        delivery: delivery,
-        registry: failingRegistry,
-        inbox: createMemoryNotificationInbox(),
-      );
-      await expectLater(sync([plan]), throwsException);
+      await sync([plan]);
       final id = delivery.scheduled.single.$1;
-      expect(failingRegistry.state.entries, isEmpty);
+      registry.state = NotificationRegistryState();
       await sync([]);
       expect(delivery.pending, isEmpty);
       expect(delivery.cancelled, contains(id));
+    },
+  );
+
+  for (final (label, now) in [
+    ('future schedule', before),
+    ('catch-up', DateTime(2026, 11, 13, 23)),
+  ]) {
+    test(
+      'a registry failure prevents $label delivery and permits a later retry',
+      () async {
+        final failingRegistry = _FailingRegistry()..failNextSave = true;
+        service = NotificationSyncService(
+          delivery: delivery,
+          registry: failingRegistry,
+          inbox: inbox,
+        );
+        await expectLater(sync([plan], now: now), throwsException);
+        expect(delivery.scheduled, isEmpty);
+        expect(delivery.shown, isEmpty);
+        expect(inboxStore.messages.single.plan, plan);
+        await sync([plan], now: now);
+        await sync([plan], now: now);
+        expect(delivery.scheduled.length + delivery.shown.length, 1);
+      },
+    );
+  }
+
+  test(
+    'a failed catch-up is consumed across restart while its inbox stays visible',
+    () async {
+      final now = DateTime(2026, 11, 13, 23);
+      delivery.failingKey = plan.key;
+      await expectLater(sync([plan], now: now), throwsException);
+      delivery.failingKey = null;
+      service = NotificationSyncService(
+        delivery: delivery,
+        registry: registry,
+        inbox: inbox,
+      );
+      await sync([plan], now: DateTime(2026, 11, 14, 9));
+      expect(delivery.shown, isEmpty);
+      expect(registry.state.entries.single.plan, plan);
+      expect(inboxStore.messages.single.isVisibleAt(now), isTrue);
+    },
+  );
+
+  test(
+    'a catch-up accepted before an uncertain result is never attempted again',
+    () async {
+      final uncertain = _AcceptedThenFailedDelivery();
+      service = NotificationSyncService(
+        delivery: uncertain,
+        registry: registry,
+        inbox: inbox,
+      );
+      await expectLater(
+        sync([plan], now: DateTime(2026, 11, 13, 23)),
+        throwsException,
+      );
+      uncertain.failAfterAcceptance = false;
+      service = NotificationSyncService(
+        delivery: uncertain,
+        registry: registry,
+        inbox: inbox,
+      );
+      await sync([plan], now: DateTime(2026, 11, 14, 9));
+      expect(uncertain.shown, hasLength(1));
+    },
+  );
+
+  test(
+    'a future schedule with an uncertain result cannot become a second catch-up',
+    () async {
+      final uncertain = _AcceptedThenFailedDelivery();
+      service = NotificationSyncService(
+        delivery: uncertain,
+        registry: registry,
+        inbox: inbox,
+      );
+      await expectLater(sync([plan]), throwsException);
+      // The OS has already triggered the one-off request before discovery resumes.
+      uncertain.pending.clear();
+      uncertain.failAfterAcceptance = false;
+      service = NotificationSyncService(
+        delivery: uncertain,
+        registry: registry,
+        inbox: inbox,
+      );
+      await sync([plan], now: DateTime(2026, 11, 14, 9));
+      expect(uncertain.scheduled, hasLength(1));
+      expect(uncertain.shown, isEmpty);
+    },
+  );
+
+  test(
+    'a failed future reservation is consumed once its reminder time has passed',
+    () async {
+      delivery.failingKey = plan.key;
+      await expectLater(sync([plan]), throwsException);
+      delivery.failingKey = null;
+      service = NotificationSyncService(
+        delivery: delivery,
+        registry: registry,
+        inbox: inbox,
+      );
+      await sync([plan], now: DateTime(2026, 11, 14, 9));
+      expect(delivery.scheduled, isEmpty);
+      expect(delivery.shown, isEmpty);
+    },
+  );
+
+  test(
+    'a failed time update repairs the old native plan under the same id',
+    () async {
+      await sync([plan]);
+      final id = delivery.scheduled.single.$1;
+      final changed = NotificationPlan(
+        key: plan.key,
+        scheduledAt: DateTime(2026, 11, 13, 23),
+        expiresAt: plan.expiresAt,
+        title: plan.title,
+        body: plan.body,
+        route: plan.route,
+      );
+      delivery.failingKey = plan.key;
+      await expectLater(sync([changed]), throwsException);
+      delivery.failingKey = null;
+      await sync([changed]);
+      expect(delivery.scheduled, hasLength(2));
+      expect(delivery.scheduled.last, (id, changed));
     },
   );
 
@@ -233,5 +366,25 @@ class _FailingRegistry extends MemoryNotificationRegistry {
       throw Exception('Cannot save notification registrations.');
     }
     await super.save(state);
+  }
+}
+
+class _AcceptedThenFailedDelivery extends FakeNotificationDelivery {
+  bool failAfterAcceptance = true;
+
+  @override
+  Future<void> show(RegisteredNotification notification) async {
+    await super.show(notification);
+    if (failAfterAcceptance) {
+      throw Exception('System notification result lost.');
+    }
+  }
+
+  @override
+  Future<void> schedule(RegisteredNotification notification) async {
+    await super.schedule(notification);
+    if (failAfterAcceptance) {
+      throw Exception('System schedule result lost.');
+    }
   }
 }

@@ -1,7 +1,8 @@
 import 'notification_plan.dart';
 
-/// Registration records prevent repeated catch-up notices after process death.
-/// A past scheduled time records an attempted reminder, not confirmed delivery.
+/// Registrations reserve reminders before platform delivery. Once the scheduled
+/// time passes, a reservation is consumed even after failure or interruption.
+/// It is not a delivery receipt.
 class RegisteredNotification {
   const RegisteredNotification({
     required this.scope,

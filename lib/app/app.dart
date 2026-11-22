@@ -17,6 +17,7 @@ import 'capture_intake_provider.dart';
 import 'capture_intake_navigation.dart';
 import 'notification_providers.dart';
 import '../application/shared/notification/notification_delivery.dart';
+import '../application/shared/task/foreground_task_runner.dart';
 import '../application/intake/intake_recognition_api.dart';
 import '../core/error/app_exception.dart';
 
@@ -33,17 +34,40 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
     with WidgetsBindingObserver {
   StreamSubscription<SharedPaymentImage>? _imageShares;
   StreamSubscription<NotificationOpen>? _notificationOpens;
+  ForegroundTaskRunner? _foregroundTaskRunner;
+  bool _isForeground = true;
 
   @override
   void initState() {
     super.initState();
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _isForeground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(foregroundTaskRunnerProvider).start();
+      if (!mounted) return;
+      ref.listenManual(foregroundTaskRunnerProvider, (previous, next) {
+        previous?.stop();
+        _foregroundTaskRunner = next;
+        // Dependency refreshes can arrive while providers are rebuilding.
+        // Start only the current instance after that synchronous work finishes.
+        scheduleMicrotask(() {
+          if (mounted && identical(_foregroundTaskRunner, next)) {
+            _applyTaskRunnerLifecycle();
+          }
+        });
+      }, fireImmediately: true);
       unawaited(_applyLogRetentionSettings());
       unawaited(_listenForImageShares());
       unawaited(_listenForNotifications());
     });
+  }
+
+  void _applyTaskRunnerLifecycle() {
+    if (_isForeground) {
+      _foregroundTaskRunner?.start();
+    } else {
+      _foregroundTaskRunner?.stop();
+    }
   }
 
   Future<void> _listenForNotifications() async {
@@ -137,7 +161,7 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void dispose() {
-    ref.read(foregroundTaskRunnerProvider).stop();
+    _foregroundTaskRunner?.stop();
     unawaited(_notificationOpens?.cancel());
     unawaited(_imageShares?.cancel());
     WidgetsBinding.instance.removeObserver(this);
@@ -146,14 +170,13 @@ class _SmartFlowAppState extends ConsumerState<SmartFlowApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    _isForeground = state == AppLifecycleState.resumed;
+    if (_isForeground) {
       ref.invalidate(currentDateTimeProvider);
       ref.invalidate(notificationMessagesProvider);
-      ref.read(foregroundTaskRunnerProvider).start();
       ref.invalidate(notificationPermissionProvider);
-    } else {
-      ref.read(foregroundTaskRunnerProvider).stop();
     }
+    _applyTaskRunnerLifecycle();
   }
 
   @override
