@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smartflow/application/shared/notification/notification_plan.dart';
 import 'package:smartflow/application/shared/notification/notification_registry.dart';
 import 'package:smartflow/application/shared/notification/notification_sync_service.dart';
@@ -18,8 +19,10 @@ const _route = '/calendar/bills/day?date=2026-11-14';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    const MaterialApp(
-      home: Scaffold(body: Center(child: Text('系统通知验证'))),
+    const ProviderScope(
+      child: MaterialApp(
+        home: Scaffold(body: Center(child: Text('系统通知验证'))),
+      ),
     ),
   );
   unawaited(_verify());
