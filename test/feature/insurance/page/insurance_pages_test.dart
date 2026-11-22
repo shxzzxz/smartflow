@@ -216,7 +216,15 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('member-avatar-editor')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('member-avatar-preset-green')));
+    for (final preset in MemberAvatarPreset.values) {
+      expect(
+        find.byKey(ValueKey('member-avatar-preset-${preset.name}')),
+        findsOneWidget,
+      );
+    }
+    await tester.tap(
+      find.byKey(const ValueKey('member-avatar-preset-brother')),
+    );
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('保存'));
@@ -230,7 +238,7 @@ void main() {
     expect(people.single.relationship, MemberRelationship.spouse);
     expect(people.single.gender, MemberGender.female);
     expect(people.single.note, '主要保障人');
-    expect(people.single.avatarPreset, MemberAvatarPreset.green);
+    expect(people.single.avatarPreset, MemberAvatarPreset.brother);
   });
 
   testWidgets('groups member coverage and opens the shared policy detail', (

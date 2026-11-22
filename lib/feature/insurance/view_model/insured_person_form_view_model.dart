@@ -126,7 +126,7 @@ class InsuredPersonFormState {
     this.relationship = MemberRelationship.self,
     this.gender = MemberGender.unknown,
     this.note,
-    this.avatarPreset = MemberAvatarPreset.blue,
+    this.avatarPreset = MemberAvatarPreset.male,
     this.submitting = false,
   });
 

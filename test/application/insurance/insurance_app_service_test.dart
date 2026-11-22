@@ -746,7 +746,7 @@ Future<String> _savePerson(InsuredPersonAppService service, String name) {
       birthDate: DateTime(1990, 6, 15),
       relationship: MemberRelationship.self,
       gender: MemberGender.unknown,
-      avatarPreset: MemberAvatarPreset.blue,
+      avatarPreset: MemberAvatarPreset.male,
     ),
   );
 }

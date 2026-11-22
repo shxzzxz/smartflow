@@ -51,7 +51,11 @@ void main() {
           .setParticipantType(SocialParticipantType.resident);
       container
           .read(insuredPerson.notifier)
+          .setAvatarPreset(MemberAvatarPreset.sister);
+      container
+          .read(insuredPerson.notifier)
           .setRelationship(MemberRelationship.spouse);
+      container.read(insuredPerson.notifier).setGender(MemberGender.male);
 
       container.invalidate(querySource);
 
@@ -66,6 +70,14 @@ void main() {
       expect(
         (await container.read(insuredPerson.future))!.relationship,
         MemberRelationship.spouse,
+      );
+      expect(
+        (await container.read(insuredPerson.future))!.avatarPreset,
+        MemberAvatarPreset.sister,
+      );
+      expect(
+        (await container.read(insuredPerson.future))!.gender,
+        MemberGender.male,
       );
     },
   );

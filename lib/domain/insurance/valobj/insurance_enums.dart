@@ -77,12 +77,14 @@ enum MemberGender {
 }
 
 enum MemberAvatarPreset {
-  blue('蓝色'),
-  green('绿色'),
-  orange('橙色'),
-  pink('粉色'),
-  purple('紫色'),
-  teal('青色');
+  male('男性'),
+  female('女性'),
+  father('父亲'),
+  mother('母亲'),
+  son('儿子'),
+  daughter('女儿'),
+  brother('兄弟'),
+  sister('姐妹');
 
   const MemberAvatarPreset(this.label);
 

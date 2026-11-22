@@ -20916,7 +20916,7 @@ class $InsuredPeopleTable extends InsuredPeople
         false,
         type: DriftSqlType.string,
         requiredDuringInsert: false,
-        defaultValue: Constant(MemberAvatarPreset.blue.name),
+        defaultValue: Constant(MemberAvatarPreset.male.name),
       ).withConverter<MemberAvatarPreset>(
         $InsuredPeopleTable.$converteravatarPreset,
       );

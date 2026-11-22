@@ -112,7 +112,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// The first supported schema is defined by `PersistenceBaseline`.
   @override
-  int get schemaVersion => 66;
+  int get schemaVersion => 67;
 
   @override
   MigrationStrategy get migration => buildMigrationStrategy(this);

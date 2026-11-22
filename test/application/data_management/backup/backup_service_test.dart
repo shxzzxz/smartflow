@@ -105,7 +105,7 @@ void main() {
               'relationship': 'self',
               'gender': 'unknown',
               'note': null,
-              'avatarPreset': 'blue',
+              'avatarPreset': 'male',
               'createdAt': '2026-01-01T00:00:00.000Z',
               'updatedAt': '2026-01-01T00:00:00.000Z',
             },
@@ -113,6 +113,13 @@ void main() {
         },
       );
       await service.createBackup(tempDirectory);
+      await _removeBackupTable(tempDirectory, 'insured_people');
+      await _addBackupTable(tempDirectory, 'insured_people', [
+        {
+          ...gateway.snapshot.rows('insured_people').single,
+          'avatarPreset': 'blue',
+        },
+      ]);
       for (final table in const [
         'social_insurances',
         'social_contribution_records',
@@ -151,6 +158,10 @@ void main() {
       final inspection = await service.inspect(tempDirectory);
 
       expect(inspection.manifest.backupSchemaVersion, 9);
+      expect(
+        inspection.snapshot.rows('insured_people').single['avatarPreset'],
+        'male',
+      );
       final social = inspection.snapshot.rows('social_insurances').single;
       expect(social['insuranceType'], 'medical');
       expect(social['insuredPersonId'], 'person-1');
@@ -175,7 +186,7 @@ void main() {
               'relationship': 'self',
               'gender': 'unknown',
               'note': null,
-              'avatarPreset': 'blue',
+              'avatarPreset': 'male',
               'createdAt': '2026-01-01T00:00:00.000Z',
               'updatedAt': '2026-01-01T00:00:00.000Z',
             },
@@ -241,7 +252,7 @@ void main() {
                 'birthDate': '1990-01-01T00:00:00.000',
                 'relationship': 'self',
                 'gender': 'unknown',
-                'avatarPreset': 'blue',
+                'avatarPreset': 'male',
               },
             ],
             'commercial_insurances': [
@@ -363,7 +374,7 @@ void main() {
                 'birthDate': '1990-01-01T00:00:00.000',
                 'relationship': 'self',
                 'gender': 'unknown',
-                'avatarPreset': 'blue',
+                'avatarPreset': 'male',
               },
             ],
             'commercial_insurances': [
@@ -466,7 +477,7 @@ void main() {
                   'birthDate': '1990-01-01T00:00:00.000',
                   'relationship': 'self',
                   'gender': 'unknown',
-                  'avatarPreset': 'blue',
+                  'avatarPreset': 'male',
                 },
               ],
               'commercial_insurances': [
@@ -522,7 +533,7 @@ void main() {
                 'birthDate': '1990-01-01T00:00:00.000',
                 'relationship': 'self',
                 'gender': 'unknown',
-                'avatarPreset': 'blue',
+                'avatarPreset': 'male',
               },
             ],
             'commercial_insurances': [
@@ -557,6 +568,91 @@ void main() {
         expect(gateway.snapshot.rows('commercial_insurances'), isEmpty);
       },
     );
+
+    test('v16 member avatars migrate and survive a current backup', () async {
+      const cases = <(String, String, String, String)>[
+        ('self', 'male', 'blue', 'male'),
+        ('self', 'female', 'green', 'female'),
+        ('self', 'unknown', 'orange', 'male'),
+        ('spouse', 'male', 'pink', 'male'),
+        ('spouse', 'female', 'purple', 'female'),
+        ('spouse', 'unknown', 'teal', 'male'),
+        ('parent', 'male', 'green', 'father'),
+        ('parent', 'female', 'orange', 'mother'),
+        ('parent', 'unknown', 'pink', 'male'),
+        ('child', 'male', 'purple', 'son'),
+        ('child', 'female', 'teal', 'daughter'),
+        ('child', 'unknown', 'blue', 'male'),
+        ('other', 'male', 'orange', 'male'),
+        ('other', 'female', 'pink', 'female'),
+        ('other', 'unknown', 'purple', 'male'),
+        ('parent', 'male', 'sister', 'sister'),
+        ('spouse', 'female', 'brother', 'brother'),
+      ];
+      final legacyPeople = [
+        for (final (index, values) in cases.indexed)
+          {
+            'id': 'member-$index',
+            'name': '保留成员$index',
+            'birthDate': '1990-06-15T00:00:00.000',
+            'relationship': values.$1,
+            'gender': values.$2,
+            'note': '保留备注',
+            'avatarPreset': values.$3,
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+      ];
+      await service.createBackup(tempDirectory);
+      await _removeBackupTable(tempDirectory, 'insured_people');
+      await _addBackupTable(tempDirectory, 'insured_people', legacyPeople);
+      await _rewriteBackupSchemaVersion(tempDirectory, 16);
+
+      final inspection = await service.inspect(tempDirectory);
+      final expectedPeople = [
+        for (final (index, person) in legacyPeople.indexed)
+          {...person, 'avatarPreset': cases[index].$4},
+      ];
+      expect(inspection.snapshot.rows('insured_people'), expectedPeople);
+      await service.restore(tempDirectory);
+      expect(gateway.snapshot.rows('insured_people'), expectedPeople);
+
+      final currentDirectory = Directory('${tempDirectory.path}/current')
+        ..createSync();
+      await service.createBackup(currentDirectory);
+      gateway.snapshot = _emptySnapshot();
+      await service.restore(currentDirectory);
+      expect(gateway.snapshot.rows('insured_people'), expectedPeople);
+    });
+
+    test('v16 invalid avatars fail before replacing existing data', () async {
+      const person = {
+        'id': 'person-1',
+        'name': '保留成员',
+        'birthDate': '1990-06-15T00:00:00.000',
+        'relationship': 'parent',
+        'gender': 'male',
+        'avatarPreset': 'sister',
+      };
+      gateway.snapshot = _emptySnapshot(
+        tables: {
+          'insured_people': [person],
+        },
+      );
+      await service.createBackup(tempDirectory);
+      await _removeBackupTable(tempDirectory, 'insured_people');
+      await _addBackupTable(tempDirectory, 'insured_people', [
+        {...person, 'avatarPreset': 'missing'},
+      ]);
+      await _rewriteBackupSchemaVersion(tempDirectory, 16);
+
+      await expectLater(
+        () => service.restore(tempDirectory),
+        throwsA(isA<BackupValidationException>()),
+      );
+      expect(gateway.replaceCount, 0);
+      expect(gateway.snapshot.rows('insured_people'), [person]);
+    });
 
     test('migrates a v10 backup with an empty reconciliation table', () async {
       await service.createBackup(tempDirectory);

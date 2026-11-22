@@ -217,6 +217,29 @@ END
           ),
         );
       },
+      from66To67: (migration, schema) async {
+        await migration.alterTable(
+          TableMigration(
+            schema.insuredPeople,
+            columnTransformer: {
+              schema.insuredPeople.avatarPreset: const CustomExpression('''
+CASE
+  WHEN avatar_preset IN ('blue', 'green', 'orange', 'pink', 'purple', 'teal') THEN
+    CASE
+      WHEN relationship = 'parent' AND gender = 'male' THEN 'father'
+      WHEN relationship = 'parent' AND gender = 'female' THEN 'mother'
+      WHEN relationship = 'child' AND gender = 'male' THEN 'son'
+      WHEN relationship = 'child' AND gender = 'female' THEN 'daughter'
+      WHEN gender = 'female' THEN 'female'
+      ELSE 'male'
+    END
+  ELSE avatar_preset
+END
+'''),
+            },
+          ),
+        );
+      },
     )(migrator, from, to);
   });
 }

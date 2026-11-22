@@ -10,7 +10,7 @@ class InsuredPerson {
     this.relationship = MemberRelationship.other,
     this.gender = MemberGender.unknown,
     this.note,
-    this.avatarPreset = MemberAvatarPreset.blue,
+    this.avatarPreset = MemberAvatarPreset.male,
   });
 
   static const maxNoteLength = 100;

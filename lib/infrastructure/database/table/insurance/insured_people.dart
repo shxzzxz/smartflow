@@ -16,7 +16,7 @@ class InsuredPeople extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get avatarPreset => textEnum<MemberAvatarPreset>()
       .named('avatar_preset')
-      .withDefault(Constant(MemberAvatarPreset.blue.name))();
+      .withDefault(Constant(MemberAvatarPreset.male.name))();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

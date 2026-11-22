@@ -23,6 +23,9 @@ void main() {
           id: 'person-1',
           name: '张一',
           birthDate: DateTime(1990, 6, 15),
+          relationship: const Value(MemberRelationship.parent),
+          gender: const Value(MemberGender.female),
+          avatarPreset: const Value(MemberAvatarPreset.brother),
           createdAt: Value(createdAt),
           updatedAt: Value(createdAt),
         ),
@@ -30,6 +33,7 @@ void main() {
           id: 'person-2',
           name: '张二',
           birthDate: DateTime(1995, 2, 15),
+          avatarPreset: const Value(MemberAvatarPreset.sister),
           createdAt: Value(createdAt),
           updatedAt: Value(createdAt),
         ),
@@ -154,7 +158,16 @@ void main() {
       isNot(contains('preExistingConditionDescription')),
     );
 
-    expect(await target.select(target.insuredPeople).get(), hasLength(2));
+    final people = await target.select(target.insuredPeople).get();
+    expect(people, hasLength(2));
+    expect(
+      people.singleWhere((person) => person.id == 'person-1').avatarPreset,
+      MemberAvatarPreset.brother,
+    );
+    expect(
+      people.singleWhere((person) => person.id == 'person-2').avatarPreset,
+      MemberAvatarPreset.sister,
+    );
     expect(
       await target.select(target.commercialInsurances).get(),
       hasLength(1),

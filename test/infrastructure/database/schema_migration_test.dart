@@ -14,6 +14,7 @@ import '../../generated_migrations/schema_v62.dart' as v62;
 import '../../generated_migrations/schema_v63.dart' as v63;
 import '../../generated_migrations/schema_v64.dart' as v64;
 import '../../generated_migrations/schema_v65.dart' as v65;
+import '../../generated_migrations/schema_v66.dart' as v66;
 
 void main() {
   late SchemaVerifier verifier;
@@ -70,6 +71,10 @@ void main() {
         );
       },
       validateItems: (db) async {
+        expect(
+          (await db.select(db.insuredPeople).getSingle()).avatarPreset,
+          MemberAvatarPreset.male,
+        );
         final commercial = await db.select(db.commercialInsurances).getSingle();
         expect(commercial.premiumTermCount, isNull);
         expect(commercial.premiumFrequency, PremiumFrequency.other);
@@ -110,7 +115,7 @@ void main() {
         );
       },
       oldVersion: 60,
-      newVersion: 66,
+      newVersion: 67,
     );
   });
 
@@ -420,6 +425,130 @@ void main() {
       oldVersion: 65,
       newVersion: 66,
     );
+  });
+
+  test('v66 member avatars match relationships and genders once', () async {
+    const cases = <(String, String, String, MemberAvatarPreset)>[
+      ('self', 'male', 'blue', MemberAvatarPreset.male),
+      ('self', 'female', 'green', MemberAvatarPreset.female),
+      ('self', 'unknown', 'orange', MemberAvatarPreset.male),
+      ('spouse', 'male', 'pink', MemberAvatarPreset.male),
+      ('spouse', 'female', 'purple', MemberAvatarPreset.female),
+      ('spouse', 'unknown', 'teal', MemberAvatarPreset.male),
+      ('parent', 'male', 'green', MemberAvatarPreset.father),
+      ('parent', 'female', 'orange', MemberAvatarPreset.mother),
+      ('parent', 'unknown', 'pink', MemberAvatarPreset.male),
+      ('child', 'male', 'purple', MemberAvatarPreset.son),
+      ('child', 'female', 'teal', MemberAvatarPreset.daughter),
+      ('child', 'unknown', 'blue', MemberAvatarPreset.male),
+      ('other', 'male', 'orange', MemberAvatarPreset.male),
+      ('other', 'female', 'pink', MemberAvatarPreset.female),
+      ('other', 'unknown', 'purple', MemberAvatarPreset.male),
+      ('parent', 'male', 'sister', MemberAvatarPreset.sister),
+      ('spouse', 'female', 'brother', MemberAvatarPreset.brother),
+    ];
+    final birthDate = DateTime(1990, 6, 15);
+    final createdAt = DateTime(2026, 1, 1);
+    await verifier.testWithDataIntegrity<v66.DatabaseAtV66, AppDatabase>(
+      createOld: v66.DatabaseAtV66.new,
+      createNew: AppDatabase.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, _) {
+        for (final (index, values) in cases.indexed) {
+          batch.customStatement(
+            'INSERT INTO insured_people '
+            '(id, name, birth_date, relationship, gender, note, avatar_preset, '
+            'created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              'member-$index',
+              '保留成员$index',
+              birthDate.millisecondsSinceEpoch ~/ 1000,
+              values.$1,
+              values.$2,
+              '保留备注',
+              values.$3,
+              createdAt.millisecondsSinceEpoch ~/ 1000,
+              createdAt.millisecondsSinceEpoch ~/ 1000,
+            ],
+          );
+        }
+      },
+      validateItems: (db) async {
+        final people = {
+          for (final person in await db.select(db.insuredPeople).get())
+            person.id: person,
+        };
+        expect(people, hasLength(cases.length));
+        for (final (index, values) in cases.indexed) {
+          final person = people['member-$index']!;
+          expect(person.avatarPreset, values.$4);
+          expect(person.relationship.name, values.$1);
+          expect(person.gender.name, values.$2);
+          expect(person.name, '保留成员$index');
+          expect(person.birthDate, birthDate);
+          expect(person.note, '保留备注');
+          expect(person.createdAt, createdAt);
+          expect(person.updatedAt, createdAt);
+        }
+        await db.customStatement(
+          'INSERT INTO insured_people (id, name, birth_date) '
+          "VALUES ('default-avatar', '默认头像', ?)",
+          [birthDate.millisecondsSinceEpoch ~/ 1000],
+        );
+        final defaultPerson = await (db.select(
+          db.insuredPeople,
+        )..where((row) => row.id.equals('default-avatar'))).getSingle();
+        expect(defaultPerson.avatarPreset, MemberAvatarPreset.male);
+      },
+      oldVersion: 66,
+      newVersion: 67,
+    );
+  });
+
+  test('failed avatar migration preserves the old data and default', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'smartflow_avatar_migration_rollback_',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/schema.sqlite');
+    final oldDatabase = v66.DatabaseAtV66(NativeDatabase(file));
+    final oldMigrator = Migrator(oldDatabase);
+    for (final table in oldDatabase.allTables) {
+      await oldMigrator.createTable(table);
+    }
+    await oldDatabase.customStatement('PRAGMA ignore_check_constraints = ON');
+    await oldDatabase.customStatement(
+      'INSERT INTO insured_people (id, name, birth_date, note, avatar_preset) '
+      "VALUES ('person-1', '', ?, '保留备注', 'blue')",
+      [DateTime(1990, 6, 15).millisecondsSinceEpoch ~/ 1000],
+    );
+    await oldDatabase.customStatement('PRAGMA user_version = 66');
+    await oldDatabase.close();
+
+    final target = AppDatabase(NativeDatabase(file));
+    await expectLater(
+      () => target.customSelect('SELECT 1').get(),
+      throwsA(anything),
+    );
+    await target.close();
+
+    final inspection = v66.DatabaseAtV66(NativeDatabase(file));
+    addTearDown(inspection.close);
+    final version = await inspection
+        .customSelect('PRAGMA user_version')
+        .getSingle();
+    expect(version.read<int>('user_version'), 66);
+    final person = await inspection
+        .customSelect('SELECT avatar_preset, note FROM insured_people')
+        .getSingle();
+    expect(person.read<String>('avatar_preset'), 'blue');
+    expect(person.read<String>('note'), '保留备注');
+    final avatarColumn =
+        (await inspection
+                .customSelect('PRAGMA table_info(insured_people)')
+                .get())
+            .singleWhere((row) => row.read<String>('name') == 'avatar_preset');
+    expect(avatarColumn.read<String>('dflt_value'), "'blue'");
   });
 
   test(

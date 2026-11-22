@@ -273,6 +273,7 @@ class BackupService {
         13 => _upgradeBackupV13ToV14(upgraded),
         14 => _upgradeBackupV14ToV15(upgraded),
         15 => _upgradeBackupV15ToV16(upgraded),
+        16 => _upgradeBackupV16ToV17(upgraded),
         _ => throw BackupValidationException(
           '备份 backupSchemaVersion $version 到当前 '
           '${BackupManifest.currentBackupSchemaVersion} 的迁移尚未实现。',
@@ -436,6 +437,32 @@ class BackupService {
     return Map<String, Object?>.from(row)
       ..remove('preExistingConditionDescription')
       ..['exclusionsDescription'] = merged;
+  }
+
+  static BackupSnapshot _upgradeBackupV16ToV17(BackupSnapshot snapshot) {
+    const legacyPresets = {'blue', 'green', 'orange', 'pink', 'purple', 'teal'};
+    return snapshot.copyWith(
+      tables: {
+        ...snapshot.tables,
+        'insured_people': [
+          for (final row in snapshot.rows('insured_people'))
+            if (legacyPresets.contains(row['avatarPreset']))
+              {
+                ...row,
+                'avatarPreset': switch ((row['relationship'], row['gender'])) {
+                  ('parent', 'male') => 'father',
+                  ('parent', 'female') => 'mother',
+                  ('child', 'male') => 'son',
+                  ('child', 'female') => 'daughter',
+                  (_, 'female') => 'female',
+                  _ => 'male',
+                },
+              }
+            else
+              row,
+        ],
+      },
+    );
   }
 
   static BackupJson _socialInsuranceRowFromLegacy(
